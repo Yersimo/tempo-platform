@@ -1,85 +1,244 @@
 'use client'
 
+import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
-import { AppWindow, Plus, Key, AlertTriangle } from 'lucide-react'
-import { demoSoftwareLicenses, demoITRequests, demoEmployees } from '@/lib/demo-data'
+import { Modal } from '@/components/ui/modal'
+import { Input, Select, Textarea } from '@/components/ui/input'
+import { AppWindow, Plus, Key, AlertTriangle, CheckCircle } from 'lucide-react'
+import { useTempo } from '@/lib/store'
 
 export default function AppsPage() {
-  const totalLicenses = demoSoftwareLicenses.reduce((a, l) => a + l.total_licenses, 0)
-  const usedLicenses = demoSoftwareLicenses.reduce((a, l) => a + l.used_licenses, 0)
-  const monthlyCost = demoSoftwareLicenses.reduce((a, l) => a + l.used_licenses * l.cost_per_license, 0)
+  const {
+    softwareLicenses, itRequests, employees,
+    addSoftwareLicense, updateSoftwareLicense,
+    addITRequest, updateITRequest,
+    getEmployeeName,
+  } = useTempo()
+
+  const totalLicenses = softwareLicenses.reduce((a, l) => a + l.total_licenses, 0)
+  const usedLicenses = softwareLicenses.reduce((a, l) => a + l.used_licenses, 0)
+  const monthlyCost = softwareLicenses.reduce((a, l) => a + l.used_licenses * l.cost_per_license, 0)
+  const openRequests = itRequests.filter(r => r.status === 'open').length
+
+  // Add License modal
+  const [showLicenseModal, setShowLicenseModal] = useState(false)
+  const [licenseForm, setLicenseForm] = useState({
+    name: '',
+    vendor: '',
+    total_licenses: '',
+    used_licenses: '',
+    cost_per_license: '',
+    renewal_date: '',
+    currency: 'USD',
+  })
+
+  // Add IT Request modal
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [requestForm, setRequestForm] = useState({
+    requester_id: '',
+    type: 'software',
+    title: '',
+    description: '',
+    priority: 'medium',
+  })
+
+  function openAddLicense() {
+    setLicenseForm({ name: '', vendor: '', total_licenses: '', used_licenses: '', cost_per_license: '', renewal_date: '', currency: 'USD' })
+    setShowLicenseModal(true)
+  }
+
+  function submitLicense() {
+    if (!licenseForm.name || !licenseForm.vendor) return
+    addSoftwareLicense({
+      name: licenseForm.name,
+      vendor: licenseForm.vendor,
+      total_licenses: Number(licenseForm.total_licenses) || 10,
+      used_licenses: Number(licenseForm.used_licenses) || 0,
+      cost_per_license: Number(licenseForm.cost_per_license) || 0,
+      renewal_date: licenseForm.renewal_date || '2027-01-01',
+      currency: licenseForm.currency,
+    })
+    setShowLicenseModal(false)
+  }
+
+  function openAddRequest() {
+    setRequestForm({ requester_id: employees[0]?.id || '', type: 'software', title: '', description: '', priority: 'medium' })
+    setShowRequestModal(true)
+  }
+
+  function submitRequest() {
+    if (!requestForm.title || !requestForm.requester_id) return
+    addITRequest({
+      requester_id: requestForm.requester_id,
+      type: requestForm.type,
+      title: requestForm.title,
+      description: requestForm.description,
+      priority: requestForm.priority,
+      status: 'open',
+      assigned_to: null,
+    })
+    setShowRequestModal(false)
+  }
+
+  function resolveRequest(id: string) {
+    updateITRequest(id, { status: 'resolved' })
+  }
+
+  function startRequest(id: string) {
+    updateITRequest(id, { status: 'in_progress' })
+  }
 
   return (
     <>
-      <Header title="Apps & Licenses" subtitle="Software licenses, provisioning, and IT requests" actions={<Button size="sm"><Plus size={14} /> Add License</Button>} />
+      <Header
+        title="Apps & Licenses"
+        subtitle="Software licenses, provisioning, and IT requests"
+        actions={
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> IT Request</Button>
+            <Button size="sm" onClick={openAddLicense}><Plus size={14} /> Add License</Button>
+          </div>
+        }
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Licenses" value={totalLicenses} icon={<Key size={20} />} />
-        <StatCard label="Utilization" value={`${Math.round(usedLicenses / totalLicenses * 100)}%`} change={`${usedLicenses} in use`} changeType="neutral" />
+        <StatCard label="Utilization" value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={`${usedLicenses} in use`} changeType="neutral" />
         <StatCard label="Monthly Cost" value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} />
-        <StatCard label="Open IT Requests" value={demoITRequests.filter(r => r.status === 'open').length} icon={<AlertTriangle size={20} />} />
+        <StatCard label="Open IT Requests" value={openRequests} icon={<AlertTriangle size={20} />} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {demoSoftwareLicenses.map(license => (
-          <Card key={license.id}>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-t1">{license.name}</h3>
-                <p className="text-xs text-t3">{license.vendor}</p>
+        {softwareLicenses.map(license => {
+          const utilPct = license.total_licenses > 0 ? Math.round(license.used_licenses / license.total_licenses * 100) : 0
+          return (
+            <Card key={license.id}>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">{license.name}</h3>
+                  <p className="text-xs text-t3">{license.vendor}</p>
+                </div>
+                <Badge variant="success">Active</Badge>
               </div>
-              <Badge variant="success">Active</Badge>
-            </div>
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <div>
-                <p className="text-[0.6rem] text-t3 uppercase">Used</p>
-                <p className="text-sm font-semibold text-t1">{license.used_licenses} / {license.total_licenses}</p>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div>
+                  <p className="text-[0.6rem] text-t3 uppercase">Used</p>
+                  <p className="text-sm font-semibold text-t1">{license.used_licenses} / {license.total_licenses}</p>
+                </div>
+                <div>
+                  <p className="text-[0.6rem] text-t3 uppercase">Cost/License</p>
+                  <p className="text-sm font-semibold text-t1">${license.cost_per_license}/mo</p>
+                </div>
+                <div>
+                  <p className="text-[0.6rem] text-t3 uppercase">Renewal</p>
+                  <p className="text-sm font-semibold text-t1">{license.renewal_date}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[0.6rem] text-t3 uppercase">Cost/License</p>
-                <p className="text-sm font-semibold text-t1">${license.cost_per_license}/mo</p>
-              </div>
-              <div>
-                <p className="text-[0.6rem] text-t3 uppercase">Renewal</p>
-                <p className="text-sm font-semibold text-t1">{license.renewal_date}</p>
-              </div>
-            </div>
-            <Progress value={Math.round(license.used_licenses / license.total_licenses * 100)} showLabel color={license.used_licenses / license.total_licenses > 0.9 ? 'error' : 'orange'} />
-          </Card>
-        ))}
+              <Progress value={utilPct} showLabel color={utilPct > 90 ? 'error' : 'orange'} />
+            </Card>
+          )
+        })}
       </div>
 
       <Card padding="none">
-        <CardHeader><CardTitle>IT Support Requests</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>IT Support Requests</CardTitle>
+            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> New Request</Button>
+          </div>
+        </CardHeader>
         <div className="divide-y divide-divider">
-          {demoITRequests.map(req => {
-            const requester = demoEmployees.find(e => e.id === req.requester_id)
-            const assignee = req.assigned_to ? demoEmployees.find(e => e.id === req.assigned_to) : null
-            return (
-              <div key={req.id} className="px-6 py-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-t2">
-                  <AppWindow size={18} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-t1">{req.title}</p>
-                  <p className="text-xs text-t3">{requester?.profile?.full_name} - {req.description}</p>
-                </div>
-                <Badge variant={req.priority === 'high' ? 'error' : req.priority === 'medium' ? 'warning' : 'default'}>
-                  {req.priority}
-                </Badge>
-                <Badge variant={req.status === 'resolved' ? 'success' : req.status === 'in_progress' ? 'info' : 'warning'}>
-                  {req.status.replace('_', ' ')}
-                </Badge>
-                {assignee && <span className="text-xs text-t3">Assigned: {assignee.profile?.full_name}</span>}
+          {itRequests.length === 0 && (
+            <div className="px-6 py-12 text-center text-sm text-t3">No IT requests yet. Click "IT Request" to create one.</div>
+          )}
+          {itRequests.map(req => (
+            <div key={req.id} className="px-6 py-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-t2">
+                <AppWindow size={18} />
               </div>
-            )
-          })}
+              <div className="flex-1">
+                <p className="text-sm font-medium text-t1">{req.title}</p>
+                <p className="text-xs text-t3">{getEmployeeName(req.requester_id)} - {req.description}</p>
+              </div>
+              <Badge variant={req.priority === 'high' ? 'error' : req.priority === 'medium' ? 'warning' : 'default'}>
+                {req.priority}
+              </Badge>
+              <Badge variant={req.status === 'resolved' ? 'success' : req.status === 'in_progress' ? 'info' : 'warning'}>
+                {req.status.replace('_', ' ')}
+              </Badge>
+              <div className="flex gap-1">
+                {req.status === 'open' && (
+                  <Button size="sm" variant="secondary" onClick={() => startRequest(req.id)}>
+                    Start
+                  </Button>
+                )}
+                {(req.status === 'open' || req.status === 'in_progress') && (
+                  <Button size="sm" variant="primary" onClick={() => resolveRequest(req.id)}>
+                    <CheckCircle size={12} /> Resolve
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
+
+      {/* Add License Modal */}
+      <Modal open={showLicenseModal} onClose={() => setShowLicenseModal(false)} title="Add Software License">
+        <div className="space-y-4">
+          <Input label="Software Name" placeholder="e.g., Microsoft 365, Slack, Figma" value={licenseForm.name} onChange={(e) => setLicenseForm({ ...licenseForm, name: e.target.value })} />
+          <Input label="Vendor" placeholder="e.g., Microsoft, Slack Technologies" value={licenseForm.vendor} onChange={(e) => setLicenseForm({ ...licenseForm, vendor: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Total Licenses" type="number" placeholder="50" value={licenseForm.total_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, total_licenses: e.target.value })} />
+            <Input label="Used Licenses" type="number" placeholder="0" value={licenseForm.used_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, used_licenses: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Cost per License ($/mo)" type="number" placeholder="12.50" value={licenseForm.cost_per_license} onChange={(e) => setLicenseForm({ ...licenseForm, cost_per_license: e.target.value })} />
+            <Select label="Currency" value={licenseForm.currency} onChange={(e) => setLicenseForm({ ...licenseForm, currency: e.target.value })} options={[
+              { value: 'USD', label: 'USD' },
+              { value: 'EUR', label: 'EUR' },
+              { value: 'GBP', label: 'GBP' },
+              { value: 'XOF', label: 'XOF' },
+              { value: 'NGN', label: 'NGN' },
+            ]} />
+          </div>
+          <Input label="Renewal Date" type="date" value={licenseForm.renewal_date} onChange={(e) => setLicenseForm({ ...licenseForm, renewal_date: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowLicenseModal(false)}>Cancel</Button>
+            <Button onClick={submitLicense}>Add License</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create IT Request Modal */}
+      <Modal open={showRequestModal} onClose={() => setShowRequestModal(false)} title="Create IT Request">
+        <div className="space-y-4">
+          <Select label="Requester" value={requestForm.requester_id} onChange={(e) => setRequestForm({ ...requestForm, requester_id: e.target.value })} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+          <Select label="Request Type" value={requestForm.type} onChange={(e) => setRequestForm({ ...requestForm, type: e.target.value })} options={[
+            { value: 'software', label: 'Software' },
+            { value: 'hardware', label: 'Hardware' },
+            { value: 'access', label: 'Access / Permissions' },
+            { value: 'network', label: 'Network' },
+            { value: 'other', label: 'Other' },
+          ]} />
+          <Input label="Title" placeholder="e.g., Need access to Figma" value={requestForm.title} onChange={(e) => setRequestForm({ ...requestForm, title: e.target.value })} />
+          <Textarea label="Description" placeholder="Describe the issue or request in detail..." rows={3} value={requestForm.description} onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })} />
+          <Select label="Priority" value={requestForm.priority} onChange={(e) => setRequestForm({ ...requestForm, priority: e.target.value })} options={[
+            { value: 'low', label: 'Low' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High' },
+          ]} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowRequestModal(false)}>Cancel</Button>
+            <Button onClick={submitRequest}>Submit Request</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

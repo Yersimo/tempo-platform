@@ -6,26 +6,48 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Search, Plus, Filter, Download } from 'lucide-react'
-import { demoEmployees, demoDepartments } from '@/lib/demo-data'
+import { Modal } from '@/components/ui/modal'
+import { Input, Select } from '@/components/ui/input'
+import { Search, Plus, Download } from 'lucide-react'
+import { useTempo } from '@/lib/store'
+import Link from 'next/link'
 
 export default function PeoplePage() {
+  const { employees, departments, addEmployee, getDepartmentName } = useTempo()
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState('all')
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [form, setForm] = useState({
+    full_name: '', email: '', phone: '', job_title: '', level: 'Mid',
+    department_id: '', country: 'Nigeria', role: 'employee' as string,
+  })
 
-  const filtered = demoEmployees.filter(emp => {
+  const filtered = employees.filter(emp => {
     const matchSearch = !search || emp.profile?.full_name.toLowerCase().includes(search.toLowerCase()) || emp.job_title.toLowerCase().includes(search.toLowerCase())
     const matchDept = deptFilter === 'all' || emp.department_id === deptFilter
     return matchSearch && matchDept
   })
 
+  function submitAdd() {
+    if (!form.full_name || !form.email) return
+    addEmployee({
+      department_id: form.department_id || departments[0]?.id,
+      job_title: form.job_title || 'Employee',
+      level: form.level,
+      country: form.country,
+      role: form.role,
+      profile: { full_name: form.full_name, email: form.email, avatar_url: null, phone: form.phone || null },
+    })
+    setShowAddModal(false)
+    setForm({ full_name: '', email: '', phone: '', job_title: '', level: 'Mid', department_id: '', country: 'Nigeria', role: 'employee' })
+  }
+
   return (
     <>
       <Header
         title="People"
-        subtitle={`${demoEmployees.length} employees across ${demoDepartments.length} departments`}
-        actions={<Button size="sm"><Plus size={14} /> Add Employee</Button>}
+        subtitle={`${employees.length} employees across ${departments.length} departments`}
+        actions={<Button size="sm" onClick={() => setShowAddModal(true)}><Plus size={14} /> Add Employee</Button>}
       />
 
       {/* Filters */}
@@ -34,7 +56,7 @@ export default function PeoplePage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
           <input
             type="text"
-            placeholder="Search by name, title, or department..."
+            placeholder="Search by name or title..."
             className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -46,9 +68,7 @@ export default function PeoplePage() {
           onChange={(e) => setDeptFilter(e.target.value)}
         >
           <option value="all">All Departments</option>
-          {demoDepartments.map(d => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
+          {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <Button variant="outline" size="sm"><Download size={14} /> Export</Button>
       </div>
@@ -64,43 +84,75 @@ export default function PeoplePage() {
                 <th className="tempo-th text-left px-4 py-3">Title</th>
                 <th className="tempo-th text-left px-4 py-3">Country</th>
                 <th className="tempo-th text-left px-4 py-3">Level</th>
-                <th className="tempo-th text-left px-4 py-3">Status</th>
-                <th className="tempo-th text-center px-4 py-3">Role</th>
+                <th className="tempo-th text-left px-4 py-3">Role</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((emp) => {
-                const dept = demoDepartments.find(d => d.id === emp.department_id)
-                return (
-                  <tr key={emp.id} className="hover:bg-canvas/50 transition-colors">
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={emp.profile?.full_name || ''} size="sm" />
-                        <div>
-                          <p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p>
-                          <p className="text-xs text-t3">{emp.profile?.email}</p>
-                        </div>
+              {filtered.map((emp) => (
+                <tr key={emp.id} className="hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <td className="px-6 py-3">
+                    <Link href={`/people/${emp.id}`} className="flex items-center gap-3">
+                      <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                      <div>
+                        <p className="text-sm font-medium text-t1 hover:text-tempo-600 transition-colors">{emp.profile?.full_name}</p>
+                        <p className="text-xs text-t3">{emp.profile?.email}</p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-t2">{dept?.name}</td>
-                    <td className="px-4 py-3 text-sm text-t2">{emp.job_title}</td>
-                    <td className="px-4 py-3 text-sm text-t2">{emp.country}</td>
-                    <td className="px-4 py-3 text-sm text-t2">{emp.level}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="success">Active</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'}>
-                        {emp.role}
-                      </Badge>
-                    </td>
-                  </tr>
-                )
-              })}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-t2">{getDepartmentName(emp.department_id)}</td>
+                  <td className="px-4 py-3 text-sm text-t2">{emp.job_title}</td>
+                  <td className="px-4 py-3 text-sm text-t2">{emp.country}</td>
+                  <td className="px-4 py-3 text-sm text-t2">{emp.level}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'}>
+                      {emp.role}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">No employees found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </Card>
+
+      {/* Add Employee Modal */}
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Employee" size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Full Name" placeholder="First and last name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            <Input label="Email" type="email" placeholder="email@company.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Job Title" placeholder="e.g., Software Engineer" value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
+            <Input label="Phone" placeholder="+234 xxx xxx xxxx" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Select label="Department" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
+            <Select label="Level" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} options={[
+              { value: 'Junior', label: 'Junior' }, { value: 'Associate', label: 'Associate' },
+              { value: 'Mid', label: 'Mid' }, { value: 'Senior', label: 'Senior' },
+              { value: 'Manager', label: 'Manager' }, { value: 'Senior Manager', label: 'Senior Manager' },
+              { value: 'Director', label: 'Director' }, { value: 'Executive', label: 'Executive' },
+            ]} />
+            <Select label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} options={[
+              { value: 'Nigeria', label: 'Nigeria' }, { value: 'Ghana', label: 'Ghana' },
+              { value: "Cote d'Ivoire", label: "Cote d'Ivoire" }, { value: 'Kenya', label: 'Kenya' },
+              { value: 'Senegal', label: 'Senegal' }, { value: 'South Africa', label: 'South Africa' },
+            ]} />
+          </div>
+          <Select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} options={[
+            { value: 'employee', label: 'Employee' }, { value: 'manager', label: 'Manager' },
+            { value: 'admin', label: 'Admin' },
+          ]} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button onClick={submitAdd}>Add Employee</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

@@ -1,22 +1,65 @@
 'use client'
 
+import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
+import { Modal } from '@/components/ui/modal'
+import { Input, Select } from '@/components/ui/input'
 import { Wallet, DollarSign, Users, Plus, FileText } from 'lucide-react'
-import { demoPayrollRuns } from '@/lib/demo-data'
+import { useTempo } from '@/lib/store'
 
 export default function PayrollPage() {
+  const { payrollRuns, employees, addPayrollRun, updatePayrollRun } = useTempo()
+  const [showPayRunModal, setShowPayRunModal] = useState(false)
+  const [payRunForm, setPayRunForm] = useState({
+    period: '',
+    total_gross: 0,
+    total_net: 0,
+    total_deductions: 0,
+    currency: 'USD',
+    employee_count: 30,
+    run_date: '',
+  })
+
+  const totalPayroll = payrollRuns.reduce((a, r) => a + r.total_gross, 0)
+  const lastRun = payrollRuns.length > 0 ? payrollRuns[payrollRuns.length - 1] : null
+  const totalDeductions = lastRun ? lastRun.total_deductions : 0
+
+  function submitPayRun() {
+    if (!payRunForm.period || !payRunForm.run_date) return
+    const gross = payRunForm.total_gross || 2450000
+    const deductions = payRunForm.total_deductions || Math.round(gross * 0.23)
+    const net = gross - deductions
+    addPayrollRun({
+      ...payRunForm,
+      total_gross: gross,
+      total_deductions: deductions,
+      total_net: net,
+      status: 'draft',
+      employee_count: payRunForm.employee_count || employees.length,
+    })
+    setShowPayRunModal(false)
+    setPayRunForm({ period: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '' })
+  }
+
+  function processPayRun(runId: string, currentStatus: string) {
+    const nextStatus = currentStatus === 'draft' ? 'approved' : currentStatus === 'approved' ? 'paid' : currentStatus
+    updatePayrollRun(runId, { status: nextStatus })
+  }
+
   return (
     <>
-      <Header title="Payroll" subtitle="Pay runs, payslips, and tax configuration" actions={<Button size="sm"><Plus size={14} /> New Pay Run</Button>} />
+      <Header title="Payroll" subtitle="Pay runs, payslips, and tax configuration"
+        actions={<Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> New Pay Run</Button>}
+      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Payroll" value="$54.2M" change="Annual" changeType="neutral" icon={<Wallet size={20} />} />
-        <StatCard label="Last Pay Run" value="$2.48M" change="February 2026" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label="Employees" value={30} change="On payroll" changeType="neutral" icon={<Users size={20} />} />
-        <StatCard label="Deductions" value="$570K" change="This month" changeType="neutral" icon={<FileText size={20} />} />
+        <StatCard label="Total Payroll" value={`$${(totalPayroll / 1000000).toFixed(1)}M`} change="All runs" changeType="neutral" icon={<Wallet size={20} />} />
+        <StatCard label="Last Pay Run" value={lastRun ? `$${(lastRun.total_gross / 1000000).toFixed(2)}M` : '-'} change={lastRun?.period || 'No runs yet'} changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label="Employees" value={lastRun?.employee_count || employees.length} change="On payroll" changeType="neutral" icon={<Users size={20} />} />
+        <StatCard label="Deductions" value={`$${(totalDeductions / 1000).toFixed(0)}K`} change="Last run" changeType="neutral" icon={<FileText size={20} />} />
       </div>
 
       <Card padding="none">
@@ -40,7 +83,9 @@ export default function PayrollPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {demoPayrollRuns.map(run => (
+              {payrollRuns.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">No pay runs yet. Click &quot;New Pay Run&quot; to create one.</td></tr>
+              ) : payrollRuns.map(run => (
                 <tr key={run.id} className="hover:bg-canvas/50">
                   <td className="px-6 py-3">
                     <p className="text-sm font-medium text-t1">{run.period}</p>
@@ -51,14 +96,19 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${run.total_net.toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm text-t2 text-right">{run.employee_count}</td>
                   <td className="px-4 py-3 text-center">
-                    <Badge variant={run.status === 'paid' ? 'success' : run.status === 'approved' ? 'info' : 'warning'}>
+                    <Badge variant={run.status === 'paid' ? 'success' : run.status === 'approved' ? 'info' : run.status === 'draft' ? 'default' : 'warning'}>
                       {run.status}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex gap-1 justify-center">
                       <Button size="sm" variant="ghost">View</Button>
-                      {run.status !== 'paid' && <Button size="sm" variant="primary">Process</Button>}
+                      {run.status === 'draft' && (
+                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>Approve</Button>
+                      )}
+                      {run.status === 'approved' && (
+                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>Process</Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -112,6 +162,35 @@ export default function PayrollPage() {
           </div>
         </Card>
       </div>
+
+      {/* New Pay Run Modal */}
+      <Modal open={showPayRunModal} onClose={() => setShowPayRunModal(false)} title="Create New Pay Run">
+        <div className="space-y-4">
+          <Input label="Pay Period" value={payRunForm.period} onChange={(e) => setPayRunForm({ ...payRunForm, period: e.target.value })} placeholder="e.g. March 2026" />
+          <Input label="Run Date" type="date" value={payRunForm.run_date} onChange={(e) => setPayRunForm({ ...payRunForm, run_date: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Total Gross" type="number" value={payRunForm.total_gross || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_gross: Number(e.target.value) })} placeholder="2450000" />
+            <Input label="Total Deductions" type="number" value={payRunForm.total_deductions || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_deductions: Number(e.target.value) })} placeholder="Auto-calculated if empty" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Employee Count" type="number" value={payRunForm.employee_count} onChange={(e) => setPayRunForm({ ...payRunForm, employee_count: Number(e.target.value) })} />
+            <Select label="Currency" value={payRunForm.currency} onChange={(e) => setPayRunForm({ ...payRunForm, currency: e.target.value })} options={[
+              { value: 'USD', label: 'USD' },
+              { value: 'NGN', label: 'NGN' },
+              { value: 'GHS', label: 'GHS' },
+              { value: 'XOF', label: 'XOF' },
+              { value: 'KES', label: 'KES' },
+            ]} />
+          </div>
+          <div className="bg-canvas rounded-lg p-3">
+            <p className="text-xs text-t3">Net pay will be automatically calculated as Gross minus Deductions. If deductions are left empty, they will default to 23% of gross.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPayRunModal(false)}>Cancel</Button>
+            <Button onClick={submitPayRun}>Create Pay Run</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

@@ -8,29 +8,60 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
+import { Modal } from '@/components/ui/modal'
+import { Input, Select } from '@/components/ui/input'
 import { HeartPulse, TrendingUp, Plus, BarChart3 } from 'lucide-react'
-import { demoSurveys, demoEngagementScores, demoDepartments } from '@/lib/demo-data'
+import { useTempo } from '@/lib/store'
 
 export default function EngagementPage() {
+  const { surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName } = useTempo()
   const [activeTab, setActiveTab] = useState('surveys')
+  const [showSurveyModal, setShowSurveyModal] = useState(false)
+  const [surveyForm, setSurveyForm] = useState({
+    title: '',
+    type: 'pulse' as 'pulse' | 'enps' | 'annual',
+    status: 'active' as 'active' | 'closed',
+    start_date: '',
+    end_date: '',
+    anonymous: true,
+  })
+
   const tabs = [
-    { id: 'surveys', label: 'Surveys', count: demoSurveys.length },
+    { id: 'surveys', label: 'Surveys', count: surveys.length },
     { id: 'enps', label: 'eNPS Tracking' },
     { id: 'heatmap', label: 'Engagement Heatmap' },
   ]
 
-  const avgScore = Math.round(demoEngagementScores.reduce((a, s) => a + s.overall_score, 0) / demoEngagementScores.length)
-  const avgENPS = Math.round(demoEngagementScores.reduce((a, s) => a + s.enps_score, 0) / demoEngagementScores.length)
-  const avgResponse = Math.round(demoEngagementScores.reduce((a, s) => a + s.response_rate, 0) / demoEngagementScores.length)
+  const avgScore = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.overall_score, 0) / engagementScores.length) : 0
+  const avgENPS = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.enps_score, 0) / engagementScores.length) : 0
+  const avgResponse = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.response_rate, 0) / engagementScores.length) : 0
+  const activeSurveys = surveys.filter(s => s.status === 'active').length
+
+  function submitSurvey() {
+    if (!surveyForm.title || !surveyForm.start_date || !surveyForm.end_date) return
+    addSurvey(surveyForm)
+    setShowSurveyModal(false)
+    setSurveyForm({ title: '', type: 'pulse', status: 'active', start_date: '', end_date: '', anonymous: true })
+  }
+
+  function closeSurvey(surveyId: string) {
+    updateSurvey(surveyId, { status: 'closed' })
+  }
+
+  function reopenSurvey(surveyId: string) {
+    updateSurvey(surveyId, { status: 'active' })
+  }
 
   return (
     <>
-      <Header title="Engagement" subtitle="Surveys, eNPS tracking, and action planning" actions={<Button size="sm"><Plus size={14} /> New Survey</Button>} />
+      <Header title="Engagement" subtitle="Surveys, eNPS tracking, and action planning"
+        actions={<Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> New Survey</Button>}
+      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Engagement Score" value={avgScore} change="Org average" changeType="neutral" icon={<HeartPulse size={20} />} />
         <StatCard label="eNPS" value={`+${avgENPS}`} change="vs +32 last quarter" changeType="positive" icon={<TrendingUp size={20} />} />
         <StatCard label="Response Rate" value={`${avgResponse}%`} change="Above target" changeType="positive" />
-        <StatCard label="Active Surveys" value={demoSurveys.filter(s => s.status === 'active').length} icon={<BarChart3 size={20} />} />
+        <StatCard label="Active Surveys" value={activeSurveys} icon={<BarChart3 size={20} />} />
       </div>
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
@@ -38,7 +69,9 @@ export default function EngagementPage() {
         <Card padding="none">
           <CardHeader><CardTitle>Survey Management</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
-            {demoSurveys.map(survey => (
+            {surveys.length === 0 ? (
+              <div className="px-6 py-12 text-center text-sm text-t3">No surveys yet. Click &quot;New Survey&quot; to create one.</div>
+            ) : surveys.map(survey => (
               <div key={survey.id} className="px-6 py-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
                   <HeartPulse size={18} />
@@ -53,7 +86,15 @@ export default function EngagementPage() {
                 <Badge variant={survey.status === 'active' ? 'success' : 'default'}>
                   {survey.status}
                 </Badge>
-                <Button size="sm" variant="outline">View Results</Button>
+                <div className="flex gap-1">
+                  {survey.status === 'active' && (
+                    <Button size="sm" variant="outline" onClick={() => closeSurvey(survey.id)}>Close</Button>
+                  )}
+                  {survey.status === 'closed' && (
+                    <Button size="sm" variant="ghost" onClick={() => reopenSurvey(survey.id)}>Reopen</Button>
+                  )}
+                  <Button size="sm" variant="ghost">View Results</Button>
+                </div>
               </div>
             ))}
           </div>
@@ -62,13 +103,13 @@ export default function EngagementPage() {
 
       {activeTab === 'enps' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {demoEngagementScores.map(score => {
-            const dept = demoDepartments.find(d => d.id === score.department_id)
+          {engagementScores.map(score => {
+            const deptName = getDepartmentName(score.department_id)
             return (
               <Card key={score.id}>
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-t1">{dept?.name}</h3>
+                    <h3 className="text-sm font-semibold text-t1">{deptName}</h3>
                     <p className="text-xs text-t3">{score.country_id} - {score.period}</p>
                   </div>
                   <div className="text-right">
@@ -112,12 +153,12 @@ export default function EngagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {demoEngagementScores.map(score => {
-                  const dept = demoDepartments.find(d => d.id === score.department_id)
+                {engagementScores.map(score => {
+                  const deptName = getDepartmentName(score.department_id)
                   const color = score.overall_score >= 80 ? 'bg-success/10 text-success' : score.overall_score >= 70 ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error'
                   return (
                     <tr key={score.id}>
-                      <td className="px-4 py-3 text-sm font-medium text-t1">{dept?.name}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-t1">{deptName}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${color}`}>{score.overall_score}</span>
                       </td>
@@ -136,6 +177,30 @@ export default function EngagementPage() {
           </div>
         </Card>
       )}
+
+      {/* New Survey Modal */}
+      <Modal open={showSurveyModal} onClose={() => setShowSurveyModal(false)} title="Create New Survey">
+        <div className="space-y-4">
+          <Input label="Survey Title" value={surveyForm.title} onChange={(e) => setSurveyForm({ ...surveyForm, title: e.target.value })} placeholder="e.g. Q2 2026 Engagement Pulse" />
+          <Select label="Survey Type" value={surveyForm.type} onChange={(e) => setSurveyForm({ ...surveyForm, type: e.target.value as 'pulse' | 'enps' | 'annual' })} options={[
+            { value: 'pulse', label: 'Pulse Survey' },
+            { value: 'enps', label: 'eNPS Survey' },
+            { value: 'annual', label: 'Annual Engagement Survey' },
+          ]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Date" type="date" value={surveyForm.start_date} onChange={(e) => setSurveyForm({ ...surveyForm, start_date: e.target.value })} />
+            <Input label="End Date" type="date" value={surveyForm.end_date} onChange={(e) => setSurveyForm({ ...surveyForm, end_date: e.target.value })} />
+          </div>
+          <label className="flex items-center gap-2 text-xs text-t1">
+            <input type="checkbox" checked={surveyForm.anonymous} onChange={(e) => setSurveyForm({ ...surveyForm, anonymous: e.target.checked })} className="rounded border-divider" />
+            Anonymous responses
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowSurveyModal(false)}>Cancel</Button>
+            <Button onClick={submitSurvey}>Create Survey</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

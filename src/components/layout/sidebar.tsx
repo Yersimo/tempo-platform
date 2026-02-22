@@ -108,7 +108,7 @@ export function Sidebar() {
           {navGroups.map((group) => (
             <div key={group.title}>
               {!collapsed && (
-                <div className="px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-white/10">
+                <div className="px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-white/30">
                   {group.title}
                 </div>
               )}
@@ -123,7 +123,7 @@ export function Sidebar() {
                         'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors',
                         isActive
                           ? 'bg-tempo-600/12 text-tempo-400 font-medium'
-                          : 'text-white/30 hover:text-white/60 hover:bg-white/[0.03]'
+                          : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
                       )}
                     >
                       {isActive && (
@@ -159,9 +159,9 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-medium text-white truncate">Amara Kone</div>
-                <div className="text-[0.65rem] text-white/20 truncate">HRBP, UEMOA</div>
+                <div className="text-[0.65rem] text-white/40 truncate">HRBP, UEMOA</div>
               </div>
-              <button className="text-white/20 hover:text-white/40 transition-colors">
+              <button className="text-white/40 hover:text-white/60 transition-colors">
                 <Settings size={14} />
               </button>
             </div>
@@ -186,7 +186,7 @@ export function Sidebar() {
                 href={item.href}
                 className={cn(
                   'flex flex-col items-center gap-1 px-3 py-1',
-                  isActive ? 'text-tempo-400' : 'text-white/30'
+                  isActive ? 'text-tempo-400' : 'text-white/50'
                 )}
               >
                 {item.icon}
