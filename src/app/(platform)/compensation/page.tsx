@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Banknote, TrendingUp, AlertTriangle, Plus } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightPanel, AIAlertBanner } from '@/components/ai'
+import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact } from '@/lib/ai-engine'
 
 export default function CompensationPage() {
   const { compBands, salaryReviews, employees, addCompBand, deleteCompBand, addSalaryReview, updateSalaryReview } = useTempo()
@@ -28,6 +30,12 @@ export default function CompensationPage() {
     { id: 'stip', label: 'STIP Calculator' },
     { id: 'bands', label: 'Comp Bands' },
   ]
+
+  // AI-powered insights
+  const equityInsights = useMemo(() => detectPayEquityGaps(employees, compBands), [employees, compBands])
+  const compAnomaliesRaw = useMemo(() => detectCompAnomalies(salaryReviews, compBands), [salaryReviews, compBands])
+  const compAnomalies = useMemo(() => compAnomaliesRaw.map(a => ({ id: a.id, category: 'anomaly' as const, severity: a.severity, title: a.metric, description: a.explanation, confidence: 'high' as const, confidenceScore: 80, suggestedAction: `Expected ${a.expectedValue}, got ${a.currentValue} (${a.deviationPercent}% deviation)`, module: 'compensation' })), [compAnomaliesRaw])
+  const budgetImpact = useMemo(() => modelBudgetImpact(salaryReviews), [salaryReviews])
 
   const pendingReviews = salaryReviews.filter(s => s.status === 'pending_approval').length
   const belowMarket = compBands.filter(b => b.p50 && b.mid_salary / b.p50 < 0.95).length
@@ -67,6 +75,15 @@ export default function CompensationPage() {
         <StatCard label="Below Market" value={belowMarket} change="Roles below P50" changeType={belowMarket > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
         <StatCard label="Pending Reviews" value={pendingReviews} />
         <StatCard label="Total Staff Cost" value={`$${(employees.length * 72000 / 1000000).toFixed(1)}M`} change="Annual" changeType="neutral" icon={<Banknote size={20} />} />
+      </div>
+
+      {/* AI Compensation Insights */}
+      {compAnomalies.length > 0 && (
+        <AIAlertBanner insights={compAnomalies} className="mb-4" />
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <AIInsightPanel title="Pay Equity Analysis" insights={equityInsights} />
+        <AIInsightPanel title="Budget Impact Modeling" narrative={{ summary: `${budgetImpact.count} pending reviews with $${Math.round(budgetImpact.totalAnnualImpact).toLocaleString()} total annual impact (avg $${Math.round(budgetImpact.avgIncrease).toLocaleString()} increase)`, bulletPoints: [`${budgetImpact.count} reviews pending`, `Total impact: $${Math.round(budgetImpact.totalAnnualImpact).toLocaleString()}`, `Avg increase: $${Math.round(budgetImpact.avgIncrease).toLocaleString()}`] }} />
       </div>
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />

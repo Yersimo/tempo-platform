@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { UserCheck, Users, Plus, Sparkles } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIScoreBadge } from '@/components/ai'
+import { calculateMentorMatch } from '@/lib/ai-engine'
 
 export default function MentoringPage() {
   const { mentoringPrograms, mentoringPairs, employees, addMentoringProgram, addMentoringPair, updateMentoringPair, getEmployeeName } = useTempo()
@@ -40,6 +42,20 @@ export default function MentoringPage() {
   const activePrograms = mentoringPrograms.filter(p => p.status === 'active').length
   const activePairs = mentoringPairs.filter(p => p.status === 'active').length
   const avgMatchScore = mentoringPairs.length > 0 ? Math.round(mentoringPairs.reduce((a, p) => a + p.match_score, 0) / mentoringPairs.length) : 0
+
+  const suggestedMatches = useMemo(() => {
+    if (employees.length < 2) return []
+    const matches: Array<{ mentor: typeof employees[0]; mentee: typeof employees[0]; score: ReturnType<typeof calculateMentorMatch> }> = []
+    const seniors = employees.filter(e => ['Senior', 'Lead', 'Principal', 'Director'].some(l => (e.level || '').includes(l) || (e.job_title || '').includes(l)))
+    const juniors = employees.filter(e => !seniors.includes(e))
+    seniors.slice(0, 3).forEach(mentor => {
+      juniors.slice(0, 3).forEach(mentee => {
+        const score = calculateMentorMatch(mentor, mentee, employees)
+        matches.push({ mentor, mentee, score })
+      })
+    })
+    return matches.sort((a, b) => b.score.value - a.score.value).slice(0, 5)
+  }, [employees])
 
   function submitProgram() {
     if (!programForm.title || !programForm.start_date) return
@@ -201,19 +217,43 @@ export default function MentoringPage() {
       )}
 
       {activeTab === 'matching' && (
-        <Card>
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-2xl bg-tempo-50 flex items-center justify-center text-tempo-600 mx-auto mb-4">
-              <Sparkles size={28} />
+        <div className="space-y-4">
+          <Card>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-2xl bg-tempo-50 flex items-center justify-center text-tempo-600 mx-auto mb-4">
+                <Sparkles size={28} />
+              </div>
+              <h3 className="text-sm font-semibold text-t1 mb-2">AI-Powered Mentor Matching</h3>
+              <p className="text-xs text-t3 max-w-md mx-auto mb-4">Our AI analyzes skills, goals, experience, and personality traits to create optimal mentor-mentee pairings with high match scores.</p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => setShowPairModal(true)}>Match New Pair</Button>
+                <Button variant="outline">Run Matching Algorithm</Button>
+              </div>
             </div>
-            <h3 className="text-sm font-semibold text-t1 mb-2">AI-Powered Mentor Matching</h3>
-            <p className="text-xs text-t3 max-w-md mx-auto mb-4">Our AI analyzes skills, goals, experience, and personality traits to create optimal mentor-mentee pairings with high match scores.</p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => setShowPairModal(true)}>Match New Pair</Button>
-              <Button variant="outline">Run Matching Algorithm</Button>
-            </div>
-          </div>
-        </Card>
+          </Card>
+          {suggestedMatches.length > 0 && (
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Suggested Matches</h3>
+              <div className="space-y-3">
+                {suggestedMatches.map((match, idx) => (
+                  <div key={idx} className="flex items-center gap-4 bg-canvas rounded-lg p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{match.mentor.profile?.full_name || 'Mentor'}</p>
+                      <p className="text-xs text-t3">{match.mentor.job_title}</p>
+                    </div>
+                    <span className="text-xs text-t3">&#8594;</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{match.mentee.profile?.full_name || 'Mentee'}</p>
+                      <p className="text-xs text-t3">{match.mentee.job_title}</p>
+                    </div>
+                    <AIScoreBadge score={match.score} size="sm" />
+                    <span className="text-xs text-t3">{match.score.label}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* New Program Modal */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
 import { StatCard } from '@/components/ui/stat-card'
@@ -11,17 +11,29 @@ import { Tabs } from '@/components/ui/tabs'
 import { Select } from '@/components/ui/input'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIQueryBar, AIInsightPanel } from '@/components/ai'
+import { parseNaturalLanguageQuery, generateBoardNarrative } from '@/lib/ai-engine'
 
 export default function AnalyticsPage() {
   const {
     employees, departments, goals, reviews, enrollments,
     engagementScores, mentoringPairs, expenseReports,
-    jobPostings, leaveRequests, payrollRuns,
-    getDepartmentName,
+    jobPostings, leaveRequests, payrollRuns, salaryReviews,
+    compBands, courses, getDepartmentName,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('workforce')
   const [deptFilter, setDeptFilter] = useState('all')
+  const [queryResults, setQueryResults] = useState<{ results: any[]; description: string } | null>(null)
+
+  // AI-powered analytics
+  const boardNarrative = useMemo(() => generateBoardNarrative({ employees: employees || [], goals: goals || [], reviews: reviews || [], engagementScores: engagementScores || [], jobPostings: jobPostings || [], payrollRuns: payrollRuns || [], salaryReviews: salaryReviews || [] }), [employees, goals, reviews, salaryReviews])
+
+  const handleAIQuery = useCallback((query: string) => {
+    const storeData = { employees, departments, goals, reviews, enrollments, engagementScores, mentoringPairs, expenseReports, jobPostings, leaveRequests, payrollRuns, compBands, courses, salaryReviews }
+    const result = parseNaturalLanguageQuery(query, storeData)
+    setQueryResults(result)
+  }, [employees, departments, goals, reviews, enrollments, engagementScores, mentoringPairs, expenseReports, jobPostings, leaveRequests, payrollRuns, compBands, courses, salaryReviews])
 
   const tabs = [
     { id: 'workforce', label: 'Workforce' },
@@ -64,12 +76,23 @@ export default function AnalyticsPage() {
       <Header title="Analytics" subtitle="Workforce insights, modeling, and reporting"
         actions={<Button size="sm"><FileText size={14} /> Generate Report</Button>} />
 
+      {/* AI Natural Language Query Bar */}
+      <AIQueryBar onQuery={handleAIQuery} placeholder="Ask a question about your workforce data..." className="mb-6" />
+      {queryResults && (
+        <AIInsightPanel title="Query Results" narrative={{ summary: queryResults.description, bulletPoints: queryResults.results.slice(0, 5).map(r => r.profile?.full_name || r.title || r.id || 'Match') }} className="mb-6" />
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Headcount" value={headcount} icon={<Users size={20} />} />
         <StatCard label="Review Completion" value={`${reviewCompletion}%`} icon={<TrendingUp size={20} />} />
         <StatCard label="Staff Cost" value={lastPayroll ? `$${(lastPayroll.total_gross / 1000).toFixed(0)}K/mo` : '-'} icon={<DollarSign size={20} />} />
         <StatCard label="Open Positions" value={openPositions} icon={<BarChart3 size={20} />} />
       </div>
+
+      {/* AI Board Narrative */}
+      {boardNarrative && (
+        <AIInsightPanel title="Board-Ready Narrative" narrative={boardNarrative} className="mb-6" />
+      )}
 
       <div className="flex items-center gap-4 mb-6">
         <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />

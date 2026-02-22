@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Briefcase, Users, Plus, Star, Pencil, ArrowRight } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
+import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire } from '@/lib/ai-engine'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
 
@@ -62,6 +64,8 @@ export default function RecruitingPage() {
     { id: 'postings', label: 'Job Postings', count: openPositions },
     { id: 'pipeline', label: 'Pipeline', count: applications.length },
   ]
+
+  const pipelineInsights = useMemo(() => analyzePipelineHealth(applications, jobPostings), [applications, jobPostings])
 
   // ---- Job Posting CRUD ----
   function openNewJob() {
@@ -209,6 +213,11 @@ export default function RecruitingPage() {
         <StatCard label="Offers Extended" value={offersExtended} change="Pending acceptance" changeType="positive" />
       </div>
 
+      {/* AI Pipeline Alerts */}
+      {pipelineInsights.length > 0 && (
+        <AIAlertBanner insights={pipelineInsights} className="mb-4" />
+      )}
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {/* Job Postings Tab */}
@@ -323,13 +332,16 @@ export default function RecruitingPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {app.rating ? (
-                          <div className="flex items-center justify-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map(s => (
-                              <Star key={s} size={12} className={s <= (app.rating || 0) ? 'fill-tempo-600 text-tempo-600' : 'text-t3'} />
-                            ))}
-                          </div>
-                        ) : <span className="text-xs text-t3">N/A</span>}
+                        <div className="flex items-center justify-center gap-2">
+                          {app.rating ? (
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <Star key={s} size={12} className={s <= (app.rating || 0) ? 'fill-tempo-600 text-tempo-600' : 'text-t3'} />
+                              ))}
+                            </div>
+                          ) : <span className="text-xs text-t3">N/A</span>}
+                          <AIScoreBadge score={scoreCandidateFit(app, job)} size="sm" />
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={

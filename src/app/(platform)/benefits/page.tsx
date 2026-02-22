@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Shield, Heart, Eye, Wallet, Plus, Pencil } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIRecommendationList } from '@/components/ai'
+import { recommendBenefitPlan, optimizeBenefitsCost } from '@/lib/ai-engine'
 
 const iconMap: Record<string, React.ReactNode> = {
   medical: <Heart size={20} />,
@@ -25,6 +27,9 @@ export default function BenefitsPage() {
     benefitPlans, employees,
     addBenefitPlan, updateBenefitPlan,
   } = useTempo()
+
+  const benefitRecs = useMemo(() => recommendBenefitPlan(benefitPlans, employees), [benefitPlans, employees])
+  const costInsight = useMemo(() => optimizeBenefitsCost(benefitPlans, employees), [benefitPlans, employees])
 
   // Add Plan modal
   const [showPlanModal, setShowPlanModal] = useState(false)
@@ -122,6 +127,17 @@ export default function BenefitsPage() {
         <StatCard label="Enrollment Rate" value={`${enrollmentRate}%`} change="Above target" changeType="positive" />
         <StatCard label="Monthly Employer Cost" value={`$${totalEmployerCost.toLocaleString()}`} change="Per employee" changeType="neutral" />
         <StatCard label="Providers" value={uniqueProviders} change="Active partnerships" changeType="neutral" />
+      </div>
+
+      {/* AI Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <AIInsightCard
+          insight={costInsight}
+        />
+        <AIRecommendationList
+          title="Benefit Recommendations"
+          recommendations={benefitRecs}
+        />
       </div>
 
       {/* Benefit Plan Cards */}

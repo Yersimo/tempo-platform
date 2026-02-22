@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { HeartPulse, TrendingUp, Plus, BarChart3 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIAlertBanner } from '@/components/ai'
+import { identifyEngagementDrivers } from '@/lib/ai-engine'
 
 export default function EngagementPage() {
   const { surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName } = useTempo()
@@ -36,6 +38,9 @@ export default function EngagementPage() {
   const avgENPS = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.enps_score, 0) / engagementScores.length) : 0
   const avgResponse = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.response_rate, 0) / engagementScores.length) : 0
   const activeSurveys = surveys.filter(s => s.status === 'active').length
+
+  // AI-powered engagement insights
+  const driverInsights = useMemo(() => identifyEngagementDrivers(engagementScores), [engagementScores])
 
   function submitSurvey() {
     if (!surveyForm.title || !surveyForm.start_date || !surveyForm.end_date) return
@@ -63,6 +68,15 @@ export default function EngagementPage() {
         <StatCard label="Response Rate" value={`${avgResponse}%`} change="Above target" changeType="positive" />
         <StatCard label="Active Surveys" value={activeSurveys} icon={<BarChart3 size={20} />} />
       </div>
+      {/* AI Engagement Insights */}
+      {driverInsights.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {driverInsights.map(insight => (
+            <AIInsightCard key={insight.id} insight={insight} compact />
+          ))}
+        </div>
+      )}
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {activeTab === 'surveys' && (

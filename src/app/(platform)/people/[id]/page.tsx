@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Pencil, ArrowLeft, Mail, Phone, MapPin, Building2, Briefcase } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightPanel, AIScoreBadge } from '@/components/ai'
+import { generateEmployeeInsight, calculateRetentionRisk, suggestCareerPath } from '@/lib/ai-engine'
 import Link from 'next/link'
 
 export default function EmployeeDetailPage() {
@@ -21,7 +23,8 @@ export default function EmployeeDetailPage() {
   const id = params.id as string
   const {
     employees, departments, goals, reviews, enrollments, courses,
-    leaveRequests, devices, expenseReports, feedback,
+    leaveRequests, devices, expenseReports, feedback, mentoringPairs,
+    salaryReviews, compBands,
     updateEmployee, getDepartmentName, getEmployeeName,
   } = useTempo()
 
@@ -49,6 +52,11 @@ export default function EmployeeDetailPage() {
   const empDevices = devices.filter(d => d.assigned_to === id)
   const empExpenses = expenseReports.filter(e => e.employee_id === id)
   const empFeedback = feedback.filter(f => f.to_id === id)
+
+  // AI-powered employee insights
+  const employeeInsight = useMemo(() => emp ? generateEmployeeInsight(emp, { reviews: empReviews, goals: empGoals, enrollments: empEnrollments, leaveRequests: empLeave, mentoringPairs, devices: empDevices, expenseReports: empExpenses, salaryReviews, compBands }) : null, [emp, empGoals, empReviews, empEnrollments, empLeave, empDevices, empExpenses])
+  const retentionRisk = useMemo(() => emp ? calculateRetentionRisk(emp, { reviews: empReviews, goals: empGoals, leaveRequests: empLeave }) : null, [emp, empReviews, empGoals, empLeave])
+  const careerRecs = useMemo(() => emp ? suggestCareerPath(emp, employees) : null, [emp, employees])
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -137,7 +145,33 @@ export default function EmployeeDetailPage() {
           <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-4" />
 
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {/* AI Employee Insights */}
+              {employeeInsight && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <AIInsightPanel title="Employee Insight" narrative={employeeInsight} className="md:col-span-2" />
+                  <div className="space-y-4">
+                    {retentionRisk && (
+                      <Card>
+                        <h3 className="text-sm font-semibold text-t1 mb-2">Retention Risk</h3>
+                        <AIScoreBadge score={retentionRisk} size="md" showBreakdown />
+                      </Card>
+                    )}
+                    {careerRecs && careerRecs.length > 0 && (
+                      <Card>
+                        <h3 className="text-sm font-semibold text-t1 mb-2">Career Path Suggestions</h3>
+                        <ul className="space-y-1">
+                          {careerRecs.map((rec: any, i: number) => (
+                            <li key={i} className="text-xs text-t2">- {rec.title}</li>
+                          ))}
+                        </ul>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <h3 className="text-sm font-semibold text-t1 mb-3">Goals</h3>
                 {empGoals.length > 0 ? empGoals.map(g => (
@@ -186,6 +220,7 @@ export default function EmployeeDetailPage() {
                   </div>
                 )) : <p className="text-xs text-t3">No devices assigned</p>}
               </Card>
+            </div>
             </div>
           )}
 

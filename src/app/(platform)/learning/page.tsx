@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { GraduationCap, BookOpen, Award, Plus, Clock } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIScoreBadge } from '@/components/ai'
+import { analyzeSkillGaps, predictCourseCompletion } from '@/lib/ai-engine'
 
 export default function LearningPage() {
   const { courses, enrollments, employees, addCourse, addEnrollment, updateEnrollment, getEmployeeName } = useTempo()
@@ -42,6 +44,20 @@ export default function LearningPage() {
   const inProgressCount = enrollments.filter(e => e.status === 'in_progress').length
   const totalHours = courses.reduce((a, c) => a + c.duration_hours, 0)
   const completionRate = enrollments.length > 0 ? Math.round(completedCount / enrollments.length * 100) : 0
+
+  const skillGaps = useMemo(() => analyzeSkillGaps(courses, enrollments), [courses, enrollments])
+
+  const skillCoverageInsight = useMemo(() => ({
+    id: 'ai-skill-coverage',
+    category: 'trend' as const,
+    severity: 'info' as const,
+    title: 'Skill Coverage Analysis',
+    description: `${skillGaps.length} categories tracked, ${skillGaps.length > 0 ? Math.round(skillGaps.reduce((a, g) => a + g.coverage, 0) / skillGaps.length) : 0}% average coverage across all skill areas.`,
+    confidence: 'high' as const,
+    confidenceScore: 85,
+    suggestedAction: 'Review gaps in underperforming categories',
+    module: 'learning',
+  }), [skillGaps])
 
   function submitCourse() {
     if (!courseForm.title) return
@@ -85,6 +101,12 @@ export default function LearningPage() {
         <StatCard label="Completion Rate" value={`${completionRate}%`} icon={<Award size={20} />} />
         <StatCard label="Total Hours" value={totalHours} change="Available content" changeType="neutral" icon={<Clock size={20} />} />
       </div>
+
+      {/* AI Skill Coverage Insight */}
+      <div className="mb-6">
+        <AIInsightCard insight={skillCoverageInsight} compact />
+      </div>
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {activeTab === 'catalog' && (

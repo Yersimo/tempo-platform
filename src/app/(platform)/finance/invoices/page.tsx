@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +10,14 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard } from '@/components/ai'
+import { forecastCashFlow, assessVendorConcentration } from '@/lib/ai-engine'
 
 export default function InvoicesPage() {
   const { invoices, vendors, addInvoice, updateInvoice } = useTempo()
+
+  const cashFlowInsight = useMemo(() => forecastCashFlow(invoices, []), [invoices])
+  const vendorInsights = useMemo(() => assessVendorConcentration(invoices, vendors), [invoices, vendors])
 
   const totalAmount = invoices.reduce((a, i) => a + i.amount, 0)
   const paidAmount = invoices.filter(i => i.status === 'paid').reduce((a, i) => a + i.amount, 0)
@@ -88,6 +93,16 @@ export default function InvoicesPage() {
         <StatCard label="Total Amount" value={`$${totalAmount.toLocaleString()}`} icon={<DollarSign size={20} />} />
         <StatCard label="Paid" value={`$${paidAmount.toLocaleString()}`} change="Settled" changeType="positive" />
         <StatCard label="Overdue" value={`$${overdueAmount.toLocaleString()}`} change="Requires attention" changeType="negative" icon={<AlertTriangle size={20} />} />
+      </div>
+
+      {/* AI Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <AIInsightCard
+          insight={cashFlowInsight}
+        />
+        {vendorInsights[0] && <AIInsightCard
+          insight={vendorInsights[0]}
+        />}
       </div>
 
       <Card padding="none">

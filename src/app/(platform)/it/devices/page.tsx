@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +10,13 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard } from '@/components/ai'
+import { predictDeviceRefresh } from '@/lib/ai-engine'
 
 export default function DevicesPage() {
   const { devices, employees, addDevice, updateDevice, getEmployeeName } = useTempo()
+
+  const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
 
   const assignedCount = devices.filter(d => d.status === 'assigned').length
   const availableCount = devices.filter(d => d.status === 'available').length
@@ -99,6 +103,15 @@ export default function DevicesPage() {
         <StatCard label="In Maintenance" value={maintenanceCount} icon={<Wrench size={20} />} />
         <StatCard label="Available" value={availableCount} change="Ready to assign" changeType="positive" />
       </div>
+
+      {/* AI Insights */}
+      {deviceInsights.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {deviceInsights.slice(0, 2).map(insight => (
+            <AIInsightCard key={insight.id} insight={insight} compact />
+          ))}
+        </div>
+      )}
 
       <Card padding="none">
         <CardHeader>

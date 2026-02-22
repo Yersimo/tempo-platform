@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,9 +11,13 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { PieChart, Plus, DollarSign, Pencil } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIAlertBanner } from '@/components/ai'
+import { calculateBurnRate } from '@/lib/ai-engine'
 
 export default function BudgetsPage() {
   const { budgets, departments, addBudget, updateBudget, getDepartmentName } = useTempo()
+
+  const burnRateInsights = useMemo(() => calculateBurnRate(budgets), [budgets])
 
   const totalBudget = budgets.reduce((a, b) => a + b.total_amount, 0)
   const totalSpent = budgets.reduce((a, b) => a + b.spent_amount, 0)
@@ -101,6 +105,9 @@ export default function BudgetsPage() {
         <StatCard label="Remaining" value={`$${((totalBudget - totalSpent) / 1000000).toFixed(1)}M`} change="Available" changeType="positive" />
         <StatCard label="Active Budgets" value={activeBudgets} />
       </div>
+
+      {/* AI Insights */}
+      <AIAlertBanner insights={burnRateInsights} className="mb-6" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {budgets.map(budget => {

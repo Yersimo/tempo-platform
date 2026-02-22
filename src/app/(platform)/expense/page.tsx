@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIScoreBadge, AIInsightCard } from '@/components/ai'
+import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends } from '@/lib/ai-engine'
 
 export default function ExpensePage() {
   const {
@@ -38,6 +40,8 @@ export default function ExpensePage() {
   const totalPending = pendingReports.reduce((a, e) => a + e.total_amount, 0)
   const approvedReports = expenseReports.filter(e => e.status === 'approved' || e.status === 'reimbursed')
   const totalApproved = approvedReports.reduce((a, e) => a + e.total_amount, 0)
+
+  const spendingInsights = useMemo(() => analyzeSpendingTrends(expenseReports), [expenseReports])
 
   // ---- Expense Report CRUD ----
   function openNewReport() {
@@ -135,6 +139,15 @@ export default function ExpensePage() {
         <StatCard label="Total Reports" value={expenseReports.length} icon={<Receipt size={20} />} />
       </div>
 
+      {/* AI Spending Trends */}
+      {spendingInsights.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {spendingInsights.map(insight => (
+            <AIInsightCard key={insight.id} insight={insight} compact />
+          ))}
+        </div>
+      )}
+
       {/* Expense Reports List */}
       <Card padding="none">
         <CardHeader>
@@ -172,6 +185,7 @@ export default function ExpensePage() {
                     </p>
                   </div>
                   <p className="text-lg font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
+                  <AIScoreBadge score={calculateFraudRiskScore(report, expenseReports)} size="sm" />
                   <Badge variant={
                     report.status === 'approved' ? 'success' :
                     report.status === 'reimbursed' ? 'info' :

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { Plus, Target, Star, MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIScoreBadge, AIAlertBanner, AIInsightCard } from '@/components/ai'
+import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment } from '@/lib/ai-engine'
 
 export default function PerformancePage() {
   const {
@@ -54,6 +56,10 @@ export default function PerformancePage() {
   const completedReviews = reviews.filter(r => r.status === 'submitted').length
   const ratedReviews = reviews.filter(r => r.overall_rating)
   const avgRating = ratedReviews.length > 0 ? ratedReviews.reduce((a, r) => a + (r.overall_rating || 0), 0) / ratedReviews.length : 0
+
+  // AI-powered insights
+  const biasInsights = useMemo(() => detectRatingBias(reviews, employees), [reviews, employees])
+  const feedbackSentiment = useMemo(() => analyzeFeedbackSentiment(feedback), [feedback])
 
   // ---- Goal CRUD ----
   function openNewGoal() {
@@ -174,6 +180,14 @@ export default function PerformancePage() {
         <StatCard label="Avg Rating" value={avgRating > 0 ? avgRating.toFixed(1) : '-'} change="Out of 5.0" changeType="neutral" />
       </div>
 
+      {/* AI Bias Detection Alerts */}
+      {biasInsights.length > 0 && (
+        <AIAlertBanner insights={biasInsights} className="mb-4" />
+      )}
+      {feedbackSentiment && (
+        <AIInsightCard insight={{ id: 'ai-feedback-sentiment', category: 'trend', severity: 'info', title: 'Feedback Sentiment Analysis', description: `Positive: ${feedbackSentiment.positive}% | Neutral: ${feedbackSentiment.neutral}% | Negative: ${feedbackSentiment.negative}%`, confidence: 'high', confidenceScore: 85, suggestedAction: feedbackSentiment.negative > 30 ? 'Review negative feedback trends for coaching opportunities' : 'Sentiment is healthy, continue current practices', module: 'performance' }} className="mb-4" />
+      )}
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {/* Goals Tab */}
@@ -202,6 +216,7 @@ export default function PerformancePage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <AIScoreBadge score={scoreGoalQuality(goal)} />
                     <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
                       {goal.status.replace(/_/g, ' ')}
                     </Badge>

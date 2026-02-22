@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { StatCard } from '@/components/ui/stat-card'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +13,8 @@ import {
   Receipt, UserCheck, ArrowDownRight, Clock
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
+import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import Link from 'next/link'
 
 export default function DashboardPage() {
@@ -19,7 +22,8 @@ export default function DashboardPage() {
     employees, goals, feedback, leaveRequests, jobPostings,
     enrollments, mentoringPairs, expenseReports, payrollRuns,
     reviews, auditLog, getEmployeeName,
-    updateLeaveRequest,
+    updateLeaveRequest, reviewCycles, salaryReviews, surveys,
+    engagementScores, applications,
   } = useTempo()
 
   // Live KPIs
@@ -33,6 +37,11 @@ export default function DashboardPage() {
   const activeMentoringPairs = mentoringPairs.filter(p => p.status === 'active').length
   const pendingLeave = leaveRequests.filter(l => l.status === 'pending')
   const lastPayroll = payrollRuns[payrollRuns.length - 1]
+
+  // AI-powered insights
+  const execSummary = useMemo(() => generateExecutiveSummary({ employees, goals, reviews, reviewCycles, salaryReviews, surveys, engagementScores, expenseReports, leaveRequests, jobPostings, applications, payrollRuns, mentoringPairs }), [employees, goals, reviews, payrollRuns])
+  const nextActions = useMemo(() => identifyNextBestActions({ reviews, leaveRequests, expenseReports, salaryReviews, goals, jobPostings, applications }), [reviews, leaveRequests, expenseReports])
+  const aiAnomalies = useMemo(() => detectCrossModuleAnomalies({ employees, reviews, engagementScores, salaryReviews, goals, mentoringPairs, leaveRequests }), [employees, reviews, goals])
 
   return (
     <>
@@ -51,6 +60,15 @@ export default function DashboardPage() {
         <StatCard label="Mentoring Pairs" value={activeMentoringPairs} change={`${mentoringPairs.length} total`} changeType="positive" icon={<UserCheck size={24} />} />
         <StatCard label="Pending Leave" value={pendingLeave.length} change="Awaiting approval" changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
         <StatCard label="Last Payroll" value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || 'No runs'} changeType="neutral" icon={<Banknote size={24} />} />
+      </div>
+
+      {/* AI Insights Section */}
+      {aiAnomalies.length > 0 && (
+        <AIAlertBanner insights={aiAnomalies} className="mb-4" />
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <AIInsightCard insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: 'Executive Summary', description: execSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: execSummary.bulletPoints[0] || '', module: 'dashboard' }} />
+        <AIRecommendationList title="Recommended Next Actions" recommendations={nextActions} />
       </div>
 
       {/* Content Grid */}

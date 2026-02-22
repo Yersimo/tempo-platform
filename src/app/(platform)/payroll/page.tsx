@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Wallet, DollarSign, Users, Plus, FileText } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIAlertBanner } from '@/components/ai'
+import { detectPayrollAnomalies, forecastAnnualPayroll } from '@/lib/ai-engine'
 
 export default function PayrollPage() {
   const { payrollRuns, employees, addPayrollRun, updatePayrollRun } = useTempo()
@@ -27,6 +29,22 @@ export default function PayrollPage() {
   const totalPayroll = payrollRuns.reduce((a, r) => a + r.total_gross, 0)
   const lastRun = payrollRuns.length > 0 ? payrollRuns[payrollRuns.length - 1] : null
   const totalDeductions = lastRun ? lastRun.total_deductions : 0
+
+  const payrollInsights = useMemo(() => detectPayrollAnomalies(payrollRuns), [payrollRuns])
+
+  const forecast = useMemo(() => forecastAnnualPayroll(payrollRuns), [payrollRuns])
+
+  const forecastInsight = useMemo(() => ({
+    id: 'ai-payroll-forecast',
+    category: 'prediction' as const,
+    severity: 'info' as const,
+    title: 'Annual Payroll Forecast',
+    description: `Projected annual payroll: $${(forecast.projected / 1000000).toFixed(2)}M based on ${payrollRuns.length} pay run(s). Confidence: ${forecast.confidence}.`,
+    confidence: forecast.confidence,
+    confidenceScore: forecast.confidence === 'high' ? 88 : forecast.confidence === 'medium' ? 65 : 40,
+    suggestedAction: 'Review budget allocation for upcoming quarters',
+    module: 'payroll',
+  }), [forecast, payrollRuns.length])
 
   function submitPayRun() {
     if (!payRunForm.period || !payRunForm.run_date) return
@@ -61,6 +79,18 @@ export default function PayrollPage() {
         <StatCard label="Employees" value={lastRun?.employee_count || employees.length} change="On payroll" changeType="neutral" icon={<Users size={20} />} />
         <StatCard label="Deductions" value={`$${(totalDeductions / 1000).toFixed(0)}K`} change="Last run" changeType="neutral" icon={<FileText size={20} />} />
       </div>
+
+      {/* AI Payroll Alerts */}
+      {payrollInsights.length > 0 && (
+        <AIAlertBanner insights={payrollInsights} className="mb-4" />
+      )}
+
+      {/* AI Annual Forecast */}
+      {payrollRuns.length > 0 && (
+        <div className="mb-6">
+          <AIInsightCard insight={forecastInsight} compact />
+        </div>
+      )}
 
       <Card padding="none">
         <CardHeader>

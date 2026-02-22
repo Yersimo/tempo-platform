@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils/cn'
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'orange'
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'orange' | 'ai'
 }
 
 const variants = {
@@ -11,6 +11,7 @@ const variants = {
   error: 'bg-red-50 text-error',
   info: 'bg-blue-50 text-info',
   orange: 'bg-tempo-100 text-tempo-700',
+  ai: 'bg-tempo-50 text-tempo-600 border border-tempo-200',
 }
 
 export function Badge({ variant = 'default', className, children, ...props }: BadgeProps) {

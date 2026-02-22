@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Clock, Calendar, Plus, CheckCircle, LogIn } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIAlertBanner, AIInsightCard } from '@/components/ai'
+import { detectCoverageGaps, analyzeLeavePatterns } from '@/lib/ai-engine'
 
 export default function TimeAttendancePage() {
   const {
@@ -19,6 +21,9 @@ export default function TimeAttendancePage() {
     addLeaveRequest, updateLeaveRequest,
     getEmployeeName,
   } = useTempo()
+
+  const coverageInsights = useMemo(() => detectCoverageGaps(leaveRequests, employees), [leaveRequests, employees])
+  const leaveInsights = useMemo(() => analyzeLeavePatterns(leaveRequests), [leaveRequests])
 
   const [activeTab, setActiveTab] = useState('leave')
 
@@ -115,6 +120,16 @@ export default function TimeAttendancePage() {
         <StatCard label="On Leave Today" value={onLeaveToday} change="Across all regions" changeType="neutral" icon={<Calendar size={20} />} />
         <StatCard label="Avg Leave Balance" value="14.5" change="Days remaining" changeType="neutral" />
       </div>
+
+      {/* AI Insights */}
+      <AIAlertBanner insights={coverageInsights} className="mb-4" />
+      {leaveInsights.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {leaveInsights.map(insight => (
+            <AIInsightCard key={insight.id} insight={insight} compact />
+          ))}
+        </div>
+      )}
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { AppWindow, Plus, Key, AlertTriangle, CheckCircle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { AIRecommendationList } from '@/components/ai'
+import { optimizeLicenses } from '@/lib/ai-engine'
 
 export default function AppsPage() {
   const {
@@ -19,6 +21,8 @@ export default function AppsPage() {
     addITRequest, updateITRequest,
     getEmployeeName,
   } = useTempo()
+
+  const licenseRecs = useMemo(() => optimizeLicenses(softwareLicenses), [softwareLicenses])
 
   const totalLicenses = softwareLicenses.reduce((a, l) => a + l.total_licenses, 0)
   const usedLicenses = softwareLicenses.reduce((a, l) => a + l.used_licenses, 0)
@@ -143,6 +147,14 @@ export default function AppsPage() {
             </Card>
           )
         })}
+      </div>
+
+      {/* AI Insights */}
+      <div className="mb-6">
+        <AIRecommendationList
+          title="License Optimization"
+          recommendations={licenseRecs}
+        />
       </div>
 
       <Card padding="none">
