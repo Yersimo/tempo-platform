@@ -55,7 +55,7 @@ export default function EmployeeDetailPage() {
 
   // AI-powered employee insights
   const employeeInsight = useMemo(() => emp ? generateEmployeeInsight(emp, { reviews: empReviews, goals: empGoals, enrollments: empEnrollments, leaveRequests: empLeave, mentoringPairs, devices: empDevices, expenseReports: empExpenses, salaryReviews, compBands }) : null, [emp, empGoals, empReviews, empEnrollments, empLeave, empDevices, empExpenses])
-  const retentionRisk = useMemo(() => emp ? calculateRetentionRisk(emp, { reviews: empReviews, goals: empGoals, leaveRequests: empLeave }) : null, [emp, empReviews, empGoals, empLeave])
+  const retentionRisk = useMemo(() => emp ? calculateRetentionRisk(emp, { reviews: empReviews, goals: empGoals, leaveRequests: empLeave, mentoringPairs: mentoringPairs || [], engagementScores: [], salaryReviews: salaryReviews || [] }) : null, [emp, empReviews, empGoals, empLeave, mentoringPairs, salaryReviews])
   const careerRecs = useMemo(() => emp ? suggestCareerPath(emp, employees) : null, [emp, employees])
 
   const tabs = [
