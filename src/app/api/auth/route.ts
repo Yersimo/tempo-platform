@@ -56,15 +56,21 @@ export async function POST(request: NextRequest) {
           .where(eq(schema.employees.id, employee.id))
       }
 
-      // Check if employee has MFA enabled
-      const [mfaEnrollment] = await db.select()
-        .from(schema.mfaEnrollments)
-        .where(
-          and(
-            eq(schema.mfaEnrollments.employeeId, employee.id),
-            eq(schema.mfaEnrollments.isVerified, true)
+      // Check if employee has MFA enabled (gracefully handle if table doesn't exist)
+      let mfaEnrollment = null
+      try {
+        const [enrollment] = await db.select()
+          .from(schema.mfaEnrollments)
+          .where(
+            and(
+              eq(schema.mfaEnrollments.employeeId, employee.id),
+              eq(schema.mfaEnrollments.isVerified, true)
+            )
           )
-        )
+        mfaEnrollment = enrollment || null
+      } catch {
+        // MFA table may not exist yet — skip MFA check
+      }
 
       if (mfaEnrollment) {
         // MFA is enabled - issue a temporary token instead of a session
@@ -110,15 +116,19 @@ export async function POST(request: NextRequest) {
         department_name: departmentName,
       }
 
-      // Log the login to audit
-      await db.insert(schema.auditLog).values({
-        orgId: employee.orgId,
-        userId: employee.id,
-        action: 'login',
-        entityType: 'session',
-        entityId: employee.id,
-        details: `Login: ${employee.fullName} (${employee.email})`,
-      })
+      // Log the login to audit (non-blocking)
+      try {
+        await db.insert(schema.auditLog).values({
+          orgId: employee.orgId,
+          userId: employee.id,
+          action: 'login',
+          entityType: 'session',
+          entityId: employee.id,
+          details: `Login: ${employee.fullName} (${employee.email})`,
+        })
+      } catch {
+        // Audit logging is non-critical
+      }
 
       // Set httpOnly session cookie
       const cookie = setSessionCookie(token)
