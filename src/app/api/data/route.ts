@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
 // GET /api/data -- hydrate the entire store for the current org
 // ---------------------------------------------------------------------------
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Resolve org (hardcoded: first org in DB until real auth is wired up)
-    const orgs = await db.select().from(schema.organizations).limit(1)
+    // Resolve org from authenticated session (set by middleware)
+    const orgId = request.headers.get('x-org-id')
+    if (!orgId) {
+      return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
+    }
+
+    const orgs = await db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId))
     if (orgs.length === 0) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 })
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
     const org = orgs[0]
-    const orgId = org.id
 
     // Fetch every table in parallel
     const [
@@ -617,12 +621,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Resolve orgId for audit logging
-    const orgs = await db.select().from(schema.organizations).limit(1)
-    if (orgs.length === 0) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 })
+    // Resolve orgId from authenticated session (set by middleware)
+    const orgId = request.headers.get('x-org-id')
+    if (!orgId) {
+      return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
     }
-    const orgId = orgs[0].id
 
     // ----- CREATE -----
     if (action === 'create') {
@@ -664,15 +667,25 @@ export async function POST(request: NextRequest) {
       }
 
       const prepared = prepareData(entity, data)
+
+      // Never allow changing orgId via update (prevent cross-org transfer)
+      delete prepared.orgId
+
       // Add updatedAt for tables that have it
       if ('updatedAt' in table) {
         prepared.updatedAt = new Date()
       }
 
+      // Scope update to the user's org for tables with orgId
+      const hasOrgId = 'orgId' in table && entity !== 'organizations'
+      const whereClause = hasOrgId
+        ? and(eq(table.id, id!), eq(table.orgId, orgId))
+        : eq(table.id, id!)
+
       const rows = await db
         .update(table)
         .set(prepared)
-        .where(eq(table.id, id!))
+        .where(whereClause)
         .returning() as any[]
 
       if (rows.length === 0) {
@@ -698,9 +711,15 @@ export async function POST(request: NextRequest) {
 
     // ----- DELETE -----
     if (action === 'delete') {
+      // Scope delete to the user's org for tables with orgId
+      const hasOrgId = 'orgId' in table && entity !== 'organizations'
+      const whereClause = hasOrgId
+        ? and(eq(table.id, id!), eq(table.orgId, orgId))
+        : eq(table.id, id!)
+
       const rows = await db
         .delete(table)
-        .where(eq(table.id, id!))
+        .where(whereClause)
         .returning() as any[]
 
       if (rows.length === 0) {

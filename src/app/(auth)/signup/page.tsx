@@ -20,16 +20,49 @@ export default function SignupPage() {
     country: '',
   })
 
+  const [error, setError] = useState('')
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+
     if (step === 1) {
       setStep(2)
       return
     }
+
     setLoading(true)
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'signup',
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          companyName: formData.companyName,
+          industry: formData.industry,
+          size: formData.size,
+          country: formData.country,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Signup failed. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      const { user } = await res.json()
+      // Cache user for instant hydration (httpOnly cookie already set by API)
+      try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
       router.push('/dashboard')
-    }, 800)
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -160,6 +193,10 @@ export default function SignupPage() {
                 </select>
               </div>
             </>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>

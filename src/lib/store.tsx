@@ -238,8 +238,8 @@ interface TempoState {
 
   // Auth
   login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
-  switchUser: (employeeId: string) => void
+  logout: () => Promise<void> | void
+  switchUser: (employeeId: string) => Promise<void> | void
   isLoggedIn: boolean
 
   // Helper
@@ -269,7 +269,23 @@ function buildCurrentUser(emp: typeof demoEmployees[number]): CurrentUser {
   }
 }
 
-// Try to restore session from localStorage
+// Try to restore session from cookie via API
+async function fetchSessionUser(): Promise<CurrentUser | null> {
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'me' }),
+    })
+    if (res.ok) {
+      const { user } = await res.json()
+      return user || null
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+// Fallback for SSR/initial render: check localStorage (will be reconciled with cookie session)
 function getStoredUser(): CurrentUser | null {
   if (typeof window === 'undefined') return null
   try {
@@ -335,13 +351,28 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const hasFetched = useRef(false)
 
-  // ---- Fetch all data from DB on mount ----
+  // ---- Validate session and fetch data on mount ----
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
 
-    async function loadData() {
+    async function initSession() {
       try {
+        // Step 1: Validate session with server (cookie-based)
+        const sessionUser = await fetchSessionUser()
+        if (sessionUser) {
+          setCurrentUser(sessionUser)
+          try { localStorage.setItem('tempo_current_user', JSON.stringify(sessionUser)) } catch { /* ignore */ }
+        } else {
+          // No valid server session - clear local state
+          setCurrentUser(null)
+          try { localStorage.removeItem('tempo_current_user') } catch { /* ignore */ }
+          // Don't fetch data if not authenticated
+          setIsLoading(false)
+          return
+        }
+
+        // Step 2: Fetch all data from DB (session cookie sent automatically)
         const res = await fetch('/api/data')
         if (!res.ok) {
           console.warn('Failed to load data from DB, using demo data')
@@ -386,37 +417,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           details: a.details || '',
           timestamp: a.timestamp,
         })))
-
-        // If we have a stored user, try to reconcile with DB employee IDs
-        const stored = getStoredUser()
-        if (stored && data.employees?.length) {
-          // Find matching employee by email
-          const matchByEmail = data.employees.find(
-            (e: AnyRecord) => e.profile?.email === stored.email
-          )
-          if (matchByEmail) {
-            const updatedUser: CurrentUser = {
-              id: `user-${matchByEmail.id}`,
-              email: matchByEmail.profile.email,
-              full_name: matchByEmail.profile.full_name,
-              avatar_url: matchByEmail.profile.avatar_url,
-              role: matchByEmail.role,
-              department_id: matchByEmail.department_id,
-              employee_id: matchByEmail.id,
-              job_title: matchByEmail.job_title,
-            }
-            setCurrentUser(updatedUser)
-            try { localStorage.setItem('tempo_current_user', JSON.stringify(updatedUser)) } catch { /* ignore */ }
-          }
-        }
       } catch (err) {
-        console.warn('Failed to load data from DB, using demo data:', err)
+        console.warn('Failed to initialize session:', err)
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadData()
+    initSession()
   }, [])
 
   // ---- Helpers ----
@@ -895,7 +903,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Auth ----
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    // Try API auth first
+    // API auth with httpOnly cookie session
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -905,11 +913,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const { user } = await res.json()
         setCurrentUser(user)
+        // Keep localStorage as client-side cache for instant hydration
         try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
         return true
       }
     } catch {
-      // Fall back to demo credentials
+      // Fall back to demo credentials for offline/development
     }
 
     // Fallback: demo credentials for offline/development
@@ -923,20 +932,35 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     return true
   }, [employees])
 
-  const logout = useCallback(() => {
-    // Fire and forget API logout
-    if (currentUser?.employee_id) {
-      fetch('/api/auth', {
+  const logout = useCallback(async () => {
+    // API logout (revokes session, clears httpOnly cookie)
+    try {
+      await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'logout', employeeId: currentUser.employee_id }),
-      }).catch(() => {})
-    }
+        body: JSON.stringify({ action: 'logout' }),
+      })
+    } catch { /* ignore */ }
     setCurrentUser(null)
     try { localStorage.removeItem('tempo_current_user') } catch { /* ignore */ }
-  }, [currentUser])
+  }, [])
 
-  const switchUser = useCallback((employeeId: string) => {
+  const switchUser = useCallback(async (employeeId: string) => {
+    // API switch user (creates new session, sets cookie)
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'switch_user', employeeId }),
+      })
+      if (res.ok) {
+        const { user } = await res.json()
+        setCurrentUser(user)
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+        return
+      }
+    } catch { /* ignore */ }
+    // Fallback to local
     const emp = employees.find(e => e.id === employeeId)
     if (!emp) return
     const user = buildCurrentUser(emp)

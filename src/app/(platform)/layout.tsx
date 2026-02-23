@@ -7,24 +7,29 @@ import { TempoProvider, useTempo } from '@/lib/store'
 import { ToastContainer } from '@/components/ui/toast'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn } = useTempo()
+  const { currentUser, isLoading } = useTempo()
   const router = useRouter()
-  const [checked, setChecked] = useState(false)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // Check localStorage directly for SSR safety
-    const stored = localStorage.getItem('tempo_current_user')
-    if (!stored && !isLoggedIn) {
+    // Wait for store to finish loading (which validates session via cookie)
+    if (isLoading) return
+
+    if (!currentUser) {
+      // No valid session - middleware will redirect, but handle client nav too
       router.replace('/login')
     } else {
-      setChecked(true)
+      setReady(true)
     }
-  }, [isLoggedIn, router])
+  }, [currentUser, isLoading, router])
 
-  if (!checked) {
+  if (isLoading || !ready) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-canvas">
-        <div className="animate-pulse text-t3 text-sm">Loading...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-t3 text-sm">Loading Tempo...</span>
+        </div>
       </div>
     )
   }
