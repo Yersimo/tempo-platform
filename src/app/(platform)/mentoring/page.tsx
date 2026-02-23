@@ -66,7 +66,10 @@ export default function MentoringPage() {
 
   function submitPair() {
     if (!pairForm.program_id || !pairForm.mentor_id || !pairForm.mentee_id) return
-    const matchScore = Math.floor(Math.random() * 21) + 75
+    // Calculate deterministic match score based on mentor/mentee pairing
+    const mentor = employees.find(e => e.id === pairForm.mentor_id)
+    const mentee = employees.find(e => e.id === pairForm.mentee_id)
+    const matchScore = mentor && mentee ? calculateMentorMatch(mentor, mentee, employees).value : 80
     addMentoringPair({ ...pairForm, status: 'active', match_score: matchScore })
     setShowPairModal(false)
     setPairForm({ program_id: '', mentor_id: '', mentee_id: '' })

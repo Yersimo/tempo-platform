@@ -148,7 +148,9 @@ export default function BenefitsPage() {
           </div>
         )}
         {benefitPlans.map(plan => {
-          const enrolledCount = Math.max(employees.length - Math.floor(Math.random() * 4), 0)
+          // Deterministic enrollment based on plan index
+          const planIndex = benefitPlans.indexOf(plan)
+          const enrolledCount = Math.max(employees.length - (planIndex * 3 + 2), 0)
           const enrollPct = employees.length > 0 ? Math.round((enrolledCount / employees.length) * 100) : 0
           return (
             <Card key={plan.id}>

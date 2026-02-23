@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/input'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIQueryBar, AIInsightPanel } from '@/components/ai'
-import { parseNaturalLanguageQuery, generateBoardNarrative } from '@/lib/ai-engine'
+import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk } from '@/lib/ai-engine'
 
 export default function AnalyticsPage() {
   const {
@@ -281,9 +281,10 @@ export default function AnalyticsPage() {
             <h3 className="text-sm font-semibold text-t1 mb-3">High Flight Risk Employees</h3>
             <p className="text-xs text-t3 mb-4">Based on engagement, tenure, compensation, and performance signals</p>
             <div className="space-y-2">
-              {employees.slice(13, 16).map((emp, i) => {
-                const risk = [85, 62, 58][i]
-                return (
+              {employees.map(emp => {
+                const flightRisk = calculateFlightRisk(emp, { reviews, goals, engagementScores, salaryReviews, mentoringPairs, leaveRequests })
+                return { emp, risk: flightRisk.value }
+              }).sort((a, b) => b.risk - a.risk).slice(0, 5).map(({ emp, risk }) => (
                   <div key={emp.id} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
                     <AlertTriangle size={14} className={risk >= 70 ? 'text-error' : 'text-warning'} />
                     <div className="flex-1 min-w-0">
@@ -292,8 +293,7 @@ export default function AnalyticsPage() {
                     </div>
                     <Badge variant={risk >= 70 ? 'error' : 'warning'}>{risk}%</Badge>
                   </div>
-                )
-              })}
+              ))}
             </div>
           </Card>
           <Card>
