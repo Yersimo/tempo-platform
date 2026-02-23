@@ -91,10 +91,10 @@ async function fetchAllUsers(
   }
 
   while (nextLink) {
-    const isFullUrl = nextLink.startsWith('https://')
-    const url = isFullUrl ? nextLink : `${GRAPH_BASE_URL}${nextLink}`
+    const isFullUrl: boolean = nextLink.startsWith('https://')
+    const url: string = isFullUrl ? nextLink : `${GRAPH_BASE_URL}${nextLink}`
 
-    const response = await fetch(url, {
+    const response: Response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ async function fetchAllUsers(
       throw new Error(`Failed to fetch users: ${response.status} - ${error}`)
     }
 
-    const data = await response.json()
+    const data: { value?: GraphUser[]; '@odata.nextLink'?: string } = await response.json()
     users.push(...(data.value || []))
     nextLink = data['@odata.nextLink']
   }
@@ -120,10 +120,10 @@ async function fetchAllGroups(accessToken: string): Promise<GraphGroup[]> {
   let nextLink: string | undefined = '/groups?$top=100&$select=id,displayName,description,mailEnabled,securityEnabled'
 
   while (nextLink) {
-    const isFullUrl = nextLink.startsWith('https://')
-    const url = isFullUrl ? nextLink : `${GRAPH_BASE_URL}${nextLink}`
+    const isFullUrl: boolean = nextLink.startsWith('https://')
+    const url: string = isFullUrl ? nextLink : `${GRAPH_BASE_URL}${nextLink}`
 
-    const response = await fetch(url, {
+    const response: Response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ async function fetchAllGroups(accessToken: string): Promise<GraphGroup[]> {
 
     if (!response.ok) break
 
-    const data = await response.json()
+    const data: { value?: GraphGroup[]; '@odata.nextLink'?: string } = await response.json()
     groups.push(...(data.value || []))
     nextLink = data['@odata.nextLink']
   }
