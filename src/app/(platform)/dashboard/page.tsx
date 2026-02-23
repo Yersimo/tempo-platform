@@ -23,8 +23,10 @@ export default function DashboardPage() {
     enrollments, mentoringPairs, expenseReports, payrollRuns,
     reviews, auditLog, getEmployeeName,
     updateLeaveRequest, reviewCycles, salaryReviews, surveys,
-    engagementScores, applications,
+    engagementScores, applications, currentUser, currentEmployeeId,
   } = useTempo()
+
+  const firstName = currentUser?.full_name?.split(' ')[0] || 'Amara'
 
   // Live KPIs
   const headcount = employees.length
@@ -47,7 +49,7 @@ export default function DashboardPage() {
     <>
       <Header
         title="Dashboard"
-        subtitle={`Welcome back, Amara. Here is your organization overview.`}
+        subtitle={`Welcome back, ${firstName}. Here is your organization overview.`}
       />
 
       {/* KPI Grid */}
@@ -147,7 +149,7 @@ export default function DashboardPage() {
                   <p className="text-[0.65rem] text-t3">{lr.type} - {lr.days} days ({lr.start_date})</p>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="primary" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'approved', approved_by: 'emp-17' })}>Approve</Button>
+                  <Button variant="primary" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'approved', approved_by: currentEmployeeId })}>Approve</Button>
                   <Button variant="ghost" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'rejected' })}>Deny</Button>
                 </div>
               </div>

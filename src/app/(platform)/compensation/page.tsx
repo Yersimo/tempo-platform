@@ -16,7 +16,7 @@ import { AIInsightPanel, AIAlertBanner } from '@/components/ai'
 import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact } from '@/lib/ai-engine'
 
 export default function CompensationPage() {
-  const { compBands, salaryReviews, employees, addCompBand, deleteCompBand, addSalaryReview, updateSalaryReview } = useTempo()
+  const { compBands, salaryReviews, employees, addCompBand, deleteCompBand, addSalaryReview, updateSalaryReview, currentEmployeeId } = useTempo()
   const [activeTab, setActiveTab] = useState('benchmarking')
   const [showBandModal, setShowBandModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -54,7 +54,7 @@ export default function CompensationPage() {
 
   function submitReview() {
     if (!reviewForm.employee_id || !reviewForm.proposed_salary) return
-    addSalaryReview({ ...reviewForm, proposed_by: 'emp-17', status: 'pending_approval', approved_by: null, currency: 'USD' })
+    addSalaryReview({ ...reviewForm, proposed_by: currentEmployeeId, status: 'pending_approval', approved_by: null, currency: 'USD' })
     setShowReviewModal(false)
     setReviewForm({ employee_id: '', current_salary: 0, proposed_salary: 0, justification: '', cycle: '2026 Annual' })
   }
@@ -162,7 +162,7 @@ export default function CompensationPage() {
                   </Badge>
                   {sr.status === 'pending_approval' && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="primary" onClick={() => updateSalaryReview(sr.id, { status: 'approved', approved_by: 'emp-17' })}>Approve</Button>
+                      <Button size="sm" variant="primary" onClick={() => updateSalaryReview(sr.id, { status: 'approved', approved_by: currentEmployeeId })}>Approve</Button>
                       <Button size="sm" variant="ghost" onClick={() => updateSalaryReview(sr.id, { status: 'rejected' })}>Reject</Button>
                     </div>
                   )}

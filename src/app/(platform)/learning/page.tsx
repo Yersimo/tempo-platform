@@ -16,7 +16,7 @@ import { AIInsightCard, AIScoreBadge } from '@/components/ai'
 import { analyzeSkillGaps, predictCourseCompletion } from '@/lib/ai-engine'
 
 export default function LearningPage() {
-  const { courses, enrollments, employees, addCourse, addEnrollment, updateEnrollment, getEmployeeName } = useTempo()
+  const { courses, enrollments, employees, addCourse, addEnrollment, updateEnrollment, getEmployeeName, currentEmployeeId } = useTempo()
   const [activeTab, setActiveTab] = useState('catalog')
   const [showCourseModal, setShowCourseModal] = useState(false)
   const [showEnrollModal, setShowEnrollModal] = useState(false)
@@ -74,7 +74,7 @@ export default function LearningPage() {
   }
 
   function handleEnroll(courseId: string) {
-    addEnrollment({ employee_id: 'emp-17', course_id: courseId, status: 'enrolled', progress: 0 })
+    addEnrollment({ employee_id: currentEmployeeId, course_id: courseId, status: 'enrolled', progress: 0 })
   }
 
   function handleStartEnrollment(enrollmentId: string) {

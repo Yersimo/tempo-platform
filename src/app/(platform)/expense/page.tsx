@@ -18,7 +18,7 @@ export default function ExpensePage() {
   const {
     expenseReports, employees,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
-    getEmployeeName,
+    getEmployeeName, currentEmployeeId,
   } = useTempo()
 
   // New report modal
@@ -101,11 +101,11 @@ export default function ExpensePage() {
   }
 
   function approveReport(id: string) {
-    updateExpenseReport(id, { status: 'approved', approved_by: 'emp-17', approved_at: new Date().toISOString() })
+    updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
   }
 
   function rejectReport(id: string) {
-    updateExpenseReport(id, { status: 'rejected', approved_by: 'emp-17', approved_at: new Date().toISOString() })
+    updateExpenseReport(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
   }
 
   function reimburseReport(id: string) {

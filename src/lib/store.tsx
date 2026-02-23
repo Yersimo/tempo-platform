@@ -13,7 +13,9 @@ import {
   demoJobPostings, demoApplications,
   demoDevices, demoSoftwareLicenses, demoITRequests,
   demoInvoices, demoBudgets, demoVendors,
+  demoCredentials,
 } from './demo-data'
+import type { DemoRole } from './demo-data'
 
 // ---- Audit Log ----
 export interface AuditEntry {
@@ -46,10 +48,23 @@ type WidenPrimitive<T> = T extends string ? string : T extends number ? number :
 type Widen<T> = { [K in keyof T]: WidenPrimitive<NonNullable<T[K]>> | Extract<T[K], null | undefined> }
 type WidenArray<T extends readonly unknown[]> = Array<Widen<T[number]>>
 
+export interface CurrentUser {
+  id: string
+  email: string
+  full_name: string
+  avatar_url: string | null
+  role: DemoRole
+  department_id: string
+  employee_id: string
+  job_title: string
+}
+
 interface TempoState {
   // Organization
   org: typeof demoOrg
   user: typeof demoUser
+  currentUser: CurrentUser | null
+  currentEmployeeId: string
   departments: typeof demoDepartments
   employees: typeof demoEmployees
 
@@ -218,6 +233,12 @@ interface TempoState {
   // Org
   updateOrg: (data: AnyRecord) => void
 
+  // Auth
+  login: (email: string, password: string) => boolean
+  logout: () => void
+  switchUser: (employeeId: string) => void
+  isLoggedIn: boolean
+
   // Helper
   getEmployeeName: (id: string) => string
   getDepartmentName: (id: string) => string
@@ -231,10 +252,35 @@ export function useTempo() {
   return ctx
 }
 
+// Helper to build CurrentUser from an employee record
+function buildCurrentUser(emp: typeof demoEmployees[number]): CurrentUser {
+  return {
+    id: `user-${emp.id}`,
+    email: emp.profile.email,
+    full_name: emp.profile.full_name,
+    avatar_url: emp.profile.avatar_url,
+    role: emp.role as DemoRole,
+    department_id: emp.department_id,
+    employee_id: emp.id,
+    job_title: emp.job_title,
+  }
+}
+
+// Try to restore session from localStorage
+function getStoredUser(): CurrentUser | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = localStorage.getItem('tempo_current_user')
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore */ }
+  return null
+}
+
 export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [org, setOrg] = useState(demoOrg)
   const [departments, setDepartments] = useState(demoDepartments)
   const [employees, setEmployees] = useState(demoEmployees)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => getStoredUser())
   const [goals, setGoals] = useState(demoGoals)
   const [reviewCycles, setReviewCycles] = useState(demoReviewCycles)
   const [reviews, setReviews] = useState(demoReviews)
@@ -278,14 +324,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const logAudit = useCallback((action: string, entity_type: string, entity_id: string, details: string) => {
     setAuditLog(prev => [{
       id: genId('audit'),
-      user: demoUser.full_name,
+      user: currentUser?.full_name || demoUser.full_name,
       action,
       entity_type,
       entity_id,
       details,
       timestamp: new Date().toISOString(),
     }, ...prev])
-  }, [])
+  }, [currentUser])
 
   // ---- Toasts ----
   const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
@@ -686,8 +732,36 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast('Organization settings updated')
   }, [logAudit, addToast])
 
+  // ---- Auth ----
+  const login = useCallback((email: string, password: string): boolean => {
+    const cred = demoCredentials.find(c => c.email === email && c.password === password)
+    if (!cred) return false
+    const emp = employees.find(e => e.id === cred.employeeId)
+    if (!emp) return false
+    const user = buildCurrentUser(emp)
+    setCurrentUser(user)
+    try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+    return true
+  }, [employees])
+
+  const logout = useCallback(() => {
+    setCurrentUser(null)
+    try { localStorage.removeItem('tempo_current_user') } catch { /* ignore */ }
+  }, [])
+
+  const switchUser = useCallback((employeeId: string) => {
+    const emp = employees.find(e => e.id === employeeId)
+    if (!emp) return
+    const user = buildCurrentUser(emp)
+    setCurrentUser(user)
+    try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+  }, [employees])
+
+  const currentEmployeeId = currentUser?.employee_id || 'emp-17'
+  const isLoggedIn = currentUser !== null
+
   const value: TempoState = {
-    org, user: demoUser, departments, employees,
+    org, user: demoUser, currentUser, currentEmployeeId, departments, employees,
     goals, reviewCycles, reviews, feedback,
     compBands, salaryReviews,
     courses, enrollments,
@@ -726,6 +800,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addVendor, updateVendor,
     addDepartment, updateDepartment,
     updateOrg,
+    login, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }
 

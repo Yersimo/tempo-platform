@@ -19,7 +19,7 @@ export default function TimeAttendancePage() {
   const {
     leaveRequests, employees,
     addLeaveRequest, updateLeaveRequest,
-    getEmployeeName,
+    getEmployeeName, currentEmployeeId,
   } = useTempo()
 
   const coverageInsights = useMemo(() => detectCoverageGaps(leaveRequests, employees), [leaveRequests, employees])
@@ -83,11 +83,11 @@ export default function TimeAttendancePage() {
   }
 
   function approveLeave(id: string) {
-    updateLeaveRequest(id, { status: 'approved', approved_by: 'emp-17', approved_at: new Date().toISOString() })
+    updateLeaveRequest(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
   }
 
   function denyLeave(id: string) {
-    updateLeaveRequest(id, { status: 'rejected', approved_by: 'emp-17', approved_at: new Date().toISOString() })
+    updateLeaveRequest(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
   }
 
   // ---- Clock In/Out ----

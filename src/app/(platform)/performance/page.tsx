@@ -21,7 +21,7 @@ export default function PerformancePage() {
     goals, employees, reviewCycles, reviews, feedback,
     addGoal, updateGoal, deleteGoal,
     addReviewCycle, addReview, updateReview,
-    addFeedback, getEmployeeName,
+    addFeedback, getEmployeeName, currentEmployeeId,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('goals')
@@ -111,7 +111,7 @@ export default function PerformancePage() {
   function submitFeedback() {
     if (!fbForm.to_id || !fbForm.content) return
     addFeedback({
-      from_id: 'emp-17', // current user
+      from_id: currentEmployeeId,
       to_id: fbForm.to_id,
       type: fbForm.type,
       content: fbForm.content,
@@ -141,7 +141,7 @@ export default function PerformancePage() {
     addReview({
       cycle_id: reviewForm.cycle_id,
       employee_id: reviewForm.employee_id,
-      reviewer_id: 'emp-17',
+      reviewer_id: currentEmployeeId,
       type: 'manager',
       status: reviewForm.overall_rating ? 'submitted' : 'in_progress',
       overall_rating: reviewForm.overall_rating || null,
