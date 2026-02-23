@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +15,8 @@ import { AIInsightCard, AIAlertBanner } from '@/components/ai'
 import { detectPayrollAnomalies, forecastAnnualPayroll } from '@/lib/ai-engine'
 
 export default function PayrollPage() {
+  const t = useTranslations('payroll')
+  const tc = useTranslations('common')
   const { payrollRuns, employees, addPayrollRun, updatePayrollRun } = useTempo()
   const [showPayRunModal, setShowPayRunModal] = useState(false)
   const [payRunForm, setPayRunForm] = useState({
@@ -38,7 +41,7 @@ export default function PayrollPage() {
     id: 'ai-payroll-forecast',
     category: 'prediction' as const,
     severity: 'info' as const,
-    title: 'Annual Payroll Forecast',
+    title: t('annualPayrollForecast'),
     description: `Projected annual payroll: $${(forecast.projected / 1000000).toFixed(2)}M based on ${payrollRuns.length} pay run(s). Confidence: ${forecast.confidence}.`,
     confidence: forecast.confidence,
     confidenceScore: forecast.confidence === 'high' ? 88 : forecast.confidence === 'medium' ? 65 : 40,
@@ -70,14 +73,14 @@ export default function PayrollPage() {
 
   return (
     <>
-      <Header title="Payroll" subtitle="Pay runs, payslips, and tax configuration"
-        actions={<Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> New Pay Run</Button>}
+      <Header title={t('title')} subtitle={t('subtitle')}
+        actions={<Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> {t('newPayRun')}</Button>}
       />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Payroll" value={`$${(totalPayroll / 1000000).toFixed(1)}M`} change="All runs" changeType="neutral" icon={<Wallet size={20} />} />
-        <StatCard label="Last Pay Run" value={lastRun ? `$${(lastRun.total_gross / 1000000).toFixed(2)}M` : '-'} change={lastRun?.period || 'No runs yet'} changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label="Employees" value={lastRun?.employee_count || employees.length} change="On payroll" changeType="neutral" icon={<Users size={20} />} />
-        <StatCard label="Deductions" value={`$${(totalDeductions / 1000).toFixed(0)}K`} change="Last run" changeType="neutral" icon={<FileText size={20} />} />
+        <StatCard label={t('totalPayroll')} value={`$${(totalPayroll / 1000000).toFixed(1)}M`} change={t('allRuns')} changeType="neutral" icon={<Wallet size={20} />} />
+        <StatCard label={t('lastPayRun')} value={lastRun ? `$${(lastRun.total_gross / 1000000).toFixed(2)}M` : '-'} change={lastRun?.period || t('noRunsYet')} changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label={tc('employees')} value={lastRun?.employee_count || employees.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} />
+        <StatCard label={t('deductions')} value={`$${(totalDeductions / 1000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
       </div>
 
       {/* AI Payroll Alerts */}
@@ -95,31 +98,31 @@ export default function PayrollPage() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Pay Run History</CardTitle>
-            <Button variant="secondary" size="sm">Export All</Button>
+            <CardTitle>{t('payRunHistory')}</CardTitle>
+            <Button variant="secondary" size="sm">{tc('exportAll')}</Button>
           </div>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-divider bg-canvas">
-                <th className="tempo-th text-left px-6 py-3">Period</th>
-                <th className="tempo-th text-right px-4 py-3">Gross</th>
-                <th className="tempo-th text-right px-4 py-3">Deductions</th>
-                <th className="tempo-th text-right px-4 py-3">Net</th>
-                <th className="tempo-th text-right px-4 py-3">Employees</th>
-                <th className="tempo-th text-center px-4 py-3">Status</th>
-                <th className="tempo-th text-center px-4 py-3">Actions</th>
+                <th className="tempo-th text-left px-6 py-3">{t('tablePeriod')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableGross')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableDeductions')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableNet')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableEmployees')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {payrollRuns.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">No pay runs yet. Click &quot;New Pay Run&quot; to create one.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noPayRuns')}</td></tr>
               ) : payrollRuns.map(run => (
                 <tr key={run.id} className="hover:bg-canvas/50">
                   <td className="px-6 py-3">
                     <p className="text-sm font-medium text-t1">{run.period}</p>
-                    <p className="text-xs text-t3">Run: {new Date(run.run_date).toLocaleDateString()}</p>
+                    <p className="text-xs text-t3">{t('run', { date: new Date(run.run_date).toLocaleDateString() })}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-t1 text-right font-medium">${run.total_gross.toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm text-error text-right">-${run.total_deductions.toLocaleString()}</td>
@@ -132,12 +135,12 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex gap-1 justify-center">
-                      <Button size="sm" variant="ghost">View</Button>
+                      <Button size="sm" variant="ghost">{tc('view')}</Button>
                       {run.status === 'draft' && (
-                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>Approve</Button>
+                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>{tc('approve')}</Button>
                       )}
                       {run.status === 'approved' && (
-                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>Process</Button>
+                        <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>{tc('process')}</Button>
                       )}
                     </div>
                   </td>
@@ -150,7 +153,7 @@ export default function PayrollPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Payroll by Country</h3>
+          <h3 className="text-sm font-semibold text-t1 mb-4">{t('payrollByCountry')}</h3>
           <div className="space-y-3">
             {(() => {
               // Calculate payroll distribution from employee countries
@@ -183,7 +186,7 @@ export default function PayrollPage() {
           </div>
         </Card>
         <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Tax Configuration</h3>
+          <h3 className="text-sm font-semibold text-t1 mb-4">{t('taxConfiguration')}</h3>
           <div className="space-y-2">
             {[
               { country: 'Nigeria', rate: '24%', type: 'PAYE + NHF + Pension' },
@@ -205,30 +208,30 @@ export default function PayrollPage() {
       </div>
 
       {/* New Pay Run Modal */}
-      <Modal open={showPayRunModal} onClose={() => setShowPayRunModal(false)} title="Create New Pay Run">
+      <Modal open={showPayRunModal} onClose={() => setShowPayRunModal(false)} title={t('createPayRunModal')}>
         <div className="space-y-4">
-          <Input label="Pay Period" value={payRunForm.period} onChange={(e) => setPayRunForm({ ...payRunForm, period: e.target.value })} placeholder="e.g. March 2026" />
-          <Input label="Run Date" type="date" value={payRunForm.run_date} onChange={(e) => setPayRunForm({ ...payRunForm, run_date: e.target.value })} />
+          <Input label={t('payPeriod')} value={payRunForm.period} onChange={(e) => setPayRunForm({ ...payRunForm, period: e.target.value })} placeholder={t('payPeriodPlaceholder')} />
+          <Input label={t('runDate')} type="date" value={payRunForm.run_date} onChange={(e) => setPayRunForm({ ...payRunForm, run_date: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Total Gross" type="number" value={payRunForm.total_gross || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_gross: Number(e.target.value) })} placeholder="2450000" />
-            <Input label="Total Deductions" type="number" value={payRunForm.total_deductions || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_deductions: Number(e.target.value) })} placeholder="Auto-calculated if empty" />
+            <Input label={t('totalGross')} type="number" value={payRunForm.total_gross || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_gross: Number(e.target.value) })} placeholder={t('totalGrossPlaceholder')} />
+            <Input label={t('totalDeductions')} type="number" value={payRunForm.total_deductions || ''} onChange={(e) => setPayRunForm({ ...payRunForm, total_deductions: Number(e.target.value) })} placeholder={t('totalDeductionsPlaceholder')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Employee Count" type="number" value={payRunForm.employee_count} onChange={(e) => setPayRunForm({ ...payRunForm, employee_count: Number(e.target.value) })} />
-            <Select label="Currency" value={payRunForm.currency} onChange={(e) => setPayRunForm({ ...payRunForm, currency: e.target.value })} options={[
-              { value: 'USD', label: 'USD' },
-              { value: 'NGN', label: 'NGN' },
-              { value: 'GHS', label: 'GHS' },
-              { value: 'XOF', label: 'XOF' },
-              { value: 'KES', label: 'KES' },
+            <Input label={t('employeeCount')} type="number" value={payRunForm.employee_count} onChange={(e) => setPayRunForm({ ...payRunForm, employee_count: Number(e.target.value) })} />
+            <Select label={tc('currency')} value={payRunForm.currency} onChange={(e) => setPayRunForm({ ...payRunForm, currency: e.target.value })} options={[
+              { value: 'USD', label: tc('currencyUSD') },
+              { value: 'NGN', label: tc('currencyNGN') },
+              { value: 'GHS', label: tc('currencyGHS') },
+              { value: 'XOF', label: tc('currencyXOF') },
+              { value: 'KES', label: tc('currencyKES') },
             ]} />
           </div>
           <div className="bg-canvas rounded-lg p-3">
-            <p className="text-xs text-t3">Net pay will be automatically calculated as Gross minus Deductions. If deductions are left empty, they will default to 23% of gross.</p>
+            <p className="text-xs text-t3">{t('netPayNote')}</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowPayRunModal(false)}>Cancel</Button>
-            <Button onClick={submitPayRun}>Create Pay Run</Button>
+            <Button variant="secondary" onClick={() => setShowPayRunModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPayRun}>{t('createPayRun')}</Button>
           </div>
         </div>
       </Modal>

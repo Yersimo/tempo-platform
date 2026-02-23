@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Sparkles, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { AIScore } from '@/lib/ai-engine'
@@ -14,6 +15,7 @@ interface AIScoreBadgeProps {
 }
 
 export function AIScoreBadge({ score, size = 'sm', showBreakdown = false, showTrend = true, className }: AIScoreBadgeProps) {
+  const t = useTranslations('ai')
   const [expanded, setExpanded] = useState(false)
 
   const colorClass = score.value >= 75 ? 'text-success' : score.value >= 50 ? 'text-tempo-600' : score.value >= 30 ? 'text-warning' : 'text-error'
@@ -53,7 +55,7 @@ export function AIScoreBadge({ score, size = 'sm', showBreakdown = false, showTr
           <span className={cn('flex items-center gap-0.5 text-[0.5rem] mt-0.5',
             score.trend === 'up' ? 'text-success' : score.trend === 'down' ? 'text-error' : 'text-t3'
           )}>
-            <TrendIcon size={8} /> {score.trend}
+            <TrendIcon size={8} /> {score.trend === 'up' ? t('trendingUp') : score.trend === 'down' ? t('trendingDown') : t('trendingStable')}
           </span>
         )}
       </div>
@@ -84,7 +86,7 @@ export function AIScoreBadge({ score, size = 'sm', showBreakdown = false, showTr
             <p className={cn('flex items-center gap-1 text-xs',
               score.trend === 'up' ? 'text-success' : score.trend === 'down' ? 'text-error' : 'text-t3'
             )}>
-              <TrendIcon size={12} /> Trending {score.trend}
+              <TrendIcon size={12} /> {score.trend === 'up' ? t('trendingUp') : score.trend === 'down' ? t('trendingDown') : t('trendingStable')}
             </p>
           )}
         </div>
@@ -93,7 +95,7 @@ export function AIScoreBadge({ score, size = 'sm', showBreakdown = false, showTr
         <div className="mt-2">
           <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1 text-[0.6rem] text-t3 hover:text-t2 transition-colors">
             {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-            {expanded ? 'Hide' : 'Show'} breakdown
+            {expanded ? t('hideBreakdown') : t('showBreakdown')}
           </button>
           {expanded && (
             <div className="mt-2 space-y-1.5">

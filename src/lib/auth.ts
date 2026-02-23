@@ -165,6 +165,37 @@ export async function revokeAllSessions(employeeId: string): Promise<void> {
     .where(eq(schema.sessions.employeeId, employeeId))
 }
 
+// ─── MFA Temporary Token ─────────────────────────────────────────────────
+// Short-lived JWT (5 min) issued after password verification when MFA is required.
+// Contains employeeId, email, role, orgId - but NOT a session. Must be exchanged
+// for a full session after MFA code verification.
+
+export interface MFATokenPayload {
+  employeeId: string
+  email: string
+  role: string
+  orgId: string
+  purpose: 'mfa_challenge'
+}
+
+export async function createMFAToken(payload: Omit<MFATokenPayload, 'purpose'>): Promise<string> {
+  return new SignJWT({ ...payload, purpose: 'mfa_challenge' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(JWT_SECRET)
+}
+
+export async function verifyMFAToken(token: string): Promise<MFATokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    if (payload.purpose !== 'mfa_challenge') return null
+    return payload as unknown as MFATokenPayload
+  } catch {
+    return null
+  }
+}
+
 // ─── Cookie Helpers (for use in API routes) ───────────────────────────────
 
 export function setSessionCookie(token: string): { name: string; value: string; options: Record<string, unknown> } {

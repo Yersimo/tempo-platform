@@ -1,0 +1,35 @@
+{
+  "name": "Tempo - Unified Workforce Platform",
+  "short_name": "Tempo",
+  "description": "Performance, compensation, learning, engagement, mentoring, analytics. One platform, zero silos.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#ea580c",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicons/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false
+}

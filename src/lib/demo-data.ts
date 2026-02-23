@@ -316,3 +316,181 @@ export const demoDashboardMetrics = {
   active_mentoring_pairs: 156,
   total_payroll: 54200000,
 }
+
+// ============================================================
+// PHASE 3: PROJECT MANAGEMENT
+// ============================================================
+
+export const demoProjects = [
+  { id: 'proj-1', org_id: 'org-1', title: 'Core Banking System Upgrade', description: 'Migrate legacy banking infrastructure to cloud-native microservices architecture across all 33 countries.', status: 'active' as const, owner_id: 'emp-13', start_date: '2026-01-15', end_date: '2026-09-30', budget: 2400000, currency: 'USD', created_at: '2026-01-10T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'proj-2', org_id: 'org-1', title: 'Pan-Africa Branch Expansion', description: 'Open 12 new branches across West Africa with standardized digital-first design.', status: 'active' as const, owner_id: 'emp-9', start_date: '2026-02-01', end_date: '2026-12-31', budget: 5800000, currency: 'USD', created_at: '2026-01-20T09:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'proj-3', org_id: 'org-1', title: 'Digital Onboarding Platform', description: 'Build mobile-first employee onboarding with e-signature, document upload, and automated provisioning.', status: 'planning' as const, owner_id: 'emp-17', start_date: '2026-04-01', end_date: '2026-08-31', budget: 450000, currency: 'USD', created_at: '2026-02-01T10:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+  { id: 'proj-4', org_id: 'org-1', title: 'Regulatory Compliance Overhaul', description: 'Update compliance frameworks for UEMOA, CESA, AWA, and Nigeria regulatory regions.', status: 'active' as const, owner_id: 'emp-21', start_date: '2026-01-01', end_date: '2026-06-30', budget: 680000, currency: 'USD', created_at: '2025-12-15T08:00:00Z', updated_at: '2026-02-22T09:00:00Z' },
+]
+
+export const demoMilestones = [
+  { id: 'mile-1', org_id: 'org-1', project_id: 'proj-1', title: 'Architecture Review Complete', due_date: '2026-03-15', status: 'done' as const, created_at: '2026-01-10T08:00:00Z' },
+  { id: 'mile-2', org_id: 'org-1', project_id: 'proj-1', title: 'Migration Phase 1 (Nigeria)', due_date: '2026-06-30', status: 'in_progress' as const, created_at: '2026-01-10T08:00:00Z' },
+  { id: 'mile-3', org_id: 'org-1', project_id: 'proj-2', title: 'Site Selection for West Africa', due_date: '2026-04-15', status: 'in_progress' as const, created_at: '2026-01-20T09:00:00Z' },
+  { id: 'mile-4', org_id: 'org-1', project_id: 'proj-2', title: 'Staffing Plan Finalized', due_date: '2026-05-30', status: 'todo' as const, created_at: '2026-01-20T09:00:00Z' },
+  { id: 'mile-5', org_id: 'org-1', project_id: 'proj-3', title: 'Requirements Gathering', due_date: '2026-04-30', status: 'todo' as const, created_at: '2026-02-01T10:00:00Z' },
+  { id: 'mile-6', org_id: 'org-1', project_id: 'proj-3', title: 'UI/UX Design Complete', due_date: '2026-06-15', status: 'todo' as const, created_at: '2026-02-01T10:00:00Z' },
+  { id: 'mile-7', org_id: 'org-1', project_id: 'proj-4', title: 'UEMOA Gap Analysis', due_date: '2026-02-28', status: 'done' as const, created_at: '2025-12-15T08:00:00Z' },
+  { id: 'mile-8', org_id: 'org-1', project_id: 'proj-4', title: 'Policy Documentation', due_date: '2026-04-30', status: 'in_progress' as const, created_at: '2025-12-15T08:00:00Z' },
+]
+
+export const demoTasks = [
+  { id: 'task-1', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-1', title: 'Document current architecture', description: 'Map all microservices, APIs, and data flows.', status: 'done' as const, priority: 'high' as const, assignee_id: 'emp-13', due_date: '2026-02-15', estimated_hours: 40, actual_hours: 36, created_at: '2026-01-10T08:00:00Z', updated_at: '2026-02-14T16:00:00Z' },
+  { id: 'task-2', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-1', title: 'Vendor evaluation for cloud provider', description: 'Compare AWS, Azure, and GCP for African data residency.', status: 'done' as const, priority: 'high' as const, assignee_id: 'emp-14', due_date: '2026-03-01', estimated_hours: 24, actual_hours: 28, created_at: '2026-01-10T08:00:00Z', updated_at: '2026-02-28T17:00:00Z' },
+  { id: 'task-3', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-2', title: 'Set up CI/CD pipelines', description: 'Configure deployment pipelines for Nigeria cluster.', status: 'in_progress' as const, priority: 'high' as const, assignee_id: 'emp-14', due_date: '2026-04-15', estimated_hours: 60, actual_hours: 22, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'task-4', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-2', title: 'Data migration scripts', description: 'Build ETL scripts for customer data migration.', status: 'todo' as const, priority: 'critical' as const, assignee_id: 'emp-15', due_date: '2026-05-15', estimated_hours: 80, actual_hours: 0, created_at: '2026-02-01T08:00:00Z', updated_at: null },
+  { id: 'task-5', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-2', title: 'Security audit', description: 'Penetration testing and vulnerability assessment.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'emp-16', due_date: '2026-06-01', estimated_hours: 40, actual_hours: 0, created_at: '2026-02-01T08:00:00Z', updated_at: null },
+  { id: 'task-6', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-3', title: 'Market analysis for Senegal', description: 'Analyze branch performance metrics and demographics.', status: 'done' as const, priority: 'medium' as const, assignee_id: 'emp-9', due_date: '2026-03-15', estimated_hours: 20, actual_hours: 18, created_at: '2026-01-20T09:00:00Z', updated_at: '2026-03-12T15:00:00Z' },
+  { id: 'task-7', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-3', title: 'Real estate assessment (Dakar)', description: 'Visit and evaluate potential branch locations in Dakar.', status: 'in_progress' as const, priority: 'medium' as const, assignee_id: 'emp-10', due_date: '2026-04-01', estimated_hours: 30, actual_hours: 12, created_at: '2026-02-01T09:00:00Z', updated_at: '2026-02-18T11:00:00Z' },
+  { id: 'task-8', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-3', title: 'Regulatory approval application (Ghana)', description: 'Submit branch license applications to Bank of Ghana.', status: 'review' as const, priority: 'high' as const, assignee_id: 'emp-21', due_date: '2026-03-30', estimated_hours: 16, actual_hours: 14, created_at: '2026-02-01T09:00:00Z', updated_at: '2026-02-20T14:00:00Z' },
+  { id: 'task-9', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-4', title: 'Staffing needs assessment', description: 'Determine headcount requirements for each new branch.', status: 'in_progress' as const, priority: 'medium' as const, assignee_id: 'emp-17', due_date: '2026-05-01', estimated_hours: 24, actual_hours: 8, created_at: '2026-02-10T09:00:00Z', updated_at: '2026-02-19T10:00:00Z' },
+  { id: 'task-10', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-4', title: 'Recruitment plan for new branches', description: 'Build hiring pipeline for branch managers and staff.', status: 'todo' as const, priority: 'medium' as const, assignee_id: 'emp-20', due_date: '2026-05-15', estimated_hours: 20, actual_hours: 0, created_at: '2026-02-10T09:00:00Z', updated_at: null },
+  { id: 'task-11', org_id: 'org-1', project_id: 'proj-3', milestone_id: 'mile-5', title: 'Stakeholder interviews', description: 'Interview HR, IT, and hiring managers on onboarding pain points.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'emp-20', due_date: '2026-04-15', estimated_hours: 16, actual_hours: 0, created_at: '2026-02-01T10:00:00Z', updated_at: null },
+  { id: 'task-12', org_id: 'org-1', project_id: 'proj-3', milestone_id: 'mile-5', title: 'Compliance requirements mapping', description: 'Document country-specific onboarding requirements for all 33 countries.', status: 'todo' as const, priority: 'critical' as const, assignee_id: 'emp-21', due_date: '2026-04-20', estimated_hours: 32, actual_hours: 0, created_at: '2026-02-01T10:00:00Z', updated_at: null },
+  { id: 'task-13', org_id: 'org-1', project_id: 'proj-3', milestone_id: 'mile-6', title: 'Wireframes and prototypes', description: 'Design mobile-first onboarding flow with e-signature support.', status: 'todo' as const, priority: 'medium' as const, assignee_id: 'emp-15', due_date: '2026-05-30', estimated_hours: 48, actual_hours: 0, created_at: '2026-02-01T10:00:00Z', updated_at: null },
+  { id: 'task-14', org_id: 'org-1', project_id: 'proj-4', milestone_id: 'mile-7', title: 'UEMOA regulation review', description: 'Review all BCEAO regulations affecting employment compliance.', status: 'done' as const, priority: 'critical' as const, assignee_id: 'emp-21', due_date: '2026-02-15', estimated_hours: 40, actual_hours: 42, created_at: '2025-12-15T08:00:00Z', updated_at: '2026-02-14T17:00:00Z' },
+  { id: 'task-15', org_id: 'org-1', project_id: 'proj-4', milestone_id: 'mile-7', title: 'Gap analysis report', description: 'Identify compliance gaps between current policies and UEMOA requirements.', status: 'done' as const, priority: 'high' as const, assignee_id: 'emp-22', due_date: '2026-02-28', estimated_hours: 30, actual_hours: 28, created_at: '2025-12-15T08:00:00Z', updated_at: '2026-02-27T16:00:00Z' },
+  { id: 'task-16', org_id: 'org-1', project_id: 'proj-4', milestone_id: 'mile-8', title: 'Draft updated compliance policies', description: 'Write new policy documents for UEMOA and CESA regions.', status: 'in_progress' as const, priority: 'high' as const, assignee_id: 'emp-21', due_date: '2026-04-01', estimated_hours: 60, actual_hours: 25, created_at: '2026-01-05T08:00:00Z', updated_at: '2026-02-20T11:00:00Z' },
+  { id: 'task-17', org_id: 'org-1', project_id: 'proj-4', milestone_id: 'mile-8', title: 'Legal review', description: 'External legal counsel review of new policies.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'emp-22', due_date: '2026-04-15', estimated_hours: 20, actual_hours: 0, created_at: '2026-01-05T08:00:00Z', updated_at: null },
+  { id: 'task-18', org_id: 'org-1', project_id: 'proj-1', milestone_id: 'mile-2', title: 'Load testing', description: 'Performance testing for Nigeria cluster under peak load.', status: 'todo' as const, priority: 'medium' as const, assignee_id: 'emp-14', due_date: '2026-06-15', estimated_hours: 24, actual_hours: 0, created_at: '2026-02-01T08:00:00Z', updated_at: null },
+  { id: 'task-19', org_id: 'org-1', project_id: 'proj-4', milestone_id: 'mile-8', title: 'Training materials', description: 'Create compliance training for all 33 countries.', status: 'todo' as const, priority: 'medium' as const, assignee_id: 'emp-20', due_date: '2026-04-30', estimated_hours: 30, actual_hours: 0, created_at: '2026-01-05T08:00:00Z', updated_at: null },
+  { id: 'task-20', org_id: 'org-1', project_id: 'proj-2', milestone_id: 'mile-3', title: 'Budget approval for Abidjan branch', description: 'Prepare and submit CAPEX request for new Abidjan location.', status: 'review' as const, priority: 'high' as const, assignee_id: 'emp-24', due_date: '2026-04-10', estimated_hours: 8, actual_hours: 6, created_at: '2026-02-15T09:00:00Z', updated_at: '2026-02-22T10:00:00Z' },
+]
+
+export const demoTaskDependencies = [
+  { id: 'dep-1', task_id: 'task-3', depends_on_task_id: 'task-1' },
+  { id: 'dep-2', task_id: 'task-4', depends_on_task_id: 'task-3' },
+  { id: 'dep-3', task_id: 'task-5', depends_on_task_id: 'task-3' },
+  { id: 'dep-4', task_id: 'task-18', depends_on_task_id: 'task-4' },
+  { id: 'dep-5', task_id: 'task-10', depends_on_task_id: 'task-9' },
+  { id: 'dep-6', task_id: 'task-17', depends_on_task_id: 'task-16' },
+  { id: 'dep-7', task_id: 'task-13', depends_on_task_id: 'task-11' },
+]
+
+// ============================================================
+// PHASE 3: STRATEGY EXECUTION
+// ============================================================
+
+export const demoStrategicObjectives = [
+  { id: 'obj-1', org_id: 'org-1', title: 'Achieve 20% Revenue Growth in Retail Banking', description: 'Drive retail banking revenue through account acquisition, cross-selling, and digital product adoption across all 33 countries.', status: 'active' as const, owner_id: 'emp-1', period: 'FY2026', progress: 45, created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'obj-2', org_id: 'org-1', title: 'Become Employer of Choice in West Africa', description: 'Establish Ecobank as a top-10 employer across key West African markets through talent programs, culture, and employee experience.', status: 'active' as const, owner_id: 'emp-17', period: 'FY2026', progress: 38, created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'obj-3', org_id: 'org-1', title: 'Digital Transformation: 80% Digital Transactions', description: 'Shift transaction volume from branch-based to digital channels, achieving 80% digital adoption by end of FY2026.', status: 'active' as const, owner_id: 'emp-13', period: 'FY2026', progress: 62, created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-22T09:00:00Z' },
+]
+
+export const demoKeyResults = [
+  { id: 'kr-1', org_id: 'org-1', objective_id: 'obj-1', title: '15% increase in new retail accounts', target_value: 15, current_value: 8.3, unit: '%', owner_id: 'emp-1', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'kr-2', org_id: 'org-1', objective_id: 'obj-1', title: 'Achieve 95% client satisfaction (NPS)', target_value: 95, current_value: 82, unit: 'NPS', owner_id: 'emp-2', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+  { id: 'kr-3', org_id: 'org-1', objective_id: 'obj-1', title: 'Attract $200M in new deposits', target_value: 200, current_value: 78, unit: 'M USD', owner_id: 'emp-24', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-18T09:00:00Z' },
+  { id: 'kr-4', org_id: 'org-1', objective_id: 'obj-2', title: 'Top 10 in Great Place to Work Africa', target_value: 10, current_value: 18, unit: 'Rank', owner_id: 'emp-17', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T14:00:00Z' },
+  { id: 'kr-5', org_id: 'org-1', objective_id: 'obj-2', title: 'Reduce voluntary attrition to 5%', target_value: 5, current_value: 8.2, unit: '%', owner_id: 'emp-20', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-19T16:00:00Z' },
+  { id: 'kr-6', org_id: 'org-1', objective_id: 'obj-2', title: '90% mandatory training completion', target_value: 90, current_value: 67, unit: '%', owner_id: 'emp-20', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-22T10:00:00Z' },
+  { id: 'kr-7', org_id: 'org-1', objective_id: 'obj-3', title: 'Launch mobile banking v3.0', target_value: 1, current_value: 0.7, unit: 'release', owner_id: 'emp-13', due_date: '2026-06-30', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T09:00:00Z' },
+  { id: 'kr-8', org_id: 'org-1', objective_id: 'obj-3', title: '60% digital transaction adoption', target_value: 60, current_value: 48, unit: '%', owner_id: 'emp-14', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-21T11:00:00Z' },
+  { id: 'kr-9', org_id: 'org-1', objective_id: 'obj-3', title: '99.9% platform uptime', target_value: 99.9, current_value: 99.7, unit: '%', owner_id: 'emp-14', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-22T08:00:00Z' },
+]
+
+export const demoInitiatives = [
+  { id: 'init-1', org_id: 'org-1', objective_id: 'obj-1', title: 'Client Referral Program', description: 'Launch refer-a-friend program with rewards for existing customers who bring new accounts.', status: 'in_progress' as const, owner_id: 'emp-2', start_date: '2026-01-15', end_date: '2026-06-30', progress: 55, budget: 120000, currency: 'USD', created_at: '2025-12-15T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'init-2', org_id: 'org-1', objective_id: 'obj-2', title: 'Leadership Academy', description: 'Build internal leadership development program for high-potential employees across all regions.', status: 'approved' as const, owner_id: 'emp-17', start_date: '2026-03-01', end_date: '2026-12-31', progress: 15, budget: 350000, currency: 'USD', created_at: '2026-01-10T08:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'init-3', org_id: 'org-1', objective_id: 'obj-3', title: 'Branch Digital Kiosks', description: 'Deploy self-service digital kiosks in all branches to shift walk-in transactions to digital.', status: 'in_progress' as const, owner_id: 'emp-13', start_date: '2026-01-01', end_date: '2026-09-30', progress: 35, budget: 890000, currency: 'USD', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-22T09:00:00Z' },
+  { id: 'init-4', org_id: 'org-1', objective_id: 'obj-1', title: 'SME Banking Package', description: 'Design and launch a tailored banking package for small and medium enterprises.', status: 'proposed' as const, owner_id: 'emp-1', start_date: '2026-04-01', end_date: '2026-10-31', progress: 0, budget: 200000, currency: 'USD', created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+  { id: 'init-5', org_id: 'org-1', objective_id: 'obj-2', title: 'Employee Wellness Program', description: 'Launch comprehensive wellness program covering mental health, fitness, and financial wellness.', status: 'in_progress' as const, owner_id: 'emp-20', start_date: '2026-02-01', end_date: '2026-12-31', progress: 25, budget: 180000, currency: 'USD', created_at: '2026-01-20T08:00:00Z', updated_at: '2026-02-20T15:00:00Z' },
+  { id: 'init-6', org_id: 'org-1', objective_id: 'obj-3', title: 'API Banking Platform', description: 'Build open banking API platform for fintech partnerships and third-party integrations.', status: 'approved' as const, owner_id: 'emp-14', start_date: '2026-03-15', end_date: '2026-11-30', progress: 10, budget: 520000, currency: 'USD', created_at: '2026-02-05T08:00:00Z', updated_at: '2026-02-19T10:00:00Z' },
+]
+
+export const demoKPIDefinitions = [
+  { id: 'kpi-1', org_id: 'org-1', name: 'Monthly Active Users (Mobile)', description: 'Number of unique users accessing the mobile banking app per month.', unit: 'users', target_value: 2500000, frequency: 'monthly' as const, department_id: 'dept-tech', owner_id: 'emp-13', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-2', org_id: 'org-1', name: 'Employee Engagement Score', description: 'Quarterly pulse survey engagement score.', unit: 'score', target_value: 82, frequency: 'quarterly' as const, department_id: null, owner_id: 'emp-17', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-3', org_id: 'org-1', name: 'Net Promoter Score', description: 'Customer NPS across all channels.', unit: 'NPS', target_value: 55, frequency: 'monthly' as const, department_id: 'dept-retail', owner_id: 'emp-1', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-4', org_id: 'org-1', name: 'Revenue per Employee', description: 'Total revenue divided by headcount.', unit: 'USD', target_value: 48000, frequency: 'quarterly' as const, department_id: null, owner_id: 'emp-24', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-5', org_id: 'org-1', name: 'Time to Hire', description: 'Average days from job posting to offer acceptance.', unit: 'days', target_value: 35, frequency: 'monthly' as const, department_id: null, owner_id: 'emp-20', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-6', org_id: 'org-1', name: 'Digital Transaction Rate', description: 'Percentage of total transactions completed via digital channels.', unit: '%', target_value: 80, frequency: 'monthly' as const, department_id: 'dept-tech', owner_id: 'emp-13', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-7', org_id: 'org-1', name: 'Loan Default Rate', description: 'Percentage of loans in default status.', unit: '%', target_value: 2.5, frequency: 'monthly' as const, department_id: 'dept-risk', owner_id: 'emp-21', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kpi-8', org_id: 'org-1', name: 'Training Completion Rate', description: 'Percentage of mandatory training completed on time.', unit: '%', target_value: 90, frequency: 'monthly' as const, department_id: null, owner_id: 'emp-17', created_at: '2025-12-01T08:00:00Z' },
+]
+
+export const demoKPIMeasurements = [
+  { id: 'kpim-1', kpi_id: 'kpi-1', value: 1850000, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kpim-2', kpi_id: 'kpi-1', value: 1920000, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: 'Strong growth after mobile v2.8 launch' },
+  { id: 'kpim-3', kpi_id: 'kpi-1', value: 2010000, period: '2026-02', recorded_at: '2026-02-23T08:00:00Z', notes: null },
+  { id: 'kpim-4', kpi_id: 'kpi-2', value: 74, period: 'Q4-2025', recorded_at: '2026-01-10T08:00:00Z', notes: null },
+  { id: 'kpim-5', kpi_id: 'kpi-3', value: 42, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kpim-6', kpi_id: 'kpi-3', value: 45, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: 'Improvement after service training rollout' },
+  { id: 'kpim-7', kpi_id: 'kpi-4', value: 42500, period: 'Q4-2025', recorded_at: '2026-01-15T08:00:00Z', notes: null },
+  { id: 'kpim-8', kpi_id: 'kpi-5', value: 48, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kpim-9', kpi_id: 'kpi-5', value: 44, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: 'Slight improvement with new ATS' },
+  { id: 'kpim-10', kpi_id: 'kpi-6', value: 44, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kpim-11', kpi_id: 'kpi-6', value: 46, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: null },
+  { id: 'kpim-12', kpi_id: 'kpi-6', value: 48, period: '2026-02', recorded_at: '2026-02-23T08:00:00Z', notes: 'Kiosk rollout in Lagos contributing' },
+]
+
+// ============================================================
+// PHASE 3: WORKFLOW STUDIO
+// ============================================================
+
+export const demoWorkflows = [
+  { id: 'wf-1', org_id: 'org-1', title: 'New Hire Onboarding', description: 'Automated onboarding workflow: IT provisioning, training enrollment, manager introduction, 30-day check-in.', status: 'active' as const, trigger_type: 'event' as const, trigger_config: { event: 'employee.created' }, created_by: 'emp-17', created_at: '2025-11-01T08:00:00Z', updated_at: '2026-02-10T10:00:00Z' },
+  { id: 'wf-2', org_id: 'org-1', title: 'Leave Approval Process', description: 'Route leave requests through manager approval with auto-escalation after 48 hours.', status: 'active' as const, trigger_type: 'event' as const, trigger_config: { event: 'leave_request.created' }, created_by: 'emp-20', created_at: '2025-11-15T08:00:00Z', updated_at: '2026-01-20T14:00:00Z' },
+  { id: 'wf-3', org_id: 'org-1', title: 'Expense Report Routing', description: 'Auto-route expense reports based on amount: <$500 manager, <$5000 department head, >$5000 CFO.', status: 'active' as const, trigger_type: 'event' as const, trigger_config: { event: 'expense_report.submitted' }, created_by: 'emp-24', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-05T09:00:00Z' },
+  { id: 'wf-4', org_id: 'org-1', title: 'Performance Review Reminder', description: 'Send reminders to managers 14, 7, and 1 day before review deadline.', status: 'draft' as const, trigger_type: 'schedule' as const, trigger_config: { cron: '0 9 * * 1' }, created_by: 'emp-17', created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+]
+
+export const demoWorkflowSteps = [
+  // Onboarding workflow
+  { id: 'wfs-1', workflow_id: 'wf-1', step_type: 'action' as const, title: 'Create IT accounts', config: { action: 'create_accounts', systems: ['email', 'ad', 'slack'] }, position: 0, next_step_id: 'wfs-2', created_at: '2025-11-01T08:00:00Z' },
+  { id: 'wfs-2', workflow_id: 'wf-1', step_type: 'notification' as const, title: 'Send welcome email', config: { template: 'welcome_new_hire', to: 'employee' }, position: 1, next_step_id: 'wfs-3', created_at: '2025-11-01T08:00:00Z' },
+  { id: 'wfs-3', workflow_id: 'wf-1', step_type: 'action' as const, title: 'Enroll in mandatory training', config: { courses: ['compliance', 'security', 'culture'] }, position: 2, next_step_id: 'wfs-4', created_at: '2025-11-01T08:00:00Z' },
+  { id: 'wfs-4', workflow_id: 'wf-1', step_type: 'delay' as const, title: 'Wait 30 days', config: { duration: 30, unit: 'days' }, position: 3, next_step_id: 'wfs-5', created_at: '2025-11-01T08:00:00Z' },
+  { id: 'wfs-5', workflow_id: 'wf-1', step_type: 'notification' as const, title: 'Send 30-day check-in survey', config: { template: '30_day_checkin', to: 'employee' }, position: 4, next_step_id: null, created_at: '2025-11-01T08:00:00Z' },
+  // Leave approval workflow
+  { id: 'wfs-6', workflow_id: 'wf-2', step_type: 'notification' as const, title: 'Notify manager', config: { template: 'leave_request', to: 'manager' }, position: 0, next_step_id: 'wfs-7', created_at: '2025-11-15T08:00:00Z' },
+  { id: 'wfs-7', workflow_id: 'wf-2', step_type: 'approval' as const, title: 'Manager approval', config: { approver: 'direct_manager', timeout_hours: 48 }, position: 1, next_step_id: 'wfs-8', created_at: '2025-11-15T08:00:00Z' },
+  { id: 'wfs-8', workflow_id: 'wf-2', step_type: 'condition' as const, title: 'Check if approved', config: { field: 'approval_status', operator: 'equals', value: 'approved' }, position: 2, next_step_id: 'wfs-9', created_at: '2025-11-15T08:00:00Z' },
+  { id: 'wfs-9', workflow_id: 'wf-2', step_type: 'notification' as const, title: 'Notify employee of decision', config: { template: 'leave_decision', to: 'employee' }, position: 3, next_step_id: null, created_at: '2025-11-15T08:00:00Z' },
+  // Expense routing workflow
+  { id: 'wfs-10', workflow_id: 'wf-3', step_type: 'condition' as const, title: 'Check amount threshold', config: { field: 'total_amount', operator: 'less_than', value: 500 }, position: 0, next_step_id: 'wfs-11', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'wfs-11', workflow_id: 'wf-3', step_type: 'approval' as const, title: 'Route to approver', config: { approver: 'amount_based', thresholds: { 500: 'manager', 5000: 'department_head', default: 'cfo' } }, position: 1, next_step_id: 'wfs-12', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'wfs-12', workflow_id: 'wf-3', step_type: 'notification' as const, title: 'Send approval notification', config: { template: 'expense_approved', to: 'employee' }, position: 2, next_step_id: null, created_at: '2025-12-01T08:00:00Z' },
+  // Review reminder workflow
+  { id: 'wfs-13', workflow_id: 'wf-4', step_type: 'notification' as const, title: 'Send 14-day reminder', config: { template: 'review_reminder', days_before: 14 }, position: 0, next_step_id: 'wfs-14', created_at: '2026-02-01T08:00:00Z' },
+  { id: 'wfs-14', workflow_id: 'wf-4', step_type: 'delay' as const, title: 'Wait 7 days', config: { duration: 7, unit: 'days' }, position: 1, next_step_id: 'wfs-15', created_at: '2026-02-01T08:00:00Z' },
+  { id: 'wfs-15', workflow_id: 'wf-4', step_type: 'notification' as const, title: 'Send 7-day reminder', config: { template: 'review_reminder_urgent', days_before: 7 }, position: 2, next_step_id: null, created_at: '2026-02-01T08:00:00Z' },
+]
+
+export const demoWorkflowRuns = [
+  { id: 'wfr-1', org_id: 'org-1', workflow_id: 'wf-1', status: 'completed' as const, started_at: '2026-02-10T09:00:00Z', completed_at: '2026-02-10T09:05:00Z', triggered_by: 'system', context: { employee_id: 'emp-30', employee_name: 'Chidinma Eze' } },
+  { id: 'wfr-2', org_id: 'org-1', workflow_id: 'wf-1', status: 'completed' as const, started_at: '2026-02-15T10:00:00Z', completed_at: '2026-02-15T10:03:00Z', triggered_by: 'system', context: { employee_id: 'emp-29', employee_name: 'Boubacar Diallo' } },
+  { id: 'wfr-3', org_id: 'org-1', workflow_id: 'wf-2', status: 'completed' as const, started_at: '2026-02-12T14:00:00Z', completed_at: '2026-02-13T09:30:00Z', triggered_by: 'system', context: { leave_id: 'leave-101', employee_name: 'Kwame Asante' } },
+  { id: 'wfr-4', org_id: 'org-1', workflow_id: 'wf-2', status: 'running' as const, started_at: '2026-02-22T11:00:00Z', completed_at: null, triggered_by: 'system', context: { leave_id: 'leave-102', employee_name: 'Fatou Diop' } },
+  { id: 'wfr-5', org_id: 'org-1', workflow_id: 'wf-3', status: 'completed' as const, started_at: '2026-02-08T16:00:00Z', completed_at: '2026-02-09T10:00:00Z', triggered_by: 'system', context: { report_id: 'exp-201', employee_name: 'Oluwaseun Adeyemi' } },
+  { id: 'wfr-6', org_id: 'org-1', workflow_id: 'wf-3', status: 'completed' as const, started_at: '2026-02-14T09:00:00Z', completed_at: '2026-02-15T14:00:00Z', triggered_by: 'system', context: { report_id: 'exp-202', employee_name: 'Amara Kone' } },
+  { id: 'wfr-7', org_id: 'org-1', workflow_id: 'wf-3', status: 'failed' as const, started_at: '2026-02-18T11:00:00Z', completed_at: '2026-02-18T11:02:00Z', triggered_by: 'system', context: { report_id: 'exp-203', error: 'Approver not found for department' } },
+  { id: 'wfr-8', org_id: 'org-1', workflow_id: 'wf-1', status: 'running' as const, started_at: '2026-02-23T08:00:00Z', completed_at: null, triggered_by: 'system', context: { employee_id: 'emp-31', employee_name: 'Adama Traore' } },
+  { id: 'wfr-9', org_id: 'org-1', workflow_id: 'wf-2', status: 'completed' as const, started_at: '2026-02-19T09:00:00Z', completed_at: '2026-02-19T16:00:00Z', triggered_by: 'system', context: { leave_id: 'leave-103', employee_name: 'Ngozi Okafor' } },
+  { id: 'wfr-10', org_id: 'org-1', workflow_id: 'wf-3', status: 'cancelled' as const, started_at: '2026-02-20T15:00:00Z', completed_at: '2026-02-20T15:01:00Z', triggered_by: 'system', context: { report_id: 'exp-204', reason: 'Report withdrawn by employee' } },
+]
+
+export const demoWorkflowTemplates = [
+  { id: 'wft-1', org_id: 'org-1', title: 'Standard Onboarding', description: 'Complete new hire onboarding with IT setup, training, and check-ins.', category: 'hr', config: { steps: ['create_accounts', 'welcome_email', 'training', 'check_in'] }, created_at: '2025-10-01T08:00:00Z' },
+  { id: 'wft-2', org_id: 'org-1', title: 'Approval Chain', description: 'Multi-level approval workflow with escalation and notifications.', category: 'operations', config: { steps: ['request', 'approval_l1', 'approval_l2', 'notification'] }, created_at: '2025-10-01T08:00:00Z' },
+  { id: 'wft-3', org_id: 'org-1', title: 'Notification Sequence', description: 'Send scheduled notifications with delays between each.', category: 'communications', config: { steps: ['notify_1', 'delay', 'notify_2', 'delay', 'notify_3'] }, created_at: '2025-10-01T08:00:00Z' },
+]
+
+// ============================================================
+// NOTIFICATIONS (in-app demo data)
+// ============================================================
+
+export const demoNotifications = [
+  { id: 'notif-1', org_id: 'org-1', recipient_id: 'emp-17', sender_id: 'emp-6', type: 'action_required' as const, channel: 'in_app' as const, title: 'Leave Request Pending', message: 'Fatou Ndiaye has submitted a leave request that requires your approval.', link: '/time-attendance', entity_type: 'leave_request', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
+  { id: 'notif-2', org_id: 'org-1', recipient_id: 'emp-17', sender_id: null, type: 'reminder' as const, channel: 'in_app' as const, title: 'Performance Review Cycle Ending', message: 'The Q1 2026 review cycle closes in 3 days. 2 reviews are still pending.', link: '/performance', entity_type: 'review_cycle', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
+  { id: 'notif-3', org_id: 'org-1', recipient_id: 'emp-17', sender_id: 'emp-9', type: 'approval' as const, channel: 'in_app' as const, title: 'Expense Report Submitted', message: 'Kofi Mensah submitted an expense report for $2,450.00.', link: '/expense', entity_type: 'expense_report', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() },
+  { id: 'notif-4', org_id: 'org-1', recipient_id: 'emp-17', sender_id: null, type: 'success' as const, channel: 'in_app' as const, title: 'Workflow Completed', message: 'New Hire Onboarding workflow for Ngozi Okafor completed successfully.', link: '/workflow-studio', entity_type: 'workflow', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+  { id: 'notif-5', org_id: 'org-1', recipient_id: 'emp-17', sender_id: null, type: 'info' as const, channel: 'in_app' as const, title: 'New Mentoring Match', message: 'You have been matched with Abena Boateng as their mentor.', link: '/mentoring', entity_type: 'mentoring_pair', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
+  { id: 'notif-6', org_id: 'org-1', recipient_id: 'emp-17', sender_id: null, type: 'warning' as const, channel: 'in_app' as const, title: '2 Salary Proposals Pending', message: 'There are 2 compensation proposals awaiting your approval before the March deadline.', link: '/compensation', entity_type: 'salary_review', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+  { id: 'notif-7', org_id: 'org-1', recipient_id: 'emp-17', sender_id: 'emp-13', type: 'mention' as const, channel: 'in_app' as const, title: 'Mentioned in Project Update', message: 'Babajide Ogunleye mentioned you in a comment on Core Banking System Upgrade.', link: '/projects', entity_type: 'project', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
+]

@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils/cn'
 
 interface AIPulseProps {
@@ -7,6 +8,8 @@ interface AIPulseProps {
 }
 
 export function AIPulse({ active = true, size = 'sm', className }: AIPulseProps) {
+  const t = useTranslations('ai')
+
   if (!active) return null
   return (
     <span
@@ -15,7 +18,7 @@ export function AIPulse({ active = true, size = 'sm', className }: AIPulseProps)
         size === 'sm' ? 'w-2 h-2' : 'w-3 h-3',
         className
       )}
-      title="AI is analyzing this data"
+      title={t('analyzing')}
     />
   )
 }

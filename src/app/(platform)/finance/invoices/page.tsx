@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +15,8 @@ import { AIInsightCard } from '@/components/ai'
 import { forecastCashFlow, assessVendorConcentration } from '@/lib/ai-engine'
 
 export default function InvoicesPage() {
+  const t = useTranslations('invoices')
+  const tc = useTranslations('common')
   const { invoices, vendors, addInvoice, updateInvoice } = useTempo()
 
   const cashFlowInsight = useMemo(() => forecastCashFlow(invoices, []), [invoices])
@@ -77,22 +80,22 @@ export default function InvoicesPage() {
 
   function getVendorName(vendorId: string) {
     const vendor = vendors.find(v => v.id === vendorId)
-    return vendor?.name || 'Unknown'
+    return vendor?.name || tc('unknown')
   }
 
   return (
     <>
       <Header
-        title="Invoices"
-        subtitle="Invoice management and tracking"
-        actions={<Button size="sm" onClick={openNewInvoice}><Plus size={14} /> New Invoice</Button>}
+        title={t('title')}
+        subtitle={t('subtitle')}
+        actions={<Button size="sm" onClick={openNewInvoice}><Plus size={14} /> {t('newInvoice')}</Button>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Invoices" value={invoices.length} icon={<FileText size={20} />} />
-        <StatCard label="Total Amount" value={`$${totalAmount.toLocaleString()}`} icon={<DollarSign size={20} />} />
-        <StatCard label="Paid" value={`$${paidAmount.toLocaleString()}`} change="Settled" changeType="positive" />
-        <StatCard label="Overdue" value={`$${overdueAmount.toLocaleString()}`} change="Requires attention" changeType="negative" icon={<AlertTriangle size={20} />} />
+        <StatCard label={t('totalInvoices')} value={invoices.length} icon={<FileText size={20} />} />
+        <StatCard label={t('totalAmount')} value={`$${totalAmount.toLocaleString()}`} icon={<DollarSign size={20} />} />
+        <StatCard label={t('paidLabel')} value={`$${paidAmount.toLocaleString()}`} change={t('settled')} changeType="positive" />
+        <StatCard label={t('overdueLabel')} value={`$${overdueAmount.toLocaleString()}`} change={t('requiresAttention')} changeType="negative" icon={<AlertTriangle size={20} />} />
       </div>
 
       {/* AI Insights */}
@@ -108,21 +111,21 @@ export default function InvoicesPage() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>All Invoices</CardTitle>
-            <Button variant="secondary" size="sm">Export</Button>
+            <CardTitle>{t('allInvoices')}</CardTitle>
+            <Button variant="secondary" size="sm">{tc('export')}</Button>
           </div>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-divider bg-canvas">
-                <th className="tempo-th text-left px-6 py-3">Invoice #</th>
-                <th className="tempo-th text-left px-4 py-3">Vendor</th>
-                <th className="tempo-th text-left px-4 py-3">Description</th>
-                <th className="tempo-th text-right px-4 py-3">Amount</th>
-                <th className="tempo-th text-left px-4 py-3">Due Date</th>
-                <th className="tempo-th text-center px-4 py-3">Status</th>
-                <th className="tempo-th text-center px-4 py-3">Actions</th>
+                <th className="tempo-th text-left px-6 py-3">{t('tableInvoiceNumber')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableVendor')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableDescription')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableAmount')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableDueDate')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -146,22 +149,22 @@ export default function InvoicesPage() {
                     <div className="flex gap-1 justify-center">
                       {inv.status === 'draft' && (
                         <Button size="sm" variant="secondary" onClick={() => sendInvoice(inv.id)}>
-                          <Send size={12} /> Send
+                          <Send size={12} /> {tc('send')}
                         </Button>
                       )}
                       {inv.status === 'sent' && (
                         <>
                           <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)}>
-                            <CreditCard size={12} /> Pay
+                            <CreditCard size={12} /> {tc('process')}
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => markOverdue(inv.id)}>
-                            Overdue
+                            {tc('overdue')}
                           </Button>
                         </>
                       )}
                       {inv.status === 'overdue' && (
                         <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)}>
-                          <CreditCard size={12} /> Pay
+                          <CreditCard size={12} /> {tc('process')}
                         </Button>
                       )}
                     </div>
@@ -174,16 +177,16 @@ export default function InvoicesPage() {
       </Card>
 
       {/* New Invoice Modal */}
-      <Modal open={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title="Create New Invoice">
+      <Modal open={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title={t('createInvoiceModal')}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Invoice Number" placeholder="INV-XXXXX" value={invoiceForm.invoice_number} onChange={(e) => setInvoiceForm({ ...invoiceForm, invoice_number: e.target.value })} />
-            <Select label="Vendor" value={invoiceForm.vendor_id} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_id: e.target.value })} options={vendors.map(v => ({ value: v.id, label: v.name }))} />
+            <Input label={t('invoiceNumber')} placeholder={t('invoicePlaceholder')} value={invoiceForm.invoice_number} onChange={(e) => setInvoiceForm({ ...invoiceForm, invoice_number: e.target.value })} />
+            <Select label={t('tableVendor')} value={invoiceForm.vendor_id} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_id: e.target.value })} options={vendors.map(v => ({ value: v.id, label: v.name }))} />
           </div>
-          <Textarea label="Description" placeholder="Invoice description..." rows={2} value={invoiceForm.description} onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })} />
+          <Textarea label={t('invoiceDescription')} placeholder={t('invoiceDescPlaceholder')} rows={2} value={invoiceForm.description} onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Amount" type="number" placeholder="10000" value={invoiceForm.amount} onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })} />
-            <Select label="Currency" value={invoiceForm.currency} onChange={(e) => setInvoiceForm({ ...invoiceForm, currency: e.target.value })} options={[
+            <Input label={tc('amount')} type="number" placeholder="10000" value={invoiceForm.amount} onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })} />
+            <Select label={tc('currency')} value={invoiceForm.currency} onChange={(e) => setInvoiceForm({ ...invoiceForm, currency: e.target.value })} options={[
               { value: 'USD', label: 'USD' },
               { value: 'EUR', label: 'EUR' },
               { value: 'GBP', label: 'GBP' },
@@ -192,12 +195,12 @@ export default function InvoicesPage() {
             ]} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Issue Date" type="date" value={invoiceForm.issued_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, issued_date: e.target.value })} />
-            <Input label="Due Date" type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} />
+            <Input label={t('issueDate')} type="date" value={invoiceForm.issued_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, issued_date: e.target.value })} />
+            <Input label={t('dueDate')} type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowInvoiceModal(false)}>Cancel</Button>
-            <Button onClick={submitInvoice}>Create Invoice</Button>
+            <Button variant="secondary" onClick={() => setShowInvoiceModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitInvoice}>{t('createInvoice')}</Button>
           </div>
         </div>
       </Modal>

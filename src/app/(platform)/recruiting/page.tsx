@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,8 @@ import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire } from '@/l
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
 
 export default function RecruitingPage() {
+  const t = useTranslations('recruiting')
+  const tc = useTranslations('common')
   const {
     jobPostings, applications, employees, departments,
     addJobPosting, updateJobPosting,
@@ -61,8 +64,8 @@ export default function RecruitingPage() {
   const offersExtended = applications.filter(a => a.stage === 'offer' || a.status === 'offer').length
 
   const tabs = [
-    { id: 'postings', label: 'Job Postings', count: openPositions },
-    { id: 'pipeline', label: 'Pipeline', count: applications.length },
+    { id: 'postings', label: t('tabJobPostings'), count: openPositions },
+    { id: 'pipeline', label: t('tabPipeline'), count: applications.length },
   ]
 
   const pipelineInsights = useMemo(() => analyzePipelineHealth(applications, jobPostings), [applications, jobPostings])
@@ -187,18 +190,18 @@ export default function RecruitingPage() {
   return (
     <>
       <Header
-        title="Recruiting"
-        subtitle="Job postings, pipeline, and hiring"
+        title={t('title')}
+        subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
             {activeTab === 'postings' && (
               <Button size="sm" onClick={openNewJob}>
-                <Plus size={14} /> Post Job
+                <Plus size={14} /> {t('postJob')}
               </Button>
             )}
             {activeTab === 'pipeline' && (
               <Button size="sm" onClick={openNewApplication}>
-                <Plus size={14} /> Add Candidate
+                <Plus size={14} /> {t('addCandidate')}
               </Button>
             )}
           </div>
@@ -207,10 +210,10 @@ export default function RecruitingPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Open Positions" value={openPositions} icon={<Briefcase size={20} />} />
-        <StatCard label="Total Applicants" value={totalApplicants} change="Across all postings" changeType="neutral" icon={<Users size={20} />} />
-        <StatCard label="In Interview" value={inInterview} change="Active candidates" changeType="neutral" />
-        <StatCard label="Offers Extended" value={offersExtended} change="Pending acceptance" changeType="positive" />
+        <StatCard label={t('openPositions')} value={openPositions} icon={<Briefcase size={20} />} />
+        <StatCard label={t('totalApplicants')} value={totalApplicants} change={t('acrossAllPostings')} changeType="neutral" icon={<Users size={20} />} />
+        <StatCard label={t('inInterview')} value={inInterview} change={t('activeCandidates')} changeType="neutral" />
+        <StatCard label={t('offersExtended')} value={offersExtended} change={t('pendingAcceptance')} changeType="positive" />
       </div>
 
       {/* AI Pipeline Alerts */}
@@ -225,7 +228,7 @@ export default function RecruitingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {jobPostings.length === 0 && (
             <div className="col-span-2 text-center py-12 text-sm text-t3">
-              No job postings yet. Click &quot;Post Job&quot; to create one.
+              {t('noJobPostings')}
             </div>
           )}
           {jobPostings.map(job => (
@@ -254,7 +257,7 @@ export default function RecruitingPage() {
               </div>
               {job.requirements && (
                 <div className="mb-3">
-                  <p className="text-[0.6rem] text-t3 uppercase mb-1">Requirements</p>
+                  <p className="text-[0.6rem] text-t3 uppercase mb-1">{t('requirements')}</p>
                   <div className="flex flex-wrap gap-1">
                     {(typeof job.requirements === 'string' ? job.requirements.split(',').map(s => s.trim()) : job.requirements).slice(0, 3).map((req: string, i: number) => (
                       <span key={i} className="text-[0.6rem] bg-canvas text-t2 px-2 py-0.5 rounded-full">{req}</span>
@@ -263,14 +266,14 @@ export default function RecruitingPage() {
                 </div>
               )}
               <div className="flex items-center justify-between pt-2 border-t border-divider">
-                <span className="text-xs text-t3">{job.application_count || 0} applicant{(job.application_count || 0) !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-t3">{(job.application_count || 0) !== 1 ? t('applicantCountPlural', { count: job.application_count || 0 }) : t('applicantCount', { count: job.application_count || 0 })}</span>
                 <div className="flex gap-2">
                   {job.status === 'open' ? (
-                    <Button size="sm" variant="ghost" onClick={() => closeJob(job.id)}>Close Posting</Button>
+                    <Button size="sm" variant="ghost" onClick={() => closeJob(job.id)}>{t('closePosting')}</Button>
                   ) : (
-                    <Button size="sm" variant="secondary" onClick={() => reopenJob(job.id)}>Reopen</Button>
+                    <Button size="sm" variant="secondary" onClick={() => reopenJob(job.id)}>{tc('reopen')}</Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => { setActiveTab('pipeline') }}>View Applicants</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setActiveTab('pipeline') }}>{t('viewApplicants')}</Button>
                 </div>
               </div>
             </Card>
@@ -283,9 +286,9 @@ export default function RecruitingPage() {
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Candidate Pipeline</CardTitle>
+              <CardTitle>{t('candidatePipeline')}</CardTitle>
               <Button size="sm" onClick={openNewApplication}>
-                <Plus size={14} /> Add Candidate
+                <Plus size={14} /> {t('addCandidate')}
               </Button>
             </div>
           </CardHeader>
@@ -293,19 +296,19 @@ export default function RecruitingPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-divider bg-canvas">
-                  <th className="tempo-th text-left px-6 py-3">Candidate</th>
-                  <th className="tempo-th text-left px-4 py-3">Position</th>
-                  <th className="tempo-th text-left px-4 py-3">Stage</th>
-                  <th className="tempo-th text-center px-4 py-3">Rating</th>
-                  <th className="tempo-th text-center px-4 py-3">Status</th>
-                  <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  <th className="tempo-th text-left px-6 py-3">{t('tableCandidate')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tablePosition')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableStage')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableRating')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableStatus')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {applications.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
-                      No applications yet. Click &quot;Add Candidate&quot; to add one.
+                      {t('noApplications')}
                     </td>
                   </tr>
                 )}
@@ -320,7 +323,7 @@ export default function RecruitingPage() {
                         <p className="text-sm font-medium text-t1">{app.candidate_name}</p>
                         <p className="text-xs text-t3">{app.candidate_email}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{job?.title || 'Unknown'}</td>
+                      <td className="px-4 py-3 text-sm text-t2">{job?.title || tc('unknown')}</td>
                       <td className="px-4 py-3">
                         <Badge variant={
                           stage === 'offer' || stage === 'hired' ? 'success' :
@@ -339,7 +342,7 @@ export default function RecruitingPage() {
                                 <Star key={s} size={12} className={s <= (app.rating || 0) ? 'fill-tempo-600 text-tempo-600' : 'text-t3'} />
                               ))}
                             </div>
-                          ) : <span className="text-xs text-t3">N/A</span>}
+                          ) : <span className="text-xs text-t3">{tc('notAvailable')}</span>}
                           <AIScoreBadge score={scoreCandidateFit(app, job)} size="sm" />
                         </div>
                       </td>
@@ -357,15 +360,15 @@ export default function RecruitingPage() {
                         {!isRejected && !isHired && (
                           <div className="flex gap-1 justify-center">
                             <Button size="sm" variant="secondary" onClick={() => openStageModal(app.id)}>
-                              <ArrowRight size={12} /> Move
+                              <ArrowRight size={12} /> {tc('move')}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => rejectApplication(app.id)}>
-                              Reject
+                              {tc('reject')}
                             </Button>
                           </div>
                         )}
-                        {isHired && <span className="text-xs text-success font-medium">Hired</span>}
-                        {isRejected && <span className="text-xs text-error font-medium">Rejected</span>}
+                        {isHired && <span className="text-xs text-success font-medium">{t('hiredLabel')}</span>}
+                        {isRejected && <span className="text-xs text-error font-medium">{t('rejectedLabel')}</span>}
                       </td>
                     </tr>
                   )
@@ -379,63 +382,63 @@ export default function RecruitingPage() {
       {/* ---- MODALS ---- */}
 
       {/* Post/Edit Job Modal */}
-      <Modal open={showJobModal} onClose={() => setShowJobModal(false)} title={editingJob ? 'Edit Job Posting' : 'Post New Job'} size="lg">
+      <Modal open={showJobModal} onClose={() => setShowJobModal(false)} title={editingJob ? t('editJobModal') : t('postJobModal')} size="lg">
         <div className="space-y-4">
           <Input
-            label="Job Title"
-            placeholder="e.g., Senior Software Engineer"
+            label={t('jobTitleLabel')}
+            placeholder={t('jobTitlePlaceholder')}
             value={jobForm.title}
             onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
           />
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Department"
+              label={t('departmentLabel')}
               value={jobForm.department_id}
               onChange={(e) => setJobForm({ ...jobForm, department_id: e.target.value })}
               options={departments.map(d => ({ value: d.id, label: d.name }))}
             />
             <Input
-              label="Location"
-              placeholder="e.g., Lagos, Nigeria"
+              label={t('location')}
+              placeholder={t('locationPlaceholder')}
               value={jobForm.location}
               onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Employment Type"
+              label={t('employmentType')}
               value={jobForm.type}
               onChange={(e) => setJobForm({ ...jobForm, type: e.target.value })}
               options={[
-                { value: 'full_time', label: 'Full Time' },
-                { value: 'part_time', label: 'Part Time' },
-                { value: 'contract', label: 'Contract' },
-                { value: 'internship', label: 'Internship' },
+                { value: 'full_time', label: t('typeFullTime') },
+                { value: 'part_time', label: t('typePartTime') },
+                { value: 'contract', label: t('typeContract') },
+                { value: 'internship', label: t('typeInternship') },
               ]}
             />
             <Select
-              label="Currency"
+              label={t('currencyLabel')}
               value={jobForm.currency}
               onChange={(e) => setJobForm({ ...jobForm, currency: e.target.value })}
               options={[
-                { value: 'USD', label: 'USD' },
-                { value: 'NGN', label: 'NGN' },
-                { value: 'GHS', label: 'GHS' },
-                { value: 'KES', label: 'KES' },
-                { value: 'XOF', label: 'XOF' },
+                { value: 'USD', label: tc('currencyUSD') },
+                { value: 'NGN', label: tc('currencyNGN') },
+                { value: 'GHS', label: tc('currencyGHS') },
+                { value: 'KES', label: tc('currencyKES') },
+                { value: 'XOF', label: tc('currencyXOF') },
               ]}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Salary Min"
+              label={t('salaryMin')}
               type="number"
               min={0}
               value={jobForm.salary_min}
               onChange={(e) => setJobForm({ ...jobForm, salary_min: Number(e.target.value) })}
             />
             <Input
-              label="Salary Max"
+              label={t('salaryMax')}
               type="number"
               min={0}
               value={jobForm.salary_max}
@@ -443,92 +446,96 @@ export default function RecruitingPage() {
             />
           </div>
           <Textarea
-            label="Description"
-            placeholder="Describe the role, responsibilities, and what makes it great..."
+            label={t('descriptionLabel')}
+            placeholder={t('descriptionPlaceholder')}
             rows={4}
             value={jobForm.description}
             onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
           />
           <Textarea
-            label="Requirements (one per line)"
-            placeholder="5+ years experience in software development&#10;Proficiency in React/TypeScript&#10;Experience with distributed systems"
+            label={t('requirementsLabel')}
+            placeholder={t('requirementsPlaceholder')}
             rows={4}
             value={jobForm.requirements}
             onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowJobModal(false)}>Cancel</Button>
-            <Button onClick={submitJob}>{editingJob ? 'Save Changes' : 'Post Job'}</Button>
+            <Button variant="secondary" onClick={() => setShowJobModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitJob}>{editingJob ? tc('saveChanges') : t('postJobButton')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Add Candidate Modal */}
-      <Modal open={showAppModal} onClose={() => setShowAppModal(false)} title="Add Candidate">
+      <Modal open={showAppModal} onClose={() => setShowAppModal(false)} title={t('addCandidateModal')}>
         <div className="space-y-4">
           <Select
-            label="Job Posting"
+            label={t('jobPosting')}
             value={appForm.job_id}
             onChange={(e) => setAppForm({ ...appForm, job_id: e.target.value })}
             options={jobPostings.filter(j => j.status === 'open').map(j => ({ value: j.id, label: j.title }))}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Candidate Name"
-              placeholder="e.g., Amara Okafor"
+              label={t('candidateName')}
+              placeholder={t('candidateNamePlaceholder')}
               value={appForm.candidate_name}
               onChange={(e) => setAppForm({ ...appForm, candidate_name: e.target.value })}
             />
             <Input
-              label="Email"
+              label={t('candidateEmail')}
               type="email"
-              placeholder="e.g., amara@example.com"
+              placeholder={t('candidateEmailPlaceholder')}
               value={appForm.candidate_email}
               onChange={(e) => setAppForm({ ...appForm, candidate_email: e.target.value })}
             />
           </div>
           <Input
-            label="Resume URL (optional)"
-            placeholder="https://drive.google.com/..."
+            label={t('resumeUrl')}
+            placeholder={t('resumeUrlPlaceholder')}
             value={appForm.resume_url}
             onChange={(e) => setAppForm({ ...appForm, resume_url: e.target.value })}
           />
           <Textarea
-            label="Cover Letter / Notes (optional)"
-            placeholder="Add any notes about this candidate..."
+            label={t('coverLetter')}
+            placeholder={t('coverLetterPlaceholder')}
             rows={3}
             value={appForm.cover_letter}
             onChange={(e) => setAppForm({ ...appForm, cover_letter: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowAppModal(false)}>Cancel</Button>
-            <Button onClick={submitApplication}>Add Candidate</Button>
+            <Button variant="secondary" onClick={() => setShowAppModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitApplication}>{t('addCandidateButton')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Move Stage Modal */}
-      <Modal open={showStageModal} onClose={() => setShowStageModal(false)} title="Move Candidate Stage" size="sm">
+      <Modal open={showStageModal} onClose={() => setShowStageModal(false)} title={t('moveStageModal')} size="sm">
         <div className="space-y-4">
           <Select
-            label="Move to Stage"
+            label={t('moveToStage')}
             value={stageForm.stage}
             onChange={(e) => setStageForm({ ...stageForm, stage: e.target.value })}
-            options={STAGES.filter(s => s !== 'rejected').map(s => ({
-              value: s,
-              label: s.charAt(0).toUpperCase() + s.slice(1),
-            }))}
+            options={[
+              { value: 'applied', label: t('stageApplied') },
+              { value: 'screening', label: t('stageScreening') },
+              { value: 'interview', label: t('stageInterview') },
+              { value: 'assessment', label: t('stageAssessment') },
+              { value: 'offer', label: t('stageOffer') },
+              { value: 'hired', label: t('stageHired') },
+            ]}
           />
           <Textarea
-            label="Notes (optional)"
-            placeholder="Add notes about this stage transition..."
+            label={t('notesOptional')}
+            placeholder={t('notesPlaceholder')}
             rows={2}
             value={stageForm.notes}
             onChange={(e) => setStageForm({ ...stageForm, notes: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowStageModal(false)}>Cancel</Button>
-            <Button onClick={submitStageChange}>Move Stage</Button>
+            <Button variant="secondary" onClick={() => setShowStageModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitStageChange}>{t('moveStage')}</Button>
           </div>
         </div>
       </Modal>

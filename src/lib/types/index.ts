@@ -502,3 +502,192 @@ export interface DashboardMetrics {
   active_mentoring_pairs: number
   total_payroll: number
 }
+
+// ============================================================
+// PHASE 3: PROJECT MANAGEMENT
+// ============================================================
+
+export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled'
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
+export type TaskPriority = 'low' | 'medium' | 'high' | 'critical'
+
+export interface Project {
+  id: string
+  org_id: string
+  title: string
+  description: string | null
+  status: ProjectStatus
+  owner_id: string | null
+  start_date: string | null
+  end_date: string | null
+  budget: number | null
+  currency: string
+  created_at: string
+  updated_at: string | null
+  owner?: OrgMember
+}
+
+export interface Milestone {
+  id: string
+  org_id: string
+  project_id: string
+  title: string
+  due_date: string | null
+  status: TaskStatus
+  created_at: string
+}
+
+export interface ProjectTask {
+  id: string
+  org_id: string
+  project_id: string
+  milestone_id: string | null
+  title: string
+  description: string | null
+  status: TaskStatus
+  priority: TaskPriority
+  assignee_id: string | null
+  due_date: string | null
+  estimated_hours: number | null
+  actual_hours: number | null
+  created_at: string
+  updated_at: string | null
+  assignee?: OrgMember
+}
+
+export interface TaskDependency {
+  id: string
+  task_id: string
+  depends_on_task_id: string
+}
+
+// ============================================================
+// PHASE 3: STRATEGY EXECUTION
+// ============================================================
+
+export type ObjectiveStatus = 'draft' | 'active' | 'completed' | 'archived'
+export type InitiativeStatus = 'proposed' | 'approved' | 'in_progress' | 'completed' | 'cancelled'
+export type KPIFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual'
+
+export interface StrategicObjective {
+  id: string
+  org_id: string
+  title: string
+  description: string | null
+  status: ObjectiveStatus
+  owner_id: string | null
+  period: string | null
+  progress: number
+  created_at: string
+  updated_at: string | null
+  owner?: OrgMember
+  key_results?: KeyResult[]
+}
+
+export interface KeyResult {
+  id: string
+  org_id: string
+  objective_id: string
+  title: string
+  target_value: number
+  current_value: number
+  unit: string | null
+  owner_id: string | null
+  due_date: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+export interface Initiative {
+  id: string
+  org_id: string
+  objective_id: string | null
+  title: string
+  description: string | null
+  status: InitiativeStatus
+  owner_id: string | null
+  start_date: string | null
+  end_date: string | null
+  progress: number
+  budget: number | null
+  currency: string
+  created_at: string
+  updated_at: string | null
+}
+
+export interface KPIDefinition {
+  id: string
+  org_id: string
+  name: string
+  description: string | null
+  unit: string | null
+  target_value: number | null
+  frequency: KPIFrequency
+  department_id: string | null
+  owner_id: string | null
+  created_at: string
+}
+
+export interface KPIMeasurement {
+  id: string
+  kpi_id: string
+  value: number
+  period: string
+  recorded_at: string
+  notes: string | null
+}
+
+// ============================================================
+// PHASE 3: WORKFLOW STUDIO
+// ============================================================
+
+export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived'
+export type StepType = 'action' | 'condition' | 'delay' | 'notification' | 'approval'
+export type TriggerType = 'schedule' | 'event' | 'manual' | 'webhook'
+export type RunStatus = 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface Workflow {
+  id: string
+  org_id: string
+  title: string
+  description: string | null
+  status: WorkflowStatus
+  trigger_type: TriggerType
+  trigger_config: Record<string, unknown> | null
+  created_by: string | null
+  created_at: string
+  updated_at: string | null
+  steps?: WorkflowStep[]
+}
+
+export interface WorkflowStep {
+  id: string
+  workflow_id: string
+  step_type: StepType
+  title: string
+  config: Record<string, unknown> | null
+  position: number
+  next_step_id: string | null
+  created_at: string
+}
+
+export interface WorkflowRun {
+  id: string
+  org_id: string
+  workflow_id: string
+  status: RunStatus
+  started_at: string
+  completed_at: string | null
+  triggered_by: string | null
+  context: Record<string, unknown> | null
+}
+
+export interface WorkflowTemplate {
+  id: string
+  org_id: string
+  title: string
+  description: string | null
+  category: string | null
+  config: Record<string, unknown> | null
+  created_at: string
+}

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useAI } from '@/lib/use-ai'
+import { useTranslations } from 'next-intl'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,11 +15,14 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Pencil, ArrowLeft, Mail, Phone, MapPin, Building2, Briefcase } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIInsightPanel, AIScoreBadge } from '@/components/ai'
+import { AIInsightPanel, AIScoreBadge, AIEnhancingIndicator } from '@/components/ai'
 import { generateEmployeeInsight, calculateRetentionRisk, suggestCareerPath } from '@/lib/ai-engine'
 import Link from 'next/link'
 
 export default function EmployeeDetailPage() {
+  const t = useTranslations('peopleDetail')
+  const tp = useTranslations('people')
+  const tc = useTranslations('common')
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -39,8 +44,8 @@ export default function EmployeeDetailPage() {
   if (!emp) {
     return (
       <div className="text-center py-20">
-        <p className="text-t3 mb-4">Employee not found</p>
-        <Link href="/people"><Button variant="secondary">Back to People</Button></Link>
+        <p className="text-t3 mb-4">{t('employeeNotFound')}</p>
+        <Link href="/people"><Button variant="secondary">{t('backToPeople')}</Button></Link>
       </div>
     )
   }
@@ -58,13 +63,31 @@ export default function EmployeeDetailPage() {
   const retentionRisk = useMemo(() => emp ? calculateRetentionRisk(emp, { reviews: empReviews, goals: empGoals, leaveRequests: empLeave, mentoringPairs: mentoringPairs || [], engagementScores: [], salaryReviews: salaryReviews || [] }) : null, [emp, empReviews, empGoals, empLeave, mentoringPairs, salaryReviews])
   const careerRecs = useMemo(() => emp ? suggestCareerPath(emp, employees) : null, [emp, employees])
 
+  // Claude AI enhancement - employee insight narrative
+  const { result: enhancedInsight, isLoading: insightLoading } = useAI({
+    action: 'enhanceNarrative',
+    data: { insight: employeeInsight, employee: emp ? { name: emp.profile?.full_name, title: emp.job_title, level: emp.level } : null },
+    fallback: employeeInsight,
+    enabled: !!employeeInsight,
+    cacheKey: `people-insight-${id}`,
+  })
+
+  // Claude AI enhancement - career path suggestions
+  const { result: enhancedCareer, isLoading: careerLoading } = useAI({
+    action: 'enhanceCareerPath',
+    data: { employee: emp ? { name: emp.profile?.full_name, title: emp.job_title, level: emp.level } : null, currentSuggestions: careerRecs },
+    fallback: careerRecs,
+    enabled: !!careerRecs && careerRecs.length > 0,
+    cacheKey: `people-career-${id}`,
+  })
+
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'performance', label: 'Performance', count: empGoals.length },
-    { id: 'learning', label: 'Learning', count: empEnrollments.length },
-    { id: 'time', label: 'Time Off', count: empLeave.length },
-    { id: 'devices', label: 'Devices', count: empDevices.length },
-    { id: 'expenses', label: 'Expenses', count: empExpenses.length },
+    { id: 'overview', label: t('tabOverview') },
+    { id: 'performance', label: t('tabPerformance'), count: empGoals.length },
+    { id: 'learning', label: t('tabLearning'), count: empEnrollments.length },
+    { id: 'time', label: t('tabTimeOff'), count: empLeave.length },
+    { id: 'devices', label: t('tabDevices'), count: empDevices.length },
+    { id: 'expenses', label: t('tabExpenses'), count: empExpenses.length },
   ]
 
   function openEdit() {
@@ -100,7 +123,7 @@ export default function EmployeeDetailPage() {
       {/* Back + Header */}
       <div className="mb-4">
         <button onClick={() => router.push('/people')} className="flex items-center gap-1 text-xs text-t3 hover:text-t1 transition-colors">
-          <ArrowLeft size={14} /> Back to People
+          <ArrowLeft size={14} /> {t('backToPeople')}
         </button>
       </div>
 
@@ -112,7 +135,7 @@ export default function EmployeeDetailPage() {
             <h2 className="text-lg font-semibold text-t1 mt-3">{emp.profile?.full_name}</h2>
             <p className="text-sm text-t2">{emp.job_title}</p>
             <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'} className="mt-2">{emp.role}</Badge>
-            <Button size="sm" variant="secondary" className="mt-4" onClick={openEdit}><Pencil size={14} /> Edit Profile</Button>
+            <Button size="sm" variant="secondary" className="mt-4" onClick={openEdit}><Pencil size={14} /> {t('editProfile')}</Button>
           </div>
           <div className="mt-6 space-y-3 border-t border-divider pt-4">
             <div className="flex items-center gap-3 text-sm">
@@ -147,24 +170,30 @@ export default function EmployeeDetailPage() {
           {activeTab === 'overview' && (
             <div className="space-y-4">
               {/* AI Employee Insights */}
-              {employeeInsight && (
+              {enhancedInsight && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <AIInsightPanel title="Employee Insight" narrative={employeeInsight} className="md:col-span-2" />
+                  <div className="relative md:col-span-2">
+                    {insightLoading && <AIEnhancingIndicator isLoading />}
+                    <AIInsightPanel title={t('employeeInsight')} narrative={enhancedInsight} />
+                  </div>
                   <div className="space-y-4">
                     {retentionRisk && (
                       <Card>
-                        <h3 className="text-sm font-semibold text-t1 mb-2">Retention Risk</h3>
+                        <h3 className="text-sm font-semibold text-t1 mb-2">{t('retentionRisk')}</h3>
                         <AIScoreBadge score={retentionRisk} size="md" showBreakdown />
                       </Card>
                     )}
-                    {careerRecs && careerRecs.length > 0 && (
+                    {enhancedCareer && enhancedCareer.length > 0 && (
                       <Card>
-                        <h3 className="text-sm font-semibold text-t1 mb-2">Career Path Suggestions</h3>
-                        <ul className="space-y-1">
-                          {careerRecs.map((rec: any, i: number) => (
-                            <li key={i} className="text-xs text-t2">- {rec.title}</li>
-                          ))}
-                        </ul>
+                        <div className="relative">
+                          {careerLoading && <AIEnhancingIndicator isLoading />}
+                          <h3 className="text-sm font-semibold text-t1 mb-2">{t('careerPathSuggestions')}</h3>
+                          <ul className="space-y-1">
+                            {enhancedCareer.map((rec: any, i: number) => (
+                              <li key={i} className="text-xs text-t2">- {rec.title}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </Card>
                     )}
                   </div>
@@ -173,7 +202,7 @@ export default function EmployeeDetailPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
-                <h3 className="text-sm font-semibold text-t1 mb-3">Goals</h3>
+                <h3 className="text-sm font-semibold text-t1 mb-3">{t('goals')}</h3>
                 {empGoals.length > 0 ? empGoals.map(g => (
                   <div key={g.id} className="flex items-center gap-3 mb-3">
                     <div className="flex-1">
@@ -182,25 +211,25 @@ export default function EmployeeDetailPage() {
                     </div>
                     <Badge variant={g.status === 'on_track' ? 'success' : g.status === 'at_risk' ? 'warning' : 'error'} />
                   </div>
-                )) : <p className="text-xs text-t3">No goals assigned</p>}
+                )) : <p className="text-xs text-t3">{t('noGoalsAssigned')}</p>}
               </Card>
               <Card>
-                <h3 className="text-sm font-semibold text-t1 mb-3">Reviews</h3>
+                <h3 className="text-sm font-semibold text-t1 mb-3">{t('reviews')}</h3>
                 {empReviews.length > 0 ? empReviews.map(r => (
                   <div key={r.id} className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-xs font-medium text-t1">{r.type} review</p>
-                      <p className="text-[0.65rem] text-t3">by {getEmployeeName(r.reviewer_id)}</p>
+                      <p className="text-xs font-medium text-t1">{t('reviewType', { type: r.type })}</p>
+                      <p className="text-[0.65rem] text-t3">{t('reviewBy', { name: getEmployeeName(r.reviewer_id) })}</p>
                     </div>
                     <div className="text-right">
-                      {r.overall_rating && <span className="tempo-stat text-tempo-600">{r.overall_rating}/5</span>}
+                      {r.overall_rating && <span className="tempo-stat text-tempo-600">{t('ratingOutOf', { rating: r.overall_rating })}</span>}
                       <Badge variant={r.status === 'submitted' ? 'success' : 'warning'} className="ml-2">{r.status.replace(/_/g, ' ')}</Badge>
                     </div>
                   </div>
-                )) : <p className="text-xs text-t3">No reviews yet</p>}
+                )) : <p className="text-xs text-t3">{t('noReviewsYet')}</p>}
               </Card>
               <Card>
-                <h3 className="text-sm font-semibold text-t1 mb-3">Feedback Received</h3>
+                <h3 className="text-sm font-semibold text-t1 mb-3">{t('feedbackReceived')}</h3>
                 {empFeedback.length > 0 ? empFeedback.slice(0, 3).map(f => (
                   <div key={f.id} className="mb-3">
                     <div className="flex items-center gap-2">
@@ -209,16 +238,16 @@ export default function EmployeeDetailPage() {
                     </div>
                     <p className="text-xs text-t2 mt-1 line-clamp-2">{f.content}</p>
                   </div>
-                )) : <p className="text-xs text-t3">No feedback received</p>}
+                )) : <p className="text-xs text-t3">{t('noFeedbackReceived')}</p>}
               </Card>
               <Card>
-                <h3 className="text-sm font-semibold text-t1 mb-3">Devices</h3>
+                <h3 className="text-sm font-semibold text-t1 mb-3">{t('devices')}</h3>
                 {empDevices.length > 0 ? empDevices.map(d => (
                   <div key={d.id} className="flex items-center justify-between mb-2">
                     <span className="text-xs text-t1">{d.brand} {d.model}</span>
                     <Badge>{d.type}</Badge>
                   </div>
-                )) : <p className="text-xs text-t3">No devices assigned</p>}
+                )) : <p className="text-xs text-t3">{t('noDevicesAssigned')}</p>}
               </Card>
             </div>
             </div>
@@ -226,7 +255,7 @@ export default function EmployeeDetailPage() {
 
           {activeTab === 'performance' && (
             <Card padding="none">
-              <CardHeader><CardTitle>Goals</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('goalsCardTitle')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {empGoals.map(g => (
                   <div key={g.id} className="px-6 py-4">
@@ -236,17 +265,17 @@ export default function EmployeeDetailPage() {
                     </div>
                     {g.description && <p className="text-xs text-t2 mb-2">{g.description}</p>}
                     <Progress value={g.progress} showLabel />
-                    <p className="text-xs text-t3 mt-1">Due: {g.due_date}</p>
+                    <p className="text-xs text-t3 mt-1">{t('due', { date: g.due_date })}</p>
                   </div>
                 ))}
-                {empGoals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No goals</div>}
+                {empGoals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noGoals')}</div>}
               </div>
             </Card>
           )}
 
           {activeTab === 'learning' && (
             <Card padding="none">
-              <CardHeader><CardTitle>Course Enrollments</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('courseEnrollments')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {empEnrollments.map(e => {
                   const course = courses.find(c => c.id === e.course_id)
@@ -260,62 +289,62 @@ export default function EmployeeDetailPage() {
                     </div>
                   )
                 })}
-                {empEnrollments.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No enrollments</div>}
+                {empEnrollments.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noEnrollments')}</div>}
               </div>
             </Card>
           )}
 
           {activeTab === 'time' && (
             <Card padding="none">
-              <CardHeader><CardTitle>Leave Requests</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('leaveRequests')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {empLeave.map(lr => (
                   <div key={lr.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-t1">{lr.type} leave</p>
-                      <p className="text-xs text-t3">{lr.start_date} to {lr.end_date} ({lr.days} days)</p>
+                      <p className="text-sm font-medium text-t1">{t('leaveType', { type: lr.type })}</p>
+                      <p className="text-xs text-t3">{t('leaveDateRange', { start: lr.start_date, end: lr.end_date, days: lr.days })}</p>
                       {lr.reason && <p className="text-xs text-t2 mt-1">{lr.reason}</p>}
                     </div>
                     <Badge variant={lr.status === 'approved' ? 'success' : lr.status === 'pending' ? 'warning' : 'error'}>{lr.status}</Badge>
                   </div>
                 ))}
-                {empLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No leave requests</div>}
+                {empLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noLeaveRequests')}</div>}
               </div>
             </Card>
           )}
 
           {activeTab === 'devices' && (
             <Card padding="none">
-              <CardHeader><CardTitle>Assigned Devices</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('assignedDevices')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {empDevices.map(d => (
                   <div key={d.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-t1">{d.brand} {d.model}</p>
-                      <p className="text-xs text-t3">S/N: {d.serial_number}</p>
+                      <p className="text-xs text-t3">{t('serialNumber', { serial: d.serial_number })}</p>
                     </div>
                     <Badge>{d.type}</Badge>
                   </div>
                 ))}
-                {empDevices.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No devices</div>}
+                {empDevices.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noDevices')}</div>}
               </div>
             </Card>
           )}
 
           {activeTab === 'expenses' && (
             <Card padding="none">
-              <CardHeader><CardTitle>Expense Reports</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('expenseReports')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {empExpenses.map(e => (
                   <div key={e.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-t1">{e.title}</p>
-                      <p className="text-xs text-t3">${e.total_amount.toLocaleString()} {e.currency}</p>
+                      <p className="text-xs text-t3">{t('expenseAmount', { amount: e.total_amount.toLocaleString(), currency: e.currency })}</p>
                     </div>
                     <Badge variant={e.status === 'approved' || e.status === 'reimbursed' ? 'success' : e.status === 'submitted' || e.status === 'pending_approval' ? 'warning' : 'default'}>{e.status.replace(/_/g, ' ')}</Badge>
                   </div>
                 ))}
-                {empExpenses.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No expense reports</div>}
+                {empExpenses.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noExpenseReports')}</div>}
               </div>
             </Card>
           )}
@@ -323,33 +352,33 @@ export default function EmployeeDetailPage() {
       </div>
 
       {/* Edit Profile Modal */}
-      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Profile" size="lg">
+      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title={t('editProfileModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Full Name" value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
-            <Input label="Email" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            <Input label={tp('fullName')} value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+            <Input label={tp('email')} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Job Title" value={editForm.job_title} onChange={(e) => setEditForm({ ...editForm, job_title: e.target.value })} />
-            <Input label="Phone" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+            <Input label={tp('jobTitle')} value={editForm.job_title} onChange={(e) => setEditForm({ ...editForm, job_title: e.target.value })} />
+            <Input label={tp('phone')} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <Select label="Department" value={editForm.department_id} onChange={(e) => setEditForm({ ...editForm, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
-            <Select label="Level" value={editForm.level} onChange={(e) => setEditForm({ ...editForm, level: e.target.value })} options={[
-              { value: 'Junior', label: 'Junior' }, { value: 'Associate', label: 'Associate' },
-              { value: 'Mid', label: 'Mid' }, { value: 'Senior', label: 'Senior' },
-              { value: 'Manager', label: 'Manager' }, { value: 'Director', label: 'Director' },
-              { value: 'Executive', label: 'Executive' },
+            <Select label={tc('department')} value={editForm.department_id} onChange={(e) => setEditForm({ ...editForm, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
+            <Select label={tp('levelLabel')} value={editForm.level} onChange={(e) => setEditForm({ ...editForm, level: e.target.value })} options={[
+              { value: 'Junior', label: tp('levelJunior') }, { value: 'Associate', label: tp('levelAssociate') },
+              { value: 'Mid', label: tp('levelMid') }, { value: 'Senior', label: tp('levelSenior') },
+              { value: 'Manager', label: tp('levelManager') }, { value: 'Director', label: tp('levelDirector') },
+              { value: 'Executive', label: tp('levelExecutive') },
             ]} />
-            <Select label="Country" value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} options={[
-              { value: 'Nigeria', label: 'Nigeria' }, { value: 'Ghana', label: 'Ghana' },
-              { value: "Cote d'Ivoire", label: "Cote d'Ivoire" }, { value: 'Kenya', label: 'Kenya' },
-              { value: 'Senegal', label: 'Senegal' },
+            <Select label={tp('countryLabel')} value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} options={[
+              { value: 'Nigeria', label: tc('countryNigeria') }, { value: 'Ghana', label: tc('countryGhana') },
+              { value: "Cote d'Ivoire", label: tc('countryCoteDIvoire') }, { value: 'Kenya', label: tc('countryKenya') },
+              { value: 'Senegal', label: tc('countrySenegal') },
             ]} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
-            <Button onClick={submitEdit}>Save Changes</Button>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitEdit}>{tc('saveChanges')}</Button>
           </div>
         </div>
       </Modal>

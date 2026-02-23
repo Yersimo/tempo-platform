@@ -10,3 +10,16 @@ export const db = drizzle(sql, { schema })
 
 // Re-export schema for convenience
 export { schema }
+
+// ─── Row-Level Security (RLS) ──────────────────────────────────────────
+// RLS policies are defined in drizzle/0001_rls_policies.sql
+// They use current_setting('app.current_org_id') to scope all queries.
+//
+// With neon-http (stateless), SET commands don't persist across queries.
+// For production multi-tenant deployment:
+// 1. Switch to @neondatabase/serverless WebSocket driver
+// 2. Use db.transaction() to SET app.current_org_id per-request
+// 3. Enable FORCE ROW LEVEL SECURITY on all tables
+//
+// Current enforcement is at the application layer (middleware + API routes).
+// RLS provides defense-in-depth when activated with the WebSocket driver.

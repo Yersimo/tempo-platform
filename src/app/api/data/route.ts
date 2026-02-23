@@ -52,6 +52,19 @@ export async function GET(request: NextRequest) {
       dbBudgets,
       dbVendors,
       dbAuditLog,
+      dbProjects,
+      dbMilestones,
+      dbTasks,
+      dbTaskDependencies,
+      dbStrategicObjectives,
+      dbKeyResults,
+      dbInitiatives,
+      dbKpiDefinitions,
+      dbKpiMeasurements,
+      dbWorkflows,
+      dbWorkflowSteps,
+      dbWorkflowRuns,
+      dbWorkflowTemplates,
     ] = await Promise.all([
       db.select().from(schema.departments).where(eq(schema.departments.orgId, orgId)),
       db.select().from(schema.employees).where(eq(schema.employees.orgId, orgId)),
@@ -83,11 +96,39 @@ export async function GET(request: NextRequest) {
       db.select().from(schema.budgets).where(eq(schema.budgets.orgId, orgId)),
       db.select().from(schema.vendors).where(eq(schema.vendors.orgId, orgId)),
       db.select().from(schema.auditLog).where(eq(schema.auditLog.orgId, orgId)),
+      // Phase 3: Project Management
+      db.select().from(schema.projects).where(eq(schema.projects.orgId, orgId)),
+      db.select().from(schema.milestones).where(eq(schema.milestones.orgId, orgId)),
+      db.select().from(schema.tasks).where(eq(schema.tasks.orgId, orgId)),
+      db.select().from(schema.taskDependencies),
+      // Phase 3: Strategy Execution
+      db.select().from(schema.strategicObjectives).where(eq(schema.strategicObjectives.orgId, orgId)),
+      db.select().from(schema.keyResults).where(eq(schema.keyResults.orgId, orgId)),
+      db.select().from(schema.initiatives).where(eq(schema.initiatives.orgId, orgId)),
+      db.select().from(schema.kpiDefinitions).where(eq(schema.kpiDefinitions.orgId, orgId)),
+      db.select().from(schema.kpiMeasurements),
+      // Phase 3: Workflow Studio
+      db.select().from(schema.workflows).where(eq(schema.workflows.orgId, orgId)),
+      db.select().from(schema.workflowSteps),
+      db.select().from(schema.workflowRuns).where(eq(schema.workflowRuns.orgId, orgId)),
+      db.select().from(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId)),
     ])
 
     // Build a set of report IDs that belong to this org so we can scope expense items
     const orgReportIds = new Set(dbExpenseReports.map((r) => r.id))
     const scopedExpenseItems = dbExpenseItems.filter((i) => orgReportIds.has(i.reportId))
+
+    // Scope taskDependencies to tasks belonging to this org
+    const orgTaskIds = new Set(dbTasks.map((t) => t.id))
+    const scopedTaskDependencies = dbTaskDependencies.filter((d) => orgTaskIds.has(d.taskId))
+
+    // Scope kpiMeasurements to KPIs belonging to this org
+    const orgKpiIds = new Set(dbKpiDefinitions.map((k) => k.id))
+    const scopedKpiMeasurements = dbKpiMeasurements.filter((m) => orgKpiIds.has(m.kpiId))
+
+    // Scope workflowSteps to workflows belonging to this org
+    const orgWorkflowIds = new Set(dbWorkflows.map((w) => w.id))
+    const scopedWorkflowSteps = dbWorkflowSteps.filter((s) => orgWorkflowIds.has(s.workflowId))
 
     // -----------------------------------------------------------------------
     // Transform DB rows (camelCase) to the snake_case shapes the UI expects
@@ -486,6 +527,70 @@ export async function GET(request: NextRequest) {
         created_at: v.createdAt,
       })),
 
+      // Phase 3: Project Management
+      projects: dbProjects.map((p) => ({
+        id: p.id, org_id: p.orgId, title: p.title, description: p.description,
+        status: p.status, owner_id: p.ownerId, start_date: p.startDate, end_date: p.endDate,
+        budget: p.budget, currency: p.currency, created_at: p.createdAt, updated_at: p.updatedAt,
+      })),
+      milestones: dbMilestones.map((m) => ({
+        id: m.id, org_id: m.orgId, project_id: m.projectId, title: m.title,
+        due_date: m.dueDate, status: m.status, created_at: m.createdAt,
+      })),
+      tasks: dbTasks.map((t) => ({
+        id: t.id, org_id: t.orgId, project_id: t.projectId, milestone_id: t.milestoneId,
+        title: t.title, description: t.description, status: t.status, priority: t.priority,
+        assignee_id: t.assigneeId, due_date: t.dueDate, estimated_hours: t.estimatedHours,
+        actual_hours: t.actualHours, created_at: t.createdAt, updated_at: t.updatedAt,
+      })),
+      taskDependencies: scopedTaskDependencies.map((d) => ({
+        id: d.id, task_id: d.taskId, depends_on_task_id: d.dependsOnTaskId,
+      })),
+      // Phase 3: Strategy Execution
+      strategicObjectives: dbStrategicObjectives.map((o) => ({
+        id: o.id, org_id: o.orgId, title: o.title, description: o.description,
+        status: o.status, owner_id: o.ownerId, period: o.period, progress: o.progress,
+        created_at: o.createdAt, updated_at: o.updatedAt,
+      })),
+      keyResults: dbKeyResults.map((kr) => ({
+        id: kr.id, org_id: kr.orgId, objective_id: kr.objectiveId, title: kr.title,
+        target_value: kr.targetValue, current_value: kr.currentValue, unit: kr.unit,
+        owner_id: kr.ownerId, due_date: kr.dueDate, created_at: kr.createdAt, updated_at: kr.updatedAt,
+      })),
+      initiatives: dbInitiatives.map((i) => ({
+        id: i.id, org_id: i.orgId, objective_id: i.objectiveId, title: i.title,
+        description: i.description, status: i.status, owner_id: i.ownerId,
+        start_date: i.startDate, end_date: i.endDate, progress: i.progress,
+        budget: i.budget, currency: i.currency, created_at: i.createdAt, updated_at: i.updatedAt,
+      })),
+      kpiDefinitions: dbKpiDefinitions.map((k) => ({
+        id: k.id, org_id: k.orgId, name: k.name, description: k.description,
+        unit: k.unit, target_value: k.targetValue, frequency: k.frequency,
+        department_id: k.departmentId, owner_id: k.ownerId, created_at: k.createdAt,
+      })),
+      kpiMeasurements: scopedKpiMeasurements.map((m) => ({
+        id: m.id, kpi_id: m.kpiId, value: m.value, period: m.period,
+        recorded_at: m.recordedAt, notes: m.notes,
+      })),
+      // Phase 3: Workflow Studio
+      workflows: dbWorkflows.map((w) => ({
+        id: w.id, org_id: w.orgId, title: w.title, description: w.description,
+        status: w.status, trigger_type: w.triggerType, trigger_config: w.triggerConfig,
+        created_by: w.createdBy, created_at: w.createdAt, updated_at: w.updatedAt,
+      })),
+      workflowSteps: scopedWorkflowSteps.map((s) => ({
+        id: s.id, workflow_id: s.workflowId, step_type: s.stepType, title: s.title,
+        config: s.config, position: s.position, next_step_id: s.nextStepId, created_at: s.createdAt,
+      })),
+      workflowRuns: dbWorkflowRuns.map((r) => ({
+        id: r.id, org_id: r.orgId, workflow_id: r.workflowId, status: r.status,
+        started_at: r.startedAt, completed_at: r.completedAt, triggered_by: r.triggeredBy, context: r.context,
+      })),
+      workflowTemplates: dbWorkflowTemplates.map((t) => ({
+        id: t.id, org_id: t.orgId, title: t.title, description: t.description,
+        category: t.category, config: t.config, created_at: t.createdAt,
+      })),
+
       auditLog: dbAuditLog.map((a) => ({
         id: a.id,
         org_id: a.orgId,
@@ -544,6 +649,22 @@ const tables: Record<string, any> = {
   invoices: schema.invoices,
   budgets: schema.budgets,
   vendors: schema.vendors,
+  // Phase 3: Project Management
+  projects: schema.projects,
+  milestones: schema.milestones,
+  tasks: schema.tasks,
+  taskDependencies: schema.taskDependencies,
+  // Phase 3: Strategy Execution
+  strategicObjectives: schema.strategicObjectives,
+  keyResults: schema.keyResults,
+  initiatives: schema.initiatives,
+  kpiDefinitions: schema.kpiDefinitions,
+  kpiMeasurements: schema.kpiMeasurements,
+  // Phase 3: Workflow Studio
+  workflows: schema.workflows,
+  workflowSteps: schema.workflowSteps,
+  workflowRuns: schema.workflowRuns,
+  workflowTemplates: schema.workflowTemplates,
   auditLog: schema.auditLog,
 }
 
@@ -627,6 +748,80 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
     }
 
+    // ─── RBAC: Role-Based Access Control ───────────────────────────────
+    const employeeRole = request.headers.get('x-employee-role') || 'employee'
+    const employeeId = request.headers.get('x-employee-id') || ''
+
+    // Define write permissions per role
+    const ROLE_PERMISSIONS: Record<string, Set<string> | 'all'> = {
+      owner: 'all',
+      admin: 'all', // admin can do everything except we block org deletion below
+      hrbp: new Set([
+        'employees', 'goals', 'reviewCycles', 'reviews', 'feedback',
+        'compBands', 'salaryReviews', 'courses', 'enrollments',
+        'surveys', 'engagementScores', 'mentoringPrograms', 'mentoringPairs',
+        'leaveRequests', 'benefitPlans', 'benefitEnrollments',
+        'expenseReports', 'expenseItems', 'jobPostings', 'applications',
+        'projects', 'milestones', 'tasks', 'taskDependencies',
+        'strategicObjectives', 'keyResults', 'initiatives',
+        'kpiDefinitions', 'kpiMeasurements',
+        'workflows', 'workflowSteps', 'workflowRuns', 'workflowTemplates',
+      ]),
+      manager: new Set([
+        'goals', 'reviews', 'feedback', 'enrollments', 'leaveRequests',
+        'tasks', 'milestones', 'taskDependencies',
+        'kpiMeasurements', 'workflowRuns',
+      ]),
+      employee: new Set([
+        'goals', 'feedback', 'enrollments', 'leaveRequests', 'tasks',
+      ]),
+    }
+
+    // Check entity-level permission
+    const permissions = ROLE_PERMISSIONS[employeeRole] || ROLE_PERMISSIONS['employee']
+    if (permissions !== 'all' && !permissions.has(entity)) {
+      return NextResponse.json(
+        { error: `Forbidden: ${employeeRole} role cannot modify ${entity}` },
+        { status: 403 }
+      )
+    }
+
+    // Block non-owner from modifying organizations
+    if (entity === 'organizations' && employeeRole !== 'owner') {
+      return NextResponse.json(
+        { error: 'Forbidden: only owner can modify organization settings' },
+        { status: 403 }
+      )
+    }
+
+    // For employee role: enforce "own records only" restriction
+    if (employeeRole === 'employee' && data) {
+      const ownedEntities = ['goals', 'feedback', 'enrollments', 'leaveRequests', 'tasks']
+      if (ownedEntities.includes(entity)) {
+        // On create: force employee_id/assignee_id to self
+        if (action === 'create') {
+          if (entity === 'tasks' && data.assignee_id) {
+            // employees can only create tasks assigned to themselves
+            if (data.assignee_id !== employeeId) {
+              return NextResponse.json(
+                { error: 'Forbidden: employees can only create tasks assigned to themselves' },
+                { status: 403 }
+              )
+            }
+          } else if (entity !== 'tasks') {
+            // For goals, feedback, enrollments, leaveRequests: employee_id must be self
+            const eid = data.employee_id || data.from_id
+            if (eid && eid !== employeeId) {
+              return NextResponse.json(
+                { error: 'Forbidden: employees can only modify their own records' },
+                { status: 403 }
+              )
+            }
+          }
+        }
+      }
+    }
+
     // ----- CREATE -----
     if (action === 'create') {
       if (!data) {
@@ -642,17 +837,46 @@ export async function POST(request: NextRequest) {
         prepared.orgId = orgId
       }
 
+      // Write-ahead audit: record intent BEFORE mutation
+      // Generate a provisional ID for the audit entry
+      const provisionalId = crypto.randomUUID()
+      try {
+        await db.insert(schema.auditLog).values({
+          orgId,
+          userId: employeeId || null,
+          action: 'create',
+          entityType: entity,
+          entityId: provisionalId,
+          details: JSON.stringify({ ...prepared, _provisional: true }),
+        })
+      } catch (auditErr) {
+        console.error('[AUDIT FAIL] Create audit write failed:', auditErr)
+        return NextResponse.json(
+          { error: 'Audit trail write failed. Mutation blocked for compliance.' },
+          { status: 500 },
+        )
+      }
+
+      // Now perform the actual mutation
       const rows = await db.insert(table).values(prepared).returning() as any[]
       const created = rows[0]
 
-      // Audit log
-      await db.insert(schema.auditLog).values({
-        orgId,
-        action: 'create',
-        entityType: entity,
-        entityId: created.id,
-        details: JSON.stringify(prepared),
-      })
+      // Update audit entry with actual entity ID (best-effort, entity is already created)
+      try {
+        await db.update(schema.auditLog)
+          .set({
+            entityId: created.id,
+            details: JSON.stringify(prepared),
+          })
+          .where(and(
+            eq(schema.auditLog.entityId, provisionalId),
+            eq(schema.auditLog.entityType, entity),
+            eq(schema.auditLog.orgId, orgId),
+          ))
+      } catch {
+        // Non-critical: audit entry exists with provisional ID
+        console.warn('[AUDIT] Could not update provisional audit entry')
+      }
 
       return NextResponse.json(created, { status: 201 })
     }
@@ -676,6 +900,24 @@ export async function POST(request: NextRequest) {
         prepared.updatedAt = new Date()
       }
 
+      // Write-ahead audit: record intent BEFORE mutation
+      try {
+        await db.insert(schema.auditLog).values({
+          orgId,
+          userId: employeeId || null,
+          action: 'update',
+          entityType: entity,
+          entityId: id!,
+          details: JSON.stringify(prepared),
+        })
+      } catch (auditErr) {
+        console.error('[AUDIT FAIL] Update audit write failed:', auditErr)
+        return NextResponse.json(
+          { error: 'Audit trail write failed. Mutation blocked for compliance.' },
+          { status: 500 },
+        )
+      }
+
       // Scope update to the user's org for tables with orgId
       const hasOrgId = 'orgId' in table && entity !== 'organizations'
       const whereClause = hasOrgId
@@ -696,21 +938,29 @@ export async function POST(request: NextRequest) {
       }
 
       const updated = rows[0]
-
-      // Audit log
-      await db.insert(schema.auditLog).values({
-        orgId,
-        action: 'update',
-        entityType: entity,
-        entityId: id!,
-        details: JSON.stringify(prepared),
-      })
-
       return NextResponse.json(updated)
     }
 
     // ----- DELETE -----
     if (action === 'delete') {
+      // Write-ahead audit: record intent BEFORE mutation
+      try {
+        await db.insert(schema.auditLog).values({
+          orgId,
+          userId: employeeId || null,
+          action: 'delete',
+          entityType: entity,
+          entityId: id!,
+          details: JSON.stringify({ deleted: true }),
+        })
+      } catch (auditErr) {
+        console.error('[AUDIT FAIL] Delete audit write failed:', auditErr)
+        return NextResponse.json(
+          { error: 'Audit trail write failed. Mutation blocked for compliance.' },
+          { status: 500 },
+        )
+      }
+
       // Scope delete to the user's org for tables with orgId
       const hasOrgId = 'orgId' in table && entity !== 'organizations'
       const whereClause = hasOrgId
@@ -728,15 +978,6 @@ export async function POST(request: NextRequest) {
           { status: 404 },
         )
       }
-
-      // Audit log
-      await db.insert(schema.auditLog).values({
-        orgId,
-        action: 'delete',
-        entityType: entity,
-        entityId: id!,
-        details: null,
-      })
 
       return NextResponse.json({ success: true })
     }

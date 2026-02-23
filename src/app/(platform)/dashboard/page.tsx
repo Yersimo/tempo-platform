@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useAI } from '@/lib/use-ai'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { StatCard } from '@/components/ui/stat-card'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +15,7 @@ import {
   Receipt, UserCheck, ArrowDownRight, Clock
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
+import { AIInsightCard, AIRecommendationList, AIAlertBanner, AIEnhancingIndicator } from '@/components/ai'
 import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import Link from 'next/link'
 
@@ -25,6 +27,9 @@ export default function DashboardPage() {
     updateLeaveRequest, reviewCycles, salaryReviews, surveys,
     engagementScores, applications, currentUser, currentEmployeeId,
   } = useTempo()
+
+  const t = useTranslations('dashboard')
+  const tc = useTranslations('common')
 
   const firstName = currentUser?.full_name?.split(' ')[0] || 'Amara'
 
@@ -45,23 +50,32 @@ export default function DashboardPage() {
   const nextActions = useMemo(() => identifyNextBestActions({ reviews, leaveRequests, expenseReports, salaryReviews, goals, jobPostings, applications }), [reviews, leaveRequests, expenseReports])
   const aiAnomalies = useMemo(() => detectCrossModuleAnomalies({ employees, reviews, engagementScores, salaryReviews, goals, mentoringPairs, leaveRequests }), [employees, reviews, goals])
 
+  // Claude AI enhancement - executive summary
+  const { result: enhancedSummary, isLoading: summaryLoading } = useAI({
+    action: 'enhanceNarrative',
+    data: { summary: execSummary, employees: employees.length, goals: goals.length, reviews: reviews.length },
+    fallback: execSummary,
+    enabled: !!execSummary.summary,
+    cacheKey: `dashboard-summary-${employees.length}-${goals.length}`,
+  })
+
   return (
     <>
       <Header
-        title="Dashboard"
-        subtitle={`Welcome back, ${firstName}. Here is your organization overview.`}
+        title={t('title')}
+        subtitle={t('welcomeBack', { name: firstName })}
       />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Headcount" value={headcount} change={`${activeGoals} active goals`} changeType="neutral" icon={<Users size={24} />} />
-        <StatCard label="Review Completion" value={`${reviewCompletion}%`} change={`${ratedReviews.length} rated`} changeType="positive" icon={<TrendingUp size={24} />} />
-        <StatCard label="Active Learners" value={activeLearners} change={`${enrollments.length} enrollments`} changeType="neutral" icon={<GraduationCap size={24} />} />
-        <StatCard label="Open Positions" value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} total applicants`} changeType="neutral" icon={<Briefcase size={24} />} />
-        <StatCard label="Pending Expenses" value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
-        <StatCard label="Mentoring Pairs" value={activeMentoringPairs} change={`${mentoringPairs.length} total`} changeType="positive" icon={<UserCheck size={24} />} />
-        <StatCard label="Pending Leave" value={pendingLeave.length} change="Awaiting approval" changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
-        <StatCard label="Last Payroll" value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || 'No runs'} changeType="neutral" icon={<Banknote size={24} />} />
+        <StatCard label={t('headcount')} value={headcount} change={`${activeGoals} ${t('activeGoals').toLowerCase()}`} changeType="neutral" icon={<Users size={24} />} />
+        <StatCard label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
+        <StatCard label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
+        <StatCard label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
+        <StatCard label={t('pendingExpenses')} value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
+        <StatCard label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
+        <StatCard label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
+        <StatCard label={t('lastPayroll')} value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
       </div>
 
       {/* AI Insights Section */}
@@ -69,8 +83,11 @@ export default function DashboardPage() {
         <AIAlertBanner insights={aiAnomalies} className="mb-4" />
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <AIInsightCard insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: 'Executive Summary', description: execSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: execSummary.bulletPoints[0] || '', module: 'dashboard' }} />
-        <AIRecommendationList title="Recommended Next Actions" recommendations={nextActions} />
+        <div className="relative">
+          {summaryLoading && <AIEnhancingIndicator isLoading />}
+          <AIInsightCard insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: t('executiveSummary'), description: enhancedSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: enhancedSummary.bulletPoints[0] || '', module: 'dashboard' }} />
+        </div>
+        <AIRecommendationList title={t('recommendedActions')} recommendations={nextActions} />
       </div>
 
       {/* Content Grid */}
@@ -79,8 +96,8 @@ export default function DashboardPage() {
         <Card padding="none" className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Active Goals</CardTitle>
-              <Link href="/performance"><Button variant="ghost" size="sm">View all</Button></Link>
+              <CardTitle>{t('goalsTitle')}</CardTitle>
+              <Link href="/performance"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
@@ -99,13 +116,13 @@ export default function DashboardPage() {
                 </Badge>
               </div>
             ))}
-            {goals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No goals yet</div>}
+            {goals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noGoals')}</div>}
           </div>
         </Card>
 
         {/* Activity Feed */}
         <Card padding="none">
-          <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('recentActivity')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
             {auditLog.length > 0 ? auditLog.slice(0, 8).map((entry) => (
               <div key={entry.id} className="px-6 py-3">
@@ -122,7 +139,7 @@ export default function DashboardPage() {
                   <Avatar name={getEmployeeName(fb.from_id)} size="xs" />
                   <span className="text-xs font-medium text-t1">{getEmployeeName(fb.from_id)}</span>
                   <span className="text-[0.65rem] text-t3">
-                    {fb.type === 'recognition' ? 'recognized' : fb.type === 'feedback' ? 'gave feedback to' : 'checked in with'}
+                    {fb.type === 'recognition' ? t('recognized') : fb.type === 'feedback' ? t('gaveFeedback') : t('checkedIn')}
                   </span>
                   <span className="text-xs font-medium text-t1">{getEmployeeName(fb.to_id)}</span>
                 </div>
@@ -136,7 +153,7 @@ export default function DashboardPage() {
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Pending Leave Requests</CardTitle>
+              <CardTitle>{t('pendingLeaveRequests')}</CardTitle>
               <Badge variant="warning">{pendingLeave.length}</Badge>
             </div>
           </CardHeader>
@@ -149,12 +166,12 @@ export default function DashboardPage() {
                   <p className="text-[0.65rem] text-t3">{lr.type} - {lr.days} days ({lr.start_date})</p>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="primary" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'approved', approved_by: currentEmployeeId })}>Approve</Button>
-                  <Button variant="ghost" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'rejected' })}>Deny</Button>
+                  <Button variant="primary" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'approved', approved_by: currentEmployeeId })}>{tc('approve')}</Button>
+                  <Button variant="ghost" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'rejected' })}>{tc('deny')}</Button>
                 </div>
               </div>
             ))}
-            {pendingLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No pending requests</div>}
+            {pendingLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noPending')}</div>}
           </div>
         </Card>
 
@@ -162,8 +179,8 @@ export default function DashboardPage() {
         <Card padding="none" className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Open Positions</CardTitle>
-              <Link href="/recruiting"><Button variant="ghost" size="sm">View all</Button></Link>
+              <CardTitle>{t('openPositionsTitle')}</CardTitle>
+              <Link href="/recruiting"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
@@ -177,13 +194,13 @@ export default function DashboardPage() {
                   <p className="text-[0.65rem] text-t3">{job.location}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-semibold text-t1">{job.application_count} applicants</p>
+                  <p className="text-xs font-semibold text-t1">{job.application_count} {t('applicants')}</p>
                   <p className="text-[0.65rem] text-t3">{job.type.replace(/_/g, ' ')}</p>
                 </div>
-                <Badge variant="orange">Open</Badge>
+                <Badge variant="orange">{tc('open')}</Badge>
               </div>
             ))}
-            {jobPostings.filter(j => j.status === 'open').length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">No open positions</div>}
+            {jobPostings.filter(j => j.status === 'open').length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noOpenPositions')}</div>}
           </div>
         </Card>
       </div>

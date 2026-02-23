@@ -14,6 +14,10 @@ import {
   demoDevices, demoSoftwareLicenses, demoITRequests,
   demoInvoices, demoBudgets, demoVendors,
   demoCredentials,
+  demoProjects, demoMilestones, demoTasks, demoTaskDependencies,
+  demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
+  demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
+  demoNotifications,
 } from './demo-data'
 import type { DemoRole } from './demo-data'
 
@@ -115,6 +119,29 @@ interface TempoState {
   invoices: WidenArray<typeof demoInvoices>
   budgets: WidenArray<typeof demoBudgets>
   vendors: typeof demoVendors
+
+  // Project Management
+  projects: WidenArray<typeof demoProjects>
+  milestones: WidenArray<typeof demoMilestones>
+  tasks: WidenArray<typeof demoTasks>
+  taskDependencies: typeof demoTaskDependencies
+
+  // Strategy Execution
+  strategicObjectives: WidenArray<typeof demoStrategicObjectives>
+  keyResults: WidenArray<typeof demoKeyResults>
+  initiatives: WidenArray<typeof demoInitiatives>
+  kpiDefinitions: WidenArray<typeof demoKPIDefinitions>
+  kpiMeasurements: WidenArray<typeof demoKPIMeasurements>
+
+  // Workflow Studio
+  workflows: WidenArray<typeof demoWorkflows>
+  workflowSteps: WidenArray<typeof demoWorkflowSteps>
+  workflowRuns: WidenArray<typeof demoWorkflowRuns>
+  workflowTemplates: WidenArray<typeof demoWorkflowTemplates>
+
+  // Notifications
+  notifications: WidenArray<typeof demoNotifications>
+  unreadNotificationCount: number
 
   // Audit
   auditLog: AuditEntry[]
@@ -233,11 +260,66 @@ interface TempoState {
   addDepartment: (data: AnyRecord) => void
   updateDepartment: (id: string, data: AnyRecord) => void
 
+  // Projects
+  addProject: (data: AnyRecord) => void
+  updateProject: (id: string, data: AnyRecord) => void
+  deleteProject: (id: string) => void
+
+  // Milestones
+  addMilestone: (data: AnyRecord) => void
+  updateMilestone: (id: string, data: AnyRecord) => void
+
+  // Tasks
+  addTask: (data: AnyRecord) => void
+  updateTask: (id: string, data: AnyRecord) => void
+  deleteTask: (id: string) => void
+
+  // Strategic Objectives
+  addStrategicObjective: (data: AnyRecord) => void
+  updateStrategicObjective: (id: string, data: AnyRecord) => void
+  deleteStrategicObjective: (id: string) => void
+
+  // Key Results
+  addKeyResult: (data: AnyRecord) => void
+  updateKeyResult: (id: string, data: AnyRecord) => void
+  deleteKeyResult: (id: string) => void
+
+  // Initiatives
+  addInitiative: (data: AnyRecord) => void
+  updateInitiative: (id: string, data: AnyRecord) => void
+  deleteInitiative: (id: string) => void
+
+  // KPI Definitions
+  addKPIDefinition: (data: AnyRecord) => void
+  updateKPIDefinition: (id: string, data: AnyRecord) => void
+
+  // KPI Measurements
+  addKPIMeasurement: (data: AnyRecord) => void
+
+  // Workflows
+  addWorkflow: (data: AnyRecord) => void
+  updateWorkflow: (id: string, data: AnyRecord) => void
+  deleteWorkflow: (id: string) => void
+
+  // Workflow Steps
+  addWorkflowStep: (data: AnyRecord) => void
+  updateWorkflowStep: (id: string, data: AnyRecord) => void
+  deleteWorkflowStep: (id: string) => void
+
+  // Workflow Runs
+  addWorkflowRun: (data: AnyRecord) => void
+  updateWorkflowRun: (id: string, data: AnyRecord) => void
+
+  // Notifications
+  markNotificationRead: (id: string) => void
+  markAllNotificationsRead: () => void
+
   // Org
   updateOrg: (data: AnyRecord) => void
 
   // Auth
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<boolean | { requiresMFA: true; mfaToken: string }>
+  verifyMFA: (mfaToken: string, code: string) => Promise<boolean>
   logout: () => Promise<void> | void
   switchUser: (employeeId: string) => Promise<void> | void
   isLoggedIn: boolean
@@ -344,6 +426,24 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [invoices, setInvoices] = useState(demoInvoices)
   const [budgets, setBudgets] = useState(demoBudgets)
   const [vendors, setVendors] = useState(demoVendors)
+  // Project Management
+  const [projects, setProjects] = useState(demoProjects)
+  const [milestones, setMilestones] = useState(demoMilestones)
+  const [tasks, setTasks] = useState(demoTasks)
+  const [taskDependencies, setTaskDependencies] = useState(demoTaskDependencies)
+  // Strategy Execution
+  const [strategicObjectives, setStrategicObjectives] = useState(demoStrategicObjectives)
+  const [keyResults, setKeyResults] = useState(demoKeyResults)
+  const [initiatives, setInitiatives] = useState(demoInitiatives)
+  const [kpiDefinitions, setKPIDefinitions] = useState(demoKPIDefinitions)
+  const [kpiMeasurements, setKPIMeasurements] = useState(demoKPIMeasurements)
+  // Workflow Studio
+  const [workflows, setWorkflows] = useState(demoWorkflows)
+  const [workflowSteps, setWorkflowSteps] = useState(demoWorkflowSteps)
+  const [workflowRuns, setWorkflowRuns] = useState(demoWorkflowRuns)
+  const [workflowTemplates, setWorkflowTemplates] = useState(demoWorkflowTemplates)
+  // Notifications
+  const [notifications, setNotifications] = useState(demoNotifications)
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -408,6 +508,24 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         if (data.invoices?.length) setInvoices(data.invoices)
         if (data.budgets?.length) setBudgets(data.budgets)
         if (data.vendors?.length) setVendors(data.vendors)
+        // Phase 3: Project Management
+        if (data.projects?.length) setProjects(data.projects)
+        if (data.milestones?.length) setMilestones(data.milestones)
+        if (data.tasks?.length) setTasks(data.tasks)
+        if (data.taskDependencies?.length) setTaskDependencies(data.taskDependencies)
+        // Phase 3: Strategy Execution
+        if (data.strategicObjectives?.length) setStrategicObjectives(data.strategicObjectives)
+        if (data.keyResults?.length) setKeyResults(data.keyResults)
+        if (data.initiatives?.length) setInitiatives(data.initiatives)
+        if (data.kpiDefinitions?.length) setKPIDefinitions(data.kpiDefinitions)
+        if (data.kpiMeasurements?.length) setKPIMeasurements(data.kpiMeasurements)
+        // Phase 3: Workflow Studio
+        if (data.workflows?.length) setWorkflows(data.workflows)
+        if (data.workflowSteps?.length) setWorkflowSteps(data.workflowSteps)
+        if (data.workflowRuns?.length) setWorkflowRuns(data.workflowRuns)
+        if (data.workflowTemplates?.length) setWorkflowTemplates(data.workflowTemplates)
+        // Notifications
+        if (data.notifications?.length) setNotifications(data.notifications)
         if (data.auditLog?.length) setAuditLog(data.auditLog.map((a: AnyRecord) => ({
           id: a.id,
           user: a.user_id || '',
@@ -893,6 +1011,239 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('departments', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- CRUD: Projects ----
+  const addProject = useCallback((data: AnyRecord) => {
+    const id = genId('proj')
+    setProjects(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'project', id, `Created project: ${data.title}`)
+    addToast('Project created')
+    apiPost('projects', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateProject = useCallback((id: string, data: AnyRecord) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'project', id, 'Updated project')
+    addToast('Project updated')
+    apiPost('projects', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteProject = useCallback((id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id))
+    setMilestones(prev => prev.filter(m => m.project_id !== id))
+    setTasks(prev => prev.filter(t => t.project_id !== id))
+    logAudit('delete', 'project', id, 'Deleted project')
+    addToast('Project deleted')
+    apiPost('projects', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Milestones ----
+  const addMilestone = useCallback((data: AnyRecord) => {
+    const id = genId('mile')
+    setMilestones(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'milestone', id, `Created milestone: ${data.title}`)
+    addToast('Milestone created')
+    apiPost('milestones', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateMilestone = useCallback((id: string, data: AnyRecord) => {
+    setMilestones(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
+    logAudit('update', 'milestone', id, 'Updated milestone')
+    addToast('Milestone updated')
+    apiPost('milestones', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Tasks ----
+  const addTask = useCallback((data: AnyRecord) => {
+    const id = genId('task')
+    setTasks(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'task', id, `Created task: ${data.title}`)
+    addToast('Task created')
+    apiPost('tasks', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateTask = useCallback((id: string, data: AnyRecord) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'task', id, 'Updated task')
+    addToast('Task updated')
+    apiPost('tasks', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteTask = useCallback((id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id))
+    setTaskDependencies(prev => prev.filter(d => d.task_id !== id && d.depends_on_task_id !== id))
+    logAudit('delete', 'task', id, 'Deleted task')
+    addToast('Task deleted')
+    apiPost('tasks', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Strategic Objectives ----
+  const addStrategicObjective = useCallback((data: AnyRecord) => {
+    const id = genId('obj')
+    setStrategicObjectives(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'strategic_objective', id, `Created objective: ${data.title}`)
+    addToast('Strategic objective created')
+    apiPost('strategicObjectives', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateStrategicObjective = useCallback((id: string, data: AnyRecord) => {
+    setStrategicObjectives(prev => prev.map(o => o.id === id ? { ...o, ...data } : o) as typeof prev)
+    logAudit('update', 'strategic_objective', id, 'Updated strategic objective')
+    addToast('Objective updated')
+    apiPost('strategicObjectives', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteStrategicObjective = useCallback((id: string) => {
+    setStrategicObjectives(prev => prev.filter(o => o.id !== id) as typeof prev)
+    setKeyResults(prev => prev.filter(kr => kr.objective_id !== id) as typeof prev)
+    logAudit('delete', 'strategic_objective', id, 'Deleted strategic objective')
+    addToast('Objective deleted')
+    apiPost('strategicObjectives', 'delete', {}, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Key Results ----
+  const addKeyResult = useCallback((data: AnyRecord) => {
+    const id = genId('kr')
+    setKeyResults(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'key_result', id, `Created key result: ${data.title}`)
+    addToast('Key result created')
+    apiPost('keyResults', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateKeyResult = useCallback((id: string, data: AnyRecord) => {
+    setKeyResults(prev => prev.map(kr => kr.id === id ? { ...kr, ...data } : kr) as typeof prev)
+    logAudit('update', 'key_result', id, 'Updated key result')
+    addToast('Key result updated')
+    apiPost('keyResults', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteKeyResult = useCallback((id: string) => {
+    setKeyResults(prev => prev.filter(kr => kr.id !== id) as typeof prev)
+    logAudit('delete', 'key_result', id, 'Deleted key result')
+    addToast('Key result deleted')
+    apiPost('keyResults', 'delete', {}, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Initiatives ----
+  const addInitiative = useCallback((data: AnyRecord) => {
+    const id = genId('init')
+    setInitiatives(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'initiative', id, `Created initiative: ${data.title}`)
+    addToast('Initiative created')
+    apiPost('initiatives', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateInitiative = useCallback((id: string, data: AnyRecord) => {
+    setInitiatives(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
+    logAudit('update', 'initiative', id, 'Updated initiative')
+    addToast('Initiative updated')
+    apiPost('initiatives', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteInitiative = useCallback((id: string) => {
+    setInitiatives(prev => prev.filter(i => i.id !== id) as typeof prev)
+    logAudit('delete', 'initiative', id, 'Deleted initiative')
+    addToast('Initiative deleted')
+    apiPost('initiatives', 'delete', {}, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: KPI Definitions ----
+  const addKPIDefinition = useCallback((data: AnyRecord) => {
+    const id = genId('kpi')
+    setKPIDefinitions(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'kpi_definition', id, `Created KPI: ${data.name}`)
+    addToast('KPI created')
+    apiPost('kpiDefinitions', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateKPIDefinition = useCallback((id: string, data: AnyRecord) => {
+    setKPIDefinitions(prev => prev.map(k => k.id === id ? { ...k, ...data } : k) as typeof prev)
+    logAudit('update', 'kpi_definition', id, 'Updated KPI')
+    addToast('KPI updated')
+    apiPost('kpiDefinitions', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: KPI Measurements ----
+  const addKPIMeasurement = useCallback((data: AnyRecord) => {
+    const id = genId('kpim')
+    setKPIMeasurements(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'kpi_measurement', id, 'Recorded KPI measurement')
+    addToast('Measurement recorded')
+    apiPost('kpiMeasurements', 'create', data)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Workflows ----
+  const addWorkflow = useCallback((data: AnyRecord) => {
+    const id = genId('wf')
+    setWorkflows(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'workflow', id, `Created workflow: ${data.title}`)
+    addToast('Workflow created')
+    apiPost('workflows', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateWorkflow = useCallback((id: string, data: AnyRecord) => {
+    setWorkflows(prev => prev.map(w => w.id === id ? { ...w, ...data } : w) as typeof prev)
+    logAudit('update', 'workflow', id, 'Updated workflow')
+    addToast('Workflow updated')
+    apiPost('workflows', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteWorkflow = useCallback((id: string) => {
+    setWorkflows(prev => prev.filter(w => w.id !== id))
+    setWorkflowSteps(prev => prev.filter(s => s.workflow_id !== id))
+    logAudit('delete', 'workflow', id, 'Deleted workflow')
+    addToast('Workflow deleted')
+    apiPost('workflows', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Workflow Steps ----
+  const addWorkflowStep = useCallback((data: AnyRecord) => {
+    const id = genId('wfs')
+    setWorkflowSteps(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'workflow_step', id, `Created step: ${data.title}`)
+    addToast('Step added')
+    apiPost('workflowSteps', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateWorkflowStep = useCallback((id: string, data: AnyRecord) => {
+    setWorkflowSteps(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'workflow_step', id, 'Updated step')
+    addToast('Step updated')
+    apiPost('workflowSteps', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteWorkflowStep = useCallback((id: string) => {
+    setWorkflowSteps(prev => prev.filter(s => s.id !== id))
+    logAudit('delete', 'workflow_step', id, 'Deleted step')
+    addToast('Step removed')
+    apiPost('workflowSteps', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Workflow Runs ----
+  const addWorkflowRun = useCallback((data: AnyRecord) => {
+    const id = genId('wfr')
+    setWorkflowRuns(prev => [...prev, { id, org_id: 'org-1', started_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'workflow_run', id, 'Started workflow run')
+    addToast('Workflow started')
+    apiPost('workflowRuns', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateWorkflowRun = useCallback((id: string, data: AnyRecord) => {
+    setWorkflowRuns(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'workflow_run', id, 'Updated workflow run')
+    apiPost('workflowRuns', 'update', data, id)
+  }, [logAudit])
+
+  // ---- Notifications ----
+  const markNotificationRead = useCallback((id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n) as typeof prev)
+  }, [])
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })) as typeof prev)
+  }, [])
+
+  const unreadNotificationCount = notifications.filter(n => !n.is_read).length
+
   // ---- CRUD: Org ----
   const updateOrg = useCallback((data: AnyRecord) => {
     setOrg(prev => ({ ...prev, ...data }))
@@ -902,7 +1253,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [logAudit, addToast, org.id])
 
   // ---- Auth ----
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<boolean | { requiresMFA: true; mfaToken: string }> => {
     // API auth with httpOnly cookie session
     try {
       const res = await fetch('/api/auth', {
@@ -911,10 +1262,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ action: 'login', email, password }),
       })
       if (res.ok) {
-        const { user } = await res.json()
-        setCurrentUser(user)
+        const data = await res.json()
+        // Check if MFA is required
+        if (data.requiresMFA && data.mfaToken) {
+          return { requiresMFA: true, mfaToken: data.mfaToken }
+        }
+        setCurrentUser(data.user)
         // Keep localStorage as client-side cache for instant hydration
-        try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
         return true
       }
     } catch {
@@ -931,6 +1286,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
     return true
   }, [employees])
+
+  const verifyMFA = useCallback(async (mfaToken: string, code: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify_mfa', mfaToken, code }),
+      })
+      if (res.ok) {
+        const { user } = await res.json()
+        setCurrentUser(user)
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+        return true
+      }
+    } catch { /* ignore */ }
+    return false
+  }, [])
 
   const logout = useCallback(async () => {
     // API logout (revokes session, clears httpOnly cookie)
@@ -983,6 +1355,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     jobPostings, applications,
     devices, softwareLicenses, itRequests,
     invoices, budgets, vendors,
+    projects, milestones, tasks, taskDependencies,
+    strategicObjectives, keyResults, initiatives, kpiDefinitions, kpiMeasurements,
+    workflows, workflowSteps, workflowRuns, workflowTemplates,
+    notifications, unreadNotificationCount,
     auditLog, toasts,
     isLoading,
     addToast, removeToast,
@@ -1011,8 +1387,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addBudget, updateBudget,
     addVendor, updateVendor,
     addDepartment, updateDepartment,
+    addProject, updateProject, deleteProject,
+    addMilestone, updateMilestone,
+    addTask, updateTask, deleteTask,
+    addStrategicObjective, updateStrategicObjective, deleteStrategicObjective,
+    addKeyResult, updateKeyResult, deleteKeyResult,
+    addInitiative, updateInitiative, deleteInitiative,
+    addKPIDefinition, updateKPIDefinition,
+    addKPIMeasurement,
+    addWorkflow, updateWorkflow, deleteWorkflow,
+    addWorkflowStep, updateWorkflowStep, deleteWorkflowStep,
+    addWorkflowRun, updateWorkflowRun,
+    markNotificationRead, markAllNotificationsRead,
     updateOrg,
-    login, logout, switchUser, isLoggedIn,
+    login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }
 

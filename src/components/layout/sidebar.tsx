@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
@@ -10,9 +11,10 @@ import {
   LayoutDashboard, Users, TrendingUp, Banknote, GraduationCap, HeartPulse,
   UserCheck, Wallet, Clock, Shield, Receipt, Briefcase, Laptop, AppWindow,
   FileText, PieChart, BarChart3, Settings, ChevronLeft, Menu,
-  LogOut
+  LogOut, FolderKanban, Compass, Zap, Plug
 } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
+import { CommandPalette } from '@/components/search'
 
 interface NavItem {
   label: string
@@ -26,66 +28,77 @@ interface NavGroup {
   items: NavItem[]
 }
 
-const navGroups: NavGroup[] = [
-  {
-    title: 'CORE',
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={18} /> },
-      { label: 'People', href: '/people', icon: <Users size={18} /> },
-    ],
-  },
-  {
-    title: 'PEOPLE',
-    items: [
-      { label: 'Performance', href: '/performance', icon: <TrendingUp size={18} />, badge: 3 },
-      { label: 'Compensation', href: '/compensation', icon: <Banknote size={18} /> },
-      { label: 'Learning', href: '/learning', icon: <GraduationCap size={18} /> },
-      { label: 'Engagement', href: '/engagement', icon: <HeartPulse size={18} /> },
-      { label: 'Mentoring', href: '/mentoring', icon: <UserCheck size={18} /> },
-    ],
-  },
-  {
-    title: 'OPERATIONS',
-    items: [
-      { label: 'Payroll', href: '/payroll', icon: <Wallet size={18} /> },
-      { label: 'Time & Attendance', href: '/time-attendance', icon: <Clock size={18} />, badge: 2 },
-      { label: 'Benefits', href: '/benefits', icon: <Shield size={18} /> },
-      { label: 'Expense', href: '/expense', icon: <Receipt size={18} />, badge: 3 },
-    ],
-  },
-  {
-    title: 'TALENT',
-    items: [
-      { label: 'Recruiting', href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
-    ],
-  },
-  {
-    title: 'IT',
-    items: [
-      { label: 'Devices', href: '/it/devices', icon: <Laptop size={18} /> },
-      { label: 'Apps', href: '/it/apps', icon: <AppWindow size={18} /> },
-    ],
-  },
-  {
-    title: 'FINANCE',
-    items: [
-      { label: 'Invoices', href: '/finance/invoices', icon: <FileText size={18} /> },
-      { label: 'Budgets', href: '/finance/budgets', icon: <PieChart size={18} /> },
-    ],
-  },
-  {
-    title: 'INSIGHTS',
-    items: [
-      { label: 'Analytics', href: '/analytics', icon: <BarChart3 size={18} /> },
-    ],
-  },
-]
-
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { currentUser, logout } = useTempo()
   const [collapsed, setCollapsed] = useState(false)
+  const t = useTranslations('nav')
+  const tCommon = useTranslations('common')
+
+  const navGroups: NavGroup[] = [
+    {
+      title: t('core'),
+      items: [
+        { label: t('dashboard'), href: '/dashboard', icon: <LayoutDashboard size={18} /> },
+        { label: t('peopleLabel'), href: '/people', icon: <Users size={18} /> },
+      ],
+    },
+    {
+      title: t('people'),
+      items: [
+        { label: t('performance'), href: '/performance', icon: <TrendingUp size={18} />, badge: 3 },
+        { label: t('compensation'), href: '/compensation', icon: <Banknote size={18} /> },
+        { label: t('learning'), href: '/learning', icon: <GraduationCap size={18} /> },
+        { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
+        { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
+      ],
+    },
+    {
+      title: t('operations'),
+      items: [
+        { label: t('payroll'), href: '/payroll', icon: <Wallet size={18} /> },
+        { label: t('timeAttendance'), href: '/time-attendance', icon: <Clock size={18} />, badge: 2 },
+        { label: t('benefits'), href: '/benefits', icon: <Shield size={18} /> },
+        { label: t('expense'), href: '/expense', icon: <Receipt size={18} />, badge: 3 },
+      ],
+    },
+    {
+      title: t('talent'),
+      items: [
+        { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
+      ],
+    },
+    {
+      title: t('it'),
+      items: [
+        { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
+        { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
+      ],
+    },
+    {
+      title: t('finance'),
+      items: [
+        { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} /> },
+        { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} /> },
+      ],
+    },
+    {
+      title: t('strategic'),
+      items: [
+        { label: t('projects'), href: '/projects', icon: <FolderKanban size={18} /> },
+        { label: t('strategy'), href: '/strategy', icon: <Compass size={18} /> },
+        { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
+      ],
+    },
+    {
+      title: t('insights'),
+      items: [
+        { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
+        { label: t('integrations'), href: '/settings?tab=integrations', icon: <Plug size={18} /> },
+      ],
+    },
+  ]
 
   const displayName = currentUser?.full_name || 'Amara Kone'
   const displayTitle = currentUser?.job_title || 'CHRO'
@@ -116,6 +129,13 @@ export function Sidebar() {
             {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
+
+        {/* Search */}
+        {!collapsed && (
+          <div className="px-3 pb-3">
+            <CommandPalette />
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
@@ -186,7 +206,7 @@ export function Sidebar() {
               <button
                 onClick={handleLogout}
                 className="text-white/40 hover:text-red-400 transition-colors"
-                title="Sign out"
+                title={tCommon('signOut')}
               >
                 <LogOut size={14} />
               </button>
@@ -198,7 +218,7 @@ export function Sidebar() {
             <button
               onClick={handleLogout}
               className="text-white/40 hover:text-red-400 transition-colors p-1"
-              title="Sign out"
+              title={tCommon('signOut')}
             >
               <LogOut size={16} />
             </button>
@@ -210,11 +230,11 @@ export function Sidebar() {
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-chrome border-t border-dark-border z-50 px-2 pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around py-2">
           {[
-            { label: 'Home', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-            { label: 'People', href: '/people', icon: <Users size={20} /> },
-            { label: 'Perform', href: '/performance', icon: <TrendingUp size={20} /> },
-            { label: 'Finance', href: '/finance/invoices', icon: <Wallet size={20} /> },
-            { label: 'More', href: '/settings', icon: <Menu size={20} /> },
+            { label: t('mobileHome'), href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+            { label: t('peopleLabel'), href: '/people', icon: <Users size={20} /> },
+            { label: t('mobilePerform'), href: '/performance', icon: <TrendingUp size={20} /> },
+            { label: t('mobileFinance'), href: '/finance/invoices', icon: <Wallet size={20} /> },
+            { label: t('mobileMore'), href: '/settings', icon: <Menu size={20} /> },
           ].map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
             return (

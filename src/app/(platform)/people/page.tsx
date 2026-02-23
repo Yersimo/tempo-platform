@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +14,8 @@ import { useTempo } from '@/lib/store'
 import Link from 'next/link'
 
 export default function PeoplePage() {
+  const t = useTranslations('people')
+  const tc = useTranslations('common')
   const { employees, departments, addEmployee, getDepartmentName } = useTempo()
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState('all')
@@ -45,9 +48,9 @@ export default function PeoplePage() {
   return (
     <>
       <Header
-        title="People"
-        subtitle={`${employees.length} employees across ${departments.length} departments`}
-        actions={<Button size="sm" onClick={() => setShowAddModal(true)}><Plus size={14} /> Add Employee</Button>}
+        title={t('title')}
+        subtitle={t('subtitle', { employeeCount: employees.length, departmentCount: departments.length })}
+        actions={<Button size="sm" onClick={() => setShowAddModal(true)}><Plus size={14} /> {t('addEmployee')}</Button>}
       />
 
       {/* Filters */}
@@ -56,7 +59,7 @@ export default function PeoplePage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
           <input
             type="text"
-            placeholder="Search by name or title..."
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -67,10 +70,10 @@ export default function PeoplePage() {
           value={deptFilter}
           onChange={(e) => setDeptFilter(e.target.value)}
         >
-          <option value="all">All Departments</option>
+          <option value="all">{t('allDepartments')}</option>
           {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
-        <Button variant="outline" size="sm"><Download size={14} /> Export</Button>
+        <Button variant="outline" size="sm"><Download size={14} /> {tc('export')}</Button>
       </div>
 
       {/* Employee Table */}
@@ -79,12 +82,12 @@ export default function PeoplePage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-divider bg-canvas">
-                <th className="tempo-th text-left px-6 py-3">Employee</th>
-                <th className="tempo-th text-left px-4 py-3">Department</th>
-                <th className="tempo-th text-left px-4 py-3">Title</th>
-                <th className="tempo-th text-left px-4 py-3">Country</th>
-                <th className="tempo-th text-left px-4 py-3">Level</th>
-                <th className="tempo-th text-left px-4 py-3">Role</th>
+                <th className="tempo-th text-left px-6 py-3">{t('tableEmployee')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableDepartment')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableTitle')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableCountry')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableLevel')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableRole')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -111,7 +114,7 @@ export default function PeoplePage() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">No employees found</td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noEmployeesFound')}</td></tr>
               )}
             </tbody>
           </table>
@@ -119,37 +122,37 @@ export default function PeoplePage() {
       </Card>
 
       {/* Add Employee Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Employee" size="lg">
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addEmployeeModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Full Name" placeholder="First and last name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            <Input label="Email" type="email" placeholder="email@company.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Job Title" placeholder="e.g., Software Engineer" value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
-            <Input label="Phone" placeholder="+234 xxx xxx xxxx" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input label={t('jobTitle')} placeholder={t('jobTitlePlaceholder')} value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
+            <Input label={t('phone')} placeholder={t('phonePlaceholder')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <Select label="Department" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
-            <Select label="Level" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} options={[
-              { value: 'Junior', label: 'Junior' }, { value: 'Associate', label: 'Associate' },
-              { value: 'Mid', label: 'Mid' }, { value: 'Senior', label: 'Senior' },
-              { value: 'Manager', label: 'Manager' }, { value: 'Senior Manager', label: 'Senior Manager' },
-              { value: 'Director', label: 'Director' }, { value: 'Executive', label: 'Executive' },
+            <Select label={tc('department')} value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
+            <Select label={t('levelLabel')} value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} options={[
+              { value: 'Junior', label: t('levelJunior') }, { value: 'Associate', label: t('levelAssociate') },
+              { value: 'Mid', label: t('levelMid') }, { value: 'Senior', label: t('levelSenior') },
+              { value: 'Manager', label: t('levelManager') }, { value: 'Senior Manager', label: t('levelSeniorManager') },
+              { value: 'Director', label: t('levelDirector') }, { value: 'Executive', label: t('levelExecutive') },
             ]} />
-            <Select label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} options={[
-              { value: 'Nigeria', label: 'Nigeria' }, { value: 'Ghana', label: 'Ghana' },
-              { value: "Cote d'Ivoire", label: "Cote d'Ivoire" }, { value: 'Kenya', label: 'Kenya' },
-              { value: 'Senegal', label: 'Senegal' }, { value: 'South Africa', label: 'South Africa' },
+            <Select label={t('countryLabel')} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} options={[
+              { value: 'Nigeria', label: tc('countryNigeria') }, { value: 'Ghana', label: tc('countryGhana') },
+              { value: "Cote d'Ivoire", label: tc('countryCoteDIvoire') }, { value: 'Kenya', label: tc('countryKenya') },
+              { value: 'Senegal', label: tc('countrySenegal') }, { value: 'South Africa', label: tc('countrySouthAfrica') },
             ]} />
           </div>
-          <Select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} options={[
-            { value: 'employee', label: 'Employee' }, { value: 'manager', label: 'Manager' },
-            { value: 'admin', label: 'Admin' },
+          <Select label={t('roleLabel')} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} options={[
+            { value: 'employee', label: t('roleEmployee') }, { value: 'manager', label: t('roleManager') },
+            { value: 'admin', label: t('roleAdmin') },
           ]} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button onClick={submitAdd}>Add Employee</Button>
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitAdd}>{t('addEmployee')}</Button>
           </div>
         </div>
       </Modal>

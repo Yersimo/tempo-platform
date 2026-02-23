@@ -10,6 +10,15 @@ export const metadata: Metadata = {
     icon: '/favicons/favicon.svg',
     apple: '/favicons/apple-touch-icon.png',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Tempo',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 }
 
 export default async function RootLayout({
@@ -23,10 +32,19 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <head>
+        <meta name="theme-color" content="#ea580c" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <link
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500&display=swap"
           rel="stylesheet"
         />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js');
+            });
+          }
+        `}} />
       </head>
       <body className="antialiased">
         <NextIntlClientProvider messages={messages}>

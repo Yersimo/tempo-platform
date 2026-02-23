@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { Sparkles, Search, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
@@ -11,14 +12,15 @@ interface AIQueryBarProps {
   className?: string
 }
 
-const defaultSuggestions = [
-  'High performers below market comp',
-  'Goals at risk this quarter',
-  'Employees without mentors',
-  'Learning enrollments in progress',
-]
-
-export function AIQueryBar({ onQuery, placeholder = 'Ask about your workforce...', suggestions = defaultSuggestions, className }: AIQueryBarProps) {
+export function AIQueryBar({ onQuery, placeholder, suggestions, className }: AIQueryBarProps) {
+  const t = useTranslations('ai')
+  const resolvedPlaceholder = placeholder ?? t('queryPlaceholder')
+  const resolvedSuggestions = suggestions ?? [
+    t('suggestionHighPerformers'),
+    t('suggestionGoalsAtRisk'),
+    t('suggestionNoMentors'),
+    t('suggestionLearning'),
+  ]
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -47,7 +49,7 @@ export function AIQueryBar({ onQuery, placeholder = 'Ask about your workforce...
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 200)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           className="flex-1 text-sm text-t1 bg-transparent outline-none placeholder:text-t3"
         />
         <button
@@ -64,8 +66,8 @@ export function AIQueryBar({ onQuery, placeholder = 'Ask about your workforce...
       {focused && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-[var(--radius-card)] shadow-sm z-10 overflow-hidden">
           <div className="px-3 py-2">
-            <p className="text-[0.55rem] text-t3 uppercase tracking-wider font-semibold mb-1.5">Try asking</p>
-            {suggestions.map((s, i) => (
+            <p className="text-[0.55rem] text-t3 uppercase tracking-wider font-semibold mb-1.5">{t('tryAsking')}</p>
+            {resolvedSuggestions.map((s, i) => (
               <button
                 key={i}
                 onMouseDown={e => { e.preventDefault(); handleSubmit(s) }}

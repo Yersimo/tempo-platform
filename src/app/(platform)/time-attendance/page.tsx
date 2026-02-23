@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,8 @@ import { AIAlertBanner, AIInsightCard } from '@/components/ai'
 import { detectCoverageGaps, analyzeLeavePatterns } from '@/lib/ai-engine'
 
 export default function TimeAttendancePage() {
+  const t = useTranslations('timeAttendance')
+  const tc = useTranslations('common')
   const {
     leaveRequests, employees,
     addLeaveRequest, updateLeaveRequest,
@@ -50,9 +53,9 @@ export default function TimeAttendancePage() {
   ).length
 
   const tabs = [
-    { id: 'leave', label: 'Leave Requests', count: pendingRequests.length },
-    { id: 'timesheet', label: 'Timesheets' },
-    { id: 'holidays', label: 'Holiday Calendar' },
+    { id: 'leave', label: t('tabLeaveRequests'), count: pendingRequests.length },
+    { id: 'timesheet', label: t('tabTimesheets') },
+    { id: 'holidays', label: t('tabHolidayCalendar') },
   ]
 
   // ---- Leave Request CRUD ----
@@ -104,21 +107,21 @@ export default function TimeAttendancePage() {
   return (
     <>
       <Header
-        title="Time & Attendance"
-        subtitle="Leave management, timesheets, and scheduling"
+        title={t('title')}
+        subtitle={t('subtitle')}
         actions={
           <Button size="sm" onClick={openNewLeaveRequest}>
-            <Plus size={14} /> Request Leave
+            <Plus size={14} /> {t('requestLeave')}
           </Button>
         }
       />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Pending Requests" value={pendingRequests.length} change="Awaiting approval" changeType="neutral" icon={<Clock size={20} />} />
-        <StatCard label="Approved" value={approvedRequests.length} change="This quarter" changeType="positive" icon={<CheckCircle size={20} />} />
-        <StatCard label="On Leave Today" value={onLeaveToday} change="Across all regions" changeType="neutral" icon={<Calendar size={20} />} />
-        <StatCard label="Avg Leave Balance" value="14.5" change="Days remaining" changeType="neutral" />
+        <StatCard label={t('pendingRequests')} value={pendingRequests.length} change="Awaiting approval" changeType="neutral" icon={<Clock size={20} />} />
+        <StatCard label={t('approvedLabel')} value={approvedRequests.length} change={tc('thisQuarter')} changeType="positive" icon={<CheckCircle size={20} />} />
+        <StatCard label={t('onLeaveToday')} value={onLeaveToday} change={t('acrossAllRegions')} changeType="neutral" icon={<Calendar size={20} />} />
+        <StatCard label={t('avgLeaveBalance')} value="14.5" change={t('daysRemaining')} changeType="neutral" />
       </div>
 
       {/* AI Insights */}
@@ -136,25 +139,25 @@ export default function TimeAttendancePage() {
       {/* Leave Requests Tab */}
       {activeTab === 'leave' && (
         <Card padding="none">
-          <CardHeader><CardTitle>Leave Requests</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('leaveRequestsTitle')}</CardTitle></CardHeader>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-divider bg-canvas">
-                  <th className="tempo-th text-left px-6 py-3">Employee</th>
-                  <th className="tempo-th text-left px-4 py-3">Type</th>
-                  <th className="tempo-th text-left px-4 py-3">Dates</th>
-                  <th className="tempo-th text-right px-4 py-3">Days</th>
-                  <th className="tempo-th text-left px-4 py-3">Reason</th>
-                  <th className="tempo-th text-center px-4 py-3">Status</th>
-                  <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  <th className="tempo-th text-left px-6 py-3">{t('tableEmployee')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableType')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableDates')}</th>
+                  <th className="tempo-th text-right px-4 py-3">{t('tableDays')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableReason')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {leaveRequests.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">
-                      No leave requests yet. Click &quot;Request Leave&quot; to create one.
+                      {t('noLeaveRequests')}
                     </td>
                   </tr>
                 )}
@@ -180,7 +183,7 @@ export default function TimeAttendancePage() {
                           {lr.type}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{lr.start_date} to {lr.end_date}</td>
+                      <td className="px-4 py-3 text-sm text-t2">{lr.start_date} {tc('to')} {lr.end_date}</td>
                       <td className="px-4 py-3 text-sm text-t1 text-right font-medium">{lr.days}</td>
                       <td className="px-4 py-3 text-sm text-t2 max-w-[200px] truncate">{lr.reason}</td>
                       <td className="px-4 py-3 text-center">
@@ -194,8 +197,8 @@ export default function TimeAttendancePage() {
                       <td className="px-4 py-3 text-center">
                         {lr.status === 'pending' && (
                           <div className="flex gap-1 justify-center">
-                            <Button size="sm" variant="primary" onClick={() => approveLeave(lr.id)}>Approve</Button>
-                            <Button size="sm" variant="ghost" onClick={() => denyLeave(lr.id)}>Deny</Button>
+                            <Button size="sm" variant="primary" onClick={() => approveLeave(lr.id)}>{tc('approve')}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => denyLeave(lr.id)}>{tc('deny')}</Button>
                           </div>
                         )}
                       </td>
@@ -211,35 +214,35 @@ export default function TimeAttendancePage() {
       {/* Timesheets Tab */}
       {activeTab === 'timesheet' && (
         <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Weekly Timesheet</h3>
+          <h3 className="text-sm font-semibold text-t1 mb-4">{t('weeklyTimesheet')}</h3>
           <div className="bg-canvas rounded-lg p-6 text-center">
             <Clock size={32} className="text-t3 mx-auto mb-2" />
             {clockedIn ? (
               <>
-                <p className="text-sm text-t1 font-medium mb-1">You are clocked in</p>
-                <p className="text-xs text-t3 mb-4">Since {clockInTime}</p>
+                <p className="text-sm text-t1 font-medium mb-1">{t('clockedIn')}</p>
+                <p className="text-xs text-t3 mb-4">{t('clockedInSince', { time: clockInTime ?? '' })}</p>
               </>
             ) : (
               <>
-                <p className="text-sm text-t2 mb-2">Timesheet tracking for the current week</p>
-                <p className="text-xs text-t3 mb-4">Employees can clock in/out and log hours against projects</p>
+                <p className="text-sm text-t2 mb-2">{t('timesheetDesc')}</p>
+                <p className="text-xs text-t3 mb-4">{t('timesheetSubDesc')}</p>
               </>
             )}
             <Button onClick={handleClockIn}>
-              <LogIn size={14} /> {clockedIn ? 'Clock Out' : 'Clock In'}
+              <LogIn size={14} /> {clockedIn ? t('clockOut') : t('clockIn')}
             </Button>
           </div>
 
           {/* Weekly overview */}
           <div className="mt-6">
-            <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">This Week</h4>
+            <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">{t('thisWeek')}</h4>
             <div className="grid grid-cols-5 gap-2">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => (
+              {[t('weekdayMon'), t('weekdayTue'), t('weekdayWed'), t('weekdayThu'), t('weekdayFri')].map((day, i) => (
                 <div key={day} className="bg-canvas rounded-lg p-3 text-center">
                   <p className="text-xs font-medium text-t3 mb-1">{day}</p>
                   <p className="text-lg font-semibold text-t1">{i < 3 ? '8h' : i === 3 ? '6h' : '-'}</p>
-                  {i < 3 && <p className="text-[0.6rem] text-success">Complete</p>}
-                  {i === 3 && <p className="text-[0.6rem] text-warning">Partial</p>}
+                  {i < 3 && <p className="text-[0.6rem] text-success">{t('statusComplete')}</p>}
+                  {i === 3 && <p className="text-[0.6rem] text-warning">{t('statusPartial')}</p>}
                 </div>
               ))}
             </div>
@@ -250,7 +253,7 @@ export default function TimeAttendancePage() {
       {/* Holiday Calendar Tab */}
       {activeTab === 'holidays' && (
         <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Public Holidays 2026</h3>
+          <h3 className="text-sm font-semibold text-t1 mb-4">{t('publicHolidays')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { date: 'Jan 1', name: 'New Year', countries: ['All'] },
@@ -285,44 +288,44 @@ export default function TimeAttendancePage() {
       {/* ---- MODALS ---- */}
 
       {/* Request Leave Modal */}
-      <Modal open={showLeaveModal} onClose={() => setShowLeaveModal(false)} title="Request Leave">
+      <Modal open={showLeaveModal} onClose={() => setShowLeaveModal(false)} title={t('requestLeaveModal')}>
         <div className="space-y-4">
           <Select
-            label="Employee"
+            label={tc('employee')}
             value={leaveForm.employee_id}
             onChange={(e) => setLeaveForm({ ...leaveForm, employee_id: e.target.value })}
             options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))}
           />
           <Select
-            label="Leave Type"
+            label={t('leaveType')}
             value={leaveForm.type}
             onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}
             options={[
-              { value: 'annual', label: 'Annual Leave' },
-              { value: 'sick', label: 'Sick Leave' },
-              { value: 'personal', label: 'Personal Leave' },
-              { value: 'maternity', label: 'Maternity Leave' },
-              { value: 'paternity', label: 'Paternity Leave' },
-              { value: 'compassionate', label: 'Compassionate Leave' },
-              { value: 'unpaid', label: 'Unpaid Leave' },
+              { value: 'annual', label: t('leaveAnnual') },
+              { value: 'sick', label: t('leaveSick') },
+              { value: 'personal', label: t('leavePersonal') },
+              { value: 'maternity', label: t('leaveMaternity') },
+              { value: 'paternity', label: t('leavePaternity') },
+              { value: 'compassionate', label: t('leaveCompassionate') },
+              { value: 'unpaid', label: t('leaveUnpaid') },
             ]}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Start Date"
+              label={t('startDate')}
               type="date"
               value={leaveForm.start_date}
               onChange={(e) => setLeaveForm({ ...leaveForm, start_date: e.target.value })}
             />
             <Input
-              label="End Date"
+              label={t('endDate')}
               type="date"
               value={leaveForm.end_date}
               onChange={(e) => setLeaveForm({ ...leaveForm, end_date: e.target.value })}
             />
           </div>
           <Input
-            label="Number of Days"
+            label={t('numberOfDays')}
             type="number"
             min={1}
             max={60}
@@ -330,15 +333,15 @@ export default function TimeAttendancePage() {
             onChange={(e) => setLeaveForm({ ...leaveForm, days: Number(e.target.value) })}
           />
           <Textarea
-            label="Reason"
-            placeholder="Explain the reason for your leave request..."
+            label={t('reason')}
+            placeholder={t('reasonPlaceholder')}
             rows={3}
             value={leaveForm.reason}
             onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
-            <Button onClick={submitLeaveRequest}>Submit Request</Button>
+            <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitLeaveRequest}>{t('submitRequest')}</Button>
           </div>
         </div>
       </Modal>

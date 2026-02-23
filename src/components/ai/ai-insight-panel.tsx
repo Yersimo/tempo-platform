@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { AIInsightCard } from './ai-insight-card'
@@ -22,7 +23,7 @@ interface AIInsightPanelProps {
 }
 
 export function AIInsightPanel({
-  title = 'AI Insights',
+  title,
   insights = [],
   scores = {},
   narrative,
@@ -33,6 +34,7 @@ export function AIInsightPanel({
   onAcceptRecommendation,
   className,
 }: AIInsightPanelProps) {
+  const t = useTranslations('ai')
   const [expanded, setExpanded] = useState(defaultExpanded)
   const totalItems = insights.length + recommendations.length + Object.keys(scores).length + (narrative ? 1 : 0)
 
@@ -49,10 +51,10 @@ export function AIInsightPanel({
         )}
       >
         <Sparkles size={14} className="text-tempo-500" />
-        <span className="text-xs font-semibold text-t1 flex-1">{title}</span>
+        <span className="text-xs font-semibold text-t1 flex-1">{title ?? t('insightsTitle')}</span>
         {!expanded && (
           <span className="text-[0.55rem] text-t3 bg-canvas px-2 py-0.5 rounded-[var(--radius-pill)]">
-            {totalItems} insight{totalItems !== 1 ? 's' : ''}
+            {totalItems !== 1 ? t('insightCountPlural', { count: totalItems }) : t('insightCount', { count: totalItems })}
           </span>
         )}
         {collapsible && (

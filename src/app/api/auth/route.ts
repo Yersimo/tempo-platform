@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { schema } from '@/lib/db'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import {
   verifyPassword,
   hashPassword,
@@ -11,7 +11,10 @@ import {
   setSessionCookie,
   getSessionCookieName,
   getEmployeeFromSession,
+  createMFAToken,
+  verifyMFAToken,
 } from '@/lib/auth'
+import { verifyTOTP } from '@/lib/totp'
 
 // POST /api/auth - Authentication endpoints
 export async function POST(request: NextRequest) {
@@ -53,7 +56,32 @@ export async function POST(request: NextRequest) {
           .where(eq(schema.employees.id, employee.id))
       }
 
-      // Create server-side session with JWT
+      // Check if employee has MFA enabled
+      const [mfaEnrollment] = await db.select()
+        .from(schema.mfaEnrollments)
+        .where(
+          and(
+            eq(schema.mfaEnrollments.employeeId, employee.id),
+            eq(schema.mfaEnrollments.isVerified, true)
+          )
+        )
+
+      if (mfaEnrollment) {
+        // MFA is enabled - issue a temporary token instead of a session
+        const mfaToken = await createMFAToken({
+          employeeId: employee.id,
+          email: employee.email,
+          role: employee.role,
+          orgId: employee.orgId,
+        })
+
+        return NextResponse.json({
+          requiresMFA: true,
+          mfaToken,
+        })
+      }
+
+      // No MFA - create session directly
       const token = await createSession(
         employee.id,
         employee.orgId,
@@ -95,6 +123,111 @@ export async function POST(request: NextRequest) {
       // Set httpOnly session cookie
       const cookie = setSessionCookie(token)
       const response = NextResponse.json({ user })
+      response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2])
+
+      return response
+    }
+
+    // ─── Verify MFA ─────────────────────────────────────────────────
+    if (action === 'verify_mfa') {
+      const { mfaToken, code } = body
+      if (!mfaToken || !code) {
+        return NextResponse.json({ error: 'MFA token and code are required' }, { status: 400 })
+      }
+
+      // Verify the temporary MFA token
+      const mfaPayload = await verifyMFAToken(mfaToken)
+      if (!mfaPayload) {
+        return NextResponse.json({ error: 'MFA session expired. Please log in again.' }, { status: 401 })
+      }
+
+      // Find MFA enrollment
+      const [enrollment] = await db.select()
+        .from(schema.mfaEnrollments)
+        .where(
+          and(
+            eq(schema.mfaEnrollments.employeeId, mfaPayload.employeeId),
+            eq(schema.mfaEnrollments.isVerified, true)
+          )
+        )
+
+      if (!enrollment) {
+        return NextResponse.json({ error: 'MFA enrollment not found' }, { status: 400 })
+      }
+
+      // Try TOTP verification first
+      let codeValid = await verifyTOTP(enrollment.secret, code)
+
+      // If TOTP fails, check backup codes
+      if (!codeValid) {
+        const backupCodes = (enrollment.backupCodes as string[]) || []
+        const codeIndex = backupCodes.indexOf(code)
+        if (codeIndex >= 0) {
+          // Remove used backup code
+          const updatedCodes = [...backupCodes]
+          updatedCodes.splice(codeIndex, 1)
+          await db.update(schema.mfaEnrollments)
+            .set({ backupCodes: updatedCodes })
+            .where(eq(schema.mfaEnrollments.id, enrollment.id))
+          codeValid = true
+        }
+      }
+
+      if (!codeValid) {
+        return NextResponse.json({ error: 'Invalid verification code' }, { status: 401 })
+      }
+
+      // Update last used timestamp
+      await db.update(schema.mfaEnrollments)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(schema.mfaEnrollments.id, enrollment.id))
+
+      // MFA verified - create full session
+      const [employee] = await db.select().from(schema.employees)
+        .where(eq(schema.employees.id, mfaPayload.employeeId))
+
+      if (!employee) {
+        return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+      }
+
+      const token = await createSession(
+        employee.id,
+        employee.orgId,
+        employee.email,
+        employee.role
+      )
+
+      let departmentName = ''
+      if (employee.departmentId) {
+        const [dept] = await db.select().from(schema.departments)
+          .where(eq(schema.departments.id, employee.departmentId))
+        departmentName = dept?.name || ''
+      }
+
+      const mfaUser = {
+        id: `user-${employee.id}`,
+        email: employee.email,
+        full_name: employee.fullName,
+        avatar_url: employee.avatarUrl,
+        role: employee.role,
+        department_id: employee.departmentId,
+        employee_id: employee.id,
+        job_title: employee.jobTitle,
+        department_name: departmentName,
+      }
+
+      // Audit log
+      await db.insert(schema.auditLog).values({
+        orgId: employee.orgId,
+        userId: employee.id,
+        action: 'login',
+        entityType: 'session',
+        entityId: employee.id,
+        details: `Login with MFA: ${employee.fullName} (${employee.email})`,
+      })
+
+      const cookie = setSessionCookie(token)
+      const response = NextResponse.json({ user: mfaUser })
       response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2])
 
       return response

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Sparkles, X, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { AIInsight } from '@/lib/ai-engine'
@@ -13,9 +14,10 @@ interface AIInsightCardProps {
 }
 
 function ConfidenceDots({ level }: { level: 'high' | 'medium' | 'low' }) {
+  const t = useTranslations('ai')
   const filled = level === 'high' ? 3 : level === 'medium' ? 2 : 1
   return (
-    <span className="inline-flex items-center gap-0.5" title={`Confidence: ${level}`}>
+    <span className="inline-flex items-center gap-0.5" title={t('confidence', { level })}>
       {[0, 1, 2].map(i => (
         <span key={i} className={cn('w-1 h-1 rounded-full', i < filled ? 'bg-tempo-500' : 'bg-tempo-200')} />
       ))}

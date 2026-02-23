@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,8 @@ import { AIScoreBadge, AIInsightCard } from '@/components/ai'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends } from '@/lib/ai-engine'
 
 export default function ExpensePage() {
+  const t = useTranslations('expense')
+  const tc = useTranslations('common')
   const {
     expenseReports, employees,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
@@ -122,21 +125,21 @@ export default function ExpensePage() {
   return (
     <>
       <Header
-        title="Expense"
-        subtitle="Submit, approve, and track expense reports"
+        title={t('title')}
+        subtitle={t('subtitle')}
         actions={
           <Button size="sm" onClick={openNewReport}>
-            <Plus size={14} /> New Report
+            <Plus size={14} /> {t('newReport')}
           </Button>
         }
       />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Pending Review" value={pendingReports.length} icon={<Clock size={20} />} />
-        <StatCard label="Pending Amount" value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label="Approved/Reimbursed" value={`$${totalApproved.toLocaleString()}`} change="This quarter" changeType="positive" />
-        <StatCard label="Total Reports" value={expenseReports.length} icon={<Receipt size={20} />} />
+        <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
+        <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label={t('approvedReimbursed')} value={`$${totalApproved.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
+        <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
       </div>
 
       {/* AI Spending Trends */}
@@ -152,16 +155,16 @@ export default function ExpensePage() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Expense Reports</CardTitle>
+            <CardTitle>{t('expenseReportsTitle')}</CardTitle>
             <Button variant="secondary" size="sm" onClick={openNewReport}>
-              <Plus size={14} /> New Report
+              <Plus size={14} /> {t('newReport')}
             </Button>
           </div>
         </CardHeader>
         <div className="divide-y divide-divider">
           {expenseReports.length === 0 && (
             <div className="px-6 py-12 text-center text-sm text-t3">
-              No expense reports yet. Click &quot;New Report&quot; to create one.
+              {t('noExpenseReports')}
             </div>
           )}
           {expenseReports.map(report => {
@@ -181,7 +184,7 @@ export default function ExpensePage() {
                       </button>
                     </div>
                     <p className="text-xs text-t3">
-                      {getEmployeeName(report.employee_id)} - Submitted {new Date(report.submitted_at).toLocaleDateString()}
+                      {getEmployeeName(report.employee_id)} - {t('submittedDate', { date: new Date(report.submitted_at).toLocaleDateString() })}
                     </p>
                   </div>
                   <p className="text-lg font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
@@ -197,12 +200,12 @@ export default function ExpensePage() {
                   <div className="flex gap-1">
                     {(report.status === 'submitted' || report.status === 'pending_approval') && (
                       <>
-                        <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>Approve</Button>
-                        <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>Reject</Button>
+                        <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
+                        <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>{tc('reject')}</Button>
                       </>
                     )}
                     {report.status === 'approved' && (
-                      <Button size="sm" variant="primary" onClick={() => reimburseReport(report.id)}>Reimburse</Button>
+                      <Button size="sm" variant="primary" onClick={() => reimburseReport(report.id)}>{tc('reimburse')}</Button>
                     )}
                     <button
                       onClick={() => setDeleteConfirm(report.id)}
@@ -231,7 +234,7 @@ export default function ExpensePage() {
                 {/* Always show items summary when collapsed */}
                 {!isExpanded && report.items && report.items.length > 0 && (
                   <p className="ml-12 text-xs text-t3 mt-1">
-                    {report.items.length} line item{report.items.length !== 1 ? 's' : ''}
+                    {report.items.length !== 1 ? t('lineItemCountPlural', { count: report.items.length }) : t('lineItemCount', { count: report.items.length })}
                   </p>
                 )}
               </div>
@@ -243,31 +246,31 @@ export default function ExpensePage() {
       {/* ---- MODALS ---- */}
 
       {/* New Expense Report Modal */}
-      <Modal open={showReportModal} onClose={() => setShowReportModal(false)} title="New Expense Report" size="lg">
+      <Modal open={showReportModal} onClose={() => setShowReportModal(false)} title={t('newReportModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Employee"
+              label={tc('employee')}
               value={reportForm.employee_id}
               onChange={(e) => setReportForm({ ...reportForm, employee_id: e.target.value })}
               options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))}
             />
             <Select
-              label="Currency"
+              label={tc('currency')}
               value={reportForm.currency}
               onChange={(e) => setReportForm({ ...reportForm, currency: e.target.value })}
               options={[
-                { value: 'USD', label: 'USD' },
-                { value: 'NGN', label: 'NGN' },
-                { value: 'GHS', label: 'GHS' },
-                { value: 'KES', label: 'KES' },
-                { value: 'XOF', label: 'XOF' },
+                { value: 'USD', label: tc('currencyUSD') },
+                { value: 'NGN', label: tc('currencyNGN') },
+                { value: 'GHS', label: tc('currencyGHS') },
+                { value: 'KES', label: tc('currencyKES') },
+                { value: 'XOF', label: tc('currencyXOF') },
               ]}
             />
           </div>
           <Input
-            label="Report Title"
-            placeholder="e.g., Q1 Travel Expenses - Lagos"
+            label={t('reportTitle')}
+            placeholder={t('reportTitlePlaceholder')}
             value={reportForm.title}
             onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
           />
@@ -275,9 +278,9 @@ export default function ExpensePage() {
           {/* Line Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-medium text-t1">Line Items</label>
+              <label className="block text-xs font-medium text-t1">{tc('lineItems')}</label>
               <Button size="sm" variant="secondary" onClick={addLineItem}>
-                <Plus size={12} /> Add Item
+                <Plus size={12} /> {tc('addItem')}
               </Button>
             </div>
             <div className="space-y-2">
@@ -285,7 +288,7 @@ export default function ExpensePage() {
                 <div key={index} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5">
                     <Input
-                      placeholder="Description"
+                      placeholder={t('descriptionPlaceholder')}
                       value={item.description}
                       onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                     />
@@ -295,13 +298,13 @@ export default function ExpensePage() {
                       value={item.category}
                       onChange={(e) => updateLineItem(index, 'category', e.target.value)}
                       options={[
-                        { value: 'travel', label: 'Travel' },
-                        { value: 'meals', label: 'Meals' },
-                        { value: 'accommodation', label: 'Accommodation' },
-                        { value: 'transport', label: 'Transport' },
-                        { value: 'supplies', label: 'Supplies' },
-                        { value: 'equipment', label: 'Equipment' },
-                        { value: 'other', label: 'Other' },
+                        { value: 'travel', label: t('categoryTravel') },
+                        { value: 'meals', label: t('categoryMeals') },
+                        { value: 'accommodation', label: t('categoryAccommodation') },
+                        { value: 'transport', label: t('categoryTransport') },
+                        { value: 'supplies', label: t('categorySupplies') },
+                        { value: 'equipment', label: t('categoryEquipment') },
+                        { value: 'other', label: t('categoryOther') },
                       ]}
                     />
                   </div>
@@ -309,7 +312,7 @@ export default function ExpensePage() {
                     <Input
                       type="number"
                       min={0}
-                      placeholder="Amount"
+                      placeholder={t('amountPlaceholder')}
                       value={item.amount || ''}
                       onChange={(e) => updateLineItem(index, 'amount', Number(e.target.value))}
                     />
@@ -328,24 +331,24 @@ export default function ExpensePage() {
             </div>
             <div className="flex justify-end mt-2">
               <p className="text-sm font-semibold text-t1">
-                Total: ${reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0).toLocaleString()}
+                {tc('total')}: ${reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0).toLocaleString()}
               </p>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowReportModal(false)}>Cancel</Button>
-            <Button onClick={submitReport}>Submit Report</Button>
+            <Button variant="secondary" onClick={() => setShowReportModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitReport}>{t('submitReport')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Delete Confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete Expense Report" size="sm">
-        <p className="text-sm text-t2 mb-4">Are you sure you want to delete this expense report? This action cannot be undone.</p>
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title={t('deleteReportModal')} size="sm">
+        <p className="text-sm text-t2 mb-4">{t('deleteReportConfirm')}</p>
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-          <Button variant="danger" onClick={confirmDelete}>Delete</Button>
+          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>{tc('cancel')}</Button>
+          <Button variant="danger" onClick={confirmDelete}>{tc('delete')}</Button>
         </div>
       </Modal>
     </>

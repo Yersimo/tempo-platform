@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +24,8 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export default function BenefitsPage() {
+  const t = useTranslations('benefits')
+  const tc = useTranslations('common')
   const {
     benefitPlans, employees,
     addBenefitPlan, updateBenefitPlan,
@@ -112,21 +115,21 @@ export default function BenefitsPage() {
   return (
     <>
       <Header
-        title="Benefits"
-        subtitle="Benefit plans, enrollment, and provider management"
+        title={t('title')}
+        subtitle={t('subtitle')}
         actions={
           <Button size="sm" onClick={openNewPlan}>
-            <Plus size={14} /> Add Plan
+            <Plus size={14} /> {t('addPlan')}
           </Button>
         }
       />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Active Plans" value={activePlans.length} icon={<Shield size={20} />} />
-        <StatCard label="Enrollment Rate" value={`${enrollmentRate}%`} change="Above target" changeType="positive" />
-        <StatCard label="Monthly Employer Cost" value={`$${totalEmployerCost.toLocaleString()}`} change="Per employee" changeType="neutral" />
-        <StatCard label="Providers" value={uniqueProviders} change="Active partnerships" changeType="neutral" />
+        <StatCard label={t('activePlans')} value={activePlans.length} icon={<Shield size={20} />} />
+        <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change="Above target" changeType="positive" />
+        <StatCard label={t('monthlyEmployerCost')} value={`$${totalEmployerCost.toLocaleString()}`} change={tc('perEmployee')} changeType="neutral" />
+        <StatCard label={t('providers')} value={uniqueProviders} change={t('activePartnerships')} changeType="neutral" />
       </div>
 
       {/* AI Insights */}
@@ -135,7 +138,7 @@ export default function BenefitsPage() {
           insight={costInsight}
         />
         <AIRecommendationList
-          title="Benefit Recommendations"
+          title={t('benefitRecommendations')}
           recommendations={benefitRecs}
         />
       </div>
@@ -144,7 +147,7 @@ export default function BenefitsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {benefitPlans.length === 0 && (
           <div className="col-span-2 text-center py-12 text-sm text-t3">
-            No benefit plans yet. Click &quot;Add Plan&quot; to create one.
+            {t('noBenefitPlans')}
           </div>
         )}
         {benefitPlans.map(plan => {
@@ -163,7 +166,7 @@ export default function BenefitsPage() {
                     <h3 className="text-sm font-semibold text-t1">{plan.name}</h3>
                     <div className="flex items-center gap-2">
                       <Badge variant={plan.is_active ? 'success' : 'default'}>
-                        {plan.is_active ? 'Active' : 'Inactive'}
+                        {plan.is_active ? tc('active') : tc('inactive')}
                       </Badge>
                       <button
                         onClick={() => openEditPlan(plan.id)}
@@ -176,22 +179,22 @@ export default function BenefitsPage() {
                   <p className="text-xs text-t3 mb-3">{plan.description}</p>
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <p className="text-[0.6rem] text-t3 uppercase">Provider</p>
+                      <p className="text-[0.6rem] text-t3 uppercase">{t('provider')}</p>
                       <p className="text-xs font-medium text-t1">{plan.provider}</p>
                     </div>
                     <div>
-                      <p className="text-[0.6rem] text-t3 uppercase">Employee Cost</p>
+                      <p className="text-[0.6rem] text-t3 uppercase">{t('employeeCost')}</p>
                       <p className="text-xs font-medium text-t1">${plan.cost_employee}/mo</p>
                     </div>
                     <div>
-                      <p className="text-[0.6rem] text-t3 uppercase">Employer Cost</p>
+                      <p className="text-[0.6rem] text-t3 uppercase">{t('employerCost')}</p>
                       <p className="text-xs font-medium text-t1">${plan.cost_employer}/mo</p>
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-t3">Enrollment</span>
-                      <span className="text-t2">{enrolledCount}/{employees.length} employees</span>
+                      <span className="text-t3">{t('enrollment')}</span>
+                      <span className="text-t2">{t('enrollmentCount', { enrolled: enrolledCount, total: employees.length })}</span>
                     </div>
                     <Progress value={enrollPct} color="success" />
                   </div>
@@ -201,7 +204,7 @@ export default function BenefitsPage() {
                       variant={plan.is_active ? 'ghost' : 'primary'}
                       onClick={() => togglePlanStatus(plan.id, plan.is_active)}
                     >
-                      {plan.is_active ? 'Deactivate' : 'Activate'}
+                      {plan.is_active ? tc('deactivate') : tc('activate')}
                     </Button>
                   </div>
                 </div>
@@ -213,18 +216,18 @@ export default function BenefitsPage() {
 
       {/* Benefit Cost Summary Table */}
       <Card padding="none">
-        <CardHeader><CardTitle>Benefit Cost Summary</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('benefitCostSummary')}</CardTitle></CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-divider bg-canvas">
-                <th className="tempo-th text-left px-6 py-3">Plan</th>
-                <th className="tempo-th text-left px-4 py-3">Type</th>
-                <th className="tempo-th text-left px-4 py-3">Status</th>
-                <th className="tempo-th text-right px-4 py-3">Employee/mo</th>
-                <th className="tempo-th text-right px-4 py-3">Employer/mo</th>
-                <th className="tempo-th text-right px-4 py-3">Total/mo</th>
-                <th className="tempo-th text-right px-4 py-3">Annual Cost</th>
+                <th className="tempo-th text-left px-6 py-3">{t('tablePlan')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableType')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableStatus')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableEmployeeMo')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableEmployerMo')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableTotalMo')}</th>
+                <th className="tempo-th text-right px-4 py-3">{t('tableAnnualCost')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -234,7 +237,7 @@ export default function BenefitsPage() {
                   <td className="px-4 py-3"><Badge>{plan.type}</Badge></td>
                   <td className="px-4 py-3">
                     <Badge variant={plan.is_active ? 'success' : 'default'}>
-                      {plan.is_active ? 'Active' : 'Inactive'}
+                      {plan.is_active ? tc('active') : tc('inactive')}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-t2 text-right">${plan.cost_employee}</td>
@@ -247,7 +250,7 @@ export default function BenefitsPage() {
               ))}
               {benefitPlans.length > 0 && (
                 <tr className="bg-canvas font-semibold">
-                  <td className="px-6 py-3 text-sm text-t1" colSpan={3}>Total</td>
+                  <td className="px-6 py-3 text-sm text-t1" colSpan={3}>{tc('total')}</td>
                   <td className="px-4 py-3 text-sm text-t1 text-right">
                     ${benefitPlans.reduce((a, p) => a + p.cost_employee, 0).toLocaleString()}
                   </td>
@@ -270,65 +273,65 @@ export default function BenefitsPage() {
       {/* ---- MODALS ---- */}
 
       {/* Add/Edit Plan Modal */}
-      <Modal open={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlan ? 'Edit Benefit Plan' : 'Add Benefit Plan'}>
+      <Modal open={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlan ? t('editPlanModal') : t('addPlanModal')}>
         <div className="space-y-4">
           <Input
-            label="Plan Name"
-            placeholder="e.g., Gold Medical Plan"
+            label={t('planName')}
+            placeholder={t('planNamePlaceholder')}
             value={planForm.name}
             onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
           />
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Type"
+              label={tc('type')}
               value={planForm.type}
               onChange={(e) => setPlanForm({ ...planForm, type: e.target.value })}
               options={[
-                { value: 'medical', label: 'Medical' },
-                { value: 'dental', label: 'Dental' },
-                { value: 'vision', label: 'Vision' },
-                { value: 'life', label: 'Life Insurance' },
-                { value: 'retirement', label: 'Retirement' },
+                { value: 'medical', label: t('typeMedical') },
+                { value: 'dental', label: t('typeDental') },
+                { value: 'vision', label: t('typeVision') },
+                { value: 'life', label: t('typeLife') },
+                { value: 'retirement', label: t('typeRetirement') },
               ]}
             />
             <Input
-              label="Provider"
-              placeholder="e.g., AXA Mansard"
+              label={t('providerLabel')}
+              placeholder={t('providerPlaceholder')}
               value={planForm.provider}
               onChange={(e) => setPlanForm({ ...planForm, provider: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <Input
-              label="Employee Cost/mo"
+              label={t('employeeCostMo')}
               type="number"
               min={0}
               value={planForm.cost_employee}
               onChange={(e) => setPlanForm({ ...planForm, cost_employee: Number(e.target.value) })}
             />
             <Input
-              label="Employer Cost/mo"
+              label={t('employerCostMo')}
               type="number"
               min={0}
               value={planForm.cost_employer}
               onChange={(e) => setPlanForm({ ...planForm, cost_employer: Number(e.target.value) })}
             />
             <Select
-              label="Currency"
+              label={tc('currency')}
               value={planForm.currency}
               onChange={(e) => setPlanForm({ ...planForm, currency: e.target.value })}
               options={[
-                { value: 'USD', label: 'USD' },
-                { value: 'NGN', label: 'NGN' },
-                { value: 'GHS', label: 'GHS' },
-                { value: 'KES', label: 'KES' },
-                { value: 'XOF', label: 'XOF' },
+                { value: 'USD', label: tc('currencyUSD') },
+                { value: 'NGN', label: tc('currencyNGN') },
+                { value: 'GHS', label: tc('currencyGHS') },
+                { value: 'KES', label: tc('currencyKES') },
+                { value: 'XOF', label: tc('currencyXOF') },
               ]}
             />
           </div>
           <Textarea
-            label="Description"
-            placeholder="Describe the benefit plan coverage and details..."
+            label={tc('description')}
+            placeholder={t('descriptionPlaceholder')}
             rows={3}
             value={planForm.description}
             onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
@@ -340,11 +343,11 @@ export default function BenefitsPage() {
               onChange={(e) => setPlanForm({ ...planForm, is_active: e.target.checked })}
               className="rounded border-divider"
             />
-            Plan is active
+            {t('planIsActive')}
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>Cancel</Button>
-            <Button onClick={submitPlan}>{editingPlan ? 'Save Changes' : 'Add Plan'}</Button>
+            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPlan}>{editingPlan ? tc('saveChanges') : t('addPlan')}</Button>
           </div>
         </div>
       </Modal>

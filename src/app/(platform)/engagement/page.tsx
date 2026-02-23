@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,8 @@ import { AIInsightCard, AIAlertBanner } from '@/components/ai'
 import { identifyEngagementDrivers } from '@/lib/ai-engine'
 
 export default function EngagementPage() {
+  const t = useTranslations('engagement')
+  const tc = useTranslations('common')
   const { surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName } = useTempo()
   const [activeTab, setActiveTab] = useState('surveys')
   const [showSurveyModal, setShowSurveyModal] = useState(false)
@@ -29,9 +32,9 @@ export default function EngagementPage() {
   })
 
   const tabs = [
-    { id: 'surveys', label: 'Surveys', count: surveys.length },
-    { id: 'enps', label: 'eNPS Tracking' },
-    { id: 'heatmap', label: 'Engagement Heatmap' },
+    { id: 'surveys', label: t('tabSurveys'), count: surveys.length },
+    { id: 'enps', label: t('tabEnps') },
+    { id: 'heatmap', label: t('tabHeatmap') },
   ]
 
   const avgScore = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.overall_score, 0) / engagementScores.length) : 0
@@ -59,14 +62,14 @@ export default function EngagementPage() {
 
   return (
     <>
-      <Header title="Engagement" subtitle="Surveys, eNPS tracking, and action planning"
-        actions={<Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> New Survey</Button>}
+      <Header title={t('title')} subtitle={t('subtitle')}
+        actions={<Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> {t('newSurvey')}</Button>}
       />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Engagement Score" value={avgScore} change="Org average" changeType="neutral" icon={<HeartPulse size={20} />} />
-        <StatCard label="eNPS" value={`+${avgENPS}`} change="vs +32 last quarter" changeType="positive" icon={<TrendingUp size={20} />} />
-        <StatCard label="Response Rate" value={`${avgResponse}%`} change="Above target" changeType="positive" />
-        <StatCard label="Active Surveys" value={activeSurveys} icon={<BarChart3 size={20} />} />
+        <StatCard label={t('engagementScore')} value={avgScore} change={t('orgAverage')} changeType="neutral" icon={<HeartPulse size={20} />} />
+        <StatCard label={t('enps')} value={`+${avgENPS}`} change={t('vsLastQuarter')} changeType="positive" icon={<TrendingUp size={20} />} />
+        <StatCard label={t('responseRate')} value={`${avgResponse}%`} change={t('aboveTarget')} changeType="positive" />
+        <StatCard label={t('activeSurveys')} value={activeSurveys} icon={<BarChart3 size={20} />} />
       </div>
       {/* AI Engagement Insights */}
       {driverInsights.length > 0 && (
@@ -81,10 +84,10 @@ export default function EngagementPage() {
 
       {activeTab === 'surveys' && (
         <Card padding="none">
-          <CardHeader><CardTitle>Survey Management</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('surveyManagement')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
             {surveys.length === 0 ? (
-              <div className="px-6 py-12 text-center text-sm text-t3">No surveys yet. Click &quot;New Survey&quot; to create one.</div>
+              <div className="px-6 py-12 text-center text-sm text-t3">{t('noSurveys')}</div>
             ) : surveys.map(survey => (
               <div key={survey.id} className="px-6 py-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
@@ -92,7 +95,7 @@ export default function EngagementPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-t1">{survey.title}</p>
-                  <p className="text-xs text-t3">{survey.start_date} to {survey.end_date} {survey.anonymous ? '(Anonymous)' : ''}</p>
+                  <p className="text-xs text-t3">{survey.start_date} {tc('to')} {survey.end_date} {survey.anonymous ? t('anonymous') : ''}</p>
                 </div>
                 <Badge variant={survey.type === 'enps' ? 'info' : survey.type === 'pulse' ? 'orange' : 'default'}>
                   {survey.type.toUpperCase()}
@@ -102,12 +105,12 @@ export default function EngagementPage() {
                 </Badge>
                 <div className="flex gap-1">
                   {survey.status === 'active' && (
-                    <Button size="sm" variant="outline" onClick={() => closeSurvey(survey.id)}>Close</Button>
+                    <Button size="sm" variant="outline" onClick={() => closeSurvey(survey.id)}>{tc('close')}</Button>
                   )}
                   {survey.status === 'closed' && (
-                    <Button size="sm" variant="ghost" onClick={() => reopenSurvey(survey.id)}>Reopen</Button>
+                    <Button size="sm" variant="ghost" onClick={() => reopenSurvey(survey.id)}>{tc('reopen')}</Button>
                   )}
-                  <Button size="sm" variant="ghost">View Results</Button>
+                  <Button size="sm" variant="ghost">{t('viewResults')}</Button>
                 </div>
               </div>
             ))}
@@ -128,16 +131,16 @@ export default function EngagementPage() {
                   </div>
                   <div className="text-right">
                     <p className="tempo-stat text-2xl text-tempo-600">+{score.enps_score}</p>
-                    <p className="text-[0.6rem] text-t3">eNPS</p>
+                    <p className="text-[0.6rem] text-t3">{t('enpsLabel')}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <p className="text-xs text-t3">Overall Score</p>
+                    <p className="text-xs text-t3">{t('overallScore')}</p>
                     <Progress value={score.overall_score} showLabel />
                   </div>
                   <div>
-                    <p className="text-xs text-t3">Response Rate</p>
+                    <p className="text-xs text-t3">{t('responseRate')}</p>
                     <Progress value={score.response_rate} showLabel color="success" />
                   </div>
                 </div>
@@ -154,16 +157,16 @@ export default function EngagementPage() {
 
       {activeTab === 'heatmap' && (
         <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Engagement Heatmap by Department</h3>
+          <h3 className="text-sm font-semibold text-t1 mb-4">{t('heatmapTitle')}</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-divider">
-                  <th className="tempo-th text-left px-4 py-3">Department</th>
-                  <th className="tempo-th text-center px-4 py-3">Overall</th>
-                  <th className="tempo-th text-center px-4 py-3">eNPS</th>
-                  <th className="tempo-th text-center px-4 py-3">Response</th>
-                  <th className="tempo-th text-left px-4 py-3">Top Themes</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableDepartment')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableOverall')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableEnps')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('tableResponse')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('tableTopThemes')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -180,7 +183,7 @@ export default function EngagementPage() {
                       <td className="px-4 py-3 text-center text-sm text-t2">{score.response_rate}%</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          {score.themes.map(t => <Badge key={t} variant="default">{t}</Badge>)}
+                          {score.themes.map(theme => <Badge key={theme} variant="default">{theme}</Badge>)}
                         </div>
                       </td>
                     </tr>
@@ -193,25 +196,25 @@ export default function EngagementPage() {
       )}
 
       {/* New Survey Modal */}
-      <Modal open={showSurveyModal} onClose={() => setShowSurveyModal(false)} title="Create New Survey">
+      <Modal open={showSurveyModal} onClose={() => setShowSurveyModal(false)} title={t('createSurveyModal')}>
         <div className="space-y-4">
-          <Input label="Survey Title" value={surveyForm.title} onChange={(e) => setSurveyForm({ ...surveyForm, title: e.target.value })} placeholder="e.g. Q2 2026 Engagement Pulse" />
-          <Select label="Survey Type" value={surveyForm.type} onChange={(e) => setSurveyForm({ ...surveyForm, type: e.target.value as 'pulse' | 'enps' | 'annual' })} options={[
-            { value: 'pulse', label: 'Pulse Survey' },
-            { value: 'enps', label: 'eNPS Survey' },
-            { value: 'annual', label: 'Annual Engagement Survey' },
+          <Input label={t('surveyTitle')} value={surveyForm.title} onChange={(e) => setSurveyForm({ ...surveyForm, title: e.target.value })} placeholder={t('surveyTitlePlaceholder')} />
+          <Select label={t('surveyType')} value={surveyForm.type} onChange={(e) => setSurveyForm({ ...surveyForm, type: e.target.value as 'pulse' | 'enps' | 'annual' })} options={[
+            { value: 'pulse', label: t('typePulse') },
+            { value: 'enps', label: t('typeEnps') },
+            { value: 'annual', label: t('typeAnnual') },
           ]} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Start Date" type="date" value={surveyForm.start_date} onChange={(e) => setSurveyForm({ ...surveyForm, start_date: e.target.value })} />
-            <Input label="End Date" type="date" value={surveyForm.end_date} onChange={(e) => setSurveyForm({ ...surveyForm, end_date: e.target.value })} />
+            <Input label={t('startDate')} type="date" value={surveyForm.start_date} onChange={(e) => setSurveyForm({ ...surveyForm, start_date: e.target.value })} />
+            <Input label={t('endDate')} type="date" value={surveyForm.end_date} onChange={(e) => setSurveyForm({ ...surveyForm, end_date: e.target.value })} />
           </div>
           <label className="flex items-center gap-2 text-xs text-t1">
             <input type="checkbox" checked={surveyForm.anonymous} onChange={(e) => setSurveyForm({ ...surveyForm, anonymous: e.target.checked })} className="rounded border-divider" />
-            Anonymous responses
+            {t('anonymousResponses')}
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowSurveyModal(false)}>Cancel</Button>
-            <Button onClick={submitSurvey}>Create Survey</Button>
+            <Button variant="secondary" onClick={() => setShowSurveyModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitSurvey}>{t('createSurvey')}</Button>
           </div>
         </div>
       </Modal>

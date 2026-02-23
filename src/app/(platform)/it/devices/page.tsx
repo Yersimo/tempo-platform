@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +15,8 @@ import { AIInsightCard } from '@/components/ai'
 import { predictDeviceRefresh } from '@/lib/ai-engine'
 
 export default function DevicesPage() {
+  const t = useTranslations('devices')
+  const tc = useTranslations('common')
   const { devices, employees, addDevice, updateDevice, getEmployeeName } = useTempo()
 
   const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
@@ -92,16 +95,16 @@ export default function DevicesPage() {
   return (
     <>
       <Header
-        title="Devices"
-        subtitle="Device inventory, assignment, and lifecycle management"
-        actions={<Button size="sm" onClick={openAddDevice}><Plus size={14} /> Add Device</Button>}
+        title={t('title')}
+        subtitle={t('subtitle')}
+        actions={<Button size="sm" onClick={openAddDevice}><Plus size={14} /> {t('addDevice')}</Button>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Devices" value={devices.length} icon={<Laptop size={20} />} />
-        <StatCard label="Assigned" value={assignedCount} change={`${availableCount} available`} changeType="neutral" />
-        <StatCard label="In Maintenance" value={maintenanceCount} icon={<Wrench size={20} />} />
-        <StatCard label="Available" value={availableCount} change="Ready to assign" changeType="positive" />
+        <StatCard label={t('totalDevices')} value={devices.length} icon={<Laptop size={20} />} />
+        <StatCard label={t('assigned')} value={assignedCount} change={t('available', { count: availableCount })} changeType="neutral" />
+        <StatCard label={t('inMaintenance')} value={maintenanceCount} icon={<Wrench size={20} />} />
+        <StatCard label={t('availableLabel')} value={availableCount} change={t('readyToAssign')} changeType="positive" />
       </div>
 
       {/* AI Insights */}
@@ -116,21 +119,21 @@ export default function DevicesPage() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Device Inventory</CardTitle>
-            <Button variant="secondary" size="sm">Export</Button>
+            <CardTitle>{t('deviceInventory')}</CardTitle>
+            <Button variant="secondary" size="sm">{tc('export')}</Button>
           </div>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-divider bg-canvas">
-                <th className="tempo-th text-left px-6 py-3">Device</th>
-                <th className="tempo-th text-left px-4 py-3">Type</th>
-                <th className="tempo-th text-left px-4 py-3">Serial #</th>
-                <th className="tempo-th text-left px-4 py-3">Assigned To</th>
-                <th className="tempo-th text-left px-4 py-3">Warranty</th>
-                <th className="tempo-th text-center px-4 py-3">Status</th>
-                <th className="tempo-th text-center px-4 py-3">Actions</th>
+                <th className="tempo-th text-left px-6 py-3">{t('tableDevice')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableType')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableSerial')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableAssignedTo')}</th>
+                <th className="tempo-th text-left px-4 py-3">{t('tableWarranty')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -143,7 +146,7 @@ export default function DevicesPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-t1">{device.brand} {device.model}</p>
-                        <p className="text-xs text-t3">Purchased {device.purchase_date}</p>
+                        <p className="text-xs text-t3">{t('purchased', { date: device.purchase_date })}</p>
                       </div>
                     </div>
                   </td>
@@ -166,12 +169,12 @@ export default function DevicesPage() {
                     <div className="flex gap-1 justify-center">
                       {device.status === 'available' && (
                         <Button size="sm" variant="primary" onClick={() => openAssign(device.id)}>
-                          <UserCheck size={12} /> Assign
+                          <UserCheck size={12} /> {tc('assign')}
                         </Button>
                       )}
                       {device.status === 'assigned' && (
                         <Button size="sm" variant="ghost" onClick={() => unassignDevice(device.id)}>
-                          <UserX size={12} /> Unassign
+                          <UserX size={12} /> {tc('unassign')}
                         </Button>
                       )}
                       {device.status !== 'maintenance' && (
@@ -181,7 +184,7 @@ export default function DevicesPage() {
                       )}
                       {device.status === 'maintenance' && (
                         <Button size="sm" variant="secondary" onClick={() => setAvailable(device.id)}>
-                          Mark Available
+                          {t('markAvailable')}
                         </Button>
                       )}
                     </div>
@@ -194,47 +197,47 @@ export default function DevicesPage() {
       </Card>
 
       {/* Add Device Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Device">
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addDeviceModal')}>
         <div className="space-y-4">
           <Select
-            label="Device Type"
+            label={t('deviceType')}
             value={deviceForm.type}
             onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })}
             options={[
-              { value: 'laptop', label: 'Laptop' },
-              { value: 'phone', label: 'Smartphone' },
-              { value: 'monitor', label: 'Monitor' },
+              { value: 'laptop', label: t('typeLaptop') },
+              { value: 'phone', label: t('typeSmartphone') },
+              { value: 'monitor', label: t('typeMonitor') },
             ]}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Brand" placeholder="e.g., Dell, Apple, HP" value={deviceForm.brand} onChange={(e) => setDeviceForm({ ...deviceForm, brand: e.target.value })} />
-            <Input label="Model" placeholder="e.g., Latitude 5540" value={deviceForm.model} onChange={(e) => setDeviceForm({ ...deviceForm, model: e.target.value })} />
+            <Input label={t('brand')} placeholder={t('brandPlaceholder')} value={deviceForm.brand} onChange={(e) => setDeviceForm({ ...deviceForm, brand: e.target.value })} />
+            <Input label={t('model')} placeholder={t('modelPlaceholder')} value={deviceForm.model} onChange={(e) => setDeviceForm({ ...deviceForm, model: e.target.value })} />
           </div>
-          <Input label="Serial Number" placeholder="e.g., SN-2026-XXXX" value={deviceForm.serial_number} onChange={(e) => setDeviceForm({ ...deviceForm, serial_number: e.target.value })} />
+          <Input label={t('serialNumber')} placeholder={t('serialPlaceholder')} value={deviceForm.serial_number} onChange={(e) => setDeviceForm({ ...deviceForm, serial_number: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Purchase Date" type="date" value={deviceForm.purchase_date} onChange={(e) => setDeviceForm({ ...deviceForm, purchase_date: e.target.value })} />
-            <Input label="Warranty End" type="date" value={deviceForm.warranty_end} onChange={(e) => setDeviceForm({ ...deviceForm, warranty_end: e.target.value })} />
+            <Input label={t('purchaseDate')} type="date" value={deviceForm.purchase_date} onChange={(e) => setDeviceForm({ ...deviceForm, purchase_date: e.target.value })} />
+            <Input label={t('warrantyEnd')} type="date" value={deviceForm.warranty_end} onChange={(e) => setDeviceForm({ ...deviceForm, warranty_end: e.target.value })} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button onClick={submitDevice}>Add Device</Button>
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitDevice}>{t('addDevice')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Assign Device Modal */}
-      <Modal open={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Device" size="sm">
+      <Modal open={showAssignModal} onClose={() => setShowAssignModal(false)} title={t('assignDeviceModal')} size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-t2">Select an employee to assign this device to.</p>
+          <p className="text-sm text-t2">{t('assignDeviceDesc')}</p>
           <Select
-            label="Employee"
+            label={tc('employee')}
             value={assignEmployeeId}
             onChange={(e) => setAssignEmployeeId(e.target.value)}
             options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button onClick={submitAssign}>Assign</Button>
+            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitAssign}>{tc('assign')}</Button>
           </div>
         </div>
       </Modal>

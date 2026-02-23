@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { TempoLockup } from '@/components/brand/tempo-lockup'
 
 export default function SignupPage() {
   const router = useRouter()
+  const t = useTranslations('auth')
+  const tc = useTranslations('common')
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -50,7 +53,7 @@ export default function SignupPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error || 'Signup failed. Please try again.')
+        setError(data.error || t('signupFailed'))
         setLoading(false)
         return
       }
@@ -60,7 +63,7 @@ export default function SignupPage() {
       try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
       router.push('/dashboard')
     } catch {
-      setError('Network error. Please check your connection and try again.')
+      setError(t('networkError'))
       setLoading(false)
     }
   }
@@ -72,10 +75,10 @@ export default function SignupPage() {
       </div>
       <div className="bg-card rounded-[14px] border border-border p-8">
         <h2 className="text-xl font-semibold text-t1 mb-1">
-          {step === 1 ? 'Create your account' : 'Set up your organization'}
+          {step === 1 ? t('createAccount') : t('setupOrg')}
         </h2>
         <p className="text-sm text-t3 mb-6">
-          {step === 1 ? 'Start your 14-day free trial' : 'Tell us about your company'}
+          {step === 1 ? t('startTrial') : t('tellAboutCompany')}
         </p>
 
         {/* Progress */}
@@ -88,34 +91,34 @@ export default function SignupPage() {
           {step === 1 && (
             <>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Full Name</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('fullNameLabel')}</label>
                 <input
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  placeholder="Your full name"
+                  placeholder={t('fullNamePlaceholder')}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Work Email</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('workEmailLabel')}</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="you@company.com"
+                  placeholder={t('workEmailPlaceholder')}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Password</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('passwordLabel')}</label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Minimum 8 characters"
+                  placeholder={t('passwordMinLength')}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                   minLength={8}
@@ -127,69 +130,69 @@ export default function SignupPage() {
           {step === 2 && (
             <>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Company Name</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('companyNameLabel')}</label>
                 <input
                   type="text"
                   value={formData.companyName}
                   onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                  placeholder="Your company name"
+                  placeholder={t('companyNamePlaceholder')}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Industry</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('industryLabel')}</label>
                 <select
                   value={formData.industry}
                   onChange={(e) => setFormData({...formData, industry: e.target.value})}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 >
-                  <option value="">Select industry</option>
-                  <option value="banking">Banking & Financial Services</option>
-                  <option value="tech">Technology</option>
-                  <option value="healthcare">Healthcare</option>
-                  <option value="manufacturing">Manufacturing</option>
-                  <option value="retail">Retail & Commerce</option>
-                  <option value="telecom">Telecommunications</option>
-                  <option value="energy">Energy & Utilities</option>
-                  <option value="other">Other</option>
+                  <option value="">{t('selectIndustry')}</option>
+                  <option value="banking">{t('industryBanking')}</option>
+                  <option value="tech">{t('industryTech')}</option>
+                  <option value="healthcare">{t('industryHealthcare')}</option>
+                  <option value="manufacturing">{t('industryManufacturing')}</option>
+                  <option value="retail">{t('industryRetail')}</option>
+                  <option value="telecom">{t('industryTelecom')}</option>
+                  <option value="energy">{t('industryEnergy')}</option>
+                  <option value="other">{t('industryOther')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Company Size</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('companySizeLabel')}</label>
                 <select
                   value={formData.size}
                   onChange={(e) => setFormData({...formData, size: e.target.value})}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 >
-                  <option value="">Select size</option>
-                  <option value="1-50">1-50 employees</option>
-                  <option value="51-200">51-200 employees</option>
-                  <option value="201-1000">201-1,000 employees</option>
-                  <option value="1001-5000">1,001-5,000 employees</option>
-                  <option value="5000+">5,000+ employees</option>
+                  <option value="">{t('selectSize')}</option>
+                  <option value="1-50">{t('size1to50')}</option>
+                  <option value="51-200">{t('size51to200')}</option>
+                  <option value="201-1000">{t('size201to1000')}</option>
+                  <option value="1001-5000">{t('size1001to5000')}</option>
+                  <option value="5000+">{t('size5000plus')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Primary Country</label>
+                <label className="block text-xs font-medium text-t1 mb-1">{t('primaryCountryLabel')}</label>
                 <select
                   value={formData.country}
                   onChange={(e) => setFormData({...formData, country: e.target.value})}
                   className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
                   required
                 >
-                  <option value="">Select country</option>
-                  <option value="NG">Nigeria</option>
-                  <option value="GH">Ghana</option>
-                  <option value="CI">Cote d&apos;Ivoire</option>
-                  <option value="KE">Kenya</option>
-                  <option value="SN">Senegal</option>
-                  <option value="ZA">South Africa</option>
-                  <option value="TZ">Tanzania</option>
-                  <option value="UG">Uganda</option>
-                  <option value="other">Other</option>
+                  <option value="">{t('selectCountry')}</option>
+                  <option value="NG">{t('countryNigeria')}</option>
+                  <option value="GH">{t('countryGhana')}</option>
+                  <option value="CI">{t('countryCoteDIvoire')}</option>
+                  <option value="KE">{t('countryKenya')}</option>
+                  <option value="SN">{t('countrySenegal')}</option>
+                  <option value="ZA">{t('countrySouthAfrica')}</option>
+                  <option value="TZ">{t('countryTanzania')}</option>
+                  <option value="UG">{t('countryUganda')}</option>
+                  <option value="other">{t('countryOther')}</option>
                 </select>
               </div>
             </>
@@ -200,20 +203,20 @@ export default function SignupPage() {
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating account...' : step === 1 ? 'Continue' : 'Create Organization'}
+            {loading ? t('creatingAccount') : step === 1 ? tc('continue') : t('createOrganization')}
           </Button>
 
           {step === 2 && (
             <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-t3 hover:text-t1 transition-colors">
-              Back to account details
+              {t('backToAccount')}
             </button>
           )}
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-xs text-t3">
-            Already have an account?{' '}
-            <Link href="/login" className="text-tempo-600 hover:underline font-medium">Sign in</Link>
+            {t('alreadyHaveAccount')}{' '}
+            <Link href="/login" className="text-tempo-600 hover:underline font-medium">{t('signInLink')}</Link>
           </p>
         </div>
       </div>

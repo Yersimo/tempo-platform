@@ -1377,3 +1377,290 @@ export function generateBoardNarrative(data: {
     ],
   }
 }
+
+// ============================================================
+// PHASE 3: PROJECT MANAGEMENT AI
+// ============================================================
+
+export function scoreProjectHealth(project: any, milestones: any[], projectTasks: any[]): AIScore {
+  const totalTasks = projectTasks.length
+  if (totalTasks === 0) return { value: 50, label: 'No tasks', trend: 'stable' }
+
+  const doneTasks = projectTasks.filter(t => t.status === 'done').length
+  const overdue = projectTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length
+  const blockedOrCritical = projectTasks.filter(t => t.priority === 'critical' && t.status !== 'done').length
+
+  const completionFactor = pct(doneTasks, totalTasks)
+  const overdueFactor = Math.max(0, 100 - overdue * 25)
+  const criticalFactor = Math.max(0, 100 - blockedOrCritical * 20)
+
+  const milestoneDone = milestones.filter(m => m.status === 'done').length
+  const milestoneFactor = milestones.length > 0 ? pct(milestoneDone, milestones.length) : 50
+
+  const factors = [
+    { factor: 'Task Completion', score: completionFactor, weight: 0.35 },
+    { factor: 'On Schedule', score: overdueFactor, weight: 0.25 },
+    { factor: 'Critical Items', score: criticalFactor, weight: 0.20 },
+    { factor: 'Milestone Progress', score: milestoneFactor, weight: 0.20 },
+  ]
+
+  const value = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+  const label = value >= 75 ? 'Healthy' : value >= 50 ? 'At Risk' : 'Critical'
+  const trend = overdue > 2 ? 'down' as const : doneTasks > totalTasks / 2 ? 'up' as const : 'stable' as const
+
+  return { value: clamp(value, 0, 100), label, breakdown: factors, trend }
+}
+
+export function predictTimelineRisk(project: any, projectTasks: any[]): AIInsight | null {
+  if (!project.end_date) return null
+  const daysLeft = daysBetween(new Date().toISOString().split('T')[0], project.end_date)
+  const totalTasks = projectTasks.length
+  if (totalTasks === 0) return null
+
+  const remaining = projectTasks.filter(t => t.status !== 'done').length
+  const remainingHours = projectTasks.filter(t => t.status !== 'done').reduce((s, t) => s + (t.estimated_hours || 8), 0)
+
+  if (daysLeft < 30 && remaining > totalTasks * 0.4) {
+    return {
+      id: genAIId('timeline-risk'),
+      category: 'prediction',
+      severity: 'warning',
+      title: 'Timeline at risk',
+      description: `${remaining} tasks remaining with ${daysLeft} days until deadline. ${remainingHours} estimated hours of work left.`,
+      confidence: daysLeft < 14 ? 'high' : 'medium',
+      confidenceScore: daysLeft < 14 ? 85 : 65,
+      suggestedAction: 'Review task priorities and consider resource reallocation.',
+      module: 'projects',
+    }
+  }
+  return null
+}
+
+export function detectResourceBottlenecks(projectTasks: any[], employees: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+  const assigneeLoad = new Map<string, number>()
+
+  for (const task of projectTasks) {
+    if (task.assignee_id && task.status !== 'done') {
+      assigneeLoad.set(task.assignee_id, (assigneeLoad.get(task.assignee_id) || 0) + 1)
+    }
+  }
+
+  for (const [empId, count] of assigneeLoad) {
+    if (count >= 5) {
+      const emp = employees.find(e => e.id === empId)
+      const name = emp?.profile?.full_name || 'Team member'
+      insights.push({
+        id: genAIId('resource-bottleneck'),
+        category: 'alert',
+        severity: count >= 8 ? 'critical' : 'warning',
+        title: `${name} is overloaded`,
+        description: `${count} active tasks assigned. Consider redistributing to balance workload.`,
+        confidence: 'high',
+        confidenceScore: 80,
+        suggestedAction: `Reassign ${count - 3} tasks to reduce bottleneck.`,
+        module: 'projects',
+      })
+    }
+  }
+  return insights
+}
+
+// ============================================================
+// PHASE 3: STRATEGY EXECUTION AI
+// ============================================================
+
+export function scoreOKRQuality(objective: any, krs: any[]): AIScore {
+  if (krs.length === 0) return { value: 30, label: 'Needs key results', trend: 'stable' }
+
+  // Objective quality
+  const hasDesc = objective.description && objective.description.length > 20 ? 80 : 40
+  const hasPeriod = objective.period ? 85 : 30
+
+  // Key result quality
+  const measurable = krs.filter(kr => kr.target_value > 0).length
+  const measurableScore = pct(measurable, krs.length)
+  const hasOwners = krs.filter(kr => kr.owner_id).length
+  const ownerScore = pct(hasOwners, krs.length)
+  const hasDates = krs.filter(kr => kr.due_date).length
+  const dateScore = pct(hasDates, krs.length)
+
+  // Progress distribution
+  const avgProgress = krs.length > 0 ? mean(krs.map(kr => kr.target_value > 0 ? pct(kr.current_value, kr.target_value) : 0)) : 0
+
+  const factors = [
+    { factor: 'Objective Clarity', score: hasDesc, weight: 0.15 },
+    { factor: 'Time-bound', score: Math.round((hasPeriod + dateScore) / 2), weight: 0.15 },
+    { factor: 'Measurability', score: Math.round(measurableScore), weight: 0.30 },
+    { factor: 'Ownership', score: Math.round(ownerScore), weight: 0.15 },
+    { factor: 'Progress', score: Math.round(Math.min(avgProgress, 100)), weight: 0.25 },
+  ]
+
+  const value = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+  const label = value >= 75 ? 'Excellent' : value >= 50 ? 'Good' : 'Needs Work'
+  return { value: clamp(value, 0, 100), label, breakdown: factors, trend: 'stable' }
+}
+
+export function analyzeStrategyAlignment(objectives: any[], goals: any[], initiatives: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  // Check for objectives without initiatives
+  for (const obj of objectives) {
+    const linkedInitiatives = initiatives.filter(i => i.objective_id === obj.id)
+    if (linkedInitiatives.length === 0 && obj.status === 'active') {
+      insights.push({
+        id: genAIId('alignment'),
+        category: 'recommendation',
+        severity: 'warning',
+        title: `"${obj.title}" has no linked initiatives`,
+        description: 'Active strategic objectives should have at least one initiative driving progress.',
+        confidence: 'high',
+        confidenceScore: 90,
+        suggestedAction: 'Create or link initiatives to this objective.',
+        module: 'strategy',
+      })
+    }
+  }
+
+  // Check for stalled initiatives
+  const stalled = initiatives.filter(i => i.status === 'in_progress' && i.progress < 10 && i.start_date && daysBetween(i.start_date, new Date().toISOString().split('T')[0]) > 30)
+  for (const init of stalled) {
+    insights.push({
+      id: genAIId('stalled-init'),
+      category: 'alert',
+      severity: 'warning',
+      title: `Initiative "${init.title}" may be stalled`,
+      description: `Started over 30 days ago but only at ${init.progress}% progress.`,
+      confidence: 'medium',
+      confidenceScore: 70,
+      suggestedAction: 'Review blockers and resource allocation.',
+      module: 'strategy',
+    })
+  }
+
+  return insights
+}
+
+export function forecastKPITrend(kpi: any, measurements: any[]): AIInsight | null {
+  if (measurements.length < 2) return null
+
+  const sorted = [...measurements].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
+  const latest = sorted[sorted.length - 1].value
+  const previous = sorted[sorted.length - 2].value
+  const change = latest - previous
+  const pctChange = previous !== 0 ? Math.round((change / previous) * 100) : 0
+
+  const onTrack = kpi.target_value ? (latest / kpi.target_value) >= 0.7 : true
+  const direction = change > 0 ? 'improving' : change < 0 ? 'declining' : 'flat'
+
+  return {
+    id: genAIId('kpi-trend'),
+    category: 'trend',
+    severity: !onTrack ? 'warning' : 'positive',
+    title: `${kpi.name}: ${direction}`,
+    description: `Current: ${latest} ${kpi.unit || ''} (${pctChange >= 0 ? '+' : ''}${pctChange}% vs last period). Target: ${kpi.target_value || 'N/A'} ${kpi.unit || ''}.`,
+    confidence: measurements.length >= 3 ? 'high' : 'medium',
+    confidenceScore: measurements.length >= 3 ? 80 : 60,
+    suggestedAction: !onTrack ? 'Review action plan to close the gap to target.' : undefined,
+    module: 'strategy',
+  }
+}
+
+// ============================================================
+// PHASE 3: WORKFLOW STUDIO AI
+// ============================================================
+
+export function analyzeWorkflowEfficiency(workflow: any, steps: any[], runs: any[]): AIScore {
+  if (runs.length === 0) return { value: 50, label: 'No runs', trend: 'stable' }
+
+  const completed = runs.filter(r => r.status === 'completed')
+  const failed = runs.filter(r => r.status === 'failed')
+  const successRate = pct(completed.length, runs.length)
+
+  // Average completion time (for completed runs with both timestamps)
+  const durations = completed
+    .filter(r => r.started_at && r.completed_at)
+    .map(r => new Date(r.completed_at).getTime() - new Date(r.started_at).getTime())
+  const avgDuration = durations.length > 0 ? mean(durations) : 0
+  const durationScore = avgDuration < 300000 ? 90 : avgDuration < 3600000 ? 70 : 50 // <5min=90, <1hr=70
+
+  const stepEfficiency = steps.length > 0 && steps.length <= 7 ? 85 : steps.length > 10 ? 50 : 70
+
+  const factors = [
+    { factor: 'Success Rate', score: Math.round(successRate), weight: 0.40 },
+    { factor: 'Execution Speed', score: Math.round(durationScore), weight: 0.30 },
+    { factor: 'Step Efficiency', score: stepEfficiency, weight: 0.30 },
+  ]
+
+  const value = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+  const label = value >= 75 ? 'Efficient' : value >= 50 ? 'Moderate' : 'Needs Optimization'
+  const trend = failed.length > completed.length * 0.3 ? 'down' as const : 'up' as const
+
+  return { value: clamp(value, 0, 100), label, breakdown: factors, trend }
+}
+
+export function suggestWorkflowOptimizations(workflow: any, steps: any[], runs: any[]): AIRecommendation[] {
+  const recs: AIRecommendation[] = []
+
+  const failed = runs.filter(r => r.status === 'failed')
+  if (failed.length > 0 && runs.length > 0) {
+    const failRate = pct(failed.length, runs.length)
+    if (failRate > 20) {
+      recs.push({
+        id: genAIId('wf-failrate'),
+        title: 'High failure rate detected',
+        rationale: `${Math.round(failRate)}% of runs have failed. Review error patterns and add error handling steps.`,
+        impact: failRate > 40 ? 'high' : 'medium',
+        effort: 'medium',
+        category: 'workflow',
+      })
+    }
+  }
+
+  if (steps.length > 8) {
+    recs.push({
+      id: genAIId('wf-complexity'),
+      title: 'Consider simplifying workflow',
+      rationale: `${steps.length} steps may be too complex. Split into sub-workflows for maintainability.`,
+      impact: 'medium',
+      effort: 'high',
+      category: 'workflow',
+    })
+  }
+
+  const hasCondition = steps.some(s => s.step_type === 'condition')
+  if (!hasCondition && steps.length > 3) {
+    recs.push({
+      id: genAIId('wf-condition'),
+      title: 'Add conditional branching',
+      rationale: 'Workflow runs linearly without conditions. Adding conditions could handle edge cases.',
+      impact: 'low',
+      effort: 'low',
+      category: 'workflow',
+    })
+  }
+
+  return recs
+}
+
+export function predictWorkflowFailure(workflow: any, runs: any[]): AIInsight | null {
+  if (runs.length < 3) return null
+
+  const recent = runs.slice(-5)
+  const recentFails = recent.filter(r => r.status === 'failed').length
+
+  if (recentFails >= 2) {
+    return {
+      id: genAIId('wf-fail-predict'),
+      category: 'prediction',
+      severity: recentFails >= 3 ? 'critical' : 'warning',
+      title: 'Recurring workflow failures',
+      description: `${recentFails} of the last ${recent.length} runs have failed. Pattern suggests a systemic issue.`,
+      confidence: recentFails >= 3 ? 'high' : 'medium',
+      confidenceScore: recentFails >= 3 ? 85 : 65,
+      suggestedAction: 'Investigate common failure context and add retry logic or error notifications.',
+      module: 'workflow-studio',
+    }
+  }
+  return null
+}

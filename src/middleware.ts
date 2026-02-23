@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Allow API routes except protected ones
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/data')) {
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/data') && !pathname.startsWith('/api/ai') && !pathname.startsWith('/api/search') && !pathname.startsWith('/api/workflow') && !pathname.startsWith('/api/notifications') && !pathname.startsWith('/api/integrations')) {
     return NextResponse.next()
   }
 

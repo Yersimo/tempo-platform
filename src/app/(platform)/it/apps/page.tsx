@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,9 @@ export default function AppsPage() {
     addITRequest, updateITRequest,
     getEmployeeName,
   } = useTempo()
+
+  const t = useTranslations('apps')
+  const tc = useTranslations('common')
 
   const licenseRecs = useMemo(() => optimizeLicenses(softwareLicenses), [softwareLicenses])
 
@@ -100,21 +104,21 @@ export default function AppsPage() {
   return (
     <>
       <Header
-        title="Apps & Licenses"
-        subtitle="Software licenses, provisioning, and IT requests"
+        title={t('title')}
+        subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> IT Request</Button>
-            <Button size="sm" onClick={openAddLicense}><Plus size={14} /> Add License</Button>
+            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> {t('itRequest')}</Button>
+            <Button size="sm" onClick={openAddLicense}><Plus size={14} /> {t('addLicense')}</Button>
           </div>
         }
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Licenses" value={totalLicenses} icon={<Key size={20} />} />
-        <StatCard label="Utilization" value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={`${usedLicenses} in use`} changeType="neutral" />
-        <StatCard label="Monthly Cost" value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} />
-        <StatCard label="Open IT Requests" value={openRequests} icon={<AlertTriangle size={20} />} />
+        <StatCard label={t('totalLicenses')} value={totalLicenses} icon={<Key size={20} />} />
+        <StatCard label={t('utilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={t('inUse', { count: usedLicenses })} changeType="neutral" />
+        <StatCard label={t('monthlyCost')} value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} />
+        <StatCard label={t('openItRequests')} value={openRequests} icon={<AlertTriangle size={20} />} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -127,19 +131,19 @@ export default function AppsPage() {
                   <h3 className="text-sm font-semibold text-t1">{license.name}</h3>
                   <p className="text-xs text-t3">{license.vendor}</p>
                 </div>
-                <Badge variant="success">Active</Badge>
+                <Badge variant="success">{tc('active')}</Badge>
               </div>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div>
-                  <p className="text-[0.6rem] text-t3 uppercase">Used</p>
+                  <p className="text-[0.6rem] text-t3 uppercase">{t('used')}</p>
                   <p className="text-sm font-semibold text-t1">{license.used_licenses} / {license.total_licenses}</p>
                 </div>
                 <div>
-                  <p className="text-[0.6rem] text-t3 uppercase">Cost/License</p>
+                  <p className="text-[0.6rem] text-t3 uppercase">{t('costPerLicense')}</p>
                   <p className="text-sm font-semibold text-t1">${license.cost_per_license}/mo</p>
                 </div>
                 <div>
-                  <p className="text-[0.6rem] text-t3 uppercase">Renewal</p>
+                  <p className="text-[0.6rem] text-t3 uppercase">{t('renewal')}</p>
                   <p className="text-sm font-semibold text-t1">{license.renewal_date}</p>
                 </div>
               </div>
@@ -152,7 +156,7 @@ export default function AppsPage() {
       {/* AI Insights */}
       <div className="mb-6">
         <AIRecommendationList
-          title="License Optimization"
+          title={t('licenseOptimization')}
           recommendations={licenseRecs}
         />
       </div>
@@ -160,13 +164,13 @@ export default function AppsPage() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>IT Support Requests</CardTitle>
-            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> New Request</Button>
+            <CardTitle>{t('itSupportRequests')}</CardTitle>
+            <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> {t('newRequest')}</Button>
           </div>
         </CardHeader>
         <div className="divide-y divide-divider">
           {itRequests.length === 0 && (
-            <div className="px-6 py-12 text-center text-sm text-t3">No IT requests yet. Click "IT Request" to create one.</div>
+            <div className="px-6 py-12 text-center text-sm text-t3">{t('noItRequests')}</div>
           )}
           {itRequests.map(req => (
             <div key={req.id} className="px-6 py-4 flex items-center gap-4">
@@ -186,12 +190,12 @@ export default function AppsPage() {
               <div className="flex gap-1">
                 {req.status === 'open' && (
                   <Button size="sm" variant="secondary" onClick={() => startRequest(req.id)}>
-                    Start
+                    {tc('start')}
                   </Button>
                 )}
                 {(req.status === 'open' || req.status === 'in_progress') && (
                   <Button size="sm" variant="primary" onClick={() => resolveRequest(req.id)}>
-                    <CheckCircle size={12} /> Resolve
+                    <CheckCircle size={12} /> {tc('resolve')}
                   </Button>
                 )}
               </div>
@@ -201,17 +205,17 @@ export default function AppsPage() {
       </Card>
 
       {/* Add License Modal */}
-      <Modal open={showLicenseModal} onClose={() => setShowLicenseModal(false)} title="Add Software License">
+      <Modal open={showLicenseModal} onClose={() => setShowLicenseModal(false)} title={t('addLicenseModal')}>
         <div className="space-y-4">
-          <Input label="Software Name" placeholder="e.g., Microsoft 365, Slack, Figma" value={licenseForm.name} onChange={(e) => setLicenseForm({ ...licenseForm, name: e.target.value })} />
-          <Input label="Vendor" placeholder="e.g., Microsoft, Slack Technologies" value={licenseForm.vendor} onChange={(e) => setLicenseForm({ ...licenseForm, vendor: e.target.value })} />
+          <Input label={t('softwareName')} placeholder={t('softwareNamePlaceholder')} value={licenseForm.name} onChange={(e) => setLicenseForm({ ...licenseForm, name: e.target.value })} />
+          <Input label={t('vendor')} placeholder={t('vendorPlaceholder')} value={licenseForm.vendor} onChange={(e) => setLicenseForm({ ...licenseForm, vendor: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Total Licenses" type="number" placeholder="50" value={licenseForm.total_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, total_licenses: e.target.value })} />
-            <Input label="Used Licenses" type="number" placeholder="0" value={licenseForm.used_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, used_licenses: e.target.value })} />
+            <Input label={t('totalLicensesLabel')} type="number" placeholder="50" value={licenseForm.total_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, total_licenses: e.target.value })} />
+            <Input label={t('usedLicenses')} type="number" placeholder="0" value={licenseForm.used_licenses} onChange={(e) => setLicenseForm({ ...licenseForm, used_licenses: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Cost per License ($/mo)" type="number" placeholder="12.50" value={licenseForm.cost_per_license} onChange={(e) => setLicenseForm({ ...licenseForm, cost_per_license: e.target.value })} />
-            <Select label="Currency" value={licenseForm.currency} onChange={(e) => setLicenseForm({ ...licenseForm, currency: e.target.value })} options={[
+            <Input label={t('costPerLicenseLabel')} type="number" placeholder="12.50" value={licenseForm.cost_per_license} onChange={(e) => setLicenseForm({ ...licenseForm, cost_per_license: e.target.value })} />
+            <Select label={tc('currency')} value={licenseForm.currency} onChange={(e) => setLicenseForm({ ...licenseForm, currency: e.target.value })} options={[
               { value: 'USD', label: 'USD' },
               { value: 'EUR', label: 'EUR' },
               { value: 'GBP', label: 'GBP' },
@@ -219,35 +223,35 @@ export default function AppsPage() {
               { value: 'NGN', label: 'NGN' },
             ]} />
           </div>
-          <Input label="Renewal Date" type="date" value={licenseForm.renewal_date} onChange={(e) => setLicenseForm({ ...licenseForm, renewal_date: e.target.value })} />
+          <Input label={t('renewalDate')} type="date" value={licenseForm.renewal_date} onChange={(e) => setLicenseForm({ ...licenseForm, renewal_date: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowLicenseModal(false)}>Cancel</Button>
-            <Button onClick={submitLicense}>Add License</Button>
+            <Button variant="secondary" onClick={() => setShowLicenseModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitLicense}>{t('addLicense')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Create IT Request Modal */}
-      <Modal open={showRequestModal} onClose={() => setShowRequestModal(false)} title="Create IT Request">
+      <Modal open={showRequestModal} onClose={() => setShowRequestModal(false)} title={t('createItRequestModal')}>
         <div className="space-y-4">
-          <Select label="Requester" value={requestForm.requester_id} onChange={(e) => setRequestForm({ ...requestForm, requester_id: e.target.value })} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
-          <Select label="Request Type" value={requestForm.type} onChange={(e) => setRequestForm({ ...requestForm, type: e.target.value })} options={[
-            { value: 'software', label: 'Software' },
-            { value: 'hardware', label: 'Hardware' },
-            { value: 'access', label: 'Access / Permissions' },
-            { value: 'network', label: 'Network' },
-            { value: 'other', label: 'Other' },
+          <Select label={t('requester')} value={requestForm.requester_id} onChange={(e) => setRequestForm({ ...requestForm, requester_id: e.target.value })} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+          <Select label={t('requestType')} value={requestForm.type} onChange={(e) => setRequestForm({ ...requestForm, type: e.target.value })} options={[
+            { value: 'software', label: t('typeSoftware') },
+            { value: 'hardware', label: t('typeHardware') },
+            { value: 'access', label: t('typeAccess') },
+            { value: 'network', label: t('typeNetwork') },
+            { value: 'other', label: t('typeOther') },
           ]} />
-          <Input label="Title" placeholder="e.g., Need access to Figma" value={requestForm.title} onChange={(e) => setRequestForm({ ...requestForm, title: e.target.value })} />
-          <Textarea label="Description" placeholder="Describe the issue or request in detail..." rows={3} value={requestForm.description} onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })} />
-          <Select label="Priority" value={requestForm.priority} onChange={(e) => setRequestForm({ ...requestForm, priority: e.target.value })} options={[
-            { value: 'low', label: 'Low' },
-            { value: 'medium', label: 'Medium' },
-            { value: 'high', label: 'High' },
+          <Input label={t('requestTitleLabel')} placeholder={t('requestTitlePlaceholder')} value={requestForm.title} onChange={(e) => setRequestForm({ ...requestForm, title: e.target.value })} />
+          <Textarea label={tc('description')} placeholder={t('requestDescPlaceholder')} rows={3} value={requestForm.description} onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })} />
+          <Select label={t('priority')} value={requestForm.priority} onChange={(e) => setRequestForm({ ...requestForm, priority: e.target.value })} options={[
+            { value: 'low', label: t('priorityLow') },
+            { value: 'medium', label: t('priorityMedium') },
+            { value: 'high', label: t('priorityHigh') },
           ]} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowRequestModal(false)}>Cancel</Button>
-            <Button onClick={submitRequest}>Submit Request</Button>
+            <Button variant="secondary" onClick={() => setShowRequestModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitRequest}>{t('submitRequest')}</Button>
           </div>
         </div>
       </Modal>
