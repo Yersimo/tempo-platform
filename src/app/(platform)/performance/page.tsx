@@ -295,39 +295,59 @@ export default function PerformancePage() {
       )}
 
       {/* Calibration Tab */}
-      {activeTab === 'calibration' && (
-        <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">9-Box Talent Grid</h3>
-          <div className="grid grid-cols-3 gap-1 max-w-2xl">
-            {[
-              { label: 'Enigma', bg: 'bg-amber-50', pos: 'High Potential / Low Performance' },
-              { label: 'Growth Employee', bg: 'bg-blue-50', pos: 'High Potential / Moderate Performance' },
-              { label: 'Star', bg: 'bg-green-50', pos: 'High Potential / High Performance' },
-              { label: 'Underperformer', bg: 'bg-red-50', pos: 'Moderate Potential / Low Performance' },
-              { label: 'Core Player', bg: 'bg-gray-50', pos: 'Moderate Potential / Moderate Performance' },
-              { label: 'High Performer', bg: 'bg-green-50', pos: 'Moderate Potential / High Performance' },
-              { label: 'Risk', bg: 'bg-red-100', pos: 'Low Potential / Low Performance' },
-              { label: 'Average Performer', bg: 'bg-amber-50', pos: 'Low Potential / Moderate Performance' },
-              { label: 'Workhorse', bg: 'bg-blue-50', pos: 'Low Potential / High Performance' },
-            ].map((box, i) => {
-              const emps = employees.slice(i * 3, i * 3 + 3)
-              return (
+      {activeTab === 'calibration' && (() => {
+        // Compute 9-box placement from review ratings + goal progress
+        const boxes = [
+          { label: 'Enigma', bg: 'bg-amber-50', pos: 'High Potential / Low Performance' },
+          { label: 'Growth Employee', bg: 'bg-blue-50', pos: 'High Potential / Moderate Performance' },
+          { label: 'Star', bg: 'bg-green-50', pos: 'High Potential / High Performance' },
+          { label: 'Underperformer', bg: 'bg-red-50', pos: 'Moderate Potential / Low Performance' },
+          { label: 'Core Player', bg: 'bg-gray-50', pos: 'Moderate Potential / Moderate Performance' },
+          { label: 'High Performer', bg: 'bg-green-50', pos: 'Moderate Potential / High Performance' },
+          { label: 'Risk', bg: 'bg-red-100', pos: 'Low Potential / Low Performance' },
+          { label: 'Average Performer', bg: 'bg-amber-50', pos: 'Low Potential / Moderate Performance' },
+          { label: 'Workhorse', bg: 'bg-blue-50', pos: 'Low Potential / High Performance' },
+        ]
+        // Calculate performance (from reviews) and potential (from level + goals)
+        const boxAssignments: Record<number, typeof employees> = {}
+        boxes.forEach((_, i) => { boxAssignments[i] = [] })
+        employees.forEach(emp => {
+          const empReviews = reviews.filter(r => r.employee_id === emp.id)
+          const avgRating = empReviews.length > 0 ? empReviews.reduce((a, r) => a + (r.overall_rating || 3), 0) / empReviews.length : 3
+          const empGoals = goals.filter(g => g.employee_id === emp.id)
+          const avgProgress = empGoals.length > 0 ? empGoals.reduce((a, g) => a + g.progress, 0) / empGoals.length : 50
+          // Performance: Low(<3), Moderate(3-4), High(>4)
+          const perfCol = avgRating < 3 ? 0 : avgRating <= 4 ? 1 : 2
+          // Potential: based on level + goal progress
+          const levelScore = ['Executive', 'Director', 'Principal'].some(l => (emp.level || '').includes(l)) ? 2
+            : ['Senior', 'Lead'].some(l => (emp.level || '').includes(l)) ? (avgProgress > 60 ? 2 : 1)
+            : avgProgress > 70 ? 1 : 0
+          // Row: 0=high potential, 1=moderate, 2=low
+          const potRow = levelScore >= 2 ? 0 : levelScore === 1 ? 1 : 2
+          const boxIdx = potRow * 3 + perfCol
+          boxAssignments[boxIdx].push(emp)
+        })
+        return (
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">9-Box Talent Grid</h3>
+            <div className="grid grid-cols-3 gap-1 max-w-2xl">
+              {boxes.map((box, i) => (
                 <div key={i} className={`${box.bg} rounded-lg p-4 min-h-[120px]`}>
                   <p className="text-xs font-semibold text-t1 mb-1">{box.label}</p>
                   <p className="text-[0.6rem] text-t3 mb-2">{box.pos}</p>
                   <div className="flex flex-wrap gap-1">
-                    {emps.map(e => <Avatar key={e.id} name={e.profile?.full_name || ''} size="xs" />)}
+                    {boxAssignments[i].map(e => <Avatar key={e.id} name={e.profile?.full_name || ''} size="xs" />)}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-          <div className="flex mt-4 gap-4 text-xs text-t3">
-            <span>Y-axis: Potential (Low to High, bottom to top)</span>
-            <span>X-axis: Performance (Low to High, left to right)</span>
-          </div>
-        </Card>
-      )}
+              ))}
+            </div>
+            <div className="flex mt-4 gap-4 text-xs text-t3">
+              <span>Y-axis: Potential (Low to High, bottom to top)</span>
+              <span>X-axis: Performance (Low to High, left to right)</span>
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Feedback Tab */}
       {activeTab === 'feedback' && (

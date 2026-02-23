@@ -152,13 +152,24 @@ export default function PayrollPage() {
         <Card>
           <h3 className="text-sm font-semibold text-t1 mb-4">Payroll by Country</h3>
           <div className="space-y-3">
-            {[
-              { country: 'Nigeria', amount: 1250000, pct: 50 },
-              { country: 'Ghana', amount: 480000, pct: 19 },
-              { country: "Cote d'Ivoire", amount: 380000, pct: 15 },
-              { country: 'Kenya', amount: 250000, pct: 10 },
-              { country: 'Senegal', amount: 120000, pct: 6 },
-            ].map(item => (
+            {(() => {
+              // Calculate payroll distribution from employee countries
+              const countryMap: Record<string, number> = {}
+              employees.forEach(emp => {
+                const country = emp.country || 'Other'
+                countryMap[country] = (countryMap[country] || 0) + 1
+              })
+              const totalEmp = employees.length || 1
+              // Estimate monthly cost per employee based on headcount proportion
+              const totalMonthly = totalPayroll > 0 ? totalPayroll : 2480000
+              return Object.entries(countryMap)
+                .sort((a, b) => b[1] - a[1])
+                .map(([country, count]) => {
+                  const pct = Math.round((count / totalEmp) * 100)
+                  const amount = Math.round((count / totalEmp) * totalMonthly)
+                  return { country, amount, pct }
+                })
+            })().map(item => (
               <div key={item.country}>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-t1 font-medium">{item.country}</span>

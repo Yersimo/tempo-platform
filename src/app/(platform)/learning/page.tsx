@@ -170,29 +170,45 @@ export default function LearningPage() {
         </Card>
       )}
 
-      {activeTab === 'skills' && (
-        <Card>
-          <h3 className="text-sm font-semibold text-t1 mb-4">Skills Matrix</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { skill: 'Leadership', proficiency: 72, count: 156 },
-              { skill: 'Technical', proficiency: 68, count: 142 },
-              { skill: 'Communication', proficiency: 81, count: 189 },
-              { skill: 'Problem Solving', proficiency: 74, count: 165 },
-              { skill: 'Analytics', proficiency: 65, count: 128 },
-              { skill: 'Project Management', proficiency: 70, count: 148 },
-              { skill: 'Customer Service', proficiency: 78, count: 172 },
-              { skill: 'Risk Management', proficiency: 63, count: 118 },
-            ].map((item) => (
-              <div key={item.skill} className="bg-canvas rounded-lg p-4">
-                <p className="text-xs font-medium text-t1 mb-2">{item.skill}</p>
-                <Progress value={item.proficiency} showLabel />
-                <p className="text-[0.6rem] text-t3 mt-1">{item.count} employees proficient</p>
+      {activeTab === 'skills' && (() => {
+        // Build skills matrix from courses and enrollments
+        const categories = [...new Set(courses.map(c => c.category))].filter(Boolean)
+        const defaultCategories = ['Leadership', 'Technical', 'Compliance', 'Management', 'Service', 'Technology']
+        const allCategories = categories.length > 0 ? categories : defaultCategories
+        const skillsData = allCategories.map(cat => {
+          const catCourses = courses.filter(c => c.category === cat)
+          const catEnrollments = enrollments.filter(e => catCourses.some(c => c.id === e.course_id))
+          const completedEnrollments = catEnrollments.filter(e => e.status === 'completed')
+          const proficiency = catEnrollments.length > 0
+            ? Math.round(catEnrollments.reduce((a, e) => a + e.progress, 0) / catEnrollments.length)
+            : 0
+          const uniqueEmployees = new Set(catEnrollments.map(e => e.employee_id)).size
+          return { skill: cat, proficiency, count: uniqueEmployees, courseCount: catCourses.length }
+        })
+        // Add skill gap categories that have no courses yet
+        const gapCategories = skillGaps.filter(g => !allCategories.includes(g.category))
+        gapCategories.forEach(g => {
+          skillsData.push({ skill: g.category, proficiency: g.coverage, count: 0, courseCount: 0 })
+        })
+        return (
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">Skills Matrix</h3>
+            {skillsData.length === 0 ? (
+              <div className="text-center py-8 text-sm text-t3">Add courses and enroll employees to build the skills matrix.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {skillsData.map((item) => (
+                  <div key={item.skill} className="bg-canvas rounded-lg p-4">
+                    <p className="text-xs font-medium text-t1 mb-2">{item.skill}</p>
+                    <Progress value={item.proficiency} showLabel />
+                    <p className="text-[0.6rem] text-t3 mt-1">{item.count} employees enrolled across {item.courseCount} courses</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
+            )}
+          </Card>
+        )
+      })()}
 
       {/* New Course Modal */}
       <Modal open={showCourseModal} onClose={() => setShowCourseModal(false)} title="Create New Course">
