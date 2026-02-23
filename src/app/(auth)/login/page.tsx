@@ -41,7 +41,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const success = login(email, password)
+    const success = await login(email, password)
     if (success) {
       router.push('/dashboard')
     } else {
@@ -50,13 +50,13 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = (cred: typeof demoCredentials[number]) => {
+  const handleDemoLogin = async (cred: typeof demoCredentials[number]) => {
     setEmail(cred.email)
     setPassword(cred.password)
     setError('')
     setLoading(true)
 
-    const success = login(cred.email, cred.password)
+    const success = await login(cred.email, cred.password)
     if (success) {
       router.push('/dashboard')
     } else {
