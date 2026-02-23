@@ -12,6 +12,7 @@ import {
   FileText, PieChart, BarChart3, Settings, ChevronLeft, Menu,
   LogOut
 } from 'lucide-react'
+import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 
 interface NavItem {
   label: string
@@ -165,7 +166,10 @@ export function Sidebar() {
 
         {/* User section */}
         {!collapsed && (
-          <div className="border-t border-dark-border px-3 py-3">
+          <div className="border-t border-dark-border px-3 py-3 space-y-1">
+            <div className="flex items-center justify-between px-2">
+              <LocaleSwitcher />
+            </div>
             <div className="flex items-center gap-3 px-2 py-1.5">
               <div className="w-8 h-8 rounded-full bg-tempo-600/20 flex items-center justify-center text-tempo-400 text-xs font-semibold">
                 {initials}
