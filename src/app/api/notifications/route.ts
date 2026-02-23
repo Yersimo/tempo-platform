@@ -9,21 +9,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const url = new URL(request.url)
-  const action = url.searchParams.get('action')
+  try {
+    const url = new URL(request.url)
+    const action = url.searchParams.get('action')
 
-  if (action === 'count') {
-    const count = await getUnreadCount(employeeId)
-    return NextResponse.json({ count })
+    if (action === 'count') {
+      const count = await getUnreadCount(employeeId)
+      return NextResponse.json({ count })
+    }
+
+    const unreadOnly = url.searchParams.get('unread') === 'true'
+    const limit = parseInt(url.searchParams.get('limit') || '50')
+
+    const notifications = await getNotifications(employeeId, { limit, unreadOnly })
+    const unreadCount = await getUnreadCount(employeeId)
+
+    return NextResponse.json({ notifications, unread_count: unreadCount })
+  } catch (err) {
+    console.error('Notifications GET error:', err)
+    // Return empty notifications gracefully instead of crashing
+    return NextResponse.json({ notifications: [], unread_count: 0 })
   }
-
-  const unreadOnly = url.searchParams.get('unread') === 'true'
-  const limit = parseInt(url.searchParams.get('limit') || '50')
-
-  const notifications = await getNotifications(employeeId, { limit, unreadOnly })
-  const unreadCount = await getUnreadCount(employeeId)
-
-  return NextResponse.json({ notifications, unread_count: unreadCount })
 }
 
 export async function POST(request: NextRequest) {

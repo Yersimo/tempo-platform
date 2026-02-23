@@ -1,15 +1,19 @@
 'use client'
 
 import { useLocale } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { Globe } from 'lucide-react'
 import { locales, localeNames, type Locale } from '@/i18n/config'
 
 export function LocaleSwitcher() {
   const currentLocale = useLocale() as Locale
+  const router = useRouter()
 
   const switchLocale = (locale: Locale) => {
     document.cookie = `tempo_locale=${locale};path=/;max-age=${60 * 60 * 24 * 365}`
-    window.location.reload()
+    // Use router.refresh() to reload server components with the new locale
+    // without a full page reload (avoids service worker cache issues)
+    router.refresh()
   }
 
   // Cycle to the next locale in the list

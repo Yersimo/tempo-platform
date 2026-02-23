@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { TempoProvider, useTempo } from '@/lib/store'
@@ -10,14 +10,26 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
     // Wait for store to finish loading (which validates session via cookie)
     if (isLoading) return
 
     if (!currentUser) {
-      // No valid session - middleware will redirect, but handle client nav too
-      router.replace('/login')
+      // Prevent redirect loops: only redirect once
+      if (hasRedirected.current) return
+      hasRedirected.current = true
+
+      // Clear the session cookie from the client side to prevent
+      // middleware from redirecting back to /dashboard
+      document.cookie = 'tempo_session=;path=/;max-age=0'
+      try { localStorage.removeItem('tempo_current_user') } catch { /* ignore */ }
+
+      // Small delay to ensure cookie is cleared before navigation
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 100)
     } else {
       setReady(true)
     }

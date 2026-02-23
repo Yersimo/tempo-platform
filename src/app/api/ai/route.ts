@@ -1,11 +1,21 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ---------------------------------------------------------------------------
 // POST /api/ai -- Proxy to Anthropic Claude for AI-enhanced insights
 // ---------------------------------------------------------------------------
 
-const client = new Anthropic() // reads ANTHROPIC_API_KEY from env
+// Lazy-initialize the Anthropic client to avoid crashing at module load
+// when ANTHROPIC_API_KEY is not set (e.g., on Vercel without the env var)
+let _client: InstanceType<typeof import('@anthropic-ai/sdk').default> | null = null
+function getClient() {
+  if (!_client && process.env.ANTHROPIC_API_KEY) {
+    // Dynamic require to avoid top-level import crash
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Anthropic = require('@anthropic-ai/sdk').default
+    _client = new Anthropic()
+  }
+  return _client
+}
 
 // Simple in-memory rate limiter: 10 requests / minute per org
 const rateMap = new Map<string, { count: number; resetAt: number }>()
@@ -93,6 +103,10 @@ export async function POST(request: NextRequest) {
       : ''
 
     // Call Claude
+    const client = getClient()
+    if (!client) {
+      return NextResponse.json({ error: 'AI client not available', fallback: true }, { status: 503 })
+    }
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,

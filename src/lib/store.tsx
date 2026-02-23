@@ -352,7 +352,8 @@ function buildCurrentUser(emp: typeof demoEmployees[number]): CurrentUser {
 }
 
 // Try to restore session from cookie via API
-async function fetchSessionUser(): Promise<CurrentUser | null> {
+// Returns { user, apiDown } so the caller can decide whether to fall back to localStorage
+async function fetchSessionUser(): Promise<{ user: CurrentUser | null; apiDown: boolean }> {
   try {
     const res = await fetch('/api/auth', {
       method: 'POST',
@@ -361,10 +362,18 @@ async function fetchSessionUser(): Promise<CurrentUser | null> {
     })
     if (res.ok) {
       const { user } = await res.json()
-      return user || null
+      return { user: user || null, apiDown: false }
     }
-  } catch { /* ignore */ }
-  return null
+    // 401 means session is explicitly invalid (not an API error)
+    if (res.status === 401) {
+      return { user: null, apiDown: false }
+    }
+    // 5xx or other errors mean the API is down
+    return { user: null, apiDown: true }
+  } catch {
+    // Network error = API is down
+    return { user: null, apiDown: true }
+  }
 }
 
 // Fallback for SSR/initial render: check localStorage (will be reconciled with cookie session)
@@ -459,12 +468,25 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     async function initSession() {
       try {
         // Step 1: Validate session with server (cookie-based)
-        const sessionUser = await fetchSessionUser()
+        const { user: sessionUser, apiDown } = await fetchSessionUser()
         if (sessionUser) {
           setCurrentUser(sessionUser)
           try { localStorage.setItem('tempo_current_user', JSON.stringify(sessionUser)) } catch { /* ignore */ }
+        } else if (apiDown) {
+          // API is down (503/network error) — use localStorage cache as fallback
+          // This prevents redirect loops when Vercel functions are temporarily unavailable
+          const cachedUser = getStoredUser()
+          if (cachedUser) {
+            console.warn('API unavailable, using cached session')
+            setCurrentUser(cachedUser)
+          } else {
+            // No cached user and API is down — can't authenticate
+            setCurrentUser(null)
+            setIsLoading(false)
+            return
+          }
         } else {
-          // No valid server session - clear local state
+          // Server explicitly said no valid session (401)
           setCurrentUser(null)
           try { localStorage.removeItem('tempo_current_user') } catch { /* ignore */ }
           // Don't fetch data if not authenticated
