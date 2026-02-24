@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Users, TrendingUp, Banknote, GraduationCap, HeartPulse,
   UserCheck, Wallet, Clock, Shield, Receipt, Briefcase, Laptop, AppWindow,
   FileText, PieChart, BarChart3, Settings, ChevronLeft, Menu,
-  LogOut, FolderKanban, Compass, Zap, Plug
+  LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
 } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { CommandPalette } from '@/components/search'
@@ -31,7 +31,7 @@ interface NavGroup {
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, logout } = useTempo()
+  const { currentUser, logout, org } = useTempo()
   const [collapsed, setCollapsed] = useState(false)
   const t = useTranslations('nav')
   const tCommon = useTranslations('common')
@@ -69,6 +69,7 @@ export function Sidebar() {
       items: [
         { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
         { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
+        { label: 'Marketplace', href: '/marketplace', icon: <Store size={18} /> },
         { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} /> },
         { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} /> },
       ],
@@ -80,6 +81,7 @@ export function Sidebar() {
         { label: t('strategy'), href: '/strategy', icon: <Compass size={18} /> },
         { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
         { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
+        { label: 'Developer', href: '/developer', icon: <Code size={18} /> },
       ],
     },
   ]
@@ -103,11 +105,17 @@ export function Sidebar() {
           collapsed ? 'w-16' : 'w-64'
         )}
       >
-        {/* Logo */}
+        {/* Logo + Org Name */}
         <div className="flex items-center justify-between px-4 py-5">
-          {!collapsed && <TempoLockup variant="color" size="sm" />}
+          {!collapsed && (
+            <div className="flex flex-col">
+              <TempoLockup variant="color" size="sm" />
+              <span className="text-[0.6rem] text-white/40 mt-0.5 pl-0.5">{org.name}</span>
+            </div>
+          )}
           <button
             onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="text-t3 hover:text-white p-1 rounded transition-colors"
           >
             {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
@@ -122,7 +130,7 @@ export function Sidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
+        <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
           {navGroups.map((group) => (
             <div key={group.title}>
               {!collapsed && (
@@ -137,6 +145,7 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={isActive ? 'page' : undefined}
                       className={cn(
                         'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors',
                         isActive

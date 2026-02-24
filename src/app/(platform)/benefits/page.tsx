@@ -128,7 +128,7 @@ export default function BenefitsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('activePlans')} value={activePlans.length} icon={<Shield size={20} />} />
         <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change="Above target" changeType="positive" />
-        <StatCard label={t('monthlyEmployerCost')} value={`$${totalEmployerCost.toLocaleString()}`} change={tc('perEmployee')} changeType="neutral" />
+        <StatCard label={t('monthlyEmployerCost')} value={`$${totalEmployerCost.toLocaleString()}`} change={tc('perEmployee')} changeType="neutral" href="/finance/budgets" />
         <StatCard label={t('providers')} value={uniqueProviders} change={t('activePartnerships')} changeType="neutral" />
       </div>
 

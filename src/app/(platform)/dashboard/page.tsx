@@ -17,9 +17,9 @@ import {
   AlertTriangle, FileText, CalendarCheck, ChevronRight
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIInsightCard, AIRecommendationList, AIAlertBanner, AIEnhancingIndicator } from '@/components/ai'
+import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
 import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
   const {
@@ -30,6 +30,7 @@ export default function DashboardPage() {
     engagementScores, applications, currentUser, currentEmployeeId,
   } = useTempo()
 
+  const router = useRouter()
   const t = useTranslations('dashboard')
   const tc = useTranslations('common')
 
@@ -158,8 +159,7 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {actionItems.map((item) => (
-              <Link key={item.id} href={item.href}>
-                <div className={cn(
+              <div key={item.id} onClick={() => router.push(item.href)} role="link" className={cn(
                   'group flex items-center gap-4 bg-card border rounded-[var(--radius-card)] px-5 py-4 hover:shadow-sm transition-all cursor-pointer',
                   item.urgency === 'critical' ? 'border-red-200 bg-red-50/30' :
                   item.urgency === 'warning' ? 'border-amber-200 bg-amber-50/30' :
@@ -179,7 +179,6 @@ export default function DashboardPage() {
                   </div>
                   <ChevronRight size={16} className="text-t3 group-hover:text-t1 transition-colors flex-shrink-0" />
                 </div>
-              </Link>
             ))}
           </div>
         </div>
@@ -187,26 +186,26 @@ export default function DashboardPage() {
 
       {/* KPI Grid with Sparklines */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="relative overflow-hidden">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="tempo-th text-t3 mb-1">{t('headcount')}</p>
-              <div className="flex items-baseline gap-2">
-                <p className="tempo-stat text-2xl text-t1">{headcount}</p>
-                <Sparkline data={headcountTrend} height={20} width={60} />
+        <Card className="relative overflow-hidden group hover:shadow-md hover:border-tempo-200 transition-all cursor-pointer" onClick={() => router.push('/people')} role="link">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="tempo-th text-t3 mb-1">{t('headcount')}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="tempo-stat text-2xl text-t1">{headcount}</p>
+                  <Sparkline data={headcountTrend} height={20} width={60} />
+                </div>
+                <p className="text-xs mt-1 font-medium text-t3">{activeGoals} {t('activeGoals').toLowerCase()}</p>
               </div>
-              <p className="text-xs mt-1 font-medium text-t3">{activeGoals} {t('activeGoals').toLowerCase()}</p>
+              <div className="text-tempo-400 opacity-50"><Users size={24} /></div>
             </div>
-            <div className="text-tempo-400 opacity-50"><Users size={24} /></div>
-          </div>
-        </Card>
-        <StatCard label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
-        <StatCard label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
-        <StatCard label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
-        <StatCard label={t('pendingExpenses')} value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
-        <StatCard label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
-        <StatCard label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
-        <StatCard label={t('lastPayroll')} value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
+          </Card>
+        <StatCard href="/performance" label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
+        <StatCard href="/learning" label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
+        <StatCard href="/recruiting" label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
+        <StatCard href="/expense" label={t('pendingExpenses')} value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
+        <StatCard href="/mentoring" label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
+        <StatCard href="/time-attendance" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
+        <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
       </div>
 
       {/* AI Insights Section */}
@@ -214,9 +213,11 @@ export default function DashboardPage() {
         <AIAlertBanner insights={aiAnomalies} className="mb-4" />
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="relative">
-          {summaryLoading && <AIEnhancingIndicator isLoading />}
-          <AIInsightCard insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: t('executiveSummary'), description: enhancedSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: enhancedSummary.bulletPoints[0] || '', module: 'dashboard' }} />
+        <div className="relative transition-opacity duration-500 ease-in-out" style={{ opacity: summaryLoading ? 0.9 : 1 }}>
+          <AIInsightCard
+            insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: t('executiveSummary'), description: enhancedSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: `${employees.length} active employees across the organization`, actionLabel: `${employees.length} active employees across the organization`, module: 'dashboard' }}
+            onAction={() => router.push('/people')}
+          />
         </div>
         <AIRecommendationList title={t('recommendedActions')} recommendations={nextActions} />
       </div>
@@ -228,7 +229,7 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Department Distribution</CardTitle>
-              <Link href="/people"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/people')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="px-6 py-4 flex items-center gap-6">
@@ -250,7 +251,7 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Performance Overview</CardTitle>
-              <Link href="/performance"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="px-6 py-4">
@@ -271,22 +272,23 @@ export default function DashboardPage() {
           <CardHeader><CardTitle>Workforce Snapshot</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
             {[
-              { label: 'Active Employees', value: employees.length, total: employees.length, color: 'bg-green-500' },
-              { label: 'Enrolled in Learning', value: activeLearners, total: employees.length, color: 'bg-blue-500' },
-              { label: 'In Mentoring', value: activeMentoringPairs * 2, total: employees.length, color: 'bg-purple-500' },
-              { label: 'Open Applications', value: applications.filter(a => a.status === 'applied' || a.status === 'screening' || a.status === 'interview').length, total: applications.length, color: 'bg-tempo-500' },
+              { label: 'Active Employees', value: employees.length, total: employees.length, color: 'bg-green-500', href: '/people' },
+              { label: 'Enrolled in Learning', value: activeLearners, total: employees.length, color: 'bg-blue-500', href: '/learning' },
+              { label: 'In Mentoring', value: activeMentoringPairs * 2, total: employees.length, color: 'bg-purple-500', href: '/mentoring' },
+              { label: 'Open Applications', value: applications.filter(a => a.status === 'applied' || a.status === 'screening' || a.status === 'interview').length, total: applications.length, color: 'bg-tempo-500', href: '/recruiting' },
             ].map((stat) => (
-              <div key={stat.label} className="px-6 py-3 flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-t2">{stat.label}</span>
-                    <span className="text-xs font-semibold text-t1">{stat.value}/{stat.total}</span>
+              <div key={stat.label} onClick={() => router.push(stat.href)} role="link" className="px-6 py-3 flex items-center gap-3 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-t2">{stat.label}</span>
+                      <span className="text-xs font-semibold text-t1">{stat.value}/{stat.total}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-canvas rounded-full overflow-hidden">
+                      <div className={cn('h-full rounded-full transition-all', stat.color)} style={{ width: `${stat.total > 0 ? (stat.value / stat.total) * 100 : 0}%` }} />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 bg-canvas rounded-full overflow-hidden">
-                    <div className={cn('h-full rounded-full transition-all', stat.color)} style={{ width: `${stat.total > 0 ? (stat.value / stat.total) * 100 : 0}%` }} />
-                  </div>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
                 </div>
-              </div>
             ))}
           </div>
         </Card>
@@ -299,24 +301,25 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('goalsTitle')}</CardTitle>
-              <Link href="/performance"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
             {goals.slice(0, 5).map((goal) => (
-              <div key={goal.id} className="px-6 py-3 flex items-center gap-4">
-                <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-t1 truncate">{goal.title}</p>
-                  <p className="text-[0.65rem] text-t3">{getEmployeeName(goal.employee_id)}</p>
+              <div key={goal.id} onClick={() => router.push('/performance')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-t1 truncate">{goal.title}</p>
+                    <p className="text-[0.65rem] text-t3">{getEmployeeName(goal.employee_id)}</p>
+                  </div>
+                  <div className="w-32">
+                    <Progress value={goal.progress} showLabel />
+                  </div>
+                  <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
+                    {goal.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
                 </div>
-                <div className="w-32">
-                  <Progress value={goal.progress} showLabel />
-                </div>
-                <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
-                  {goal.status.replace(/_/g, ' ')}
-                </Badge>
-              </div>
             ))}
             {goals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noGoals')}</div>}
           </div>
@@ -326,26 +329,33 @@ export default function DashboardPage() {
         <Card padding="none">
           <CardHeader><CardTitle>{t('recentActivity')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
-            {auditLog.length > 0 ? auditLog.slice(0, 8).map((entry) => (
-              <div key={entry.id} className="px-6 py-3">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-medium text-t1">{entry.user}</span>
-                  <Badge variant="default">{entry.action}</Badge>
+            {auditLog.length > 0 ? auditLog.slice(0, 8).map((entry) => {
+              const et = entry.entity_type.toLowerCase()
+              const entryHref = et.includes('review') || et.includes('goal') || et.includes('feedback') ? '/performance' : et.includes('payroll') || et.includes('payrun') ? '/payroll' : et.includes('leave') ? '/time-attendance' : et.includes('expense') ? '/expense' : et.includes('job') || et.includes('candidate') || et.includes('application') ? '/recruiting' : null
+              const Inner = (
+                <div className={cn('px-6 py-3', entryHref && 'hover:bg-canvas/50 transition-colors cursor-pointer')}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-medium text-t1">{entry.user}</span>
+                    <Badge variant="default">{entry.action}</Badge>
+                  </div>
+                  <p className="text-[0.7rem] text-t2 line-clamp-1">{entry.details}</p>
+                  <p className="text-[0.6rem] text-t3 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
                 </div>
-                <p className="text-[0.7rem] text-t2 line-clamp-1">{entry.details}</p>
-                <p className="text-[0.6rem] text-t3 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
-              </div>
-            )) : feedback.slice(0, 5).map((fb) => (
-              <div key={fb.id} className="px-6 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Avatar name={getEmployeeName(fb.from_id)} size="xs" />
-                  <span className="text-xs font-medium text-t1">{getEmployeeName(fb.from_id)}</span>
-                  <span className="text-[0.65rem] text-t3">
-                    {fb.type === 'recognition' ? t('recognized') : fb.type === 'feedback' ? t('gaveFeedback') : t('checkedIn')}
-                  </span>
-                  <span className="text-xs font-medium text-t1">{getEmployeeName(fb.to_id)}</span>
+              )
+              return entryHref ? <div key={entry.id} onClick={() => router.push(entryHref)} role="link">{Inner}</div> : <div key={entry.id}>{Inner}</div>
+            }) : feedback.slice(0, 5).map((fb) => (
+              <div key={fb.id} onClick={() => router.push('/performance')} role="link" className="cursor-pointer">
+                <div className="px-6 py-3 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Avatar name={getEmployeeName(fb.from_id)} size="xs" />
+                    <span className="text-xs font-medium text-t1">{getEmployeeName(fb.from_id)}</span>
+                    <span className="text-[0.65rem] text-t3">
+                      {fb.type === 'recognition' ? t('recognized') : fb.type === 'feedback' ? t('gaveFeedback') : t('checkedIn')}
+                    </span>
+                    <span className="text-xs font-medium text-t1">{getEmployeeName(fb.to_id)}</span>
+                  </div>
+                  <p className="text-[0.7rem] text-t2 line-clamp-2 ml-8">{fb.content}</p>
                 </div>
-                <p className="text-[0.7rem] text-t2 line-clamp-2 ml-8">{fb.content}</p>
               </div>
             ))}
           </div>
@@ -382,25 +392,26 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('openPositionsTitle')}</CardTitle>
-              <Link href="/recruiting"><Button variant="ghost" size="sm">{tc('viewAll')}</Button></Link>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/recruiting')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
             {jobPostings.filter(j => j.status === 'open').map((job) => (
-              <div key={job.id} className="px-6 py-3 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
-                  <Briefcase size={18} />
+              <div key={job.id} onClick={() => router.push('/recruiting')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                    <Briefcase size={18} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-t1">{job.title}</p>
+                    <p className="text-[0.65rem] text-t3">{job.location}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-t1">{job.application_count} {t('applicants')}</p>
+                    <p className="text-[0.65rem] text-t3">{job.type.replace(/_/g, ' ')}</p>
+                  </div>
+                  <Badge variant="orange">{tc('open')}</Badge>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-t1">{job.title}</p>
-                  <p className="text-[0.65rem] text-t3">{job.location}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-t1">{job.application_count} {t('applicants')}</p>
-                  <p className="text-[0.65rem] text-t3">{job.type.replace(/_/g, ' ')}</p>
-                </div>
-                <Badge variant="orange">{tc('open')}</Badge>
-              </div>
             ))}
             {jobPostings.filter(j => j.status === 'open').length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noOpenPositions')}</div>}
           </div>

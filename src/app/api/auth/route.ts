@@ -6,6 +6,7 @@ import {
   verifyPassword,
   hashPassword,
   createSession,
+  createToken,
   validateSession,
   revokeSession,
   setSessionCookie,
@@ -15,6 +16,9 @@ import {
   verifyMFAToken,
 } from '@/lib/auth'
 import { verifyTOTP } from '@/lib/totp'
+import { allDemoCredentials, getDemoDataForOrg } from '@/lib/demo-data'
+import { sendWelcomeEmail } from '@/lib/email'
+import { seedNewOrg } from '@/lib/org-seed'
 
 // POST /api/auth - Authentication endpoints
 export async function POST(request: NextRequest) {
@@ -34,7 +38,37 @@ export async function POST(request: NextRequest) {
         .where(eq(schema.employees.email, email))
 
       if (!employee) {
-        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+        // Demo fallback: check hardcoded demo credentials when DB has no match
+        const demoCred = allDemoCredentials.find(c => c.email === email && c.password === password)
+        if (!demoCred) {
+          return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+        }
+        // Build a JWT session for the demo user (no DB session needed — middleware only checks JWT)
+        const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+        const orgData = getDemoDataForOrg(demoOrgId)
+        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
+        const demoToken = await createToken({
+          employeeId: demoCred.employeeId,
+          email: demoCred.email,
+          role: demoCred.role,
+          orgId: demoOrgId,
+          sessionId: `demo-${Date.now()}`,
+        })
+        const demoUser = {
+          id: `user-${demoCred.employeeId}`,
+          email: demoCred.email,
+          full_name: demoEmp?.profile?.full_name || demoCred.label,
+          avatar_url: demoEmp?.profile?.avatar_url || null,
+          role: demoCred.role,
+          department_id: demoEmp?.department_id || null,
+          employee_id: demoCred.employeeId,
+          job_title: demoEmp?.job_title || demoCred.title,
+          department_name: demoCred.department,
+        }
+        const demoCookie = setSessionCookie(demoToken)
+        const demoResponse = NextResponse.json({ user: demoUser })
+        demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
+        return demoResponse
       }
 
       // Verify password (supports both legacy demo: and new pbkdf2: formats)
@@ -253,19 +287,21 @@ export async function POST(request: NextRequest) {
           // Revoke the session in DB
           await revokeSession(session.sessionId)
 
-          // Log the logout
-          const [employee] = await db.select().from(schema.employees)
-            .where(eq(schema.employees.id, session.employeeId))
+          // Log the logout (skip for demo sessions — no DB records)
+          if (!session.sessionId.startsWith('demo-')) {
+            const [employee] = await db.select().from(schema.employees)
+              .where(eq(schema.employees.id, session.employeeId))
 
-          if (employee) {
-            await db.insert(schema.auditLog).values({
-              orgId: employee.orgId,
-              userId: employee.id,
-              action: 'logout',
-              entityType: 'session',
-              entityId: employee.id,
-              details: `Logout: ${employee.fullName}`,
-            })
+            if (employee) {
+              await db.insert(schema.auditLog).values({
+                orgId: employee.orgId,
+                userId: employee.id,
+                action: 'logout',
+                entityType: 'session',
+                entityId: employee.id,
+                details: `Logout: ${employee.fullName}`,
+              })
+            }
           }
         }
       }
@@ -302,6 +338,31 @@ export async function POST(request: NextRequest) {
           maxAge: 0,
         })
         return response
+      }
+
+      // Demo sessions: return user from demo data instead of DB
+      if (session.sessionId.startsWith('demo-')) {
+        const demoOrgId = session.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+        const orgData = getDemoDataForOrg(demoOrgId)
+        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === session.employeeId)
+        if (!demoEmp) {
+          return NextResponse.json({ user: null }, { status: 401 })
+        }
+        const demoCred = allDemoCredentials.find(c => c.employeeId === session.employeeId)
+        return NextResponse.json({
+          user: {
+            id: `user-${demoEmp.id}`,
+            email: demoEmp.profile?.email || session.email,
+            full_name: demoEmp.profile?.full_name || demoCred?.label || '',
+            avatar_url: demoEmp.profile?.avatar_url || null,
+            role: demoEmp.role,
+            department_id: demoEmp.department_id,
+            employee_id: demoEmp.id,
+            job_title: demoEmp.job_title,
+            department_name: demoCred?.department || '',
+            org_id: demoOrgId,
+          }
+        })
       }
 
       const user = await getEmployeeFromSession(session)
@@ -500,6 +561,16 @@ export async function POST(request: NextRequest) {
         details: `Organization created: ${companyName}`,
       })
 
+      // Send welcome email (non-blocking — don't await)
+      sendWelcomeEmail(email, fullName, companyName).catch(err =>
+        console.error('[Signup] Welcome email failed:', err)
+      )
+
+      // Seed default data for the new org (non-blocking)
+      seedNewOrg(org.id, industry).catch(err =>
+        console.error('[Signup] Org seed failed:', err)
+      )
+
       const user = {
         id: `user-${employee.id}`,
         email: employee.email,
@@ -515,7 +586,7 @@ export async function POST(request: NextRequest) {
 
       const cookie = setSessionCookie(token)
       const response = NextResponse.json(
-        { user, org: { id: org.id, name: org.name, slug: org.slug } },
+        { user, org: { id: org.id, name: org.name, slug: org.slug }, needsOnboarding: true },
         { status: 201 }
       )
       response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2])

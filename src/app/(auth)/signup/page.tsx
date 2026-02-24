@@ -61,7 +61,7 @@ export default function SignupPage() {
       const { user } = await res.json()
       // Cache user for instant hydration (httpOnly cookie already set by API)
       try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
-      router.push('/dashboard')
+      router.push('/onboarding')
     } catch {
       setError(t('networkError'))
       setLoading(false)

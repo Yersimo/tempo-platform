@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
+import { CookieConsent } from '@/components/cookie-consent'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -33,29 +34,25 @@ export default async function RootLayout({
     <html lang={locale}>
       <head>
         <meta name="theme-color" content="#ea580c" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <link
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500&display=swap"
           rel="stylesheet"
         />
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              registrations.forEach(function(registration) {
-                registration.unregister();
-              });
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                .then(function(reg) { console.log('SW registered:', reg.scope); })
+                .catch(function(err) { console.log('SW registration failed:', err); });
             });
-            if (caches) {
-              caches.keys().then(function(names) {
-                names.forEach(function(name) { caches.delete(name); });
-              });
-            }
           }
         `}} />
       </head>
       <body className="antialiased">
         <NextIntlClientProvider messages={messages}>
           {children}
+          <CookieConsent />
         </NextIntlClientProvider>
       </body>
     </html>

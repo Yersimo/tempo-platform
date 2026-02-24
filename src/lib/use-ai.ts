@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * Hybrid AI hook: returns deterministic result instantly, enhances with Claude async.
@@ -58,75 +58,98 @@ function setCache(key: string, data: unknown) {
 export function useAI<T>(options: UseAIOptions<T>): UseAIResult<T> {
   const { action, data, fallback, enabled = true, cacheKey } = options
 
-  const [enhanced, setEnhanced] = useState<T | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
   // Stable serialized key
   const key = cacheKey || `${action}:${JSON.stringify(data)}`.slice(0, 500)
 
-  const fetchEnhancement = useCallback(async () => {
-    // Check cache first
-    const cached = getCached<T>(key)
-    if (cached) {
-      setEnhanced(cached)
-      return
-    }
+  // Synchronous cache initialization — avoids loading flash on revisit
+  const [enhanced, setEnhanced] = useState<T | null>(() => getCached<T>(key))
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-    setIsLoading(true)
-    setError(null)
-
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    // 10 second timeout
-    const timeout = setTimeout(() => controller.abort(), 10_000)
-
-    try {
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, data }),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeout)
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'AI request failed' }))
-        if (err.fallback) {
-          // Expected fallback -- silently use deterministic
-          setIsLoading(false)
-          return
-        }
-        throw new Error(err.error || 'AI request failed')
-      }
-
-      const { result } = await res.json()
-      setEnhanced(result as T)
-      setCache(key, result)
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Timeout or unmount -- silent
-      } else {
-        const msg = err instanceof Error ? err.message : 'AI enhancement failed'
-        setError(msg)
-        console.warn('[useAI]', msg)
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [action, key, data])
+  // Store mutable refs so the effect closure always reads latest values
+  // without being a dependency (prevents re-firing on every render)
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const actionRef = useRef(action)
+  actionRef.current = action
+  const abortRef = useRef<AbortController | null>(null)
+  const fetchedKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!enabled) return
-    fetchEnhancement()
+    // Already fetched for this exact key — skip
+    if (fetchedKeyRef.current === key) return
+    // Already have cached data (set synchronously in useState init)
+    if (enhanced !== null && getCached<T>(key) !== null) {
+      fetchedKeyRef.current = key
+      return
+    }
+
+    let cancelled = false
+    const controller = new AbortController()
+    abortRef.current = controller
+    fetchedKeyRef.current = key
+
+    const run = async () => {
+      // Double-check cache (may have been populated by another component)
+      const cached = getCached<T>(key)
+      if (cached) {
+        if (!cancelled) setEnhanced(cached)
+        return
+      }
+
+      if (!cancelled) {
+        setIsLoading(true)
+        setError(null)
+      }
+
+      const timeout = setTimeout(() => controller.abort(), 10_000)
+
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: actionRef.current, data: dataRef.current }),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeout)
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'AI request failed' }))
+          if (err.fallback) {
+            // Expected fallback — silently use deterministic
+            if (!cancelled) setIsLoading(false)
+            return
+          }
+          throw new Error(err.error || 'AI request failed')
+        }
+
+        const { result } = await res.json()
+        if (!cancelled) {
+          setEnhanced(result as T)
+          setCache(key, result)
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          // Timeout or unmount — silent
+        } else if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'AI enhancement failed'
+          setError(msg)
+          console.warn('[useAI]', msg)
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    run()
 
     return () => {
-      abortRef.current?.abort()
+      cancelled = true
+      controller.abort()
     }
-  }, [enabled, fetchEnhancement])
+  }, [enabled, key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     result: enhanced ?? fallback,

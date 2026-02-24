@@ -211,7 +211,7 @@ export default function RecruitingPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('openPositions')} value={openPositions} icon={<Briefcase size={20} />} />
-        <StatCard label={t('totalApplicants')} value={totalApplicants} change={t('acrossAllPostings')} changeType="neutral" icon={<Users size={20} />} />
+        <StatCard label={t('totalApplicants')} value={totalApplicants} change={t('acrossAllPostings')} changeType="neutral" icon={<Users size={20} />} href="/people" />
         <StatCard label={t('inInterview')} value={inInterview} change={t('activeCandidates')} changeType="neutral" />
         <StatCard label={t('offersExtended')} value={offersExtended} change={t('pendingAcceptance')} changeType="positive" />
       </div>

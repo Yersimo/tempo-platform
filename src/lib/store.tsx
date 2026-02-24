@@ -13,11 +13,11 @@ import {
   demoJobPostings, demoApplications,
   demoDevices, demoSoftwareLicenses, demoITRequests,
   demoInvoices, demoBudgets, demoVendors,
-  demoCredentials,
   demoProjects, demoMilestones, demoTasks, demoTaskDependencies,
   demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
   demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
   demoNotifications,
+  getDemoDataForOrg, allDemoCredentials,
 } from './demo-data'
 import type { DemoRole } from './demo-data'
 
@@ -459,6 +459,61 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const hasFetched = useRef(false)
+  // Track current org ID for CRUD operations without causing re-renders
+  const orgIdRef = useRef(org.id)
+  useEffect(() => { orgIdRef.current = org.id }, [org.id])
+
+  // Load all demo data for a specific org (used when switching between demo tenants)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loadDemoData = useCallback((orgId: string) => {
+    const data = getDemoDataForOrg(orgId)
+    // Use type assertions to handle narrowed literal type differences between orgs
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    setOrg(data.org as any)
+    setDepartments(data.departments as any)
+    setEmployees(data.employees as any)
+    setGoals(data.goals as any)
+    setReviewCycles(data.reviewCycles as any)
+    setReviews(data.reviews as any)
+    setFeedback(data.feedback as any)
+    setCompBands(data.compBands as any)
+    setSalaryReviews(data.salaryReviews as any)
+    setCourses(data.courses as any)
+    setEnrollments(data.enrollments as any)
+    setSurveys(data.surveys as any)
+    setEngagementScores(data.engagementScores as any)
+    setMentoringPrograms(data.mentoringPrograms as any)
+    setMentoringPairs(data.mentoringPairs as any)
+    setPayrollRuns(data.payrollRuns as any)
+    setLeaveRequests(data.leaveRequests as any)
+    setBenefitPlans(data.benefitPlans as any)
+    setExpenseReports(data.expenseReports as any)
+    setJobPostings(data.jobPostings as any)
+    setApplications(data.applications as any)
+    setDevices(data.devices as any)
+    setSoftwareLicenses(data.softwareLicenses as any)
+    setITRequests(data.itRequests as any)
+    setInvoices(data.invoices as any)
+    setBudgets(data.budgets as any)
+    setVendors(data.vendors as any)
+    setProjects(data.projects as any)
+    setMilestones(data.milestones as any)
+    setTasks(data.tasks as any)
+    setTaskDependencies(data.taskDependencies as any)
+    setStrategicObjectives(data.strategicObjectives as any)
+    setKeyResults(data.keyResults as any)
+    setInitiatives(data.initiatives as any)
+    setKPIDefinitions(data.kpiDefinitions as any)
+    setKPIMeasurements(data.kpiMeasurements as any)
+    setWorkflows(data.workflows as any)
+    setWorkflowSteps(data.workflowSteps as any)
+    setWorkflowRuns(data.workflowRuns as any)
+    setWorkflowTemplates(data.workflowTemplates as any)
+    setNotifications(data.notifications as any)
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    setAuditLog([])
+    try { localStorage.setItem('tempo_current_org', orgId) } catch { /* ignore */ }
+  }, [])
 
   // ---- Validate session and fetch data on mount ----
   useEffect(() => {
@@ -469,7 +524,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       try {
         // Step 1: Validate session with server (cookie-based)
         const { user: sessionUser, apiDown } = await fetchSessionUser()
+        let isDemoUser = false
         if (sessionUser) {
+          // Load correct org's demo data if this is a demo user
+          // Detect demo users by employee ID prefix (emp- for Ecobank, kemp- for Kash & Co)
+          const sessEmpId = sessionUser.employee_id || ''
+          isDemoUser = sessEmpId.startsWith('emp-') || sessEmpId.startsWith('kemp-')
+          if (isDemoUser) {
+            const sessOrgId = sessEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
+            loadDemoData(sessOrgId)
+          }
           setCurrentUser(sessionUser)
           try { localStorage.setItem('tempo_current_user', JSON.stringify(sessionUser)) } catch { /* ignore */ }
         } else if (apiDown) {
@@ -479,6 +543,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           if (cachedUser) {
             console.warn('API unavailable, using cached session')
             setCurrentUser(cachedUser)
+            // Load correct org's demo data based on cached user's employee ID
+            const cachedEmpId = cachedUser.employee_id || ''
+            isDemoUser = cachedEmpId.startsWith('emp-') || cachedEmpId.startsWith('kemp-')
+            if (isDemoUser) {
+              const cachedOrgId = cachedEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
+              loadDemoData(cachedOrgId)
+            }
           } else {
             // No cached user and API is down — can't authenticate
             setCurrentUser(null)
@@ -495,68 +566,71 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Step 2: Fetch all data from DB (session cookie sent automatically)
-        const res = await fetch('/api/data')
-        if (!res.ok) {
-          console.warn('Failed to load data from DB, using demo data')
-          setIsLoading(false)
-          return
-        }
-        const data = await res.json()
+        // Skip DB fetch for demo users — their data was already loaded by loadDemoData()
+        if (!isDemoUser) {
+          const res = await fetch('/api/data')
+          if (!res.ok) {
+            console.warn('Failed to load data from DB, using demo data')
+            setIsLoading(false)
+            return
+          }
+          const data = await res.json()
 
-        if (data.org) setOrg(data.org)
-        if (data.departments?.length) setDepartments(data.departments)
-        if (data.employees?.length) setEmployees(data.employees)
-        if (data.goals?.length) setGoals(data.goals)
-        if (data.reviewCycles?.length) setReviewCycles(data.reviewCycles)
-        if (data.reviews?.length) setReviews(data.reviews)
-        if (data.feedback?.length) setFeedback(data.feedback)
-        if (data.compBands?.length) setCompBands(data.compBands)
-        if (data.salaryReviews?.length) setSalaryReviews(data.salaryReviews)
-        if (data.courses?.length) setCourses(data.courses)
-        if (data.enrollments?.length) setEnrollments(data.enrollments)
-        if (data.surveys?.length) setSurveys(data.surveys)
-        if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
-        if (data.mentoringPrograms?.length) setMentoringPrograms(data.mentoringPrograms)
-        if (data.mentoringPairs?.length) setMentoringPairs(data.mentoringPairs)
-        if (data.payrollRuns?.length) setPayrollRuns(data.payrollRuns)
-        if (data.leaveRequests?.length) setLeaveRequests(data.leaveRequests)
-        if (data.benefitPlans?.length) setBenefitPlans(data.benefitPlans)
-        if (data.expenseReports?.length) setExpenseReports(data.expenseReports)
-        if (data.jobPostings?.length) setJobPostings(data.jobPostings)
-        if (data.applications?.length) setApplications(data.applications)
-        if (data.devices?.length) setDevices(data.devices)
-        if (data.softwareLicenses?.length) setSoftwareLicenses(data.softwareLicenses)
-        if (data.itRequests?.length) setITRequests(data.itRequests)
-        if (data.invoices?.length) setInvoices(data.invoices)
-        if (data.budgets?.length) setBudgets(data.budgets)
-        if (data.vendors?.length) setVendors(data.vendors)
-        // Phase 3: Project Management
-        if (data.projects?.length) setProjects(data.projects)
-        if (data.milestones?.length) setMilestones(data.milestones)
-        if (data.tasks?.length) setTasks(data.tasks)
-        if (data.taskDependencies?.length) setTaskDependencies(data.taskDependencies)
-        // Phase 3: Strategy Execution
-        if (data.strategicObjectives?.length) setStrategicObjectives(data.strategicObjectives)
-        if (data.keyResults?.length) setKeyResults(data.keyResults)
-        if (data.initiatives?.length) setInitiatives(data.initiatives)
-        if (data.kpiDefinitions?.length) setKPIDefinitions(data.kpiDefinitions)
-        if (data.kpiMeasurements?.length) setKPIMeasurements(data.kpiMeasurements)
-        // Phase 3: Workflow Studio
-        if (data.workflows?.length) setWorkflows(data.workflows)
-        if (data.workflowSteps?.length) setWorkflowSteps(data.workflowSteps)
-        if (data.workflowRuns?.length) setWorkflowRuns(data.workflowRuns)
-        if (data.workflowTemplates?.length) setWorkflowTemplates(data.workflowTemplates)
-        // Notifications
-        if (data.notifications?.length) setNotifications(data.notifications)
-        if (data.auditLog?.length) setAuditLog(data.auditLog.map((a: AnyRecord) => ({
-          id: a.id,
-          user: a.user_id || '',
-          action: a.action,
-          entity_type: a.entity_type,
-          entity_id: a.entity_id || '',
-          details: a.details || '',
-          timestamp: a.timestamp,
-        })))
+          if (data.org) setOrg(data.org)
+          if (data.departments?.length) setDepartments(data.departments)
+          if (data.employees?.length) setEmployees(data.employees)
+          if (data.goals?.length) setGoals(data.goals)
+          if (data.reviewCycles?.length) setReviewCycles(data.reviewCycles)
+          if (data.reviews?.length) setReviews(data.reviews)
+          if (data.feedback?.length) setFeedback(data.feedback)
+          if (data.compBands?.length) setCompBands(data.compBands)
+          if (data.salaryReviews?.length) setSalaryReviews(data.salaryReviews)
+          if (data.courses?.length) setCourses(data.courses)
+          if (data.enrollments?.length) setEnrollments(data.enrollments)
+          if (data.surveys?.length) setSurveys(data.surveys)
+          if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
+          if (data.mentoringPrograms?.length) setMentoringPrograms(data.mentoringPrograms)
+          if (data.mentoringPairs?.length) setMentoringPairs(data.mentoringPairs)
+          if (data.payrollRuns?.length) setPayrollRuns(data.payrollRuns)
+          if (data.leaveRequests?.length) setLeaveRequests(data.leaveRequests)
+          if (data.benefitPlans?.length) setBenefitPlans(data.benefitPlans)
+          if (data.expenseReports?.length) setExpenseReports(data.expenseReports)
+          if (data.jobPostings?.length) setJobPostings(data.jobPostings)
+          if (data.applications?.length) setApplications(data.applications)
+          if (data.devices?.length) setDevices(data.devices)
+          if (data.softwareLicenses?.length) setSoftwareLicenses(data.softwareLicenses)
+          if (data.itRequests?.length) setITRequests(data.itRequests)
+          if (data.invoices?.length) setInvoices(data.invoices)
+          if (data.budgets?.length) setBudgets(data.budgets)
+          if (data.vendors?.length) setVendors(data.vendors)
+          // Phase 3: Project Management
+          if (data.projects?.length) setProjects(data.projects)
+          if (data.milestones?.length) setMilestones(data.milestones)
+          if (data.tasks?.length) setTasks(data.tasks)
+          if (data.taskDependencies?.length) setTaskDependencies(data.taskDependencies)
+          // Phase 3: Strategy Execution
+          if (data.strategicObjectives?.length) setStrategicObjectives(data.strategicObjectives)
+          if (data.keyResults?.length) setKeyResults(data.keyResults)
+          if (data.initiatives?.length) setInitiatives(data.initiatives)
+          if (data.kpiDefinitions?.length) setKPIDefinitions(data.kpiDefinitions)
+          if (data.kpiMeasurements?.length) setKPIMeasurements(data.kpiMeasurements)
+          // Phase 3: Workflow Studio
+          if (data.workflows?.length) setWorkflows(data.workflows)
+          if (data.workflowSteps?.length) setWorkflowSteps(data.workflowSteps)
+          if (data.workflowRuns?.length) setWorkflowRuns(data.workflowRuns)
+          if (data.workflowTemplates?.length) setWorkflowTemplates(data.workflowTemplates)
+          // Notifications
+          if (data.notifications?.length) setNotifications(data.notifications)
+          if (data.auditLog?.length) setAuditLog(data.auditLog.map((a: AnyRecord) => ({
+            id: a.id,
+            user: a.user_id || '',
+            action: a.action,
+            entity_type: a.entity_type,
+            entity_id: a.entity_id || '',
+            details: a.details || '',
+            timestamp: a.timestamp,
+          })))
+        }
       } catch (err) {
         console.warn('Failed to initialize session:', err)
       } finally {
@@ -610,7 +684,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Employees ----
   const addEmployee = useCallback((data: AnyRecord) => {
     const id = genId('emp')
-    const emp = { id, org_id: 'org-1', ...data }
+    const emp = { id, org_id: orgIdRef.current, ...data }
     setEmployees(prev => [...prev, emp] as typeof prev)
     logAudit('create', 'employee', id, `Added employee: ${data.profile?.full_name || 'New Employee'}`)
     addToast(`Employee ${data.profile?.full_name || ''} added`)
@@ -638,7 +712,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Goals ----
   const addGoal = useCallback((data: AnyRecord) => {
     const id = genId('goal')
-    setGoals(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setGoals(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'goal', id, `Created goal: ${data.title}`)
     addToast('Goal created')
     apiPost('goals', 'create', data)
@@ -661,7 +735,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Reviews ----
   const addReview = useCallback((data: AnyRecord) => {
     const id = genId('rev')
-    setReviews(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setReviews(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'review', id, `Created review`)
     addToast('Review created')
     apiPost('reviews', 'create', data)
@@ -677,7 +751,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Review Cycles ----
   const addReviewCycle = useCallback((data: AnyRecord) => {
     const id = genId('cycle')
-    setReviewCycles(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setReviewCycles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'review_cycle', id, `Created review cycle: ${data.title}`)
     addToast('Review cycle created')
     apiPost('reviewCycles', 'create', data)
@@ -693,7 +767,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Feedback ----
   const addFeedback = useCallback((data: AnyRecord) => {
     const id = genId('fb')
-    setFeedback(prev => [{ id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }, ...prev] as typeof prev)
+    setFeedback(prev => [{ id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }, ...prev] as typeof prev)
     logAudit('create', 'feedback', id, `Gave feedback to ${getEmployeeName(data.to_id)}`)
     addToast('Feedback sent')
     apiPost('feedback', 'create', data)
@@ -702,7 +776,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Comp Bands ----
   const addCompBand = useCallback((data: AnyRecord) => {
     const id = genId('band')
-    setCompBands(prev => [...prev, { id, org_id: 'org-1', ...data }] as typeof prev)
+    setCompBands(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'comp_band', id, `Created comp band: ${data.role_title}`)
     addToast('Compensation band created')
     apiPost('compBands', 'create', data)
@@ -725,7 +799,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Salary Reviews ----
   const addSalaryReview = useCallback((data: AnyRecord) => {
     const id = genId('sr')
-    setSalaryReviews(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setSalaryReviews(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'salary_review', id, `Proposed salary review for ${getEmployeeName(data.employee_id)}`)
     addToast('Salary review submitted')
     apiPost('salaryReviews', 'create', data)
@@ -742,7 +816,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Courses ----
   const addCourse = useCallback((data: AnyRecord) => {
     const id = genId('course')
-    setCourses(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setCourses(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'course', id, `Created course: ${data.title}`)
     addToast('Course created')
     apiPost('courses', 'create', data)
@@ -758,7 +832,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Enrollments ----
   const addEnrollment = useCallback((data: AnyRecord) => {
     const id = genId('enr')
-    setEnrollments(prev => [...prev, { id, org_id: 'org-1', enrolled_at: new Date().toISOString(), completed_at: null, ...data }] as typeof prev)
+    setEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, enrolled_at: new Date().toISOString(), completed_at: null, ...data }] as typeof prev)
     logAudit('create', 'enrollment', id, `Enrolled in course`)
     addToast('Enrolled in course')
     apiPost('enrollments', 'create', data)
@@ -774,7 +848,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Surveys ----
   const addSurvey = useCallback((data: AnyRecord) => {
     const id = genId('survey')
-    setSurveys(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setSurveys(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'survey', id, `Created survey: ${data.title}`)
     addToast('Survey created')
     apiPost('surveys', 'create', data)
@@ -790,7 +864,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Mentoring ----
   const addMentoringProgram = useCallback((data: AnyRecord) => {
     const id = genId('mp')
-    setMentoringPrograms(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setMentoringPrograms(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'mentoring_program', id, `Created program: ${data.title}`)
     addToast('Mentoring program created')
     apiPost('mentoringPrograms', 'create', data)
@@ -805,7 +879,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addMentoringPair = useCallback((data: AnyRecord) => {
     const id = genId('pair')
-    setMentoringPairs(prev => [...prev, { id, org_id: 'org-1', started_at: new Date().toISOString(), ...data }] as typeof prev)
+    setMentoringPairs(prev => [...prev, { id, org_id: orgIdRef.current, started_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'mentoring_pair', id, `Matched ${getEmployeeName(data.mentor_id)} with ${getEmployeeName(data.mentee_id)}`)
     addToast('Mentoring pair matched')
     apiPost('mentoringPairs', 'create', data)
@@ -821,7 +895,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Payroll ----
   const addPayrollRun = useCallback((data: AnyRecord) => {
     const id = genId('pr')
-    setPayrollRuns(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setPayrollRuns(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'payroll_run', id, `Created pay run: ${data.period}`)
     addToast('Payroll run created')
     apiPost('payrollRuns', 'create', data)
@@ -837,7 +911,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Leave Requests ----
   const addLeaveRequest = useCallback((data: AnyRecord) => {
     const id = genId('lr')
-    setLeaveRequests(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setLeaveRequests(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'leave_request', id, `Submitted leave request`)
     addToast('Leave request submitted')
     apiPost('leaveRequests', 'create', data)
@@ -854,7 +928,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Benefits ----
   const addBenefitPlan = useCallback((data: AnyRecord) => {
     const id = genId('bp')
-    setBenefitPlans(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setBenefitPlans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'benefit_plan', id, `Created benefit plan: ${data.name}`)
     addToast('Benefit plan created')
     apiPost('benefitPlans', 'create', data)
@@ -870,7 +944,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Expenses ----
   const addExpenseReport = useCallback((data: AnyRecord) => {
     const id = genId('exp')
-    setExpenseReports(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setExpenseReports(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'expense_report', id, `Created expense: ${data.title}`)
     addToast('Expense report created')
     apiPost('expenseReports', 'create', data)
@@ -894,7 +968,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Recruiting ----
   const addJobPosting = useCallback((data: AnyRecord) => {
     const id = genId('job')
-    setJobPostings(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), application_count: 0, ...data }] as typeof prev)
+    setJobPostings(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), application_count: 0, ...data }] as typeof prev)
     logAudit('create', 'job_posting', id, `Created job posting: ${data.title}`)
     addToast('Job posting created')
     apiPost('jobPostings', 'create', data)
@@ -909,7 +983,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addApplication = useCallback((data: AnyRecord) => {
     const id = genId('app')
-    setApplications(prev => [...prev, { id, org_id: 'org-1', applied_at: new Date().toISOString(), ...data }] as typeof prev)
+    setApplications(prev => [...prev, { id, org_id: orgIdRef.current, applied_at: new Date().toISOString(), ...data }] as typeof prev)
     if (data.job_id) {
       setJobPostings(prev => prev.map(j => j.id === data.job_id ? { ...j, application_count: (j.application_count || 0) + 1 } : j))
     }
@@ -928,7 +1002,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: IT ----
   const addDevice = useCallback((data: AnyRecord) => {
     const id = genId('dev')
-    setDevices(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setDevices(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'device', id, `Added device: ${data.brand} ${data.model}`)
     addToast('Device added')
     apiPost('devices', 'create', data)
@@ -943,7 +1017,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addSoftwareLicense = useCallback((data: AnyRecord) => {
     const id = genId('sl')
-    setSoftwareLicenses(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setSoftwareLicenses(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'software_license', id, `Added license: ${data.name}`)
     addToast('Software license added')
     apiPost('softwareLicenses', 'create', data)
@@ -958,7 +1032,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addITRequest = useCallback((data: AnyRecord) => {
     const id = genId('itr')
-    setITRequests(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setITRequests(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'it_request', id, `Created IT request: ${data.title}`)
     addToast('IT request submitted')
     apiPost('itRequests', 'create', data)
@@ -974,7 +1048,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Finance ----
   const addInvoice = useCallback((data: AnyRecord) => {
     const id = genId('inv')
-    setInvoices(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setInvoices(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'invoice', id, `Created invoice: ${data.invoice_number}`)
     addToast('Invoice created')
     apiPost('invoices', 'create', data)
@@ -989,7 +1063,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addBudget = useCallback((data: AnyRecord) => {
     const id = genId('bud')
-    setBudgets(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setBudgets(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'budget', id, `Created budget: ${data.name}`)
     addToast('Budget created')
     apiPost('budgets', 'create', data)
@@ -1004,7 +1078,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   const addVendor = useCallback((data: AnyRecord) => {
     const id = genId('vnd')
-    setVendors(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setVendors(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'vendor', id, `Added vendor: ${data.name}`)
     addToast('Vendor added')
     apiPost('vendors', 'create', data)
@@ -1020,7 +1094,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Departments ----
   const addDepartment = useCallback((data: AnyRecord) => {
     const id = genId('dept')
-    setDepartments(prev => [...prev, { id, org_id: 'org-1', ...data }] as typeof prev)
+    setDepartments(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'department', id, `Created department: ${data.name}`)
     addToast('Department created')
     apiPost('departments', 'create', data)
@@ -1036,7 +1110,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Projects ----
   const addProject = useCallback((data: AnyRecord) => {
     const id = genId('proj')
-    setProjects(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setProjects(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'project', id, `Created project: ${data.title}`)
     addToast('Project created')
     apiPost('projects', 'create', data)
@@ -1061,7 +1135,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Milestones ----
   const addMilestone = useCallback((data: AnyRecord) => {
     const id = genId('mile')
-    setMilestones(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setMilestones(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'milestone', id, `Created milestone: ${data.title}`)
     addToast('Milestone created')
     apiPost('milestones', 'create', data)
@@ -1077,7 +1151,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Tasks ----
   const addTask = useCallback((data: AnyRecord) => {
     const id = genId('task')
-    setTasks(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setTasks(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'task', id, `Created task: ${data.title}`)
     addToast('Task created')
     apiPost('tasks', 'create', data)
@@ -1101,7 +1175,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Strategic Objectives ----
   const addStrategicObjective = useCallback((data: AnyRecord) => {
     const id = genId('obj')
-    setStrategicObjectives(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setStrategicObjectives(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'strategic_objective', id, `Created objective: ${data.title}`)
     addToast('Strategic objective created')
     apiPost('strategicObjectives', 'create', data)
@@ -1125,7 +1199,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Key Results ----
   const addKeyResult = useCallback((data: AnyRecord) => {
     const id = genId('kr')
-    setKeyResults(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setKeyResults(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'key_result', id, `Created key result: ${data.title}`)
     addToast('Key result created')
     apiPost('keyResults', 'create', data)
@@ -1148,7 +1222,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Initiatives ----
   const addInitiative = useCallback((data: AnyRecord) => {
     const id = genId('init')
-    setInitiatives(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setInitiatives(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'initiative', id, `Created initiative: ${data.title}`)
     addToast('Initiative created')
     apiPost('initiatives', 'create', data)
@@ -1171,7 +1245,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: KPI Definitions ----
   const addKPIDefinition = useCallback((data: AnyRecord) => {
     const id = genId('kpi')
-    setKPIDefinitions(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setKPIDefinitions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'kpi_definition', id, `Created KPI: ${data.name}`)
     addToast('KPI created')
     apiPost('kpiDefinitions', 'create', data)
@@ -1196,7 +1270,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Workflows ----
   const addWorkflow = useCallback((data: AnyRecord) => {
     const id = genId('wf')
-    setWorkflows(prev => [...prev, { id, org_id: 'org-1', created_at: new Date().toISOString(), ...data }] as typeof prev)
+    setWorkflows(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'workflow', id, `Created workflow: ${data.title}`)
     addToast('Workflow created')
     apiPost('workflows', 'create', data)
@@ -1243,7 +1317,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Workflow Runs ----
   const addWorkflowRun = useCallback((data: AnyRecord) => {
     const id = genId('wfr')
-    setWorkflowRuns(prev => [...prev, { id, org_id: 'org-1', started_at: new Date().toISOString(), ...data }] as typeof prev)
+    setWorkflowRuns(prev => [...prev, { id, org_id: orgIdRef.current, started_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'workflow_run', id, 'Started workflow run')
     addToast('Workflow started')
     apiPost('workflowRuns', 'create', data)
@@ -1269,7 +1343,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- CRUD: Org ----
   const updateOrg = useCallback((data: AnyRecord) => {
     setOrg(prev => ({ ...prev, ...data }))
-    logAudit('update', 'organization', 'org-1', 'Updated organization settings')
+    logAudit('update', 'organization', orgIdRef.current, 'Updated organization settings')
     addToast('Organization settings updated')
     apiPost('organizations', 'update', data, org.id)
   }, [logAudit, addToast, org.id])
@@ -1289,6 +1363,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         if (data.requiresMFA && data.mfaToken) {
           return { requiresMFA: true, mfaToken: data.mfaToken }
         }
+        // For demo users, load the correct org's demo data (module data)
+        const empId = data.user?.employee_id || ''
+        if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
+          const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
+          loadDemoData(demoOrgId)
+        }
         setCurrentUser(data.user)
         // Keep localStorage as client-side cache for instant hydration
         try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
@@ -1298,16 +1378,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       // Fall back to demo credentials for offline/development
     }
 
-    // Fallback: demo credentials for offline/development
-    const cred = demoCredentials.find(c => c.email === email && c.password === password)
+    // Fallback: demo credentials for offline/development (searches both orgs)
+    const cred = allDemoCredentials.find(c => c.email === email && c.password === password)
     if (!cred) return false
-    const emp = employees.find(e => e.id === cred.employeeId)
+    // Determine which org this credential belongs to
+    const orgId = cred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+    // Load the correct org's demo data
+    loadDemoData(orgId)
+    const orgData = getDemoDataForOrg(orgId)
+    const emp = orgData.employees.find((e: { id: string }) => e.id === cred.employeeId)
     if (!emp) return false
     const user = buildCurrentUser(emp)
     setCurrentUser(user)
     try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
     return true
-  }, [employees])
+  }, [loadDemoData])
 
   const verifyMFA = useCallback(async (mfaToken: string, code: string): Promise<boolean> => {
     try {
@@ -1354,13 +1439,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         return
       }
     } catch { /* ignore */ }
-    // Fallback to local
-    const emp = employees.find(e => e.id === employeeId)
+    // Fallback to local - check current employees first, then try other org
+    let emp = employees.find(e => e.id === employeeId)
+    if (!emp) {
+      const orgId = employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+      loadDemoData(orgId)
+      const orgData = getDemoDataForOrg(orgId)
+      emp = orgData.employees.find((e: { id: string }) => e.id === employeeId)
+    }
     if (!emp) return
     const user = buildCurrentUser(emp)
     setCurrentUser(user)
     try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
-  }, [employees])
+  }, [employees, loadDemoData])
 
   const currentEmployeeId = currentUser?.employee_id || 'emp-17'
   const isLoggedIn = currentUser !== null

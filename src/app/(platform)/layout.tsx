@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { TempoProvider, useTempo } from '@/lib/store'
 import { ToastContainer } from '@/components/ui/toast'
+import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -63,6 +64,7 @@ export default function PlatformLayout({
   return (
     <TempoProvider>
       <AuthGuard>
+        <ImpersonationBanner />
         <div className="flex min-h-screen bg-canvas">
           <Sidebar />
           <main className="flex-1 min-w-0">

@@ -117,7 +117,7 @@ export default function AppsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalLicenses')} value={totalLicenses} icon={<Key size={20} />} />
         <StatCard label={t('utilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={t('inUse', { count: usedLicenses })} changeType="neutral" />
-        <StatCard label={t('monthlyCost')} value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} />
+        <StatCard label={t('monthlyCost')} value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} href="/finance/budgets" />
         <StatCard label={t('openItRequests')} value={openRequests} icon={<AlertTriangle size={20} />} />
       </div>
 

@@ -141,6 +141,11 @@ export async function validateSession(token: string): Promise<SessionPayload | n
   const payload = await verifyToken(token)
   if (!payload) return null
 
+  // Demo sessions (created by offline/fallback login) don't have DB records — JWT-only validation
+  if (payload.sessionId.startsWith('demo-')) {
+    return payload
+  }
+
   // Verify session exists in DB and hasn't been revoked
   const [session] = await db.select()
     .from(schema.sessions)
@@ -156,6 +161,8 @@ export async function validateSession(token: string): Promise<SessionPayload | n
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {
+  // Demo sessions have no DB record — nothing to revoke
+  if (sessionId.startsWith('demo-')) return
   await db.delete(schema.sessions)
     .where(eq(schema.sessions.id, sessionId))
 }

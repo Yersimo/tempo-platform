@@ -104,7 +104,7 @@ export default function BudgetsPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalBudget')} value={`$${(totalBudget / 1000000).toFixed(1)}M`} change={`FY 2026`} changeType="neutral" icon={<PieChart size={20} />} />
-        <StatCard label={t('spent')} value={`$${(totalSpent / 1000000).toFixed(1)}M`} change={t('utilized', { percent: utilization })} changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label={t('spent')} value={`$${(totalSpent / 1000000).toFixed(1)}M`} change={t('utilized', { percent: utilization })} changeType="neutral" icon={<DollarSign size={20} />} href="/expense" />
         <StatCard label={t('remaining')} value={`$${((totalBudget - totalSpent) / 1000000).toFixed(1)}M`} change={t('availableLabel')} changeType="positive" />
         <StatCard label={t('activeBudgets')} value={activeBudgets} />
       </div>

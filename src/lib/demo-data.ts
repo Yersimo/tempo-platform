@@ -494,3 +494,479 @@ export const demoNotifications = [
   { id: 'notif-6', org_id: 'org-1', recipient_id: 'emp-17', sender_id: null, type: 'warning' as const, channel: 'in_app' as const, title: '2 Salary Proposals Pending', message: 'There are 2 compensation proposals awaiting your approval before the March deadline.', link: '/compensation', entity_type: 'salary_review', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
   { id: 'notif-7', org_id: 'org-1', recipient_id: 'emp-17', sender_id: 'emp-13', type: 'mention' as const, channel: 'in_app' as const, title: 'Mentioned in Project Update', message: 'Babajide Ogunleye mentioned you in a comment on Core Banking System Upgrade.', link: '/projects', entity_type: 'project', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
 ]
+
+// ============================================================
+// KASH & CO - DEMO DATA (org-2)
+// ============================================================
+
+export const kashOrg = {
+  id: 'org-2',
+  name: 'Kash & Co',
+  slug: 'kash-co',
+  logo_url: null,
+  plan: 'professional' as const,
+  industry: 'Consulting & Professional Services',
+  size: '50-200',
+  country: 'South Africa',
+  created_at: '2024-06-01T00:00:00Z',
+}
+
+export const kashUser = {
+  id: 'user-2',
+  email: 's.ndlovu@kashco.com',
+  full_name: 'Sipho Ndlovu',
+  avatar_url: null,
+  role: 'owner' as const,
+  department_id: 'kdept-1',
+}
+
+export const kashDepartments = [
+  { id: 'kdept-1', org_id: 'org-2', name: 'Consulting', parent_id: null, head_id: 'kemp-1' },
+  { id: 'kdept-2', org_id: 'org-2', name: 'Strategy', parent_id: null, head_id: 'kemp-6' },
+  { id: 'kdept-3', org_id: 'org-2', name: 'Technology Advisory', parent_id: null, head_id: 'kemp-9' },
+  { id: 'kdept-4', org_id: 'org-2', name: 'People & Culture', parent_id: null, head_id: 'kemp-12' },
+  { id: 'kdept-5', org_id: 'org-2', name: 'Finance & Operations', parent_id: null, head_id: 'kemp-15' },
+  { id: 'kdept-6', org_id: 'org-2', name: 'Business Development', parent_id: null, head_id: 'kemp-18' },
+]
+
+export const kashEmployees = [
+  // Consulting
+  { id: 'kemp-1', org_id: 'org-2', department_id: 'kdept-1', job_title: 'Managing Director', level: 'Executive', country: 'South Africa', role: 'owner' as const, profile: { full_name: 'Sipho Ndlovu', email: 's.ndlovu@kashco.com', avatar_url: null, phone: '+27 11 234 5678' } },
+  { id: 'kemp-2', org_id: 'org-2', department_id: 'kdept-1', job_title: 'Partner', level: 'Director', country: 'South Africa', role: 'admin' as const, profile: { full_name: 'Naledi Mabaso', email: 'n.mabaso@kashco.com', avatar_url: null, phone: '+27 11 234 5679' } },
+  { id: 'kemp-3', org_id: 'org-2', department_id: 'kdept-1', job_title: 'Engagement Manager', level: 'Senior Manager', country: 'Rwanda', role: 'manager' as const, profile: { full_name: 'Thierry Mugabo', email: 't.mugabo@kashco.com', avatar_url: null, phone: '+250 788 123 456' } },
+  { id: 'kemp-4', org_id: 'org-2', department_id: 'kdept-1', job_title: 'Senior Consultant', level: 'Senior', country: 'South Africa', role: 'employee' as const, profile: { full_name: 'Nadia Joubert', email: 'n.joubert@kashco.com', avatar_url: null, phone: '+27 11 234 5680' } },
+  { id: 'kemp-5', org_id: 'org-2', department_id: 'kdept-1', job_title: 'Consultant', level: 'Mid', country: 'Rwanda', role: 'employee' as const, profile: { full_name: 'Amina Rwigema', email: 'a.rwigema@kashco.com', avatar_url: null, phone: '+250 788 234 567' } },
+  // Strategy
+  { id: 'kemp-6', org_id: 'org-2', department_id: 'kdept-2', job_title: 'Head of Strategy', level: 'Director', country: 'Morocco', role: 'admin' as const, profile: { full_name: 'Layla Amari', email: 'l.amari@kashco.com', avatar_url: null, phone: '+212 522 123 456' } },
+  { id: 'kemp-7', org_id: 'org-2', department_id: 'kdept-2', job_title: 'Strategy Manager', level: 'Senior Manager', country: 'South Africa', role: 'manager' as const, profile: { full_name: 'Pieter van der Merwe', email: 'p.vandermerwe@kashco.com', avatar_url: null, phone: '+27 11 234 5681' } },
+  { id: 'kemp-8', org_id: 'org-2', department_id: 'kdept-2', job_title: 'Strategy Analyst', level: 'Mid', country: 'Morocco', role: 'employee' as const, profile: { full_name: 'Youssef Benali', email: 'y.benali@kashco.com', avatar_url: null, phone: '+212 522 234 567' } },
+  // Technology Advisory
+  { id: 'kemp-9', org_id: 'org-2', department_id: 'kdept-3', job_title: 'Technology Advisory Lead', level: 'Director', country: 'South Africa', role: 'admin' as const, profile: { full_name: 'Kagiso Molefe', email: 'k.molefe@kashco.com', avatar_url: null, phone: '+27 11 234 5682' } },
+  { id: 'kemp-10', org_id: 'org-2', department_id: 'kdept-3', job_title: 'Senior Tech Consultant', level: 'Senior', country: 'Rwanda', role: 'employee' as const, profile: { full_name: 'Jean-Pierre Habimana', email: 'jp.habimana@kashco.com', avatar_url: null, phone: '+250 788 345 678' } },
+  { id: 'kemp-11', org_id: 'org-2', department_id: 'kdept-3', job_title: 'Tech Consultant', level: 'Mid', country: 'Morocco', role: 'employee' as const, profile: { full_name: 'Fatima-Zahra El Idrissi', email: 'fz.elidrissi@kashco.com', avatar_url: null, phone: '+212 522 345 678' } },
+  // People & Culture
+  { id: 'kemp-12', org_id: 'org-2', department_id: 'kdept-4', job_title: 'Chief People Officer', level: 'Executive', country: 'South Africa', role: 'admin' as const, profile: { full_name: 'Zanele Moyo', email: 'z.moyo@kashco.com', avatar_url: null, phone: '+27 11 234 5683' } },
+  { id: 'kemp-13', org_id: 'org-2', department_id: 'kdept-4', job_title: 'HR Manager', level: 'Manager', country: 'Rwanda', role: 'manager' as const, profile: { full_name: 'Grace Uwimana', email: 'g.uwimana@kashco.com', avatar_url: null, phone: '+250 788 456 789' } },
+  { id: 'kemp-14', org_id: 'org-2', department_id: 'kdept-4', job_title: 'People Coordinator', level: 'Junior', country: 'South Africa', role: 'employee' as const, profile: { full_name: 'Lerato Dlamini', email: 'l.dlamini@kashco.com', avatar_url: null, phone: '+27 11 234 5684' } },
+  // Finance & Operations
+  { id: 'kemp-15', org_id: 'org-2', department_id: 'kdept-5', job_title: 'CFO', level: 'Executive', country: 'Morocco', role: 'admin' as const, profile: { full_name: 'Omar Benhaddou', email: 'o.benhaddou@kashco.com', avatar_url: null, phone: '+212 522 456 789' } },
+  { id: 'kemp-16', org_id: 'org-2', department_id: 'kdept-5', job_title: 'Finance Manager', level: 'Senior Manager', country: 'South Africa', role: 'manager' as const, profile: { full_name: 'Thabo Maseko', email: 't.maseko@kashco.com', avatar_url: null, phone: '+27 11 234 5685' } },
+  { id: 'kemp-17', org_id: 'org-2', department_id: 'kdept-5', job_title: 'Office Manager', level: 'Mid', country: 'Rwanda', role: 'employee' as const, profile: { full_name: 'Diane Mukamana', email: 'd.mukamana@kashco.com', avatar_url: null, phone: '+250 788 567 890' } },
+  // Business Development
+  { id: 'kemp-18', org_id: 'org-2', department_id: 'kdept-6', job_title: 'BD Director', level: 'Director', country: 'South Africa', role: 'admin' as const, profile: { full_name: 'Anele Zulu', email: 'a.zulu@kashco.com', avatar_url: null, phone: '+27 11 234 5686' } },
+  { id: 'kemp-19', org_id: 'org-2', department_id: 'kdept-6', job_title: 'BD Manager', level: 'Senior Manager', country: 'Morocco', role: 'manager' as const, profile: { full_name: 'Hassan Tazi', email: 'h.tazi@kashco.com', avatar_url: null, phone: '+212 522 567 890' } },
+  { id: 'kemp-20', org_id: 'org-2', department_id: 'kdept-6', job_title: 'BD Associate', level: 'Junior', country: 'South Africa', role: 'employee' as const, profile: { full_name: 'Kwame Osei', email: 'k.osei@kashco.com', avatar_url: null, phone: '+27 11 234 5687' } },
+]
+
+export const kashGoals = [
+  { id: 'kgoal-1', org_id: 'org-2', employee_id: 'kemp-3', title: 'Deliver MTN digital transformation engagement', description: 'Complete Phase 2 of MTN digital strategy project on time and within budget', category: 'project' as const, status: 'on_track' as const, progress: 65, start_date: '2026-01-01', due_date: '2026-06-30', created_at: '2026-01-05T00:00:00Z' },
+  { id: 'kgoal-2', org_id: 'org-2', employee_id: 'kemp-6', title: 'Win 3 new strategy advisory mandates', description: 'Expand strategy practice revenue by securing new client engagements', category: 'business' as const, status: 'on_track' as const, progress: 33, start_date: '2026-01-01', due_date: '2026-06-30', created_at: '2026-01-10T00:00:00Z' },
+  { id: 'kgoal-3', org_id: 'org-2', employee_id: 'kemp-9', title: 'Build AI/ML advisory capability', description: 'Develop service offering and train team on AI strategy consulting', category: 'development' as const, status: 'at_risk' as const, progress: 25, start_date: '2026-01-15', due_date: '2026-04-30', created_at: '2026-01-12T00:00:00Z' },
+  { id: 'kgoal-4', org_id: 'org-2', employee_id: 'kemp-12', title: 'Achieve 90% employee engagement score', description: 'Drive engagement through culture initiatives and professional development', category: 'business' as const, status: 'on_track' as const, progress: 72, start_date: '2026-01-01', due_date: '2026-12-31', created_at: '2026-01-05T00:00:00Z' },
+  { id: 'kgoal-5', org_id: 'org-2', employee_id: 'kemp-18', title: 'Generate $2M in new business pipeline', description: 'Build qualified pipeline across all three offices', category: 'business' as const, status: 'on_track' as const, progress: 55, start_date: '2026-01-01', due_date: '2026-06-30', created_at: '2026-01-05T00:00:00Z' },
+  { id: 'kgoal-6', org_id: 'org-2', employee_id: 'kemp-4', title: 'Obtain PMP certification', description: 'Complete PMP training and pass certification exam', category: 'development' as const, status: 'on_track' as const, progress: 80, start_date: '2026-01-01', due_date: '2026-03-31', created_at: '2026-01-08T00:00:00Z' },
+  { id: 'kgoal-7', org_id: 'org-2', employee_id: 'kemp-7', title: 'Complete OCP Mining market entry study', description: 'Deliver market entry strategy for OCP Group mining operations', category: 'project' as const, status: 'behind' as const, progress: 20, start_date: '2026-02-01', due_date: '2026-04-15', created_at: '2026-01-28T00:00:00Z' },
+  { id: 'kgoal-8', org_id: 'org-2', employee_id: 'kemp-15', title: 'Implement new billing system', description: 'Replace manual invoicing with automated time-and-billing platform', category: 'project' as const, status: 'on_track' as const, progress: 45, start_date: '2026-01-15', due_date: '2026-05-31', created_at: '2026-01-12T00:00:00Z' },
+]
+
+export const kashReviewCycles = [
+  { id: 'kcycle-1', org_id: 'org-2', title: 'H1 2026 Performance Review', type: 'mid_year' as const, status: 'active' as const, start_date: '2026-01-15', end_date: '2026-03-15', created_at: '2026-01-10T00:00:00Z' },
+  { id: 'kcycle-2', org_id: 'org-2', title: '2025 Annual Review', type: 'annual' as const, status: 'completed' as const, start_date: '2025-11-01', end_date: '2025-12-31', created_at: '2025-10-15T00:00:00Z' },
+]
+
+export const kashReviews = [
+  { id: 'krev-1', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-3', reviewer_id: 'kemp-2', type: 'manager' as const, status: 'submitted' as const, overall_rating: 5, ratings: { leadership: 5, execution: 5, collaboration: 4, innovation: 4 }, comments: 'Thierry has excelled managing the MTN engagement. Client satisfaction is at an all-time high.', submitted_at: '2026-02-10T00:00:00Z', created_at: '2026-01-20T00:00:00Z' },
+  { id: 'krev-2', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-4', reviewer_id: 'kemp-3', type: 'manager' as const, status: 'submitted' as const, overall_rating: 4, ratings: { leadership: 3, execution: 5, collaboration: 4, innovation: 4 }, comments: 'Nadia delivers exceptional analytical work. Ready for engagement manager role.', submitted_at: '2026-02-12T00:00:00Z', created_at: '2026-01-20T00:00:00Z' },
+  { id: 'krev-3', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-8', reviewer_id: 'kemp-6', type: 'manager' as const, status: 'in_progress' as const, overall_rating: null, ratings: null, comments: null, submitted_at: null, created_at: '2026-01-20T00:00:00Z' },
+  { id: 'krev-4', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-10', reviewer_id: 'kemp-9', type: 'manager' as const, status: 'submitted' as const, overall_rating: 4, ratings: { leadership: 3, execution: 4, collaboration: 5, innovation: 4 }, comments: 'Jean-Pierre brings strong technical depth to client engagements.', submitted_at: '2026-02-08T00:00:00Z', created_at: '2026-01-20T00:00:00Z' },
+  { id: 'krev-5', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-14', reviewer_id: 'kemp-12', type: 'manager' as const, status: 'pending' as const, overall_rating: null, ratings: null, comments: null, submitted_at: null, created_at: '2026-01-20T00:00:00Z' },
+  { id: 'krev-6', org_id: 'org-2', cycle_id: 'kcycle-1', employee_id: 'kemp-5', reviewer_id: 'kemp-3', type: 'manager' as const, status: 'submitted' as const, overall_rating: 3, ratings: { leadership: 2, execution: 4, collaboration: 3, innovation: 3 }, comments: 'Amina shows strong analytical skills. Needs to develop client-facing confidence.', submitted_at: '2026-02-18T00:00:00Z', created_at: '2026-01-20T00:00:00Z' },
+]
+
+export const kashFeedback = [
+  { id: 'kfb-1', org_id: 'org-2', from_id: 'kemp-1', to_id: 'kemp-3', type: 'recognition' as const, content: 'Outstanding leadership on the MTN engagement. The client specifically praised your workshop facilitation.', is_public: true, created_at: '2026-02-18T00:00:00Z' },
+  { id: 'kfb-2', org_id: 'org-2', from_id: 'kemp-6', to_id: 'kemp-8', type: 'feedback' as const, content: 'Your market analysis was thorough. For next time, consider adding more competitor benchmarking.', is_public: false, created_at: '2026-02-15T00:00:00Z' },
+  { id: 'kfb-3', org_id: 'org-2', from_id: 'kemp-9', to_id: 'kemp-10', type: 'recognition' as const, content: 'The cloud migration assessment you delivered for Safaricom was excellent. Great client feedback.', is_public: true, created_at: '2026-02-12T00:00:00Z' },
+  { id: 'kfb-4', org_id: 'org-2', from_id: 'kemp-2', to_id: 'kemp-4', type: 'recognition' as const, content: 'Your financial model for the OCP engagement was best-in-class. Truly partner-quality work.', is_public: true, created_at: '2026-02-10T00:00:00Z' },
+  { id: 'kfb-5', org_id: 'org-2', from_id: 'kemp-12', to_id: 'kemp-13', type: 'checkin' as const, content: 'Good progress on the new onboarding program. Let us review the Kigali office rollout plan next week.', is_public: false, created_at: '2026-02-08T00:00:00Z' },
+]
+
+export const kashCompBands = [
+  { id: 'kband-1', org_id: 'org-2', role_title: 'Partner', level: 'Director', country: 'South Africa', min_salary: 120000, mid_salary: 160000, max_salary: 220000, currency: 'USD', p25: 135000, p50: 160000, p75: 195000, effective_date: '2026-01-01' },
+  { id: 'kband-2', org_id: 'org-2', role_title: 'Engagement Manager', level: 'Senior Manager', country: null, min_salary: 85000, mid_salary: 110000, max_salary: 140000, currency: 'USD', p25: 92000, p50: 110000, p75: 130000, effective_date: '2026-01-01' },
+  { id: 'kband-3', org_id: 'org-2', role_title: 'Senior Consultant', level: 'Senior', country: null, min_salary: 65000, mid_salary: 85000, max_salary: 110000, currency: 'USD', p25: 72000, p50: 85000, p75: 100000, effective_date: '2026-01-01' },
+  { id: 'kband-4', org_id: 'org-2', role_title: 'Consultant', level: 'Mid', country: null, min_salary: 45000, mid_salary: 62000, max_salary: 80000, currency: 'USD', p25: 50000, p50: 62000, p75: 74000, effective_date: '2026-01-01' },
+  { id: 'kband-5', org_id: 'org-2', role_title: 'Analyst', level: 'Junior', country: null, min_salary: 35000, mid_salary: 45000, max_salary: 58000, currency: 'USD', p25: 38000, p50: 45000, p75: 53000, effective_date: '2026-01-01' },
+]
+
+export const kashSalaryReviews = [
+  { id: 'ksr-1', org_id: 'org-2', employee_id: 'kemp-4', proposed_by: 'kemp-3', current_salary: 85000, proposed_salary: 95000, currency: 'USD', justification: 'Consistently delivers partner-quality work. Ready for promotion to Engagement Manager.', status: 'pending_approval' as const, approved_by: null, cycle: '2026 Annual', created_at: '2026-02-15T00:00:00Z' },
+  { id: 'ksr-2', org_id: 'org-2', employee_id: 'kemp-10', proposed_by: 'kemp-9', current_salary: 78000, proposed_salary: 85000, currency: 'USD', justification: 'Strong client feedback. Market adjustment needed for senior tech talent in Kigali.', status: 'approved' as const, approved_by: 'kemp-1', cycle: '2026 Annual', created_at: '2026-02-10T00:00:00Z' },
+]
+
+export const kashCourses = [
+  { id: 'kcourse-1', org_id: 'org-2', title: 'Consulting Foundations', description: 'Core consulting skills: problem structuring, hypothesis-driven thinking, client communication', category: 'Consulting', duration_hours: 24, format: 'blended' as const, level: 'beginner' as const, is_mandatory: true, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'kcourse-2', org_id: 'org-2', title: 'Advanced Financial Modelling', description: 'DCF, LBO, and M&A modelling for advisory engagements', category: 'Technical', duration_hours: 16, format: 'online' as const, level: 'advanced' as const, is_mandatory: false, created_at: '2025-03-01T00:00:00Z' },
+  { id: 'kcourse-3', org_id: 'org-2', title: 'Client Relationship Management', description: 'Building and maintaining C-suite client relationships', category: 'Leadership', duration_hours: 12, format: 'classroom' as const, level: 'intermediate' as const, is_mandatory: false, created_at: '2025-09-01T00:00:00Z' },
+  { id: 'kcourse-4', org_id: 'org-2', title: 'Data Analytics for Consultants', description: 'Python, SQL, and visualization tools for data-driven consulting', category: 'Technology', duration_hours: 20, format: 'online' as const, level: 'intermediate' as const, is_mandatory: false, created_at: '2025-07-01T00:00:00Z' },
+  { id: 'kcourse-5', org_id: 'org-2', title: 'Africa Market Dynamics', description: 'Understanding business landscapes across Sub-Saharan and North Africa', category: 'Industry', duration_hours: 8, format: 'online' as const, level: 'beginner' as const, is_mandatory: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'kcourse-6', org_id: 'org-2', title: 'Partner Development Program', description: 'Executive presence, rainmaking, and practice leadership', category: 'Leadership', duration_hours: 40, format: 'blended' as const, level: 'advanced' as const, is_mandatory: false, created_at: '2025-04-01T00:00:00Z' },
+]
+
+export const kashEnrollments = [
+  { id: 'kenr-1', org_id: 'org-2', employee_id: 'kemp-5', course_id: 'kcourse-1', status: 'in_progress' as const, progress: 70, enrolled_at: '2026-01-15T00:00:00Z', completed_at: null },
+  { id: 'kenr-2', org_id: 'org-2', employee_id: 'kemp-4', course_id: 'kcourse-2', status: 'completed' as const, progress: 100, enrolled_at: '2025-10-01T00:00:00Z', completed_at: '2025-12-15T00:00:00Z' },
+  { id: 'kenr-3', org_id: 'org-2', employee_id: 'kemp-8', course_id: 'kcourse-4', status: 'in_progress' as const, progress: 45, enrolled_at: '2026-02-01T00:00:00Z', completed_at: null },
+  { id: 'kenr-4', org_id: 'org-2', employee_id: 'kemp-20', course_id: 'kcourse-5', status: 'enrolled' as const, progress: 0, enrolled_at: '2026-02-15T00:00:00Z', completed_at: null },
+  { id: 'kenr-5', org_id: 'org-2', employee_id: 'kemp-2', course_id: 'kcourse-6', status: 'in_progress' as const, progress: 35, enrolled_at: '2026-01-20T00:00:00Z', completed_at: null },
+  { id: 'kenr-6', org_id: 'org-2', employee_id: 'kemp-14', course_id: 'kcourse-1', status: 'completed' as const, progress: 100, enrolled_at: '2025-08-01T00:00:00Z', completed_at: '2025-10-01T00:00:00Z' },
+]
+
+export const kashSurveys = [
+  { id: 'ksurvey-1', org_id: 'org-2', title: 'Q1 2026 Team Pulse', type: 'pulse' as const, status: 'closed' as const, start_date: '2026-01-15', end_date: '2026-01-31', anonymous: true, created_at: '2026-01-10T00:00:00Z' },
+  { id: 'ksurvey-2', org_id: 'org-2', title: 'Q1 2026 eNPS', type: 'enps' as const, status: 'active' as const, start_date: '2026-02-01', end_date: '2026-02-28', anonymous: true, created_at: '2026-01-25T00:00:00Z' },
+]
+
+export const kashEngagementScores = [
+  { id: 'kes-1', department_id: 'kdept-1', country_id: 'South Africa', period: '2026-Q1', overall_score: 82, enps_score: 48, response_rate: 95, themes: ['Client Work', 'Career Growth', 'Team Culture'] },
+  { id: 'kes-2', department_id: 'kdept-2', country_id: 'Morocco', period: '2026-Q1', overall_score: 78, enps_score: 42, response_rate: 90, themes: ['Work-Life Balance', 'Learning', 'Leadership'] },
+  { id: 'kes-3', department_id: 'kdept-3', country_id: 'Rwanda', period: '2026-Q1', overall_score: 85, enps_score: 55, response_rate: 100, themes: ['Innovation', 'Autonomy', 'Impact'] },
+  { id: 'kes-4', department_id: 'kdept-4', country_id: 'South Africa', period: '2026-Q1', overall_score: 80, enps_score: 45, response_rate: 92, themes: ['Purpose', 'Development', 'Flexibility'] },
+]
+
+export const kashMentoringPrograms = [
+  { id: 'kmp-1', org_id: 'org-2', title: 'Partner Track 2026', type: 'one_on_one' as const, status: 'active' as const, duration_months: 12, start_date: '2026-01-15', created_at: '2025-12-01T00:00:00Z' },
+  { id: 'kmp-2', org_id: 'org-2', title: 'Cross-Office Knowledge Exchange', type: 'group' as const, status: 'active' as const, duration_months: 6, start_date: '2026-02-01', created_at: '2026-01-15T00:00:00Z' },
+]
+
+export const kashMentoringPairs = [
+  { id: 'kpair-1', org_id: 'org-2', program_id: 'kmp-1', mentor_id: 'kemp-2', mentee_id: 'kemp-3', status: 'active' as const, match_score: 94, started_at: '2026-01-20T00:00:00Z' },
+  { id: 'kpair-2', org_id: 'org-2', program_id: 'kmp-1', mentor_id: 'kemp-6', mentee_id: 'kemp-7', status: 'active' as const, match_score: 88, started_at: '2026-01-20T00:00:00Z' },
+  { id: 'kpair-3', org_id: 'org-2', program_id: 'kmp-2', mentor_id: 'kemp-9', mentee_id: 'kemp-5', status: 'active' as const, match_score: 82, started_at: '2026-02-05T00:00:00Z' },
+]
+
+export const kashPayrollRuns = [
+  { id: 'kpr-1', org_id: 'org-2', period: 'January 2026', status: 'paid' as const, total_gross: 380000, total_net: 295000, total_deductions: 85000, currency: 'USD', employee_count: 20, run_date: '2026-01-28T00:00:00Z', created_at: '2026-01-25T00:00:00Z' },
+  { id: 'kpr-2', org_id: 'org-2', period: 'February 2026', status: 'approved' as const, total_gross: 385000, total_net: 298000, total_deductions: 87000, currency: 'USD', employee_count: 20, run_date: '2026-02-25T00:00:00Z', created_at: '2026-02-22T00:00:00Z' },
+]
+
+export const kashLeaveRequests = [
+  { id: 'klr-1', org_id: 'org-2', employee_id: 'kemp-4', type: 'annual' as const, start_date: '2026-03-17', end_date: '2026-03-21', days: 5, status: 'approved' as const, reason: 'Family holiday in Cape Town', approved_by: 'kemp-3', created_at: '2026-02-15T00:00:00Z' },
+  { id: 'klr-2', org_id: 'org-2', employee_id: 'kemp-11', type: 'sick' as const, start_date: '2026-02-20', end_date: '2026-02-21', days: 2, status: 'approved' as const, reason: 'Medical appointment', approved_by: 'kemp-9', created_at: '2026-02-19T00:00:00Z' },
+  { id: 'klr-3', org_id: 'org-2', employee_id: 'kemp-8', type: 'personal' as const, start_date: '2026-03-05', end_date: '2026-03-05', days: 1, status: 'pending' as const, reason: 'Personal errand', approved_by: null, created_at: '2026-02-22T00:00:00Z' },
+  { id: 'klr-4', org_id: 'org-2', employee_id: 'kemp-17', type: 'annual' as const, start_date: '2026-04-07', end_date: '2026-04-11', days: 5, status: 'pending' as const, reason: 'Visit family in Kigali', approved_by: null, created_at: '2026-02-20T00:00:00Z' },
+]
+
+export const kashBenefitPlans = [
+  { id: 'kbp-1', org_id: 'org-2', name: 'Discovery Health Premium', type: 'medical' as const, provider: 'Discovery Health', cost_employee: 180, cost_employer: 520, currency: 'USD', description: 'Comprehensive medical aid with hospital and chronic cover', is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'kbp-2', org_id: 'org-2', name: 'Allan Gray Retirement', type: 'retirement' as const, provider: 'Allan Gray', cost_employee: 0, cost_employer: 600, currency: 'USD', description: 'Employer-matched retirement annuity up to 12%', is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'kbp-3', org_id: 'org-2', name: 'Group Life Cover', type: 'life' as const, provider: 'Old Mutual', cost_employee: 0, cost_employer: 250, currency: 'USD', description: '4x annual salary life insurance', is_active: true, created_at: '2025-01-01T00:00:00Z' },
+]
+
+export const kashExpenseReports = [
+  { id: 'kexp-1', org_id: 'org-2', employee_id: 'kemp-3', title: 'MTN Engagement - Kigali Travel', total_amount: 2800, currency: 'USD', status: 'approved' as const, submitted_at: '2026-02-12T00:00:00Z', approved_by: 'kemp-2', created_at: '2026-02-10T00:00:00Z', items: [{ id: 'kei-1', category: 'Travel', description: 'Flight JNB-KGL return', amount: 1200 }, { id: 'kei-2', category: 'Accommodation', description: 'Kigali Serena (4 nights)', amount: 1100 }, { id: 'kei-3', category: 'Meals', description: 'Client dinners', amount: 500 }] },
+  { id: 'kexp-2', org_id: 'org-2', employee_id: 'kemp-6', title: 'OCP Strategy Workshop - Casablanca', total_amount: 1450, currency: 'USD', status: 'submitted' as const, submitted_at: '2026-02-18T00:00:00Z', approved_by: null, created_at: '2026-02-16T00:00:00Z', items: [{ id: 'kei-4', category: 'Events', description: 'Workshop venue rental', amount: 800 }, { id: 'kei-5', category: 'Materials', description: 'Printed strategy decks', amount: 650 }] },
+  { id: 'kexp-3', org_id: 'org-2', employee_id: 'kemp-18', title: 'BD Client Meetings - Nairobi', total_amount: 3500, currency: 'USD', status: 'pending_approval' as const, submitted_at: '2026-02-20T00:00:00Z', approved_by: null, created_at: '2026-02-19T00:00:00Z', items: [] },
+]
+
+export const kashJobPostings = [
+  { id: 'kjob-1', org_id: 'org-2', title: 'Senior Consultant', department_id: 'kdept-1', location: 'Johannesburg, South Africa', type: 'full_time' as const, description: 'Join our consulting practice to deliver transformative engagements', requirements: '4+ years management consulting, MBA preferred', salary_min: 65000, salary_max: 95000, currency: 'USD', status: 'open' as const, created_at: '2026-01-20T00:00:00Z', application_count: 24 },
+  { id: 'kjob-2', org_id: 'org-2', title: 'Strategy Analyst', department_id: 'kdept-2', location: 'Casablanca, Morocco', type: 'full_time' as const, description: 'Support strategy advisory engagements across Africa', requirements: '2+ years strategy/consulting, strong analytical skills', salary_min: 40000, salary_max: 60000, currency: 'USD', status: 'open' as const, created_at: '2026-02-05T00:00:00Z', application_count: 18 },
+  { id: 'kjob-3', org_id: 'org-2', title: 'Tech Advisory Consultant', department_id: 'kdept-3', location: 'Kigali, Rwanda', type: 'full_time' as const, description: 'Help clients navigate digital transformation and technology strategy', requirements: '3+ years tech consulting, cloud/AI experience', salary_min: 55000, salary_max: 80000, currency: 'USD', status: 'open' as const, created_at: '2026-02-10T00:00:00Z', application_count: 12 },
+]
+
+export const kashApplications = [
+  { id: 'kapp-1', org_id: 'org-2', job_id: 'kjob-1', candidate_name: 'Tendai Chirwa', candidate_email: 'tendai.c@gmail.com', status: 'interview' as const, stage: 'Case Interview', rating: 4, notes: 'Strong problem-solving skills. Ex-McKinsey.', applied_at: '2026-01-25T00:00:00Z' },
+  { id: 'kapp-2', org_id: 'org-2', job_id: 'kjob-1', candidate_name: 'Amahle Dube', candidate_email: 'amahle.d@outlook.com', status: 'offer' as const, stage: 'Offer Extended', rating: 5, notes: 'Exceptional candidate. Deloitte background, strong Africa experience.', applied_at: '2026-01-22T00:00:00Z' },
+  { id: 'kapp-3', org_id: 'org-2', job_id: 'kjob-2', candidate_name: 'Rachid Alaoui', candidate_email: 'r.alaoui@gmail.com', status: 'screening' as const, stage: 'Resume Review', rating: 3, notes: 'HEC Paris graduate, needs consulting experience', applied_at: '2026-02-10T00:00:00Z' },
+  { id: 'kapp-4', org_id: 'org-2', job_id: 'kjob-3', candidate_name: 'Claude Niyonzima', candidate_email: 'claude.n@gmail.com', status: 'new' as const, stage: 'Application Received', rating: null, notes: null, applied_at: '2026-02-15T00:00:00Z' },
+]
+
+export const kashDevices = [
+  { id: 'kdev-1', org_id: 'org-2', type: 'laptop' as const, brand: 'Apple', model: 'MacBook Pro 16"', serial_number: 'KSH-MBP-001', status: 'assigned' as const, assigned_to: 'kemp-1', purchase_date: '2025-06-15', warranty_end: '2028-06-15', created_at: '2025-06-20T00:00:00Z' },
+  { id: 'kdev-2', org_id: 'org-2', type: 'laptop' as const, brand: 'Apple', model: 'MacBook Pro 14"', serial_number: 'KSH-MBP-002', status: 'assigned' as const, assigned_to: 'kemp-6', purchase_date: '2025-03-01', warranty_end: '2028-03-01', created_at: '2025-03-05T00:00:00Z' },
+  { id: 'kdev-3', org_id: 'org-2', type: 'laptop' as const, brand: 'Apple', model: 'MacBook Air M3', serial_number: 'KSH-MBA-003', status: 'assigned' as const, assigned_to: 'kemp-4', purchase_date: '2025-09-01', warranty_end: '2028-09-01', created_at: '2025-09-05T00:00:00Z' },
+  { id: 'kdev-4', org_id: 'org-2', type: 'laptop' as const, brand: 'Apple', model: 'MacBook Air M3', serial_number: 'KSH-MBA-004', status: 'available' as const, assigned_to: null, purchase_date: '2025-11-01', warranty_end: '2028-11-01', created_at: '2025-11-05T00:00:00Z' },
+]
+
+export const kashSoftwareLicenses = [
+  { id: 'ksl-1', org_id: 'org-2', name: 'Microsoft 365 Business', vendor: 'Microsoft', total_licenses: 25, used_licenses: 20, cost_per_license: 22, currency: 'USD', renewal_date: '2026-12-31', created_at: '2025-01-01T00:00:00Z' },
+  { id: 'ksl-2', org_id: 'org-2', name: 'Slack Pro', vendor: 'Slack', total_licenses: 25, used_licenses: 20, cost_per_license: 8.75, currency: 'USD', renewal_date: '2026-06-30', created_at: '2025-01-01T00:00:00Z' },
+  { id: 'ksl-3', org_id: 'org-2', name: 'Tableau Desktop', vendor: 'Salesforce', total_licenses: 10, used_licenses: 8, cost_per_license: 70, currency: 'USD', renewal_date: '2026-09-30', created_at: '2025-03-01T00:00:00Z' },
+]
+
+export const kashITRequests = [
+  { id: 'kitr-1', org_id: 'org-2', requester_id: 'kemp-5', type: 'hardware' as const, title: 'External monitor for home office', description: 'Need a 27" monitor for client deliverable work from home', priority: 'medium' as const, status: 'open' as const, assigned_to: null, created_at: '2026-02-18T00:00:00Z' },
+  { id: 'kitr-2', org_id: 'org-2', requester_id: 'kemp-10', type: 'software' as const, title: 'AWS Console Access', description: 'Need AWS access for client cloud assessment engagement', priority: 'high' as const, status: 'in_progress' as const, assigned_to: 'kemp-9', created_at: '2026-02-15T00:00:00Z' },
+]
+
+export const kashInvoices = [
+  { id: 'kinv-1', org_id: 'org-2', invoice_number: 'KSH-2026-001', vendor_id: 'kvnd-1', amount: 5500, currency: 'USD', status: 'paid' as const, due_date: '2026-02-15', issued_date: '2026-01-15', description: 'Q1 2026 Software Licenses', created_at: '2026-01-15T00:00:00Z' },
+  { id: 'kinv-2', org_id: 'org-2', invoice_number: 'KSH-2026-002', vendor_id: 'kvnd-2', amount: 18000, currency: 'USD', status: 'sent' as const, due_date: '2026-03-01', issued_date: '2026-02-01', description: 'Johannesburg office lease - March', created_at: '2026-02-01T00:00:00Z' },
+  { id: 'kinv-3', org_id: 'org-2', invoice_number: 'KSH-2026-003', vendor_id: 'kvnd-3', amount: 3200, currency: 'USD', status: 'overdue' as const, due_date: '2026-02-10', issued_date: '2026-01-10', description: 'Travel management platform fees', created_at: '2026-01-10T00:00:00Z' },
+]
+
+export const kashBudgets = [
+  { id: 'kbud-1', org_id: 'org-2', name: 'Consulting Practice 2026', department_id: 'kdept-1', total_amount: 450000, spent_amount: 125000, currency: 'USD', fiscal_year: '2026', status: 'active' as const, created_at: '2025-12-01T00:00:00Z' },
+  { id: 'kbud-2', org_id: 'org-2', name: 'People & Culture 2026', department_id: 'kdept-4', total_amount: 180000, spent_amount: 48000, currency: 'USD', fiscal_year: '2026', status: 'active' as const, created_at: '2025-12-01T00:00:00Z' },
+  { id: 'kbud-3', org_id: 'org-2', name: 'Business Development 2026', department_id: 'kdept-6', total_amount: 220000, spent_amount: 65000, currency: 'USD', fiscal_year: '2026', status: 'active' as const, created_at: '2025-12-01T00:00:00Z' },
+]
+
+export const kashVendors = [
+  { id: 'kvnd-1', org_id: 'org-2', name: 'Microsoft Corporation', contact_email: 'enterprise@microsoft.com', category: 'Software', status: 'active' as const, created_at: '2024-06-01T00:00:00Z' },
+  { id: 'kvnd-2', org_id: 'org-2', name: 'Growthpoint Properties', contact_email: 'leasing@growthpoint.co.za', category: 'Real Estate', status: 'active' as const, created_at: '2024-06-01T00:00:00Z' },
+  { id: 'kvnd-3', org_id: 'org-2', name: 'TravelPerk', contact_email: 'support@travelperk.com', category: 'Travel Management', status: 'active' as const, created_at: '2024-09-01T00:00:00Z' },
+]
+
+export const kashCredentials: DemoCredential[] = [
+  { email: 's.ndlovu@kashco.com', password: 'demo1234', employeeId: 'kemp-1', role: 'owner', label: 'Managing Director (Owner)', title: 'Managing Director', department: 'Consulting', description: 'Full platform access. Sees all modules, firm-wide analytics, and executive dashboards.' },
+  { email: 'l.amari@kashco.com', password: 'demo1234', employeeId: 'kemp-6', role: 'admin', label: 'Head of Strategy', title: 'Head of Strategy', department: 'Strategy', description: 'Strategy practice lead. Manages team, client engagements, and practice P&L.' },
+  { email: 't.mugabo@kashco.com', password: 'demo1234', employeeId: 'kemp-3', role: 'manager', label: 'Engagement Manager', title: 'Engagement Manager', department: 'Consulting', description: 'Project lead. Manages team, reviews deliverables, approves time and expenses.' },
+  { email: 'n.joubert@kashco.com', password: 'demo1234', employeeId: 'kemp-4', role: 'employee', label: 'Senior Consultant', title: 'Senior Consultant', department: 'Consulting', description: 'Individual contributor. Views own goals, learning, and submits time/expenses.' },
+  { email: 'z.moyo@kashco.com', password: 'demo1234', employeeId: 'kemp-12', role: 'admin', label: 'CPO', title: 'Chief People Officer', department: 'People & Culture', description: 'People executive. Full access to HR, performance, engagement, and culture programs.' },
+]
+
+export const kashDashboardMetrics = {
+  headcount: 156,
+  active_employees: 148,
+  new_hires_this_month: 3,
+  attrition_rate: 6.5,
+  avg_compa_ratio: 1.08,
+  review_completion: 82,
+  enps_score: 48,
+  active_learners: 42,
+  open_positions: 3,
+  pending_expenses: 4,
+  active_mentoring_pairs: 3,
+  total_payroll: 385000,
+}
+
+export const kashProjects = [
+  { id: 'kproj-1', org_id: 'org-2', title: 'MTN Digital Transformation Strategy', description: 'Develop and implement digital-first strategy for MTN Group across 5 African markets.', status: 'active' as const, owner_id: 'kemp-3', start_date: '2025-11-01', end_date: '2026-06-30', budget: 850000, currency: 'USD', created_at: '2025-10-15T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'kproj-2', org_id: 'org-2', title: 'OCP Group Market Entry Study', description: 'Analyze and recommend market entry strategy for OCP mining operations in East Africa.', status: 'active' as const, owner_id: 'kemp-7', start_date: '2026-01-15', end_date: '2026-04-30', budget: 280000, currency: 'USD', created_at: '2026-01-10T09:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'kproj-3', org_id: 'org-2', title: 'Safaricom Cloud Migration Assessment', description: 'Assess current infrastructure and design cloud migration roadmap for Safaricom enterprise systems.', status: 'planning' as const, owner_id: 'kemp-9', start_date: '2026-03-01', end_date: '2026-07-31', budget: 420000, currency: 'USD', created_at: '2026-02-01T10:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+]
+
+export const kashMilestones = [
+  { id: 'kmile-1', org_id: 'org-2', project_id: 'kproj-1', title: 'Phase 1: Discovery Complete', due_date: '2026-01-31', status: 'done' as const, created_at: '2025-10-15T08:00:00Z' },
+  { id: 'kmile-2', org_id: 'org-2', project_id: 'kproj-1', title: 'Phase 2: Strategy Recommendations', due_date: '2026-04-15', status: 'in_progress' as const, created_at: '2025-10-15T08:00:00Z' },
+  { id: 'kmile-3', org_id: 'org-2', project_id: 'kproj-2', title: 'Market Research Complete', due_date: '2026-03-01', status: 'in_progress' as const, created_at: '2026-01-10T09:00:00Z' },
+  { id: 'kmile-4', org_id: 'org-2', project_id: 'kproj-2', title: 'Final Recommendations Report', due_date: '2026-04-15', status: 'todo' as const, created_at: '2026-01-10T09:00:00Z' },
+  { id: 'kmile-5', org_id: 'org-2', project_id: 'kproj-3', title: 'Infrastructure Assessment', due_date: '2026-04-30', status: 'todo' as const, created_at: '2026-02-01T10:00:00Z' },
+]
+
+export const kashTasks = [
+  { id: 'ktask-1', org_id: 'org-2', project_id: 'kproj-1', milestone_id: 'kmile-1', title: 'Stakeholder interviews (20 executives)', description: 'Interview C-suite and senior leaders across all 5 markets.', status: 'done' as const, priority: 'high' as const, assignee_id: 'kemp-3', due_date: '2026-01-15', estimated_hours: 60, actual_hours: 55, created_at: '2025-10-15T08:00:00Z', updated_at: '2026-01-14T16:00:00Z' },
+  { id: 'ktask-2', org_id: 'org-2', project_id: 'kproj-1', milestone_id: 'kmile-1', title: 'Digital maturity assessment', description: 'Benchmark MTN digital capabilities against global telco peers.', status: 'done' as const, priority: 'high' as const, assignee_id: 'kemp-4', due_date: '2026-01-25', estimated_hours: 40, actual_hours: 38, created_at: '2025-10-15T08:00:00Z', updated_at: '2026-01-24T17:00:00Z' },
+  { id: 'ktask-3', org_id: 'org-2', project_id: 'kproj-1', milestone_id: 'kmile-2', title: 'Build strategic options framework', description: 'Develop 3-5 strategic options for digital transformation.', status: 'in_progress' as const, priority: 'critical' as const, assignee_id: 'kemp-3', due_date: '2026-03-15', estimated_hours: 80, actual_hours: 30, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'ktask-4', org_id: 'org-2', project_id: 'kproj-1', milestone_id: 'kmile-2', title: 'Financial impact modelling', description: 'Model ROI and business case for each strategic option.', status: 'in_progress' as const, priority: 'high' as const, assignee_id: 'kemp-4', due_date: '2026-03-30', estimated_hours: 50, actual_hours: 15, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'ktask-5', org_id: 'org-2', project_id: 'kproj-1', milestone_id: 'kmile-2', title: 'Client workshop facilitation', description: 'Run 2-day strategy workshop with MTN Group Executive Committee.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'kemp-2', due_date: '2026-04-10', estimated_hours: 24, actual_hours: 0, created_at: '2026-02-01T08:00:00Z', updated_at: null },
+  { id: 'ktask-6', org_id: 'org-2', project_id: 'kproj-2', milestone_id: 'kmile-3', title: 'East Africa mining landscape analysis', description: 'Map competitive landscape and regulatory environment in Rwanda, Tanzania, DRC.', status: 'in_progress' as const, priority: 'high' as const, assignee_id: 'kemp-7', due_date: '2026-02-28', estimated_hours: 40, actual_hours: 28, created_at: '2026-01-15T09:00:00Z', updated_at: '2026-02-20T11:00:00Z' },
+  { id: 'ktask-7', org_id: 'org-2', project_id: 'kproj-2', milestone_id: 'kmile-3', title: 'Regulatory requirements mapping', description: 'Document mining licensing and environmental requirements per country.', status: 'in_progress' as const, priority: 'medium' as const, assignee_id: 'kemp-8', due_date: '2026-02-25', estimated_hours: 30, actual_hours: 22, created_at: '2026-01-15T09:00:00Z', updated_at: '2026-02-19T15:00:00Z' },
+  { id: 'ktask-8', org_id: 'org-2', project_id: 'kproj-2', milestone_id: 'kmile-4', title: 'Entry mode evaluation', description: 'Assess joint venture, acquisition, and greenfield options.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'kemp-6', due_date: '2026-04-01', estimated_hours: 35, actual_hours: 0, created_at: '2026-01-15T09:00:00Z', updated_at: null },
+  { id: 'ktask-9', org_id: 'org-2', project_id: 'kproj-3', milestone_id: 'kmile-5', title: 'Current state infrastructure audit', description: 'Document all on-premise systems, dependencies, and data flows.', status: 'todo' as const, priority: 'high' as const, assignee_id: 'kemp-10', due_date: '2026-04-15', estimated_hours: 48, actual_hours: 0, created_at: '2026-02-01T10:00:00Z', updated_at: null },
+  { id: 'ktask-10', org_id: 'org-2', project_id: 'kproj-3', milestone_id: 'kmile-5', title: 'Cloud readiness assessment', description: 'Evaluate application portfolio for cloud migration suitability.', status: 'todo' as const, priority: 'medium' as const, assignee_id: 'kemp-11', due_date: '2026-04-30', estimated_hours: 36, actual_hours: 0, created_at: '2026-02-01T10:00:00Z', updated_at: null },
+]
+
+export const kashTaskDependencies = [
+  { id: 'kdep-1', task_id: 'ktask-3', depends_on_task_id: 'ktask-1' },
+  { id: 'kdep-2', task_id: 'ktask-4', depends_on_task_id: 'ktask-2' },
+  { id: 'kdep-3', task_id: 'ktask-5', depends_on_task_id: 'ktask-3' },
+  { id: 'kdep-4', task_id: 'ktask-8', depends_on_task_id: 'ktask-6' },
+  { id: 'kdep-5', task_id: 'ktask-10', depends_on_task_id: 'ktask-9' },
+]
+
+export const kashStrategicObjectives = [
+  { id: 'kobj-1', org_id: 'org-2', title: 'Become Top 3 Pan-African Consulting Firm', description: 'Achieve top-3 ranking in management consulting across Africa by revenue and reputation.', status: 'active' as const, owner_id: 'kemp-1', period: 'FY2026', progress: 40, created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'kobj-2', org_id: 'org-2', title: 'Build World-Class Talent Pipeline', description: 'Attract and retain top consulting talent from Africa and the diaspora.', status: 'active' as const, owner_id: 'kemp-12', period: 'FY2026', progress: 35, created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+]
+
+export const kashKeyResults = [
+  { id: 'kkr-1', org_id: 'org-2', objective_id: 'kobj-1', title: '$8M annual revenue', target_value: 8, current_value: 3.2, unit: 'M USD', owner_id: 'kemp-1', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'kkr-2', org_id: 'org-2', objective_id: 'kobj-1', title: '15 active client engagements', target_value: 15, current_value: 8, unit: 'engagements', owner_id: 'kemp-18', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+  { id: 'kkr-3', org_id: 'org-2', objective_id: 'kobj-1', title: '90% client satisfaction (NPS)', target_value: 90, current_value: 82, unit: 'NPS', owner_id: 'kemp-2', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-18T09:00:00Z' },
+  { id: 'kkr-4', org_id: 'org-2', objective_id: 'kobj-2', title: 'Hire 8 consultants this year', target_value: 8, current_value: 3, unit: 'hires', owner_id: 'kemp-12', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-20T14:00:00Z' },
+  { id: 'kkr-5', org_id: 'org-2', objective_id: 'kobj-2', title: 'Reduce attrition below 8%', target_value: 8, current_value: 6.5, unit: '%', owner_id: 'kemp-12', due_date: '2026-12-31', created_at: '2025-12-01T08:00:00Z', updated_at: '2026-02-19T16:00:00Z' },
+]
+
+export const kashInitiatives = [
+  { id: 'kinit-1', org_id: 'org-2', objective_id: 'kobj-1', title: 'East Africa Office Expansion', description: 'Grow Kigali office from 5 to 10 consultants and establish Nairobi presence.', status: 'in_progress' as const, owner_id: 'kemp-18', start_date: '2026-01-15', end_date: '2026-09-30', progress: 30, budget: 180000, currency: 'USD', created_at: '2025-12-15T08:00:00Z', updated_at: '2026-02-20T10:00:00Z' },
+  { id: 'kinit-2', org_id: 'org-2', objective_id: 'kobj-1', title: 'AI Advisory Practice Launch', description: 'Build dedicated AI/ML advisory capability to serve enterprise clients.', status: 'approved' as const, owner_id: 'kemp-9', start_date: '2026-03-01', end_date: '2026-12-31', progress: 10, budget: 120000, currency: 'USD', created_at: '2026-01-10T08:00:00Z', updated_at: '2026-02-18T14:00:00Z' },
+  { id: 'kinit-3', org_id: 'org-2', objective_id: 'kobj-2', title: 'Graduate Analyst Program', description: 'Launch structured 2-year analyst program targeting top African universities.', status: 'in_progress' as const, owner_id: 'kemp-12', start_date: '2026-02-01', end_date: '2026-08-31', progress: 25, budget: 85000, currency: 'USD', created_at: '2026-01-20T08:00:00Z', updated_at: '2026-02-20T15:00:00Z' },
+]
+
+export const kashKPIDefinitions = [
+  { id: 'kkpi-1', org_id: 'org-2', name: 'Billable Utilization Rate', description: 'Percentage of consultant hours billed to clients.', unit: '%', target_value: 75, frequency: 'monthly' as const, department_id: 'kdept-1', owner_id: 'kemp-2', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kkpi-2', org_id: 'org-2', name: 'Revenue per Consultant', description: 'Average annual revenue generated per consultant.', unit: 'USD', target_value: 320000, frequency: 'quarterly' as const, department_id: null, owner_id: 'kemp-15', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kkpi-3', org_id: 'org-2', name: 'Client Satisfaction Score', description: 'Average post-engagement client satisfaction rating.', unit: 'score', target_value: 4.5, frequency: 'quarterly' as const, department_id: null, owner_id: 'kemp-1', created_at: '2025-12-01T08:00:00Z' },
+  { id: 'kkpi-4', org_id: 'org-2', name: 'Proposal Win Rate', description: 'Percentage of proposals that convert to signed engagements.', unit: '%', target_value: 35, frequency: 'monthly' as const, department_id: 'kdept-6', owner_id: 'kemp-18', created_at: '2025-12-01T08:00:00Z' },
+]
+
+export const kashKPIMeasurements = [
+  { id: 'kkpim-1', kpi_id: 'kkpi-1', value: 68, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kkpim-2', kpi_id: 'kkpi-1', value: 72, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: 'Improving with MTN ramp-up' },
+  { id: 'kkpim-3', kpi_id: 'kkpi-2', value: 280000, period: 'Q4-2025', recorded_at: '2026-01-15T08:00:00Z', notes: null },
+  { id: 'kkpim-4', kpi_id: 'kkpi-3', value: 4.3, period: 'Q4-2025', recorded_at: '2026-01-10T08:00:00Z', notes: null },
+  { id: 'kkpim-5', kpi_id: 'kkpi-4', value: 28, period: '2025-12', recorded_at: '2026-01-05T08:00:00Z', notes: null },
+  { id: 'kkpim-6', kpi_id: 'kkpi-4', value: 33, period: '2026-01', recorded_at: '2026-02-05T08:00:00Z', notes: 'Pipeline quality improving' },
+]
+
+export const kashWorkflows = [
+  { id: 'kwf-1', org_id: 'org-2', title: 'New Hire Onboarding', description: 'Automated onboarding: IT setup, mandatory training, buddy assignment, 30-day check-in.', status: 'active' as const, trigger_type: 'event' as const, trigger_config: { event: 'employee.created' }, created_by: 'kemp-12', created_at: '2025-08-01T08:00:00Z', updated_at: '2026-02-10T10:00:00Z' },
+  { id: 'kwf-2', org_id: 'org-2', title: 'Expense Approval Chain', description: 'Route expenses: <$1000 manager, <$5000 partner, >$5000 MD.', status: 'active' as const, trigger_type: 'event' as const, trigger_config: { event: 'expense_report.submitted' }, created_by: 'kemp-15', created_at: '2025-09-01T08:00:00Z', updated_at: '2026-01-20T14:00:00Z' },
+  { id: 'kwf-3', org_id: 'org-2', title: 'Engagement Kickoff Checklist', description: 'Automated checklist when new client engagement starts: team assignment, tool access, client intro.', status: 'draft' as const, trigger_type: 'event' as const, trigger_config: { event: 'project.created' }, created_by: 'kemp-2', created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-15T11:00:00Z' },
+]
+
+export const kashWorkflowSteps = [
+  { id: 'kwfs-1', workflow_id: 'kwf-1', step_type: 'action' as const, title: 'Create IT accounts', config: { action: 'create_accounts', systems: ['email', 'slack', 'office365'] }, position: 0, next_step_id: 'kwfs-2', created_at: '2025-08-01T08:00:00Z' },
+  { id: 'kwfs-2', workflow_id: 'kwf-1', step_type: 'notification' as const, title: 'Send welcome email', config: { template: 'welcome_new_hire', to: 'employee' }, position: 1, next_step_id: 'kwfs-3', created_at: '2025-08-01T08:00:00Z' },
+  { id: 'kwfs-3', workflow_id: 'kwf-1', step_type: 'action' as const, title: 'Assign buddy', config: { action: 'assign_buddy' }, position: 2, next_step_id: 'kwfs-4', created_at: '2025-08-01T08:00:00Z' },
+  { id: 'kwfs-4', workflow_id: 'kwf-1', step_type: 'delay' as const, title: 'Wait 30 days', config: { duration: 30, unit: 'days' }, position: 3, next_step_id: 'kwfs-5', created_at: '2025-08-01T08:00:00Z' },
+  { id: 'kwfs-5', workflow_id: 'kwf-1', step_type: 'notification' as const, title: 'Send 30-day check-in', config: { template: '30_day_checkin', to: 'employee' }, position: 4, next_step_id: null, created_at: '2025-08-01T08:00:00Z' },
+  { id: 'kwfs-6', workflow_id: 'kwf-2', step_type: 'condition' as const, title: 'Check amount', config: { field: 'total_amount', operator: 'less_than', value: 1000 }, position: 0, next_step_id: 'kwfs-7', created_at: '2025-09-01T08:00:00Z' },
+  { id: 'kwfs-7', workflow_id: 'kwf-2', step_type: 'approval' as const, title: 'Route to approver', config: { approver: 'amount_based', thresholds: { 1000: 'manager', 5000: 'partner', default: 'md' } }, position: 1, next_step_id: 'kwfs-8', created_at: '2025-09-01T08:00:00Z' },
+  { id: 'kwfs-8', workflow_id: 'kwf-2', step_type: 'notification' as const, title: 'Send result', config: { template: 'expense_decision', to: 'employee' }, position: 2, next_step_id: null, created_at: '2025-09-01T08:00:00Z' },
+]
+
+export const kashWorkflowRuns = [
+  { id: 'kwfr-1', org_id: 'org-2', workflow_id: 'kwf-1', status: 'completed' as const, started_at: '2026-02-10T09:00:00Z', completed_at: '2026-02-10T09:04:00Z', triggered_by: 'system', context: { employee_id: 'kemp-20', employee_name: 'Kwame Osei' } },
+  { id: 'kwfr-2', org_id: 'org-2', workflow_id: 'kwf-2', status: 'completed' as const, started_at: '2026-02-12T14:00:00Z', completed_at: '2026-02-13T09:00:00Z', triggered_by: 'system', context: { report_id: 'kexp-1', employee_name: 'Thierry Mugabo' } },
+  { id: 'kwfr-3', org_id: 'org-2', workflow_id: 'kwf-2', status: 'running' as const, started_at: '2026-02-18T16:00:00Z', completed_at: null, triggered_by: 'system', context: { report_id: 'kexp-2', employee_name: 'Layla Amari' } },
+]
+
+export const kashWorkflowTemplates = [
+  { id: 'kwft-1', org_id: 'org-2', title: 'Consultant Onboarding', description: 'Complete onboarding for new consultants with IT setup, training, and buddy.', category: 'hr', config: { steps: ['create_accounts', 'welcome_email', 'assign_buddy', 'check_in'] }, created_at: '2025-07-01T08:00:00Z' },
+  { id: 'kwft-2', org_id: 'org-2', title: 'Expense Approval', description: 'Multi-level expense approval based on amount thresholds.', category: 'operations', config: { steps: ['check_amount', 'route_approval', 'notification'] }, created_at: '2025-07-01T08:00:00Z' },
+]
+
+export const kashNotifications = [
+  { id: 'knotif-1', org_id: 'org-2', recipient_id: 'kemp-1', sender_id: 'kemp-3', type: 'action_required' as const, channel: 'in_app' as const, title: 'Expense Report Pending', message: 'Thierry Mugabo submitted an expense report for MTN Engagement travel ($2,800).', link: '/expense', entity_type: 'expense_report', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+  { id: 'knotif-2', org_id: 'org-2', recipient_id: 'kemp-1', sender_id: null, type: 'reminder' as const, channel: 'in_app' as const, title: 'Review Cycle Ending Soon', message: 'The H1 2026 review cycle closes in 5 days. 2 reviews are still pending.', link: '/performance', entity_type: 'review_cycle', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
+  { id: 'knotif-3', org_id: 'org-2', recipient_id: 'kemp-1', sender_id: 'kemp-18', type: 'info' as const, channel: 'in_app' as const, title: 'New Engagement Won', message: 'Safaricom Cloud Migration Assessment has been signed. Kicking off March 1.', link: '/projects', entity_type: 'project', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString() },
+  { id: 'knotif-4', org_id: 'org-2', recipient_id: 'kemp-1', sender_id: null, type: 'success' as const, channel: 'in_app' as const, title: 'Onboarding Complete', message: 'New Hire Onboarding workflow for Kwame Osei completed successfully.', link: '/workflow-studio', entity_type: 'workflow', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+  { id: 'knotif-5', org_id: 'org-2', recipient_id: 'kemp-1', sender_id: 'kemp-12', type: 'warning' as const, channel: 'in_app' as const, title: 'Salary Proposal Pending', message: 'There is 1 compensation proposal awaiting your approval.', link: '/compensation', entity_type: 'salary_review', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
+]
+
+// ============================================================
+// MULTI-ORG HELPERS
+// ============================================================
+
+export function getDemoDataForOrg(orgId: string) {
+  if (orgId === 'org-2') {
+    return {
+      org: kashOrg,
+      user: kashUser,
+      departments: kashDepartments,
+      employees: kashEmployees,
+      goals: kashGoals,
+      reviewCycles: kashReviewCycles,
+      reviews: kashReviews,
+      feedback: kashFeedback,
+      compBands: kashCompBands,
+      salaryReviews: kashSalaryReviews,
+      courses: kashCourses,
+      enrollments: kashEnrollments,
+      surveys: kashSurveys,
+      engagementScores: kashEngagementScores,
+      mentoringPrograms: kashMentoringPrograms,
+      mentoringPairs: kashMentoringPairs,
+      payrollRuns: kashPayrollRuns,
+      leaveRequests: kashLeaveRequests,
+      benefitPlans: kashBenefitPlans,
+      expenseReports: kashExpenseReports,
+      jobPostings: kashJobPostings,
+      applications: kashApplications,
+      devices: kashDevices,
+      softwareLicenses: kashSoftwareLicenses,
+      itRequests: kashITRequests,
+      invoices: kashInvoices,
+      budgets: kashBudgets,
+      vendors: kashVendors,
+      credentials: kashCredentials,
+      dashboardMetrics: kashDashboardMetrics,
+      projects: kashProjects,
+      milestones: kashMilestones,
+      tasks: kashTasks,
+      taskDependencies: kashTaskDependencies,
+      strategicObjectives: kashStrategicObjectives,
+      keyResults: kashKeyResults,
+      initiatives: kashInitiatives,
+      kpiDefinitions: kashKPIDefinitions,
+      kpiMeasurements: kashKPIMeasurements,
+      workflows: kashWorkflows,
+      workflowSteps: kashWorkflowSteps,
+      workflowRuns: kashWorkflowRuns,
+      workflowTemplates: kashWorkflowTemplates,
+      notifications: kashNotifications,
+    }
+  }
+  // Default: Ecobank
+  return {
+    org: demoOrg,
+    user: demoUser,
+    departments: demoDepartments,
+    employees: demoEmployees,
+    goals: demoGoals,
+    reviewCycles: demoReviewCycles,
+    reviews: demoReviews,
+    feedback: demoFeedback,
+    compBands: demoCompBands,
+    salaryReviews: demoSalaryReviews,
+    courses: demoCourses,
+    enrollments: demoEnrollments,
+    surveys: demoSurveys,
+    engagementScores: demoEngagementScores,
+    mentoringPrograms: demoMentoringPrograms,
+    mentoringPairs: demoMentoringPairs,
+    payrollRuns: demoPayrollRuns,
+    leaveRequests: demoLeaveRequests,
+    benefitPlans: demoBenefitPlans,
+    expenseReports: demoExpenseReports,
+    jobPostings: demoJobPostings,
+    applications: demoApplications,
+    devices: demoDevices,
+    softwareLicenses: demoSoftwareLicenses,
+    itRequests: demoITRequests,
+    invoices: demoInvoices,
+    budgets: demoBudgets,
+    vendors: demoVendors,
+    credentials: demoCredentials,
+    dashboardMetrics: demoDashboardMetrics,
+    projects: demoProjects,
+    milestones: demoMilestones,
+    tasks: demoTasks,
+    taskDependencies: demoTaskDependencies,
+    strategicObjectives: demoStrategicObjectives,
+    keyResults: demoKeyResults,
+    initiatives: demoInitiatives,
+    kpiDefinitions: demoKPIDefinitions,
+    kpiMeasurements: demoKPIMeasurements,
+    workflows: demoWorkflows,
+    workflowSteps: demoWorkflowSteps,
+    workflowRuns: demoWorkflowRuns,
+    workflowTemplates: demoWorkflowTemplates,
+    notifications: demoNotifications,
+  }
+}
+
+export const allDemoCredentials: DemoCredential[] = [...demoCredentials, ...kashCredentials]
+
+// ─── Platform Admin Demo Credentials ─────────────────────────────────────
+
+export interface DemoAdminCredential {
+  email: string
+  password: string
+  name: string
+  role: 'super_admin' | 'support' | 'viewer'
+  description: string
+}
+
+export const demoAdminCredentials: DemoAdminCredential[] = [
+  {
+    email: 'admin@tempo.dev',
+    password: 'admin1234',
+    name: 'Tempo Admin',
+    role: 'super_admin',
+    description: 'Full platform access — manage orgs, impersonate users',
+  },
+]

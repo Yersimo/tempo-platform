@@ -100,7 +100,7 @@ export default function LearningPage() {
       />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalCourses')} value={courses.length} icon={<BookOpen size={20} />} />
-        <StatCard label={t('inProgress')} value={inProgressCount} change={t('completed', { count: completedCount })} changeType="positive" />
+        <StatCard label={t('inProgress')} value={inProgressCount} change={t('completed', { count: completedCount })} changeType="positive" href="/people" />
         <StatCard label={t('completionRate')} value={`${completionRate}%`} icon={<Award size={20} />} />
         <StatCard label={t('totalHours')} value={totalHours} change={t('availableContent')} changeType="neutral" icon={<Clock size={20} />} />
       </div>

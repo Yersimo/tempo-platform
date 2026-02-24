@@ -10,6 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, ...props }, ref) => {
+    const errorId = error && id ? `${id}-error` : undefined
     return (
       <div className="space-y-1">
         {label && (
@@ -20,6 +21,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           className={cn(
             'w-full px-3 py-2 text-sm bg-white border border-divider rounded-[var(--radius-input)] text-t1 placeholder:text-t3',
             'focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600',
@@ -29,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {error && <p className="text-xs text-error">{error}</p>}
+        {error && <p id={errorId} role="alert" className="text-xs text-error">{error}</p>}
       </div>
     )
   }

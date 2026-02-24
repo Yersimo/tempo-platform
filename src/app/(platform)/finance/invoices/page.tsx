@@ -95,7 +95,7 @@ export default function InvoicesPage() {
         <StatCard label={t('totalInvoices')} value={invoices.length} icon={<FileText size={20} />} />
         <StatCard label={t('totalAmount')} value={`$${totalAmount.toLocaleString()}`} icon={<DollarSign size={20} />} />
         <StatCard label={t('paidLabel')} value={`$${paidAmount.toLocaleString()}`} change={t('settled')} changeType="positive" />
-        <StatCard label={t('overdueLabel')} value={`$${overdueAmount.toLocaleString()}`} change={t('requiresAttention')} changeType="negative" icon={<AlertTriangle size={20} />} />
+        <StatCard label={t('overdueLabel')} value={`$${overdueAmount.toLocaleString()}`} change={t('requiresAttention')} changeType="negative" icon={<AlertTriangle size={20} />} href="/finance/budgets" />
       </div>
 
       {/* AI Insights */}

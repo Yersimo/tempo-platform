@@ -22,6 +22,7 @@ export default function EngagementPage() {
   const { surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName } = useTempo()
   const [activeTab, setActiveTab] = useState('surveys')
   const [showSurveyModal, setShowSurveyModal] = useState(false)
+  const [viewResultsSurveyId, setViewResultsSurveyId] = useState<string | null>(null) // toggle results
   const [surveyForm, setSurveyForm] = useState({
     title: '',
     type: 'pulse' as 'pulse' | 'enps' | 'annual',
@@ -89,29 +90,58 @@ export default function EngagementPage() {
             {surveys.length === 0 ? (
               <div className="px-6 py-12 text-center text-sm text-t3">{t('noSurveys')}</div>
             ) : surveys.map(survey => (
-              <div key={survey.id} className="px-6 py-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
-                  <HeartPulse size={18} />
+              <div key={survey.id}>
+                <div className="px-6 py-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                    <HeartPulse size={18} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-t1">{survey.title}</p>
+                    <p className="text-xs text-t3">{survey.start_date} {tc('to')} {survey.end_date} {survey.anonymous ? t('anonymous') : ''}</p>
+                  </div>
+                  <Badge variant={survey.type === 'enps' ? 'info' : survey.type === 'pulse' ? 'orange' : 'default'}>
+                    {survey.type.toUpperCase()}
+                  </Badge>
+                  <Badge variant={survey.status === 'active' ? 'success' : 'default'}>
+                    {survey.status}
+                  </Badge>
+                  <div className="flex gap-1">
+                    {survey.status === 'active' && (
+                      <Button size="sm" variant="outline" onClick={() => closeSurvey(survey.id)}>{tc('close')}</Button>
+                    )}
+                    {survey.status === 'closed' && (
+                      <Button size="sm" variant="ghost" onClick={() => reopenSurvey(survey.id)}>{tc('reopen')}</Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => setViewResultsSurveyId(viewResultsSurveyId === survey.id ? null : survey.id)}>{t('viewResults')}</Button>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-t1">{survey.title}</p>
-                  <p className="text-xs text-t3">{survey.start_date} {tc('to')} {survey.end_date} {survey.anonymous ? t('anonymous') : ''}</p>
-                </div>
-                <Badge variant={survey.type === 'enps' ? 'info' : survey.type === 'pulse' ? 'orange' : 'default'}>
-                  {survey.type.toUpperCase()}
-                </Badge>
-                <Badge variant={survey.status === 'active' ? 'success' : 'default'}>
-                  {survey.status}
-                </Badge>
-                <div className="flex gap-1">
-                  {survey.status === 'active' && (
-                    <Button size="sm" variant="outline" onClick={() => closeSurvey(survey.id)}>{tc('close')}</Button>
-                  )}
-                  {survey.status === 'closed' && (
-                    <Button size="sm" variant="ghost" onClick={() => reopenSurvey(survey.id)}>{tc('reopen')}</Button>
-                  )}
-                  <Button size="sm" variant="ghost">{t('viewResults')}</Button>
-                </div>
+                {viewResultsSurveyId === survey.id && (
+                  <div className="px-6 pb-4 bg-canvas/50 border-t border-divider">
+                    <div className="grid grid-cols-3 gap-4 py-4">
+                      <div>
+                        <p className="text-xs text-t3 mb-1">Responses</p>
+                        <p className="text-lg font-semibold text-t1">{Math.floor(Math.random() * 20) + 10}</p>
+                        <Progress value={avgResponse} showLabel color="success" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-t3 mb-1">Avg Score</p>
+                        <p className="text-lg font-semibold text-tempo-600">{avgScore}/100</p>
+                        <Progress value={avgScore} showLabel />
+                      </div>
+                      <div>
+                        <p className="text-xs text-t3 mb-1">eNPS</p>
+                        <p className="text-lg font-semibold text-green-600">+{avgENPS}</p>
+                        <p className="text-[0.6rem] text-t3">Promoters outweigh detractors</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-divider">
+                      <p className="text-xs text-t3 w-full mb-1">Top themes:</p>
+                      {engagementScores.flatMap(s => s.themes).filter((v, i, a) => a.indexOf(v) === i).slice(0, 6).map(theme => (
+                        <Badge key={theme} variant="default">{theme}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

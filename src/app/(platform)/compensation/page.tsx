@@ -75,9 +75,9 @@ export default function CompensationPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('avgCompaRatio')} value={compBands.length > 0 ? (compBands.reduce((a, b) => a + (b.p50 ? b.mid_salary / b.p50 : 1), 0) / compBands.length).toFixed(2) : '-'} change={t('atMarket')} changeType="neutral" icon={<TrendingUp size={20} />} />
-        <StatCard label={t('belowMarket')} value={belowMarket} change={t('rolesBelowP50')} changeType={belowMarket > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+        <StatCard label={t('belowMarket')} value={belowMarket} change={t('rolesBelowP50')} changeType={belowMarket > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} href="/people" />
         <StatCard label={t('pendingReviews')} value={pendingReviews} />
-        <StatCard label={t('totalStaffCost')} value={`$${(employees.length * 72000 / 1000000).toFixed(1)}M`} change={tc('annual')} changeType="neutral" icon={<Banknote size={20} />} />
+        <StatCard label={t('totalStaffCost')} value={`$${(employees.length * 72000 / 1000000).toFixed(1)}M`} change={tc('annual')} changeType="neutral" icon={<Banknote size={20} />} href="/payroll" />
       </div>
 
       {/* AI Compensation Insights */}

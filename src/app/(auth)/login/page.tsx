@@ -5,21 +5,42 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { TempoLockup } from '@/components/brand/tempo-lockup'
-import { demoCredentials } from '@/lib/demo-data'
+import { allDemoCredentials } from '@/lib/demo-data'
+import type { DemoCredential } from '@/lib/demo-data'
 import { useTempo } from '@/lib/store'
 import {
-  Shield, Users, UserCheck, Briefcase, User, Banknote, Laptop, KeyRound, ArrowLeft
+  Shield, Users, UserCheck, Briefcase, User, Banknote, Laptop, KeyRound, ArrowLeft, CheckCircle
 } from 'lucide-react'
 
 const roleIcons: Record<string, React.ReactNode> = {
-  'emp-17': <Shield size={20} />,
-  'emp-1': <Briefcase size={20} />,
-  'emp-20': <Users size={20} />,
-  'emp-2': <UserCheck size={20} />,
-  'emp-3': <User size={20} />,
-  'emp-24': <Banknote size={20} />,
-  'emp-13': <Laptop size={20} />,
+  owner: <Shield size={20} />,
+  admin: <Briefcase size={20} />,
+  hrbp: <Users size={20} />,
+  manager: <UserCheck size={20} />,
+  employee: <User size={20} />,
 }
+
+interface OrgGroup {
+  name: string
+  industry: string
+  country: string
+  credentials: DemoCredential[]
+}
+
+const orgGroups: OrgGroup[] = [
+  {
+    name: 'Ecobank Transnational',
+    industry: 'Banking & Financial Services',
+    country: 'Nigeria',
+    credentials: allDemoCredentials.filter(c => !c.employeeId.startsWith('kemp-')),
+  },
+  {
+    name: 'Kash & Co',
+    industry: 'Consulting & Professional Services',
+    country: 'South Africa',
+    credentials: allDemoCredentials.filter(c => c.employeeId.startsWith('kemp-')),
+  },
+]
 
 const roleColors: Record<string, string> = {
   owner: 'bg-tempo-600/10 text-tempo-600 border-tempo-600/20',
@@ -37,6 +58,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
 
   // MFA state
   const [mfaRequired, setMfaRequired] = useState(false)
@@ -74,7 +98,7 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = async (cred: typeof demoCredentials[number]) => {
+  const handleDemoLogin = async (cred: DemoCredential) => {
     setEmail(cred.email)
     setPassword(cred.password)
     setError('')
@@ -277,6 +301,99 @@ export default function LoginPage() {
     )
   }
 
+  // ─── Forgot Password Mode ────────────────────────────────────────
+  if (forgotMode) {
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+      e.preventDefault()
+      setLoading(true)
+      setError('')
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'request', email: forgotEmail }),
+        })
+        if (res.ok) {
+          setForgotSent(true)
+        } else {
+          // Still show success to not leak email existence
+          setForgotSent(true)
+        }
+      } catch {
+        setError('An error occurred. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    return (
+      <div>
+        <div className="lg:hidden flex justify-center mb-8">
+          <TempoLockup variant="color" size="md" />
+        </div>
+        <div className="bg-card rounded-[14px] border border-border p-8">
+          <button
+            onClick={() => { setForgotMode(false); setForgotSent(false); setError('') }}
+            className="flex items-center gap-1.5 text-xs text-t3 hover:text-t1 transition-colors mb-6"
+          >
+            <ArrowLeft size={14} />
+            Back to login
+          </button>
+
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center">
+              <KeyRound size={24} className="text-tempo-600" />
+            </div>
+          </div>
+
+          <h2 className="text-xl font-semibold text-t1 mb-1 text-center">Reset Password</h2>
+          <p className="text-sm text-t3 mb-6 text-center">
+            {forgotSent
+              ? 'If an account with that email exists, we\'ve sent a reset link.'
+              : 'Enter your email address and we\'ll send you a reset link.'
+            }
+          </p>
+
+          {forgotSent ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-2 p-4 rounded-lg bg-green-50 border border-green-200">
+                <CheckCircle size={18} className="text-green-600" />
+                <p className="text-sm text-green-700">Check your email for a reset link</p>
+              </div>
+              <Button
+                onClick={() => { setForgotMode(false); setForgotSent(false) }}
+                className="w-full"
+              >
+                Back to Login
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-t1 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  required
+                  autoFocus
+                />
+              </div>
+              {error && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+            </form>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // ─── Standard Login Form ──────────────────────────────────────────
   return (
     <div>
@@ -300,7 +417,16 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-t1 mb-1">{t('passwordLabel')}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-t1">{t('passwordLabel')}</label>
+              <button
+                type="button"
+                onClick={() => setForgotMode(true)}
+                className="text-xs text-tempo-600 hover:text-tempo-700 font-medium transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               value={password}
@@ -321,30 +447,41 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-divider">
-          <p className="text-[0.65rem] font-semibold text-t3 uppercase tracking-wider mb-3">{t('quickDemoAccess')}</p>
-          <div className="space-y-2">
-            {demoCredentials.map((cred) => (
-              <button
-                key={cred.employeeId}
-                onClick={() => handleDemoLogin(cred)}
-                disabled={loading}
-                className="w-full text-left rounded-lg border border-divider px-3 py-2.5 hover:bg-canvas/80 transition-all group disabled:opacity-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center border ${roleColors[cred.role]}`}>
-                    {roleIcons[cred.employeeId] || <User size={20} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-t1">{cred.label}</span>
-                      <span className={`text-[0.55rem] font-medium px-1.5 py-0.5 rounded-full border ${roleColors[cred.role]}`}>
-                        {cred.role}
-                      </span>
-                    </div>
-                    <p className="text-[0.65rem] text-t3 truncate">{cred.description}</p>
-                  </div>
+          <p className="text-[0.65rem] font-semibold text-t3 uppercase tracking-wider mb-4">{t('quickDemoAccess')}</p>
+          <div className="space-y-5">
+            {orgGroups.map((group) => (
+              <div key={group.name}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[0.7rem] font-semibold text-t1">{group.name}</span>
+                  <span className="text-[0.55rem] text-t3">{group.industry}</span>
+                  <span className="text-[0.5rem] text-t3 ml-auto">{group.country}</span>
                 </div>
-              </button>
+                <div className="space-y-1.5">
+                  {group.credentials.map((cred) => (
+                    <button
+                      key={cred.employeeId}
+                      onClick={() => handleDemoLogin(cred)}
+                      disabled={loading}
+                      className="w-full text-left rounded-lg border border-divider px-3 py-2 hover:bg-canvas/80 transition-all group disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${roleColors[cred.role]}`}>
+                          {roleIcons[cred.role] || <User size={18} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-t1">{cred.label}</span>
+                            <span className={`text-[0.55rem] font-medium px-1.5 py-0.5 rounded-full border ${roleColors[cred.role]}`}>
+                              {cred.role}
+                            </span>
+                          </div>
+                          <p className="text-[0.6rem] text-t3 truncate">{cred.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
           <p className="text-[0.55rem] text-t3 text-center mt-3">{t('demoPwdNote')}</p>

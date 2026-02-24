@@ -102,7 +102,7 @@ export default function DevicesPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalDevices')} value={devices.length} icon={<Laptop size={20} />} />
-        <StatCard label={t('assigned')} value={assignedCount} change={t('available', { count: availableCount })} changeType="neutral" />
+        <StatCard label={t('assigned')} value={assignedCount} change={t('available', { count: availableCount })} changeType="neutral" href="/people" />
         <StatCard label={t('inMaintenance')} value={maintenanceCount} icon={<Wrench size={20} />} />
         <StatCard label={t('availableLabel')} value={availableCount} change={t('readyToAssign')} changeType="positive" />
       </div>

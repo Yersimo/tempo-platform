@@ -14,7 +14,8 @@ import { Input, Select } from '@/components/ui/input'
 import {
   Building, Users, Shield, Bell, Palette, Globe, Search, Clock, Plug,
   ShieldCheck, Mail, Banknote, Building2, MessageSquare, Video,
-  CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff
+  CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff,
+  CreditCard, ExternalLink, Check, Sparkles, Crown, Zap
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
@@ -60,6 +61,26 @@ interface IntegrationLog {
   createdAt: string
 }
 
+interface BillingPlan {
+  id: string
+  name: string
+  pricePerEmployee: number
+  features: string[]
+  maxEmployees: number | null
+  tier: string
+}
+
+interface BillingSubscription {
+  plan: string
+  status: string
+  currentPeriodEnd: string
+  employeeCount: number
+  monthlyAmount: number
+  currency: string
+  cancelAtPeriodEnd: boolean
+  trialEnd: string | null
+}
+
 export default function SettingsPage() {
   const t = useTranslations('settings')
   const ti = useTranslations('integrations')
@@ -86,6 +107,92 @@ export default function SettingsPage() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [integrationLogs, setIntegrationLogs] = useState<IntegrationLog[]>([])
   const [integrationsLoaded, setIntegrationsLoaded] = useState(false)
+
+  // Billing state
+  const [billingSubscription, setBillingSubscription] = useState<BillingSubscription | null>(null)
+  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingActionLoading, setBillingActionLoading] = useState<string | null>(null)
+
+  // Load billing data
+  const loadBilling = useCallback(async () => {
+    setBillingLoading(true)
+    try {
+      const res = await fetch('/api/billing')
+      if (res.ok) {
+        const data = await res.json()
+        setBillingSubscription(data.subscription || null)
+        setBillingPlans(data.plans || [])
+      }
+    } catch {
+      // Use empty state on error
+    }
+    setBillingLoading(false)
+  }, [])
+
+  // Handle billing query params (success / canceled)
+  useEffect(() => {
+    const billingSuccess = searchParams.get('billing') || searchParams.get('success')
+    const billingCanceled = searchParams.get('canceled')
+    if (billingSuccess === 'true' || billingSuccess === 'success') {
+      addToast('Subscription updated successfully!', 'success')
+    }
+    if (billingCanceled === 'true' || billingCanceled === 'canceled') {
+      addToast('Checkout was canceled.', 'info')
+    }
+  }, [searchParams, addToast])
+
+  // Load billing when tab is activated
+  useEffect(() => {
+    if (activeTab === 'billing' && !billingSubscription && !billingLoading) {
+      loadBilling()
+    }
+  }, [activeTab, billingSubscription, billingLoading, loadBilling])
+
+  // Billing actions
+  const handleBillingUpgrade = async (planId: string) => {
+    setBillingActionLoading(planId)
+    try {
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'checkout', planId }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else if (data.demo) {
+        addToast('Stripe is not configured. This is a demo environment.', 'info')
+      } else {
+        addToast(data.error || 'Failed to start checkout', 'error')
+      }
+    } catch {
+      addToast('Failed to start checkout', 'error')
+    }
+    setBillingActionLoading(null)
+  }
+
+  const handleManageSubscription = async () => {
+    setBillingActionLoading('portal')
+    try {
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'portal' }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else if (data.demo) {
+        addToast('Stripe is not configured. This is a demo environment.', 'info')
+      } else {
+        addToast(data.error || 'Failed to open billing portal', 'error')
+      }
+    } catch {
+      addToast('Failed to open billing portal', 'error')
+    }
+    setBillingActionLoading(null)
+  }
 
   // Load integrations from API
   const loadIntegrations = useCallback(async () => {
@@ -118,7 +225,10 @@ export default function SettingsPage() {
     if (tab === 'integrations' && !integrationsLoaded) {
       loadIntegrations()
     }
-  }, [integrationsLoaded, loadIntegrations])
+    if (tab === 'billing' && !billingSubscription && !billingLoading) {
+      loadBilling()
+    }
+  }, [integrationsLoaded, loadIntegrations, billingSubscription, billingLoading, loadBilling])
 
   // Get connector config schema
   const getConfigSchema = (providerId: string): ConfigField[] => {
@@ -280,6 +390,7 @@ export default function SettingsPage() {
     { id: 'general', label: t('tabGeneral') },
     { id: 'team', label: t('tabTeam'), count: employees.length },
     { id: 'departments', label: t('tabDepartments'), count: departments.length },
+    { id: 'billing', label: 'Billing' },
     { id: 'integrations', label: ti('title') },
     { id: 'audit', label: t('tabAuditLog'), count: auditLog.length },
     { id: 'security', label: t('tabSecurity') },
@@ -436,6 +547,203 @@ export default function SettingsPage() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'billing' && (
+        <div>
+          {billingLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 size={24} className="animate-spin text-tempo-600" />
+              <span className="ml-2 text-sm text-t3">Loading billing information...</span>
+            </div>
+          ) : (
+            <>
+              {/* Current Subscription */}
+              {billingSubscription && (
+                <div className="bg-card rounded-[14px] border border-border p-6 mb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                      <CreditCard size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-t1">Current Subscription</h3>
+                      <p className="text-xs text-t3">Manage your plan and billing details</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleManageSubscription}
+                      disabled={billingActionLoading === 'portal'}
+                    >
+                      {billingActionLoading === 'portal' ? (
+                        <Loader2 size={14} className="animate-spin mr-1.5" />
+                      ) : (
+                        <ExternalLink size={14} className="mr-1.5" />
+                      )}
+                      Manage Subscription
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Plan</p>
+                      <p className="text-sm font-semibold text-t1">{billingSubscription.plan}</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Status</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          billingSubscription.status === 'active' ? 'bg-green-500' :
+                          billingSubscription.status === 'trialing' ? 'bg-blue-500' :
+                          billingSubscription.status === 'past_due' ? 'bg-amber-500' :
+                          'bg-red-500'
+                        }`} />
+                        <p className="text-sm font-semibold text-t1 capitalize">{billingSubscription.status}</p>
+                      </div>
+                    </div>
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Next Billing Date</p>
+                      <p className="text-sm font-semibold text-t1">
+                        {billingSubscription.currentPeriodEnd
+                          ? new Date(billingSubscription.currentPeriodEnd).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  {billingSubscription.trialEnd && billingSubscription.status === 'trialing' && (
+                    <div className="mt-3 flex items-center gap-2 bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-xs">
+                      <Sparkles size={14} />
+                      <span>
+                        Your trial ends on{' '}
+                        {new Date(billingSubscription.trialEnd).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {billingSubscription.cancelAtPeriodEnd && (
+                    <div className="mt-3 flex items-center gap-2 bg-amber-50 text-amber-700 rounded-lg px-3 py-2 text-xs">
+                      <AlertCircle size={14} />
+                      <span>Your subscription will cancel at the end of the current billing period.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pricing Tier Cards */}
+              <h3 className="text-sm font-semibold text-t1 mb-3">Available Plans</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {(billingPlans.length > 0 ? billingPlans : [
+                  { id: 'free', name: 'Free', pricePerEmployee: 0, maxEmployees: 10, tier: 'free', features: ['Up to 10 employees', 'Core HR', 'Basic Analytics'] },
+                  { id: 'starter', name: 'Starter', pricePerEmployee: 800, maxEmployees: 100, tier: 'starter', features: ['Up to 100 employees', 'Core HR & People', 'Performance Management', 'Time & Attendance', 'Email Support'] },
+                  { id: 'professional', name: 'Professional', pricePerEmployee: 1500, maxEmployees: 5000, tier: 'professional', features: ['Up to 5,000 employees', 'All Starter features', 'Payroll & Benefits', 'Recruiting & Expense', 'Learning & Engagement', 'API Access', 'Priority Support'] },
+                  { id: 'enterprise', name: 'Enterprise', pricePerEmployee: 2500, maxEmployees: null, tier: 'enterprise', features: ['Unlimited employees', 'All Professional features', 'Multi-country Payroll', 'Advanced Analytics & AI', 'SSO & SCIM', 'Dedicated CSM', 'SLA Guarantee'] },
+                ]).map((plan) => {
+                  const isCurrentPlan = billingSubscription?.plan?.toLowerCase() === plan.name.toLowerCase()
+                  const priceDisplay = plan.pricePerEmployee === 0
+                    ? '$0'
+                    : plan.tier === 'enterprise'
+                      ? 'Custom'
+                      : `$${(plan.pricePerEmployee / 100).toFixed(0)}`
+
+                  const tierIcons: Record<string, React.ReactNode> = {
+                    free: <Zap size={20} />,
+                    starter: <CreditCard size={20} />,
+                    professional: <Sparkles size={20} />,
+                    enterprise: <Crown size={20} />,
+                  }
+
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`bg-card rounded-[14px] border p-5 flex flex-col ${
+                        isCurrentPlan
+                          ? 'border-tempo-600 ring-2 ring-tempo-600/20'
+                          : 'border-border'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          isCurrentPlan
+                            ? 'bg-tempo-600 text-white'
+                            : 'bg-canvas text-t1'
+                        }`}>
+                          {tierIcons[plan.tier] || <CreditCard size={20} />}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-t1">{plan.name}</h4>
+                          {isCurrentPlan && (
+                            <span className="text-[0.6rem] font-medium text-tempo-600">Current Plan</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mb-4">
+                        <span className="text-2xl font-bold text-t1">{priceDisplay}</span>
+                        {plan.pricePerEmployee > 0 && plan.tier !== 'enterprise' && (
+                          <span className="text-xs text-t3 ml-1">/user/mo</span>
+                        )}
+                        {plan.tier === 'enterprise' && (
+                          <span className="text-xs text-t3 ml-1">pricing</span>
+                        )}
+                      </div>
+
+                      <ul className="space-y-2 mb-5 flex-1">
+                        {plan.features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2 text-xs text-t2">
+                            <Check size={14} className="text-green-500 mt-0.5 shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {isCurrentPlan ? (
+                        <Button variant="outline" size="sm" className="w-full" disabled>
+                          <Check size={14} className="mr-1.5" />
+                          Current Plan
+                        </Button>
+                      ) : plan.tier === 'free' ? (
+                        <Button variant="outline" size="sm" className="w-full" disabled>
+                          Free Forever
+                        </Button>
+                      ) : plan.tier === 'enterprise' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleBillingUpgrade(plan.id)}
+                          disabled={billingActionLoading === plan.id}
+                        >
+                          {billingActionLoading === plan.id ? (
+                            <Loader2 size={14} className="animate-spin mr-1.5" />
+                          ) : null}
+                          Contact Sales
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="w-full bg-tempo-600 hover:bg-tempo-700 text-white"
+                          onClick={() => handleBillingUpgrade(plan.id)}
+                          disabled={billingActionLoading === plan.id}
+                        >
+                          {billingActionLoading === plan.id ? (
+                            <Loader2 size={14} className="animate-spin mr-1.5" />
+                          ) : null}
+                          Upgrade
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
       )}
 

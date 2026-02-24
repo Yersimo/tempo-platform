@@ -96,10 +96,10 @@ export default function AnalyticsPage() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label={t('headcount')} value={headcount} icon={<Users size={20} />} />
-        <StatCard label={t('reviewCompletion')} value={`${reviewCompletion}%`} icon={<TrendingUp size={20} />} />
-        <StatCard label={t('staffCost')} value={lastPayroll ? `$${(lastPayroll.total_gross / 1000).toFixed(0)}K/mo` : '-'} icon={<DollarSign size={20} />} />
-        <StatCard label={t('openPositions')} value={openPositions} icon={<BarChart3 size={20} />} />
+        <StatCard label={t('headcount')} value={headcount} icon={<Users size={20} />} href="/people" />
+        <StatCard label={t('reviewCompletion')} value={`${reviewCompletion}%`} icon={<TrendingUp size={20} />} href="/performance" />
+        <StatCard label={t('staffCost')} value={lastPayroll ? `$${(lastPayroll.total_gross / 1000).toFixed(0)}K/mo` : '-'} icon={<DollarSign size={20} />} href="/payroll" />
+        <StatCard label={t('openPositions')} value={openPositions} icon={<BarChart3 size={20} />} href="/recruiting" />
       </div>
 
       {/* AI Board Narrative */}

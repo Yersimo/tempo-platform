@@ -138,7 +138,7 @@ export default function ExpensePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
         <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label={t('approvedReimbursed')} value={`$${totalApproved.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
+        <StatCard label={t('approvedReimbursed')} value={`$${totalApproved.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" href="/finance/budgets" />
         <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
       </div>
 

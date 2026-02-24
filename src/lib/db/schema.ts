@@ -57,6 +57,10 @@ export const organizations = pgTable('organizations', {
   industry: varchar('industry', { length: 255 }),
   size: varchar('size', { length: 50 }),
   country: varchar('country', { length: 100 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
+  enabledModules: jsonb('enabled_modules'), // string[] of module ids
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -86,6 +90,10 @@ export const employees = pgTable('employees', {
   hireDate: date('hire_date'),
   passwordHash: text('password_hash'), // for auth
   isActive: boolean('is_active').default(true).notNull(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  invitedBy: uuid('invited_by'), // FK to employees, managed at DB level
+  invitationToken: varchar('invitation_token', { length: 500 }),
+  invitationExpiresAt: timestamp('invitation_expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -846,4 +854,39 @@ export const webhookEndpoints = pgTable('webhook_endpoints', {
   lastCalledAt: timestamp('last_called_at'),
   failureCount: integer('failure_count').default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+// ============================================================
+// PLATFORM ADMINISTRATION
+// ============================================================
+
+export const platformAdminRoleEnum = pgEnum('platform_admin_role', ['super_admin', 'support', 'viewer'])
+
+export const platformAdmins = pgTable('platform_admins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  passwordHash: text('password_hash'),
+  role: platformAdminRoleEnum('role').default('viewer').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const adminSessions = pgTable('admin_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => platformAdmins.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const impersonationLog = pgTable('impersonation_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => platformAdmins.id).notNull(),
+  targetEmployeeId: text('target_employee_id').notNull(),
+  targetOrgId: text('target_org_id').notNull(),
+  reason: text('reason'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  endedAt: timestamp('ended_at'),
 })
