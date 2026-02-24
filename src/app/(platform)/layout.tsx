@@ -38,9 +38,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading || !ready) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-canvas">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-t3 text-sm">Loading Tempo...</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-2 border-border" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-tempo-600 border-t-transparent animate-spin" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-t1">Loading Tempo</p>
+            <p className="text-xs text-t3 mt-1">Preparing your workspace...</p>
+          </div>
         </div>
       </div>
     )

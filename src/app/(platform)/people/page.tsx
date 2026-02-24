@@ -11,7 +11,10 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Search, Plus, Download } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { Pagination } from '@/components/ui/pagination'
 import Link from 'next/link'
+
+const ITEMS_PER_PAGE = 10
 
 export default function PeoplePage() {
   const t = useTranslations('people')
@@ -20,6 +23,7 @@ export default function PeoplePage() {
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', job_title: '', level: 'Mid',
     department_id: '', country: 'Nigeria', role: 'employee' as string,
@@ -30,6 +34,13 @@ export default function PeoplePage() {
     const matchDept = deptFilter === 'all' || emp.department_id === deptFilter
     return matchSearch && matchDept
   })
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedEmployees = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
+  // Reset page when filters change
+  const handleSearch = (val: string) => { setSearch(val); setCurrentPage(1) }
+  const handleDeptFilter = (val: string) => { setDeptFilter(val); setCurrentPage(1) }
 
   function submitAdd() {
     if (!form.full_name || !form.email) return
@@ -62,13 +73,13 @@ export default function PeoplePage() {
             placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
         <select
           className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2"
           value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
+          onChange={(e) => handleDeptFilter(e.target.value)}
         >
           <option value="all">{t('allDepartments')}</option>
           {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -91,7 +102,7 @@ export default function PeoplePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((emp) => (
+              {paginatedEmployees.map((emp) => (
                 <tr key={emp.id} className="hover:bg-canvas/50 transition-colors cursor-pointer">
                   <td className="px-6 py-3">
                     <Link href={`/people/${emp.id}`} className="flex items-center gap-3">
@@ -119,6 +130,13 @@ export default function PeoplePage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
       </Card>
 
       {/* Add Employee Modal */}

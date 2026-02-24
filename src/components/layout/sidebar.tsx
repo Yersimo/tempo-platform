@@ -42,6 +42,7 @@ export function Sidebar() {
       items: [
         { label: t('dashboard'), href: '/dashboard', icon: <LayoutDashboard size={18} /> },
         { label: t('peopleLabel'), href: '/people', icon: <Users size={18} /> },
+        { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
       ],
     },
     {
@@ -64,21 +65,10 @@ export function Sidebar() {
       ],
     },
     {
-      title: t('talent'),
-      items: [
-        { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
-      ],
-    },
-    {
-      title: t('it'),
+      title: t('it') + ' & ' + t('finance'),
       items: [
         { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
         { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
-      ],
-    },
-    {
-      title: t('finance'),
-      items: [
         { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} /> },
         { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} /> },
       ],
@@ -89,13 +79,7 @@ export function Sidebar() {
         { label: t('projects'), href: '/projects', icon: <FolderKanban size={18} /> },
         { label: t('strategy'), href: '/strategy', icon: <Compass size={18} /> },
         { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
-      ],
-    },
-    {
-      title: t('insights'),
-      items: [
         { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
-        { label: t('integrations'), href: '/settings?tab=integrations', icon: <Plug size={18} /> },
       ],
     },
   ]
@@ -187,6 +171,18 @@ export function Sidebar() {
         {/* User section */}
         {!collapsed && (
           <div className="border-t border-dark-border px-3 py-3 space-y-1">
+            <Link
+              href="/settings"
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors mb-1',
+                pathname.startsWith('/settings')
+                  ? 'bg-tempo-600/12 text-tempo-400 font-medium'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
+              )}
+            >
+              <Settings size={18} />
+              <span className="flex-1">{tCommon('settings')}</span>
+            </Link>
             <div className="flex items-center justify-between px-2">
               <LocaleSwitcher />
             </div>
