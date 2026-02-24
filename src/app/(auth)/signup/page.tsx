@@ -184,6 +184,18 @@ export default function SignupPage() {
                   required
                 >
                   <option value="">{t('selectCountry')}</option>
+                  <option value="US">United States</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="CA">Canada</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="AU">Australia</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="SG">Singapore</option>
+                  <option value="AE">United Arab Emirates</option>
+                  <option value="IN">India</option>
+                  <option value="BR">Brazil</option>
+                  <option value="JP">Japan</option>
                   <option value="NG">{t('countryNigeria')}</option>
                   <option value="GH">{t('countryGhana')}</option>
                   <option value="CI">{t('countryCoteDIvoire')}</option>

@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'tempo-dev-secret-change-in-production-2026'
-)
+const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
+if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL: JWT_SECRET environment variable is not set in production!')
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 const COOKIE_NAME = 'tempo_session'
 
 // Public routes that don't require authentication

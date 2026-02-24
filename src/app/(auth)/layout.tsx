@@ -12,15 +12,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <TempoMark variant="white" size={120} />
           <h1 className="tempo-wordmark text-4xl text-white mt-8">tempo</h1>
           <p className="text-white/30 text-sm mt-3 text-center max-w-sm">
-            The unified workforce platform built for enterprise Africa
+            The unified workforce platform for modern global enterprises
           </p>
           <div className="mt-12 grid grid-cols-2 gap-6 text-center">
             <div>
-              <p className="tempo-stat text-2xl text-tempo-600">14,000+</p>
-              <p className="text-xs text-white/20">Employees</p>
+              <p className="tempo-stat text-2xl text-tempo-600">50,000+</p>
+              <p className="text-xs text-white/20">Employees Managed</p>
             </div>
             <div>
-              <p className="tempo-stat text-2xl text-tempo-600">33</p>
+              <p className="tempo-stat text-2xl text-tempo-600">80+</p>
               <p className="text-xs text-white/20">Countries</p>
             </div>
             <div>

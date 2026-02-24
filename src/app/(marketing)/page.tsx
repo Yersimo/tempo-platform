@@ -31,9 +31,9 @@ const modules = [
 ]
 
 const stats = [
-  { value: '14,000+', label: 'Employees' },
-  { value: '33', label: 'Countries' },
-  { value: '4', label: 'Regulatory Regions' },
+  { value: '50,000+', label: 'Employees Managed' },
+  { value: '80+', label: 'Countries' },
+  { value: '6', label: 'Continents' },
   { value: '16', label: 'Integrated Modules' },
 ]
 
@@ -98,10 +98,10 @@ export default function LandingPage() {
           </div>
           <Badge variant="orange" className="mb-6">Now available for enterprise</Badge>
           <h1 className="tempo-display text-4xl md:text-6xl text-white mb-6 tracking-tight">
-            The unified workforce platform<br />built for Africa
+            The unified workforce platform<br />for global enterprises
           </h1>
           <p className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto mb-10 font-light">
-            One employee record. 16 integrated modules. 33 countries.
+            One employee record. 16 integrated modules. 80+ countries.
             More intuitive than Rippling. More beautiful than Lattice.
             More governed than Workday.
           </p>
@@ -151,15 +151,15 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center text-tempo-600 mb-4">
                 <Globe size={24} />
               </div>
-              <h3 className="text-base font-semibold text-t1 mb-2">Built for Africa</h3>
-              <p className="text-sm text-t3">33-country compliance out of the box. Multi-currency payroll. Works on 3G. Designed for the realities of operating across UEMOA, CESA, AWA, and Nigeria.</p>
+              <h3 className="text-base font-semibold text-t1 mb-2">Built for Global Scale</h3>
+              <p className="text-sm text-t3">Multi-country compliance out of the box. Multi-currency payroll. Works everywhere. Designed for the realities of operating across borders, time zones, and regulatory environments.</p>
             </div>
             <div className="bg-card rounded-[14px] border border-border p-8">
               <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center text-tempo-600 mb-4">
                 <Lock size={24} />
               </div>
               <h3 className="text-base font-semibold text-t1 mb-2">Bank-Grade Governance</h3>
-              <p className="text-sm text-t3">Every action is audit-logged. Role-based access controls. Regulatory compliance built in, not bolted on. The regulator in Abidjan accepts the trail.</p>
+              <p className="text-sm text-t3">Every action is audit-logged. Role-based access controls. Regulatory compliance built in, not bolted on. Your auditors will love the trail.</p>
             </div>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
               <TempoLockup variant="white" size="sm" />
-              <p className="text-xs text-white/20 mt-3">Unified workforce platform built for enterprise Africa.</p>
+              <p className="text-xs text-white/20 mt-3">The unified workforce platform for modern global enterprises.</p>
             </div>
             <div>
               <h4 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Product</h4>
@@ -277,7 +277,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-white/5 pt-6 text-center">
-            <p className="text-xs text-white/15">&copy; 2026 Tempo. A product of Ecobank Transnational Incorporated.</p>
+            <p className="text-xs text-white/15">&copy; 2026 Tempo. All rights reserved.</p>
           </div>
         </div>
       </footer>

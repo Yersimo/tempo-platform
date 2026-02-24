@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 
 // ─── Config ───────────────────────────────────────────────────────────────
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'tempo-dev-secret-change-in-production-2026'
+  process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
 )
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const COOKIE_NAME = 'tempo_session'

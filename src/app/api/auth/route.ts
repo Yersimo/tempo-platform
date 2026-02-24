@@ -312,24 +312,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ user })
     }
 
-    // ─── Switch User (demo feature, requires active session) ─────────
+    // ─── Switch User (demo feature, requires active session + same org) ─────────
     if (action === 'switch_user') {
       const { employeeId } = body
       if (!employeeId) {
         return NextResponse.json({ error: 'employeeId is required' }, { status: 400 })
       }
 
-      // Verify caller has an active session
+      // Verify caller has an active session and get their org
       const sessionCookie = request.cookies.get(getSessionCookieName())
+      let callerOrgId: string | null = null
       if (sessionCookie?.value) {
         const currentSession = await validateSession(sessionCookie.value)
         if (currentSession) {
+          callerOrgId = currentSession.orgId
           await revokeSession(currentSession.sessionId)
         }
       }
 
+      if (!callerOrgId) {
+        return NextResponse.json({ error: 'Active session required' }, { status: 401 })
+      }
+
+      // Only allow switching to employees within the SAME org
       const [employee] = await db.select().from(schema.employees)
-        .where(eq(schema.employees.id, employeeId))
+        .where(and(eq(schema.employees.id, employeeId), eq(schema.employees.orgId, callerOrgId)))
 
       if (!employee) {
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
@@ -379,10 +386,16 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    // ─── Get Credentials (for demo login page) ──────────────────────
+    // ─── Get Credentials (for demo login page — scoped to demo org only) ──────────────────────
     if (action === 'credentials') {
+      // Only return credentials for the demo organization
+      const [demoOrg] = await db.select().from(schema.organizations).limit(1)
+      if (!demoOrg) {
+        return NextResponse.json({ credentials: [] })
+      }
+
       const employees = await db.select().from(schema.employees)
-        .where(eq(schema.employees.isActive, true))
+        .where(and(eq(schema.employees.isActive, true), eq(schema.employees.orgId, demoOrg.id)))
 
       const withPasswords = employees.filter(e => e.passwordHash)
 
