@@ -181,7 +181,7 @@ export function Sidebar() {
               )}
             >
               <Settings size={18} />
-              <span className="flex-1">{tCommon('settings')}</span>
+              <span className="flex-1">{t('settings')}</span>
             </Link>
             <div className="flex items-center justify-between px-2">
               <LocaleSwitcher />
