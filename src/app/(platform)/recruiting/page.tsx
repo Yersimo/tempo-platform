@@ -10,10 +10,11 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Briefcase, Users, Plus, Star, Pencil, ArrowRight } from 'lucide-react'
+import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
-import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire } from '@/lib/ai-engine'
+import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards } from '@/lib/ai-engine'
+import { Progress } from '@/components/ui/progress'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
 
@@ -25,6 +26,7 @@ export default function RecruitingPage() {
     addJobPosting, updateJobPosting,
     addApplication, updateApplication,
     getDepartmentName,
+    careerSiteConfig, jobDistributions, updateCareerSiteConfig, addJobDistribution,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('postings')
@@ -58,6 +60,21 @@ export default function RecruitingPage() {
   const [showStageModal, setShowStageModal] = useState(false)
   const [stageForm, setStageForm] = useState({ app_id: '', stage: '', notes: '' })
 
+  // Career Site state
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [careerForm, setCareerForm] = useState({
+    enabled: careerSiteConfig?.enabled ?? false,
+    hero_title: careerSiteConfig?.hero_title ?? '',
+    hero_subtitle: careerSiteConfig?.hero_subtitle ?? '',
+    theme: (careerSiteConfig?.theme ?? 'professional') as string,
+    sections: (careerSiteConfig?.sections ?? ['about', 'benefits', 'positions']) as string[],
+  })
+
+  // Job Distribution state
+  const [showDistModal, setShowDistModal] = useState(false)
+  const [distJobId, setDistJobId] = useState('')
+  const [selectedBoards, setSelectedBoards] = useState<string[]>([])
+
   const openPositions = jobPostings.filter(j => j.status === 'open').length
   const totalApplicants = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)
   const inInterview = applications.filter(a => a.stage === 'interview' || a.status === 'interview').length
@@ -66,9 +83,11 @@ export default function RecruitingPage() {
   const tabs = [
     { id: 'postings', label: t('tabJobPostings'), count: openPositions },
     { id: 'pipeline', label: t('tabPipeline'), count: applications.length },
+    { id: 'career_site', label: t('careerSite') },
   ]
 
   const pipelineInsights = useMemo(() => analyzePipelineHealth(applications, jobPostings), [applications, jobPostings])
+  const careerSiteScore = useMemo(() => scoreCareerSiteEffectiveness(careerForm), [careerForm])
 
   // ---- Job Posting CRUD ----
   function openNewJob() {
@@ -187,6 +206,46 @@ export default function RecruitingPage() {
     updateApplication(id, { stage: 'rejected', status: 'rejected' })
   }
 
+  // ---- Career Site ----
+  function saveCareerSite() {
+    updateCareerSiteConfig(careerForm)
+  }
+
+  function toggleSection(section: string) {
+    setCareerForm(prev => ({
+      ...prev,
+      sections: prev.sections.includes(section)
+        ? prev.sections.filter(s => s !== section)
+        : [...prev.sections, section],
+    }))
+  }
+
+  // ---- Job Distribution ----
+  function openDistribution(jobId: string) {
+    const existing = jobDistributions.find(d => d.job_id === jobId)
+    setDistJobId(jobId)
+    setSelectedBoards(existing ? [...existing.boards] : [])
+    setShowDistModal(true)
+  }
+
+  function toggleBoard(boardId: string) {
+    setSelectedBoards(prev =>
+      prev.includes(boardId) ? prev.filter(b => b !== boardId) : [...prev, boardId]
+    )
+  }
+
+  function submitDistribution() {
+    if (!distJobId || selectedBoards.length === 0) return
+    const statusPerBoard: Record<string, string> = {}
+    selectedBoards.forEach(b => { statusPerBoard[b] = 'posted' })
+    addJobDistribution({
+      job_id: distJobId,
+      boards: selectedBoards,
+      status_per_board: statusPerBoard,
+    })
+    setShowDistModal(false)
+  }
+
   return (
     <>
       <Header
@@ -202,6 +261,11 @@ export default function RecruitingPage() {
             {activeTab === 'pipeline' && (
               <Button size="sm" onClick={openNewApplication}>
                 <Plus size={14} /> {t('addCandidate')}
+              </Button>
+            )}
+            {activeTab === 'career_site' && (
+              <Button size="sm" variant="outline" onClick={() => setShowPreviewModal(true)}>
+                <ExternalLink size={14} /> {t('preview')}
               </Button>
             )}
           </div>
@@ -266,10 +330,21 @@ export default function RecruitingPage() {
                 </div>
               )}
               <div className="flex items-center justify-between pt-2 border-t border-divider">
-                <span className="text-xs text-t3">{(job.application_count || 0) !== 1 ? t('applicantCountPlural', { count: job.application_count || 0 }) : t('applicantCount', { count: job.application_count || 0 })}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-t3">{(job.application_count || 0) !== 1 ? t('applicantCountPlural', { count: job.application_count || 0 }) : t('applicantCount', { count: job.application_count || 0 })}</span>
+                  {(() => {
+                    const dist = jobDistributions.find(d => d.job_id === job.id)
+                    return dist ? (
+                      <Badge variant="info">{t('postedTo', { count: dist.boards.length })}</Badge>
+                    ) : null
+                  })()}
+                </div>
                 <div className="flex gap-2">
                   {job.status === 'open' ? (
-                    <Button size="sm" variant="ghost" onClick={() => closeJob(job.id)}>{t('closePosting')}</Button>
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => closeJob(job.id)}>{t('closePosting')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => openDistribution(job.id)}><Send size={12} /> {t('distribution')}</Button>
+                    </>
                   ) : (
                     <Button size="sm" variant="secondary" onClick={() => reopenJob(job.id)}>{tc('reopen')}</Button>
                   )}
@@ -377,6 +452,94 @@ export default function RecruitingPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {/* Career Site Tab */}
+      {activeTab === 'career_site' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Configuration */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">{t('careerSiteConfig')}</h3>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={careerForm.enabled}
+                    onChange={(e) => setCareerForm({ ...careerForm, enabled: e.target.checked })}
+                    className="rounded border-divider"
+                  />
+                  <span className="text-sm text-t1">{t('enableCareerSite')}</span>
+                </label>
+
+                <Input label={t('heroTitle')} value={careerForm.hero_title} onChange={(e) => setCareerForm({ ...careerForm, hero_title: e.target.value })} />
+                <Textarea label={t('heroSubtitle')} value={careerForm.hero_subtitle} onChange={(e) => setCareerForm({ ...careerForm, hero_subtitle: e.target.value })} rows={2} />
+
+                <Select label={t('theme')} value={careerForm.theme} onChange={(e) => setCareerForm({ ...careerForm, theme: e.target.value })} options={[
+                  { value: 'professional', label: t('professional') },
+                  { value: 'modern', label: t('modern') },
+                  { value: 'creative', label: t('creative') },
+                ]} />
+
+                <div>
+                  <p className="text-xs font-medium text-t1 mb-2">{t('sections')}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['about', 'benefits', 'positions', 'team', 'testimonials'].map(section => (
+                      <button
+                        key={section}
+                        onClick={() => toggleSection(section)}
+                        className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                          careerForm.sections.includes(section)
+                            ? 'bg-tempo-600 text-white'
+                            : 'bg-canvas text-t3 hover:bg-tempo-50'
+                        }`}
+                      >
+                        {t(section as 'about' | 'benefits' | 'positions' | 'team' | 'testimonials')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button onClick={saveCareerSite}>{tc('saveChanges')}</Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Sidebar: AI Score + Preview */}
+          <div className="space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3">{t('siteEffectiveness')}</h3>
+              <div className="text-center mb-4">
+                <div className="text-3xl font-bold text-tempo-600">{careerSiteScore.value}</div>
+                <p className="text-xs text-t3">{careerSiteScore.label}</p>
+              </div>
+              {careerSiteScore.breakdown?.map(f => (
+                <div key={f.factor} className="mb-2">
+                  <div className="flex justify-between text-xs text-t3 mb-1">
+                    <span>{f.factor}</span>
+                    <span>{f.score}%</span>
+                  </div>
+                  <Progress value={f.score} />
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3">{t('preview')}</h3>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <Globe size={24} className="mx-auto mb-2 text-tempo-600" />
+                <p className="text-xs font-medium text-t1 mb-1">{careerForm.hero_title || 'Your Career Site'}</p>
+                <p className="text-[0.6rem] text-t3 mb-3">{careerForm.hero_subtitle || 'Add a subtitle...'}</p>
+                <p className="text-[0.6rem] text-t3">{jobPostings.filter(j => j.status === 'open').length} {t('positions')}</p>
+              </div>
+              <Button className="w-full mt-3" variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
+                <ExternalLink size={12} /> {t('preview')}
+              </Button>
+            </Card>
+          </div>
+        </div>
       )}
 
       {/* ---- MODALS ---- */}
@@ -537,6 +700,71 @@ export default function RecruitingPage() {
             <Button variant="secondary" onClick={() => setShowStageModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitStageChange}>{t('moveStage')}</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Career Site Preview Modal */}
+      <Modal open={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={t('preview')} size="xl">
+        <div className="bg-canvas rounded-lg overflow-hidden">
+          {/* Hero */}
+          <div className={`p-8 text-center ${careerForm.theme === 'modern' ? 'bg-gradient-to-r from-tempo-600 to-tempo-800' : careerForm.theme === 'creative' ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-tempo-700'} text-white`}>
+            <h2 className="text-xl font-bold mb-2">{careerForm.hero_title || 'Your Company'}</h2>
+            <p className="text-sm opacity-80">{careerForm.hero_subtitle || 'Join our team'}</p>
+          </div>
+          {/* Open Positions */}
+          <div className="p-6">
+            <h3 className="text-sm font-semibold text-t1 mb-4">{t('positions')}</h3>
+            <div className="space-y-3">
+              {jobPostings.filter(j => j.status === 'open').map(job => (
+                <div key={job.id} className="flex items-center justify-between p-3 bg-surface rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-t1">{job.title}</p>
+                    <p className="text-xs text-t3">{job.location} - {job.type.replace(/_/g, ' ')}</p>
+                  </div>
+                  <Button size="sm" variant="primary">{tc('apply')}</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Job Board Distribution Modal */}
+      <Modal open={showDistModal} onClose={() => setShowDistModal(false)} title={t('postToBoards')}>
+        <div className="space-y-4">
+          {(() => {
+            const job = jobPostings.find(j => j.id === distJobId)
+            const recommendations = job ? recommendJobBoards(job) : []
+            return (
+              <>
+                {job && <p className="text-xs text-t3 mb-2">{t('distribution')}: <span className="font-medium text-t1">{job.title}</span></p>}
+                <div className="space-y-2">
+                  {recommendations.map(board => (
+                    <label key={board.id} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedBoards.includes(board.id) ? 'bg-tempo-50 border border-tempo-200' : 'bg-canvas hover:bg-tempo-50/50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedBoards.includes(board.id)}
+                        onChange={() => toggleBoard(board.id)}
+                        className="rounded border-divider"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-t1">{board.name}</span>
+                          {board.recommended && <Badge variant="success" className="text-[0.55rem]">{t('recommendedBoards')}</Badge>}
+                        </div>
+                        <p className="text-xs text-t3">{board.reason}</p>
+                      </div>
+                      <span className="text-xs font-medium text-tempo-600">{board.score}%</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="secondary" onClick={() => setShowDistModal(false)}>{tc('cancel')}</Button>
+                  <Button onClick={submitDistribution}><Send size={14} /> {t('postToBoards')} ({selectedBoards.length})</Button>
+                </div>
+              </>
+            )
+          })()}
         </div>
       </Modal>
     </>

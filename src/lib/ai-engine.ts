@@ -1664,3 +1664,194 @@ export function predictWorkflowFailure(workflow: any, runs: any[]): AIInsight | 
   }
   return null
 }
+
+// ============================================================
+// PHASE 4: COURSE, LEARNING PATH, CAREER SITE & JOB BOARD AI
+// ============================================================
+
+export interface CourseOutline {
+  title: string
+  description: string
+  modules: Array<{
+    title: string
+    lessons: string[]
+    duration_minutes: number
+  }>
+  total_duration_hours: number
+  level: string
+}
+
+export function generateCourseOutline(topic: string, level: string, durationHours: number): CourseOutline {
+  // Simple deterministic hash
+  const hash = topic.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
+  const moduleCount = clamp(Math.floor(durationHours / 3) + 1, 3, 8)
+  const lessonsPerModule = level === 'advanced' ? 4 : level === 'intermediate' ? 3 : 2
+
+  const moduleTopics = [
+    'Introduction & Foundations', 'Core Concepts', 'Practical Application',
+    'Advanced Techniques', 'Case Studies', 'Best Practices',
+    'Tools & Frameworks', 'Assessment & Certification'
+  ]
+
+  const lessonSuffixes = [
+    'Overview', 'Key Principles', 'Hands-on Exercise', 'Discussion',
+    'Deep Dive', 'Real-world Examples', 'Workshop', 'Quiz & Review'
+  ]
+
+  const modules = Array.from({ length: moduleCount }, (_, i) => ({
+    title: `Module ${i + 1}: ${moduleTopics[(hash + i) % moduleTopics.length]}`,
+    lessons: Array.from({ length: lessonsPerModule }, (_, j) =>
+      `${topic} - ${lessonSuffixes[(hash + i + j) % lessonSuffixes.length]}`
+    ),
+    duration_minutes: Math.round((durationHours * 60) / moduleCount),
+  }))
+
+  return {
+    title: `${topic} - ${level.charAt(0).toUpperCase() + level.slice(1)} Course`,
+    description: `A comprehensive ${level} course on ${topic} designed for professional development.`,
+    modules,
+    total_duration_hours: durationHours,
+    level,
+  }
+}
+
+export function suggestLearningPathOrder(
+  courses: Array<{ id: string; title: string; level: string; duration_hours: number }>,
+  enrollments: Array<{ course_id: string; status: string; progress: number }>
+): Array<{ courseId: string; title: string; reason: string; priority: number }> {
+  const levelOrder: Record<string, number> = { beginner: 1, intermediate: 2, advanced: 3 }
+
+  return courses
+    .map(c => {
+      const enrollment = enrollments.find(e => e.course_id === c.id)
+      const isComplete = enrollment?.status === 'completed'
+      const isInProgress = enrollment?.status === 'in_progress'
+
+      let priority = levelOrder[c.level] || 2
+      if (isComplete) priority += 10 // push completed to end
+      if (isInProgress) priority -= 0.5 // prioritize in-progress
+
+      const reason = isComplete
+        ? 'Already completed'
+        : isInProgress
+          ? `Continue from ${enrollment?.progress || 0}%`
+          : `Start ${c.level} content`
+
+      return { courseId: c.id, title: c.title, reason, priority }
+    })
+    .sort((a, b) => a.priority - b.priority)
+}
+
+export function scoreCareerSiteEffectiveness(config: {
+  enabled: boolean
+  hero_title: string
+  hero_subtitle: string
+  sections: string[]
+  theme: string
+}): AIScore {
+  const factors: Array<{ factor: string; score: number; weight: number }> = []
+
+  // Enabled
+  factors.push({ factor: 'Active', score: config.enabled ? 100 : 0, weight: 0.15 })
+
+  // Hero content quality
+  const titleQuality = clamp((config.hero_title?.length || 0) * 3, 0, 100)
+  factors.push({ factor: 'Hero Title', score: titleQuality, weight: 0.2 })
+
+  const subtitleQuality = clamp((config.hero_subtitle?.length || 0) * 1.5, 0, 100)
+  factors.push({ factor: 'Hero Subtitle', score: subtitleQuality, weight: 0.15 })
+
+  // Sections completeness
+  const allSections = ['about', 'benefits', 'positions', 'team', 'testimonials']
+  const sectionScore = pct(config.sections?.length || 0, allSections.length)
+  factors.push({ factor: 'Content Sections', score: sectionScore, weight: 0.25 })
+
+  // Theme set
+  factors.push({ factor: 'Branding', score: config.theme ? 85 : 30, weight: 0.25 })
+
+  const total = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+
+  return {
+    value: total,
+    label: total >= 80 ? 'Excellent' : total >= 60 ? 'Good' : total >= 40 ? 'Needs Work' : 'Incomplete',
+    breakdown: factors,
+    trend: 'stable',
+  }
+}
+
+export interface JobBoardRecommendation {
+  id: string
+  name: string
+  score: number
+  reason: string
+  recommended: boolean
+}
+
+export function recommendJobBoards(jobPosting: {
+  title: string
+  type: string
+  salary_min?: number
+  salary_max?: number
+  department_id?: string
+  location?: string
+}): JobBoardRecommendation[] {
+  const title = (jobPosting.title || '').toLowerCase()
+  const isTech = /engineer|developer|designer|data|devops|ux|product/i.test(title)
+  const isSenior = /senior|lead|head|director|vp|chief|cto|cfo/i.test(title)
+  const isContract = jobPosting.type === 'contract'
+
+  const boards: JobBoardRecommendation[] = [
+    {
+      id: 'linkedin',
+      name: 'LinkedIn',
+      score: 92,
+      reason: 'Best reach for professional roles across Africa',
+      recommended: true,
+    },
+    {
+      id: 'indeed',
+      name: 'Indeed',
+      score: 85,
+      reason: 'High volume job board with strong African presence',
+      recommended: true,
+    },
+    {
+      id: 'glassdoor',
+      name: 'Glassdoor',
+      score: isSenior ? 82 : 68,
+      reason: isSenior ? 'Senior candidates research companies on Glassdoor' : 'Good for employer branding',
+      recommended: isSenior,
+    },
+    {
+      id: 'google_jobs',
+      name: 'Google Jobs',
+      score: 78,
+      reason: 'Free distribution through Google search results',
+      recommended: true,
+    },
+    {
+      id: 'ziprecruiter',
+      name: 'ZipRecruiter',
+      score: isContract ? 75 : 60,
+      reason: isContract ? 'Strong for contract/freelance roles' : 'General job board',
+      recommended: isContract,
+    },
+    {
+      id: 'angellist',
+      name: 'AngelList',
+      score: isTech ? 88 : 45,
+      reason: isTech ? 'Top board for tech talent and startups' : 'Primarily tech-focused audience',
+      recommended: isTech,
+    },
+    {
+      id: 'career_site',
+      name: 'Company Career Site',
+      score: 95,
+      reason: 'Direct applications with no middleman fees',
+      recommended: true,
+    },
+  ]
+
+  return boards.sort((a, b) => b.score - a.score)
+}

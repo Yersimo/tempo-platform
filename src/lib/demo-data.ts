@@ -848,6 +848,94 @@ export const kashNotifications = [
 ]
 
 // ============================================================
+// LEARNING PATHS
+// ============================================================
+
+export const demoLearningPaths = [
+  { id: 'lp-1', org_id: 'org-1', title: 'New Manager Essentials', description: 'Complete pathway for first-time managers covering leadership, communication, and team management', course_ids: ['course-1', 'course-5', 'course-7'], estimated_hours: 44, level: 'intermediate' as const, created_at: '2025-09-01T00:00:00Z' },
+  { id: 'lp-2', org_id: 'org-1', title: 'Compliance Mastery', description: 'Mandatory compliance training pathway for all employees', course_ids: ['course-2', 'course-6'], estimated_hours: 7, level: 'beginner' as const, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'lp-3', org_id: 'org-1', title: 'Digital Banking Specialist', description: 'Technical pathway for understanding modern banking tech stack', course_ids: ['course-4', 'course-7', 'course-3'], estimated_hours: 40, level: 'advanced' as const, created_at: '2025-10-01T00:00:00Z' },
+  { id: 'lp-4', org_id: 'org-1', title: 'Executive Leadership Track', description: 'Senior leadership development pathway for director-level and above', course_ids: ['course-1', 'course-8'], estimated_hours: 28, level: 'advanced' as const, created_at: '2025-05-01T00:00:00Z' },
+]
+
+export const kashLearningPaths = [
+  { id: 'klp-1', org_id: 'org-2', title: 'Consultant Foundations', description: 'Essential skills pathway for new consultants', course_ids: ['kcourse-1', 'kcourse-5'], estimated_hours: 32, level: 'beginner' as const, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'klp-2', org_id: 'org-2', title: 'Partner Track', description: 'Advanced pathway for senior consultants aiming for partnership', course_ids: ['kcourse-3', 'kcourse-6', 'kcourse-2'], estimated_hours: 68, level: 'advanced' as const, created_at: '2025-04-01T00:00:00Z' },
+  { id: 'klp-3', org_id: 'org-2', title: 'Data-Driven Advisory', description: 'Analytics and technology skills for modern consulting', course_ids: ['kcourse-4', 'kcourse-2'], estimated_hours: 36, level: 'intermediate' as const, created_at: '2025-07-01T00:00:00Z' },
+]
+
+// ============================================================
+// LIVE SESSIONS
+// ============================================================
+
+export const demoLiveSessions = [
+  { id: 'ls-1', org_id: 'org-1', course_id: 'course-1', title: 'Leadership Q&A with CHRO', instructor: 'Amara Kone', scheduled_at: '2026-03-05T10:00:00Z', duration_minutes: 60, type: 'q_and_a' as const, capacity: 50, enrolled_count: 38, meeting_url: 'https://meet.tempo.com/ls-1', status: 'upcoming' as const },
+  { id: 'ls-2', org_id: 'org-1', course_id: 'course-3', title: 'Advanced Credit Analysis Workshop', instructor: 'Amadou Diallo', scheduled_at: '2026-03-10T14:00:00Z', duration_minutes: 120, type: 'workshop' as const, capacity: 30, enrolled_count: 28, meeting_url: 'https://meet.tempo.com/ls-2', status: 'upcoming' as const },
+  { id: 'ls-3', org_id: 'org-1', course_id: 'course-4', title: 'Digital Banking API Deep Dive', instructor: 'Babajide Ogunleye', scheduled_at: '2026-02-25T09:00:00Z', duration_minutes: 90, type: 'webinar' as const, capacity: 100, enrolled_count: 72, meeting_url: 'https://meet.tempo.com/ls-3', status: 'completed' as const },
+  { id: 'ls-4', org_id: 'org-1', course_id: 'course-2', title: 'AML Compliance Update 2026', instructor: 'Chukwuma Obi', scheduled_at: '2026-03-15T11:00:00Z', duration_minutes: 45, type: 'webinar' as const, capacity: 200, enrolled_count: 145, meeting_url: 'https://meet.tempo.com/ls-4', status: 'upcoming' as const },
+  { id: 'ls-5', org_id: 'org-1', course_id: 'course-5', title: 'Customer Experience Role Play', instructor: 'Folake Adebayo', scheduled_at: '2026-02-20T15:00:00Z', duration_minutes: 90, type: 'workshop' as const, capacity: 20, enrolled_count: 20, meeting_url: 'https://meet.tempo.com/ls-5', status: 'completed' as const },
+]
+
+export const kashLiveSessions = [
+  { id: 'kls-1', org_id: 'org-2', course_id: 'kcourse-1', title: 'Case Interview Masterclass', instructor: 'Naledi Mthembu', scheduled_at: '2026-03-07T09:00:00Z', duration_minutes: 120, type: 'workshop' as const, capacity: 25, enrolled_count: 22, meeting_url: 'https://meet.tempo.com/kls-1', status: 'upcoming' as const },
+  { id: 'kls-2', org_id: 'org-2', course_id: 'kcourse-3', title: 'C-Suite Communication Skills', instructor: 'Olumide Kash', scheduled_at: '2026-03-12T14:00:00Z', duration_minutes: 60, type: 'webinar' as const, capacity: 40, enrolled_count: 35, meeting_url: 'https://meet.tempo.com/kls-2', status: 'upcoming' as const },
+  { id: 'kls-3', org_id: 'org-2', course_id: 'kcourse-4', title: 'Python for Consultants Workshop', instructor: 'Farah Benali', scheduled_at: '2026-02-22T10:00:00Z', duration_minutes: 180, type: 'workshop' as const, capacity: 15, enrolled_count: 15, meeting_url: 'https://meet.tempo.com/kls-3', status: 'completed' as const },
+  { id: 'kls-4', org_id: 'org-2', course_id: 'kcourse-5', title: 'Africa Markets Roundtable', instructor: 'Kweku Mensah-Bonsu', scheduled_at: '2026-03-20T11:00:00Z', duration_minutes: 90, type: 'q_and_a' as const, capacity: 50, enrolled_count: 38, meeting_url: 'https://meet.tempo.com/kls-4', status: 'upcoming' as const },
+]
+
+// ============================================================
+// AI BUILDER TEMPLATES (shared, not org-specific)
+// ============================================================
+
+export const aiBuilderTemplates = [
+  { id: 'tpl-1', title: 'Onboarding Program', description: 'Comprehensive new hire orientation covering company culture, tools, and processes', category: 'Onboarding', estimated_duration: 8, module_count: 5 },
+  { id: 'tpl-2', title: 'Compliance Training', description: 'Regulatory compliance course with assessments and certifications', category: 'Compliance', estimated_duration: 4, module_count: 4 },
+  { id: 'tpl-3', title: 'Leadership Development', description: 'Emerging leaders program covering communication, delegation, and decision-making', category: 'Leadership', estimated_duration: 16, module_count: 6 },
+  { id: 'tpl-4', title: 'Technical Skills Bootcamp', description: 'Intensive technical upskilling program with hands-on projects', category: 'Technical', estimated_duration: 24, module_count: 8 },
+  { id: 'tpl-5', title: 'Sales Enablement', description: 'Product knowledge, objection handling, and sales methodology training', category: 'Sales', estimated_duration: 12, module_count: 5 },
+  { id: 'tpl-6', title: 'Diversity & Inclusion', description: 'Building inclusive workplaces through awareness, empathy, and action', category: 'Culture', estimated_duration: 6, module_count: 4 },
+]
+
+// ============================================================
+// CAREER SITE CONFIG
+// ============================================================
+
+export const demoCareerSiteConfig = {
+  org_id: 'org-1',
+  enabled: true,
+  theme: 'professional' as const,
+  hero_title: 'Build Your Career at Ecobank',
+  hero_subtitle: 'Join Africa\'s leading pan-African banking group and make an impact across 33 countries',
+  logo_url: null,
+  sections: ['about', 'benefits', 'positions', 'team', 'testimonials'] as string[],
+}
+
+export const kashCareerSiteConfig = {
+  org_id: 'org-2',
+  enabled: true,
+  theme: 'modern' as const,
+  hero_title: 'Shape Africa\'s Future with Kash & Co',
+  hero_subtitle: 'Join a premier consulting firm driving transformation across the continent',
+  logo_url: null,
+  sections: ['about', 'benefits', 'positions', 'team'] as string[],
+}
+
+// ============================================================
+// JOB DISTRIBUTIONS
+// ============================================================
+
+export const demoJobDistributions = [
+  { id: 'dist-1', org_id: 'org-1', job_id: 'job-1', boards: ['linkedin', 'indeed', 'glassdoor', 'google_jobs'] as string[], posted_at: '2026-01-16T00:00:00Z', status_per_board: { linkedin: 'posted' as const, indeed: 'posted' as const, glassdoor: 'posted' as const, google_jobs: 'posted' as const } },
+  { id: 'dist-2', org_id: 'org-1', job_id: 'job-2', boards: ['linkedin', 'indeed'] as string[], posted_at: '2026-02-02T00:00:00Z', status_per_board: { linkedin: 'posted' as const, indeed: 'posted' as const } },
+  { id: 'dist-3', org_id: 'org-1', job_id: 'job-4', boards: ['linkedin', 'indeed', 'glassdoor', 'google_jobs', 'angellist'] as string[], posted_at: '2026-02-16T00:00:00Z', status_per_board: { linkedin: 'posted' as const, indeed: 'posted' as const, glassdoor: 'pending' as const, google_jobs: 'posted' as const, angellist: 'posted' as const } },
+]
+
+export const kashJobDistributions = [
+  { id: 'kdist-1', org_id: 'org-2', job_id: 'kjob-1', boards: ['linkedin', 'indeed', 'glassdoor'] as string[], posted_at: '2026-01-21T00:00:00Z', status_per_board: { linkedin: 'posted' as const, indeed: 'posted' as const, glassdoor: 'posted' as const } },
+  { id: 'kdist-2', org_id: 'org-2', job_id: 'kjob-3', boards: ['linkedin', 'angellist'] as string[], posted_at: '2026-02-11T00:00:00Z', status_per_board: { linkedin: 'posted' as const, angellist: 'posted' as const } },
+]
+
+// ============================================================
 // MULTI-ORG HELPERS
 // ============================================================
 
@@ -898,6 +986,10 @@ export function getDemoDataForOrg(orgId: string) {
       workflowRuns: kashWorkflowRuns,
       workflowTemplates: kashWorkflowTemplates,
       notifications: kashNotifications,
+      learningPaths: kashLearningPaths,
+      liveSessions: kashLiveSessions,
+      careerSiteConfig: kashCareerSiteConfig,
+      jobDistributions: kashJobDistributions,
     }
   }
   // Default: Ecobank
@@ -946,6 +1038,10 @@ export function getDemoDataForOrg(orgId: string) {
     workflowRuns: demoWorkflowRuns,
     workflowTemplates: demoWorkflowTemplates,
     notifications: demoNotifications,
+    learningPaths: demoLearningPaths,
+    liveSessions: demoLiveSessions,
+    careerSiteConfig: demoCareerSiteConfig,
+    jobDistributions: demoJobDistributions,
   }
 }
 

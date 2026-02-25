@@ -17,6 +17,7 @@ import {
   demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
   demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
   demoNotifications,
+  demoLearningPaths, demoLiveSessions, demoCareerSiteConfig, demoJobDistributions,
   getDemoDataForOrg, allDemoCredentials,
 } from './demo-data'
 import type { DemoRole } from './demo-data'
@@ -85,6 +86,8 @@ interface TempoState {
   // Learning
   courses: typeof demoCourses
   enrollments: WidenArray<typeof demoEnrollments>
+  learningPaths: WidenArray<typeof demoLearningPaths>
+  liveSessions: WidenArray<typeof demoLiveSessions>
 
   // Engagement
   surveys: WidenArray<typeof demoSurveys>
@@ -109,6 +112,8 @@ interface TempoState {
   // Recruiting
   jobPostings: WidenArray<typeof demoJobPostings>
   applications: WidenArray<typeof demoApplications>
+  careerSiteConfig: typeof demoCareerSiteConfig
+  jobDistributions: WidenArray<typeof demoJobDistributions>
 
   // IT
   devices: WidenArray<typeof demoDevices>
@@ -195,6 +200,15 @@ interface TempoState {
   addEnrollment: (data: AnyRecord) => void
   updateEnrollment: (id: string, data: AnyRecord) => void
 
+  // Learning Paths
+  addLearningPath: (data: AnyRecord) => void
+  updateLearningPath: (id: string, data: AnyRecord) => void
+  deleteLearningPath: (id: string) => void
+
+  // Live Sessions
+  addLiveSession: (data: AnyRecord) => void
+  updateLiveSession: (id: string, data: AnyRecord) => void
+
   // Surveys
   addSurvey: (data: AnyRecord) => void
   updateSurvey: (id: string, data: AnyRecord) => void
@@ -231,6 +245,13 @@ interface TempoState {
   // Applications
   addApplication: (data: AnyRecord) => void
   updateApplication: (id: string, data: AnyRecord) => void
+
+  // Career Site
+  updateCareerSiteConfig: (data: AnyRecord) => void
+
+  // Job Distributions
+  addJobDistribution: (data: AnyRecord) => void
+  updateJobDistribution: (id: string, data: AnyRecord) => void
 
   // Devices
   addDevice: (data: AnyRecord) => void
@@ -419,6 +440,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [salaryReviews, setSalaryReviews] = useState(demoSalaryReviews)
   const [courses, setCourses] = useState(demoCourses)
   const [enrollments, setEnrollments] = useState(demoEnrollments)
+  const [learningPaths, setLearningPaths] = useState(demoLearningPaths)
+  const [liveSessions, setLiveSessions] = useState(demoLiveSessions)
   const [surveys, setSurveys] = useState(demoSurveys)
   const [engagementScores, setEngagementScores] = useState(demoEngagementScores)
   const [mentoringPrograms, setMentoringPrograms] = useState(demoMentoringPrograms)
@@ -429,6 +452,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [expenseReports, setExpenseReports] = useState(demoExpenseReports)
   const [jobPostings, setJobPostings] = useState(demoJobPostings)
   const [applications, setApplications] = useState(demoApplications)
+  const [careerSiteConfig, setCareerSiteConfig] = useState(demoCareerSiteConfig)
+  const [jobDistributions, setJobDistributions] = useState(demoJobDistributions)
   const [devices, setDevices] = useState(demoDevices)
   const [softwareLicenses, setSoftwareLicenses] = useState(demoSoftwareLicenses)
   const [itRequests, setITRequests] = useState(demoITRequests)
@@ -480,6 +505,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSalaryReviews(data.salaryReviews as any)
     setCourses(data.courses as any)
     setEnrollments(data.enrollments as any)
+    setLearningPaths(data.learningPaths as any)
+    setLiveSessions(data.liveSessions as any)
     setSurveys(data.surveys as any)
     setEngagementScores(data.engagementScores as any)
     setMentoringPrograms(data.mentoringPrograms as any)
@@ -490,6 +517,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setExpenseReports(data.expenseReports as any)
     setJobPostings(data.jobPostings as any)
     setApplications(data.applications as any)
+    setCareerSiteConfig(data.careerSiteConfig as any)
+    setJobDistributions(data.jobDistributions as any)
     setDevices(data.devices as any)
     setSoftwareLicenses(data.softwareLicenses as any)
     setITRequests(data.itRequests as any)
@@ -587,6 +616,30 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           if (data.salaryReviews?.length) setSalaryReviews(data.salaryReviews)
           if (data.courses?.length) setCourses(data.courses)
           if (data.enrollments?.length) setEnrollments(data.enrollments)
+          if (data.learningPaths?.length) {
+            setLearningPaths(data.learningPaths)
+          } else if (data.courses?.length) {
+            // Remap demo learning path course_ids to actual DB course IDs
+            const dbCourses = data.courses as Array<{ id: string }>
+            const idMap = new Map<string, string>()
+            dbCourses.forEach((c, i) => { idMap.set(`course-${i + 1}`, c.id) })
+            setLearningPaths(prev => prev.map(lp => ({
+              ...lp,
+              course_ids: (lp as any).course_ids.map((cid: string) => idMap.get(cid) || cid),
+            })) as typeof prev)
+          }
+          if (data.liveSessions?.length) {
+            setLiveSessions(data.liveSessions)
+          } else if (data.courses?.length) {
+            // Remap demo live session course_id to actual DB course IDs
+            const dbCourses2 = data.courses as Array<{ id: string }>
+            const cMap = new Map<string, string>()
+            dbCourses2.forEach((c, i) => { cMap.set(`course-${i + 1}`, c.id) })
+            setLiveSessions(prev => prev.map(s => ({
+              ...s,
+              course_id: cMap.get((s as any).course_id) || (s as any).course_id,
+            })) as typeof prev)
+          }
           if (data.surveys?.length) setSurveys(data.surveys)
           if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
           if (data.mentoringPrograms?.length) setMentoringPrograms(data.mentoringPrograms)
@@ -597,6 +650,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           if (data.expenseReports?.length) setExpenseReports(data.expenseReports)
           if (data.jobPostings?.length) setJobPostings(data.jobPostings)
           if (data.applications?.length) setApplications(data.applications)
+          if (data.careerSiteConfig) setCareerSiteConfig(data.careerSiteConfig)
+          if (data.jobDistributions?.length) {
+            setJobDistributions(data.jobDistributions)
+          } else if (data.jobPostings?.length) {
+            // Remap demo job distribution job_id to actual DB job IDs
+            const dbJobs = data.jobPostings as Array<{ id: string }>
+            const jMap = new Map<string, string>()
+            dbJobs.forEach((j, i) => { jMap.set(`job-${i + 1}`, j.id) })
+            setJobDistributions(prev => prev.map(d => ({
+              ...d,
+              job_id: jMap.get((d as any).job_id) || (d as any).job_id,
+            })) as typeof prev)
+          }
           if (data.devices?.length) setDevices(data.devices)
           if (data.softwareLicenses?.length) setSoftwareLicenses(data.softwareLicenses)
           if (data.itRequests?.length) setITRequests(data.itRequests)
@@ -845,6 +911,45 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('enrollments', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- CRUD: Learning Paths ----
+  const addLearningPath = useCallback((data: AnyRecord) => {
+    const id = genId('lp')
+    setLearningPaths(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'learning_path', id, `Created learning path: ${data.title}`)
+    addToast('Learning path created')
+    apiPost('learning_paths', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateLearningPath = useCallback((id: string, data: AnyRecord) => {
+    setLearningPaths(prev => prev.map(lp => lp.id === id ? { ...lp, ...data } : lp) as typeof prev)
+    logAudit('update', 'learning_path', id, 'Updated learning path')
+    addToast('Learning path updated')
+    apiPost('learning_paths', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const deleteLearningPath = useCallback((id: string) => {
+    setLearningPaths(prev => prev.filter(lp => lp.id !== id))
+    logAudit('delete', 'learning_path', id, 'Deleted learning path')
+    addToast('Learning path deleted')
+    apiPost('learning_paths', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Live Sessions ----
+  const addLiveSession = useCallback((data: AnyRecord) => {
+    const id = genId('ls')
+    setLiveSessions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'live_session', id, `Scheduled session: ${data.title}`)
+    addToast('Live session scheduled')
+    apiPost('live_sessions', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateLiveSession = useCallback((id: string, data: AnyRecord) => {
+    setLiveSessions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'live_session', id, 'Updated live session')
+    addToast('Live session updated')
+    apiPost('live_sessions', 'update', data, id)
+  }, [logAudit, addToast])
+
   // ---- CRUD: Surveys ----
   const addSurvey = useCallback((data: AnyRecord) => {
     const id = genId('survey')
@@ -997,6 +1102,30 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'application', id, `Updated application status to ${data.status || data.stage || 'updated'}`)
     addToast('Application updated')
     apiPost('applications', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Career Site ----
+  const updateCareerSiteConfig = useCallback((data: AnyRecord) => {
+    setCareerSiteConfig(prev => ({ ...prev, ...data }))
+    logAudit('update', 'career_site', 'config', 'Updated career site configuration')
+    addToast('Career site updated')
+    apiPost('career_site', 'update', data)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Job Distributions ----
+  const addJobDistribution = useCallback((data: AnyRecord) => {
+    const id = genId('dist')
+    setJobDistributions(prev => [...prev, { id, org_id: orgIdRef.current, posted_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'job_distribution', id, `Distributed job to ${(data.boards || []).length} boards`)
+    addToast('Job posted to boards')
+    apiPost('job_distributions', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateJobDistribution = useCallback((id: string, data: AnyRecord) => {
+    setJobDistributions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    logAudit('update', 'job_distribution', id, 'Updated job distribution')
+    addToast('Distribution updated')
+    apiPost('job_distributions', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT ----
@@ -1460,12 +1589,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     org, user: demoUser, currentUser, currentEmployeeId, departments, employees,
     goals, reviewCycles, reviews, feedback,
     compBands, salaryReviews,
-    courses, enrollments,
+    courses, enrollments, learningPaths, liveSessions,
     surveys, engagementScores,
     mentoringPrograms, mentoringPairs,
     payrollRuns, leaveRequests,
     benefitPlans, expenseReports,
-    jobPostings, applications,
+    jobPostings, applications, careerSiteConfig, jobDistributions,
     devices, softwareLicenses, itRequests,
     invoices, budgets, vendors,
     projects, milestones, tasks, taskDependencies,
@@ -1484,6 +1613,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addSalaryReview, updateSalaryReview,
     addCourse, updateCourse,
     addEnrollment, updateEnrollment,
+    addLearningPath, updateLearningPath, deleteLearningPath,
+    addLiveSession, updateLiveSession,
     addSurvey, updateSurvey,
     addMentoringProgram, updateMentoringProgram,
     addMentoringPair, updateMentoringPair,
@@ -1493,6 +1624,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
     addJobPosting, updateJobPosting,
     addApplication, updateApplication,
+    updateCareerSiteConfig,
+    addJobDistribution, updateJobDistribution,
     addDevice, updateDevice,
     addSoftwareLicense, updateSoftwareLicense,
     addITRequest, updateITRequest,
