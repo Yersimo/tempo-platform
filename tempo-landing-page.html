@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tempo — The Unified Workforce Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --o:#ea580c;--ol:#fb923c;--od:#c2410c;
+  --dk:#0f1117;--dk2:#161820;--dk3:#1e2028;
+  --bg:#f7f7f9;--card:#fff;
+  --t1:#111118;--t2:#6b6b78;--t3:#a0a0ad;--t4:#c8c8d0;
+  --bd:rgba(0,0,0,0.04);--bdd:rgba(255,255,255,0.06);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--t1);-webkit-font-smoothing:antialiased;background:#fff;overflow-x:hidden}
+/* Nav */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:64px;display:flex;align-items:center;justify-content:space-between;transition:all .3s}
+.nav.scrolled{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);box-shadow:0 1px 12px rgba(0,0,0,.04)}
+.nav-left{display:flex;align-items:center;gap:40px}
+.nav-logo{display:flex;align-items:flex-end;gap:0;text-decoration:none}
+.nav-links{display:flex;gap:28px}
+.nav-links a{font-size:14px;font-weight:400;color:var(--t2);text-decoration:none;transition:.15s}.nav-links a:hover{color:var(--t1)}
+.nav-cta{font-size:14px;font-weight:500;color:#fff;background:var(--o);padding:8px 20px;border-radius:8px;text-decoration:none;transition:.15s}.nav-cta:hover{background:var(--od)}
+.nav-demo-link{font-size:14px;font-weight:400;color:var(--o);text-decoration:none;transition:.15s;margin-right:12px}.nav-demo-link:hover{color:var(--od)}
+/* Hero */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:120px 48px 80px;position:relative;background:var(--dk);overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 70%,rgba(234,88,12,.07) 0%,transparent 50%),radial-gradient(ellipse at 70% 30%,rgba(251,146,60,.04) 0%,transparent 50%)}
+.hero-badge{font-size:12px;font-weight:500;color:var(--ol);border:1px solid rgba(234,88,12,.2);padding:5px 16px;border-radius:100px;margin-bottom:24px;display:inline-block;position:relative}
+.hero h1{font-size:clamp(36px,5.5vw,72px);font-weight:300;color:#fff;letter-spacing:-0.035em;line-height:1.08;max-width:800px;margin-bottom:20px;position:relative}
+.hero h1 em{font-style:normal;color:var(--ol)}
+.hero-sub{font-size:18px;font-weight:300;color:rgba(255,255,255,.35);line-height:1.65;max-width:580px;margin-bottom:36px;position:relative}
+.hero-ctas{display:flex;gap:12px;position:relative}
+.btn-primary{font-size:15px;font-weight:500;color:#fff;background:var(--o);padding:12px 28px;border-radius:10px;text-decoration:none;transition:.2s;border:none;cursor:pointer}.btn-primary:hover{background:var(--od);transform:translateY(-1px);box-shadow:0 4px 20px rgba(234,88,12,.3)}
+.btn-secondary{font-size:15px;font-weight:400;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);padding:12px 28px;border-radius:10px;text-decoration:none;transition:.2s;background:transparent}.btn-secondary:hover{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)}
+/* Product Screenshot */
+.hero-product{margin-top:56px;width:100%;max-width:1100px;position:relative}
+.hero-product-frame{background:var(--dk2);border:1px solid var(--bdd);border-radius:16px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.4);position:relative}
+.hero-product-topbar{height:40px;background:var(--dk);border-bottom:1px solid var(--bdd);display:flex;align-items:center;padding:0 16px;gap:8px}
+.hero-product-topbar .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hero-product-body{display:grid;grid-template-columns:220px 1fr;min-height:420px}
+.demo-sidebar{background:var(--dk);padding:16px 12px;border-right:1px solid var(--bdd)}
+.demo-nav-logo{display:flex;align-items:center;gap:3px;padding:6px 10px 16px}
+.demo-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;font-size:13px;color:rgba(255,255,255,.3);margin-bottom:2px;position:relative}
+.demo-nav-item.active{background:rgba(234,88,12,.12);color:var(--ol);font-weight:500}
+.demo-nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--o);border-radius:0 3px 3px 0}
+.demo-nav-item svg{width:16px;height:16px;flex-shrink:0}
+.demo-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.08);padding:12px 10px 6px}
+.demo-canvas{background:var(--bg);padding:24px}
+.demo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.demo-title{font-size:18px;font-weight:600;color:var(--t1)}
+.demo-subtitle{font-size:12px;color:var(--t3)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.stat-card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:4px}
+.stat-val{font-size:24px;font-weight:700;letter-spacing:-.02em;color:var(--t1)}
+.stat-val.orange{color:var(--o)}
+.stat-delta{font-size:11px;color:#16a34a;margin-top:2px}
+.demo-table{width:100%;background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.demo-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--bg);font-weight:600}
+.demo-table td{font-size:13px;padding:10px 14px;border-bottom:1px solid var(--bd);color:var(--t2)}.demo-table td:first-child{font-weight:500;color:var(--t1)}
+.demo-table tr:last-child td{border-bottom:none}
+.demo-tag{font-size:10px;padding:2px 8px;border-radius:100px;font-weight:500;display:inline-block}
+.tag-green{background:#f0fdf4;color:#16a34a}.tag-amber{background:#fef3c7;color:#d97706}.tag-blue{background:#eff6ff;color:#2563eb}
+/* Glow */
+.hero-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(234,88,12,.08),transparent 70%);top:60%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+/* Sections */
+.section{padding:100px 48px}
+.section-dark{background:var(--dk);color:#fff}
+.section-light{background:#fff}
+.section-alt{background:var(--bg)}
+.section-inner{max-width:1100px;margin:0 auto}
+.section-tag{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--o);margin-bottom:6px}
+.section-title{font-size:clamp(28px,3.5vw,44px);font-weight:300;letter-spacing:-.025em;line-height:1.15;margin-bottom:12px}
+.section-desc{font-size:16px;font-weight:300;color:var(--t2);line-height:1.7;max-width:560px;margin-bottom:40px}
+.section-dark .section-desc{color:rgba(255,255,255,.35)}
+/* Demo Sequences */
+.demo-seq{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-bottom:80px}.demo-seq:last-child{margin-bottom:0}
+.demo-seq.reverse{direction:rtl}.demo-seq.reverse>*{direction:ltr}
+.demo-text h3{font-size:28px;font-weight:500;letter-spacing:-.02em;margin-bottom:10px;line-height:1.2}
+.demo-text p{font-size:15px;color:var(--t2);font-weight:300;line-height:1.7}
+.demo-visual{background:var(--dk);border-radius:16px;overflow:hidden;border:1px solid var(--bdd);aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;position:relative}
+.demo-visual-light{background:#fff;border-color:var(--bd)}
+/* Principles */
+.principle-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bdd);border-radius:16px;overflow:hidden}
+.principle{padding:36px 28px;background:var(--dk2)}
+.principle-num{font-size:48px;font-weight:200;color:var(--ol);opacity:.3;line-height:1;margin-bottom:12px}
+.principle h3{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}
+.principle p{font-size:14px;color:rgba(255,255,255,.35);font-weight:300;line-height:1.7}
+/* Modules */
+.mod-tabs{display:flex;gap:4px;margin-bottom:24px;flex-wrap:wrap}
+.mod-tab{font-size:14px;font-weight:500;padding:8px 18px;border-radius:8px;background:var(--bg);color:var(--t3);border:1px solid var(--bd);cursor:pointer;transition:.15s}
+.mod-tab.active{background:var(--o);color:#fff;border-color:var(--o)}
+.mod-content{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.mod-info h3{font-size:28px;font-weight:500;margin-bottom:12px;letter-spacing:-.02em}
+.mod-info p{font-size:15px;color:var(--t2);font-weight:300;line-height:1.7;margin-bottom:16px}
+.mod-features{list-style:none;display:flex;flex-direction:column;gap:6px}
+.mod-features li{font-size:14px;color:var(--t2);padding-left:20px;position:relative}.mod-features li::before{content:'';position:absolute;left:0;top:7px;width:8px;height:8px;border-radius:50%;background:var(--ol);opacity:.3}
+/* Module Groups */
+.mod-group{margin-top:48px}
+.mod-group-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:12px}
+.mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mod-card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px;transition:.2s;cursor:default}
+.mod-card:hover{border-color:var(--ol);box-shadow:0 4px 16px rgba(234,88,12,.06)}
+.mod-card h4{font-size:14px;font-weight:600;margin-bottom:4px}
+.mod-card p{font-size:12px;color:var(--t3);line-height:1.5}
+.mod-card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:16px}
+/* Trust */
+.trust-card{background:var(--dk2);border:1px solid var(--bdd);border-radius:16px;padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.trust-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.trust-stat{text-align:center;padding:20px}
+.trust-stat-val{font-size:42px;font-weight:700;color:var(--ol);letter-spacing:-.03em}
+.trust-stat-label{font-size:12px;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+/* Integrations */
+.int-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:24px}
+.int-item{background:var(--dk2);border:1px solid var(--bdd);border-radius:12px;padding:16px;text-align:center;transition:.2s}
+.int-item:hover{border-color:var(--ol)}
+.int-item-name{font-size:13px;font-weight:500;color:#fff;margin-top:8px}
+.int-item-cat{font-size:10px;color:rgba(255,255,255,.2);margin-top:2px}
+.int-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:18px;background:rgba(255,255,255,.04)}
+/* Security */
+.sec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sec-item{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:20px}
+.sec-item h4{font-size:15px;font-weight:600;margin-bottom:4px}
+.sec-item p{font-size:13px;color:var(--t3);font-weight:300;line-height:1.5}
+/* CTA */
+.cta-section{background:linear-gradient(160deg,var(--dk) 0%,#1a1a2e 100%);padding:100px 48px;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(234,88,12,.06),transparent 60%)}
+/* Footer */
+.footer{background:var(--dk);border-top:1px solid var(--bdd);padding:40px 48px}
+.footer-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.footer-links{display:flex;gap:24px}.footer-links a{font-size:13px;color:rgba(255,255,255,.2);text-decoration:none;transition:.15s}.footer-links a:hover{color:rgba(255,255,255,.4)}
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .6s ease-out both}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.5s}
+/* Responsive */
+@media(max-width:900px){
+  .nav{padding:0 20px}.nav-links{display:none}.nav-demo-link{display:none}
+  .hero{padding:100px 20px 60px}
+  .hero-product-body{grid-template-columns:1fr}.demo-sidebar{display:none}
+  .section{padding:60px 20px}
+  .demo-seq,.mod-content{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .principle-grid,.sec-grid{grid-template-columns:1fr}
+  .mod-grid{grid-template-columns:1fr 1fr}
+  .int-grid{grid-template-columns:repeat(3,1fr)}
+  .trust-card{grid-template-columns:1fr}
+  .footer-inner{flex-direction:column;gap:16px;text-align:center}
+}
+@media(max-width:600px){
+  .mod-grid{grid-template-columns:1fr}
+  .int-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-left">
+    <a href="#" class="nav-logo">
+      <svg style="width:12px;height:auto;margin-bottom:1px" viewBox="0 0 80 100" fill="none"><line x1="2" y1="3" x2="78" y2="3" stroke="#ea580c" stroke-width="5" stroke-linecap="round" opacity=".18"/><path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" stroke-width="12" stroke-linecap="round" opacity=".5"/><path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" stroke-width="12" stroke-linecap="round"/></svg>
+      <span style="width:3px;display:inline-block"></span>
+      <span style="font-size:20px;font-weight:500;letter-spacing:-0.035em;color:var(--t1)">tempo</span>
+    </a>
+    <div class="nav-links">
+      <a href="#platform">Platform</a>
+      <a href="#modules">Modules</a>
+      <a href="#integrations">Integrations</a>
+      <a href="#enterprise">Enterprise</a>
+      <a href="#security">Security</a>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center">
+    <a href="https://tempo-platform-8dk1wxjbf-reysk-icloudcoms-projects.vercel.app" target="_blank" class="nav-demo-link">Try Live Demo</a>
+    <a href="#demo" class="nav-cta">Request a Demo</a>
+  </div>
+</nav>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge fade-up">The Unified Workforce Platform</div>
+  <h1 class="fade-up d1">Set the standard.<br>Rise to <em>meet it.</em></h1>
+  <p class="hero-sub fade-up d2">HR, payroll, recruiting, performance, and operations in one platform. One employee record. Twenty integrated modules. Nine languages. Built for the complexity of global enterprise.</p>
+  <div class="hero-ctas fade-up d3">
+    <a href="#demo" class="btn-primary">Request a Demo</a>
+    <a href="#platform" class="btn-secondary">See how it works →</a>
+  </div>
+  <!-- Product Screenshot -->
+  <div class="hero-product fade-up d4">
+    <div class="hero-product-frame">
+      <div class="hero-product-topbar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <span style="flex:1"></span>
+        <span style="font-size:12px;color:rgba(255,255,255,.12)">tempo — Dashboard</span>
+        <span style="flex:1"></span>
+      </div>
+      <div class="hero-product-body">
+        <div class="demo-sidebar">
+          <div class="demo-nav-logo">
+            <svg style="width:10px;height:auto" viewBox="0 0 80 100" fill="none"><line x1="2" y1="3" x2="78" y2="3" stroke="#fb923c" stroke-width="5" stroke-linecap="round" opacity=".18"/><path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" stroke-width="12" stroke-linecap="round" opacity=".5"/><path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" stroke-width="12" stroke-linecap="round"/></svg>
+            <span style="width:2px;display:inline-block"></span>
+            <span style="font-size:15px;font-weight:500;letter-spacing:-.035em;color:#fff">tempo</span>
+          </div>
+          <div class="demo-label">Core</div>
+          <div class="demo-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/></svg> Dashboard</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="7" r="4"/><path d="M2,21 C2,17 5,14 9,14 C13,14 16,17 16,21"/></svg> People</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16,7 V5 C16,3.5 14.5,2 12,2 C9.5,2 8,3.5 8,5 V7"/></svg> Recruiting</div>
+          <div class="demo-label">People</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3,20 C5,14 9,10 11,8"/><path d="M6,21 C8,15 12,11 14,9 C16,7 18,5 21,4"/></svg> Performance</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12,2 L12,8"/><path d="M12,10 L12,14"/><rect x="4" y="14" width="16" height="8" rx="2"/></svg> Compensation</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2,7 L12,2 L22,7 L12,12 Z"/></svg> Learning</div>
+          <div class="demo-label">Operations</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2,10 L22,10"/></svg> Payroll</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12,6 L12,12 L16,14"/></svg> Time & Attendance</div>
+          <div class="demo-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3,22 L3,3" opacity=".3"/><path d="M3,22 L22,22" opacity=".3"/><path d="M6,16 C8,14 10,11 12,8 C14,5 18,4 20,4"/></svg> Analytics</div>
+        </div>
+        <div class="demo-canvas">
+          <div class="demo-header">
+            <div><div class="demo-title">Workforce Overview</div><div class="demo-subtitle">Q4 2026 / All Regions</div></div>
+            <div style="display:flex;gap:6px"><span style="font-size:12px;padding:6px 14px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);color:var(--t3);font-weight:500">Export</span><span style="font-size:12px;padding:6px 14px;border-radius:8px;background:var(--o);color:#fff;font-weight:500">+ New Review</span></div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-label">Review Completion</div><div class="stat-val orange">78%</div><div class="stat-delta">+12% vs Q3</div></div>
+            <div class="stat-card"><div class="stat-label">Active Employees</div><div class="stat-val">48,293</div><div class="stat-delta">+2.1% YoY</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Comp Ratio</div><div class="stat-val">1.02</div><div class="stat-delta">At market</div></div>
+            <div class="stat-card"><div class="stat-label">Engagement (eNPS)</div><div class="stat-val">+42</div><div class="stat-delta">+8 vs H1</div></div>
+          </div>
+          <div class="demo-table">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr><th>Employee</th><th>Role</th><th>Region</th><th>Rating</th><th>Comp Ratio</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Sarah Chen</td><td>VP Finance</td><td>Singapore</td><td>4.2</td><td>1.04</td><td><span class="demo-tag tag-green">Complete</span></td></tr>
+                <tr><td>Marcus Weber</td><td>Dir. Engineering</td><td>Germany</td><td>3.8</td><td>0.91</td><td><span class="demo-tag tag-amber">In Review</span></td></tr>
+                <tr><td>Fatou Diallo</td><td>HRBP</td><td>Senegal</td><td>4.5</td><td>0.97</td><td><span class="demo-tag tag-green">Complete</span></td></tr>
+                <tr><td>Carlos Mendez</td><td>Country Head</td><td>Mexico</td><td>—</td><td>1.12</td><td><span class="demo-tag tag-blue">Pending</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- PRODUCT DEMOS -->
+<section class="section section-light" id="platform">
+  <div class="section-inner">
+    <div class="section-tag">How It Works</div>
+    <div class="section-title">See Tempo in action.</div>
+    <div class="section-desc">Not feature lists. Real workflows. Here's what happens when everything shares one data layer.</div>
+    <div class="demo-seq">
+      <div class="demo-text">
+        <div class="section-tag">Workflow 1</div>
+        <h3>One change. Everywhere.</h3>
+        <p>Update an employee's role once. Watch it cascade through their performance goals, comp band, learning path, payroll, and access permissions simultaneously. No sync. No delay. No spreadsheet reconciliation. This is what "unified" actually means.</p>
+      </div>
+      <div class="demo-visual">
+        <div style="padding:28px;width:100%">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ol),var(--o))"></div><div><div style="font-size:14px;font-weight:600;color:#fff">Role changed</div><div style="font-size:11px;color:rgba(255,255,255,.3)">Analyst → Senior Analyst</div></div></div>
+            <div style="margin-left:18px;border-left:2px solid rgba(255,255,255,.06);padding-left:24px;display:flex;flex-direction:column;gap:10px;padding-top:8px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Goals updated to Senior band</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.2s</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Comp band adjusted: P50 → $48,200</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.2s</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Payroll: new salary band applied</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.2s</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Learning path: Leadership Essentials</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.3s</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Benefits: tier upgrade triggered</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.3s</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ol)"></div><span style="font-size:12px;color:rgba(255,255,255,.4)">Permissions: Budget view unlocked</span><span style="font-size:10px;color:rgba(255,255,255,.12);margin-left:auto">0.3s</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-seq reverse">
+      <div class="demo-text">
+        <div class="section-tag">Workflow 2</div>
+        <h3>From review to raise. One flow.</h3>
+        <p>A completed performance review automatically triggers the compensation workflow. The manager sees the budget, the comp ratio, and the market benchmark. They propose. HR approves. Payroll executes. One flow, no handoffs, full audit trail.</p>
+      </div>
+      <div class="demo-visual">
+        <div style="padding:28px;width:100%">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px"><div style="width:8px;height:8px;border-radius:50%;background:#16a34a"></div><div><div style="font-size:12px;font-weight:500;color:#fff">Review Complete</div><div style="font-size:10px;color:rgba(255,255,255,.2)">Rating: 4.2 / Exceeds expectations</div></div></div>
+            <div style="text-align:center;font-size:16px;color:rgba(255,255,255,.08)">↓</div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.15);border-radius:10px;padding:12px 14px"><div style="width:8px;height:8px;border-radius:50%;background:var(--ol)"></div><div><div style="font-size:12px;font-weight:500;color:var(--ol)">Comp Review Triggered</div><div style="font-size:10px;color:rgba(255,255,255,.2)">Budget: $4,200 / CR: 0.94 / Mkt P50: $48,200</div></div></div>
+            <div style="text-align:center;font-size:16px;color:rgba(255,255,255,.08)">↓</div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px"><div style="width:8px;height:8px;border-radius:50%;background:#2563eb"></div><div><div style="font-size:12px;font-weight:500;color:#fff">Manager Proposes +8%</div><div style="font-size:10px;color:rgba(255,255,255,.2)">New CR: 1.01 / Within band / Awaiting HR</div></div></div>
+            <div style="text-align:center;font-size:16px;color:rgba(255,255,255,.08)">↓</div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.15);border-radius:10px;padding:12px 14px"><div style="width:8px;height:8px;border-radius:50%;background:#16a34a"></div><div><div style="font-size:12px;font-weight:500;color:#16a34a">Approved & Executed</div><div style="font-size:10px;color:rgba(255,255,255,.2)">Effective: Jan 1 / Payroll updated / Audit ref: CR-2026-4481</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-seq">
+      <div class="demo-text">
+        <div class="section-tag">Workflow 3</div>
+        <h3>Ask anything about your workforce.</h3>
+        <p>Because every module shares one data layer, you can query across boundaries. "Show me employees rated 4+ whose comp ratio is below 0.9 who haven't completed leadership training." One search. One answer. Powered by AI. Impossible with separate tools.</p>
+      </div>
+      <div class="demo-visual">
+        <div style="padding:28px;width:100%">
+          <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:12px 16px;margin-bottom:16px;border:1px solid rgba(255,255,255,.06)">
+            <div style="font-size:11px;color:rgba(255,255,255,.15);margin-bottom:4px">Query</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.6);font-weight:300">"Rated 4+ AND comp ratio < 0.9 AND no leadership training"</div>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.12);margin-bottom:8px">23 employees found across 3 modules</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;font-size:10px;color:rgba(255,255,255,.12);text-transform:uppercase;letter-spacing:.05em;padding:4px 0">
+              <div>Name</div><div>Rating</div><div>CR</div><div>Training</div>
+            </div>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;font-size:12px;color:rgba(255,255,255,.4);padding:6px 0;border-top:1px solid rgba(255,255,255,.04)">
+              <div style="color:rgba(255,255,255,.6)">Priya Sharma</div><div>4.3</div><div style="color:var(--ol)">0.87</div><div style="color:#ef4444">Not started</div>
+            </div>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;font-size:12px;color:rgba(255,255,255,.4);padding:6px 0;border-top:1px solid rgba(255,255,255,.04)">
+              <div style="color:rgba(255,255,255,.6)">Emma Lindqvist</div><div>4.1</div><div style="color:var(--ol)">0.82</div><div style="color:#ef4444">Not enrolled</div>
+            </div>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;font-size:12px;color:rgba(255,255,255,.4);padding:6px 0;border-top:1px solid rgba(255,255,255,.04)">
+              <div style="color:rgba(255,255,255,.6)">Kwame Asante</div><div>4.0</div><div style="color:var(--ol)">0.88</div><div style="color:#ef4444">Expired</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- PRINCIPLES -->
+<section class="section section-dark" id="principles">
+  <div class="section-inner">
+    <div class="section-tag">Why Tempo</div>
+    <div class="section-title" style="color:#fff">Three principles. Zero compromise.</div>
+    <div class="section-desc" style="margin-bottom:40px">Every platform claims to be "unified" and "enterprise-grade." Here's what we actually mean.</div>
+    <div class="principle-grid">
+      <div class="principle"><div class="principle-num">01</div><h3>Unified, not bundled.</h3><p>Most "all-in-one" platforms bundle separate tools under one login. Different data models, different permissions, different UX. Tempo is architecturally unified. One employee graph. One permissions engine. One data layer. When something changes, it changes everywhere, instantly.</p></div>
+      <div class="principle"><div class="principle-num">02</div><h3>Governed by design.</h3><p>Every action in Tempo has an audit trail. Role-based access isn't optional, it's structural. Compensation data is invisible without explicit permission. Workflows enforce approval chains. Built for organizations where compliance isn't a feature, it's the foundation.</p></div>
+      <div class="principle"><div class="principle-num">03</div><h3>Beautiful without compromise.</h3><p>Enterprise software shouldn't make people dread opening it. Tempo is designed so a first-time user can complete their task without training. Dark chrome for authority. Light canvas for clarity. Warm orange for humanity. Every pixel is intentional.</p></div>
+    </div>
+  </div>
+</section>
+<!-- MODULES -->
+<section class="section section-alt" id="modules">
+  <div class="section-inner">
+    <div class="section-tag">Platform</div>
+    <div class="section-title">Twenty modules. One platform.</div>
+    <div class="section-desc">Every module shares one employee graph, one permissions engine, one data layer. No integrations needed between them.</div>
+    <div class="mod-tabs">
+      <div class="mod-tab active" onclick="showModule(this,'perf')">Performance</div>
+      <div class="mod-tab" onclick="showModule(this,'comp')">Compensation</div>
+      <div class="mod-tab" onclick="showModule(this,'learn')">Learning</div>
+      <div class="mod-tab" onclick="showModule(this,'payroll')">Payroll</div>
+      <div class="mod-tab" onclick="showModule(this,'recruit')">Recruiting</div>
+      <div class="mod-tab" onclick="showModule(this,'analytics')">Analytics</div>
+    </div>
+    <!-- Performance (default) -->
+    <div class="mod-content" id="mod-perf">
+      <div class="mod-info">
+        <h3>Performance Management</h3>
+        <p>From goal cascading to calibration. The complete performance lifecycle in one module, connected to every other.</p>
+        <ul class="mod-features">
+          <li>Goal cascading from strategy to individual KPIs</li>
+          <li>Annual, mid-year, and 360-degree review cycles</li>
+          <li>9-box calibration with drag-and-drop placement</li>
+          <li>Continuous feedback and manager check-ins</li>
+          <li>Bias detection and review quality scoring (AI)</li>
+        </ul>
+      </div>
+      <div class="demo-visual-light" style="aspect-ratio:4/3;border-radius:16px;display:flex;align-items:center;justify-content:center;border:1px solid var(--bd)">
+        <div style="padding:24px;width:100%">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:14px;font-weight:600">Calibration / EMEA</div><div style="font-size:11px;color:var(--t3)">Q4 2026</div></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px;aspect-ratio:1">
+            <div style="background:#fef3c7;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#d97706;font-weight:600">2</div>
+            <div style="background:#eff6ff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#2563eb;font-weight:600">5</div>
+            <div style="background:#f0fdf4;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#16a34a;font-weight:600">12</div>
+            <div style="background:#fef3c7;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#d97706;font-weight:600">8</div>
+            <div style="background:#eff6ff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#2563eb;font-weight:600">34</div>
+            <div style="background:#f0fdf4;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#16a34a;font-weight:600">28</div>
+            <div style="background:#fef2f2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#dc2626;font-weight:600">3</div>
+            <div style="background:#fef3c7;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#d97706;font-weight:600">15</div>
+            <div style="background:#eff6ff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#2563eb;font-weight:600">7</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:var(--t4)"><span>Low potential →</span><span>High potential</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- All Modules Grid -->
+    <div class="mod-group">
+      <div class="mod-group-title">All Modules</div>
+      <div class="mod-grid">
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef3c7">📊</div><h4>Dashboard</h4><p>Unified workforce overview with real-time KPIs across every module.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#eff6ff">👥</div><h4>People</h4><p>Employee directory, org chart, documents, and bulk actions.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f0fdf4">🎯</div><h4>Recruiting</h4><p>Career site, job distribution, pipeline, and AI-powered screening.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef2f2">📈</div><h4>Performance</h4><p>Goals, reviews, 360 feedback, calibration, and bias detection.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f5f3ff">💰</div><h4>Compensation</h4><p>Salary bands, equity grants, comp planning, and market benchmarks.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef3c7">🎓</div><h4>Learning</h4><p>AI course builder, virtual classroom, learning paths, and quizzes.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#eff6ff">📊</div><h4>Engagement</h4><p>Pulse surveys, eNPS, custom surveys, and action plans.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f0fdf4">🤝</div><h4>Mentoring</h4><p>Mentor matching, session tracking, and development programs.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef2f2">💳</div><h4>Payroll</h4><p>Payroll runs, contractor payments, tax configuration, and compliance.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f5f3ff">⏰</div><h4>Time & Attendance</h4><p>Leave requests, time tracking, shift management, and policies.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef3c7">🏥</div><h4>Benefits</h4><p>Plan enrollment, dependents, life events, and open enrollment.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#eff6ff">🧾</div><h4>Expense</h4><p>Expense reports, mileage logs, receipt scanning, and policies.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f0fdf4">🚀</div><h4>Onboarding</h4><p>Automated workflows, task checklists, and new hire experiences.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef2f2">💻</div><h4>IT Devices</h4><p>Asset tracking, assignments, lifecycle management, and audits.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f5f3ff">🔧</div><h4>IT Apps</h4><p>Software licenses, SaaS spend tracking, and provisioning.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef3c7">📋</div><h4>Projects</h4><p>Kanban boards, milestones, task dependencies, and resource allocation.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#eff6ff">🎯</div><h4>Strategy</h4><p>OKRs, KPIs, strategic initiatives, and cascading alignment.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f0fdf4">⚡</div><h4>Workflow Studio</h4><p>Visual automation builder for any cross-module workflow.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#fef2f2">📊</div><h4>Analytics</h4><p>Cross-module AI-powered insights, reports, and workforce intelligence.</p></div>
+        <div class="mod-card"><div class="mod-card-icon" style="background:#f5f3ff">🏪</div><h4>Marketplace</h4><p>Third-party integrations and pre-built workflow templates.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- INTEGRATIONS -->
+<section class="section section-dark" id="integrations">
+  <div class="section-inner">
+    <div class="section-tag">Integrations</div>
+    <div class="section-title" style="color:#fff">Connects to your stack.</div>
+    <div class="section-desc">Nine built-in connectors with SCIM 2.0 provisioning. Webhooks for everything else.</div>
+    <div class="int-grid">
+      <div class="int-item"><div class="int-icon">🔷</div><div class="int-item-name">Azure AD</div><div class="int-item-cat">Identity</div></div>
+      <div class="int-item"><div class="int-icon">🟡</div><div class="int-item-name">Google Workspace</div><div class="int-item-cat">Identity</div></div>
+      <div class="int-item"><div class="int-icon">💬</div><div class="int-item-name">Slack</div><div class="int-item-cat">Communication</div></div>
+      <div class="int-item"><div class="int-icon">🟣</div><div class="int-item-name">Microsoft Teams</div><div class="int-item-cat">Communication</div></div>
+      <div class="int-item"><div class="int-icon">🟢</div><div class="int-item-name">BambooHR</div><div class="int-item-cat">HRIS</div></div>
+      <div class="int-item"><div class="int-icon">💙</div><div class="int-item-name">Xero</div><div class="int-item-cat">Finance</div></div>
+      <div class="int-item"><div class="int-icon">🟩</div><div class="int-item-name">QuickBooks</div><div class="int-item-cat">Finance</div></div>
+      <div class="int-item"><div class="int-icon">🔵</div><div class="int-item-name">LinkedIn Talent</div><div class="int-item-cat">Recruiting</div></div>
+      <div class="int-item"><div class="int-icon">🔗</div><div class="int-item-name">SCIM 2.0</div><div class="int-item-cat">Provisioning</div></div>
+      <div class="int-item"><div class="int-icon">⚡</div><div class="int-item-name">Webhooks</div><div class="int-item-cat">Custom</div></div>
+    </div>
+  </div>
+</section>
+<!-- TRUST -->
+<section class="section section-dark" id="enterprise" style="padding-top:40px">
+  <div class="section-inner">
+    <div class="section-tag">Built for Enterprise</div>
+    <div class="section-title" style="color:#fff;margin-bottom:28px">Built for the world's most<br>complex organizations.</div>
+    <div class="trust-card">
+      <div>
+        <p style="font-size:15px;color:rgba(255,255,255,.4);font-weight:300;line-height:1.7;margin-bottom:16px">Tempo was born inside a pan-African bank operating across 33 countries, 4 regulatory frameworks, and 3 languages. It handles multi-currency compensation, board-level governance reporting, and incentive calculations that satisfy regulators from Lagos to London to Sao Paulo.</p>
+        <p style="font-size:15px;color:rgba(255,255,255,.4);font-weight:300;line-height:1.7">That complexity is the product. Whether you're a multinational running performance reviews across 80 countries, a bank calibrating compensation across regulatory zones, or a scaling company that wants one platform instead of twelve, Tempo was built for you.</p>
+      </div>
+      <div class="trust-stats">
+        <div class="trust-stat"><div class="trust-stat-val">80+</div><div class="trust-stat-label">Countries Supported</div></div>
+        <div class="trust-stat"><div class="trust-stat-val">20+</div><div class="trust-stat-label">Integrated Modules</div></div>
+        <div class="trust-stat"><div class="trust-stat-val">9</div><div class="trust-stat-label">Languages</div></div>
+        <div class="trust-stat"><div class="trust-stat-val">100%</div><div class="trust-stat-label">Audit Coverage</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- SECURITY -->
+<section class="section section-alt" id="security">
+  <div class="section-inner">
+    <div class="section-tag">Security</div>
+    <div class="section-title">Enterprise-grade by default.</div>
+    <div class="section-desc">Security and compliance are not features in Tempo. They are the architecture.</div>
+    <div class="sec-grid">
+      <div class="sec-item"><h4>Bank-Grade Encryption</h4><p>AES-256 at rest, TLS 1.3 in transit. PBKDF2 password hashing. Your data is protected at every layer.</p></div>
+      <div class="sec-item"><h4>Role-Based Access</h4><p>Dynamic permissions based on role, region, and attribute. Enforced across every screen, every export, every API call.</p></div>
+      <div class="sec-item"><h4>Full Audit Trail</h4><p>Every action is logged with user, timestamp, before/after state, and IP. Immutable. Regulator-ready.</p></div>
+      <div class="sec-item"><h4>SSO & SCIM</h4><p>SAML 2.0, Active Directory, Okta, Azure AD. Automatic provisioning and deprovisioning via SCIM 2.0.</p></div>
+      <div class="sec-item"><h4>MFA & Session Security</h4><p>TOTP-based multi-factor authentication with backup codes. Secure JWT sessions with httpOnly cookies.</p></div>
+      <div class="sec-item"><h4>SOC 2 Type II</h4><p>Annual third-party audits. Continuous monitoring. Penetration testing. SOC 2 compliance framework built-in.</p></div>
+    </div>
+  </div>
+</section>
+<!-- CTA -->
+<section class="cta-section" id="demo">
+  <div style="position:relative;z-index:1">
+    <svg style="width:40px;height:auto;margin-bottom:20px;opacity:.5" viewBox="0 0 80 100" fill="none"><line x1="2" y1="3" x2="78" y2="3" stroke="#fb923c" stroke-width="4" stroke-linecap="round" opacity=".18"/><path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" stroke-width="10" stroke-linecap="round" opacity=".5"/><path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" stroke-width="10" stroke-linecap="round"/></svg>
+    <div style="font-size:clamp(28px,4vw,48px);font-weight:300;color:#fff;letter-spacing:-.025em;margin-bottom:12px">Ready to see Tempo?</div>
+    <div style="font-size:16px;color:rgba(255,255,255,.3);font-weight:300;margin-bottom:32px;max-width:420px;margin-left:auto;margin-right:auto;line-height:1.6">Request a personalized demo for your organization, or explore the live platform yourself.</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="mailto:hello@tempo.work" class="btn-primary" style="font-size:16px;padding:14px 36px">Request a Demo</a>
+      <a href="https://tempo-platform-8dk1wxjbf-reysk-icloudcoms-projects.vercel.app" target="_blank" class="btn-secondary" style="font-size:16px;padding:14px 36px">Try Live Demo →</a>
+    </div>
+    <div style="font-size:13px;color:rgba(255,255,255,.15);margin-top:14px">Or email hello@tempo.work</div>
+  </div>
+</section>
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="nav-logo" style="gap:0">
+      <svg style="width:10px;height:auto;margin-bottom:1px" viewBox="0 0 80 100" fill="none"><line x1="2" y1="3" x2="78" y2="3" stroke="#fb923c" stroke-width="5" stroke-linecap="round" opacity=".18"/><path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" stroke-width="12" stroke-linecap="round" opacity=".5"/><path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" stroke-width="12" stroke-linecap="round"/></svg>
+      <span style="width:2px;display:inline-block"></span>
+      <span style="font-size:16px;font-weight:500;letter-spacing:-.035em;color:rgba(255,255,255,.3)">tempo</span>
+    </div>
+    <div class="footer-links">
+      <a href="#platform">Platform</a>
+      <a href="#modules">Modules</a>
+      <a href="#integrations">Integrations</a>
+      <a href="#security">Security</a>
+      <a href="#">About</a>
+      <a href="#">Careers</a>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,.1)">&copy; 2026 Tempo</div>
+  </div>
+</footer>
+<script>
+// Nav scroll effect
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',window.scrollY>50)
+})
+// Module tab switching
+function showModule(tab, id) {
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+}
+</script>
+</body>
+</html>
