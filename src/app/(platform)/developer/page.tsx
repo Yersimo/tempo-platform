@@ -41,10 +41,11 @@ import type {
   SDKLanguage,
   SDKEndpoint,
 } from '@/lib/developer-portal'
-
-const ORG_ID = 'org-1'
+import { useTempo } from '@/lib/store'
 
 export default function DeveloperPortalPage() {
+  const { org } = useTempo()
+  const ORG_ID = org?.id || 'org-1'
   const [activeTab, setActiveTab] = useState('api-keys')
 
   // ---- API Keys state ----

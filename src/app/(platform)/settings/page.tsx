@@ -15,7 +15,7 @@ import {
   Building, Users, Shield, Bell, Palette, Globe, Search, Clock, Plug,
   ShieldCheck, Mail, Banknote, Building2, MessageSquare, Video,
   CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff,
-  CreditCard, ExternalLink, Check, Sparkles, Crown, Zap
+  CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
@@ -113,6 +113,8 @@ export default function SettingsPage() {
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
   const [billingLoading, setBillingLoading] = useState(false)
   const [billingActionLoading, setBillingActionLoading] = useState<string | null>(null)
+  const [billingDemo, setBillingDemo] = useState(false)
+  const [billingLoaded, setBillingLoaded] = useState(false)
 
   // Load billing data
   const loadBilling = useCallback(async () => {
@@ -123,11 +125,13 @@ export default function SettingsPage() {
         const data = await res.json()
         setBillingSubscription(data.subscription || null)
         setBillingPlans(data.plans || [])
+        setBillingDemo(!!data.demo)
       }
     } catch {
       // Use empty state on error
     }
     setBillingLoading(false)
+    setBillingLoaded(true)
   }, [])
 
   // Handle billing query params (success / canceled)
@@ -144,10 +148,10 @@ export default function SettingsPage() {
 
   // Load billing when tab is activated
   useEffect(() => {
-    if (activeTab === 'billing' && !billingSubscription && !billingLoading) {
+    if (activeTab === 'billing' && !billingLoaded && !billingLoading) {
       loadBilling()
     }
-  }, [activeTab, billingSubscription, billingLoading, loadBilling])
+  }, [activeTab, billingLoaded, billingLoading, loadBilling])
 
   // Billing actions
   const handleBillingUpgrade = async (planId: string) => {
@@ -225,10 +229,10 @@ export default function SettingsPage() {
     if (tab === 'integrations' && !integrationsLoaded) {
       loadIntegrations()
     }
-    if (tab === 'billing' && !billingSubscription && !billingLoading) {
+    if (tab === 'billing' && !billingLoaded && !billingLoading) {
       loadBilling()
     }
-  }, [integrationsLoaded, loadIntegrations, billingSubscription, billingLoading, loadBilling])
+  }, [integrationsLoaded, loadIntegrations, billingLoaded, billingLoading, loadBilling])
 
   // Get connector config schema
   const getConfigSchema = (providerId: string): ConfigField[] => {
@@ -559,6 +563,16 @@ export default function SettingsPage() {
             </div>
           ) : (
             <>
+              {/* Demo Mode Banner */}
+              {billingDemo && (
+                <div className="bg-amber-50 border border-amber-200 rounded-[14px] p-4 mb-6 flex items-center gap-3">
+                  <AlertTriangle size={20} className="text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">Billing is in demo mode</p>
+                    <p className="text-xs text-amber-600">Connect your Stripe account to enable real billing and subscriptions.</p>
+                  </div>
+                </div>
+              )}
               {/* Current Subscription */}
               {billingSubscription && (
                 <div className="bg-card rounded-[14px] border border-border p-6 mb-6">

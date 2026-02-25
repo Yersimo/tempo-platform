@@ -79,7 +79,7 @@ export default function OnboardingPage() {
     setSaving(true)
     try {
       // Save via the data API
-      await fetch('/api/data', {
+      const res = await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,9 +89,13 @@ export default function OnboardingPage() {
           data: { size: companySize, industry },
         }),
       })
-      // Update local store
-      if (updateOrg) {
-        updateOrg({ size: companySize, industry })
+      if (res.ok) {
+        // Only update local store if DB save succeeded
+        if (updateOrg) {
+          updateOrg({ size: companySize, industry })
+        }
+      } else {
+        console.error('Failed to save org details:', await res.text())
       }
     } catch (err) {
       console.error('Failed to save org details:', err)
@@ -103,7 +107,7 @@ export default function OnboardingPage() {
   const saveModules = async () => {
     setSaving(true)
     try {
-      await fetch('/api/data', {
+      const res = await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -113,6 +117,9 @@ export default function OnboardingPage() {
           data: { enabled_modules: selectedModules },
         }),
       })
+      if (!res.ok) {
+        console.error('Failed to save modules:', await res.text())
+      }
     } catch (err) {
       console.error('Failed to save modules:', err)
     } finally {

@@ -52,6 +52,18 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin auth API is public (login/logout/me handle their own auth)
+  // But rate limit admin login attempts
+  if (pathname.startsWith('/api/admin/auth') && request.method === 'POST') {
+    const adminIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { limited } = checkRateLimit(`admin-login:${adminIp}`, 5, 15 * 60 * 1000) // 5 attempts per 15 min
+    if (limited) {
+      return NextResponse.json(
+        { error: 'Too many admin login attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+    return NextResponse.next()
+  }
   if (pathname.startsWith('/api/admin/auth')) {
     return NextResponse.next()
   }

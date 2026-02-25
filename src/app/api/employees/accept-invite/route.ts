@@ -4,9 +4,11 @@ import { eq } from 'drizzle-orm'
 import { hashPassword, createSession, setSessionCookie } from '@/lib/auth'
 import { jwtVerify } from 'jose'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'tempo-jwt-secret-k9x2m7p4q8w1n6v3b5j0h'
-)
+const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
+if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL: JWT_SECRET must be set in production for invitation tokens!')
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 
 // POST /api/employees/accept-invite — Accept an invitation and set password
 export async function POST(request: NextRequest) {
@@ -52,6 +54,11 @@ export async function POST(request: NextRequest) {
 
     if (employee.isActive) {
       return NextResponse.json({ error: 'This invitation has already been accepted' }, { status: 400 })
+    }
+
+    // Check if invitation has expired (double-check beyond JWT expiry)
+    if (employee.invitationExpiresAt && new Date(employee.invitationExpiresAt) < new Date()) {
+      return NextResponse.json({ error: 'This invitation has expired. Please ask your admin to send a new one.' }, { status: 400 })
     }
 
     // Hash password and activate the employee

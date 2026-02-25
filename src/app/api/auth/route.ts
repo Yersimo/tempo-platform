@@ -102,8 +102,13 @@ export async function POST(request: NextRequest) {
             )
           )
         mfaEnrollment = enrollment || null
-      } catch {
-        // MFA table may not exist yet — skip MFA check
+      } catch (mfaErr: unknown) {
+        // Only skip if MFA table doesn't exist yet — rethrow real errors
+        const errMsg = mfaErr instanceof Error ? mfaErr.message : String(mfaErr)
+        if (!errMsg.includes('does not exist') && !errMsg.includes('relation') && !errMsg.includes('undefined')) {
+          console.error('[Auth] MFA check failed with unexpected error:', errMsg)
+        }
+        // Skip MFA check if table doesn't exist
       }
 
       if (mfaEnrollment) {
@@ -373,26 +378,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ user })
     }
 
-    // ─── Switch User (demo feature, requires active session + same org) ─────────
+    // ─── Switch User (restricted to owner/admin roles, same org only) ─────────
     if (action === 'switch_user') {
       const { employeeId } = body
       if (!employeeId) {
         return NextResponse.json({ error: 'employeeId is required' }, { status: 400 })
       }
 
-      // Verify caller has an active session and get their org
+      // Verify caller has an active session and get their org + role
       const sessionCookie = request.cookies.get(getSessionCookieName())
       let callerOrgId: string | null = null
+      let callerRole: string | null = null
       if (sessionCookie?.value) {
         const currentSession = await validateSession(sessionCookie.value)
         if (currentSession) {
           callerOrgId = currentSession.orgId
+          callerRole = currentSession.role
           await revokeSession(currentSession.sessionId)
         }
       }
 
       if (!callerOrgId) {
         return NextResponse.json({ error: 'Active session required' }, { status: 401 })
+      }
+
+      // Only owner and admin can switch users
+      if (callerRole !== 'owner' && callerRole !== 'admin') {
+        return NextResponse.json({ error: 'Only owners and admins can switch users' }, { status: 403 })
       }
 
       // Only allow switching to employees within the SAME org

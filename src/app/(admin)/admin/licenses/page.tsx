@@ -54,13 +54,19 @@ export default function LicensesPage() {
     setOrgModules(defaults)
   }, [organizations])
 
-  const toggleModule = (orgId: string, moduleId: string) => {
+  const toggleModule = async (orgId: string, moduleId: string) => {
     setOrgModules(prev => {
       const current = prev[orgId] || []
-      if (current.includes(moduleId)) {
-        return { ...prev, [orgId]: current.filter(m => m !== moduleId) }
-      }
-      return { ...prev, [orgId]: [...current, moduleId] }
+      const updated = current.includes(moduleId)
+        ? current.filter(m => m !== moduleId)
+        : [...current, moduleId]
+      // Persist to backend
+      fetch('/api/admin/organizations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orgId, data: { enabledModules: updated } }),
+      }).catch(err => console.error('Failed to save module toggle:', err))
+      return { ...prev, [orgId]: updated }
     })
   }
 

@@ -19,21 +19,13 @@ export async function GET(request: NextRequest) {
     const status = await getSubscriptionStatus(orgId)
     return NextResponse.json({ subscription: status, plans: PRICING_PLANS })
   } catch (error: any) {
-    // If Stripe isn't configured, return mock data for demo
+    // If Stripe isn't configured, return clear demo mode indicator
     if (error?.message?.includes('STRIPE_SECRET_KEY')) {
       return NextResponse.json({
-        subscription: {
-          plan: 'professional',
-          status: 'trialing',
-          currentPeriodEnd: new Date(Date.now() + 14 * 86400000).toISOString(),
-          employeeCount: 0,
-          monthlyAmount: 0,
-          currency: 'usd',
-          cancelAtPeriodEnd: false,
-          trialEnd: new Date(Date.now() + 14 * 86400000).toISOString(),
-        },
+        subscription: null,
         plans: PRICING_PLANS,
         demo: true,
+        message: 'Billing is in demo mode. Configure Stripe keys to enable real billing.',
       })
     }
     console.error('[GET /api/billing] Error:', error)
