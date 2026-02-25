@@ -123,3 +123,46 @@ body {
   border-left: 3px solid;
   border-image: linear-gradient(to bottom, #fb923c, #ea580c) 1;
 }
+
+/* ─── Dark Mode Overrides ─── */
+.dark {
+  /* Canvas & Cards */
+  --color-canvas: #18181b;
+  --color-card: #27272a;
+
+  /* Chrome stays the same since it's already dark */
+  --color-chrome: #0f0f14;
+  --color-chrome-surface: #161821;
+
+  /* Text - inverted for readability */
+  --color-t1: #f4f4f5;
+  --color-t2: #a1a1aa;
+  --color-t3: #71717a;
+
+  /* Semantic - slightly brighter for dark backgrounds */
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Borders - white-based for dark backgrounds */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-divider: rgba(255, 255, 255, 0.06);
+  --color-dark-border: rgba(255, 255, 255, 0.10);
+
+  /* Tempo brand accent stays consistent */
+  --color-tempo-600: #ea580c;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Dark mode overrides for hardcoded bg-white in components */
+.dark .bg-white {
+  background-color: var(--color-card) !important;
+}

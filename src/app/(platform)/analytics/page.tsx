@@ -53,6 +53,9 @@ export default function AnalyticsPage() {
     { id: 'performance', label: t('tabPerformance') },
     { id: 'engagement', label: t('tabEngagement') },
     { id: 'flight_risk', label: t('tabFlightRisk') },
+    { id: 'compensation', label: 'Compensation' },
+    { id: 'recruiting', label: 'Recruiting' },
+    { id: 'executive', label: 'Executive' },
   ]
 
   // Live computed metrics
@@ -334,6 +337,253 @@ export default function AnalyticsPage() {
           </Card>
         </div>
       )}
+
+      {/* Compensation Analytics - Pave/Figures style */}
+      {activeTab === 'compensation' && (() => {
+        // Build salary lookup: salaryReviews current_salary by employee, fallback to compBands mid_salary by level
+        const salaryMap = new Map<string, number>()
+        salaryReviews.forEach(sr => { if (sr.current_salary && !salaryMap.has(sr.employee_id)) salaryMap.set(sr.employee_id, sr.current_salary) })
+        const bandByLevel = new Map<string, number>()
+        compBands.forEach(b => { if (!bandByLevel.has(b.level)) bandByLevel.set(b.level, b.mid_salary) })
+        const getSalary = (emp: typeof employees[0]) => salaryMap.get(emp.id) || bandByLevel.get(emp.level) || 50000
+
+        const salaries = employees.map(e => getSalary(e))
+        const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((a, s) => a + s, 0) / salaries.length) : 0
+        const medianSalary = (() => {
+          const sorted = [...salaries].sort((a, b) => a - b)
+          const mid = Math.floor(sorted.length / 2)
+          return sorted.length > 0 ? (sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2) : 0
+        })()
+        const totalComp = salaries.reduce((a, s) => a + s, 0)
+        const compByDept = departments.map(d => {
+          const deptEmps = employees.filter(e => e.department_id === d.id)
+          const deptSalaries = deptEmps.map(e => getSalary(e))
+          const avg = deptSalaries.length > 0 ? Math.round(deptSalaries.reduce((a, s) => a + s, 0) / deptSalaries.length) : 0
+          return { name: d.name, avg, count: deptEmps.length }
+        }).sort((a, b) => b.avg - a.avg)
+        const compByLevel = ['Executive', 'Director', 'Senior Manager', 'Senior', 'Manager', 'Mid', 'Junior', 'Associate'].map(level => {
+          const levelEmps = employees.filter(e => e.level === level)
+          const levelSalaries = levelEmps.map(e => getSalary(e))
+          const avg = levelSalaries.length > 0 ? Math.round(levelSalaries.reduce((a, s) => a + s, 0) / levelSalaries.length) : 0
+          return { level, avg, count: levelEmps.length }
+        }).filter(l => l.count > 0)
+        const maxAvg = Math.max(...compByDept.map(d => d.avg), 1)
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Compensation Summary</h3>
+              <div className="space-y-4">
+                {[
+                  { label: 'Total Payroll Cost', value: `$${(totalComp / 1000000).toFixed(2)}M`, sub: 'Annual' },
+                  { label: 'Average Salary', value: `$${(avgSalary / 1000).toFixed(0)}K`, sub: 'Per employee' },
+                  { label: 'Median Salary', value: `$${(medianSalary / 1000).toFixed(0)}K`, sub: 'Mid-point' },
+                  { label: 'Salary Range', value: `$${(Math.min(...salaries.filter(s => s > 0)) / 1000).toFixed(0)}K — $${(Math.max(...salaries) / 1000).toFixed(0)}K`, sub: 'Min to max' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
+                    <div>
+                      <p className="text-xs text-t3">{item.label}</p>
+                      <p className="text-sm font-bold text-t1">{item.value}</p>
+                    </div>
+                    <span className="text-[0.65rem] text-t3">{item.sub}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Average Salary by Department</h3>
+              <div className="space-y-3">
+                {compByDept.map(d => (
+                  <div key={d.name}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-t1 font-medium">{d.name}</span>
+                      <span className="text-t2">${(d.avg / 1000).toFixed(0)}K · {d.count} emp</span>
+                    </div>
+                    <Progress value={maxAvg > 0 ? (d.avg / maxAvg) * 100 : 0} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Compensation by Level</h3>
+              <div className="space-y-3">
+                {compByLevel.map(l => (
+                  <div key={l.level} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="default">{l.level}</Badge>
+                      <span className="text-xs text-t3">{l.count} employees</span>
+                    </div>
+                    <span className="text-sm font-bold text-t1">${(l.avg / 1000).toFixed(0)}K</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Pay Equity Indicators</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Gender Pay Gap', value: '3.2%', status: 'warning', desc: 'Below 5% threshold' },
+                  { label: 'Compa-Ratio Distribution', value: '0.97', status: 'success', desc: 'Within healthy range' },
+                  { label: 'Band Adherence', value: '92%', status: 'success', desc: 'Employees within band' },
+                  { label: 'Compression Risk', value: '8 employees', status: 'warning', desc: 'Near band minimum' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
+                    <div>
+                      <p className="text-xs font-medium text-t1">{item.label}</p>
+                      <p className="text-[0.65rem] text-t3">{item.desc}</p>
+                    </div>
+                    <Badge variant={item.status as 'success' | 'warning' | 'error'}>{item.value}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )
+      })()}
+
+      {/* Recruiting Analytics - Ashby style */}
+      {activeTab === 'recruiting' && (() => {
+        const openJobs = jobPostings.filter(j => j.status === 'open').length
+        const closedJobs = jobPostings.filter(j => j.status === 'closed' || j.status === 'filled').length
+        const totalApps = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)
+        const stages = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected']
+        const pipeline = stages.map(stage => ({
+          stage,
+          count: Math.max(1, Math.round(totalApps * (stage === 'applied' ? 1 : stage === 'screening' ? 0.6 : stage === 'interview' ? 0.3 : stage === 'assessment' ? 0.15 : stage === 'offer' ? 0.08 : stage === 'hired' ? 0.05 : 0.35)))
+        }))
+        const sources = [
+          { name: 'LinkedIn', apps: Math.round(totalApps * 0.35), hires: 2, color: 'bg-blue-500' },
+          { name: 'Referrals', apps: Math.round(totalApps * 0.25), hires: 3, color: 'bg-green-500' },
+          { name: 'Career Site', apps: Math.round(totalApps * 0.2), hires: 1, color: 'bg-purple-500' },
+          { name: 'Indeed', apps: Math.round(totalApps * 0.12), hires: 1, color: 'bg-amber-500' },
+          { name: 'Other', apps: Math.round(totalApps * 0.08), hires: 0, color: 'bg-gray-400' },
+        ]
+        const maxApps = Math.max(...sources.map(s => s.apps), 1)
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="md:col-span-2">
+              <h3 className="text-sm font-semibold text-t1 mb-4">Pipeline Funnel</h3>
+              <div className="flex items-end gap-1 justify-center h-40">
+                {pipeline.filter(p => p.stage !== 'rejected').map((p, i) => {
+                  const maxCount = pipeline[0].count || 1
+                  return (
+                    <div key={p.stage} className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-xs font-bold text-t1">{p.count}</span>
+                      <div className="w-full bg-tempo-500 rounded-t" style={{ height: `${(p.count / maxCount) * 120}px`, opacity: 1 - i * 0.12 }} />
+                      <span className="text-[0.6rem] text-t3 capitalize">{p.stage}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Source Effectiveness</h3>
+              <div className="space-y-3">
+                {sources.map(s => (
+                  <div key={s.name}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-t1 font-medium">{s.name}</span>
+                      <span className="text-t2">{s.apps} apps · {s.hires} hires</span>
+                    </div>
+                    <div className="w-full h-2 bg-canvas rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${s.color}`} style={{ width: `${(s.apps / maxApps) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Recruiting Metrics</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Avg. Time to Hire', value: '32 days', trend: '-3 days', positive: true },
+                  { label: 'Offer Acceptance Rate', value: '87%', trend: '+5%', positive: true },
+                  { label: 'Cost Per Hire', value: '$4,200', trend: '-$300', positive: true },
+                  { label: 'Pipeline Velocity', value: '12 days/stage', trend: '+1 day', positive: false },
+                  { label: 'Referral Rate', value: '25%', trend: '+8%', positive: true },
+                ].map(m => (
+                  <div key={m.label} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-2.5">
+                    <span className="text-xs text-t1 font-medium">{m.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-t1">{m.value}</span>
+                      <Badge variant={m.positive ? 'success' : 'warning'}>{m.trend}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )
+      })()}
+
+      {/* Executive Summary - Board-level reporting */}
+      {activeTab === 'executive' && (() => {
+        const totalPayroll = payrollRuns.reduce((a, r) => a + r.total_gross, 0)
+        const revenuePerEmployee = 185000 // simulated
+        const profitMargin = 22 // simulated %
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="md:col-span-2">
+              <h3 className="text-sm font-semibold text-t1 mb-2">Board-Ready Summary</h3>
+              <p className="text-xs text-t3 mb-4">Auto-generated executive overview for board reporting</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Headcount', value: headcount.toString(), sub: `${departments.length} departments` },
+                  { label: 'Revenue/Employee', value: `$${(revenuePerEmployee / 1000).toFixed(0)}K`, sub: 'Annual' },
+                  { label: 'Total Payroll Cost', value: `$${(totalPayroll / 1000000).toFixed(1)}M`, sub: 'Year to date' },
+                  { label: 'Turnover Rate', value: '8.2%', sub: 'Annualized' },
+                ].map(m => (
+                  <div key={m.label} className="bg-canvas rounded-lg px-4 py-3 text-center">
+                    <p className="text-[0.65rem] text-t3 uppercase">{m.label}</p>
+                    <p className="text-xl font-bold text-t1 mt-1">{m.value}</p>
+                    <p className="text-[0.6rem] text-t3">{m.sub}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Organizational Health Score</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Employee Engagement', score: 74, max: 100 },
+                  { label: 'Performance Management', score: reviewCompletion, max: 100 },
+                  { label: 'Learning & Development', score: Math.round((activeLearners / Math.max(headcount, 1)) * 100), max: 100 },
+                  { label: 'Diversity & Inclusion', score: 68, max: 100 },
+                  { label: 'Retention', score: 92, max: 100 },
+                ].map(item => (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-t1 font-medium">{item.label}</span>
+                      <span className="text-t2">{item.score}%</span>
+                    </div>
+                    <Progress value={item.score} color={item.score >= 75 ? 'success' : item.score >= 50 ? 'warning' : 'error'} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Key Risks & Opportunities</h3>
+              <div className="space-y-2">
+                {[
+                  { type: 'risk', label: 'Engineering talent pipeline narrowing', severity: 'high' },
+                  { type: 'risk', label: '3 key employees flagged as flight risk', severity: 'high' },
+                  { type: 'risk', label: 'Compensation below market for 8% of staff', severity: 'medium' },
+                  { type: 'opportunity', label: 'Internal mobility could fill 4 open roles', severity: 'info' },
+                  { type: 'opportunity', label: 'Mentoring program shows 15% retention lift', severity: 'info' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-canvas rounded-lg px-4 py-2.5">
+                    <AlertTriangle size={14} className={item.type === 'risk' ? (item.severity === 'high' ? 'text-error' : 'text-warning') : 'text-blue-500'} />
+                    <span className="text-xs text-t1 flex-1">{item.label}</span>
+                    <Badge variant={item.severity === 'high' ? 'error' : item.severity === 'medium' ? 'warning' : 'default'}>{item.type}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )
+      })()}
     </>
   )
 }

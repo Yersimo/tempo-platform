@@ -10,15 +10,15 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge } from '@/components/ai'
-import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder } from '@/lib/ai-engine'
+import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, employees, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, getEmployeeName, currentEmployeeId } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, employees, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, getEmployeeName, currentEmployeeId } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('catalog')
@@ -54,6 +54,27 @@ export default function LearningPage() {
   const [showPathModal, setShowPathModal] = useState(false)
   const [pathForm, setPathForm] = useState({ title: '', description: '', course_ids: [] as string[], level: 'beginner' as string })
 
+  // Course Builder state
+  const [selectedBuilderCourse, setSelectedBuilderCourse] = useState<string>('')
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockForm, setBlockForm] = useState({ type: 'text' as string, title: '', content: '', duration_minutes: 10, module_index: 0, order: 0, status: 'draft' as string })
+
+  // Quiz Builder state
+  const [selectedQuizCourse, setSelectedQuizCourse] = useState<string>('')
+  const [showQuestionModal, setShowQuestionModal] = useState(false)
+  const [questionForm, setQuestionForm] = useState({ type: 'multiple_choice' as string, question: '', options: ['', '', '', ''] as string[], correct_answer: '', points: 10, explanation: '', course_id: '' })
+  const [showAIQuizModal, setShowAIQuizModal] = useState(false)
+  const [aiQuizTopic, setAiQuizTopic] = useState('')
+  const [aiQuizCount, setAiQuizCount] = useState(5)
+  const [generatedQuestions, setGeneratedQuestions] = useState<ReturnType<typeof generateQuizQuestions> | null>(null)
+
+  // Social Learning state
+  const [socialSubTab, setSocialSubTab] = useState<'discussions' | 'groups' | 'leaderboard'>('discussions')
+  const [showDiscussionModal, setShowDiscussionModal] = useState(false)
+  const [discussionForm, setDiscussionForm] = useState({ title: '', content: '', course_id: '' as string | null, tags: '' })
+  const [showGroupModal, setShowGroupModal] = useState(false)
+  const [groupForm, setGroupForm] = useState({ name: '', description: '', course_id: '', max_members: 10, meeting_frequency: 'biweekly' as string })
+
   const tabs = [
     { id: 'catalog', label: t('tabCourseCatalog'), count: courses.length },
     { id: 'enrollments', label: t('tabEnrollments'), count: enrollments.filter(e => e.status !== 'completed').length },
@@ -61,6 +82,9 @@ export default function LearningPage() {
     { id: 'builder', label: t('aiBuilder'), count: aiBuilderTemplates.length },
     { id: 'sessions', label: t('liveSessions'), count: liveSessions.filter(s => s.status === 'upcoming').length },
     { id: 'paths', label: t('learningPaths'), count: learningPaths.length },
+    { id: 'course-builder', label: t('tabCourseBuilder'), count: courseBlocks.length },
+    { id: 'quiz-builder', label: t('tabQuizBuilder'), count: quizQuestions.length },
+    { id: 'social', label: t('tabSocialLearning'), count: discussions.length },
   ]
 
   const completedCount = enrollments.filter(e => e.status === 'completed').length
@@ -160,6 +184,105 @@ export default function LearningPage() {
         : [...prev.course_ids, courseId],
     }))
   }
+
+  // Course Builder handlers
+  function submitBlock() {
+    if (!blockForm.title || !selectedBuilderCourse) return
+    addCourseBlock({ ...blockForm, course_id: selectedBuilderCourse })
+    setShowBlockModal(false)
+    setBlockForm({ type: 'text', title: '', content: '', duration_minutes: 10, module_index: 0, order: 0, status: 'draft' })
+  }
+
+  // Quiz Builder handlers
+  function submitQuestion() {
+    if (!questionForm.question) return
+    addQuizQuestion({ ...questionForm, course_id: selectedQuizCourse || questionForm.course_id })
+    setShowQuestionModal(false)
+    setQuestionForm({ type: 'multiple_choice', question: '', options: ['', '', '', ''], correct_answer: '', points: 10, explanation: '', course_id: '' })
+  }
+
+  function handleGenerateQuiz() {
+    if (!aiQuizTopic) return
+    const questions = generateQuizQuestions(aiQuizTopic, aiQuizCount)
+    setGeneratedQuestions(questions)
+  }
+
+  function handleAddGeneratedToBank() {
+    if (!generatedQuestions) return
+    generatedQuestions.forEach(q => {
+      addQuizQuestion({ ...q, course_id: selectedQuizCourse })
+    })
+    setShowAIQuizModal(false)
+    setGeneratedQuestions(null)
+    setAiQuizTopic('')
+  }
+
+  // Social Learning handlers
+  function submitDiscussion() {
+    if (!discussionForm.title || !discussionForm.content) return
+    addDiscussion({ ...discussionForm, author_id: currentEmployeeId, tags: discussionForm.tags.split(',').map(t => t.trim()).filter(Boolean), course_id: discussionForm.course_id || null })
+    setShowDiscussionModal(false)
+    setDiscussionForm({ title: '', content: '', course_id: '', tags: '' })
+  }
+
+  function submitStudyGroup() {
+    if (!groupForm.name) return
+    addStudyGroup({ ...groupForm, member_ids: [currentEmployeeId], created_by: currentEmployeeId })
+    setShowGroupModal(false)
+    setGroupForm({ name: '', description: '', course_id: '', max_members: 10, meeting_frequency: 'biweekly' })
+  }
+
+  function handleLikeDiscussion(id: string) {
+    const disc = discussions.find(d => d.id === id)
+    if (disc) updateDiscussion(id, { likes: (disc.likes || 0) + 1 })
+  }
+
+  function handleJoinGroup(id: string) {
+    const group = studyGroups.find(g => g.id === id)
+    if (group && !group.member_ids.includes(currentEmployeeId)) {
+      updateStudyGroup(id, { member_ids: [...group.member_ids, currentEmployeeId] })
+    }
+  }
+
+  // Block type icon helper
+  const blockTypeIcon = (type: string) => {
+    switch (type) {
+      case 'text': return <AlignLeft size={14} />
+      case 'video': return <Play size={14} />
+      case 'quiz': return <HelpCircle size={14} />
+      case 'interactive': return <ListChecks size={14} />
+      case 'download': return <Download size={14} />
+      default: return <FileText size={14} />
+    }
+  }
+
+  // Leaderboard data
+  const leaderboardData = useMemo(() => {
+    return employees.slice(0, 10).map((emp, i) => {
+      const empEnrollments = enrollments.filter(e => e.employee_id === emp.id)
+      const completed = empEnrollments.filter(e => e.status === 'completed').length
+      const totalProgress = empEnrollments.reduce((a, e) => a + (e.progress || 0), 0)
+      return {
+        id: emp.id,
+        name: emp.profile.full_name,
+        points: completed * 100 + totalProgress,
+        coursesCompleted: completed,
+        streak: Math.max(1, completed * 2 + (i % 5)),
+      }
+    }).sort((a, b) => b.points - a.points)
+  }, [employees, enrollments])
+
+  // Filtered blocks for selected course
+  const filteredBlocks = useMemo(() => {
+    if (!selectedBuilderCourse) return []
+    return courseBlocks.filter(b => b.course_id === selectedBuilderCourse).sort((a, b) => a.module_index === b.module_index ? a.order - b.order : a.module_index - b.module_index)
+  }, [courseBlocks, selectedBuilderCourse])
+
+  // Filtered quiz questions
+  const filteredQuestions = useMemo(() => {
+    if (!selectedQuizCourse) return quizQuestions
+    return quizQuestions.filter(q => q.course_id === selectedQuizCourse)
+  }, [quizQuestions, selectedQuizCourse])
 
   return (
     <>
@@ -427,6 +550,323 @@ export default function LearningPage() {
         </div>
       )}
 
+      {/* Course Builder Tab */}
+      {activeTab === 'course-builder' && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Course Outline Sidebar */}
+          <div className="lg:col-span-1">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3">{t('courseOutlineSidebar')}</h3>
+              <div className="space-y-2">
+                {courses.map(course => {
+                  const blocks = courseBlocks.filter(b => b.course_id === course.id)
+                  const isSelected = selectedBuilderCourse === course.id
+                  return (
+                    <button key={course.id} onClick={() => setSelectedBuilderCourse(course.id)}
+                      className={`w-full text-left p-2 rounded-lg text-xs transition-colors ${isSelected ? 'bg-tempo-50 border border-tempo-200' : 'hover:bg-canvas'}`}>
+                      <p className="font-medium text-t1">{course.title}</p>
+                      <p className="text-t3 mt-0.5">{t('blocksCount', { count: blocks.length })} - {course.duration_hours}h</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+          </div>
+
+          {/* Content Blocks */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-t1">{t('courseBuilder')}</h3>
+                <p className="text-xs text-t3">{t('courseBuilderDesc')}</p>
+              </div>
+              {selectedBuilderCourse && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const outline = generateCourseOutline(courses.find(c => c.id === selectedBuilderCourse)?.title || 'Course', 'intermediate', 8)
+                    outline.modules.forEach((mod, mi) => {
+                      mod.lessons.forEach((lesson, li) => {
+                        addCourseBlock({ course_id: selectedBuilderCourse, module_index: mi, order: li, type: 'text', title: lesson, content: `Content for ${lesson}`, duration_minutes: mod.duration_minutes / mod.lessons.length, status: 'draft' })
+                      })
+                    })
+                  }}>
+                    <Sparkles size={14} /> {t('aiGenerateContent')}
+                  </Button>
+                  <Button size="sm" onClick={() => setShowBlockModal(true)}><Plus size={14} /> {t('addBlock')}</Button>
+                </div>
+              )}
+            </div>
+
+            {!selectedBuilderCourse ? (
+              <Card><div className="text-center py-12 text-sm text-t3">{t('noCourseSelected')}</div></Card>
+            ) : (
+              <div className="space-y-3">
+                {(() => {
+                  const modules = [...new Set(filteredBlocks.map(b => b.module_index))].sort((a, b) => a - b)
+                  return modules.map(mi => (
+                    <Card key={mi}>
+                      <h4 className="text-xs font-semibold text-t1 mb-3">{t('moduleN', { n: mi + 1 })}</h4>
+                      <div className="space-y-2">
+                        {filteredBlocks.filter(b => b.module_index === mi).map(block => (
+                          <div key={block.id} className="flex items-center gap-3 p-2 rounded-lg bg-canvas group">
+                            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-t3">
+                              {blockTypeIcon(block.type)}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-t1">{block.title}</p>
+                              <p className="text-[0.6rem] text-t3">{block.type} - {block.duration_minutes} {t('minutes')}</p>
+                            </div>
+                            <Badge variant={block.status === 'published' ? 'success' : 'default'}>{block.status === 'published' ? t('statusPublished') : t('statusDraft')}</Badge>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {block.status === 'draft' && (
+                                <Button size="sm" variant="outline" onClick={() => updateCourseBlock(block.id, { status: 'published' })}>{t('publishBlock')}</Button>
+                              )}
+                              <Button size="sm" variant="secondary" onClick={() => deleteCourseBlock(block.id)}>×</Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  ))
+                })()}
+                {filteredBlocks.length === 0 && (
+                  <Card><div className="text-center py-8 text-sm text-t3">{t('selectCourseToEdit')}</div></Card>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quiz Builder Tab */}
+      {activeTab === 'quiz-builder' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('quizBuilder')}</h3>
+              <p className="text-xs text-t3">{t('quizBuilderDesc')}</p>
+            </div>
+            <div className="flex gap-2">
+              <Select value={selectedQuizCourse} onChange={(e) => setSelectedQuizCourse(e.target.value)} options={[
+                { value: '', label: t('filterByCourse') },
+                ...courses.map(c => ({ value: c.id, label: c.title })),
+              ]} />
+              <Button size="sm" variant="outline" onClick={() => setShowAIQuizModal(true)}><Sparkles size={14} /> {t('aiGenerateQuiz')}</Button>
+              <Button size="sm" onClick={() => setShowQuestionModal(true)}><Plus size={14} /> {t('addQuestion')}</Button>
+            </div>
+          </div>
+
+          {/* Quiz Settings Card */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <p className="text-xs font-medium text-t1 mb-1">{t('questionBank')}</p>
+              <p className="text-2xl font-bold text-tempo-600">{filteredQuestions.length}</p>
+              <p className="text-[0.6rem] text-t3">{t('questionsInBank', { count: quizQuestions.length })}</p>
+            </Card>
+            <Card>
+              <p className="text-xs font-medium text-t1 mb-1">{t('passingScore')}</p>
+              <p className="text-2xl font-bold text-t1">70%</p>
+              <p className="text-[0.6rem] text-t3">{t('quizSettings')}</p>
+            </Card>
+            <Card>
+              <p className="text-xs font-medium text-t1 mb-1">{t('timeLimit')}</p>
+              <p className="text-2xl font-bold text-t1">30</p>
+              <p className="text-[0.6rem] text-t3">{t('timeLimitMinutes', { minutes: 30 })}</p>
+            </Card>
+            <Card>
+              <p className="text-xs font-medium text-t1 mb-1">{t('attemptsAllowed')}</p>
+              <p className="text-2xl font-bold text-t1">3</p>
+              <p className="text-[0.6rem] text-t3">{t('randomizeQuestions')}</p>
+            </Card>
+          </div>
+
+          {/* Questions List */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('questionBank')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {filteredQuestions.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">{t('noDiscussions')}</div>
+              ) : filteredQuestions.map(q => {
+                const course = courses.find(c => c.id === q.course_id)
+                return (
+                  <div key={q.id} className="px-6 py-4 flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600 mt-0.5">
+                      {q.type === 'multiple_choice' ? <ListChecks size={14} /> : q.type === 'true_false' ? <CheckCircle size={14} /> : q.type === 'essay' ? <PenTool size={14} /> : <HelpCircle size={14} />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{q.question}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="default">{q.type === 'multiple_choice' ? t('typeMultipleChoice') : q.type === 'true_false' ? t('typeTrueFalse') : q.type === 'fill_blank' ? t('typeFillBlank') : q.type === 'matching' ? t('typeMatching') : t('typeEssay')}</Badge>
+                        {course && <span className="text-[0.6rem] text-t3">{course.title}</span>}
+                      </div>
+                      {q.options.length > 0 && q.type !== 'essay' && (
+                        <div className="mt-2 grid grid-cols-2 gap-1">
+                          {q.options.map((opt, i) => (
+                            <span key={i} className={`text-[0.6rem] px-2 py-0.5 rounded ${opt === q.correct_answer ? 'bg-green-50 text-green-700 font-medium' : 'text-t3'}`}>
+                              {opt.includes(':') ? opt : opt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-tempo-600">{q.points} {t('points')}</span>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => deleteQuizQuestion(q.id)}>×</Button>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Social Learning Tab */}
+      {activeTab === 'social' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('socialLearning')}</h3>
+              <p className="text-xs text-t3">{t('socialLearningDesc')}</p>
+            </div>
+            <div className="flex gap-2">
+              {socialSubTab === 'discussions' && <Button size="sm" onClick={() => setShowDiscussionModal(true)}><Plus size={14} /> {t('newDiscussion')}</Button>}
+              {socialSubTab === 'groups' && <Button size="sm" onClick={() => setShowGroupModal(true)}><Plus size={14} /> {t('createStudyGroup')}</Button>}
+            </div>
+          </div>
+
+          {/* Social Sub-tabs */}
+          <div className="flex gap-2 mb-4">
+            {(['discussions', 'groups', 'leaderboard'] as const).map(tab => (
+              <button key={tab} onClick={() => setSocialSubTab(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${socialSubTab === tab ? 'bg-tempo-600 text-white' : 'bg-canvas text-t2 hover:bg-surface'}`}>
+                {tab === 'discussions' ? t('discussions') : tab === 'groups' ? t('studyGroups') : t('leaderboard')}
+              </button>
+            ))}
+          </div>
+
+          {/* Discussions */}
+          {socialSubTab === 'discussions' && (
+            <div className="space-y-3">
+              {discussions.length === 0 ? (
+                <Card><div className="text-center py-8 text-sm text-t3">{t('noDiscussions')}</div></Card>
+              ) : discussions.map(disc => {
+                const author = employees.find(e => e.id === disc.author_id)
+                const course = disc.course_id ? courses.find(c => c.id === disc.course_id) : null
+                return (
+                  <Card key={disc.id}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-tempo-600 text-xs font-medium">
+                        {(author?.profile.full_name || '?').charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-t1">{author?.profile.full_name || 'Unknown'}</span>
+                          <span className="text-[0.6rem] text-t3">{new Date(disc.created_at).toLocaleDateString()}</span>
+                          {course && <Badge variant="default">{course.title}</Badge>}
+                        </div>
+                        <h4 className="text-sm font-semibold text-t1 mb-1">{disc.title}</h4>
+                        <p className="text-xs text-t3 line-clamp-2 mb-2">{disc.content}</p>
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => handleLikeDiscussion(disc.id)} className="flex items-center gap-1 text-xs text-t3 hover:text-tempo-600">
+                            <Heart size={12} /> {t('likesCount', { count: disc.likes })}
+                          </button>
+                          <span className="flex items-center gap-1 text-xs text-t3">
+                            <MessageSquare size={12} /> {t('repliesCount', { count: disc.replies })}
+                          </span>
+                          {disc.tags.map(tag => (
+                            <span key={tag} className="flex items-center gap-0.5 text-[0.6rem] text-tempo-600">
+                              <Hash size={10} />{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Study Groups */}
+          {socialSubTab === 'groups' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {studyGroups.map(group => {
+                const course = courses.find(c => c.id === group.course_id)
+                const isMember = group.member_ids.includes(currentEmployeeId)
+                return (
+                  <Card key={group.id}>
+                    <div className="flex items-start justify-between mb-2">
+                      <Badge variant={isMember ? 'success' : 'default'}>{isMember ? 'Member' : 'Open'}</Badge>
+                      <UsersIcon size={14} className="text-tempo-600" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-t1 mb-1">{group.name}</h3>
+                    <p className="text-xs text-t3 mb-3 line-clamp-2">{group.description}</p>
+                    {course && <p className="text-[0.6rem] text-t3 mb-2">{course.title}</p>}
+                    <div className="space-y-1 text-xs text-t3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <UsersIcon size={12} /> {t('membersCount', { count: group.member_ids.length, max: group.max_members })}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock size={12} /> {t('nextMeeting')}: {new Date(group.next_meeting).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Radio size={12} /> {group.meeting_frequency === 'weekly' ? t('frequencyWeekly') : group.meeting_frequency === 'biweekly' ? t('frequencyBiweekly') : t('frequencyMonthly')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-2">
+                        {group.member_ids.slice(0, 4).map(mid => {
+                          const member = employees.find(e => e.id === mid)
+                          return (
+                            <div key={mid} className="w-6 h-6 rounded-full bg-tempo-100 border-2 border-surface flex items-center justify-center text-[0.5rem] text-tempo-600 font-medium">
+                              {(member?.profile.full_name || '?').charAt(0)}
+                            </div>
+                          )
+                        })}
+                        {group.member_ids.length > 4 && <span className="text-[0.6rem] text-t3 ml-1">+{group.member_ids.length - 4}</span>}
+                      </div>
+                      <div className="ml-auto">
+                        {!isMember && group.member_ids.length < group.max_members && (
+                          <Button size="sm" variant="primary" onClick={() => handleJoinGroup(group.id)}>{t('joinGroup')}</Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Leaderboard */}
+          {socialSubTab === 'leaderboard' && (
+            <Card padding="none">
+              <CardHeader><CardTitle><Trophy size={16} className="inline mr-2 text-yellow-500" />{t('leaderboard')}</CardTitle></CardHeader>
+              <div className="divide-y divide-divider">
+                {leaderboardData.map((learner, i) => (
+                  <div key={learner.id} className="px-6 py-3 flex items-center gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-canvas text-t3'}`}>
+                      {i + 1}
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-xs font-medium text-tempo-600">
+                      {learner.name.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{learner.name}</p>
+                      <p className="text-[0.6rem] text-t3">{learner.coursesCompleted} {t('coursesCompleted')} - {learner.streak} day {t('streak')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-tempo-600">{learner.points}</p>
+                      <p className="text-[0.6rem] text-t3">{t('points')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* New Course Modal */}
       <Modal open={showCourseModal} onClose={() => setShowCourseModal(false)} title={t('createCourseModal')}>
         <div className="space-y-4">
@@ -603,6 +1043,170 @@ export default function LearningPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPathModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitPath}>{t('createPath')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Content Block Modal */}
+      <Modal open={showBlockModal} onClose={() => setShowBlockModal(false)} title={t('addBlock')}>
+        <div className="space-y-4">
+          <Select label={t('blockType')} value={blockForm.type} onChange={(e) => setBlockForm({ ...blockForm, type: e.target.value })} options={[
+            { value: 'text', label: t('blockTypeText') },
+            { value: 'video', label: t('blockTypeVideo') },
+            { value: 'quiz', label: t('blockTypeQuiz') },
+            { value: 'interactive', label: t('blockTypeInteractive') },
+            { value: 'download', label: t('blockTypeDownload') },
+          ]} />
+          <Input label={t('blockTitle')} value={blockForm.title} onChange={(e) => setBlockForm({ ...blockForm, title: e.target.value })} placeholder="Block title..." />
+          <Textarea label={t('blockContent')} value={blockForm.content} onChange={(e) => setBlockForm({ ...blockForm, content: e.target.value })} rows={3} placeholder="Block content or URL..." />
+          <div className="grid grid-cols-3 gap-4">
+            <Input label={t('blockDuration')} type="number" value={blockForm.duration_minutes} onChange={(e) => setBlockForm({ ...blockForm, duration_minutes: Number(e.target.value) })} />
+            <Input label={t('moduleN', { n: '' })} type="number" value={blockForm.module_index} onChange={(e) => setBlockForm({ ...blockForm, module_index: Number(e.target.value) })} />
+            <Select label={t('blockStatus')} value={blockForm.status} onChange={(e) => setBlockForm({ ...blockForm, status: e.target.value })} options={[
+              { value: 'draft', label: t('statusDraft') },
+              { value: 'published', label: t('statusPublished') },
+            ]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBlockModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitBlock}>{t('addBlock')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Question Modal */}
+      <Modal open={showQuestionModal} onClose={() => setShowQuestionModal(false)} title={t('addQuestion')} size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Select label={t('questionType')} value={questionForm.type} onChange={(e) => setQuestionForm({ ...questionForm, type: e.target.value })} options={[
+              { value: 'multiple_choice', label: t('typeMultipleChoice') },
+              { value: 'true_false', label: t('typeTrueFalse') },
+              { value: 'fill_blank', label: t('typeFillBlank') },
+              { value: 'matching', label: t('typeMatching') },
+              { value: 'essay', label: t('typeEssay') },
+            ]} />
+            <Select label={t('courseTitle')} value={questionForm.course_id || selectedQuizCourse} onChange={(e) => setQuestionForm({ ...questionForm, course_id: e.target.value })} options={[
+              { value: '', label: t('selectCoursePlaceholder') },
+              ...courses.map(c => ({ value: c.id, label: c.title })),
+            ]} />
+          </div>
+          <Textarea label={t('questionText')} value={questionForm.question} onChange={(e) => setQuestionForm({ ...questionForm, question: e.target.value })} rows={2} placeholder="Enter your question..." />
+          {(questionForm.type === 'multiple_choice' || questionForm.type === 'true_false') && (
+            <div>
+              <p className="text-xs font-medium text-t1 mb-2">{t('options')}</p>
+              <div className="space-y-2">
+                {(questionForm.type === 'true_false' ? ['True', 'False'] : questionForm.options).map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input type="radio" name="correct" checked={questionForm.correct_answer === opt} onChange={() => setQuestionForm({ ...questionForm, correct_answer: opt })} className="text-tempo-600" />
+                    {questionForm.type === 'true_false' ? (
+                      <span className="text-xs text-t1">{opt}</span>
+                    ) : (
+                      <Input value={opt} onChange={(e) => { const opts = [...questionForm.options]; opts[i] = e.target.value; setQuestionForm({ ...questionForm, options: opts }) }} placeholder={`Option ${i + 1}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {questionForm.type === 'fill_blank' && (
+            <Input label={t('correctAnswer')} value={questionForm.correct_answer} onChange={(e) => setQuestionForm({ ...questionForm, correct_answer: e.target.value })} placeholder="Correct answer..." />
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('pointValue')} type="number" value={questionForm.points} onChange={(e) => setQuestionForm({ ...questionForm, points: Number(e.target.value) })} />
+            <Input label={t('explanation')} value={questionForm.explanation} onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })} placeholder="Why this is correct..." />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowQuestionModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitQuestion}>{t('addQuestion')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Quiz Generator Modal */}
+      <Modal open={showAIQuizModal} onClose={() => setShowAIQuizModal(false)} title={t('aiGenerateQuiz')} size="lg">
+        <div className="space-y-4">
+          {!generatedQuestions ? (
+            <>
+              <p className="text-xs text-t3">{t('aiGenerateQuizDesc')}</p>
+              <Input label={t('topic')} value={aiQuizTopic} onChange={(e) => setAiQuizTopic(e.target.value)} placeholder="e.g. Leadership, Compliance..." />
+              <Input label={t('questionBank')} type="number" min={1} max={10} value={aiQuizCount} onChange={(e) => setAiQuizCount(Number(e.target.value))} />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setShowAIQuizModal(false)}>{tc('cancel')}</Button>
+                <Button onClick={handleGenerateQuiz}><Sparkles size={14} /> {t('generateQuestions')}</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-canvas rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles size={16} className="text-tempo-600" />
+                  <h4 className="text-sm font-semibold text-t1">{t('questionsGenerated', { count: generatedQuestions.length })}</h4>
+                </div>
+                <div className="space-y-3">
+                  {generatedQuestions.map((q, i) => (
+                    <div key={i} className="bg-surface rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge>{q.type === 'multiple_choice' ? t('typeMultipleChoice') : q.type === 'true_false' ? t('typeTrueFalse') : t('typeFillBlank')}</Badge>
+                        <span className="text-[0.6rem] text-t3">{q.points} {t('points')}</span>
+                      </div>
+                      <p className="text-xs text-t1 mb-1">{q.question}</p>
+                      {q.options.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {q.options.map((opt, j) => (
+                            <span key={j} className={`text-[0.6rem] px-1.5 py-0.5 rounded ${opt === q.correct_answer ? 'bg-green-50 text-green-700' : 'bg-canvas text-t3'}`}>{opt}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setGeneratedQuestions(null)}>{tc('back')}</Button>
+                <Button onClick={handleAddGeneratedToBank}><Zap size={14} /> {t('addToBank')}</Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* New Discussion Modal */}
+      <Modal open={showDiscussionModal} onClose={() => setShowDiscussionModal(false)} title={t('newDiscussion')}>
+        <div className="space-y-4">
+          <Input label={t('discussionTitle')} value={discussionForm.title} onChange={(e) => setDiscussionForm({ ...discussionForm, title: e.target.value })} placeholder="Discussion topic..." />
+          <Textarea label={t('discussionContent')} value={discussionForm.content} onChange={(e) => setDiscussionForm({ ...discussionForm, content: e.target.value })} rows={3} placeholder="Share your thoughts..." />
+          <Select label={t('courseTitle')} value={discussionForm.course_id || ''} onChange={(e) => setDiscussionForm({ ...discussionForm, course_id: e.target.value || null })} options={[
+            { value: '', label: '-- General Discussion --' },
+            ...courses.map(c => ({ value: c.id, label: c.title })),
+          ]} />
+          <Input label={t('discussionTags')} value={discussionForm.tags} onChange={(e) => setDiscussionForm({ ...discussionForm, tags: e.target.value })} placeholder="leadership, compliance (comma separated)" />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowDiscussionModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitDiscussion}>{tc('submit')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Study Group Modal */}
+      <Modal open={showGroupModal} onClose={() => setShowGroupModal(false)} title={t('createStudyGroup')}>
+        <div className="space-y-4">
+          <Input label={t('groupName')} value={groupForm.name} onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })} placeholder="Group name..." />
+          <Textarea label={t('groupDescription')} value={groupForm.description} onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })} rows={2} placeholder="What will your group study?" />
+          <Select label={t('courseTitle')} value={groupForm.course_id} onChange={(e) => setGroupForm({ ...groupForm, course_id: e.target.value })} options={[
+            { value: '', label: t('selectCoursePlaceholder') },
+            ...courses.map(c => ({ value: c.id, label: c.title })),
+          ]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('maxMembers')} type="number" value={groupForm.max_members} onChange={(e) => setGroupForm({ ...groupForm, max_members: Number(e.target.value) })} />
+            <Select label={t('meetingFrequency')} value={groupForm.meeting_frequency} onChange={(e) => setGroupForm({ ...groupForm, meeting_frequency: e.target.value })} options={[
+              { value: 'weekly', label: t('frequencyWeekly') },
+              { value: 'biweekly', label: t('frequencyBiweekly') },
+              { value: 'monthly', label: t('frequencyMonthly') },
+            ]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowGroupModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitStudyGroup}>{t('createStudyGroup')}</Button>
           </div>
         </div>
       </Modal>

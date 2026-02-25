@@ -10,319 +10,858 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
+import { Progress } from '@/components/ui/progress'
+import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle2, Car, Globe, Calculator } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIScoreBadge, AIInsightCard } from '@/components/ai'
-import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends } from '@/lib/ai-engine'
+import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
+import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
+
+// Per diem rates (static reference data)
+const perDiemRates = [
+  { country: 'Nigeria', city: 'Lagos', daily: 285, meals: 95, lodging: 160, incidentals: 30 },
+  { country: 'Nigeria', city: 'Abuja', daily: 250, meals: 80, lodging: 145, incidentals: 25 },
+  { country: 'Ghana', city: 'Accra', daily: 240, meals: 75, lodging: 140, incidentals: 25 },
+  { country: 'Kenya', city: 'Nairobi', daily: 310, meals: 100, lodging: 180, incidentals: 30 },
+  { country: 'Senegal', city: 'Dakar', daily: 260, meals: 85, lodging: 150, incidentals: 25 },
+  { country: "Cote d'Ivoire", city: 'Abidjan', daily: 270, meals: 90, lodging: 155, incidentals: 25 },
+  { country: 'South Africa', city: 'Johannesburg', daily: 295, meals: 95, lodging: 170, incidentals: 30 },
+  { country: 'United States', city: 'New York', daily: 425, meals: 130, lodging: 260, incidentals: 35 },
+  { country: 'United Kingdom', city: 'London', daily: 410, meals: 120, lodging: 255, incidentals: 35 },
+  { country: 'France', city: 'Paris', daily: 380, meals: 115, lodging: 235, incidentals: 30 },
+]
+
+// Simulated receipt data
+const demoReceipts = [
+  { id: 'rcpt-1', filename: 'flight_abidjan.pdf', category: 'Travel', amount: 450, date: '2026-02-08', status: 'matched' as const, expense_id: 'exp-1', ai_category: 'Travel' },
+  { id: 'rcpt-2', filename: 'hotel_invoice.pdf', category: 'Accommodation', amount: 520, date: '2026-02-09', status: 'matched' as const, expense_id: 'exp-1', ai_category: 'Accommodation' },
+  { id: 'rcpt-3', filename: 'dinner_receipt.jpg', category: 'Meals', amount: 280, date: '2026-02-10', status: 'matched' as const, expense_id: 'exp-1', ai_category: 'Meals' },
+  { id: 'rcpt-4', filename: 'booth_rental.pdf', category: 'Events', amount: 500, date: '2026-02-16', status: 'matched' as const, expense_id: 'exp-2', ai_category: 'Events' },
+  { id: 'rcpt-5', filename: 'taxi_receipt.png', category: 'Transport', amount: 45, date: '2026-02-20', status: 'unmatched' as const, expense_id: null, ai_category: 'Transport' },
+  { id: 'rcpt-6', filename: 'supplies_order.pdf', category: 'Supplies', amount: 182, date: '2026-02-21', status: 'pending' as const, expense_id: null, ai_category: 'Supplies' },
+]
 
 export default function ExpensePage() {
   const t = useTranslations('expense')
   const tc = useTranslations('common')
   const {
-    expenseReports, employees,
+    expenseReports, employees, departments, budgets,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
-    getEmployeeName, currentEmployeeId,
+    getEmployeeName, getDepartmentName, currentEmployeeId,
+    expensePolicies, addExpensePolicy, updateExpensePolicy,
+    mileageLogs, addMileageLog, updateMileageLog,
   } = useTempo()
 
-  // New report modal
-  const [showReportModal, setShowReportModal] = useState(false)
-  const [reportForm, setReportForm] = useState({
-    employee_id: '',
-    title: '',
-    currency: 'USD',
-    items: [{ description: '', category: 'travel', amount: 0 }] as Array<{ description: string; category: string; amount: number }>,
-  })
+  // ---- Tab State ----
+  const tabs = [
+    { id: 'reports', label: t('reports'), icon: FileText },
+    { id: 'analytics', label: t('analytics'), icon: BarChart3 },
+    { id: 'policy-rules', label: t('policyRules'), icon: Shield },
+    { id: 'per-diem-mileage', label: t('perDiemMileage'), icon: Car },
+    { id: 'budgets', label: t('budgets'), icon: Wallet },
+    { id: 'receipts', label: t('receipts'), icon: Receipt },
+  ]
+  const [activeTab, setActiveTab] = useState('reports')
 
-  // Delete confirm
+  // ---- Modals ----
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null)
+  const [showMileageModal, setShowMileageModal] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  // Expanded report
+  // ---- Expand / Search ----
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
+  // ---- Forms ----
+  const [reportForm, setReportForm] = useState({
+    employee_id: '', title: '', currency: 'USD',
+    items: [{ description: '', category: 'travel', amount: 0 }] as Array<{ description: string; category: string; amount: number }>,
+  })
+  const [policyForm, setPolicyForm] = useState({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' })
+  const [mileageForm, setMileageForm] = useState({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
+
+  // ---- Per Diem Calculator ----
+  const [perDiemCountry, setPerDiemCountry] = useState('Nigeria')
+  const [perDiemStart, setPerDiemStart] = useState('')
+  const [perDiemEnd, setPerDiemEnd] = useState('')
+
+  const perDiemResult = useMemo(() => {
+    if (!perDiemStart || !perDiemEnd) return null
+    const start = new Date(perDiemStart)
+    const end = new Date(perDiemEnd)
+    const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
+    const rate = perDiemRates.find(r => r.country === perDiemCountry)
+    if (!rate) return null
+    return { nights, daily: rate.daily, total: nights * rate.daily, meals: nights * rate.meals, lodging: nights * rate.lodging }
+  }, [perDiemCountry, perDiemStart, perDiemEnd])
+
+  // ---- Computed Data ----
+  const totalSpend = expenseReports.reduce((a, e) => a + e.total_amount, 0)
   const pendingReports = expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval')
   const totalPending = pendingReports.reduce((a, e) => a + e.total_amount, 0)
-  const approvedReports = expenseReports.filter(e => e.status === 'approved' || e.status === 'reimbursed')
-  const totalApproved = approvedReports.reduce((a, e) => a + e.total_amount, 0)
+  const reimbursedTotal = expenseReports.filter(e => e.status === 'reimbursed').reduce((a, e) => a + e.total_amount, 0)
+  const avgReportValue = expenseReports.length > 0 ? Math.round(totalSpend / expenseReports.length) : 0
 
+  // Filtered reports
+  const filteredReports = useMemo(() => {
+    let reports = [...expenseReports]
+    if (searchQuery) reports = reports.filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase()) || getEmployeeName(r.employee_id).toLowerCase().includes(searchQuery.toLowerCase()))
+    if (filterStatus) reports = reports.filter(r => r.status === filterStatus)
+    return reports
+  }, [expenseReports, searchQuery, filterStatus, getEmployeeName])
+
+  // AI Data
   const spendingInsights = useMemo(() => analyzeSpendingTrends(expenseReports), [expenseReports])
+  const categoryAnalysis = useMemo(() => analyzeExpenseByCategory(expenseReports), [expenseReports])
+  const categoryData = categoryAnalysis.categoryBreakdown
+  const policyViolations = useMemo(() => detectPolicyViolations(expenseReports, expensePolicies as any[]), [expenseReports, expensePolicies])
+  const spendingForecast = useMemo(() => forecastMonthlySpending(expenseReports), [expenseReports])
 
-  // ---- Expense Report CRUD ----
-  function openNewReport() {
-    setReportForm({
-      employee_id: employees[0]?.id || '',
-      title: '',
-      currency: 'USD',
-      items: [{ description: '', category: 'travel', amount: 0 }],
+  // Top spenders
+  const topSpenders = useMemo(() => {
+    const map: Record<string, number> = {}
+    expenseReports.forEach(r => { map[r.employee_id] = (map[r.employee_id] || 0) + r.total_amount })
+    return Object.entries(map).map(([id, total]) => ({ id, name: getEmployeeName(id), total })).sort((a, b) => b.total - a.total).slice(0, 5)
+  }, [expenseReports, getEmployeeName])
+
+  // Monthly spend data for sparkline
+  const monthlySpendData = useMemo(() => {
+    const map: Record<string, number> = {}
+    expenseReports.forEach(r => {
+      const d = new Date(r.submitted_at || r.created_at)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      map[key] = (map[key] || 0) + r.total_amount
     })
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v)
+  }, [expenseReports])
+
+  // Budget utilization for expense budgets
+  const expenseBudgets = useMemo(() => {
+    return budgets.filter(b => (b as any).status === 'active').map(b => {
+      const ba = b as any
+      const pct = ba.total_amount > 0 ? Math.round((ba.spent_amount / ba.total_amount) * 100) : 0
+      return { ...ba, utilization: pct, remaining: ba.total_amount - ba.spent_amount, isOver: ba.spent_amount > ba.total_amount }
+    })
+  }, [budgets])
+
+  // Receipt stats
+  const receiptStats = useMemo(() => {
+    const matched = demoReceipts.filter(r => r.status === 'matched').length
+    const unmatched = demoReceipts.filter(r => r.status === 'unmatched').length
+    const pending = demoReceipts.filter(r => r.status === 'pending').length
+    return { total: demoReceipts.length, matched, unmatched, pending, matchRate: demoReceipts.length > 0 ? Math.round((matched / demoReceipts.length) * 100) : 0 }
+  }, [])
+
+  // ---- Report CRUD ----
+  function openNewReport() {
+    setReportForm({ employee_id: employees[0]?.id || '', title: '', currency: 'USD', items: [{ description: '', category: 'travel', amount: 0 }] })
     setShowReportModal(true)
   }
 
   function addLineItem() {
-    setReportForm({
-      ...reportForm,
-      items: [...reportForm.items, { description: '', category: 'travel', amount: 0 }],
-    })
+    setReportForm({ ...reportForm, items: [...reportForm.items, { description: '', category: 'travel', amount: 0 }] })
   }
 
   function updateLineItem(index: number, field: string, value: string | number) {
-    const updated = reportForm.items.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item
-    )
+    const updated = reportForm.items.map((item, i) => i === index ? { ...item, [field]: value } : item)
     setReportForm({ ...reportForm, items: updated })
   }
 
   function removeLineItem(index: number) {
     if (reportForm.items.length <= 1) return
-    setReportForm({
-      ...reportForm,
-      items: reportForm.items.filter((_, i) => i !== index),
-    })
+    setReportForm({ ...reportForm, items: reportForm.items.filter((_, i) => i !== index) })
   }
 
   function submitReport() {
-    if (!reportForm.employee_id || !reportForm.title || reportForm.items.length === 0) return
+    if (!reportForm.employee_id || !reportForm.title) return
     const validItems = reportForm.items.filter(item => item.description && item.amount > 0)
     if (validItems.length === 0) return
-
     const totalAmount = validItems.reduce((a, item) => a + Number(item.amount), 0)
     addExpenseReport({
-      employee_id: reportForm.employee_id,
-      title: reportForm.title,
-      total_amount: totalAmount,
-      currency: reportForm.currency,
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      items: validItems.map((item, i) => ({
-        id: `item-${Date.now()}-${i}`,
-        description: item.description,
-        category: item.category,
-        amount: Number(item.amount),
-        date: new Date().toISOString().split('T')[0],
-      })),
+      employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
+      status: 'submitted', submitted_at: new Date().toISOString(),
+      items: validItems.map((item, i) => ({ id: `item-${Date.now()}-${i}`, description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
     })
     setShowReportModal(false)
   }
 
-  function approveReport(id: string) {
-    updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
+  function approveReport(id: string) { updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
+  function rejectReport(id: string) { updateExpenseReport(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
+  function reimburseReport(id: string) { updateExpenseReport(id, { status: 'reimbursed', reimbursed_at: new Date().toISOString() }) }
+  function confirmDelete() { if (deleteConfirm) { deleteExpenseReport(deleteConfirm); setDeleteConfirm(null) } }
+
+  // ---- Policy CRUD ----
+  function openAddPolicy() { setPolicyForm({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' }); setEditingPolicyId(null); setShowPolicyModal(true) }
+  function openEditPolicy(id: string) {
+    const p = expensePolicies.find(pol => pol.id === id) as any
+    if (!p) return
+    setPolicyForm({ category: p.category, daily_limit: p.daily_limit, receipt_threshold: p.receipt_threshold, auto_approve_limit: p.auto_approve_limit, status: p.status })
+    setEditingPolicyId(id); setShowPolicyModal(true)
+  }
+  function submitPolicy() {
+    if (!policyForm.category) return
+    if (editingPolicyId) { updateExpensePolicy(editingPolicyId, policyForm) } else { addExpensePolicy(policyForm) }
+    setShowPolicyModal(false)
   }
 
-  function rejectReport(id: string) {
-    updateExpenseReport(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
+  // ---- Mileage CRUD ----
+  function submitMileage() {
+    if (!mileageForm.employee_id || !mileageForm.origin || !mileageForm.destination || !mileageForm.distance_km) return
+    const amount = Number((mileageForm.distance_km * mileageForm.rate_per_km).toFixed(2))
+    addMileageLog({ ...mileageForm, amount, status: 'pending' })
+    setShowMileageModal(false)
+    setMileageForm({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
   }
 
-  function reimburseReport(id: string) {
-    updateExpenseReport(id, { status: 'reimbursed', reimbursed_at: new Date().toISOString() })
-  }
-
-  function confirmDelete() {
-    if (deleteConfirm) {
-      deleteExpenseReport(deleteConfirm)
-      setDeleteConfirm(null)
-    }
-  }
+  const forecastInsight = useMemo(() => ({
+    id: 'ai-expense-forecast', category: 'prediction' as const, severity: 'info' as const,
+    title: t('spendingForecast'),
+    description: t('projectedMonthly', { amount: spendingForecast.projected.toLocaleString(), trend: spendingForecast.trend, confidence: spendingForecast.confidence }),
+    confidence: (spendingForecast.confidence >= 75 ? 'high' : spendingForecast.confidence >= 50 ? 'medium' : 'low') as 'high' | 'medium' | 'low',
+    confidenceScore: spendingForecast.confidence,
+    suggestedAction: 'Review spending policies and approval thresholds', module: 'expense',
+  }), [spendingForecast, t])
 
   return (
     <>
-      <Header
-        title={t('title')}
-        subtitle={t('subtitle')}
-        actions={
-          <Button size="sm" onClick={openNewReport}>
-            <Plus size={14} /> {t('newReport')}
-          </Button>
-        }
+      <Header title={t('title')} subtitle={t('subtitle')}
+        actions={<Button size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button>}
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
-        <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label={t('approvedReimbursed')} value={`$${totalApproved.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" href="/finance/budgets" />
-        <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-tempo-600 text-tempo-600' : 'border-transparent text-t3 hover:text-t1 hover:border-border'}`}>
+              <Icon size={16} /> {tab.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* AI Spending Trends */}
-      {spendingInsights.length > 0 && (
-        <div className="mb-4 space-y-2">
-          {spendingInsights.map(insight => (
-            <AIInsightCard key={insight.id} insight={insight} compact />
-          ))}
-        </div>
+      {/* ============================================================ */}
+      {/* TAB 1: REPORTS */}
+      {/* ============================================================ */}
+      {activeTab === 'reports' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
+            <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('approvedReimbursed')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
+            <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
+          </div>
+
+          {spendingInsights.length > 0 && <AIAlertBanner insights={spendingInsights} className="mb-4" />}
+
+          {/* Search & Filters */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
+                placeholder={t('searchReports')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            </div>
+            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">{t('filterByStatus')}</option>
+              <option value="submitted">Submitted</option>
+              <option value="pending_approval">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="reimbursed">Reimbursed</option>
+            </select>
+          </div>
+
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t('expenseReportsTitle')}</CardTitle>
+                <Button variant="secondary" size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button>
+              </div>
+            </CardHeader>
+            <div className="divide-y divide-divider">
+              {filteredReports.length === 0 && (
+                <div className="px-6 py-12 text-center text-sm text-t3">{t('noExpenseReports')}</div>
+              )}
+              {filteredReports.map(report => {
+                const isExpanded = expandedReport === report.id
+                const compliance = checkPolicyCompliance(report)
+                return (
+                  <div key={report.id} className="px-6 py-4">
+                    <div className="flex items-center gap-4 mb-1">
+                      <Avatar name={getEmployeeName(report.employee_id)} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-t1">{report.title}</p>
+                          <button onClick={() => setExpandedReport(isExpanded ? null : report.id)} className="p-0.5 text-t3 hover:text-t1 transition-colors">
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
+                        <p className="text-xs text-t3">
+                          {getEmployeeName(report.employee_id)} - {t('submittedDate', { date: new Date(report.submitted_at).toLocaleDateString() })}
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
+                      <AIScoreBadge score={calculateFraudRiskScore(report, expenseReports)} size="sm" />
+                      <Badge variant={
+                        report.status === 'approved' ? 'success' : report.status === 'reimbursed' ? 'info' :
+                        report.status === 'rejected' ? 'error' : report.status === 'submitted' || report.status === 'pending_approval' ? 'warning' : 'default'
+                      }>{report.status.replace(/_/g, ' ')}</Badge>
+                      <div className="flex gap-1">
+                        {(report.status === 'submitted' || report.status === 'pending_approval') && (
+                          <>
+                            <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>{tc('reject')}</Button>
+                          </>
+                        )}
+                        {report.status === 'approved' && (
+                          <Button size="sm" variant="primary" onClick={() => reimburseReport(report.id)}>{tc('reimburse')}</Button>
+                        )}
+                        <button onClick={() => setDeleteConfirm(report.id)} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <div className="ml-12 mt-3">
+                        {report.items && report.items.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                            {report.items.map((item: { id: string; description: string; category: string; amount: number }) => (
+                              <div key={item.id} className="bg-canvas rounded-lg px-3 py-2 flex justify-between">
+                                <div>
+                                  <p className="text-xs font-medium text-t1">{item.description}</p>
+                                  <p className="text-[0.6rem] text-t3">{item.category}</p>
+                                </div>
+                                <p className="text-xs font-semibold text-t1">${item.amount}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {compliance.length > 0 && (
+                          <div className="space-y-1">
+                            {compliance.map(c => <AIInsightCard key={c.id} insight={c} compact />)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!isExpanded && report.items && report.items.length > 0 && (
+                      <p className="ml-12 text-xs text-t3 mt-1">
+                        {report.items.length !== 1 ? t('lineItemCountPlural', { count: report.items.length }) : t('lineItemCount', { count: report.items.length })}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </>
       )}
 
-      {/* Expense Reports List */}
-      <Card padding="none">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{t('expenseReportsTitle')}</CardTitle>
-            <Button variant="secondary" size="sm" onClick={openNewReport}>
-              <Plus size={14} /> {t('newReport')}
-            </Button>
+      {/* ============================================================ */}
+      {/* TAB 2: ANALYTICS */}
+      {/* ============================================================ */}
+      {activeTab === 'analytics' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label={t('totalSpend')} value={`$${totalSpend.toLocaleString()}`} change={t('allReports')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('avgReportValue')} value={`$${avgReportValue.toLocaleString()}`} change={`${expenseReports.length} ${t('reports').toLowerCase()}`} changeType="neutral" icon={<Receipt size={20} />} />
+            <StatCard label={t('reimbursedAmount')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('pendingReview')} value={pendingReports.length} change={`$${totalPending.toLocaleString()}`} changeType={pendingReports.length > 3 ? 'negative' : 'neutral'} icon={<Clock size={20} />} />
           </div>
-        </CardHeader>
-        <div className="divide-y divide-divider">
-          {expenseReports.length === 0 && (
-            <div className="px-6 py-12 text-center text-sm text-t3">
-              {t('noExpenseReports')}
-            </div>
-          )}
-          {expenseReports.map(report => {
-            const isExpanded = expandedReport === report.id
-            return (
-              <div key={report.id} className="px-6 py-4">
-                <div className="flex items-center gap-4 mb-1">
-                  <Avatar name={getEmployeeName(report.employee_id)} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-t1">{report.title}</p>
-                      <button
-                        onClick={() => setExpandedReport(isExpanded ? null : report.id)}
-                        className="p-0.5 text-t3 hover:text-t1 transition-colors"
-                      >
-                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-t3">
-                      {getEmployeeName(report.employee_id)} - {t('submittedDate', { date: new Date(report.submitted_at).toLocaleDateString() })}
-                    </p>
-                  </div>
-                  <p className="text-lg font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
-                  <AIScoreBadge score={calculateFraudRiskScore(report, expenseReports)} size="sm" />
-                  <Badge variant={
-                    report.status === 'approved' ? 'success' :
-                    report.status === 'reimbursed' ? 'info' :
-                    report.status === 'rejected' ? 'error' :
-                    report.status === 'submitted' || report.status === 'pending_approval' ? 'warning' : 'default'
-                  }>
-                    {report.status.replace(/_/g, ' ')}
-                  </Badge>
-                  <div className="flex gap-1">
-                    {(report.status === 'submitted' || report.status === 'pending_approval') && (
-                      <>
-                        <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
-                        <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>{tc('reject')}</Button>
-                      </>
-                    )}
-                    {report.status === 'approved' && (
-                      <Button size="sm" variant="primary" onClick={() => reimburseReport(report.id)}>{tc('reimburse')}</Button>
-                    )}
-                    <button
-                      onClick={() => setDeleteConfirm(report.id)}
-                      className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
 
-                {/* Expanded line items */}
-                {isExpanded && report.items && report.items.length > 0 && (
-                  <div className="ml-12 mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {report.items.map((item: { id: string; description: string; category: string; amount: number }) => (
-                      <div key={item.id} className="bg-canvas rounded-lg px-3 py-2 flex justify-between">
-                        <div>
-                          <p className="text-xs font-medium text-t1">{item.description}</p>
-                          <p className="text-[0.6rem] text-t3">{item.category}</p>
-                        </div>
-                        <p className="text-xs font-semibold text-t1">${item.amount}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* Spending by Category */}
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">{t('spendingByCategory')}</h3>
+              {categoryData.length > 0 ? (
+                <>
+                  <MiniBarChart data={categoryData.slice(0, 6).map(c => ({ label: c.category.length > 10 ? c.category.substring(0, 10) + '...' : c.category, value: c.total }))} showLabels height={140} />
+                  <div className="mt-3 space-y-1">
+                    {categoryData.map(c => (
+                      <div key={c.category} className="flex justify-between text-xs">
+                        <span className="text-t2">{c.category}</span>
+                        <span className="text-t1 font-medium">${c.total.toLocaleString()} ({c.count} items, avg ${c.avgAmount})</span>
                       </div>
                     ))}
                   </div>
-                )}
+                </>
+              ) : <p className="text-sm text-t3">{t('noExpenseReports')}</p>}
+            </Card>
 
-                {/* Always show items summary when collapsed */}
-                {!isExpanded && report.items && report.items.length > 0 && (
-                  <p className="ml-12 text-xs text-t3 mt-1">
-                    {report.items.length !== 1 ? t('lineItemCountPlural', { count: report.items.length }) : t('lineItemCount', { count: report.items.length })}
-                  </p>
-                )}
+            {/* Category Donut */}
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">{t('categoryBreakdown')}</h3>
+              {categoryData.length > 0 ? (
+                <>
+                  <MiniDonutChart data={categoryData.slice(0, 5).map((c, i) => ({
+                    label: c.category, value: c.total,
+                    color: ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'][i % 5],
+                  }))} />
+                  <div className="mt-3 space-y-1">
+                    {categoryData.slice(0, 5).map(c => {
+                      const pct = totalSpend > 0 ? Math.round((c.total / totalSpend) * 100) : 0
+                      return (
+                        <div key={c.category} className="flex justify-between text-xs">
+                          <span className="text-t2">{c.category}</span>
+                          <span className="text-t1 font-medium">{pct}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : <p className="text-sm text-t3">{t('noExpenseReports')}</p>}
+            </Card>
+          </div>
+
+          {/* Monthly Spending Trend */}
+          {monthlySpendData.length > 0 && (
+            <Card className="mb-6">
+              <h3 className="text-sm font-semibold text-t1 mb-4">{t('monthlySpendingTrend')}</h3>
+              <Sparkline data={monthlySpendData} />
+            </Card>
+          )}
+
+          {/* Top Spenders */}
+          {topSpenders.length > 0 && (
+            <Card padding="none" className="mb-6">
+              <CardHeader><CardTitle>{t('topSpenders')}</CardTitle></CardHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-divider bg-canvas">
+                      <th className="tempo-th text-left px-6 py-3">{tc('employee')}</th>
+                      <th className="tempo-th text-right px-4 py-3">{tc('total')}</th>
+                      <th className="tempo-th text-right px-4 py-3">{t('budgetVsActual')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {topSpenders.map((s, i) => (
+                      <tr key={s.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={s.name} size="sm" />
+                            <div>
+                              <p className="text-sm font-medium text-t1">{s.name}</p>
+                              <p className="text-xs text-t3">#{i + 1} spender</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${s.total.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right"><Progress value={Math.min(100, Math.round((s.total / Math.max(1, totalSpend)) * 100 * expenseReports.length))} size="sm" showLabel /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )
-          })}
-        </div>
-      </Card>
+            </Card>
+          )}
 
-      {/* ---- MODALS ---- */}
+          {/* AI Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {expenseReports.length > 0 && <AIInsightCard insight={forecastInsight} compact />}
+            {spendingInsights.map(insight => <AIInsightCard key={insight.id} insight={insight} compact />)}
+          </div>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB 3: POLICY RULES */}
+      {/* ============================================================ */}
+      {activeTab === 'policy-rules' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label={t('policyRulesTitle')} value={expensePolicies.length} change={`${expensePolicies.filter(p => (p as any).status === 'active').length} ${t('active').toLowerCase()}`} changeType="neutral" icon={<Shield size={20} />} />
+            <StatCard label={t('policyViolations')} value={policyViolations.length} change={policyViolations.filter(v => v.severity === 'critical').length > 0 ? `${policyViolations.filter(v => v.severity === 'critical').length} critical` : 'None critical'} changeType={policyViolations.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+            <StatCard label={t('autoApproveLimit')} value={`$${Math.max(...expensePolicies.map(p => (p as any).auto_approve_limit || 0)).toLocaleString()}`} change="Max limit" changeType="neutral" icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('receiptThreshold')} value={`$${Math.min(...expensePolicies.filter(p => (p as any).receipt_threshold > 0).map(p => (p as any).receipt_threshold || 0)).toLocaleString()}`} change="Min threshold" changeType="neutral" icon={<Receipt size={20} />} />
+          </div>
+
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t('policyRulesTitle')}</CardTitle>
+                <Button size="sm" onClick={openAddPolicy}><Plus size={14} /> {t('addPolicy')}</Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">{t('policyCategory')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('dailyLimit')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('receiptThreshold')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('autoApproveLimit')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{t('policyStatus')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {expensePolicies.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noPolicies')}</td></tr>
+                  ) : expensePolicies.map(policy => {
+                    const p = policy as any
+                    return (
+                      <tr key={p.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3 text-sm font-medium text-t1">{p.category}</td>
+                        <td className="px-4 py-3 text-sm text-t1 text-right">${p.daily_limit?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-t2 text-right">${p.receipt_threshold?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-t2 text-right">${p.auto_approve_limit?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={p.status === 'active' ? 'success' : 'default'}>{p.status === 'active' ? t('active') : t('inactive')}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex gap-1 justify-center">
+                            <Button size="sm" variant="ghost" onClick={() => openEditPolicy(p.id)}>{tc('edit')}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => updateExpensePolicy(p.id, { status: p.status === 'active' ? 'inactive' : 'active' })}>
+                              {p.status === 'active' ? t('inactive') : t('active')}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Policy Violations */}
+          {policyViolations.length > 0 ? (
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3">{t('policyViolations')}</h3>
+              <div className="space-y-2">
+                {policyViolations.map((v, i) => (
+                  <div key={`${v.reportId}-${i}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                    <Badge variant={v.severity === 'critical' ? 'error' : 'warning'}>{v.severity}</Badge>
+                    <span className="text-xs text-t1 flex-1">{v.violation}</span>
+                    <span className="text-xs font-medium text-t2">${v.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="text-center py-6">
+                <CheckCircle2 size={24} className="inline text-emerald-500 mb-2" />
+                <p className="text-sm text-t3">{t('noPolicyViolations')}</p>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB 4: PER DIEM & MILEAGE */}
+      {/* ============================================================ */}
+      {activeTab === 'per-diem-mileage' && (
+        <>
+          {/* Per Diem Rates */}
+          <Card padding="none" className="mb-6">
+            <CardHeader><CardTitle>{t('perDiemRates')}</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">{t('country')}</th>
+                    <th className="tempo-th text-left px-4 py-3">{t('city')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('dailyRate')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('mealsRate')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('lodgingRate')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('incidentalsRate')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {perDiemRates.map(rate => (
+                    <tr key={`${rate.country}-${rate.city}`} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-sm font-medium text-t1">{rate.country}</td>
+                      <td className="px-4 py-3 text-sm text-t2">{rate.city}</td>
+                      <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${rate.daily}</td>
+                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.meals}</td>
+                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.lodging}</td>
+                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.incidentals}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Per Diem Calculator */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Calculator size={18} className="text-tempo-600" />
+              <h3 className="text-sm font-semibold text-t1">{t('perDiemCalculator')}</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs font-medium text-t2 mb-1 block">{t('selectCountry')}</label>
+                <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={perDiemCountry} onChange={e => setPerDiemCountry(e.target.value)}>
+                  {[...new Set(perDiemRates.map(r => r.country))].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <Input label={t('startDate')} type="date" value={perDiemStart} onChange={e => setPerDiemStart(e.target.value)} />
+              <Input label={t('endDate')} type="date" value={perDiemEnd} onChange={e => setPerDiemEnd(e.target.value)} />
+              <div className="flex items-end">
+                <Button size="sm"><Calculator size={14} /> {t('calculatePerDiem')}</Button>
+              </div>
+            </div>
+            {perDiemResult && (
+              <div className="mt-4 bg-canvas rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-t1 mb-3">{t('estimatedPerDiem')} - {perDiemCountry}</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: t('nights', { count: perDiemResult.nights }), value: `${perDiemResult.nights}`, color: 'text-t1' },
+                    { label: t('mealsRate'), value: `$${perDiemResult.meals.toLocaleString()}`, color: 'text-t1' },
+                    { label: t('lodgingRate'), value: `$${perDiemResult.lodging.toLocaleString()}`, color: 'text-t1' },
+                    { label: tc('total'), value: `$${perDiemResult.total.toLocaleString()}`, color: 'text-tempo-700 font-bold' },
+                  ].map(item => (
+                    <div key={item.label} className="bg-white rounded-lg p-3 border border-border">
+                      <p className="text-xs text-t3 mb-1">{item.label}</p>
+                      <p className={`text-sm ${item.color}`}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Mileage Log */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t('mileageLog')}</CardTitle>
+                <Button size="sm" onClick={() => { setMileageForm({ employee_id: employees[0]?.id || '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 }); setShowMileageModal(true) }}>
+                  <Plus size={14} /> {t('addMileageEntry')}
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">{tc('employee')}</th>
+                    <th className="tempo-th text-left px-4 py-3">{t('origin')}</th>
+                    <th className="tempo-th text-left px-4 py-3">{t('destination')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('distance')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('ratePerKm')}</th>
+                    <th className="tempo-th text-right px-4 py-3">{t('mileageAmount')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {mileageLogs.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noMileageLogs')}</td></tr>
+                  ) : mileageLogs.map(log => {
+                    const ml = log as any
+                    return (
+                      <tr key={ml.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3 text-sm font-medium text-t1">{getEmployeeName(ml.employee_id)}</td>
+                        <td className="px-4 py-3 text-sm text-t2">{ml.origin}</td>
+                        <td className="px-4 py-3 text-sm text-t2">{ml.destination}</td>
+                        <td className="px-4 py-3 text-sm text-t1 text-right">{ml.distance_km} km</td>
+                        <td className="px-4 py-3 text-sm text-t2 text-right">${ml.rate_per_km}</td>
+                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${ml.amount?.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={ml.status === 'approved' ? 'success' : 'warning'}>{ml.status}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {ml.status === 'pending' && (
+                            <Button size="sm" variant="ghost" onClick={() => updateMileageLog(ml.id, { status: 'approved' })}>{tc('approve')}</Button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB 5: BUDGETS */}
+      {/* ============================================================ */}
+      {activeTab === 'budgets' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label={t('departmentBudgets')} value={expenseBudgets.length} change={`${expenseBudgets.filter(b => b.isOver).length} ${t('overBudget').toLowerCase()}`} changeType={expenseBudgets.filter(b => b.isOver).length > 0 ? 'negative' : 'positive'} icon={<Wallet size={20} />} />
+            <StatCard label={t('allocated')} value={`$${(expenseBudgets.reduce((s, b) => s + b.total_amount, 0) / 1000000).toFixed(1)}M`} change="Total budget" changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('spent')} value={`$${(expenseBudgets.reduce((s, b) => s + b.spent_amount, 0) / 1000000).toFixed(1)}M`} change={tc('thisQuarter')} changeType="neutral" icon={<Receipt size={20} />} />
+            <StatCard label={t('remaining')} value={`$${(expenseBudgets.reduce((s, b) => s + b.remaining, 0) / 1000000).toFixed(1)}M`} change="Available" changeType="positive" icon={<CheckCircle2 size={20} />} />
+          </div>
+
+          <Card padding="none" className="mb-6">
+            <CardHeader><CardTitle>{t('departmentBudgets')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {expenseBudgets.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">{t('noBudgets')}</div>
+              ) : expenseBudgets.map(budget => (
+                <div key={budget.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-medium text-t1">{budget.name}</p>
+                      <p className="text-xs text-t3">{getDepartmentName(budget.department_id)} - FY{budget.fiscal_year}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-t1">${(budget.spent_amount / 1000).toFixed(0)}K / ${(budget.total_amount / 1000).toFixed(0)}K</p>
+                      <Badge variant={budget.isOver ? 'error' : budget.utilization > 75 ? 'warning' : 'success'}>
+                        {budget.isOver ? t('overBudget') : t('onTrack')} - {budget.utilization}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <Progress value={Math.min(100, budget.utilization)} size="sm" color={budget.isOver ? 'error' : budget.utilization > 75 ? 'warning' : 'orange'} />
+                  <div className="flex justify-between mt-1 text-xs text-t3">
+                    <span>{t('spent')}: ${(budget.spent_amount / 1000).toFixed(0)}K</span>
+                    <span>{t('remaining')}: ${(budget.remaining / 1000).toFixed(0)}K</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Over-Budget Alerts */}
+          {expenseBudgets.filter(b => b.isOver || b.utilization > 85).length > 0 ? (
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3">{t('overBudgetAlerts')}</h3>
+              <div className="space-y-2">
+                {expenseBudgets.filter(b => b.isOver || b.utilization > 85).map(b => (
+                  <div key={b.id} className={`p-3 rounded-lg border ${b.isOver ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={14} className={b.isOver ? 'text-red-600' : 'text-amber-600'} />
+                      <p className={`text-sm font-medium ${b.isOver ? 'text-red-800' : 'text-amber-800'}`}>{b.name}</p>
+                    </div>
+                    <p className={`text-xs mt-1 ${b.isOver ? 'text-red-700' : 'text-amber-700'}`}>
+                      {b.utilization}% utilized - ${(b.spent_amount / 1000).toFixed(0)}K of ${(b.total_amount / 1000).toFixed(0)}K budget
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="text-center py-6">
+                <CheckCircle2 size={24} className="inline text-emerald-500 mb-2" />
+                <p className="text-sm text-t3">{t('noOverBudgetAlerts')}</p>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB 6: RECEIPTS */}
+      {/* ============================================================ */}
+      {activeTab === 'receipts' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label={t('totalReceipts')} value={receiptStats.total} icon={<Receipt size={20} />} />
+            <StatCard label={t('matchRate')} value={`${receiptStats.matchRate}%`} change={`${receiptStats.matched} ${t('matched').toLowerCase()}`} changeType={receiptStats.matchRate > 70 ? 'positive' : 'negative'} icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('unmatchedCount')} value={receiptStats.unmatched} change="Needs review" changeType={receiptStats.unmatched > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+            <StatCard label={t('pending')} value={receiptStats.pending} change="AI processing" changeType="neutral" icon={<Clock size={20} />} />
+          </div>
+
+          {/* Upload Area */}
+          <Card className="mb-6">
+            <h3 className="text-sm font-semibold text-t1 mb-4">{t('uploadReceipts')}</h3>
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer">
+              <Upload size={32} className="mx-auto text-t3 mb-3" />
+              <p className="text-sm text-t2 mb-1">{t('dragDropText')}</p>
+              <p className="text-xs text-t3">{t('supportedFormats')}</p>
+            </div>
+          </Card>
+
+          {/* Receipt Gallery */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('receiptGallery')}</CardTitle></CardHeader>
+            <div className="p-6">
+              {demoReceipts.length === 0 ? (
+                <div className="text-center py-8 text-sm text-t3">{t('noReceipts')}</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {demoReceipts.map(receipt => (
+                    <div key={receipt.id} className="border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="bg-canvas h-28 flex items-center justify-center">
+                        {receipt.filename.endsWith('.pdf') ? (
+                          <FileText size={32} className="text-t3" />
+                        ) : (
+                          <Image size={32} className="text-t3" />
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-medium text-t1 truncate">{receipt.filename}</p>
+                        <p className="text-xs text-t3">${receipt.amount} - {receipt.date}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant={receipt.status === 'matched' ? 'success' : receipt.status === 'unmatched' ? 'error' : 'warning'}>
+                            {receipt.status === 'matched' ? t('matched') : receipt.status === 'unmatched' ? t('unmatched') : t('pending')}
+                          </Badge>
+                          <Badge variant="ai">{t('aiClassified')}: {receipt.ai_category}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODALS */}
+      {/* ============================================================ */}
 
       {/* New Expense Report Modal */}
       <Modal open={showReportModal} onClose={() => setShowReportModal(false)} title={t('newReportModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Select
-              label={tc('employee')}
-              value={reportForm.employee_id}
+            <Select label={tc('employee')} value={reportForm.employee_id}
               onChange={(e) => setReportForm({ ...reportForm, employee_id: e.target.value })}
-              options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))}
-            />
-            <Select
-              label={tc('currency')}
-              value={reportForm.currency}
+              options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+            <Select label={tc('currency')} value={reportForm.currency}
               onChange={(e) => setReportForm({ ...reportForm, currency: e.target.value })}
               options={[
-                { value: 'USD', label: tc('currencyUSD') },
-                { value: 'NGN', label: tc('currencyNGN') },
-                { value: 'GHS', label: tc('currencyGHS') },
-                { value: 'KES', label: tc('currencyKES') },
-                { value: 'XOF', label: tc('currencyXOF') },
-              ]}
-            />
+                { value: 'USD', label: tc('currencyUSD') }, { value: 'NGN', label: tc('currencyNGN') },
+                { value: 'GHS', label: tc('currencyGHS') }, { value: 'KES', label: tc('currencyKES') }, { value: 'XOF', label: tc('currencyXOF') },
+              ]} />
           </div>
-          <Input
-            label={t('reportTitle')}
-            placeholder={t('reportTitlePlaceholder')}
-            value={reportForm.title}
-            onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
-          />
+          <Input label={t('reportTitle')} placeholder={t('reportTitlePlaceholder')} value={reportForm.title}
+            onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })} />
 
-          {/* Line Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-xs font-medium text-t1">{tc('lineItems')}</label>
-              <Button size="sm" variant="secondary" onClick={addLineItem}>
-                <Plus size={12} /> {tc('addItem')}
-              </Button>
+              <Button size="sm" variant="secondary" onClick={addLineItem}><Plus size={12} /> {tc('addItem')}</Button>
             </div>
             <div className="space-y-2">
               {reportForm.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5">
-                    <Input
-                      placeholder={t('descriptionPlaceholder')}
-                      value={item.description}
-                      onChange={(e) => updateLineItem(index, 'description', e.target.value)}
-                    />
+                    <Input placeholder={t('descriptionPlaceholder')} value={item.description}
+                      onChange={(e) => updateLineItem(index, 'description', e.target.value)} />
                   </div>
                   <div className="col-span-3">
-                    <Select
-                      value={item.category}
-                      onChange={(e) => updateLineItem(index, 'category', e.target.value)}
+                    <Select value={item.category} onChange={(e) => updateLineItem(index, 'category', e.target.value)}
                       options={[
-                        { value: 'travel', label: t('categoryTravel') },
-                        { value: 'meals', label: t('categoryMeals') },
-                        { value: 'accommodation', label: t('categoryAccommodation') },
-                        { value: 'transport', label: t('categoryTransport') },
-                        { value: 'supplies', label: t('categorySupplies') },
-                        { value: 'equipment', label: t('categoryEquipment') },
-                        { value: 'other', label: t('categoryOther') },
-                      ]}
-                    />
+                        { value: 'travel', label: t('categoryTravel') }, { value: 'meals', label: t('categoryMeals') },
+                        { value: 'accommodation', label: t('categoryAccommodation') }, { value: 'transport', label: t('categoryTransport') },
+                        { value: 'supplies', label: t('categorySupplies') }, { value: 'equipment', label: t('categoryEquipment') }, { value: 'other', label: t('categoryOther') },
+                      ]} />
                   </div>
                   <div className="col-span-3">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder={t('amountPlaceholder')}
-                      value={item.amount || ''}
-                      onChange={(e) => updateLineItem(index, 'amount', Number(e.target.value))}
-                    />
+                    <Input type="number" min={0} placeholder={t('amountPlaceholder')} value={item.amount || ''}
+                      onChange={(e) => updateLineItem(index, 'amount', Number(e.target.value))} />
                   </div>
                   <div className="col-span-1 flex justify-center">
-                    <button
-                      onClick={() => removeLineItem(index)}
-                      disabled={reportForm.items.length <= 1}
-                      className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
-                    >
+                    <button onClick={() => removeLineItem(index)} disabled={reportForm.items.length <= 1}
+                      className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -349,6 +888,63 @@ export default function ExpensePage() {
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>{tc('cancel')}</Button>
           <Button variant="danger" onClick={confirmDelete}>{tc('delete')}</Button>
+        </div>
+      </Modal>
+
+      {/* Policy Modal */}
+      <Modal open={showPolicyModal} onClose={() => setShowPolicyModal(false)} title={editingPolicyId ? t('editPolicy') : t('addPolicy')}>
+        <div className="space-y-4">
+          <Input label={t('policyCategory')} value={policyForm.category} placeholder="e.g., Travel, Meals"
+            onChange={e => setPolicyForm({ ...policyForm, category: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('dailyLimit')} type="number" value={policyForm.daily_limit || ''}
+              onChange={e => setPolicyForm({ ...policyForm, daily_limit: Number(e.target.value) })} />
+            <Input label={t('receiptThreshold')} type="number" value={policyForm.receipt_threshold || ''}
+              onChange={e => setPolicyForm({ ...policyForm, receipt_threshold: Number(e.target.value) })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('autoApproveLimit')} type="number" value={policyForm.auto_approve_limit || ''}
+              onChange={e => setPolicyForm({ ...policyForm, auto_approve_limit: Number(e.target.value) })} />
+            <Select label={t('policyStatus')} value={policyForm.status}
+              onChange={e => setPolicyForm({ ...policyForm, status: e.target.value })}
+              options={[{ value: 'active', label: t('active') }, { value: 'inactive', label: t('inactive') }]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPolicyModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPolicy}>{editingPolicyId ? tc('save') : t('addPolicy')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mileage Entry Modal */}
+      <Modal open={showMileageModal} onClose={() => setShowMileageModal(false)} title={t('addMileageEntry')}>
+        <div className="space-y-4">
+          <Select label={tc('employee')} value={mileageForm.employee_id}
+            onChange={e => setMileageForm({ ...mileageForm, employee_id: e.target.value })}
+            options={employees.slice(0, 20).map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
+          <Input label={t('startDate')} type="date" value={mileageForm.date}
+            onChange={e => setMileageForm({ ...mileageForm, date: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('origin')} value={mileageForm.origin} placeholder="e.g., Lagos Office"
+              onChange={e => setMileageForm({ ...mileageForm, origin: e.target.value })} />
+            <Input label={t('destination')} value={mileageForm.destination} placeholder="e.g., Client Site"
+              onChange={e => setMileageForm({ ...mileageForm, destination: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label={t('distance')} type="number" value={mileageForm.distance_km || ''}
+              onChange={e => setMileageForm({ ...mileageForm, distance_km: Number(e.target.value) })} />
+            <Input label={t('ratePerKm')} type="number" value={mileageForm.rate_per_km}
+              onChange={e => setMileageForm({ ...mileageForm, rate_per_km: Number(e.target.value) })} />
+          </div>
+          {mileageForm.distance_km > 0 && (
+            <div className="bg-canvas rounded-lg p-3">
+              <p className="text-xs text-t3">{t('mileageAmount')}: <span className="font-semibold text-t1">${(mileageForm.distance_km * mileageForm.rate_per_km).toFixed(2)}</span></p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowMileageModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitMileage}>{t('addMileageEntry')}</Button>
+          </div>
         </div>
       </Modal>
     </>

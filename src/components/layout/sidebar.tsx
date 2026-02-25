@@ -14,6 +14,7 @@ import {
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
 } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/search'
 
 interface NavItem {
@@ -36,7 +37,17 @@ export function Sidebar() {
   const t = useTranslations('nav')
   const tCommon = useTranslations('common')
 
-  const navGroups: NavGroup[] = [
+  const role = currentUser?.role || 'owner'
+  const isEmployee = role === 'employee'
+
+  // Employee self-service: only show modules employees need
+  const EMPLOYEE_ALLOWED_HREFS = new Set([
+    '/dashboard', '/people', '/performance', '/learning',
+    '/engagement', '/payroll', '/time-attendance', '/benefits',
+    '/expense', '/mentoring',
+  ])
+
+  const allNavGroups: NavGroup[] = [
     {
       title: t('core'),
       items: [
@@ -85,6 +96,16 @@ export function Sidebar() {
       ],
     },
   ]
+
+  // Filter nav groups for employee role
+  const navGroups: NavGroup[] = isEmployee
+    ? allNavGroups
+        .map(group => ({
+          ...group,
+          items: group.items.filter(item => EMPLOYEE_ALLOWED_HREFS.has(item.href)),
+        }))
+        .filter(group => group.items.length > 0)
+    : allNavGroups
 
   const displayName = currentUser?.full_name || 'Amara Kone'
   const displayTitle = currentUser?.job_title || 'CHRO'
@@ -194,6 +215,7 @@ export function Sidebar() {
             </Link>
             <div className="flex items-center justify-between px-2">
               <LocaleSwitcher />
+              <ThemeToggle />
             </div>
             <div className="flex items-center gap-3 px-2 py-1.5">
               <div className="w-8 h-8 rounded-full bg-tempo-600/20 flex items-center justify-center text-tempo-400 text-xs font-semibold">

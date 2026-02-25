@@ -14,18 +14,22 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import {
   Plus, FolderKanban, ListChecks, Target, AlertTriangle,
-  Calendar, Pencil, Trash2, ChevronRight, Clock
+  Calendar, Pencil, Trash2, ChevronRight, Clock, Users,
+  Zap, Play, Pause, CheckCircle2, XCircle, ArrowRight, Lightbulb
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
-import { scoreProjectHealth, predictTimelineRisk, detectResourceBottlenecks } from '@/lib/ai-engine'
+import { scoreProjectHealth, predictTimelineRisk, detectResourceBottlenecks, suggestAutomationRules } from '@/lib/ai-engine'
+import { demoAutomationLog } from '@/lib/demo-data'
 import { useAI } from '@/lib/use-ai'
 
 export default function ProjectsPage() {
   const {
     projects, milestones, tasks, taskDependencies, employees,
+    automationRules, automationLog,
     addProject, updateProject, deleteProject,
     addMilestone, addTask, updateTask, deleteTask,
+    addAutomationRule, updateAutomationRule, toggleAutomationRule,
     getEmployeeName, currentEmployeeId,
   } = useTempo()
 
@@ -59,11 +63,22 @@ export default function ProjectsPage() {
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
 
+  // Automation rule modal
+  const [showRuleModal, setShowRuleModal] = useState(false)
+  const [ruleForm, setRuleForm] = useState({
+    name: '', description: '', project_id: '' as string | null,
+    triggerType: 'status_change' as string, triggerValue: '',
+    actionType: 'assign_to' as string, actionValue: '', actionLabel: '',
+  })
+
   const tabs = [
     { id: 'list', label: t('tabList'), count: projects.length },
     { id: 'kanban', label: t('tabKanban') },
     { id: 'timeline', label: t('tabTimeline'), count: milestones.length },
     { id: 'tasks', label: t('tabMyTasks'), count: tasks.filter(t => t.assignee_id === currentEmployeeId).length },
+    { id: 'sprints', label: 'Sprints' },
+    { id: 'capacity', label: 'Capacity' },
+    { id: 'automations', label: t('tabAutomations'), count: automationRules.filter(r => r.is_active).length },
   ]
 
   // Stats
@@ -96,6 +111,11 @@ export default function ProjectsPage() {
   const resourceBottlenecks = useMemo(() =>
     detectResourceBottlenecks(tasks, employees),
     [tasks, employees]
+  )
+
+  const automationSuggestions = useMemo(() =>
+    suggestAutomationRules(tasks, automationLog),
+    [tasks, automationLog]
   )
 
   // Claude AI enhancement
@@ -205,6 +225,44 @@ export default function ProjectsPage() {
     if (deleteConfirm.type === 'project') deleteProject(deleteConfirm.id)
     if (deleteConfirm.type === 'task') deleteTask(deleteConfirm.id)
     setDeleteConfirm(null)
+  }
+
+  function openNewRule() {
+    setRuleForm({ name: '', description: '', project_id: null, triggerType: 'status_change', triggerValue: '', actionType: 'assign_to', actionValue: '', actionLabel: '' })
+    setShowRuleModal(true)
+  }
+
+  function submitRule() {
+    if (!ruleForm.name || !ruleForm.triggerType || !ruleForm.actionType) return
+    addAutomationRule({
+      name: ruleForm.name,
+      description: ruleForm.description || null,
+      project_id: ruleForm.project_id || null,
+      trigger: { type: ruleForm.triggerType, value: ruleForm.triggerValue },
+      action: { type: ruleForm.actionType, value: ruleForm.actionValue, label: ruleForm.actionLabel || ruleForm.actionValue },
+      is_active: true,
+    })
+    setShowRuleModal(false)
+  }
+
+  function applyTemplate(template: { name: string; description: string; triggerType: string; triggerValue: string; actionType: string; actionValue: string; actionLabel: string }) {
+    setRuleForm({ ...template, project_id: null })
+    setShowRuleModal(true)
+  }
+
+  const ruleTemplates = [
+    { name: 'Auto-assign QA on review', description: 'Assign QA reviewer when task moves to review', triggerType: 'status_change', triggerValue: 'review', actionType: 'assign_to', actionValue: '', actionLabel: '' },
+    { name: 'Notify on overdue', description: 'Send notification when task passes due date', triggerType: 'due_date_passed', triggerValue: '', actionType: 'send_notification', actionValue: '', actionLabel: '' },
+    { name: 'Escalate blocked tasks', description: 'Change priority to critical when blocked label added', triggerType: 'label_added', triggerValue: 'blocked', actionType: 'change_priority', actionValue: 'critical', actionLabel: 'Critical' },
+  ]
+
+  const triggerLabel = (type: string) => {
+    const map: Record<string, string> = { status_change: t('triggerStatusChange'), assignee_change: t('triggerAssigneeChange'), due_date_passed: t('triggerDueDatePassed'), label_added: t('triggerLabelAdded'), priority_changed: t('triggerPriorityChanged') }
+    return map[type] || type
+  }
+  const actionLabel = (type: string) => {
+    const map: Record<string, string> = { assign_to: t('actionAssignTo'), send_notification: t('actionSendNotification'), change_priority: t('actionChangePriority'), add_label: t('actionAddLabel'), create_subtask: t('actionCreateSubtask') }
+    return map[type] || type
   }
 
   const statusColor = (s: string) =>
@@ -435,7 +493,335 @@ export default function ProjectsPage() {
         </Card>
       )}
 
+      {/* Sprint Planning - Linear style */}
+      {activeTab === 'sprints' && (() => {
+        const now = new Date()
+        const sprintStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1)
+        const sprintEnd = new Date(sprintStart.getTime() + 13 * 24 * 60 * 60 * 1000)
+        const sprintTasks = tasks.filter(t => t.status !== 'done')
+        const sprintDone = tasks.filter(t => t.status === 'done')
+        const velocity = sprintDone.length > 0 ? Math.round(sprintDone.reduce((a, t) => a + (t.estimated_hours || 4), 0)) : 0
+        const totalEstimate = sprintTasks.reduce((a, t) => a + (t.estimated_hours || 4), 0)
+        const daysLeft = Math.max(0, Math.ceil((sprintEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+
+        return (
+          <div className="space-y-4">
+            {/* Sprint Header */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">Sprint {Math.ceil((now.getMonth() * 2 + (now.getDate() > 15 ? 2 : 1)))}</h3>
+                  <p className="text-xs text-t3">{sprintStart.toLocaleDateString()} — {sprintEnd.toLocaleDateString()} · {daysLeft} days remaining</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-t1">{sprintTasks.length}</p>
+                    <p className="text-[0.6rem] text-t3 uppercase">Open</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-success">{sprintDone.length}</p>
+                    <p className="text-[0.6rem] text-t3 uppercase">Done</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-tempo-600">{velocity}h</p>
+                    <p className="text-[0.6rem] text-t3 uppercase">Velocity</p>
+                  </div>
+                </div>
+              </div>
+              <Progress value={tasks.length > 0 ? (sprintDone.length / tasks.length) * 100 : 0} showLabel />
+            </Card>
+
+            {/* Burndown Chart (simulated) */}
+            <Card>
+              <h4 className="text-xs font-semibold text-t1 uppercase tracking-wide mb-3">Burndown</h4>
+              <div className="flex items-end gap-1 h-32">
+                {Array.from({ length: 14 }, (_, i) => {
+                  const ideal = totalEstimate - (totalEstimate / 14) * i
+                  const actual = Math.max(0, totalEstimate - (totalEstimate / 14) * i * (0.7 + Math.random() * 0.5))
+                  const maxH = totalEstimate || 1
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                      <div className="w-full flex gap-0.5">
+                        <div className="flex-1 bg-gray-200 rounded-t" style={{ height: `${(ideal / maxH) * 100}px` }} />
+                        <div className="flex-1 bg-tempo-500 rounded-t" style={{ height: `${(actual / maxH) * 100}px` }} />
+                      </div>
+                      {i % 3 === 0 && <span className="text-[0.5rem] text-t3">D{i + 1}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-4 mt-2 justify-center">
+                <span className="flex items-center gap-1 text-[0.6rem] text-t3"><span className="w-2 h-2 bg-gray-200 rounded-sm" /> Ideal</span>
+                <span className="flex items-center gap-1 text-[0.6rem] text-t3"><span className="w-2 h-2 bg-tempo-500 rounded-sm" /> Actual</span>
+              </div>
+            </Card>
+
+            {/* Sprint Backlog */}
+            <Card padding="none">
+              <CardHeader><CardTitle>Sprint Backlog</CardTitle></CardHeader>
+              <div className="divide-y divide-divider">
+                {['in_progress', 'todo', 'in_review', 'done'].map(status => {
+                  const statusTasks = tasks.filter(t => t.status === status)
+                  if (statusTasks.length === 0) return null
+                  return (
+                    <div key={status}>
+                      <div className="px-6 py-2 bg-canvas flex items-center gap-2">
+                        <Badge variant={status === 'done' ? 'success' : status === 'in_progress' ? 'warning' : 'default'}>{status.replace(/_/g, ' ')}</Badge>
+                        <span className="text-xs text-t3">{statusTasks.length} tasks</span>
+                      </div>
+                      {statusTasks.map(task => (
+                        <div key={task.id} className="px-6 py-3 flex items-center gap-3 hover:bg-canvas/30 transition-colors">
+                          <Avatar name={getEmployeeName(task.assignee_id)} size="xs" />
+                          <p className="text-xs font-medium text-t1 flex-1">{task.title}</p>
+                          <Badge variant={task.priority === 'critical' || task.priority === 'high' ? 'error' : task.priority === 'medium' ? 'warning' : 'default'}>{task.priority}</Badge>
+                          <span className="text-xs text-t3">{task.estimated_hours || 4}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          </div>
+        )
+      })()}
+
+      {/* Capacity / Resource Management - Asana/Monday style */}
+      {activeTab === 'capacity' && (() => {
+        const teamMembers = [...new Set(tasks.map(t => t.assignee_id))].filter(Boolean)
+        const maxCapacity = 40 // hours per sprint per person
+
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard label="Team Members" value={teamMembers.length} icon={<Users size={20} />} />
+              <StatCard label="Total Capacity" value={`${teamMembers.length * maxCapacity}h`} icon={<Clock size={20} />} />
+              <StatCard label="Allocated" value={`${tasks.filter(t => t.status !== 'done').reduce((a, t) => a + (t.estimated_hours || 4), 0)}h`} icon={<Target size={20} />} />
+              <StatCard label="Utilization" value={`${teamMembers.length > 0 ? Math.round(tasks.filter(t => t.status !== 'done').reduce((a, t) => a + (t.estimated_hours || 4), 0) / (teamMembers.length * maxCapacity) * 100) : 0}%`} icon={<AlertTriangle size={20} />} />
+            </div>
+
+            {/* Team Workload */}
+            <Card>
+              <h4 className="text-xs font-semibold text-t1 uppercase tracking-wide mb-4">Team Workload</h4>
+              <div className="space-y-4">
+                {teamMembers.map(memberId => {
+                  const memberTasks = tasks.filter(t => t.assignee_id === memberId && t.status !== 'done')
+                  const allocated = memberTasks.reduce((a, t) => a + (t.estimated_hours || 4), 0)
+                  const utilPct = Math.min(100, Math.round((allocated / maxCapacity) * 100))
+                  const isOver = allocated > maxCapacity
+
+                  return (
+                    <div key={memberId}>
+                      <div className="flex items-center gap-3 mb-1">
+                        <Avatar name={getEmployeeName(memberId)} size="xs" />
+                        <span className="text-xs font-medium text-t1 flex-1">{getEmployeeName(memberId)}</span>
+                        <span className="text-xs text-t3">{memberTasks.length} tasks</span>
+                        <span className={`text-xs font-semibold ${isOver ? 'text-error' : utilPct > 80 ? 'text-warning' : 'text-success'}`}>{allocated}h / {maxCapacity}h</span>
+                      </div>
+                      <div className="w-full h-2 bg-canvas rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${isOver ? 'bg-red-500' : utilPct > 80 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${Math.min(100, utilPct)}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+
+            {/* Unassigned Tasks */}
+            <Card padding="none">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Unassigned Tasks</CardTitle>
+                  <Badge variant="warning">{tasks.filter(t => !t.assignee_id && t.status !== 'done').length}</Badge>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {tasks.filter(t => !t.assignee_id && t.status !== 'done').map(task => (
+                  <div key={task.id} className="px-6 py-3 flex items-center gap-3">
+                    <p className="text-xs font-medium text-t1 flex-1">{task.title}</p>
+                    <Badge variant={task.priority === 'critical' || task.priority === 'high' ? 'error' : task.priority === 'medium' ? 'warning' : 'default'}>{task.priority}</Badge>
+                    <span className="text-xs text-t3">{task.estimated_hours || 4}h</span>
+                    <Button size="sm" variant="ghost" onClick={() => openEditTask(task.id)}>Assign</Button>
+                  </div>
+                ))}
+                {tasks.filter(t => !t.assignee_id && t.status !== 'done').length === 0 && (
+                  <div className="px-6 py-8 text-center text-xs text-t3">All tasks are assigned</div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )
+      })()}
+
+      {/* ==================== AUTOMATIONS ==================== */}
+      {activeTab === 'automations' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-t1 flex items-center gap-2"><Zap size={20} /> {t('automationRules')}</h2>
+              <p className="text-sm text-t3 mt-0.5">{t('automationRulesDesc')}</p>
+            </div>
+            <Button size="sm" onClick={openNewRule}><Plus size={14} /> {t('newRule')}</Button>
+          </div>
+
+          {/* Rules List */}
+          <div className="space-y-3">
+            {automationRules.length === 0 && (
+              <Card><p className="text-sm text-t3 text-center py-8">{t('noRules')}</p></Card>
+            )}
+            {automationRules.map(rule => {
+              const projectName = rule.project_id ? projects.find(p => p.id === rule.project_id)?.title : t('allProjects')
+              return (
+                <Card key={rule.id} className={`transition-colors ${!rule.is_active ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${rule.is_active ? 'bg-tempo-50 dark:bg-tempo-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                        <Zap size={18} className={rule.is_active ? 'text-tempo-600' : 'text-t3'} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-t1">{rule.name}</h3>
+                        <p className="text-xs text-t3">{projectName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={rule.is_active ? 'success' : 'default'}>
+                        {rule.is_active ? t('ruleActive') : t('ruleInactive')}
+                      </Badge>
+                      <button
+                        onClick={() => toggleAutomationRule(rule.id)}
+                        className="p-1.5 rounded-lg text-t3 hover:text-t1 hover:bg-canvas transition-colors"
+                        title={rule.is_active ? 'Pause' : 'Activate'}
+                      >
+                        {rule.is_active ? <Pause size={14} /> : <Play size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {rule.description && (
+                    <p className="text-xs text-t2 mb-3">{rule.description}</p>
+                  )}
+
+                  {/* WHEN -> THEN */}
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    <Badge variant="info">{t('trigger')}</Badge>
+                    <span className="text-xs text-t1">{triggerLabel(rule.trigger.type)}</span>
+                    {rule.trigger.value && <Badge>{rule.trigger.value}</Badge>}
+                    <ArrowRight size={14} className="text-t3" />
+                    <Badge variant="warning">{t('action')}</Badge>
+                    <span className="text-xs text-t1">{actionLabel(rule.action.type)}</span>
+                    {rule.action.label && <Badge>{rule.action.label}</Badge>}
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-t3 pt-2 border-t border-divider">
+                    <span>{rule.executions} {t('executions')}</span>
+                    <span>{t('lastExecuted')}: {rule.last_executed ? new Date(rule.last_executed).toLocaleDateString() : t('never')}</span>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Templates */}
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Lightbulb size={16} /> {t('ruleTemplates')}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {ruleTemplates.map((tmpl, idx) => (
+                <div key={idx} className="p-3 bg-canvas rounded-lg border border-border">
+                  <h4 className="text-xs font-semibold text-t1 mb-1">{tmpl.name}</h4>
+                  <p className="text-[0.65rem] text-t3 mb-2">{tmpl.description}</p>
+                  <Button size="sm" variant="secondary" onClick={() => applyTemplate(tmpl)}>{t('useTemplate')}</Button>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* AI Suggestions */}
+          {automationSuggestions.length > 0 && (
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Lightbulb size={16} className="text-tempo-600" /> {t('aiSuggestions')}</h3>
+              <div className="space-y-3">
+                {automationSuggestions.map(suggestion => (
+                  <div key={suggestion.id} className="p-3 bg-tempo-50/50 dark:bg-tempo-900/20 rounded-lg border border-tempo-200/50">
+                    <div className="flex items-start justify-between mb-1">
+                      <h4 className="text-xs font-semibold text-t1">{suggestion.title}</h4>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={suggestion.impact === 'high' ? 'success' : 'default'}>{suggestion.impact} impact</Badge>
+                        <Badge>{suggestion.effort} effort</Badge>
+                      </div>
+                    </div>
+                    <p className="text-[0.65rem] text-t2">{suggestion.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Execution Log */}
+          <Card padding="none">
+            <div className="px-6 py-4 border-b border-divider">
+              <h3 className="text-sm font-semibold text-t1">{t('executionLog')}</h3>
+            </div>
+            <div className="divide-y divide-divider">
+              {automationLog.length === 0 && (
+                <div className="px-6 py-8 text-center text-sm text-t3">{t('noExecutions')}</div>
+              )}
+              {[...automationLog].sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime()).map(log => (
+                <div key={log.id} className="px-6 py-3 flex items-center gap-3">
+                  {log.status === 'success' ? (
+                    <CheckCircle2 size={16} className="text-success shrink-0" />
+                  ) : (
+                    <XCircle size={16} className="text-error shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-t1">{log.rule_name}</p>
+                    <p className="text-[0.65rem] text-t3">{log.task_title}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge variant={log.status === 'success' ? 'success' : 'error'}>{log.status}</Badge>
+                    <p className="text-[0.6rem] text-t3 mt-0.5">{new Date(log.executed_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* ==================== MODALS ==================== */}
+
+      {/* Create Automation Rule */}
+      <Modal open={showRuleModal} onClose={() => setShowRuleModal(false)} title={t('createRule')}>
+        <div className="space-y-4">
+          <Input label={t('ruleName')} placeholder={t('ruleNamePlaceholder')} value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} />
+          <Input label={t('ruleDescription')} placeholder={t('ruleDescPlaceholder')} value={ruleForm.description} onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })} />
+          <Select label={t('project')} value={ruleForm.project_id || ''} onChange={(e) => setRuleForm({ ...ruleForm, project_id: e.target.value || null })} options={[{ value: '', label: t('allProjects') }, ...projects.map(p => ({ value: p.id, label: p.title }))]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label={t('trigger')} value={ruleForm.triggerType} onChange={(e) => setRuleForm({ ...ruleForm, triggerType: e.target.value })} options={[
+              { value: 'status_change', label: t('triggerStatusChange') },
+              { value: 'assignee_change', label: t('triggerAssigneeChange') },
+              { value: 'due_date_passed', label: t('triggerDueDatePassed') },
+              { value: 'label_added', label: t('triggerLabelAdded') },
+              { value: 'priority_changed', label: t('triggerPriorityChanged') },
+            ]} />
+            <Input label={`${t('trigger')} value`} placeholder="e.g., review, blocked" value={ruleForm.triggerValue} onChange={(e) => setRuleForm({ ...ruleForm, triggerValue: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label={t('action')} value={ruleForm.actionType} onChange={(e) => setRuleForm({ ...ruleForm, actionType: e.target.value })} options={[
+              { value: 'assign_to', label: t('actionAssignTo') },
+              { value: 'send_notification', label: t('actionSendNotification') },
+              { value: 'change_priority', label: t('actionChangePriority') },
+              { value: 'add_label', label: t('actionAddLabel') },
+              { value: 'create_subtask', label: t('actionCreateSubtask') },
+            ]} />
+            <Input label={`${t('action')} value`} placeholder="e.g., person, label" value={ruleForm.actionValue} onChange={(e) => setRuleForm({ ...ruleForm, actionValue: e.target.value })} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowRuleModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitRule}>{t('createRule')}</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create/Edit Project */}
       <Modal open={showProjectModal} onClose={() => setShowProjectModal(false)} title={editingProject ? t('editProject') : t('createProject')}>

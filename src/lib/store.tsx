@@ -4,20 +4,26 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import {
   demoOrg, demoUser, demoDepartments, demoEmployees,
   demoGoals, demoReviewCycles, demoReviews, demoFeedback,
-  demoCompBands, demoSalaryReviews,
+  demoCompBands, demoSalaryReviews, demoEquityGrants, demoCompPlanningCycles,
   demoCourses, demoEnrollments,
-  demoSurveys, demoEngagementScores,
-  demoMentoringPrograms, demoMentoringPairs,
+  demoSurveys, demoEngagementScores, demoActionPlans, demoSurveyResponses,
+  demoMentoringPrograms, demoMentoringPairs, demoMentoringSessions, demoMentoringGoals,
   demoPayrollRuns, demoLeaveRequests,
-  demoBenefitPlans, demoExpenseReports,
-  demoJobPostings, demoApplications,
+  demoBenefitPlans, demoBenefitEnrollments, demoBenefitDependents, demoLifeEvents, demoExpenseReports, demoExpensePolicies, demoMileageLogs,
+  demoJobPostings, demoApplications, demoInterviews, demoTalentPools, demoScoreCards,
   demoDevices, demoSoftwareLicenses, demoITRequests,
   demoInvoices, demoBudgets, demoVendors,
   demoProjects, demoMilestones, demoTasks, demoTaskDependencies,
   demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
   demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
   demoNotifications,
-  demoLearningPaths, demoLiveSessions, demoCareerSiteConfig, demoJobDistributions,
+  demoLearningPaths, demoLiveSessions, demoCourseBlocks, demoQuizQuestions, demoDiscussions, demoStudyGroups, demoCareerSiteConfig, demoJobDistributions,
+  demoEmployeePayrollEntries, demoContractorPayments, demoPayrollSchedules, demoTaxConfigs, demoComplianceIssues, demoTaxFilings,
+  demoEmployeeDocuments, demoEmployeeTimeline,
+  demoOneOnOnes, demoRecognitions, demoCompetencyFramework, demoCompetencyRatings,
+  demoBuddyAssignments, demoPreboardingTasks, demoWelcomeContent,
+  demoAutomationRules, demoAutomationLog,
+  demoOffers, demoCareerTracks, demoMarketBenchmarks, demoWidgetPreferences,
   getDemoDataForOrg, allDemoCredentials,
 } from './demo-data'
 import type { DemoRole } from './demo-data'
@@ -78,42 +84,70 @@ interface TempoState {
   reviewCycles: WidenArray<typeof demoReviewCycles>
   reviews: WidenArray<typeof demoReviews>
   feedback: typeof demoFeedback
+  oneOnOnes: WidenArray<typeof demoOneOnOnes>
+  recognitions: WidenArray<typeof demoRecognitions>
+  competencyFramework: typeof demoCompetencyFramework
+  competencyRatings: WidenArray<typeof demoCompetencyRatings>
 
   // Compensation
   compBands: typeof demoCompBands
   salaryReviews: WidenArray<typeof demoSalaryReviews>
+  equityGrants: WidenArray<typeof demoEquityGrants>
+  compPlanningCycles: WidenArray<typeof demoCompPlanningCycles>
 
   // Learning
   courses: typeof demoCourses
   enrollments: WidenArray<typeof demoEnrollments>
   learningPaths: WidenArray<typeof demoLearningPaths>
   liveSessions: WidenArray<typeof demoLiveSessions>
+  courseBlocks: WidenArray<typeof demoCourseBlocks>
+  quizQuestions: WidenArray<typeof demoQuizQuestions>
+  discussions: WidenArray<typeof demoDiscussions>
+  studyGroups: WidenArray<typeof demoStudyGroups>
 
   // Engagement
   surveys: WidenArray<typeof demoSurveys>
   engagementScores: typeof demoEngagementScores
+  actionPlans: WidenArray<typeof demoActionPlans>
+  surveyResponses: WidenArray<typeof demoSurveyResponses>
 
   // Mentoring
   mentoringPrograms: WidenArray<typeof demoMentoringPrograms>
   mentoringPairs: WidenArray<typeof demoMentoringPairs>
+  mentoringSessions: WidenArray<typeof demoMentoringSessions>
+  mentoringGoals: WidenArray<typeof demoMentoringGoals>
 
   // Payroll
   payrollRuns: WidenArray<typeof demoPayrollRuns>
+  employeePayrollEntries: WidenArray<typeof demoEmployeePayrollEntries>
+  contractorPayments: WidenArray<typeof demoContractorPayments>
+  payrollSchedules: WidenArray<typeof demoPayrollSchedules>
+  taxConfigs: WidenArray<typeof demoTaxConfigs>
+  complianceIssues: WidenArray<typeof demoComplianceIssues>
+  taxFilings: WidenArray<typeof demoTaxFilings>
 
   // Time
   leaveRequests: WidenArray<typeof demoLeaveRequests>
 
   // Benefits
   benefitPlans: WidenArray<typeof demoBenefitPlans>
+  benefitEnrollments: WidenArray<typeof demoBenefitEnrollments>
+  benefitDependents: WidenArray<typeof demoBenefitDependents>
+  lifeEvents: WidenArray<typeof demoLifeEvents>
 
   // Expense
   expenseReports: WidenArray<typeof demoExpenseReports>
+  expensePolicies: WidenArray<typeof demoExpensePolicies>
+  mileageLogs: WidenArray<typeof demoMileageLogs>
 
   // Recruiting
   jobPostings: WidenArray<typeof demoJobPostings>
   applications: WidenArray<typeof demoApplications>
   careerSiteConfig: typeof demoCareerSiteConfig
   jobDistributions: WidenArray<typeof demoJobDistributions>
+  interviews: WidenArray<typeof demoInterviews>
+  talentPools: WidenArray<typeof demoTalentPools>
+  scoreCards: WidenArray<typeof demoScoreCards>
 
   // IT
   devices: WidenArray<typeof demoDevices>
@@ -130,6 +164,8 @@ interface TempoState {
   milestones: WidenArray<typeof demoMilestones>
   tasks: WidenArray<typeof demoTasks>
   taskDependencies: typeof demoTaskDependencies
+  automationRules: WidenArray<typeof demoAutomationRules>
+  automationLog: WidenArray<typeof demoAutomationLog>
 
   // Strategy Execution
   strategicObjectives: WidenArray<typeof demoStrategicObjectives>
@@ -143,6 +179,27 @@ interface TempoState {
   workflowSteps: WidenArray<typeof demoWorkflowSteps>
   workflowRuns: WidenArray<typeof demoWorkflowRuns>
   workflowTemplates: WidenArray<typeof demoWorkflowTemplates>
+
+  // People / HR
+  employeeDocuments: WidenArray<typeof demoEmployeeDocuments>
+  employeeTimeline: WidenArray<typeof demoEmployeeTimeline>
+
+  // Onboarding
+  buddyAssignments: WidenArray<typeof demoBuddyAssignments>
+  preboardingTasks: WidenArray<typeof demoPreboardingTasks>
+  welcomeContent: typeof demoWelcomeContent
+
+  // Offers
+  offers: WidenArray<typeof demoOffers>
+
+  // Career Tracks
+  careerTracks: typeof demoCareerTracks
+
+  // Market Benchmarks
+  marketBenchmarks: WidenArray<typeof demoMarketBenchmarks>
+
+  // Widget Preferences
+  widgetPreferences: typeof demoWidgetPreferences
 
   // Notifications
   notifications: WidenArray<typeof demoNotifications>
@@ -183,6 +240,17 @@ interface TempoState {
   // Feedback
   addFeedback: (data: AnyRecord) => void
 
+  // 1:1 Meetings
+  addOneOnOne: (data: AnyRecord) => void
+  updateOneOnOne: (id: string, data: AnyRecord) => void
+
+  // Recognitions
+  addRecognition: (data: AnyRecord) => void
+
+  // Competency Ratings
+  addCompetencyRating: (data: AnyRecord) => void
+  updateCompetencyRating: (id: string, data: AnyRecord) => void
+
   // Comp Bands
   addCompBand: (data: AnyRecord) => void
   updateCompBand: (id: string, data: AnyRecord) => void
@@ -191,6 +259,14 @@ interface TempoState {
   // Salary Reviews
   addSalaryReview: (data: AnyRecord) => void
   updateSalaryReview: (id: string, data: AnyRecord) => void
+
+  // Equity Grants
+  addEquityGrant: (data: AnyRecord) => void
+  updateEquityGrant: (id: string, data: AnyRecord) => void
+
+  // Comp Planning Cycles
+  addCompPlanningCycle: (data: AnyRecord) => void
+  updateCompPlanningCycle: (id: string, data: AnyRecord) => void
 
   // Courses
   addCourse: (data: AnyRecord) => void
@@ -209,9 +285,31 @@ interface TempoState {
   addLiveSession: (data: AnyRecord) => void
   updateLiveSession: (id: string, data: AnyRecord) => void
 
+  // Course Blocks
+  addCourseBlock: (data: AnyRecord) => void
+  updateCourseBlock: (id: string, data: AnyRecord) => void
+  deleteCourseBlock: (id: string) => void
+
+  // Quiz Questions
+  addQuizQuestion: (data: AnyRecord) => void
+  updateQuizQuestion: (id: string, data: AnyRecord) => void
+  deleteQuizQuestion: (id: string) => void
+
+  // Discussions
+  addDiscussion: (data: AnyRecord) => void
+  updateDiscussion: (id: string, data: AnyRecord) => void
+
+  // Study Groups
+  addStudyGroup: (data: AnyRecord) => void
+  updateStudyGroup: (id: string, data: AnyRecord) => void
+
   // Surveys
   addSurvey: (data: AnyRecord) => void
   updateSurvey: (id: string, data: AnyRecord) => void
+
+  // Action Plans
+  addActionPlan: (data: AnyRecord) => void
+  updateActionPlan: (id: string, data: AnyRecord) => void
 
   // Mentoring Programs
   addMentoringProgram: (data: AnyRecord) => void
@@ -221,9 +319,26 @@ interface TempoState {
   addMentoringPair: (data: AnyRecord) => void
   updateMentoringPair: (id: string, data: AnyRecord) => void
 
+  // Mentoring Sessions
+  addMentoringSession: (data: AnyRecord) => void
+  updateMentoringSession: (id: string, data: AnyRecord) => void
+
+  // Mentoring Goals
+  addMentoringGoal: (data: AnyRecord) => void
+  updateMentoringGoal: (id: string, data: AnyRecord) => void
+
   // Payroll
   addPayrollRun: (data: AnyRecord) => void
   updatePayrollRun: (id: string, data: AnyRecord) => void
+  addContractorPayment: (data: AnyRecord) => void
+  updateContractorPayment: (id: string, data: AnyRecord) => void
+  addPayrollSchedule: (data: AnyRecord) => void
+  updatePayrollSchedule: (id: string, data: AnyRecord) => void
+  addTaxConfig: (data: AnyRecord) => void
+  updateTaxConfig: (id: string, data: AnyRecord) => void
+  resolveComplianceIssue: (id: string) => void
+  updateTaxFiling: (id: string, data: AnyRecord) => void
+  addEmployeePayrollEntry: (data: AnyRecord) => void
 
   // Leave Requests
   addLeaveRequest: (data: AnyRecord) => void
@@ -233,10 +348,30 @@ interface TempoState {
   addBenefitPlan: (data: AnyRecord) => void
   updateBenefitPlan: (id: string, data: AnyRecord) => void
 
+  // Benefit Enrollments
+  addBenefitEnrollment: (data: AnyRecord) => void
+  updateBenefitEnrollment: (id: string, data: AnyRecord) => void
+
+  // Benefit Dependents
+  addBenefitDependent: (data: AnyRecord) => void
+  updateBenefitDependent: (id: string, data: AnyRecord) => void
+
+  // Life Events
+  addLifeEvent: (data: AnyRecord) => void
+  updateLifeEvent: (id: string, data: AnyRecord) => void
+
   // Expense Reports
   addExpenseReport: (data: AnyRecord) => void
   updateExpenseReport: (id: string, data: AnyRecord) => void
   deleteExpenseReport: (id: string) => void
+
+  // Expense Policies
+  addExpensePolicy: (data: AnyRecord) => void
+  updateExpensePolicy: (id: string, data: AnyRecord) => void
+
+  // Mileage Logs
+  addMileageLog: (data: AnyRecord) => void
+  updateMileageLog: (id: string, data: AnyRecord) => void
 
   // Job Postings
   addJobPosting: (data: AnyRecord) => void
@@ -252,6 +387,18 @@ interface TempoState {
   // Job Distributions
   addJobDistribution: (data: AnyRecord) => void
   updateJobDistribution: (id: string, data: AnyRecord) => void
+
+  // Interviews
+  addInterview: (data: AnyRecord) => void
+  updateInterview: (id: string, data: AnyRecord) => void
+
+  // Talent Pools
+  addTalentPool: (data: AnyRecord) => void
+  updateTalentPool: (id: string, data: AnyRecord) => void
+
+  // Score Cards
+  addScoreCard: (data: AnyRecord) => void
+  updateScoreCard: (id: string, data: AnyRecord) => void
 
   // Devices
   addDevice: (data: AnyRecord) => void
@@ -295,6 +442,11 @@ interface TempoState {
   updateTask: (id: string, data: AnyRecord) => void
   deleteTask: (id: string) => void
 
+  // Automation Rules
+  addAutomationRule: (data: AnyRecord) => void
+  updateAutomationRule: (id: string, data: AnyRecord) => void
+  toggleAutomationRule: (id: string) => void
+
   // Strategic Objectives
   addStrategicObjective: (data: AnyRecord) => void
   updateStrategicObjective: (id: string, data: AnyRecord) => void
@@ -330,6 +482,23 @@ interface TempoState {
   // Workflow Runs
   addWorkflowRun: (data: AnyRecord) => void
   updateWorkflowRun: (id: string, data: AnyRecord) => void
+
+  // Employee Documents
+  addEmployeeDocument: (data: AnyRecord) => void
+  updateEmployeeDocument: (id: string, data: AnyRecord) => void
+
+  // Onboarding
+  addBuddyAssignment: (data: AnyRecord) => void
+  updateBuddyAssignment: (id: string, data: AnyRecord) => void
+  addPreboardingTask: (data: AnyRecord) => void
+  updatePreboardingTask: (id: string, data: AnyRecord) => void
+
+  // Offers
+  addOffer: (data: AnyRecord) => void
+  updateOffer: (id: string, data: AnyRecord) => void
+
+  // Widget Preferences
+  updateWidgetPreferences: (data: AnyRecord) => void
 
   // Notifications
   markNotificationRead: (id: string) => void
@@ -436,24 +605,52 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [reviewCycles, setReviewCycles] = useState(demoReviewCycles)
   const [reviews, setReviews] = useState(demoReviews)
   const [feedback, setFeedback] = useState(demoFeedback)
+  const [oneOnOnes, setOneOnOnes] = useState(demoOneOnOnes)
+  const [recognitions, setRecognitions] = useState(demoRecognitions)
+  const [competencyFramework] = useState(demoCompetencyFramework)
+  const [competencyRatings, setCompetencyRatings] = useState(demoCompetencyRatings)
   const [compBands, setCompBands] = useState(demoCompBands)
   const [salaryReviews, setSalaryReviews] = useState(demoSalaryReviews)
+  const [equityGrants, setEquityGrants] = useState(demoEquityGrants)
+  const [compPlanningCycles, setCompPlanningCycles] = useState(demoCompPlanningCycles)
   const [courses, setCourses] = useState(demoCourses)
   const [enrollments, setEnrollments] = useState(demoEnrollments)
   const [learningPaths, setLearningPaths] = useState(demoLearningPaths)
   const [liveSessions, setLiveSessions] = useState(demoLiveSessions)
+  const [courseBlocks, setCourseBlocks] = useState(demoCourseBlocks)
+  const [quizQuestions, setQuizQuestions] = useState(demoQuizQuestions)
+  const [discussions, setDiscussions] = useState(demoDiscussions)
+  const [studyGroups, setStudyGroups] = useState(demoStudyGroups)
   const [surveys, setSurveys] = useState(demoSurveys)
   const [engagementScores, setEngagementScores] = useState(demoEngagementScores)
+  const [actionPlans, setActionPlans] = useState(demoActionPlans)
+  const [surveyResponses, setSurveyResponses] = useState(demoSurveyResponses)
   const [mentoringPrograms, setMentoringPrograms] = useState(demoMentoringPrograms)
   const [mentoringPairs, setMentoringPairs] = useState(demoMentoringPairs)
+  const [mentoringSessions, setMentoringSessions] = useState(demoMentoringSessions)
+  const [mentoringGoals, setMentoringGoals] = useState(demoMentoringGoals)
   const [payrollRuns, setPayrollRuns] = useState(demoPayrollRuns)
+  const [employeePayrollEntries, setEmployeePayrollEntries] = useState(demoEmployeePayrollEntries)
+  const [contractorPayments, setContractorPayments] = useState(demoContractorPayments)
+  const [payrollSchedules, setPayrollSchedules] = useState(demoPayrollSchedules)
+  const [taxConfigs, setTaxConfigs] = useState(demoTaxConfigs)
+  const [complianceIssues, setComplianceIssues] = useState(demoComplianceIssues)
+  const [taxFilings, setTaxFilings] = useState(demoTaxFilings)
   const [leaveRequests, setLeaveRequests] = useState(demoLeaveRequests)
   const [benefitPlans, setBenefitPlans] = useState(demoBenefitPlans)
+  const [benefitEnrollments, setBenefitEnrollments] = useState(demoBenefitEnrollments)
+  const [benefitDependents, setBenefitDependents] = useState(demoBenefitDependents)
+  const [lifeEvents, setLifeEvents] = useState(demoLifeEvents)
   const [expenseReports, setExpenseReports] = useState(demoExpenseReports)
+  const [expensePolicies, setExpensePolicies] = useState(demoExpensePolicies)
+  const [mileageLogs, setMileageLogs] = useState(demoMileageLogs)
   const [jobPostings, setJobPostings] = useState(demoJobPostings)
   const [applications, setApplications] = useState(demoApplications)
   const [careerSiteConfig, setCareerSiteConfig] = useState(demoCareerSiteConfig)
   const [jobDistributions, setJobDistributions] = useState(demoJobDistributions)
+  const [interviews, setInterviews] = useState(demoInterviews)
+  const [talentPools, setTalentPools] = useState(demoTalentPools)
+  const [scoreCards, setScoreCards] = useState(demoScoreCards)
   const [devices, setDevices] = useState(demoDevices)
   const [softwareLicenses, setSoftwareLicenses] = useState(demoSoftwareLicenses)
   const [itRequests, setITRequests] = useState(demoITRequests)
@@ -465,6 +662,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [milestones, setMilestones] = useState(demoMilestones)
   const [tasks, setTasks] = useState(demoTasks)
   const [taskDependencies, setTaskDependencies] = useState(demoTaskDependencies)
+  const [automationRules, setAutomationRules] = useState(demoAutomationRules)
+  const [automationLog, setAutomationLog] = useState(demoAutomationLog)
   // Strategy Execution
   const [strategicObjectives, setStrategicObjectives] = useState(demoStrategicObjectives)
   const [keyResults, setKeyResults] = useState(demoKeyResults)
@@ -476,8 +675,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [workflowSteps, setWorkflowSteps] = useState(demoWorkflowSteps)
   const [workflowRuns, setWorkflowRuns] = useState(demoWorkflowRuns)
   const [workflowTemplates, setWorkflowTemplates] = useState(demoWorkflowTemplates)
+  // People / HR
+  const [employeeDocuments, setEmployeeDocuments] = useState(demoEmployeeDocuments)
+  const [employeeTimeline, setEmployeeTimeline] = useState(demoEmployeeTimeline)
+  // Onboarding
+  const [buddyAssignments, setBuddyAssignments] = useState(demoBuddyAssignments)
+  const [preboardingTasks, setPreboardingTasks] = useState(demoPreboardingTasks)
+  const [welcomeContent] = useState(demoWelcomeContent)
   // Notifications
   const [notifications, setNotifications] = useState(demoNotifications)
+  // Offers, Career Tracks, Market Benchmarks, Widget Preferences
+  const [offers, setOffers] = useState(demoOffers)
+  const [careerTracks] = useState(demoCareerTracks)
+  const [marketBenchmarks, setMarketBenchmarks] = useState(demoMarketBenchmarks)
+  const [widgetPreferences, setWidgetPreferences] = useState(demoWidgetPreferences)
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -503,22 +714,46 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setFeedback(data.feedback as any)
     setCompBands(data.compBands as any)
     setSalaryReviews(data.salaryReviews as any)
+    setEquityGrants(data.equityGrants as any)
+    setCompPlanningCycles(data.compPlanningCycles as any)
     setCourses(data.courses as any)
     setEnrollments(data.enrollments as any)
     setLearningPaths(data.learningPaths as any)
     setLiveSessions(data.liveSessions as any)
+    if ((data as any).courseBlocks) setCourseBlocks((data as any).courseBlocks)
+    if ((data as any).quizQuestions) setQuizQuestions((data as any).quizQuestions)
+    if ((data as any).discussions) setDiscussions((data as any).discussions)
+    if ((data as any).studyGroups) setStudyGroups((data as any).studyGroups)
     setSurveys(data.surveys as any)
     setEngagementScores(data.engagementScores as any)
+    setActionPlans(data.actionPlans as any)
+    setSurveyResponses(data.surveyResponses as any)
     setMentoringPrograms(data.mentoringPrograms as any)
     setMentoringPairs(data.mentoringPairs as any)
+    if ((data as any).mentoringSessions) setMentoringSessions((data as any).mentoringSessions)
+    if ((data as any).mentoringGoals) setMentoringGoals((data as any).mentoringGoals)
     setPayrollRuns(data.payrollRuns as any)
+    setEmployeePayrollEntries(data.employeePayrollEntries as any)
+    setContractorPayments(data.contractorPayments as any)
+    setPayrollSchedules(data.payrollSchedules as any)
+    setTaxConfigs(data.taxConfigs as any)
+    setComplianceIssues(data.complianceIssues as any)
+    setTaxFilings(data.taxFilings as any)
     setLeaveRequests(data.leaveRequests as any)
     setBenefitPlans(data.benefitPlans as any)
+    setBenefitEnrollments(data.benefitEnrollments as any)
+    setBenefitDependents(data.benefitDependents as any)
+    setLifeEvents(data.lifeEvents as any)
     setExpenseReports(data.expenseReports as any)
+    if (data.expensePolicies) setExpensePolicies(data.expensePolicies as any)
+    if (data.mileageLogs) setMileageLogs(data.mileageLogs as any)
     setJobPostings(data.jobPostings as any)
     setApplications(data.applications as any)
     setCareerSiteConfig(data.careerSiteConfig as any)
     setJobDistributions(data.jobDistributions as any)
+    if ((data as any).interviews) setInterviews((data as any).interviews)
+    if ((data as any).talentPools) setTalentPools((data as any).talentPools)
+    if ((data as any).scoreCards) setScoreCards((data as any).scoreCards)
     setDevices(data.devices as any)
     setSoftwareLicenses(data.softwareLicenses as any)
     setITRequests(data.itRequests as any)
@@ -539,6 +774,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setWorkflowRuns(data.workflowRuns as any)
     setWorkflowTemplates(data.workflowTemplates as any)
     setNotifications(data.notifications as any)
+    if (data.employeeDocuments) setEmployeeDocuments(data.employeeDocuments as any)
+    if (data.employeeTimeline) setEmployeeTimeline(data.employeeTimeline as any)
     /* eslint-enable @typescript-eslint/no-explicit-any */
     setAuditLog([])
     try { localStorage.setItem('tempo_current_org', orgId) } catch { /* ignore */ }
@@ -642,12 +879,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           }
           if (data.surveys?.length) setSurveys(data.surveys)
           if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
+          if (data.actionPlans?.length) setActionPlans(data.actionPlans)
+          if (data.surveyResponses?.length) setSurveyResponses(data.surveyResponses)
           if (data.mentoringPrograms?.length) setMentoringPrograms(data.mentoringPrograms)
           if (data.mentoringPairs?.length) setMentoringPairs(data.mentoringPairs)
+          if (data.mentoringSessions?.length) setMentoringSessions(data.mentoringSessions)
+          if (data.mentoringGoals?.length) setMentoringGoals(data.mentoringGoals)
           if (data.payrollRuns?.length) setPayrollRuns(data.payrollRuns)
+          if (data.employeePayrollEntries?.length) setEmployeePayrollEntries(data.employeePayrollEntries)
+          if (data.contractorPayments?.length) setContractorPayments(data.contractorPayments)
+          if (data.payrollSchedules?.length) setPayrollSchedules(data.payrollSchedules)
+          if (data.taxConfigs?.length) setTaxConfigs(data.taxConfigs)
+          if (data.complianceIssues?.length) setComplianceIssues(data.complianceIssues)
+          if (data.taxFilings?.length) setTaxFilings(data.taxFilings)
           if (data.leaveRequests?.length) setLeaveRequests(data.leaveRequests)
           if (data.benefitPlans?.length) setBenefitPlans(data.benefitPlans)
+          if (data.benefitEnrollments?.length) setBenefitEnrollments(data.benefitEnrollments)
+          if (data.benefitDependents?.length) setBenefitDependents(data.benefitDependents)
+          if (data.lifeEvents?.length) setLifeEvents(data.lifeEvents)
           if (data.expenseReports?.length) setExpenseReports(data.expenseReports)
+          if (data.expensePolicies?.length) setExpensePolicies(data.expensePolicies)
+          if (data.mileageLogs?.length) setMileageLogs(data.mileageLogs)
           if (data.jobPostings?.length) setJobPostings(data.jobPostings)
           if (data.applications?.length) setApplications(data.applications)
           if (data.careerSiteConfig) setCareerSiteConfig(data.careerSiteConfig)
@@ -775,6 +1027,67 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('employees', 'delete', undefined, id)
   }, [logAudit, addToast, getEmployeeName])
 
+  // ---- CRUD: Employee Documents ----
+  const addEmployeeDocument = useCallback((data: AnyRecord) => {
+    const id = genId('doc')
+    setEmployeeDocuments(prev => [...prev, { id, upload_date: new Date().toISOString().split('T')[0], ...data }] as typeof prev)
+    logAudit('create', 'employee_document', id, `Uploaded document: ${data.name}`)
+    addToast('Document uploaded')
+  }, [logAudit, addToast])
+
+  const updateEmployeeDocument = useCallback((id: string, data: AnyRecord) => {
+    setEmployeeDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    logAudit('update', 'employee_document', id, 'Updated document')
+    addToast('Document updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Onboarding ----
+  const addBuddyAssignment = useCallback((data: AnyRecord) => {
+    const id = genId('buddy')
+    setBuddyAssignments(prev => [...prev, { id, org_id: orgIdRef.current, assigned_date: new Date().toISOString().split('T')[0], ...data }] as typeof prev)
+    logAudit('create', 'buddy_assignment', id, `Assigned buddy for ${data.new_hire_id}`)
+    addToast('Buddy assigned')
+  }, [logAudit, addToast])
+
+  const updateBuddyAssignment = useCallback((id: string, data: AnyRecord) => {
+    setBuddyAssignments(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'buddy_assignment', id, 'Updated buddy assignment')
+    addToast('Buddy assignment updated')
+  }, [logAudit, addToast])
+
+  const addPreboardingTask = useCallback((data: AnyRecord) => {
+    const id = genId('pbt')
+    setPreboardingTasks(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'preboarding_task', id, `Created preboarding task: ${data.title}`)
+    addToast('Preboarding task created')
+  }, [logAudit, addToast])
+
+  const updatePreboardingTask = useCallback((id: string, data: AnyRecord) => {
+    setPreboardingTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'preboarding_task', id, 'Updated preboarding task')
+    addToast('Preboarding task updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Offers ----
+  const addOffer = useCallback((data: AnyRecord) => {
+    const id = genId('offer')
+    setOffers(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'offer', id, `Created offer for: ${data.candidate_name}`)
+    addToast('Offer created')
+  }, [logAudit, addToast])
+
+  const updateOffer = useCallback((id: string, data: AnyRecord) => {
+    setOffers(prev => prev.map(o => o.id === id ? { ...o, ...data } : o) as typeof prev)
+    logAudit('update', 'offer', id, 'Updated offer')
+    addToast('Offer updated')
+  }, [logAudit, addToast])
+
+  // ---- Widget Preferences ----
+  const updateWidgetPreferences = useCallback((data: AnyRecord) => {
+    setWidgetPreferences(prev => ({ ...prev, ...data }) as typeof prev)
+    addToast('Dashboard layout updated')
+  }, [addToast])
+
   // ---- CRUD: Goals ----
   const addGoal = useCallback((data: AnyRecord) => {
     const id = genId('goal')
@@ -839,6 +1152,42 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('feedback', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
 
+  // ---- CRUD: 1:1 Meetings ----
+  const addOneOnOne = useCallback((data: AnyRecord) => {
+    const id = genId('oo')
+    setOneOnOnes(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'one_on_one', id, `Scheduled 1:1 with ${getEmployeeName(data.employee_id)}`)
+    addToast('1:1 meeting scheduled')
+  }, [logAudit, addToast, getEmployeeName])
+
+  const updateOneOnOne = useCallback((id: string, data: AnyRecord) => {
+    setOneOnOnes(prev => prev.map(o => o.id === id ? { ...o, ...data } : o) as typeof prev)
+    logAudit('update', 'one_on_one', id, 'Updated 1:1 meeting')
+    addToast('1:1 meeting updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Recognitions ----
+  const addRecognition = useCallback((data: AnyRecord) => {
+    const id = genId('rec')
+    setRecognitions(prev => [{ id, org_id: orgIdRef.current, created_at: new Date().toISOString(), likes: 0, ...data }, ...prev] as typeof prev)
+    logAudit('create', 'recognition', id, `Gave kudos to ${getEmployeeName(data.to_id)}`)
+    addToast('Recognition sent!')
+  }, [logAudit, addToast, getEmployeeName])
+
+  // ---- CRUD: Competency Ratings ----
+  const addCompetencyRating = useCallback((data: AnyRecord) => {
+    const id = genId('cr')
+    setCompetencyRatings(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'competency_rating', id, `Rated competency for ${getEmployeeName(data.employee_id)}`)
+    addToast('Competency rating added')
+  }, [logAudit, addToast, getEmployeeName])
+
+  const updateCompetencyRating = useCallback((id: string, data: AnyRecord) => {
+    setCompetencyRatings(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'competency_rating', id, 'Updated competency rating')
+    addToast('Competency rating updated')
+  }, [logAudit, addToast])
+
   // ---- CRUD: Comp Bands ----
   const addCompBand = useCallback((data: AnyRecord) => {
     const id = genId('band')
@@ -877,6 +1226,28 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'salary_review', id, `${action} salary review`)
     addToast(`Salary review ${action.toLowerCase()}`)
     apiPost('salaryReviews', 'update', data, id)
+  }, [logAudit, addToast])
+  const addEquityGrant = useCallback((data: AnyRecord) => {
+    const id = genId('eq')
+    setEquityGrants(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'equity_grant', id, `Created equity grant for ${getEmployeeName(data.employee_id)}`)
+    addToast('Equity grant created')
+  }, [logAudit, addToast, getEmployeeName])
+  const updateEquityGrant = useCallback((id: string, data: AnyRecord) => {
+    setEquityGrants(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev)
+    logAudit('update', 'equity_grant', id, 'Updated equity grant')
+    addToast('Equity grant updated')
+  }, [logAudit, addToast])
+  const addCompPlanningCycle = useCallback((data: AnyRecord) => {
+    const id = genId('cpc')
+    setCompPlanningCycles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'comp_planning_cycle', id, `Created planning cycle: ${data.name}`)
+    addToast('Comp planning cycle created')
+  }, [logAudit, addToast])
+  const updateCompPlanningCycle = useCallback((id: string, data: AnyRecord) => {
+    setCompPlanningCycles(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
+    logAudit('update', 'comp_planning_cycle', id, 'Updated comp planning cycle')
+    addToast('Comp planning cycle updated')
   }, [logAudit, addToast])
 
   // ---- CRUD: Courses ----
@@ -950,6 +1321,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('live_sessions', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- CRUD: Course Blocks ----
+  const addCourseBlock = useCallback((data: AnyRecord) => { const id = genId('block'); setCourseBlocks(prev => [...prev, { id, ...data }] as typeof prev); logAudit('create', 'course_block', id, `Added block: ${data.title}`); addToast('Content block added') }, [logAudit, addToast])
+  const updateCourseBlock = useCallback((id: string, data: AnyRecord) => { setCourseBlocks(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev); logAudit('update', 'course_block', id, 'Updated content block'); addToast('Content block updated') }, [logAudit, addToast])
+  const deleteCourseBlock = useCallback((id: string) => { setCourseBlocks(prev => prev.filter(b => b.id !== id)); logAudit('delete', 'course_block', id, 'Deleted content block'); addToast('Content block deleted') }, [logAudit, addToast])
+  const addQuizQuestion = useCallback((data: AnyRecord) => { const id = genId('quiz-q'); setQuizQuestions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'quiz_question', id, 'Added question'); addToast('Question added') }, [logAudit, addToast])
+  const updateQuizQuestion = useCallback((id: string, data: AnyRecord) => { setQuizQuestions(prev => prev.map(q => q.id === id ? { ...q, ...data } : q) as typeof prev); logAudit('update', 'quiz_question', id, 'Updated question'); addToast('Question updated') }, [logAudit, addToast])
+  const deleteQuizQuestion = useCallback((id: string) => { setQuizQuestions(prev => prev.filter(q => q.id !== id)); logAudit('delete', 'quiz_question', id, 'Deleted question'); addToast('Question deleted') }, [logAudit, addToast])
+  const addDiscussion = useCallback((data: AnyRecord) => { const id = genId('disc'); setDiscussions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), replies: 0, likes: 0, ...data }] as typeof prev); logAudit('create', 'discussion', id, `Started discussion: ${data.title}`); addToast('Discussion created') }, [logAudit, addToast])
+  const updateDiscussion = useCallback((id: string, data: AnyRecord) => { setDiscussions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev); logAudit('update', 'discussion', id, 'Updated discussion'); addToast('Discussion updated') }, [logAudit, addToast])
+  const addStudyGroup = useCallback((data: AnyRecord) => { const id = genId('sg'); setStudyGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'study_group', id, `Created group: ${data.name}`); addToast('Study group created') }, [logAudit, addToast])
+  const updateStudyGroup = useCallback((id: string, data: AnyRecord) => { setStudyGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev); logAudit('update', 'study_group', id, 'Updated study group'); addToast('Study group updated') }, [logAudit, addToast])
+
   // ---- CRUD: Surveys ----
   const addSurvey = useCallback((data: AnyRecord) => {
     const id = genId('survey')
@@ -964,6 +1347,22 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'survey', id, 'Updated survey')
     addToast('Survey updated')
     apiPost('surveys', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Action Plans ----
+  const addActionPlan = useCallback((data: AnyRecord) => {
+    const id = genId('ap')
+    setActionPlans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'action_plan', id, `Created action plan: ${data.title}`)
+    addToast('Action plan created')
+    apiPost('action_plans', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateActionPlan = useCallback((id: string, data: AnyRecord) => {
+    setActionPlans(prev => prev.map(ap => ap.id === id ? { ...ap, ...data } : ap) as typeof prev)
+    logAudit('update', 'action_plan', id, 'Updated action plan')
+    addToast('Action plan updated')
+    apiPost('action_plans', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Mentoring ----
@@ -997,6 +1396,34 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('mentoringPairs', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- CRUD: Mentoring Sessions ----
+  const addMentoringSession = useCallback((data: AnyRecord) => {
+    const id = genId('ms')
+    setMentoringSessions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'mentoring_session', id, 'Logged mentoring session')
+    addToast('Mentoring session logged')
+    apiPost('mentoringSessions', 'create', data)
+  }, [logAudit, addToast])
+  const updateMentoringSession = useCallback((id: string, data: AnyRecord) => {
+    setMentoringSessions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'mentoring_session', id, 'Updated mentoring session')
+    addToast('Mentoring session updated')
+    apiPost('mentoringSessions', 'update', data, id)
+  }, [logAudit, addToast])
+  const addMentoringGoal = useCallback((data: AnyRecord) => {
+    const id = genId('mg')
+    setMentoringGoals(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'mentoring_goal', id, `Created goal: ${data.title}`)
+    addToast('Mentoring goal created')
+    apiPost('mentoringGoals', 'create', data)
+  }, [logAudit, addToast])
+  const updateMentoringGoal = useCallback((id: string, data: AnyRecord) => {
+    setMentoringGoals(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev)
+    logAudit('update', 'mentoring_goal', id, 'Updated mentoring goal')
+    addToast('Mentoring goal updated')
+    apiPost('mentoringGoals', 'update', data, id)
+  }, [logAudit, addToast])
+
   // ---- CRUD: Payroll ----
   const addPayrollRun = useCallback((data: AnyRecord) => {
     const id = genId('pr')
@@ -1011,6 +1438,64 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'payroll_run', id, 'Updated payroll run')
     addToast('Payroll run updated')
     apiPost('payrollRuns', 'update', data, id)
+  }, [logAudit, addToast])
+
+  const addEmployeePayrollEntry = useCallback((data: AnyRecord) => {
+    const id = genId('epe')
+    setEmployeePayrollEntries(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'employee_payroll_entry', id, `Added payroll entry for ${data.employee_name}`)
+    addToast('Payroll entry added')
+  }, [logAudit, addToast])
+
+  const addContractorPayment = useCallback((data: AnyRecord) => {
+    const id = genId('cp')
+    setContractorPayments(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'contractor_payment', id, `Added contractor payment: ${data.contractor_name}`)
+    addToast('Contractor payment added')
+  }, [logAudit, addToast])
+
+  const updateContractorPayment = useCallback((id: string, data: AnyRecord) => {
+    setContractorPayments(prev => prev.map(cp => cp.id === id ? { ...cp, ...data } : cp) as typeof prev)
+    logAudit('update', 'contractor_payment', id, 'Updated contractor payment')
+    addToast('Contractor payment updated')
+  }, [logAudit, addToast])
+
+  const addPayrollSchedule = useCallback((data: AnyRecord) => {
+    const id = genId('ps')
+    setPayrollSchedules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'payroll_schedule', id, `Created payroll schedule: ${data.name}`)
+    addToast('Payroll schedule created')
+  }, [logAudit, addToast])
+
+  const updatePayrollSchedule = useCallback((id: string, data: AnyRecord) => {
+    setPayrollSchedules(prev => prev.map(ps => ps.id === id ? { ...ps, ...data } : ps) as typeof prev)
+    logAudit('update', 'payroll_schedule', id, 'Updated payroll schedule')
+    addToast('Payroll schedule updated')
+  }, [logAudit, addToast])
+
+  const addTaxConfig = useCallback((data: AnyRecord) => {
+    const id = genId('tc')
+    setTaxConfigs(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'tax_config', id, `Added tax config for ${data.country}`)
+    addToast('Tax configuration added')
+  }, [logAudit, addToast])
+
+  const updateTaxConfig = useCallback((id: string, data: AnyRecord) => {
+    setTaxConfigs(prev => prev.map(tc => tc.id === id ? { ...tc, ...data } : tc) as typeof prev)
+    logAudit('update', 'tax_config', id, 'Updated tax configuration')
+    addToast('Tax configuration updated')
+  }, [logAudit, addToast])
+
+  const resolveComplianceIssue = useCallback((id: string) => {
+    setComplianceIssues(prev => prev.map(ci => ci.id === id ? { ...ci, status: 'resolved' as const } : ci) as typeof prev)
+    logAudit('update', 'compliance_issue', id, 'Resolved compliance issue')
+    addToast('Compliance issue resolved')
+  }, [logAudit, addToast])
+
+  const updateTaxFiling = useCallback((id: string, data: AnyRecord) => {
+    setTaxFilings(prev => prev.map(tf => tf.id === id ? { ...tf, ...data } : tf) as typeof prev)
+    logAudit('update', 'tax_filing', id, 'Updated tax filing')
+    addToast('Tax filing updated')
   }, [logAudit, addToast])
 
   // ---- CRUD: Leave Requests ----
@@ -1046,6 +1531,54 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('benefitPlans', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- CRUD: Benefit Enrollments ----
+  const addBenefitEnrollment = useCallback((data: AnyRecord) => {
+    const id = genId('benr')
+    setBenefitEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'benefit_enrollment', id, 'Created benefit enrollment')
+    addToast('Benefit enrollment created')
+    apiPost('benefitEnrollments', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateBenefitEnrollment = useCallback((id: string, data: AnyRecord) => {
+    setBenefitEnrollments(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'benefit_enrollment', id, 'Updated benefit enrollment')
+    addToast('Benefit enrollment updated')
+    apiPost('benefitEnrollments', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Benefit Dependents ----
+  const addBenefitDependent = useCallback((data: AnyRecord) => {
+    const id = genId('bdep')
+    setBenefitDependents(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'benefit_dependent', id, 'Added dependent')
+    addToast('Dependent added')
+    apiPost('benefitDependents', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateBenefitDependent = useCallback((id: string, data: AnyRecord) => {
+    setBenefitDependents(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'benefit_dependent', id, 'Updated dependent')
+    addToast('Dependent updated')
+    apiPost('benefitDependents', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Life Events ----
+  const addLifeEvent = useCallback((data: AnyRecord) => {
+    const id = genId('le')
+    setLifeEvents(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'life_event', id, 'Recorded life event')
+    addToast('Life event recorded')
+    apiPost('lifeEvents', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateLifeEvent = useCallback((id: string, data: AnyRecord) => {
+    setLifeEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e) as typeof prev)
+    logAudit('update', 'life_event', id, 'Updated life event')
+    addToast('Life event updated')
+    apiPost('lifeEvents', 'update', data, id)
+  }, [logAudit, addToast])
+
   // ---- CRUD: Expenses ----
   const addExpenseReport = useCallback((data: AnyRecord) => {
     const id = genId('exp')
@@ -1068,6 +1601,34 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('delete', 'expense_report', id, 'Deleted expense report')
     addToast('Expense report deleted')
     apiPost('expenseReports', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Expense Policies ----
+  const addExpensePolicy = useCallback((data: AnyRecord) => {
+    const id = genId('epol')
+    setExpensePolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'expense_policy', id, `Created expense policy: ${data.category}`)
+    addToast('Expense policy created')
+  }, [logAudit, addToast])
+
+  const updateExpensePolicy = useCallback((id: string, data: AnyRecord) => {
+    setExpensePolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'expense_policy', id, 'Updated expense policy')
+    addToast('Expense policy updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Mileage Logs ----
+  const addMileageLog = useCallback((data: AnyRecord) => {
+    const id = genId('ml')
+    setMileageLogs(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'mileage_log', id, 'Created mileage log entry')
+    addToast('Mileage entry added')
+  }, [logAudit, addToast])
+
+  const updateMileageLog = useCallback((id: string, data: AnyRecord) => {
+    setMileageLogs(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
+    logAudit('update', 'mileage_log', id, 'Updated mileage log')
+    addToast('Mileage entry updated')
   }, [logAudit, addToast])
 
   // ---- CRUD: Recruiting ----
@@ -1126,6 +1687,54 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'job_distribution', id, 'Updated job distribution')
     addToast('Distribution updated')
     apiPost('job_distributions', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Interviews ----
+  const addInterview = useCallback((data: AnyRecord) => {
+    const id = genId('intv')
+    setInterviews(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'interview', id, `Scheduled interview for ${data.candidate_name || 'candidate'}`)
+    addToast('Interview scheduled')
+    apiPost('interviews', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateInterview = useCallback((id: string, data: AnyRecord) => {
+    setInterviews(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
+    logAudit('update', 'interview', id, 'Updated interview')
+    addToast('Interview updated')
+    apiPost('interviews', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Talent Pools ----
+  const addTalentPool = useCallback((data: AnyRecord) => {
+    const id = genId('tp')
+    setTalentPools(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), candidates: [], ...data }] as typeof prev)
+    logAudit('create', 'talent_pool', id, `Created talent pool: ${data.name}`)
+    addToast('Talent pool created')
+    apiPost('talent_pools', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateTalentPool = useCallback((id: string, data: AnyRecord) => {
+    setTalentPools(prev => prev.map(tp => tp.id === id ? { ...tp, ...data } : tp) as typeof prev)
+    logAudit('update', 'talent_pool', id, 'Updated talent pool')
+    addToast('Talent pool updated')
+    apiPost('talent_pools', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Score Cards ----
+  const addScoreCard = useCallback((data: AnyRecord) => {
+    const id = genId('sc')
+    setScoreCards(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'score_card', id, `Created scorecard for ${data.candidate_name || 'candidate'}`)
+    addToast('Scorecard submitted')
+    apiPost('score_cards', 'create', data)
+  }, [logAudit, addToast])
+
+  const updateScoreCard = useCallback((id: string, data: AnyRecord) => {
+    setScoreCards(prev => prev.map(sc => sc.id === id ? { ...sc, ...data } : sc) as typeof prev)
+    logAudit('update', 'score_card', id, 'Updated scorecard')
+    addToast('Scorecard updated')
+    apiPost('score_cards', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT ----
@@ -1300,6 +1909,28 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast('Task deleted')
     apiPost('tasks', 'delete', undefined, id)
   }, [logAudit, addToast])
+
+  // ---- CRUD: Automation Rules ----
+  const addAutomationRule = useCallback((data: AnyRecord) => {
+    const id = genId('rule')
+    setAutomationRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), executions: 0, last_executed: null, ...data }] as typeof prev)
+    logAudit('create', 'automation_rule', id, `Created automation rule: ${data.name}`)
+    addToast('Automation rule created')
+  }, [logAudit, addToast])
+
+  const updateAutomationRule = useCallback((id: string, data: AnyRecord) => {
+    setAutomationRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'automation_rule', id, 'Updated automation rule')
+    addToast('Automation rule updated')
+  }, [logAudit, addToast])
+
+  const toggleAutomationRule = useCallback((id: string) => {
+    setAutomationRules(prev => prev.map(r => r.id === id ? { ...r, is_active: !r.is_active } : r) as typeof prev)
+    const rule = automationRules.find(r => r.id === id)
+    const newState = rule ? !rule.is_active : true
+    logAudit('update', 'automation_rule', id, `${newState ? 'Activated' : 'Deactivated'} automation rule`)
+    addToast(`Automation rule ${newState ? 'activated' : 'deactivated'}`)
+  }, [logAudit, addToast, automationRules])
 
   // ---- CRUD: Strategic Objectives ----
   const addStrategicObjective = useCallback((data: AnyRecord) => {
@@ -1588,16 +2219,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const value: TempoState = {
     org, user: demoUser, currentUser, currentEmployeeId, departments, employees,
     goals, reviewCycles, reviews, feedback,
-    compBands, salaryReviews,
-    courses, enrollments, learningPaths, liveSessions,
-    surveys, engagementScores,
-    mentoringPrograms, mentoringPairs,
-    payrollRuns, leaveRequests,
-    benefitPlans, expenseReports,
+    oneOnOnes, recognitions, competencyFramework, competencyRatings,
+    compBands, salaryReviews, equityGrants, compPlanningCycles,
+    courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups,
+    surveys, engagementScores, actionPlans, surveyResponses,
+    mentoringPrograms, mentoringPairs, mentoringSessions, mentoringGoals,
+    payrollRuns, employeePayrollEntries, contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings,
+    leaveRequests,
+    benefitPlans, benefitEnrollments, benefitDependents, lifeEvents, expenseReports, expensePolicies, mileageLogs,
     jobPostings, applications, careerSiteConfig, jobDistributions,
     devices, softwareLicenses, itRequests,
     invoices, budgets, vendors,
-    projects, milestones, tasks, taskDependencies,
+    projects, milestones, tasks, taskDependencies, automationRules, automationLog,
     strategicObjectives, keyResults, initiatives, kpiDefinitions, kpiMeasurements,
     workflows, workflowSteps, workflowRuns, workflowTemplates,
     notifications, unreadNotificationCount,
@@ -1609,23 +2242,49 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addReview, updateReview,
     addReviewCycle, updateReviewCycle,
     addFeedback,
+    addOneOnOne, updateOneOnOne,
+    addRecognition,
+    addCompetencyRating, updateCompetencyRating,
     addCompBand, updateCompBand, deleteCompBand,
     addSalaryReview, updateSalaryReview,
+    addEquityGrant, updateEquityGrant,
+    addCompPlanningCycle, updateCompPlanningCycle,
     addCourse, updateCourse,
     addEnrollment, updateEnrollment,
     addLearningPath, updateLearningPath, deleteLearningPath,
     addLiveSession, updateLiveSession,
+    addCourseBlock, updateCourseBlock, deleteCourseBlock,
+    addQuizQuestion, updateQuizQuestion, deleteQuizQuestion,
+    addDiscussion, updateDiscussion,
+    addStudyGroup, updateStudyGroup,
     addSurvey, updateSurvey,
+    addActionPlan, updateActionPlan,
     addMentoringProgram, updateMentoringProgram,
     addMentoringPair, updateMentoringPair,
+    addMentoringSession, updateMentoringSession,
+    addMentoringGoal, updateMentoringGoal,
     addPayrollRun, updatePayrollRun,
+    addEmployeePayrollEntry,
+    addContractorPayment, updateContractorPayment,
+    addPayrollSchedule, updatePayrollSchedule,
+    addTaxConfig, updateTaxConfig,
+    resolveComplianceIssue, updateTaxFiling,
     addLeaveRequest, updateLeaveRequest,
     addBenefitPlan, updateBenefitPlan,
+    addBenefitEnrollment, updateBenefitEnrollment,
+    addBenefitDependent, updateBenefitDependent,
+    addLifeEvent, updateLifeEvent,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
+    addExpensePolicy, updateExpensePolicy,
+    addMileageLog, updateMileageLog,
     addJobPosting, updateJobPosting,
     addApplication, updateApplication,
     updateCareerSiteConfig,
     addJobDistribution, updateJobDistribution,
+    interviews, talentPools, scoreCards,
+    addInterview, updateInterview,
+    addTalentPool, updateTalentPool,
+    addScoreCard, updateScoreCard,
     addDevice, updateDevice,
     addSoftwareLicense, updateSoftwareLicense,
     addITRequest, updateITRequest,
@@ -1636,6 +2295,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addProject, updateProject, deleteProject,
     addMilestone, updateMilestone,
     addTask, updateTask, deleteTask,
+    addAutomationRule, updateAutomationRule, toggleAutomationRule,
     addStrategicObjective, updateStrategicObjective, deleteStrategicObjective,
     addKeyResult, updateKeyResult, deleteKeyResult,
     addInitiative, updateInitiative, deleteInitiative,
@@ -1644,6 +2304,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addWorkflow, updateWorkflow, deleteWorkflow,
     addWorkflowStep, updateWorkflowStep, deleteWorkflowStep,
     addWorkflowRun, updateWorkflowRun,
+    employeeDocuments, employeeTimeline,
+    addEmployeeDocument, updateEmployeeDocument,
+    buddyAssignments, preboardingTasks, welcomeContent,
+    addBuddyAssignment, updateBuddyAssignment,
+    addPreboardingTask, updatePreboardingTask,
+    offers, careerTracks, marketBenchmarks, widgetPreferences,
+    addOffer, updateOffer, updateWidgetPreferences,
     markNotificationRead, markAllNotificationsRead,
     updateOrg,
     login, verifyMFA, logout, switchUser, isLoggedIn,

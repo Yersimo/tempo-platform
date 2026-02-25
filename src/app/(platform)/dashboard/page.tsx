@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
@@ -10,16 +10,20 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
 import {
   Users, TrendingUp, Banknote, GraduationCap, Briefcase,
   Receipt, UserCheck, Clock, ArrowRight, CheckCircle2,
-  AlertTriangle, FileText, CalendarCheck, ChevronRight
+  AlertTriangle, FileText, CalendarCheck, ChevronRight,
+  Megaphone, PartyPopper, Cake, Award, Zap, PlusCircle,
+  Send, BarChart3, Settings, Heart, LayoutGrid, RotateCcw, Eye, EyeOff
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
 import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import { useRouter } from 'next/navigation'
+import { EmployeeDashboard } from '@/components/employee-dashboard'
 
 export default function DashboardPage() {
   const {
@@ -28,11 +32,20 @@ export default function DashboardPage() {
     reviews, auditLog, getEmployeeName, departments,
     updateLeaveRequest, reviewCycles, salaryReviews, surveys,
     engagementScores, applications, currentUser, currentEmployeeId,
+    widgetPreferences, updateWidgetPreferences,
   } = useTempo()
 
   const router = useRouter()
   const t = useTranslations('dashboard')
   const tc = useTranslations('common')
+
+  const [showWidgetModal, setShowWidgetModal] = useState(false)
+
+  // Employee self-service: simplified dashboard for employee role
+  const role = currentUser?.role || 'owner'
+  if (role === 'employee') {
+    return <EmployeeDashboard />
+  }
 
   const firstName = currentUser?.full_name?.split(' ')[0] || 'Amara'
 
@@ -147,7 +160,79 @@ export default function DashboardPage() {
         title={t('title')}
         subtitle={t('welcomeBack', { name: firstName })}
         hideBreadcrumb
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setShowWidgetModal(true)}><LayoutGrid size={14} /> {t('customizeWidgets')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}><Settings size={14} /></Button>
+          </div>
+        }
       />
+
+      {/* Quick Actions Bar - Workday/BambooHR style */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {[
+            { label: 'Submit PTO', icon: <Clock size={14} />, href: '/time-attendance', color: 'bg-blue-50 text-blue-600 border-blue-200' },
+            { label: 'Run Payroll', icon: <Banknote size={14} />, href: '/payroll', color: 'bg-green-50 text-green-600 border-green-200' },
+            { label: 'Post a Job', icon: <Briefcase size={14} />, href: '/recruiting', color: 'bg-purple-50 text-purple-600 border-purple-200' },
+            { label: 'Give Kudos', icon: <Heart size={14} />, href: '/performance', color: 'bg-pink-50 text-pink-600 border-pink-200' },
+            { label: 'File Expense', icon: <Receipt size={14} />, href: '/expense', color: 'bg-amber-50 text-amber-600 border-amber-200' },
+            { label: 'View Reports', icon: <BarChart3 size={14} />, href: '/analytics', color: 'bg-cyan-50 text-cyan-600 border-cyan-200' },
+          ].map(action => (
+            <button
+              key={action.label}
+              onClick={() => router.push(action.href)}
+              className={cn('flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium whitespace-nowrap hover:shadow-sm transition-all', action.color)}
+            >
+              {action.icon}
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Company Announcements - BambooHR/HiBob style */}
+      {(() => {
+        const announcements = [
+          { id: 'ann-1', type: 'announcement' as const, icon: <Megaphone size={14} />, title: 'Q1 All-Hands Meeting', content: 'Join us for our quarterly all-hands this Friday at 2 PM WAT. CEO will share company updates and Q2 roadmap.', author: 'Amara Kone', date: '2 hours ago', color: 'bg-blue-100 text-blue-600' },
+          { id: 'ann-2', type: 'celebration' as const, icon: <Award size={14} />, title: 'Kudos to Product Team!', content: 'Congratulations on launching the new mobile app — 4.8★ rating in the first week!', author: 'Folake Adebayo', date: '1 day ago', color: 'bg-green-100 text-green-600' },
+          { id: 'ann-3', type: 'policy' as const, icon: <FileText size={14} />, title: 'Updated Remote Work Policy', content: 'We\'ve expanded our flexible work policy to include 3 remote days per week starting March 1.', author: 'Kofi Mensah', date: '3 days ago', color: 'bg-purple-100 text-purple-600' },
+        ]
+        return (
+          <Card padding="none" className="mb-6">
+            <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
+              <div className="flex items-center gap-2">
+                <Megaphone size={14} className="text-tempo-600" />
+                <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
+                <Badge variant="default">{announcements.length}</Badge>
+              </div>
+              <Button variant="ghost" size="sm"><PlusCircle size={14} /> Post Update</Button>
+            </div>
+            <div className="divide-y divide-divider">
+              {announcements.map(ann => (
+                <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
+                      {ann.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-xs font-semibold text-t1">{ann.title}</p>
+                      </div>
+                      <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[0.65rem] text-t3">{ann.author}</span>
+                        <span className="text-[0.65rem] text-t3">·</span>
+                        <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Action Required Section - Rippling-style "Needs Your Attention" */}
       {actionItems.length > 0 && (
@@ -417,6 +502,121 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* Team Celebrations - HiBob style */}
+      <div className="mt-6">
+        <Card padding="none">
+          <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
+            <div className="flex items-center gap-2">
+              <PartyPopper size={14} className="text-tempo-600" />
+              <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Celebrations & Milestones</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-divider">
+            {/* Birthdays */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Cake size={14} className="text-pink-500" />
+                <span className="text-xs font-semibold text-t1">Upcoming Birthdays</span>
+              </div>
+              <div className="space-y-2">
+                {employees.slice(0, 3).map((emp, i) => {
+                  const months = ['Mar', 'Mar', 'Apr']
+                  const days = [2 + i * 5, 8 + i * 3, 1 + i * 7]
+                  return (
+                    <div key={`bday-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{months[i]} {days[i]}</p>
+                      </div>
+                      <span className="text-lg">🎂</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Work Anniversaries */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Award size={14} className="text-amber-500" />
+                <span className="text-xs font-semibold text-t1">Work Anniversaries</span>
+              </div>
+              <div className="space-y-2">
+                {employees.slice(3, 6).map((emp, i) => {
+                  const years = [5, 3, 1]
+                  return (
+                    <div key={`anni-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{years[i]} year{years[i] > 1 ? 's' : ''} this month</p>
+                      </div>
+                      <Badge variant="success">{years[i]}y</Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Widget Customization Modal */}
+      <Modal open={showWidgetModal} onClose={() => setShowWidgetModal(false)} title={t('widgetCustomization')} size="lg">
+        <p className="text-xs text-t3 mb-4">{t('widgetToggle')}</p>
+        <div className="flex items-center justify-between mb-4">
+          <Badge variant="info">{t('widgetsEnabled', { count: widgetPreferences.widgets.filter(w => w.enabled).length })}</Badge>
+          <Button variant="ghost" size="sm" onClick={() => {
+            const reset = widgetPreferences.widgets.map((w, i) => ({ ...w, enabled: i < 11 }))
+            updateWidgetPreferences({ widgets: reset })
+          }}><RotateCcw size={14} /> {t('resetLayout')}</Button>
+        </div>
+
+        {(['People', 'Performance', 'Recruiting', 'Finance', 'IT'] as const).map(category => {
+          const categoryWidgets = widgetPreferences.widgets.filter(w => w.category === category)
+          if (categoryWidgets.length === 0) return null
+          const categoryKey = `category${category}` as const
+          return (
+            <div key={category} className="mb-4">
+              <h4 className="text-xs font-semibold text-t1 uppercase tracking-wider mb-2">{t(categoryKey)}</h4>
+              <div className="space-y-2">
+                {categoryWidgets.map(widget => (
+                  <div
+                    key={widget.id}
+                    className={cn(
+                      'flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer',
+                      widget.enabled ? 'bg-tempo-50/50 border-tempo-200' : 'bg-surface-secondary border-divider'
+                    )}
+                    onClick={() => {
+                      const updated = widgetPreferences.widgets.map(w =>
+                        w.id === widget.id ? { ...w, enabled: !w.enabled } : w
+                      )
+                      updateWidgetPreferences({ widgets: updated })
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {widget.enabled ? <Eye size={16} className="text-tempo-600" /> : <EyeOff size={16} className="text-t3" />}
+                      <span className={cn('text-sm', widget.enabled ? 'font-medium text-t1' : 'text-t3')}>{widget.name}</span>
+                    </div>
+                    <div className={cn(
+                      'w-10 h-6 rounded-full flex items-center transition-all',
+                      widget.enabled ? 'bg-tempo-500 justify-end' : 'bg-gray-300 justify-start'
+                    )}>
+                      <div className="w-5 h-5 rounded-full bg-white shadow mx-0.5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        <div className="flex justify-end gap-2 pt-4 border-t border-divider">
+          <Button variant="secondary" onClick={() => setShowWidgetModal(false)}>{tc('cancel')}</Button>
+          <Button onClick={() => setShowWidgetModal(false)}>{t('saveLayout')}</Button>
+        </div>
+      </Modal>
     </>
   )
 }

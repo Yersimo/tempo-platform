@@ -10,10 +10,11 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { AppWindow, Plus, Key, AlertTriangle, CheckCircle } from 'lucide-react'
+import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIRecommendationList } from '@/components/ai'
-import { optimizeLicenses } from '@/lib/ai-engine'
+import { AIRecommendationList, AIInsightCard } from '@/components/ai'
+import { optimizeLicenses, detectShadowIT } from '@/lib/ai-engine'
+import { demoShadowITDetections } from '@/lib/demo-data'
 
 export default function AppsPage() {
   const {
@@ -27,11 +28,17 @@ export default function AppsPage() {
   const tc = useTranslations('common')
 
   const licenseRecs = useMemo(() => optimizeLicenses(softwareLicenses), [softwareLicenses])
+  const shadowITInsights = useMemo(() => detectShadowIT(softwareLicenses), [softwareLicenses])
 
   const totalLicenses = softwareLicenses.reduce((a, l) => a + l.total_licenses, 0)
   const usedLicenses = softwareLicenses.reduce((a, l) => a + l.used_licenses, 0)
   const monthlyCost = softwareLicenses.reduce((a, l) => a + l.used_licenses * l.cost_per_license, 0)
   const openRequests = itRequests.filter(r => r.status === 'open').length
+
+  // Usage analytics computed data
+  const unusedLicenseCount = softwareLicenses.reduce((a, l) => a + (l.total_licenses - l.used_licenses), 0)
+  const potentialSavings = softwareLicenses.reduce((a, l) => a + (l.total_licenses - l.used_licenses) * l.cost_per_license, 0)
+  const avgCostPerUser = usedLicenses > 0 ? monthlyCost / usedLicenses : 0
 
   // Add License modal
   const [showLicenseModal, setShowLicenseModal] = useState(false)
@@ -99,6 +106,12 @@ export default function AppsPage() {
 
   function startRequest(id: string) {
     updateITRequest(id, { status: 'in_progress' })
+  }
+
+  // Days until renewal
+  function daysUntilRenewal(dateStr: string): number {
+    const diff = new Date(dateStr).getTime() - new Date().getTime()
+    return Math.max(0, Math.round(diff / 86400000))
   }
 
   return (
@@ -203,6 +216,136 @@ export default function AppsPage() {
           ))}
         </div>
       </Card>
+
+      {/* ── Section 1: Usage Analytics ── */}
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+          <BarChart3 size={20} /> {t('usageAnalytics')}
+        </h2>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatCard label={t('licenseUtilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} icon={<Key size={20} />} />
+          <StatCard label={t('totalUnused')} value={unusedLicenseCount} change={t('flaggedForReclamation')} changeType="negative" />
+          <StatCard label={t('costPerUser')} value={`$${avgCostPerUser.toFixed(2)}/mo`} icon={<DollarSign size={20} />} />
+          <StatCard label={t('potentialSavings')} value={`$${Math.round(potentialSavings).toLocaleString()}/mo`} change={`$${Math.round(potentialSavings * 12).toLocaleString()}/yr`} changeType="positive" />
+        </div>
+
+        {/* License utilization details */}
+        <Card padding="none">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('licenseUtilization')}</CardTitle>
+              <div className="flex items-center gap-2">
+                <Calendar size={14} className="text-t3" />
+                <span className="text-xs text-t3">{t('renewalCalendar')}</span>
+              </div>
+            </div>
+          </CardHeader>
+          <div className="divide-y divide-divider">
+            {softwareLicenses.map(license => {
+              const utilPct = license.total_licenses > 0 ? Math.round(license.used_licenses / license.total_licenses * 100) : 0
+              const unused = license.total_licenses - license.used_licenses
+              const wastedCost = unused * license.cost_per_license
+              const renewalDays = daysUntilRenewal(license.renewal_date)
+              return (
+                <div key={license.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center text-t2">
+                        <AppWindow size={16} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-t1">{license.name}</p>
+                        <p className="text-xs text-t3">{license.vendor}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-t1">{license.used_licenses} / {license.total_licenses}</p>
+                        <p className="text-xs text-t3">{t('unusedLicenses')}: {unused}</p>
+                      </div>
+                      {unused > 0 && (
+                        <Badge variant="warning">${wastedCost.toLocaleString()}/mo</Badge>
+                      )}
+                      <Badge variant={renewalDays < 90 ? 'warning' : 'default'}>
+                        {t('renewsIn', { days: renewalDays })}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Progress value={utilPct} showLabel color={utilPct > 90 ? 'error' : utilPct < 60 ? 'warning' : 'success'} />
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Section 2: Shadow IT Detection ── */}
+      <div className="mt-8 mb-6">
+        <h2 className="text-lg font-semibold text-t1 mb-2 flex items-center gap-2">
+          <ShieldAlert size={20} /> {t('shadowItDetection')}
+        </h2>
+        <p className="text-sm text-t3 mb-4">{t('shadowItDesc')}</p>
+
+        {/* AI Shadow IT Insights */}
+        {shadowITInsights.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {shadowITInsights.map(insight => (
+              <AIInsightCard key={insight.id} insight={insight} compact />
+            ))}
+          </div>
+        )}
+
+        <Card padding="none">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-divider bg-canvas">
+                  <th className="tempo-th text-left px-6 py-3">App</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('detectedUsers')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{t('riskLevel')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('dataRisk')}</th>
+                  <th className="tempo-th text-left px-4 py-3">{t('recommendedAlt')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {demoShadowITDetections.map(detection => (
+                  <tr key={detection.id} className="hover:bg-canvas/50">
+                    <td className="px-6 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-t1">{detection.app_name}</p>
+                        <p className="text-xs text-t3">{detection.category}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm font-medium text-t1">{detection.detected_users}</td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant={
+                        detection.risk_level === 'high' ? 'error' :
+                        detection.risk_level === 'medium' ? 'warning' : 'default'
+                      }>
+                        {detection.risk_level === 'high' ? t('highRisk') :
+                         detection.risk_level === 'medium' ? t('mediumRisk') : t('lowRisk')}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-t2 max-w-[200px]">{detection.data_risk}</td>
+                    <td className="px-4 py-3 text-sm text-tempo-600 font-medium">{detection.recommended_alternative}</td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant={
+                        detection.status === 'flagged' ? 'error' :
+                        detection.status === 'under_review' ? 'warning' : 'success'
+                      }>
+                        {detection.status === 'under_review' ? t('underReview') :
+                         detection.status === 'flagged' ? t('flagged') : t('accepted')}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
       {/* Add License Modal */}
       <Modal open={showLicenseModal} onClose={() => setShowLicenseModal(false)} title={t('addLicenseModal')}>

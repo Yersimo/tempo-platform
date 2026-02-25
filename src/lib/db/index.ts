@@ -11,6 +11,9 @@ export const db = drizzle(sql, { schema })
 // Re-export schema for convenience
 export { schema }
 
+// Export raw SQL client for advanced queries (e.g., job queue, migrations)
+export { sql }
+
 // ─── Row-Level Security (RLS) ──────────────────────────────────────────
 // RLS policies are defined in drizzle/0001_rls_policies.sql
 // They use current_setting('app.current_org_id') to scope all queries.

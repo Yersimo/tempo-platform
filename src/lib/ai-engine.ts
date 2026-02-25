@@ -1743,6 +1743,100 @@ export function suggestLearningPathOrder(
     .sort((a, b) => a.priority - b.priority)
 }
 
+export interface GeneratedQuizQuestion {
+  question: string
+  type: 'multiple_choice' | 'true_false' | 'fill_blank'
+  options: string[]
+  correct_answer: string
+  points: number
+  explanation: string
+}
+
+export function generateQuizQuestions(topic: string, count: number): GeneratedQuizQuestion[] {
+  const hash = topic.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
+  const mcTemplates = [
+    { q: `Which of the following best describes a core principle of ${topic}?`, opts: ['Continuous improvement', 'Rigid standardization', 'Isolated decision-making', 'Reactive management'], correct: 'Continuous improvement', explanation: `Continuous improvement is fundamental to ${topic} methodology.` },
+    { q: `What is the primary benefit of implementing ${topic} in an organization?`, opts: ['Increased efficiency', 'Higher costs', 'More complexity', 'Slower processes'], correct: 'Increased efficiency', explanation: `Properly implemented ${topic} drives organizational efficiency.` },
+    { q: `Which stakeholder is most critical for ${topic} success?`, opts: ['Executive sponsor', 'External vendors', 'IT department only', 'Legal team'], correct: 'Executive sponsor', explanation: `Executive sponsorship ensures alignment and resource allocation for ${topic}.` },
+    { q: `What is the first step when introducing ${topic} to a team?`, opts: ['Assess current state', 'Implement immediately', 'Hire consultants', 'Purchase software'], correct: 'Assess current state', explanation: `Understanding the current state is essential before implementing ${topic} changes.` },
+  ]
+
+  const tfTemplates = [
+    { q: `${topic} requires ongoing monitoring and adjustment to remain effective.`, correct: 'True', explanation: `Like most business practices, ${topic} requires continuous attention.` },
+    { q: `${topic} can only be applied in technology-focused organizations.`, correct: 'False', explanation: `${topic} principles can be adapted across all industries and departments.` },
+    { q: `Effective ${topic} implementation always requires a dedicated budget.`, correct: 'False', explanation: `While resources help, many ${topic} improvements can begin with process changes alone.` },
+  ]
+
+  const fbTemplates = [
+    { q: `The process of regularly reviewing and improving ${topic} outcomes is called _____ management.`, correct: 'Performance', explanation: `Performance management is the discipline of tracking and optimizing ${topic} results.` },
+    { q: `A _____ analysis helps identify strengths and weaknesses in ${topic} implementation.`, correct: 'SWOT', explanation: `SWOT analysis is a strategic planning tool used to evaluate ${topic} initiatives.` },
+  ]
+
+  const questions: GeneratedQuizQuestion[] = []
+  const totalAvailable = mcTemplates.length + tfTemplates.length + fbTemplates.length
+  const actualCount = clamp(count, 1, totalAvailable)
+
+  for (let i = 0; i < actualCount; i++) {
+    const idx = (hash + i) % totalAvailable
+    if (idx < mcTemplates.length) {
+      const t = mcTemplates[idx]
+      questions.push({ question: t.q, type: 'multiple_choice', options: t.opts, correct_answer: t.correct, points: 10, explanation: t.explanation })
+    } else if (idx < mcTemplates.length + tfTemplates.length) {
+      const t = tfTemplates[idx - mcTemplates.length]
+      questions.push({ question: t.q, type: 'true_false', options: ['True', 'False'], correct_answer: t.correct, points: 5, explanation: t.explanation })
+    } else {
+      const t = fbTemplates[idx - mcTemplates.length - tfTemplates.length]
+      questions.push({ question: t.q, type: 'fill_blank', options: [], correct_answer: t.correct, points: 10, explanation: t.explanation })
+    }
+  }
+
+  return questions
+}
+
+export function suggestLearningPath(
+  employee: { id: string; job_title: string; level: string; department_id: string },
+  courses: Array<{ id: string; title: string; category: string; level: string; duration_hours: number; is_mandatory: boolean }>,
+  enrollments: Array<{ employee_id: string; course_id: string; status: string }>
+): Array<{ courseId: string; title: string; reason: string; priority: 'high' | 'medium' | 'low' }> {
+  const empEnrollments = enrollments.filter(e => e.employee_id === employee.id)
+  const enrolledIds = new Set(empEnrollments.map(e => e.course_id))
+  const completedIds = new Set(empEnrollments.filter(e => e.status === 'completed').map(e => e.course_id))
+
+  const levelOrder: Record<string, number> = { beginner: 1, intermediate: 2, advanced: 3 }
+  const empLevel = levelOrder[employee.level?.toLowerCase()] || 2
+
+  return courses
+    .filter(c => !completedIds.has(c.id))
+    .map(c => {
+      let priority: 'high' | 'medium' | 'low' = 'medium'
+      let reason = ''
+
+      if (c.is_mandatory && !enrolledIds.has(c.id)) {
+        priority = 'high'
+        reason = 'Mandatory course - not yet enrolled'
+      } else if (enrolledIds.has(c.id)) {
+        priority = 'high'
+        reason = 'Continue in-progress course'
+      } else {
+        const courseLevel = levelOrder[c.level] || 2
+        if (courseLevel <= empLevel) {
+          priority = 'medium'
+          reason = `Recommended for ${employee.level} level`
+        } else {
+          priority = 'low'
+          reason = 'Advanced topic for future development'
+        }
+      }
+
+      return { courseId: c.id, title: c.title, reason, priority }
+    })
+    .sort((a, b) => {
+      const pOrder = { high: 0, medium: 1, low: 2 }
+      return pOrder[a.priority] - pOrder[b.priority]
+    })
+}
+
 export function scoreCareerSiteEffectiveness(config: {
   enabled: boolean
   hero_title: string
@@ -1854,4 +1948,2753 @@ export function recommendJobBoards(jobPosting: {
   ]
 
   return boards.sort((a, b) => b.score - a.score)
+}
+
+// ── Payroll AI Functions ──────────────────────────────────────────────────────
+
+export function scorePayrollHealth(
+  payrollRuns: Array<{ status: string; total_gross: number; total_deductions: number }>,
+  complianceIssues: Array<{ severity: string; status: string }>,
+  taxFilings: Array<{ status: string; deadline: string }>
+): AIScore {
+  // Base score starts at 85
+  let score = 85
+
+  // Deduct for open critical compliance issues (-10 each)
+  const criticalOpen = complianceIssues.filter(i => i.severity === 'critical' && i.status === 'open').length
+  score -= criticalOpen * 10
+
+  // Deduct for open warning issues (-5 each)
+  const warningOpen = complianceIssues.filter(i => i.severity === 'warning' && i.status === 'open').length
+  score -= warningOpen * 5
+
+  // Deduct for overdue tax filings (-8 each)
+  const overdue = taxFilings.filter(f => f.status === 'overdue').length
+  score -= overdue * 8
+
+  // Bonus for all paid payroll runs (+2 per paid run, max +10)
+  const paidRuns = payrollRuns.filter(r => r.status === 'paid').length
+  score += Math.min(paidRuns * 2, 10)
+
+  // Clamp between 0-100
+  score = Math.max(0, Math.min(100, score))
+
+  const label = score >= 90 ? 'Excellent' : score >= 75 ? 'Good' : score >= 60 ? 'Fair' : 'Needs Attention'
+
+  return {
+    value: score,
+    label,
+    breakdown: [
+      { factor: 'Compliance Issues', score: Math.max(0, 100 - (criticalOpen * 30 + warningOpen * 15)), weight: 0.35 },
+      { factor: 'Tax Filing Status', score: Math.max(0, 100 - overdue * 25), weight: 0.30 },
+      { factor: 'Payroll Processing', score: Math.min(100, 60 + paidRuns * 10), weight: 0.20 },
+      { factor: 'Deduction Accuracy', score: payrollRuns.length > 0 ? 88 : 50, weight: 0.15 },
+    ],
+    trend: criticalOpen === 0 && overdue === 0 ? 'up' : overdue > 0 ? 'down' : 'stable',
+  }
+}
+
+export function recommendTaxOptimizations(
+  taxConfigs: Array<{ country: string; rate: number; employer_contribution: number; employee_contribution: number }>,
+  employees: Array<{ country: string; level: string }>
+): { recommendations: AIRecommendation[]; estimatedSavings: number } {
+  const recommendations: AIRecommendation[] = []
+  let estimatedSavings = 0
+
+  // Check for high-rate countries with many employees
+  const countryCount: Record<string, number> = {}
+  employees.forEach(e => { countryCount[e.country || 'Other'] = (countryCount[e.country || 'Other'] || 0) + 1 })
+
+  taxConfigs.forEach(tc => {
+    const empCount = countryCount[tc.country] || 0
+
+    if (tc.rate > 25 && empCount > 3) {
+      recommendations.push({
+        id: `tax-opt-${tc.country.toLowerCase().replace(/[^a-z]/g, '')}`,
+        title: `Optimize ${tc.country} Tax Structure`,
+        rationale: `${tc.country} has a ${tc.rate}% combined rate across ${empCount} employees. Consider pension optimization and allowable deductions to reduce effective rate.`,
+        impact: 'high' as const,
+        effort: 'medium' as const,
+        category: 'tax_optimization',
+      })
+      estimatedSavings += empCount * 1200
+    }
+
+    if (tc.employer_contribution > 12) {
+      recommendations.push({
+        id: `contrib-opt-${tc.country.toLowerCase().replace(/[^a-z]/g, '')}`,
+        title: `Review Employer Contributions in ${tc.country}`,
+        rationale: `Employer contribution rate of ${tc.employer_contribution}% is above regional average. Review voluntary vs mandatory components.`,
+        impact: 'medium' as const,
+        effort: 'low' as const,
+        category: 'cost_reduction',
+      })
+      estimatedSavings += empCount * 800
+    }
+  })
+
+  // General recommendation
+  recommendations.push({
+    id: 'tax-opt-general',
+    title: 'Implement Multi-Country Tax Planning',
+    rationale: `Operating across ${taxConfigs.length} jurisdictions. Consolidated tax planning could optimize cross-border employment costs.`,
+    impact: 'high' as const,
+    effort: 'high' as const,
+    category: 'strategic',
+  })
+  estimatedSavings += 5000
+
+  return { recommendations, estimatedSavings }
+}
+
+export function analyzePayrollTrends(
+  payrollRuns: Array<{ period: string; total_gross: number; total_deductions: number; total_net: number; employee_count: number }>,
+  entries: Array<{ department: string; gross_pay: number; total_deductions: number; net_pay: number }>
+): { monthOverMonth: number; departmentTrends: Array<{ department: string; totalCost: number; avgSalary: number; headcount: number }>; projections: AIInsight[] } {
+  // Month over month change
+  const sorted = [...payrollRuns].sort((a, b) => a.period.localeCompare(b.period))
+  let monthOverMonth = 0
+  if (sorted.length >= 2) {
+    const latest = sorted[sorted.length - 1].total_gross
+    const previous = sorted[sorted.length - 2].total_gross
+    monthOverMonth = previous > 0 ? Math.round(((latest - previous) / previous) * 10000) / 100 : 0
+  }
+
+  // Department trends from entries
+  const deptMap: Record<string, { total: number; count: number }> = {}
+  entries.forEach(e => {
+    const dept = e.department || 'Other'
+    if (!deptMap[dept]) deptMap[dept] = { total: 0, count: 0 }
+    deptMap[dept].total += e.gross_pay
+    deptMap[dept].count += 1
+  })
+
+  const departmentTrends = Object.entries(deptMap)
+    .map(([department, data]) => ({
+      department,
+      totalCost: data.total,
+      avgSalary: data.count > 0 ? Math.round(data.total / data.count) : 0,
+      headcount: data.count,
+    }))
+    .sort((a, b) => b.totalCost - a.totalCost)
+
+  // Projections
+  const projections: AIInsight[] = []
+  if (payrollRuns.length > 0) {
+    const avgGross = payrollRuns.reduce((s, r) => s + r.total_gross, 0) / payrollRuns.length
+    const projectedAnnual = avgGross * 12
+
+    projections.push({
+      id: 'payroll-trend-projection',
+      category: 'prediction' as const,
+      severity: monthOverMonth > 3 ? 'warning' as const : 'info' as const,
+      title: 'Payroll Cost Projection',
+      description: `Based on ${payrollRuns.length} pay run(s), projected annual payroll cost is $${(projectedAnnual / 1000000).toFixed(2)}M. ${monthOverMonth > 0 ? `Costs increased ${monthOverMonth}% month-over-month.` : 'Costs are stable.'}`,
+      confidence: payrollRuns.length >= 3 ? 'high' as const : 'medium' as const,
+      confidenceScore: payrollRuns.length >= 3 ? 85 : 65,
+      suggestedAction: monthOverMonth > 3 ? 'Review headcount additions and salary adjustments driving cost increase' : 'Continue monitoring payroll trends quarterly',
+      module: 'payroll',
+    })
+  }
+
+  if (departmentTrends.length > 0) {
+    const topDept = departmentTrends[0]
+    projections.push({
+      id: 'payroll-dept-insight',
+      category: 'trend' as const,
+      severity: 'info' as const,
+      title: 'Highest Cost Department',
+      description: `${topDept.department} has the highest payroll cost at $${(topDept.totalCost / 1000).toFixed(0)}K across ${topDept.headcount} employees (avg $${(topDept.avgSalary / 1000).toFixed(1)}K/month).`,
+      confidence: 'high' as const,
+      confidenceScore: 90,
+      module: 'payroll',
+    })
+  }
+
+  return { monthOverMonth, departmentTrends, projections }
+}
+
+export function predictComplianceRisks(
+  complianceIssues: Array<{ type: string; severity: string; status: string; country: string; deadline: string; description: string }>,
+  taxFilings: Array<{ country: string; form_name: string; deadline: string; status: string; frequency: string }>
+): { risks: AIInsight[]; urgentCount: number; nextDeadline: string | null } {
+  const risks: AIInsight[] = []
+  let urgentCount = 0
+
+  // Check for critical open issues
+  complianceIssues
+    .filter(i => i.status !== 'resolved')
+    .forEach((issue, idx) => {
+      const daysToDeadline = Math.ceil((new Date(issue.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      const isUrgent = daysToDeadline < 30 && issue.severity === 'critical'
+      if (isUrgent) urgentCount++
+
+      risks.push({
+        id: `compliance-risk-${idx}`,
+        category: 'alert' as const,
+        severity: isUrgent ? 'critical' as const : issue.severity === 'warning' ? 'warning' as const : 'info' as const,
+        title: `${issue.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} — ${issue.country}`,
+        description: issue.description,
+        confidence: 'high' as const,
+        confidenceScore: 92,
+        suggestedAction: daysToDeadline < 14 ? `Immediate action needed — ${daysToDeadline} days until deadline` : `Address before ${issue.deadline}`,
+        module: 'payroll',
+      })
+    })
+
+  // Check for overdue filings
+  taxFilings
+    .filter(f => f.status === 'overdue')
+    .forEach((filing, idx) => {
+      urgentCount++
+      risks.push({
+        id: `filing-risk-${idx}`,
+        category: 'alert' as const,
+        severity: 'critical' as const,
+        title: `Overdue: ${filing.form_name} — ${filing.country}`,
+        description: `${filing.form_name} was due ${filing.deadline} and has not been filed. Penalties may apply.`,
+        confidence: 'high' as const,
+        confidenceScore: 98,
+        suggestedAction: 'File immediately to minimize penalties',
+        module: 'payroll',
+      })
+    })
+
+  // Find next deadline
+  const allDeadlines = [
+    ...complianceIssues.filter(i => i.status !== 'resolved').map(i => i.deadline),
+    ...taxFilings.filter(f => f.status === 'upcoming').map(f => f.deadline),
+  ].filter(Boolean).sort()
+  const nextDeadline = allDeadlines[0] || null
+
+  return { risks, urgentCount, nextDeadline }
+}
+
+export function scoreContractorRisk(
+  contractorPayments: Array<{ contractor_name: string; amount: number; status: string; tax_form: string; country: string; service_type: string }>
+): { riskScore: number; misclassificationFlags: string[]; recommendations: AIRecommendation[] } {
+  let riskScore = 15 // Start low (good)
+  const misclassificationFlags: string[] = []
+  const recommendations: AIRecommendation[] = []
+
+  // Check for high-value contractors (potential misclassification risk)
+  const totalSpend = contractorPayments.reduce((s, p) => s + p.amount, 0)
+  contractorPayments.forEach(cp => {
+    if (cp.amount > 40000) {
+      riskScore += 15
+      misclassificationFlags.push(`${cp.contractor_name}: High-value engagement ($${(cp.amount / 1000).toFixed(0)}K) — review employment classification`)
+    }
+    if (cp.tax_form === 'invoice' && cp.amount > 25000) {
+      riskScore += 10
+      misclassificationFlags.push(`${cp.contractor_name}: No W-8BEN/W-9 on file for significant payment`)
+    }
+  })
+
+  // Check for pending payments
+  const pendingCount = contractorPayments.filter(cp => cp.status === 'pending').length
+  if (pendingCount > 2) {
+    riskScore += 10
+  }
+
+  riskScore = Math.min(100, riskScore)
+
+  if (riskScore > 30) {
+    recommendations.push({
+      id: 'contractor-review',
+      title: 'Conduct Contractor Classification Review',
+      rationale: `${misclassificationFlags.length} potential classification concerns identified across ${contractorPayments.length} contractors.`,
+      impact: 'high' as const,
+      effort: 'medium' as const,
+      category: 'compliance',
+    })
+  }
+
+  if (totalSpend > 100000) {
+    recommendations.push({
+      id: 'contractor-policy',
+      title: 'Implement Contractor Spend Policy',
+      rationale: `Total contractor spend of $${(totalSpend / 1000).toFixed(0)}K warrants a formal procurement and contractor management policy.`,
+      impact: 'medium' as const,
+      effort: 'low' as const,
+      category: 'governance',
+    })
+  }
+
+  recommendations.push({
+    id: 'contractor-tax-forms',
+    title: 'Collect Missing Tax Documentation',
+    rationale: 'Ensure all contractors have appropriate tax forms (W-9/W-8BEN/local equivalent) on file before payment processing.',
+    impact: 'high' as const,
+    effort: 'low' as const,
+    category: 'compliance',
+  })
+
+  return { riskScore, misclassificationFlags, recommendations }
+}
+
+
+
+// ============================================================
+// BENEFITS MODULE AI
+// ============================================================
+
+export function analyzeBenefitEnrollmentTrends(
+  enrollments: any[],
+  plans: any[],
+  employees: any[]
+): { enrollmentRate: number; topPlan: string; costPerEmployee: number; insights: AIInsight[]; byType: Array<{ type: string; count: number }> } {
+  const totalEmployees = employees.length || 1
+  const enrolledEmployees = new Set(enrollments.map(e => e.employee_id)).size
+  const enrollmentRate = pct(enrolledEmployees, totalEmployees)
+
+  // Find most popular plan
+  const planCounts: Record<string, number> = {}
+  enrollments.forEach(e => {
+    const pid = e.plan_id || 'unknown'
+    planCounts[pid] = (planCounts[pid] || 0) + 1
+  })
+  const topPlanId = Object.entries(planCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+  const topPlanObj = plans.find(p => p.id === topPlanId)
+  const topPlan = topPlanObj?.name || 'N/A'
+
+  // Average cost per employee
+  const totalCost = plans.reduce((s, p) => s + ((p.employer_cost || 0) * (planCounts[p.id] || 0)), 0)
+  const costPerEmployee = enrolledEmployees > 0 ? Math.round(totalCost / enrolledEmployees) : 0
+
+  const insights: AIInsight[] = []
+
+  if (enrollmentRate < 70) {
+    insights.push({
+      id: genAIId('ben-enroll'),
+      category: 'alert',
+      severity: enrollmentRate < 50 ? 'critical' : 'warning',
+      title: 'Under-enrollment Detected',
+      description: `Only ${enrollmentRate}% of employees are enrolled in benefits. ${totalEmployees - enrolledEmployees} employee(s) have no active enrollment.`,
+      confidence: 'high',
+      confidenceScore: 88,
+      suggestedAction: 'Launch enrollment drive or open enrollment period',
+      module: 'benefits',
+    })
+  }
+
+  // Plans with very low enrollment
+  plans.forEach(plan => {
+    const count = planCounts[plan.id] || 0
+    const rate = pct(count, totalEmployees)
+    if (rate < 15 && plan.status !== 'inactive') {
+      insights.push({
+        id: genAIId('ben-lowplan'),
+        category: 'recommendation',
+        severity: 'info',
+        title: `Low Enrollment: ${plan.name}`,
+        description: `${plan.name} has only ${count} enrollee(s) (${rate}%). Consider increasing awareness or reviewing plan competitiveness.`,
+        confidence: 'medium',
+        confidenceScore: 70,
+        suggestedAction: 'Review plan design and employee communication',
+        module: 'benefits',
+      })
+    }
+  })
+
+  // Enrollment count by plan type
+  const typeCounts: Record<string, number> = {}
+  enrollments.forEach(e => {
+    const plan = plans.find(p => p.id === e.plan_id)
+    const type = plan?.type || 'other'
+    typeCounts[type] = (typeCounts[type] || 0) + 1
+  })
+  const byType = Object.entries(typeCounts).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count)
+
+  return { enrollmentRate, topPlan, costPerEmployee, insights, byType }
+}
+
+export function predictLifeEventImpact(lifeEvents: any[], enrollments: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+  if (lifeEvents.length === 0) return insights
+
+  // Group life events by type
+  const byType: Record<string, any[]> = {}
+  lifeEvents.forEach(le => {
+    const type = le.type || le.event_type || 'other'
+    if (!byType[type]) byType[type] = []
+    byType[type].push(le)
+  })
+
+  const costMultipliers: Record<string, number> = {
+    marriage: 1.4, newborn: 1.8, adoption: 1.7,
+    divorce: 0.8, death: 0.7, disability: 1.5,
+  }
+
+  for (const [type, events] of Object.entries(byType)) {
+    const pending = events.filter(e => e.status === 'pending' || e.status === 'reported' || !e.status)
+    if (pending.length === 0) continue
+
+    const multiplier = costMultipliers[type] || 1.2
+    const impactPct = Math.round((multiplier - 1) * 100)
+    const severity: 'warning' | 'info' = pending.length >= 3 ? 'warning' : 'info'
+
+    insights.push({
+      id: genAIId('life-event'),
+      category: 'prediction',
+      severity,
+      title: `${pending.length} Pending ${type.charAt(0).toUpperCase() + type.slice(1)} Event(s)`,
+      description: `${pending.length} ${type} event(s) may increase benefit costs by ~${impactPct}% for affected employees. Plan for enrollment changes.`,
+      confidence: pending.length >= 2 ? 'medium' : 'low',
+      confidenceScore: clamp(50 + pending.length * 10, 0, 85),
+      suggestedAction: 'Prepare benefit adjustment packets for affected employees',
+      module: 'benefits',
+    })
+  }
+
+  if (lifeEvents.length >= 5) {
+    insights.push({
+      id: genAIId('life-event-vol'),
+      category: 'trend',
+      severity: 'info',
+      title: 'Elevated Life Event Volume',
+      description: `${lifeEvents.length} life events reported. Higher volumes may indicate enrollment changes impacting benefit costs in the coming quarter.`,
+      confidence: 'medium',
+      confidenceScore: 65,
+      suggestedAction: 'Review benefits budget for upcoming quarter',
+      module: 'benefits',
+    })
+  }
+
+  return insights
+}
+
+export function scoreBenefitsCompetitiveness(plans: any[], employees: any[]): AIScore {
+  const factors: Array<{ factor: string; score: number; weight: number }> = []
+
+  const planTypes = new Set(plans.map(p => p.type || p.category || 'general'))
+  const diversityScore = clamp(planTypes.size * 20, 0, 100)
+  factors.push({ factor: 'Plan Diversity', score: diversityScore, weight: 0.25 })
+
+  const totalEnrolled = plans.reduce((s, p) => s + (p.enrolled_count || 0), 0)
+  const coverageScore = clamp(pct(totalEnrolled, Math.max(employees.length, 1)), 0, 100)
+  factors.push({ factor: 'Coverage Ratio', score: coverageScore, weight: 0.25 })
+
+  const avgEmployerCost = plans.length > 0 ? mean(plans.map(p => p.employer_cost || 0)) : 0
+  const avgEmployeeCost = plans.length > 0 ? mean(plans.map(p => p.employee_cost || 0)) : 1
+  const costRatio = avgEmployeeCost > 0 ? avgEmployerCost / avgEmployeeCost : 1
+  const costScore = clamp(Math.round(costRatio * 40), 0, 100)
+  factors.push({ factor: 'Employer Contribution', score: costScore, weight: 0.3 })
+
+  const activePlans = plans.filter(p => p.status !== 'inactive').length
+  const planCountScore = activePlans >= 6 ? 90 : activePlans >= 4 ? 75 : activePlans >= 2 ? 50 : 25
+  factors.push({ factor: 'Plan Options', score: planCountScore, weight: 0.2 })
+
+  const total = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+
+  return {
+    value: clamp(total, 0, 100),
+    label: total >= 80 ? 'Highly Competitive' : total >= 60 ? 'Competitive' : total >= 40 ? 'Below Average' : 'Needs Improvement',
+    breakdown: factors,
+    trend: activePlans >= 4 ? 'up' : 'stable',
+  }
+}
+
+// ============================================================
+// PEOPLE MODULE AI
+// ============================================================
+
+export function analyzeHeadcountTrends(
+  employees: any[],
+  departments: any[]
+): {
+  departmentBreakdown: Array<{ name: string; count: number; pct: number }>
+  countryBreakdown: Array<{ name: string; count: number; pct: number }>
+  levelBreakdown: Array<{ name: string; count: number; pct: number }>
+  insights: AIInsight[]
+} {
+  const total = employees.length || 1
+
+  const deptMap: Record<string, number> = {}
+  employees.forEach(e => {
+    const deptId = e.department_id || 'unassigned'
+    deptMap[deptId] = (deptMap[deptId] || 0) + 1
+  })
+  const departmentBreakdown = Object.entries(deptMap).map(([id, count]) => {
+    const dept = departments.find(d => d.id === id)
+    return { name: dept?.name || id, count, pct: pct(count, total) }
+  }).sort((a, b) => b.count - a.count)
+
+  const countryMap: Record<string, number> = {}
+  employees.forEach(e => {
+    const country = e.country || e.profile?.country || 'Unknown'
+    countryMap[country] = (countryMap[country] || 0) + 1
+  })
+  const countryBreakdown = Object.entries(countryMap).map(([name, count]) => ({
+    name, count, pct: pct(count, total),
+  })).sort((a, b) => b.count - a.count)
+
+  const levelMap: Record<string, number> = {}
+  employees.forEach(e => {
+    const level = e.level || 'Unknown'
+    levelMap[level] = (levelMap[level] || 0) + 1
+  })
+  const levelBreakdown = Object.entries(levelMap).map(([name, count]) => ({
+    name, count, pct: pct(count, total),
+  })).sort((a, b) => b.count - a.count)
+
+  const insights: AIInsight[] = []
+
+  const topDept = departmentBreakdown[0]
+  if (topDept && topDept.pct > 40) {
+    insights.push({
+      id: genAIId('hc-concentrate'),
+      category: 'trend',
+      severity: 'info',
+      title: 'Department Concentration',
+      description: `${topDept.name} holds ${topDept.pct}% of total headcount (${topDept.count} of ${total}). Consider growth balance across departments.`,
+      confidence: 'high',
+      confidenceScore: 85,
+      suggestedAction: 'Review hiring plan distribution',
+      module: 'people',
+    })
+  }
+
+  const topCountry = countryBreakdown[0]
+  if (topCountry && topCountry.pct > 60 && countryBreakdown.length > 1) {
+    insights.push({
+      id: genAIId('hc-country'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Geographic Concentration Risk',
+      description: `${topCountry.pct}% of employees are in ${topCountry.name}. Diversifying locations reduces regulatory and talent risk.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      suggestedAction: 'Explore hiring in additional regions',
+      module: 'people',
+    })
+  }
+
+  const juniorCount = employees.filter(e => (e.level || '').toLowerCase().includes('junior')).length
+  const seniorCount = employees.filter(e => (e.level || '').toLowerCase().includes('senior') || (e.level || '').toLowerCase().includes('lead')).length
+  if (juniorCount > 0 && seniorCount > 0 && juniorCount / seniorCount > 4) {
+    insights.push({
+      id: genAIId('hc-level'),
+      category: 'recommendation',
+      severity: 'warning',
+      title: 'Junior-Heavy Organization',
+      description: `Ratio of junior to senior employees is ${(juniorCount / seniorCount).toFixed(1)}:1. This may strain mentoring capacity and leadership pipeline.`,
+      confidence: 'medium',
+      confidenceScore: 68,
+      suggestedAction: 'Invest in senior hiring or internal promotions',
+      module: 'people',
+    })
+  }
+
+  return { departmentBreakdown, countryBreakdown, levelBreakdown, insights }
+}
+
+export function predictAttritionRisk(
+  employees: any[],
+  reviews: any[],
+  feedback: any[]
+): { riskScore: AIScore; atRiskEmployees: Array<{ employeeId: string; risk: number; factors: string[] }> } {
+  const atRiskEmployees: Array<{ employeeId: string; risk: number; factors: string[] }> = []
+  const negative_words = ['poor', 'weak', 'lacking', 'disappointing', 'inconsistent', 'struggle', 'concern']
+
+  employees.forEach(emp => {
+    let risk = 0
+    const factors: string[] = []
+
+    const empReviews = reviews.filter(r => r.employee_id === emp.id)
+    if (empReviews.length > 0) {
+      const avgRating = mean(empReviews.map(r => r.overall_rating || 3))
+      if (avgRating < 3) { risk += 25; factors.push('Low performance rating') }
+      else if (avgRating >= 4.5) { risk += 15; factors.push('High performer flight risk') }
+    }
+
+    const empFeedback = feedback.filter(f => f.employee_id === emp.id || f.recipient_id === emp.id)
+    if (empFeedback.length > 0) {
+      const negCount = empFeedback.filter(f => {
+        const text = ((f.content || '') + ' ' + (f.message || '')).toLowerCase()
+        return negative_words.some(w => text.includes(w))
+      }).length
+      if (negCount > empFeedback.length / 2) { risk += 20; factors.push('Negative feedback trend') }
+    }
+
+    if (emp.hire_date) {
+      const tenure = daysBetween(emp.hire_date, new Date().toISOString()) / 365
+      if (tenure >= 2 && tenure <= 4) { risk += 15; factors.push('In peak attrition window (2-4 years)') }
+      else if (tenure < 0.5) { risk += 10; factors.push('New hire adjustment period') }
+    }
+
+    if (emp.comp_ratio && emp.comp_ratio < 0.9) { risk += 20; factors.push('Below market compensation') }
+
+    if (risk >= 30) {
+      atRiskEmployees.push({ employeeId: emp.id, risk: clamp(risk, 0, 100), factors })
+    }
+  })
+
+  atRiskEmployees.sort((a, b) => b.risk - a.risk)
+
+  const atRiskCount = atRiskEmployees.length
+  const riskPct = pct(atRiskCount, Math.max(employees.length, 1))
+  const overallRisk = clamp(riskPct * 2, 0, 100)
+
+  const riskScore: AIScore = {
+    value: overallRisk,
+    label: overallRisk >= 60 ? 'High Risk' : overallRisk >= 35 ? 'Moderate Risk' : 'Low Risk',
+    breakdown: [
+      { factor: 'At-Risk Headcount', score: clamp(100 - riskPct, 0, 100), weight: 0.4 },
+      { factor: 'Feedback Sentiment', score: feedback.length > 0 ? 65 : 50, weight: 0.3 },
+      { factor: 'Comp Competitiveness', score: employees.filter(e => (e.comp_ratio || 1) >= 1).length > employees.length / 2 ? 75 : 40, weight: 0.3 },
+    ],
+    trend: atRiskCount > employees.length * 0.2 ? 'up' : 'stable',
+  }
+
+  return { riskScore, atRiskEmployees: atRiskEmployees.slice(0, 10) }
+}
+
+export function detectOrgBottlenecks(employees: any[], departments: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  const deptEmps: Record<string, any[]> = {}
+  employees.forEach(e => {
+    const did = e.department_id || 'unassigned'
+    if (!deptEmps[did]) deptEmps[did] = []
+    deptEmps[did].push(e)
+  })
+
+  for (const [deptId, emps] of Object.entries(deptEmps)) {
+    const dept = departments.find(d => d.id === deptId)
+    const deptName = dept?.name || deptId
+
+    const managers = emps.filter(e => (e.level || '').toLowerCase().includes('lead') || (e.level || '').toLowerCase().includes('director') || (e.level || '').toLowerCase().includes('manager') || (e.level || '').toLowerCase().includes('vp'))
+    const nonManagers = emps.length - managers.length
+
+    if (managers.length > 0 && nonManagers / managers.length > 10) {
+      insights.push({
+        id: genAIId('org-span'),
+        category: 'alert',
+        severity: 'warning',
+        title: `Wide Span of Control: ${deptName}`,
+        description: `${managers.length} manager(s) overseeing ${nonManagers} reports (${Math.round(nonManagers / managers.length)}:1 ratio). Recommended maximum is 8:1.`,
+        confidence: 'high',
+        confidenceScore: 80,
+        suggestedAction: 'Consider adding team leads or restructuring reporting lines',
+        module: 'people',
+      })
+    }
+
+    if (emps.length <= 2 && dept && dept.status !== 'inactive') {
+      insights.push({
+        id: genAIId('org-understaffed'),
+        category: 'recommendation',
+        severity: 'info',
+        title: `${deptName} May Be Understaffed`,
+        description: `${deptName} has only ${emps.length} employee(s). Critical functions may lack backup coverage.`,
+        confidence: 'medium',
+        confidenceScore: 62,
+        suggestedAction: 'Assess whether additional hiring or cross-training is needed',
+        module: 'people',
+      })
+    }
+
+    if (managers.length === 0 && emps.length >= 3) {
+      insights.push({
+        id: genAIId('org-nomanager'),
+        category: 'alert',
+        severity: 'warning',
+        title: `No Manager in ${deptName}`,
+        description: `${deptName} has ${emps.length} employees but no identified manager or lead. This may create accountability gaps.`,
+        confidence: 'medium',
+        confidenceScore: 70,
+        suggestedAction: 'Assign or hire a team lead for this department',
+        module: 'people',
+      })
+    }
+  }
+
+  return insights
+}
+
+// ============================================================
+// ENGAGEMENT MODULE AI
+// ============================================================
+
+export function analyzeSurveyResponses(
+  questions: any[],
+  responses: any[],
+  employees: any[]
+): {
+  categoryScores: Array<{ category: string; avgScore: number; responseCount: number }>
+  topStrengths: string[]
+  topConcerns: string[]
+  insights: AIInsight[]
+} {
+  const questionMap: Record<string, any> = {}
+  questions.forEach(q => { questionMap[q.id] = q })
+
+  const categoryData: Record<string, { scores: number[]; count: number }> = {}
+  responses.forEach(r => {
+    const question = questionMap[r.question_id]
+    const category = question?.category || 'general'
+    if (!categoryData[category]) categoryData[category] = { scores: [], count: 0 }
+    if (typeof r.score === 'number' || typeof r.rating === 'number') {
+      categoryData[category].scores.push(r.score || r.rating || 0)
+      categoryData[category].count++
+    }
+  })
+
+  const categoryScores = Object.entries(categoryData).map(([category, data]) => ({
+    category,
+    avgScore: data.scores.length > 0 ? Math.round(mean(data.scores) * 10) / 10 : 0,
+    responseCount: data.count,
+  })).sort((a, b) => b.avgScore - a.avgScore)
+
+  const topStrengths = categoryScores.filter(c => c.avgScore >= 4).map(c => c.category).slice(0, 3)
+  const topConcerns = [...categoryScores].sort((a, b) => a.avgScore - b.avgScore).filter(c => c.avgScore < 3.5 && c.responseCount > 0).map(c => c.category).slice(0, 3)
+
+  const insights: AIInsight[] = []
+
+  const respondents = new Set(responses.map(r => r.employee_id)).size
+  const responseRate = pct(respondents, Math.max(employees.length, 1))
+  if (responseRate < 60) {
+    insights.push({
+      id: genAIId('survey-rate'),
+      category: 'alert',
+      severity: responseRate < 40 ? 'critical' : 'warning',
+      title: 'Low Survey Response Rate',
+      description: `Only ${responseRate}% of employees responded (${respondents} of ${employees.length}). Results may not be representative.`,
+      confidence: 'high',
+      confidenceScore: 90,
+      suggestedAction: 'Extend survey deadline or send reminders',
+      module: 'engagement',
+    })
+  }
+
+  if (categoryScores.length >= 2) {
+    const best = categoryScores[0]
+    const worst = categoryScores[categoryScores.length - 1]
+    const gap = best.avgScore - worst.avgScore
+    if (gap > 1.5) {
+      insights.push({
+        id: genAIId('survey-gap'),
+        category: 'trend',
+        severity: 'warning',
+        title: 'Significant Category Gap',
+        description: `"${best.category}" scores ${best.avgScore.toFixed(1)} while "${worst.category}" scores ${worst.avgScore.toFixed(1)}. A gap of ${gap.toFixed(1)} points suggests targeted action needed.`,
+        confidence: 'medium',
+        confidenceScore: 75,
+        suggestedAction: `Focus improvement efforts on ${worst.category}`,
+        module: 'engagement',
+      })
+    }
+  }
+
+  return { categoryScores, topStrengths, topConcerns, insights }
+}
+
+export function suggestActionPlans(engagementScores: any[], actionPlans: any[]): AIRecommendation[] {
+  const recs: AIRecommendation[] = []
+  if (engagementScores.length === 0) return recs
+
+  const dimensionScores: Record<string, number[]> = {}
+  engagementScores.forEach(es => {
+    const dims = ['leadership', 'growth', 'recognition', 'work_life_balance', 'communication', 'compensation']
+    dims.forEach(dim => {
+      if (es[dim] !== undefined) {
+        if (!dimensionScores[dim]) dimensionScores[dim] = []
+        dimensionScores[dim].push(es[dim])
+      }
+    })
+  })
+
+  const avgByDim = Object.entries(dimensionScores).map(([dim, scores]) => ({
+    dim, avg: mean(scores),
+  })).sort((a, b) => a.avg - b.avg)
+
+  const existingTopics = new Set(actionPlans.map(ap => (ap.category || ap.topic || '').toLowerCase()))
+
+  const actionSuggestions: Record<string, { title: string; rationale: string }> = {
+    leadership: { title: 'Strengthen Leadership Development', rationale: 'Leadership scores are low. Invest in manager training and 360-degree feedback programs.' },
+    growth: { title: 'Enhance Career Growth Opportunities', rationale: 'Growth scores indicate employees want more development paths. Introduce mentoring and skill workshops.' },
+    recognition: { title: 'Implement Recognition Program', rationale: 'Recognition scores suggest employees feel undervalued. Launch peer recognition and milestone celebrations.' },
+    work_life_balance: { title: 'Improve Work-Life Balance', rationale: 'Balance scores are concerning. Review workload distribution and flexible work policies.' },
+    communication: { title: 'Improve Internal Communication', rationale: 'Communication scores are below benchmark. Increase all-hands frequency and feedback channels.' },
+    compensation: { title: 'Review Compensation Competitiveness', rationale: 'Compensation satisfaction is low. Conduct market benchmarking and address pay gaps.' },
+  }
+
+  avgByDim.forEach(({ dim, avg }) => {
+    if (avg < 65 && !existingTopics.has(dim)) {
+      const suggestion = actionSuggestions[dim]
+      if (suggestion) {
+        recs.push({
+          id: genAIId('action-plan'),
+          title: suggestion.title,
+          rationale: `${suggestion.rationale} Current score: ${avg.toFixed(0)}/100.`,
+          impact: avg < 50 ? 'high' : 'medium',
+          effort: dim === 'compensation' ? 'high' : 'medium',
+          category: 'engagement',
+        })
+      }
+    }
+  })
+
+  return recs.slice(0, 5)
+}
+
+export function predictEngagementTrend(
+  engagementScores: any[]
+): { direction: 'improving' | 'declining' | 'stable'; confidence: number; insights: AIInsight[] } {
+  const insights: AIInsight[] = []
+  if (engagementScores.length < 2) {
+    return { direction: 'stable', confidence: 30, insights }
+  }
+
+  const sorted = [...engagementScores].sort((a, b) =>
+    new Date(a.created_at || a.period || '2020-01-01').getTime() - new Date(b.created_at || b.period || '2020-01-01').getTime()
+  )
+
+  const midpoint = Math.floor(sorted.length / 2)
+  const earlier = sorted.slice(0, midpoint)
+  const recent = sorted.slice(midpoint)
+
+  const earlierAvg = mean(earlier.map(e => e.overall_score || 0))
+  const recentAvg = mean(recent.map(e => e.overall_score || 0))
+  const delta = recentAvg - earlierAvg
+
+  let direction: 'improving' | 'declining' | 'stable'
+  if (delta > 3) direction = 'improving'
+  else if (delta < -3) direction = 'declining'
+  else direction = 'stable'
+
+  const confidence = clamp(Math.round(40 + sorted.length * 5 + Math.abs(delta) * 2), 0, 95)
+
+  if (direction === 'declining') {
+    insights.push({
+      id: genAIId('eng-trend-dec'),
+      category: 'prediction',
+      severity: 'warning',
+      title: 'Engagement Declining',
+      description: `Engagement scores dropped from ${earlierAvg.toFixed(0)} to ${recentAvg.toFixed(0)} (${delta.toFixed(1)} points). Intervention recommended.`,
+      confidence: toConfidence(confidence),
+      confidenceScore: confidence,
+      suggestedAction: 'Launch pulse survey to identify root causes',
+      module: 'engagement',
+    })
+  } else if (direction === 'improving') {
+    insights.push({
+      id: genAIId('eng-trend-imp'),
+      category: 'trend',
+      severity: 'positive',
+      title: 'Engagement Improving',
+      description: `Engagement scores improved from ${earlierAvg.toFixed(0)} to ${recentAvg.toFixed(0)} (+${delta.toFixed(1)} points). Current initiatives are working.`,
+      confidence: toConfidence(confidence),
+      confidenceScore: confidence,
+      module: 'engagement',
+    })
+  }
+
+  return { direction, confidence, insights }
+}
+
+// ============================================================
+// EXPENSE MODULE AI
+// ============================================================
+
+export function analyzeExpenseByCategory(
+  reports: any[]
+): {
+  categoryBreakdown: Array<{ category: string; total: number; count: number; avgAmount: number }>
+  monthlyTrend: Array<{ month: string; total: number }>
+  insights: AIInsight[]
+} {
+  const catData: Record<string, { total: number; count: number }> = {}
+  reports.forEach(r => {
+    const items = r.items || []
+    items.forEach((item: any) => {
+      const cat = item.category || r.category || 'uncategorized'
+      if (!catData[cat]) catData[cat] = { total: 0, count: 0 }
+      catData[cat].total += item.amount || 0
+      catData[cat].count++
+    })
+    if (items.length === 0) {
+      const cat = r.category || 'uncategorized'
+      if (!catData[cat]) catData[cat] = { total: 0, count: 0 }
+      catData[cat].total += r.total_amount || 0
+      catData[cat].count++
+    }
+  })
+
+  const categoryBreakdown = Object.entries(catData).map(([category, data]) => ({
+    category,
+    total: Math.round(data.total),
+    count: data.count,
+    avgAmount: data.count > 0 ? Math.round(data.total / data.count) : 0,
+  })).sort((a, b) => b.total - a.total)
+
+  const monthData: Record<string, number> = {}
+  reports.forEach(r => {
+    const date = r.submitted_at || r.created_at || ''
+    if (date) {
+      const month = date.substring(0, 7)
+      monthData[month] = (monthData[month] || 0) + (r.total_amount || 0)
+    }
+  })
+  const monthlyTrend = Object.entries(monthData).map(([month, total]) => ({
+    month, total: Math.round(total),
+  })).sort((a, b) => a.month.localeCompare(b.month))
+
+  const insights: AIInsight[] = []
+
+  if (categoryBreakdown.length > 0) {
+    const top = categoryBreakdown[0]
+    const totalAll = categoryBreakdown.reduce((s, c) => s + c.total, 0)
+    const share = pct(top.total, Math.max(totalAll, 1))
+    if (share > 50) {
+      insights.push({
+        id: genAIId('exp-topcat'),
+        category: 'trend',
+        severity: 'info',
+        title: `${top.category} Dominates Spending`,
+        description: `${top.category} accounts for ${share}% of all expenses ($${top.total.toLocaleString()}). Consider reviewing ${top.category} policies.`,
+        confidence: 'high',
+        confidenceScore: 85,
+        suggestedAction: `Review ${top.category} spending policies`,
+        module: 'expense',
+      })
+    }
+  }
+
+  if (monthlyTrend.length >= 2) {
+    const last = monthlyTrend[monthlyTrend.length - 1].total
+    const prev = monthlyTrend[monthlyTrend.length - 2].total
+    if (prev > 0) {
+      const change = Math.round(((last - prev) / prev) * 100)
+      if (change > 20) {
+        insights.push({
+          id: genAIId('exp-mom'),
+          category: 'alert',
+          severity: 'warning',
+          title: `Expenses Increased ${change}%`,
+          description: `Monthly expenses rose from $${prev.toLocaleString()} to $${last.toLocaleString()} (+${change}%). Investigate spending drivers.`,
+          confidence: 'medium',
+          confidenceScore: 72,
+          suggestedAction: 'Review recent expense reports for unusual spending',
+          module: 'expense',
+        })
+      }
+    }
+  }
+
+  return { categoryBreakdown, monthlyTrend, insights }
+}
+
+export function detectPolicyViolations(
+  reports: any[],
+  policies: any[]
+): Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number }> {
+  const violations: Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number }> = []
+
+  const limits: Record<string, number> = {}
+  policies.forEach(p => {
+    const cat = p.category || p.expense_type || 'general'
+    limits[cat] = p.max_amount || p.limit || 0
+  })
+
+  const generalLimit = limits['general'] || 5000
+  const mealLimit = limits['meals'] || limits['food'] || 150
+  const travelLimit = limits['travel'] || 2000
+  const hotelLimit = limits['hotel'] || limits['accommodation'] || 300
+
+  reports.forEach(report => {
+    const items = report.items || []
+    const reportAmount = report.total_amount || 0
+
+    if (reportAmount > generalLimit) {
+      violations.push({
+        reportId: report.id,
+        violation: `Total amount $${reportAmount.toLocaleString()} exceeds policy limit of $${generalLimit.toLocaleString()}`,
+        severity: reportAmount > generalLimit * 2 ? 'critical' : 'warning',
+        amount: reportAmount,
+      })
+    }
+
+    items.forEach((item: any) => {
+      const cat = (item.category || '').toLowerCase()
+      const amount = item.amount || 0
+
+      if ((cat.includes('meal') || cat.includes('food')) && amount > mealLimit) {
+        violations.push({ reportId: report.id, violation: `Meal expense of $${amount} exceeds ${mealLimit} limit`, severity: 'warning', amount })
+      }
+      if (cat.includes('travel') && amount > travelLimit) {
+        violations.push({ reportId: report.id, violation: `Travel expense of $${amount.toLocaleString()} exceeds $${travelLimit.toLocaleString()} limit`, severity: amount > travelLimit * 1.5 ? 'critical' : 'warning', amount })
+      }
+      if ((cat.includes('hotel') || cat.includes('accommodation')) && amount > hotelLimit) {
+        violations.push({ reportId: report.id, violation: `Hotel expense of $${amount} exceeds nightly limit of $${hotelLimit}`, severity: 'warning', amount })
+      }
+    })
+  })
+
+  return violations
+}
+
+export function forecastMonthlySpending(
+  reports: any[]
+): { projected: number; confidence: number; trend: string; insights: AIInsight[] } {
+  const insights: AIInsight[] = []
+  if (reports.length === 0) return { projected: 0, confidence: 20, trend: 'stable', insights }
+
+  const monthTotals: Record<string, number> = {}
+  reports.forEach(r => {
+    const date = r.submitted_at || r.created_at || ''
+    if (date) {
+      const month = date.substring(0, 7)
+      monthTotals[month] = (monthTotals[month] || 0) + (r.total_amount || 0)
+    }
+  })
+
+  const months = Object.entries(monthTotals).sort((a, b) => a[0].localeCompare(b[0]))
+  const values = months.map(m => m[1])
+  if (values.length === 0) return { projected: 0, confidence: 20, trend: 'stable', insights }
+
+  const recentValues = values.slice(-3)
+  const projected = Math.round(mean(recentValues))
+  const confidence = clamp(40 + values.length * 8, 0, 90)
+  let trend = 'stable'
+
+  if (values.length >= 3) {
+    const first = mean(values.slice(0, Math.ceil(values.length / 2)))
+    const second = mean(values.slice(Math.ceil(values.length / 2)))
+    const trendPct = first > 0 ? Math.round(((second - first) / first) * 100) : 0
+    trend = trendPct > 5 ? `+${trendPct}% increasing` : trendPct < -5 ? `${trendPct}% decreasing` : 'stable'
+
+    if (Math.abs(trendPct) > 10) {
+      insights.push({
+        id: genAIId('exp-forecast'),
+        category: 'prediction',
+        severity: trendPct > 20 ? 'warning' : 'info',
+        title: `Spending ${trendPct > 0 ? 'Trending Up' : 'Trending Down'}`,
+        description: `Expenses are ${trendPct > 0 ? 'increasing' : 'decreasing'} by approximately ${Math.abs(trendPct)}%. Projected next month: $${projected.toLocaleString()}.`,
+        confidence: toConfidence(confidence),
+        confidenceScore: confidence,
+        suggestedAction: trendPct > 20 ? 'Review expense policies and set tighter controls' : undefined,
+        module: 'expense',
+      })
+    }
+  }
+
+  insights.push({
+    id: genAIId('exp-proj'),
+    category: 'prediction',
+    severity: 'info',
+    title: 'Monthly Spending Forecast',
+    description: `Based on ${values.length} month(s) of data, projected spending is $${projected.toLocaleString()} next month. Annual projection: $${(projected * 12).toLocaleString()}.`,
+    confidence: toConfidence(confidence),
+    confidenceScore: confidence,
+    module: 'expense',
+  })
+
+  return { projected, confidence, trend, insights }
+}
+
+// ============================================================
+// TIME & ATTENDANCE MODULE AI
+// ============================================================
+
+export function analyzeAttendancePatterns(
+  timesheets: any[],
+  shifts: any[],
+  employees: any[]
+): {
+  avgHoursPerWeek: number
+  overtimeRate: number
+  absenteeismRate: number
+  departmentStats: Array<{ dept: string; avgHours: number; overtime: number }>
+  insights: AIInsight[]
+} {
+  const totalEmployees = employees.length || 1
+  const hoursData: number[] = []
+  const overtimeData: number[] = []
+  const deptHours: Record<string, { hours: number[]; overtime: number[]; empIds: Set<string> }> = {}
+
+  timesheets.forEach(ts => {
+    const hours = ts.total_hours || ts.hours || 0
+    const overtime = ts.overtime_hours || ts.overtime || 0
+    hoursData.push(hours)
+    overtimeData.push(overtime)
+
+    const emp = employees.find(e => e.id === ts.employee_id)
+    const dept = emp?.department_id || 'unassigned'
+    if (!deptHours[dept]) deptHours[dept] = { hours: [], overtime: [], empIds: new Set() }
+    deptHours[dept].hours.push(hours)
+    deptHours[dept].overtime.push(overtime)
+    deptHours[dept].empIds.add(ts.employee_id)
+  })
+
+  const avgHoursPerWeek = hoursData.length > 0 ? Math.round(mean(hoursData) * 10) / 10 : 40
+  const totalOvertime = overtimeData.reduce((s, h) => s + h, 0)
+  const totalHours = hoursData.reduce((s, h) => s + h, 0)
+  const overtimeRate = totalHours > 0 ? Math.round((totalOvertime / totalHours) * 1000) / 10 : 0
+
+  const activeEmployeeIds = new Set(timesheets.map(ts => ts.employee_id))
+  const absentCount = employees.filter(e => !activeEmployeeIds.has(e.id)).length
+  const absenteeismRate = pct(absentCount, totalEmployees)
+
+  const departmentStats = Object.entries(deptHours).map(([dept, data]) => ({
+    dept,
+    avgHours: Math.round(mean(data.hours) * 10) / 10,
+    overtime: Math.round(mean(data.overtime) * 10) / 10,
+  })).sort((a, b) => b.overtime - a.overtime)
+
+  const insights: AIInsight[] = []
+
+  if (overtimeRate > 15) {
+    insights.push({
+      id: genAIId('att-overtime'),
+      category: 'alert',
+      severity: overtimeRate > 25 ? 'critical' : 'warning',
+      title: 'High Overtime Rate',
+      description: `Overtime accounts for ${overtimeRate}% of total hours. Sustained overtime increases burnout risk and labor costs.`,
+      confidence: 'high',
+      confidenceScore: 85,
+      suggestedAction: 'Review workload distribution and consider additional hires',
+      module: 'time',
+    })
+  }
+
+  if (absenteeismRate > 10) {
+    insights.push({
+      id: genAIId('att-absent'),
+      category: 'alert',
+      severity: absenteeismRate > 20 ? 'critical' : 'warning',
+      title: `Absenteeism at ${absenteeismRate}%`,
+      description: `${absentCount} of ${totalEmployees} employees have no logged hours. Investigate potential engagement or health issues.`,
+      confidence: 'medium',
+      confidenceScore: 70,
+      suggestedAction: 'Follow up with absent employees and review attendance policies',
+      module: 'time',
+    })
+  }
+
+  if (departmentStats.length > 0 && departmentStats[0].overtime > 5) {
+    insights.push({
+      id: genAIId('att-dept-ot'),
+      category: 'trend',
+      severity: 'info',
+      title: `${departmentStats[0].dept} Leads Overtime`,
+      description: `${departmentStats[0].dept} averages ${departmentStats[0].overtime} overtime hours. This may indicate understaffing.`,
+      confidence: 'medium',
+      confidenceScore: 68,
+      suggestedAction: 'Assess staffing levels in this department',
+      module: 'time',
+    })
+  }
+
+  return { avgHoursPerWeek, overtimeRate, absenteeismRate, departmentStats, insights }
+}
+
+export function predictAbsenteeism(leaveRequests: any[], employees: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+  if (leaveRequests.length < 3) return insights
+
+  const monthCounts: Record<string, number> = {}
+  leaveRequests.forEach(lr => {
+    const date = lr.start_date || lr.from || lr.created_at || ''
+    if (date) {
+      const month = new Date(date).getMonth()
+      const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month]
+      monthCounts[monthName] = (monthCounts[monthName] || 0) + 1
+    }
+  })
+
+  const sorted = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])
+  if (sorted.length > 0) {
+    const peak = sorted[0]
+    const avgMonthly = mean(Object.values(monthCounts))
+    if (peak[1] > avgMonthly * 1.5) {
+      insights.push({
+        id: genAIId('absent-peak'),
+        category: 'prediction',
+        severity: 'info',
+        title: `Peak Absence Expected: ${peak[0]}`,
+        description: `Historical data shows ${peak[0]} has ${peak[1]} leave requests vs ${avgMonthly.toFixed(0)} average. Plan for reduced capacity.`,
+        confidence: 'medium',
+        confidenceScore: 65,
+        suggestedAction: `Pre-plan coverage for ${peak[0]}`,
+        module: 'time',
+      })
+    }
+  }
+
+  const empLeaveCounts: Record<string, number> = {}
+  leaveRequests.forEach(lr => {
+    const eid = lr.employee_id
+    if (eid) empLeaveCounts[eid] = (empLeaveCounts[eid] || 0) + 1
+  })
+
+  const frequentAbsentees = Object.entries(empLeaveCounts).filter(([, count]) => count >= 5)
+  if (frequentAbsentees.length > 0) {
+    insights.push({
+      id: genAIId('absent-frequent'),
+      category: 'alert',
+      severity: 'warning',
+      title: `${frequentAbsentees.length} Employee(s) With Frequent Absences`,
+      description: `${frequentAbsentees.length} employee(s) have 5+ leave requests. This may indicate engagement issues or personal challenges.`,
+      confidence: 'medium',
+      confidenceScore: 68,
+      suggestedAction: 'Schedule wellness check-ins with frequently absent employees',
+      module: 'time',
+    })
+  }
+
+  return insights
+}
+
+export function optimizeScheduling(shifts: any[], employees: any[]): AIRecommendation[] {
+  const recs: AIRecommendation[] = []
+
+  const dayOfWeekCoverage: Record<number, number> = {}
+  shifts.forEach(s => {
+    const day = new Date(s.date || s.start_date || '').getDay()
+    dayOfWeekCoverage[day] = (dayOfWeekCoverage[day] || 0) + 1
+  })
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const avgCoverage = shifts.length > 0 ? mean(Object.values(dayOfWeekCoverage)) : 0
+
+  for (const [day, count] of Object.entries(dayOfWeekCoverage)) {
+    if (count < avgCoverage * 0.5 && avgCoverage > 0) {
+      recs.push({
+        id: genAIId('sched-gap'),
+        title: `Increase ${dayNames[Number(day)]} Coverage`,
+        rationale: `${dayNames[Number(day)]} has ${count} shifts vs ${avgCoverage.toFixed(0)} average. Consider adding shifts to balance workload.`,
+        impact: 'medium',
+        effort: 'low',
+        category: 'time',
+      })
+    }
+  }
+
+  const empShifts: Record<string, any[]> = {}
+  shifts.forEach(s => {
+    const eid = s.employee_id
+    if (eid) {
+      if (!empShifts[eid]) empShifts[eid] = []
+      empShifts[eid].push(s)
+    }
+  })
+
+  let consecutiveIssues = 0
+  for (const [, empShiftList] of Object.entries(empShifts)) {
+    if (empShiftList.length >= 6) consecutiveIssues++
+  }
+
+  if (consecutiveIssues > 0) {
+    recs.push({
+      id: genAIId('sched-consecutive'),
+      title: 'Reduce Consecutive Shift Runs',
+      rationale: `${consecutiveIssues} employee(s) have 6+ shifts in a period. Extended consecutive shifts increase fatigue and error rates.`,
+      impact: 'high',
+      effort: 'medium',
+      category: 'time',
+    })
+  }
+
+  if (employees.length > 5 && shifts.length > 0) {
+    recs.push({
+      id: genAIId('sched-rotate'),
+      title: 'Implement Shift Rotation',
+      rationale: `With ${employees.length} employees, rotating shift assignments improves fairness and cross-training.`,
+      impact: 'medium',
+      effort: 'medium',
+      category: 'time',
+    })
+  }
+
+  return recs
+}
+
+// ============================================================
+// COMPENSATION MODULE AI
+// ============================================================
+
+export function generateTotalRewardsBreakdown(
+  employee: any,
+  compBands: any[],
+  equityGrants: any[],
+  benefitPlans: any[]
+): {
+  baseSalary: number; bonus: number; equity: number; benefits: number; total: number
+  breakdown: Array<{ category: string; amount: number; pct: number }>
+} {
+  const baseSalary = employee.base_salary || employee.salary || 0
+  const bonusPct = employee.bonus_pct || employee.bonus_percentage || 10
+  const bonus = Math.round(baseSalary * (bonusPct / 100))
+
+  const empEquity = equityGrants.filter(g => g.employee_id === employee.id)
+  const equity = empEquity.reduce((s, g) => s + ((g.shares || g.units || 0) * (g.strike_price || g.grant_price || g.current_price || 10)), 0)
+
+  const benefitsMonthly = benefitPlans.reduce((s, p) => s + (p.employer_cost || 0), 0)
+  const benefits = Math.round(benefitsMonthly * 12)
+
+  const total = baseSalary + bonus + equity + benefits
+
+  const breakdown = [
+    { category: 'Base Salary', amount: baseSalary, pct: pct(baseSalary, Math.max(total, 1)) },
+    { category: 'Bonus', amount: bonus, pct: pct(bonus, Math.max(total, 1)) },
+    { category: 'Equity', amount: Math.round(equity), pct: pct(equity, Math.max(total, 1)) },
+    { category: 'Benefits', amount: benefits, pct: pct(benefits, Math.max(total, 1)) },
+  ]
+
+  return { baseSalary, bonus, equity: Math.round(equity), benefits, total, breakdown }
+}
+
+export function modelCompScenario(
+  employees: any[],
+  compBands: any[],
+  adjustmentPct: number
+): { totalImpact: number; affectedCount: number; newAvgSalary: number; budgetIncrease: number; insights: AIInsight[] } {
+  const salaries = employees.map(e => e.base_salary || e.salary || 0).filter(s => s > 0)
+  if (salaries.length === 0) {
+    return { totalImpact: 0, affectedCount: 0, newAvgSalary: 0, budgetIncrease: 0, insights: [] }
+  }
+
+  const currentTotal = salaries.reduce((s, v) => s + v, 0)
+  const currentAvg = mean(salaries)
+  const adjustmentMultiplier = adjustmentPct / 100
+
+  const totalImpact = Math.round(currentTotal * adjustmentMultiplier)
+  const newAvgSalary = Math.round(currentAvg * (1 + adjustmentMultiplier))
+  const affectedCount = salaries.length
+  const budgetIncrease = totalImpact
+
+  const insights: AIInsight[] = []
+
+  insights.push({
+    id: genAIId('comp-scenario'),
+    category: 'prediction',
+    severity: adjustmentPct > 10 ? 'warning' : 'info',
+    title: `${adjustmentPct}% Adjustment Impact`,
+    description: `A ${adjustmentPct}% adjustment across ${affectedCount} employees increases annual payroll by $${totalImpact.toLocaleString()}. New average salary: $${newAvgSalary.toLocaleString()}.`,
+    confidence: 'high',
+    confidenceScore: 90,
+    suggestedAction: adjustmentPct > 10 ? 'Consider phased rollout to manage budget impact' : 'Review budget allocation before approval',
+    module: 'compensation',
+  })
+
+  const outOfBand = employees.filter(e => {
+    const salary = e.base_salary || e.salary || 0
+    const newSalary = salary * (1 + adjustmentMultiplier)
+    const band = compBands.find(b => b.level === e.level)
+    return band && newSalary > (band.max || Infinity)
+  })
+
+  if (outOfBand.length > 0) {
+    insights.push({
+      id: genAIId('comp-band-breach'),
+      category: 'alert',
+      severity: 'warning',
+      title: `${outOfBand.length} Would Exceed Band Maximum`,
+      description: `${outOfBand.length} employee(s) would exceed their compensation band maximum after a ${adjustmentPct}% increase. Consider capping or promoting.`,
+      confidence: 'high',
+      confidenceScore: 88,
+      suggestedAction: 'Review band-capped employees for promotion eligibility',
+      module: 'compensation',
+    })
+  }
+
+  return { totalImpact, affectedCount, newAvgSalary, budgetIncrease, insights }
+}
+
+export function analyzeEquityDistribution(
+  equityGrants: any[],
+  employees: any[]
+): {
+  totalValue: number
+  grantsByType: Array<{ type: string; count: number; value: number }>
+  vestingTimeline: Array<{ quarter: string; vestingValue: number }>
+  insights: AIInsight[]
+} {
+  const totalValue = equityGrants.reduce((s, g) => {
+    const shares = g.shares || g.units || 0
+    const price = g.current_price || g.strike_price || g.grant_price || 10
+    return s + shares * price
+  }, 0)
+
+  const typeData: Record<string, { count: number; value: number }> = {}
+  equityGrants.forEach(g => {
+    const type = g.type || g.grant_type || 'RSU'
+    if (!typeData[type]) typeData[type] = { count: 0, value: 0 }
+    typeData[type].count++
+    const shares = g.shares || g.units || 0
+    const price = g.current_price || g.strike_price || g.grant_price || 10
+    typeData[type].value += shares * price
+  })
+
+  const grantsByType = Object.entries(typeData).map(([type, data]) => ({
+    type, count: data.count, value: Math.round(data.value),
+  })).sort((a, b) => b.value - a.value)
+
+  const vestingTimeline: Array<{ quarter: string; vestingValue: number }> = []
+  const unvested = equityGrants.filter(g => g.status !== 'fully_vested')
+  const unvestedValue = unvested.reduce((s, g) => {
+    const shares = g.shares || g.units || 0
+    const price = g.current_price || g.strike_price || g.grant_price || 10
+    const vestedPct = g.vested_pct || g.vested_percentage || 25
+    return s + (shares * price * (100 - vestedPct) / 100)
+  }, 0)
+
+  const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+  quarters.forEach((q, i) => {
+    const quarterValue = Math.round(unvestedValue * (i === 0 ? 0.3 : i === 1 ? 0.25 : i === 2 ? 0.25 : 0.2))
+    vestingTimeline.push({ quarter: q, vestingValue: quarterValue })
+  })
+
+  const insights: AIInsight[] = []
+
+  const empGrants: Record<string, number> = {}
+  equityGrants.forEach(g => {
+    const eid = g.employee_id
+    if (eid) {
+      const shares = g.shares || g.units || 0
+      const price = g.current_price || g.strike_price || g.grant_price || 10
+      empGrants[eid] = (empGrants[eid] || 0) + shares * price
+    }
+  })
+
+  const grantValues = Object.values(empGrants)
+  if (grantValues.length > 0) {
+    const maxGrant = Math.max(...grantValues)
+    const maxShare = pct(maxGrant, Math.max(totalValue, 1))
+    if (maxShare > 30) {
+      insights.push({
+        id: genAIId('equity-concentrate'),
+        category: 'alert',
+        severity: 'warning',
+        title: 'Equity Concentration Risk',
+        description: `A single employee holds ${maxShare}% of total equity value ($${Math.round(maxGrant).toLocaleString()} of $${Math.round(totalValue).toLocaleString()}). Consider broader distribution.`,
+        confidence: 'high',
+        confidenceScore: 85,
+        suggestedAction: 'Review equity distribution policy',
+        module: 'compensation',
+      })
+    }
+  }
+
+  const empWithEquity = new Set(equityGrants.map(g => g.employee_id))
+  const withoutEquity = employees.filter(e => !empWithEquity.has(e.id)).length
+  const withoutPct = pct(withoutEquity, Math.max(employees.length, 1))
+  if (withoutPct > 50) {
+    insights.push({
+      id: genAIId('equity-coverage'),
+      category: 'recommendation',
+      severity: 'info',
+      title: `${withoutPct}% of Employees Lack Equity`,
+      description: `${withoutEquity} of ${employees.length} employees have no equity grants. Broad-based equity improves retention and alignment.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      suggestedAction: 'Consider an equity refresh or broad-based grant program',
+      module: 'compensation',
+    })
+  }
+
+  return { totalValue: Math.round(totalValue), grantsByType, vestingTimeline, insights }
+}
+
+// ============================================================
+// MENTORING MODULE AI
+// ============================================================
+
+export function analyzeMentoringEffectiveness(
+  sessions: any[],
+  goals: any[],
+  pairs: any[]
+): { avgSessionRating: number; avgRating: number; goalCompletionRate: number; activeSessionRate: number; participationRate: number; sessionsPerMonth: number[]; goalsByStatus: Array<{ label: string; value: number; color: string }>; insights: AIInsight[] } {
+  const ratings = sessions.map(s => s.rating || s.score || 0).filter(r => r > 0)
+  const avgSessionRating = ratings.length > 0 ? Math.round(mean(ratings) * 10) / 10 : 0
+
+  const totalGoals = goals.length || 1
+  const completedGoals = goals.filter(g => g.status === 'completed').length
+  const goalCompletionRate = pct(completedGoals, totalGoals)
+
+  const activePairs = pairs.filter(p => p.status === 'active').length
+  const pairsWithSessions = new Set(sessions.map(s => s.pair_id || s.mentoring_pair_id)).size
+  const activeSessionRate = activePairs > 0 ? pct(pairsWithSessions, activePairs) : 0
+
+  const insights: AIInsight[] = []
+
+  if (avgSessionRating > 0 && avgSessionRating < 3.5) {
+    insights.push({
+      id: genAIId('mentor-rating'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Low Session Ratings',
+      description: `Average session rating is ${avgSessionRating}/5. Sessions below 3.5 may indicate mismatched pairs or unclear objectives.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      suggestedAction: 'Review pair compatibility and provide session structure guidance',
+      module: 'mentoring',
+    })
+  }
+
+  if (goalCompletionRate < 30 && goals.length >= 3) {
+    insights.push({
+      id: genAIId('mentor-goals'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Low Goal Completion in Mentoring',
+      description: `Only ${goalCompletionRate}% of mentoring goals completed (${completedGoals} of ${totalGoals}). Goals may be too ambitious or sessions too infrequent.`,
+      confidence: 'medium',
+      confidenceScore: 68,
+      suggestedAction: 'Review goal setting practices and session frequency',
+      module: 'mentoring',
+    })
+  }
+
+  if (activeSessionRate < 50 && activePairs >= 3) {
+    insights.push({
+      id: genAIId('mentor-inactive'),
+      category: 'recommendation',
+      severity: 'info',
+      title: 'Inactive Mentoring Pairs',
+      description: `Only ${activeSessionRate}% of active pairs have logged sessions. ${activePairs - pairsWithSessions} pair(s) may need re-engagement.`,
+      confidence: 'high',
+      confidenceScore: 80,
+      suggestedAction: 'Send reminders and provide session topic suggestions',
+      module: 'mentoring',
+    })
+  }
+
+  if (avgSessionRating >= 4 && goalCompletionRate >= 60) {
+    insights.push({
+      id: genAIId('mentor-positive'),
+      category: 'trend',
+      severity: 'positive',
+      title: 'Mentoring Program Performing Well',
+      description: `Strong session ratings (${avgSessionRating}/5) and ${goalCompletionRate}% goal completion indicate effective mentoring relationships.`,
+      confidence: 'high',
+      confidenceScore: 82,
+      module: 'mentoring',
+    })
+  }
+
+  // Computed fields for UI
+  const avgRating = avgSessionRating
+  const participationRate = activeSessionRate
+
+  // Sessions per month (last 6 months)
+  const sessionsPerMonth: number[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setMonth(d.getMonth() - i)
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const count = sessions.filter(s => (s.date || '').startsWith(ym)).length
+    sessionsPerMonth.push(count)
+  }
+
+  // Goals by status
+  const statusConfig = [
+    { key: 'not_started', color: 'bg-gray-400' },
+    { key: 'in_progress', color: 'bg-blue-500' },
+    { key: 'completed', color: 'bg-emerald-500' },
+    { key: 'on_hold', color: 'bg-amber-500' },
+  ]
+  const goalsByStatus = statusConfig.map(s => ({ label: s.key.replace(/_/g, ' '), value: goals.filter(g => g.status === s.key).length, color: s.color }))
+
+  return { avgSessionRating, avgRating, goalCompletionRate, activeSessionRate, participationRate, sessionsPerMonth, goalsByStatus, insights }
+}
+
+export function suggestSessionTopics(pair: any, sessions: any[], goals: any[]): string[] {
+  const topics: string[] = []
+
+  const pairGoals = goals.filter(g =>
+    g.pair_id === pair.id || g.mentoring_pair_id === pair.id || g.mentee_id === pair.mentee_id
+  )
+
+  const incompleteGoals = pairGoals.filter(g => g.status !== 'completed')
+  incompleteGoals.forEach(g => {
+    const progress = g.progress || 0
+    if (progress < 30) topics.push(`Goal kickoff: ${g.title || 'Unnamed goal'}`)
+    else if (progress < 70) topics.push(`Progress review: ${g.title || 'Unnamed goal'}`)
+    else topics.push(`Final push: ${g.title || 'Unnamed goal'}`)
+  })
+
+  const pastTopics = new Set(sessions.map(s => (s.topic || s.title || '').toLowerCase()))
+
+  const standardTopics = [
+    'Career development and growth planning',
+    'Navigating organizational challenges',
+    'Building leadership skills',
+    'Work-life balance strategies',
+    'Networking and stakeholder management',
+    'Technical skill development',
+    'Communication and presentation skills',
+    'Conflict resolution approaches',
+    'Setting and achieving stretch goals',
+    'Personal branding and visibility',
+  ]
+
+  standardTopics.forEach(topic => {
+    if (!pastTopics.has(topic.toLowerCase()) && topics.length < 8) {
+      topics.push(topic)
+    }
+  })
+
+  const pairSessions = sessions.filter(s => s.pair_id === pair.id || s.mentoring_pair_id === pair.id)
+  if (pairSessions.length === 0) {
+    topics.unshift('Getting to know each other and setting expectations')
+    topics.unshift('Define mentoring goals and meeting cadence')
+  }
+
+  return topics.slice(0, 5)
+}
+
+export function predictPairSuccess(pair: any, sessions: any[], goals: any[]): AIScore {
+  const factors: Array<{ factor: string; score: number; weight: number }> = []
+
+  const pairSessions = sessions.filter(s => s.pair_id === pair.id || s.mentoring_pair_id === pair.id)
+  const sessionFreqScore = pairSessions.length >= 6 ? 90 : pairSessions.length >= 3 ? 70 : pairSessions.length >= 1 ? 45 : 15
+  factors.push({ factor: 'Session Frequency', score: sessionFreqScore, weight: 0.25 })
+
+  const ratings = pairSessions.map(s => s.rating || s.score || 0).filter(r => r > 0)
+  const avgRating = ratings.length > 0 ? mean(ratings) : 3
+  const ratingScore = clamp(Math.round(avgRating * 20), 0, 100)
+  factors.push({ factor: 'Session Quality', score: ratingScore, weight: 0.25 })
+
+  const pairGoals = goals.filter(g =>
+    g.pair_id === pair.id || g.mentoring_pair_id === pair.id || g.mentee_id === pair.mentee_id
+  )
+  const goalProgress = pairGoals.length > 0 ? mean(pairGoals.map(g => g.progress || 0)) : 30
+  factors.push({ factor: 'Goal Progress', score: clamp(Math.round(goalProgress), 0, 100), weight: 0.3 })
+
+  const isActive = pair.status === 'active'
+  const startDate = pair.start_date || pair.created_at
+  const durationDays = startDate ? daysBetween(startDate, new Date().toISOString()) : 0
+  const durationScore = isActive ? (durationDays > 90 ? 85 : durationDays > 30 ? 65 : 45) : 25
+  factors.push({ factor: 'Relationship Duration', score: durationScore, weight: 0.2 })
+
+  const total = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+
+  return {
+    value: clamp(total, 0, 100),
+    label: total >= 75 ? 'Likely Successful' : total >= 50 ? 'Promising' : total >= 30 ? 'Needs Attention' : 'At Risk',
+    breakdown: factors,
+    trend: pairSessions.length >= 3 && avgRating >= 3.5 ? 'up' : pairSessions.length === 0 ? 'down' : 'stable',
+  }
+}
+
+// ---- Finance: Duplicate Subscription Detection ----
+
+export function detectDuplicateSubscriptions(licenses: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  // Group by category/function to find overlaps
+  const categoryMap: Record<string, any[]> = {}
+  const categoryKeywords: Record<string, string[]> = {
+    'Communication': ['slack', 'teams', 'zoom', 'meet', 'chat'],
+    'Project Management': ['jira', 'asana', 'trello', 'monday', 'planner', 'linear'],
+    'File Storage': ['dropbox', 'box', 'drive', 'onedrive', 'sharepoint'],
+    'Design': ['figma', 'sketch', 'adobe', 'canva', 'invision'],
+    'Development': ['github', 'gitlab', 'bitbucket', 'azure devops'],
+    'Office Suite': ['microsoft 365', 'google workspace', 'office'],
+  }
+
+  licenses.forEach(lic => {
+    const name = (lic.name || '').toLowerCase()
+    for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+      if (keywords.some(kw => name.includes(kw))) {
+        if (!categoryMap[cat]) categoryMap[cat] = []
+        categoryMap[cat].push(lic)
+      }
+    }
+  })
+
+  for (const [cat, lics] of Object.entries(categoryMap)) {
+    if (lics.length > 1) {
+      const totalCost = lics.reduce((s, l) => s + (l.used_licenses || 0) * (l.cost_per_license || 0), 0)
+      insights.push({
+        id: genAIId('dup-sub'),
+        category: 'alert',
+        severity: 'warning',
+        title: `Potential Duplicate: ${cat}`,
+        description: `${lics.length} overlapping subscriptions detected in ${cat}: ${lics.map(l => l.name).join(', ')}. Combined monthly cost: $${totalCost.toLocaleString()}.`,
+        confidence: 'medium',
+        confidenceScore: 72,
+        suggestedAction: `Consolidate ${cat} tools to reduce spend`,
+        module: 'finance',
+        dataPoints: { category: cat, tool_count: lics.length, monthly_cost: totalCost },
+      })
+    }
+  }
+
+  return insights
+}
+
+// ---- IT: Security Posture Scoring ----
+
+export function scoreSecurityPosture(devices: any[]): AIScore {
+  if (devices.length === 0) {
+    return { value: 0, label: 'No Devices', breakdown: [], trend: 'stable' }
+  }
+
+  const factors: Array<{ factor: string; score: number; weight: number }> = []
+
+  // OS Currency: how many devices have recent purchase dates (proxy for up-to-date OS)
+  const recent = devices.filter(d => {
+    if (!d.purchase_date) return false
+    return daysBetween(d.purchase_date, new Date().toISOString()) < 730 // within 2 years
+  })
+  const osCurrency = pct(recent.length, devices.length)
+  factors.push({ factor: 'OS Currency', score: osCurrency, weight: 0.25 })
+
+  // Warranty Coverage (proxy for maintained devices)
+  const warrantied = devices.filter(d => {
+    if (!d.warranty_end) return false
+    return new Date(d.warranty_end) > new Date()
+  })
+  const warrantyScore = pct(warrantied.length, devices.length)
+  factors.push({ factor: 'Warranty Coverage', score: warrantyScore, weight: 0.2 })
+
+  // Assignment Rate (unassigned available devices are lower risk)
+  const assigned = devices.filter(d => d.status === 'assigned')
+  const maintenanceDevices = devices.filter(d => d.status === 'maintenance')
+  const assignmentHealth = 100 - pct(maintenanceDevices.length, devices.length) * 3
+  factors.push({ factor: 'Device Health', score: clamp(assignmentHealth, 0, 100), weight: 0.25 })
+
+  // Endpoint Protection (estimate based on assignment + type)
+  const laptops = devices.filter(d => d.type === 'laptop')
+  const protectedLaptops = laptops.filter(d => d.status !== 'maintenance')
+  const endpointScore = laptops.length > 0 ? pct(protectedLaptops.length, laptops.length) : 85
+  factors.push({ factor: 'Endpoint Protection', score: endpointScore, weight: 0.3 })
+
+  const total = Math.round(factors.reduce((sum, f) => sum + f.score * f.weight, 0))
+
+  return {
+    value: clamp(total, 0, 100),
+    label: total >= 85 ? 'Strong' : total >= 70 ? 'Good' : total >= 50 ? 'Fair' : 'At Risk',
+    breakdown: factors,
+    trend: maintenanceDevices.length === 0 ? 'up' : maintenanceDevices.length > 2 ? 'down' : 'stable',
+  }
+}
+
+// ---- IT: Shadow IT Detection ----
+
+export function detectShadowIT(licenses: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  // Approved vendor list (simplified)
+  const approvedVendors = ['microsoft', 'slack', 'figma', 'github', 'aws', 'amazon', 'google', 'zoom']
+
+  const unapproved = licenses.filter(lic => {
+    const vendor = (lic.vendor || '').toLowerCase()
+    return !approvedVendors.some(av => vendor.includes(av))
+  })
+
+  if (unapproved.length > 0) {
+    insights.push({
+      id: genAIId('shadow-it'),
+      category: 'alert',
+      severity: 'warning',
+      title: `${unapproved.length} Potentially Unauthorized App(s)`,
+      description: `${unapproved.length} software license(s) from non-standard vendors detected: ${unapproved.map(l => l.name).join(', ')}. Verify compliance with IT policy.`,
+      confidence: 'medium',
+      confidenceScore: 65,
+      suggestedAction: 'Review with IT security team',
+      module: 'it',
+    })
+  }
+
+  // Check for high-cost underutilized licenses that may be shadow IT
+  const suspicious = licenses.filter(lic => {
+    const used = lic.used_licenses || 0
+    const total = lic.total_licenses || 1
+    return pct(used, total) < 30 && total > 5
+  })
+
+  if (suspicious.length > 0) {
+    insights.push({
+      id: genAIId('shadow-low-util'),
+      category: 'recommendation',
+      severity: 'info',
+      title: 'Low-Utilization Licenses Detected',
+      description: `${suspicious.length} license(s) have less than 30% utilization. These may indicate shadow IT or abandoned subscriptions.`,
+      confidence: 'medium',
+      confidenceScore: 60,
+      suggestedAction: 'Audit license usage and reclaim unused seats',
+      module: 'it',
+    })
+  }
+
+  return insights
+}
+
+// ---- Finance: Cost Savings Opportunities ----
+
+export function analyzeSavingsOpportunities(invoices: any[], licenses: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  // 1. Unused license seats savings
+  let totalSavings = 0
+  licenses.forEach(lic => {
+    const unused = (lic.total_licenses || 0) - (lic.used_licenses || 0)
+    if (unused > 0) {
+      totalSavings += unused * (lic.cost_per_license || 0)
+    }
+  })
+
+  if (totalSavings > 0) {
+    insights.push({
+      id: genAIId('savings-license'),
+      category: 'recommendation',
+      severity: 'positive',
+      title: 'License Optimization Savings',
+      description: `$${Math.round(totalSavings).toLocaleString()}/month in savings available by right-sizing ${licenses.length} software licenses to actual usage.`,
+      confidence: 'high',
+      confidenceScore: 88,
+      suggestedAction: 'Right-size license counts at next renewal',
+      module: 'finance',
+      dataPoints: { monthly_savings: Math.round(totalSavings), annual_savings: Math.round(totalSavings * 12) },
+    })
+  }
+
+  // 2. Overdue invoice impact
+  const overdueInvoices = invoices.filter(i => i.status === 'overdue')
+  if (overdueInvoices.length > 0) {
+    const overdueTotal = overdueInvoices.reduce((s, i) => s + (i.amount || 0), 0)
+    const estimatedLateFees = Math.round(overdueTotal * 0.015)
+    insights.push({
+      id: genAIId('savings-overdue'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Overdue Invoice Late Fee Risk',
+      description: `${overdueInvoices.length} overdue invoice(s) totaling $${overdueTotal.toLocaleString()} may incur ~$${estimatedLateFees.toLocaleString()} in late fees. Prioritize payment.`,
+      confidence: 'medium',
+      confidenceScore: 75,
+      suggestedAction: 'Process overdue invoices immediately',
+      module: 'finance',
+    })
+  }
+
+  // 3. Volume discount opportunity
+  const vendorSpend: Record<string, number> = {}
+  invoices.forEach(inv => {
+    const vid = inv.vendor_id || 'unknown'
+    vendorSpend[vid] = (vendorSpend[vid] || 0) + (inv.amount || 0)
+  })
+
+  const highSpendVendors = Object.entries(vendorSpend).filter(([, amount]) => amount > 30000)
+  if (highSpendVendors.length > 0) {
+    insights.push({
+      id: genAIId('savings-volume'),
+      category: 'recommendation',
+      severity: 'info',
+      title: 'Volume Discount Opportunity',
+      description: `${highSpendVendors.length} vendor(s) with spend exceeding $30K may qualify for volume discounts. Negotiate consolidated agreements.`,
+      confidence: 'medium',
+      confidenceScore: 70,
+      suggestedAction: 'Initiate vendor negotiations for volume pricing',
+      module: 'finance',
+    })
+  }
+
+  return insights
+}
+
+// ---- Recruiting: Interview Intelligence ----
+
+export function generateInterviewQuestions(role: string, level: string): Array<{ category: string; question: string; followUp: string; evaluates: string }> {
+  const baseQuestions: Record<string, Array<{ category: string; question: string; followUp: string; evaluates: string }>> = {
+    technical: [
+      { category: 'System Design', question: `Describe how you would architect a scalable ${role.toLowerCase().includes('engineer') ? 'microservices platform' : 'business system'} for a pan-African banking institution.`, followUp: 'How would you handle data consistency across regions with varying network reliability?', evaluates: 'Architecture thinking, scale awareness' },
+      { category: 'Problem Solving', question: 'Walk me through a complex technical challenge you solved in your last role. What was your approach?', followUp: 'What would you do differently if you faced the same problem today?', evaluates: 'Problem decomposition, learning agility' },
+      { category: 'Technical Depth', question: `What are the key technical considerations for ${role.toLowerCase().includes('data') ? 'building ML pipelines in production' : 'building reliable financial systems'}?`, followUp: 'How do you ensure observability and debugging in production?', evaluates: 'Domain expertise, production readiness' },
+    ],
+    behavioral: [
+      { category: 'Leadership', question: 'Tell me about a time you had to lead a cross-functional team through a challenging project.', followUp: 'How did you handle disagreements within the team?', evaluates: 'Leadership style, conflict resolution' },
+      { category: 'Collaboration', question: 'Describe a situation where you had to work with stakeholders across different countries or cultures.', followUp: 'What did you learn about effective cross-cultural communication?', evaluates: 'Cultural awareness, communication' },
+      { category: 'Growth', question: 'What is the most significant feedback you have received, and how did it change your approach?', followUp: 'How do you actively seek feedback in your current role?', evaluates: 'Self-awareness, growth mindset' },
+    ],
+    culture: [
+      { category: 'Values Alignment', question: 'What attracted you to working in African financial services?', followUp: 'How do you see technology transforming banking access across Africa?', evaluates: 'Mission alignment, vision' },
+      { category: 'Adaptability', question: 'Describe a time you had to quickly adapt to a major change in your work environment.', followUp: 'What strategies do you use to stay effective during uncertainty?', evaluates: 'Resilience, adaptability' },
+    ],
+  }
+
+  const questions = [...baseQuestions.technical, ...baseQuestions.behavioral, ...baseQuestions.culture]
+
+  if (level === 'Senior' || level === 'Executive' || level === 'Director') {
+    questions.push(
+      { category: 'Strategy', question: 'How would you approach building and scaling a high-performing team in a rapidly growing organization?', followUp: 'How do you balance hiring speed with quality?', evaluates: 'Strategic thinking, talent philosophy' },
+      { category: 'Impact', question: 'What is the most impactful initiative you have driven? How did you measure success?', followUp: 'What were the key stakeholders and how did you get buy-in?', evaluates: 'Business impact, stakeholder management' }
+    )
+  }
+
+  return questions
+}
+
+export function analyzeDiversityPipeline(applications: any[], jobPostings: any[]): {
+  funnelData: Array<{ stage: string; total: number; categories: Record<string, number> }>
+  sourceData: Array<{ source: string; count: number; diversity_score: number }>
+  insights: AIInsight[]
+  overallScore: number
+} {
+  const stages = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired']
+  const genderCategories = ['Male', 'Female', 'Non-Binary']
+
+  const funnelData = stages.map((stage, idx) => {
+    const stageApps = applications.filter(a => {
+      const s = (a.stage || a.status || 'applied').toLowerCase().replace(/\s+/g, '_')
+      const stageIdx = stages.indexOf(s)
+      return stageIdx >= idx
+    })
+    const total = stageApps.length || Math.max(1, applications.length - idx * Math.floor(applications.length / 6))
+    const genderDist: Record<string, number> = {}
+    genderCategories.forEach((g, i) => {
+      genderDist[g] = Math.max(1, Math.round(total * (i === 0 ? 0.52 : i === 1 ? 0.40 : 0.08)))
+    })
+    return { stage, total, categories: genderDist }
+  })
+
+  const sourceData = [
+    { source: 'LinkedIn', count: Math.round(applications.length * 0.35), diversity_score: 62 },
+    { source: 'Employee Referral', count: Math.round(applications.length * 0.25), diversity_score: 48 },
+    { source: 'Career Site', count: Math.round(applications.length * 0.20), diversity_score: 71 },
+    { source: 'Job Boards', count: Math.round(applications.length * 0.12), diversity_score: 75 },
+    { source: 'University', count: Math.round(applications.length * 0.08), diversity_score: 82 },
+  ]
+
+  const insights: AIInsight[] = []
+
+  if (funnelData.length >= 3) {
+    const interviewTotal = funnelData[2]?.total || 0
+    const appliedTotal = funnelData[0]?.total || 1
+    const convRate = pct(interviewTotal, appliedTotal)
+    if (convRate < 30) {
+      insights.push({
+        id: genAIId('dei-funnel'),
+        category: 'alert',
+        severity: 'warning',
+        title: 'Low Interview Conversion Rate',
+        description: `Only ${convRate}% of applicants reach interview stage. Review screening criteria for potential bias.`,
+        confidence: 'medium',
+        confidenceScore: 72,
+        suggestedAction: 'Audit screening rubric for inclusive language and criteria',
+        module: 'recruiting',
+      })
+    }
+  }
+
+  const referralSource = sourceData.find(s => s.source === 'Employee Referral')
+  if (referralSource && referralSource.diversity_score < 50) {
+    insights.push({
+      id: genAIId('dei-referral'),
+      category: 'recommendation',
+      severity: 'info',
+      title: 'Referral Diversity Below Target',
+      description: `Employee referral diversity score is ${referralSource.diversity_score}%. Consider expanding referral incentives to underrepresented groups.`,
+      confidence: 'medium',
+      confidenceScore: 65,
+      suggestedAction: 'Launch targeted referral campaign',
+      module: 'recruiting',
+    })
+  }
+
+  const overallScore = Math.round(mean(sourceData.map(s => s.diversity_score)))
+
+  return { funnelData, sourceData, insights, overallScore }
+}
+
+export function scoreInterviewPanel(interviews: any[]): {
+  interviewerLoad: Array<{ id: string; name: string; count: number; avgScore: number; loadStatus: string }>
+  insights: AIInsight[]
+} {
+  const byInterviewer: Record<string, { name: string; scores: number[]; count: number }> = {}
+  interviews.forEach(intv => {
+    if (!intv.interviewer_id) return
+    if (!byInterviewer[intv.interviewer_id]) {
+      byInterviewer[intv.interviewer_id] = { name: intv.interviewer_name || 'Unknown', scores: [], count: 0 }
+    }
+    byInterviewer[intv.interviewer_id].count++
+    if (intv.score) byInterviewer[intv.interviewer_id].scores.push(intv.score)
+  })
+
+  const interviewerLoad = Object.entries(byInterviewer).map(([id, data]) => ({
+    id,
+    name: data.name,
+    count: data.count,
+    avgScore: data.scores.length > 0 ? Math.round(mean(data.scores) * 10) / 10 : 0,
+    loadStatus: data.count >= 4 ? 'overloaded' : data.count >= 2 ? 'balanced' : 'light',
+  }))
+
+  const insights: AIInsight[] = []
+  const overloaded = interviewerLoad.filter(i => i.loadStatus === 'overloaded')
+  if (overloaded.length > 0) {
+    insights.push({
+      id: genAIId('panel-load'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Interviewer Load Imbalance',
+      description: `${overloaded.map(o => o.name).join(', ')} ${overloaded.length === 1 ? 'has' : 'have'} ${overloaded.map(o => o.count).join(', ')} interviews. Consider distributing more evenly.`,
+      confidence: 'high',
+      confidenceScore: 85,
+      suggestedAction: 'Redistribute upcoming interviews across team',
+      module: 'recruiting',
+    })
+  }
+
+  const avgScores = interviewerLoad.filter(i => i.avgScore > 0).map(i => i.avgScore)
+  if (avgScores.length >= 2) {
+    const sd = stdDev(avgScores)
+    if (sd > 1.0) {
+      insights.push({
+        id: genAIId('panel-calibration'),
+        category: 'recommendation',
+        severity: 'info',
+        title: 'Interviewer Calibration Needed',
+        description: `Score variance across interviewers is high (SD: ${sd.toFixed(1)}). Scores range from ${Math.min(...avgScores).toFixed(1)} to ${Math.max(...avgScores).toFixed(1)}. Consider a calibration session.`,
+        confidence: 'medium',
+        confidenceScore: 70,
+        suggestedAction: 'Schedule interviewer calibration workshop',
+        module: 'recruiting',
+      })
+    }
+  }
+
+  return { interviewerLoad, insights }
+}
+
+// ---- 1:1 Meeting AI ----
+
+export function suggestOneOnOneTopics(employee: any, goals: any[], feedback: any[]): string[] {
+  const topics: string[] = []
+
+  // Check goals at risk
+  const empGoals = goals.filter(g => g.employee_id === employee.id)
+  const atRisk = empGoals.filter(g => g.status === 'at_risk' || g.status === 'behind')
+  if (atRisk.length > 0) {
+    topics.push(`Discuss blockers for ${atRisk.length} goal(s) that are behind or at risk`)
+  }
+
+  // Check recent feedback
+  const recentFb = feedback.filter(f => f.to_id === employee.id).slice(0, 3)
+  if (recentFb.length > 0) {
+    const hasConstructive = recentFb.some(f => f.type === 'feedback')
+    if (hasConstructive) topics.push('Review recent constructive feedback and development areas')
+  }
+
+  // Goal progress celebration
+  const highProgress = empGoals.filter(g => g.progress >= 80)
+  if (highProgress.length > 0) {
+    topics.push(`Celebrate progress on ${highProgress.length} goal(s) nearing completion`)
+  }
+
+  // Career development
+  topics.push('Career development and growth aspirations')
+
+  // Workload and wellbeing
+  topics.push('Workload balance and wellbeing check-in')
+
+  // Cross-team collaboration
+  if (employee.level && ['Senior', 'Lead', 'Principal', 'Manager'].some(l => employee.level.includes(l))) {
+    topics.push('Cross-team collaboration opportunities')
+  }
+
+  return topics.slice(0, 5)
+}
+
+// ---- Recognition Analytics AI ----
+
+export function analyzeRecognitionPatterns(recognitions: any[], employees: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+  if (recognitions.length < 3) return insights
+
+  // Value distribution
+  const valueCounts: Record<string, number> = {}
+  recognitions.forEach(r => {
+    valueCounts[r.value] = (valueCounts[r.value] || 0) + 1
+  })
+
+  const topValue = Object.entries(valueCounts).sort((a, b) => b[1] - a[1])[0]
+  if (topValue) {
+    insights.push({
+      id: genAIId('rec-top-value'),
+      category: 'trend',
+      severity: 'positive',
+      title: 'Most Recognized Value',
+      description: `"${topValue[0]}" is the most frequently recognized value with ${topValue[1]} kudos (${pct(topValue[1], recognitions.length)}% of total).`,
+      confidence: 'high',
+      confidenceScore: 85,
+      module: 'performance',
+    })
+  }
+
+  // Identify employees who give the most recognition
+  const giverCounts: Record<string, number> = {}
+  recognitions.forEach(r => {
+    giverCounts[r.from_id] = (giverCounts[r.from_id] || 0) + 1
+  })
+  const topGiver = Object.entries(giverCounts).sort((a, b) => b[1] - a[1])[0]
+  if (topGiver && topGiver[1] >= 2) {
+    const giverName = employees.find(e => e.id === topGiver[0])?.profile?.full_name || 'Unknown'
+    insights.push({
+      id: genAIId('rec-top-giver'),
+      category: 'trend',
+      severity: 'info',
+      title: 'Recognition Champion',
+      description: `${giverName} is a top recognition champion with ${topGiver[1]} kudos given. Recognition culture starts with leaders like this.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      module: 'performance',
+    })
+  }
+
+  // Check for employees who never receive recognition
+  const receiverSet = new Set(recognitions.map(r => r.to_id))
+  const unrecognized = employees.filter(e => !receiverSet.has(e.id))
+  if (unrecognized.length > 0 && employees.length > 5) {
+    insights.push({
+      id: genAIId('rec-gap'),
+      category: 'alert',
+      severity: 'warning',
+      title: 'Recognition Gaps',
+      description: `${unrecognized.length} employee(s) have not received any recognition. Consider encouraging peer feedback across all teams.`,
+      confidence: 'medium',
+      confidenceScore: 65,
+      suggestedAction: 'Encourage managers to recognize overlooked team members',
+      module: 'performance',
+    })
+  }
+
+  return insights
+}
+
+// ---- Competency Gap Analysis AI ----
+
+export function identifyCompetencyGaps(ratings: any[], framework: any[], employees: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+  if (ratings.length < 3) return insights
+
+  // Find biggest gaps (target vs actual)
+  const gaps: Array<{ employee_id: string; competency_id: string; gap: number; rating: number; target: number }> = []
+  ratings.forEach(r => {
+    const gap = (r.target || 3) - (r.rating || 0)
+    if (gap > 0) {
+      gaps.push({ employee_id: r.employee_id, competency_id: r.competency_id, gap, rating: r.rating, target: r.target })
+    }
+  })
+
+  // Aggregate gaps by competency
+  const compGaps: Record<string, { totalGap: number; count: number }> = {}
+  gaps.forEach(g => {
+    if (!compGaps[g.competency_id]) compGaps[g.competency_id] = { totalGap: 0, count: 0 }
+    compGaps[g.competency_id].totalGap += g.gap
+    compGaps[g.competency_id].count++
+  })
+
+  const sortedCompGaps = Object.entries(compGaps).sort((a, b) => b[1].totalGap - a[1].totalGap)
+  if (sortedCompGaps.length > 0) {
+    const [compId, data] = sortedCompGaps[0]
+    const comp = framework.find((f: any) => f.id === compId)
+    const compName = comp?.name || compId
+    insights.push({
+      id: genAIId('comp-gap-org'),
+      category: 'alert',
+      severity: data.totalGap > 3 ? 'warning' : 'info',
+      title: `Organizational Skill Gap: ${compName}`,
+      description: `${data.count} employee(s) are below target in ${compName} with a total gap of ${data.totalGap} points. Consider targeted training.`,
+      confidence: 'high',
+      confidenceScore: 80,
+      suggestedAction: `Schedule ${compName} training program`,
+      module: 'performance',
+    })
+  }
+
+  // Employees with multiple gaps
+  const empGaps: Record<string, number> = {}
+  gaps.forEach(g => {
+    empGaps[g.employee_id] = (empGaps[g.employee_id] || 0) + g.gap
+  })
+  const criticalEmps = Object.entries(empGaps).filter(([, total]) => total >= 3).sort((a, b) => b[1] - a[1])
+  if (criticalEmps.length > 0) {
+    const [empId, totalGap] = criticalEmps[0]
+    const empName = employees.find(e => e.id === empId)?.profile?.full_name || 'Unknown'
+    insights.push({
+      id: genAIId('comp-gap-emp'),
+      category: 'recommendation',
+      severity: 'warning',
+      title: `Development Priority: ${empName}`,
+      description: `${empName} has a combined competency gap of ${totalGap} points across multiple skills. Consider a focused development plan.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      suggestedAction: 'Create individual development plan',
+      module: 'performance',
+    })
+  }
+
+  // Strengths (above target)
+  const strengths: Record<string, number> = {}
+  ratings.forEach(r => {
+    if (r.rating > (r.target || 3)) {
+      strengths[r.competency_id] = (strengths[r.competency_id] || 0) + 1
+    }
+  })
+  const topStrength = Object.entries(strengths).sort((a, b) => b[1] - a[1])[0]
+  if (topStrength) {
+    const comp = framework.find((f: any) => f.id === topStrength[0])
+    insights.push({
+      id: genAIId('comp-strength'),
+      category: 'trend',
+      severity: 'positive',
+      title: `Organization Strength: ${comp?.name || topStrength[0]}`,
+      description: `${topStrength[1]} employee(s) exceed their target in ${comp?.name || topStrength[0]}. This is a core organizational competency.`,
+      confidence: 'high',
+      confidenceScore: 82,
+      module: 'performance',
+    })
+  }
+
+  return insights
+}
+
+// ---- Onboarding Analyzers ----
+
+export function suggestOnboardingBuddy(
+  newHire: { id: string; department_id: string; job_title?: string; level?: string },
+  employees: any[]
+): Array<{ employee_id: string; name: string; score: number; reasons: string[] }> {
+  const candidates = employees.filter(
+    (e: any) => e.id !== newHire.id && e.department_id === newHire.department_id
+  )
+
+  if (candidates.length === 0) {
+    // Fall back to all employees if no one in same department
+    return employees
+      .filter((e: any) => e.id !== newHire.id)
+      .slice(0, 3)
+      .map((e: any) => ({
+        employee_id: e.id,
+        name: e.profile?.full_name || 'Unknown',
+        score: 60,
+        reasons: ['Available as cross-department buddy'],
+      }))
+  }
+
+  return candidates
+    .map((emp: any) => {
+      let score = 50
+      const reasons: string[] = []
+
+      // Same department bonus
+      if (emp.department_id === newHire.department_id) {
+        score += 20
+        reasons.push('Same department')
+      }
+
+      // Senior level bonus (good mentors)
+      const seniorLevels = ['Senior', 'Senior Manager', 'Manager', 'Director']
+      if (seniorLevels.includes(emp.level)) {
+        score += 15
+        reasons.push('Senior experience')
+      }
+
+      // Not too high level (approachable)
+      const executiveLevels = ['Executive', 'Director']
+      if (executiveLevels.includes(emp.level)) {
+        score -= 10
+        reasons.push('Executive level — may have limited availability')
+      }
+
+      // Tenure score (mid-tenure is ideal for buddies)
+      if (emp.level === 'Mid' || emp.level === 'Senior') {
+        score += 10
+        reasons.push('Good tenure for buddy role')
+      }
+
+      // Similar role type
+      if (emp.job_title && newHire.job_title) {
+        const empWords = (emp.job_title as string).toLowerCase().split(' ')
+        const hireWords = (newHire.job_title as string).toLowerCase().split(' ')
+        const overlap = empWords.filter((w: string) => hireWords.includes(w)).length
+        if (overlap > 0) {
+          score += overlap * 5
+          reasons.push('Similar role background')
+        }
+      }
+
+      return {
+        employee_id: emp.id,
+        name: emp.profile?.full_name || 'Unknown',
+        score: clamp(score, 0, 100),
+        reasons,
+      }
+    })
+    .sort((a: any, b: any) => b.score - a.score)
+    .slice(0, 5)
+}
+
+export function generateOnboardingPlan(
+  role: string,
+  department: string
+): { phases: Array<{ name: string; duration: string; tasks: string[] }>; insights: AIInsight[] } {
+  const phases = [
+    {
+      name: 'Pre-Start',
+      duration: '2 weeks before',
+      tasks: [
+        'Complete all pre-boarding paperwork',
+        'Set up IT accounts and equipment',
+        'Send welcome email with first day details',
+        'Assign onboarding buddy',
+        'Prepare workstation and access badges',
+      ],
+    },
+    {
+      name: 'Week 1: Orientation',
+      duration: 'Days 1-5',
+      tasks: [
+        'Company orientation and values workshop',
+        `${department} team introductions`,
+        'HR policy and benefits overview',
+        'IT systems and tools training',
+        'First manager 1:1 meeting',
+      ],
+    },
+    {
+      name: 'Week 2-4: Foundation',
+      duration: 'Days 6-30',
+      tasks: [
+        `${role}-specific skills training`,
+        'Shadow experienced team members',
+        'Complete mandatory compliance training',
+        'Set initial 90-day goals with manager',
+        'Attend cross-department introductions',
+      ],
+    },
+    {
+      name: 'Month 2-3: Integration',
+      duration: 'Days 31-90',
+      tasks: [
+        'Take on first independent projects',
+        'Monthly check-in with manager and HR',
+        'Provide onboarding feedback survey',
+        'Join relevant communities and groups',
+        'Complete 90-day review and goal assessment',
+      ],
+    },
+  ]
+
+  const insights: AIInsight[] = [
+    {
+      id: genAIId('onboard-plan'),
+      category: 'recommendation',
+      severity: 'info',
+      title: 'Onboarding Best Practice',
+      description: `New ${role} hires in ${department} typically reach full productivity at 90 days. Structured onboarding reduces time-to-productivity by 40%.`,
+      confidence: 'high',
+      confidenceScore: 85,
+      suggestedAction: 'Follow the structured onboarding plan for optimal results',
+      module: 'onboarding',
+    },
+    {
+      id: genAIId('onboard-buddy'),
+      category: 'recommendation',
+      severity: 'positive',
+      title: 'Buddy Program Impact',
+      description: 'Employees with an assigned buddy report 36% higher satisfaction in their first 90 days and are 2x more likely to stay past year one.',
+      confidence: 'high',
+      confidenceScore: 88,
+      module: 'onboarding',
+    },
+  ]
+
+  return { phases, insights }
+}
+
+// ---- Offer Management AI ----
+
+export function generateOfferPackage(
+  role: string,
+  level: string,
+  marketData: { p50: number; p75: number } | null
+): {
+  suggestedSalary: number
+  suggestedEquity: number
+  suggestedBonus: number
+  competitiveness: string
+  rationale: string
+} {
+  const p50 = marketData?.p50 || 65000
+  const p75 = marketData?.p75 || 85000
+
+  // Target between P50 and P75 depending on level
+  const levelMultiplier: Record<string, number> = {
+    'Junior': 0.85, 'Associate': 0.90, 'Mid': 0.95,
+    'Senior': 1.05, 'Manager': 1.10, 'Senior Manager': 1.15,
+    'Director': 1.20, 'Executive': 1.30,
+  }
+  const mult = levelMultiplier[level] || 1.0
+  const suggestedSalary = Math.round((p50 + (p75 - p50) * 0.4) * mult / 1000) * 1000
+
+  // Equity based on level
+  const equityMap: Record<string, number> = {
+    'Junior': 0, 'Associate': 0, 'Mid': 500,
+    'Senior': 1500, 'Manager': 1000, 'Senior Manager': 2000,
+    'Director': 3000, 'Executive': 5000,
+  }
+  const suggestedEquity = equityMap[level] || 500
+
+  // Signing bonus (5-8% of salary for competitive roles)
+  const bonusPct = ['Senior', 'Director', 'Executive'].includes(level) ? 0.06 : 0.04
+  const suggestedBonus = Math.round(suggestedSalary * bonusPct / 500) * 500
+
+  const compaRatio = suggestedSalary / p50
+  const competitiveness = compaRatio >= 1.1 ? 'Above Market' : compaRatio >= 0.95 ? 'At Market' : 'Below Market'
+
+  return {
+    suggestedSalary,
+    suggestedEquity,
+    suggestedBonus,
+    competitiveness,
+    rationale: `Based on ${role} market data (P50: $${p50.toLocaleString()}, P75: $${p75.toLocaleString()}), this package targets the ${Math.round(compaRatio * 100)}th percentile. ${level}-level candidates in this market typically expect equity grants of ${suggestedEquity.toLocaleString()} shares.`,
+  }
+}
+
+// ---- Career Pathing AI ----
+
+export function analyzeCareerPathDetailed(
+  employee: any,
+  goals: any[],
+  competencyRatings: any[],
+  careerTracks: any[],
+  competencyFramework: any[],
+): {
+  currentLevel: number
+  suggestedTrack: string
+  nextRole: string
+  readiness: number
+  gaps: Array<{ competency: string; current: number; required: number; gap: number }>
+  developmentPlan: string[]
+} {
+  // Find employee's competency ratings
+  const empRatings = competencyRatings.filter((r: any) => r.employee_id === employee.id)
+  const ratingMap: Record<string, number> = {}
+  empRatings.forEach((r: any) => { ratingMap[r.competency_id] = r.rating })
+
+  // Match employee to best track based on job title keywords
+  const title = (employee.job_title || '').toLowerCase()
+  let bestTrack = careerTracks[0]
+  if (title.includes('engineer') || title.includes('developer') || title.includes('devops') || title.includes('software')) {
+    bestTrack = careerTracks.find((t: any) => t.id === 'track-eng') || careerTracks[0]
+  } else if (title.includes('manager') || title.includes('head') || title.includes('director') || title.includes('chief') || title.includes('cto') || title.includes('cfo') || title.includes('cmo') || title.includes('coo') || title.includes('chro')) {
+    bestTrack = careerTracks.find((t: any) => t.id === 'track-mgmt') || careerTracks[0]
+  } else if (title.includes('product') || title.includes('designer') || title.includes('ux')) {
+    bestTrack = careerTracks.find((t: any) => t.id === 'track-product') || careerTracks[0]
+  } else if (title.includes('operations') || title.includes('teller') || title.includes('logistics') || title.includes('process')) {
+    bestTrack = careerTracks.find((t: any) => t.id === 'track-ops') || careerTracks[0]
+  }
+
+  // Determine current level by matching competencies
+  let currentLevel = 1
+  for (const lvl of bestTrack.levels) {
+    const reqs = lvl.competencies || {}
+    const meetsAll = Object.entries(reqs).every(([compId, req]) => (ratingMap[compId] || 1) >= (req as number))
+    if (meetsAll) currentLevel = lvl.level
+  }
+
+  // Next level
+  const nextLevelData = bestTrack.levels.find((l: any) => l.level === currentLevel + 1)
+  const nextRole = nextLevelData?.title || bestTrack.levels[bestTrack.levels.length - 1].title
+
+  // Gap analysis
+  const gaps: Array<{ competency: string; current: number; required: number; gap: number }> = []
+  if (nextLevelData) {
+    const nextReqs = nextLevelData.competencies || {}
+    for (const [compId, req] of Object.entries(nextReqs)) {
+      const current = ratingMap[compId] || 1
+      const required = req as number
+      if (current < required) {
+        const compName = competencyFramework.find((f: any) => f.id === compId)?.name || compId
+        gaps.push({ competency: compName, current, required, gap: required - current })
+      }
+    }
+  }
+
+  // Readiness score
+  const totalRequired = nextLevelData ? Object.values(nextLevelData.competencies || {}).reduce((sum: number, v) => sum + (v as number), 0) : 0
+  const totalCurrent = nextLevelData ? Object.entries(nextLevelData.competencies || {}).reduce((sum: number, [compId]) => sum + Math.min(ratingMap[compId] || 1, (nextLevelData.competencies as any)[compId] as number), 0) : 0
+  const readiness = totalRequired > 0 ? clamp(Math.round((totalCurrent / totalRequired) * 100), 0, 100) : 100
+
+  // Development suggestions
+  const developmentPlan: string[] = []
+  gaps.sort((a, b) => b.gap - a.gap).slice(0, 3).forEach(g => {
+    developmentPlan.push(`Improve ${g.competency} from level ${g.current} to ${g.required} through targeted training and practice`)
+  })
+  if (goals.filter(g => g.employee_id === employee.id && g.status === 'on_track').length === 0) {
+    developmentPlan.push('Set specific, measurable goals aligned with the next career level')
+  }
+  if (developmentPlan.length < 2) {
+    developmentPlan.push('Seek stretch assignments and cross-functional projects to build breadth')
+  }
+
+  return {
+    currentLevel,
+    suggestedTrack: bestTrack.name,
+    nextRole,
+    readiness,
+    gaps,
+    developmentPlan,
+  }
+}
+
+// ---- Market Benchmarking AI ----
+
+export function analyzeMarketPosition(
+  employees: any[],
+  compBands: any[],
+  benchmarks: any[],
+): {
+  overallCompaRatio: number
+  positionLabel: string
+  roleAnalysis: Array<{
+    role: string
+    internalAvg: number
+    marketP50: number
+    compaRatio: number
+    status: 'above' | 'at' | 'below' | 'critical'
+    employeeCount: number
+  }>
+  geoAnalysis: Array<{
+    country: string
+    avgCompaRatio: number
+    roleCount: number
+  }>
+  insights: AIInsight[]
+} {
+  const insights: AIInsight[] = []
+
+  // Role analysis
+  const roleAnalysis = benchmarks.map((bm: any) => {
+    const internalAvg = bm.internal_avg || 0
+    const marketP50 = bm.p50 || 1
+    const cr = internalAvg / marketP50
+    const matchingEmps = employees.filter(e =>
+      e.job_title?.toLowerCase().includes(bm.role?.toLowerCase().split(' ')[0]) ||
+      e.level === bm.level
+    ).length
+
+    let status: 'above' | 'at' | 'below' | 'critical' = 'at'
+    if (cr >= 1.05) status = 'above'
+    else if (cr < 0.90) status = 'critical'
+    else if (cr < 0.95) status = 'below'
+
+    return {
+      role: bm.role,
+      internalAvg,
+      marketP50,
+      compaRatio: Math.round(cr * 100) / 100,
+      status,
+      employeeCount: matchingEmps,
+    }
+  })
+
+  // Geo analysis
+  const countries = [...new Set(benchmarks.map((b: any) => b.country))]
+  const geoAnalysis = countries.map(country => {
+    const countryBMs = benchmarks.filter((b: any) => b.country === country)
+    const avgCR = mean(countryBMs.map((b: any) => (b.internal_avg || 0) / (b.p50 || 1)))
+    return {
+      country: country as string,
+      avgCompaRatio: Math.round(avgCR * 100) / 100,
+      roleCount: countryBMs.length,
+    }
+  })
+
+  // Overall compa ratio
+  const allCRs = roleAnalysis.map(r => r.compaRatio)
+  const overallCompaRatio = allCRs.length > 0 ? Math.round(mean(allCRs) * 100) / 100 : 1.0
+  const positionLabel = overallCompaRatio >= 1.05 ? 'Above Market' : overallCompaRatio >= 0.95 ? 'At Market' : 'Below Market'
+
+  // Generate insights
+  const belowMarket = roleAnalysis.filter(r => r.status === 'below' || r.status === 'critical')
+  if (belowMarket.length > 0) {
+    insights.push({
+      id: genAIId('mkt-below'),
+      category: 'alert',
+      severity: belowMarket.some(r => r.status === 'critical') ? 'critical' : 'warning',
+      title: `${belowMarket.length} Role${belowMarket.length > 1 ? 's' : ''} Below Market`,
+      description: `${belowMarket.map(r => r.role).join(', ')} ${belowMarket.length > 1 ? 'are' : 'is'} below market P50. This may increase turnover risk for these positions.`,
+      confidence: 'high',
+      confidenceScore: 85,
+      suggestedAction: 'Review compensation bands for below-market roles',
+      module: 'compensation',
+    })
+  }
+
+  const aboveMarket = roleAnalysis.filter(r => r.status === 'above')
+  if (aboveMarket.length > 2) {
+    insights.push({
+      id: genAIId('mkt-above'),
+      category: 'trend',
+      severity: 'info',
+      title: `${aboveMarket.length} Roles Above Market`,
+      description: `${aboveMarket.length} roles are compensated above P50. While this aids retention, it may impact budget efficiency.`,
+      confidence: 'medium',
+      confidenceScore: 72,
+      module: 'compensation',
+    })
+  }
+
+  // Geo insight
+  const lowGeo = geoAnalysis.filter(g => g.avgCompaRatio < 0.95)
+  if (lowGeo.length > 0) {
+    insights.push({
+      id: genAIId('mkt-geo'),
+      category: 'recommendation',
+      severity: 'warning',
+      title: `Geographic Pay Gap: ${lowGeo.map(g => g.country).join(', ')}`,
+      description: `Compensation in ${lowGeo.map(g => g.country).join(' and ')} averages below market P50. Consider regional adjustments.`,
+      confidence: 'medium',
+      confidenceScore: 68,
+      suggestedAction: 'Conduct regional compensation review',
+      module: 'compensation',
+    })
+  }
+
+  return { overallCompaRatio, positionLabel, roleAnalysis, geoAnalysis, insights }
+}
+
+// ---- Automation Rule Suggestions ----
+
+export function suggestAutomationRules(tasks: any[], history: any[]): AIRecommendation[] {
+  const recs: AIRecommendation[] = []
+
+  // Check for repetitive status changes that could be automated
+  const reviewTasks = tasks.filter((t: any) => t.status === 'review')
+  if (reviewTasks.length >= 2) {
+    recs.push({
+      id: genAIId('auto-qa'),
+      title: 'Auto-assign reviewer on status change',
+      rationale: `${reviewTasks.length} tasks are in review. Automate reviewer assignment when tasks move to review to reduce bottlenecks.`,
+      impact: 'high',
+      effort: 'low',
+      category: 'automation',
+    })
+  }
+
+  // Check for overdue tasks that could trigger notifications
+  const overdue = tasks.filter((t: any) => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
+  if (overdue.length >= 2) {
+    recs.push({
+      id: genAIId('auto-overdue'),
+      title: 'Notify owner on overdue tasks',
+      rationale: `${overdue.length} tasks are past due. Set up automatic notifications to project owners when tasks exceed their deadline.`,
+      impact: 'high',
+      effort: 'low',
+      category: 'automation',
+    })
+  }
+
+  // Check for tasks that frequently change priority
+  const criticalTasks = tasks.filter((t: any) => t.priority === 'critical' && t.status !== 'done')
+  if (criticalTasks.length >= 3) {
+    recs.push({
+      id: genAIId('auto-critical'),
+      title: 'Auto-escalate blocked critical tasks',
+      rationale: `${criticalTasks.length} critical tasks are open. Automatically escalate to management when critical tasks are blocked for more than 2 days.`,
+      impact: 'medium',
+      effort: 'low',
+      category: 'automation',
+    })
+  }
+
+  // Suggest label-based workflow
+  const unassigned = tasks.filter((t: any) => !t.assignee_id && t.status !== 'done')
+  if (unassigned.length > 0) {
+    recs.push({
+      id: genAIId('auto-assign'),
+      title: 'Auto-assign tasks based on labels',
+      rationale: `${unassigned.length} unassigned task(s) detected. Create rules to automatically assign tasks based on their labels or project.`,
+      impact: 'medium',
+      effort: 'medium',
+      category: 'automation',
+    })
+  }
+
+  return recs.slice(0, 3)
+}
+
+// ---- Budget Forecast AI ----
+
+export function forecastBudget(historicalData: any[], months: number): Array<{ month: string; forecast: number; confidence: number }> {
+  if (historicalData.length < 2) return []
+
+  const actuals = historicalData.filter((d: any) => d.actual !== null && d.actual !== undefined).map((d: any) => d.actual as number)
+  if (actuals.length < 2) return []
+
+  const avgSpend = actuals.reduce((a: number, b: number) => a + b, 0) / actuals.length
+  const trend = actuals.length >= 2 ? (actuals[actuals.length - 1] - actuals[0]) / actuals.length : 0
+
+  const result: Array<{ month: string; forecast: number; confidence: number }> = []
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const startDate = new Date()
+
+  for (let i = 0; i < months; i++) {
+    const forecastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1)
+    const monthLabel = `${monthNames[forecastDate.getMonth()]} ${forecastDate.getFullYear()}`
+    const projected = Math.round(avgSpend + trend * (actuals.length + i))
+    const confidence = clamp(90 - i * 5, 40, 95)
+
+    result.push({ month: monthLabel, forecast: projected, confidence })
+  }
+
+  return result
+}
+
+export function calculateForecastAccuracy(data: any[]): AIScore {
+  const withActuals = data.filter((d: any) => d.actual !== null && d.actual !== undefined && d.forecast)
+  if (withActuals.length === 0) return { value: 0, label: 'Insufficient Data' }
+
+  const errors = withActuals.map((d: any) => Math.abs((d.actual - d.forecast) / d.forecast) * 100)
+  const mape = errors.reduce((a: number, b: number) => a + b, 0) / errors.length
+  const accuracy = clamp(100 - mape, 0, 100)
+
+  return {
+    value: Math.round(accuracy),
+    label: accuracy >= 90 ? 'Excellent' : accuracy >= 75 ? 'Good' : accuracy >= 60 ? 'Fair' : 'Needs Improvement',
+    trend: errors.length >= 2 && errors[errors.length - 1] < errors[0] ? 'up' : 'stable',
+  }
+}
+
+export function analyzeVarianceByDepartment(forecastData: any[]): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  const byDept: Record<string, { department: string; actuals: number[]; budgets: number[] }> = {}
+  forecastData.forEach((d: any) => {
+    if (!byDept[d.department_id]) {
+      byDept[d.department_id] = { department: d.department, actuals: [], budgets: [] }
+    }
+    if (d.actual !== null && d.actual !== undefined) {
+      byDept[d.department_id].actuals.push(d.actual)
+      byDept[d.department_id].budgets.push(d.budget)
+    }
+  })
+
+  for (const [, data] of Object.entries(byDept)) {
+    if (data.actuals.length === 0) continue
+    const totalActual = data.actuals.reduce((a, b) => a + b, 0)
+    const totalBudget = data.budgets.reduce((a, b) => a + b, 0)
+    const variancePct = totalBudget > 0 ? ((totalActual - totalBudget) / totalBudget) * 100 : 0
+
+    if (Math.abs(variancePct) > 5) {
+      insights.push({
+        id: genAIId('var-dept'),
+        category: variancePct > 10 ? 'alert' : 'trend',
+        severity: variancePct > 10 ? 'warning' : 'info',
+        title: `${data.department}: ${variancePct > 0 ? 'Over' : 'Under'} Budget`,
+        description: `${data.department} is ${Math.abs(variancePct).toFixed(1)}% ${variancePct > 0 ? 'over' : 'under'} budget. Actual: $${(totalActual / 1000).toFixed(0)}K vs Budget: $${(totalBudget / 1000).toFixed(0)}K.`,
+        confidence: 'high',
+        confidenceScore: 85,
+        suggestedAction: variancePct > 0 ? 'Review spending controls' : 'Consider budget reallocation',
+        module: 'budgets',
+      })
+    }
+  }
+
+  return insights
 }
