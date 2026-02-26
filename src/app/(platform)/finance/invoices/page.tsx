@@ -73,7 +73,7 @@ export default function InvoicesPage() {
       vendor_id: invoiceForm.vendor_id,
       amount: Number(invoiceForm.amount),
       description: invoiceForm.description,
-      due_date: invoiceForm.due_date || '2026-12-31',
+      due_date: invoiceForm.due_date || `${new Date().getFullYear()}-12-31`,
       issued_date: invoiceForm.issued_date || new Date().toISOString().split('T')[0],
       status: 'draft',
       currency: invoiceForm.currency,

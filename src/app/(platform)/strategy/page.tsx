@@ -40,7 +40,7 @@ export default function StrategyPage() {
   const [showObjModal, setShowObjModal] = useState(false)
   const [editingObj, setEditingObj] = useState<string | null>(null)
   const [objForm, setObjForm] = useState({
-    title: '', description: '', status: 'active' as string, owner_id: '', period: '2026', progress: 0,
+    title: '', description: '', status: 'active' as string, owner_id: '', period: String(new Date().getFullYear()), progress: 0,
   })
 
   // Key Result modal
@@ -120,7 +120,7 @@ export default function StrategyPage() {
   // CRUD handlers
   function openNewObjective() {
     setEditingObj(null)
-    setObjForm({ title: '', description: '', status: 'active', owner_id: employees[0]?.id || '', period: '2026', progress: 0 })
+    setObjForm({ title: '', description: '', status: 'active', owner_id: employees[0]?.id || '', period: String(new Date().getFullYear()), progress: 0 })
     setShowObjModal(true)
   }
 
@@ -162,7 +162,7 @@ export default function StrategyPage() {
       current_value: krForm.current_value,
       unit: krForm.unit,
       owner_id: krForm.owner_id || currentEmployeeId,
-      due_date: krForm.due_date || '2026-12-31',
+      due_date: krForm.due_date || `${new Date().getFullYear()}-12-31`,
     })
     setShowKRModal(false)
   }
@@ -195,7 +195,7 @@ export default function StrategyPage() {
       objective_id: initForm.objective_id || null,
       owner_id: initForm.owner_id || currentEmployeeId,
       start_date: initForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: initForm.end_date || '2026-12-31',
+      end_date: initForm.end_date || `${new Date().getFullYear()}-12-31`,
       progress: initForm.progress,
       budget: initForm.budget || null,
       currency: initForm.currency,

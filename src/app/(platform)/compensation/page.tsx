@@ -50,10 +50,10 @@ export default function CompensationPage() {
   const [showCycleModal, setShowCycleModal] = useState(false)
 
   // ---- Forms ----
-  const [bandForm, setBandForm] = useState({ role_title: '', level: 'Mid', country: '', min_salary: 0, mid_salary: 0, max_salary: 0, currency: 'USD', p25: 0, p50: 0, p75: 0, effective_date: '2026-01-01' })
-  const [reviewForm, setReviewForm] = useState({ employee_id: '', current_salary: 0, proposed_salary: 0, justification: '', cycle: '2026 Annual' })
+  const [bandForm, setBandForm] = useState({ role_title: '', level: 'Mid', country: '', min_salary: 0, mid_salary: 0, max_salary: 0, currency: 'USD', p25: 0, p50: 0, p75: 0, effective_date: `${new Date().getFullYear()}-01-01` })
+  const [reviewForm, setReviewForm] = useState({ employee_id: '', current_salary: 0, proposed_salary: 0, justification: '', cycle: `${new Date().getFullYear()} Annual` })
   const [stipForm, setStipForm] = useState({ base: 72000, multiplier: 1.2, raroc: 0.95, target: 20 })
-  const [grantForm, setGrantForm] = useState({ employee_id: '', grant_type: 'RSU', shares: 0, strike_price: 0, vesting_schedule: '4-year with 1-year cliff', grant_date: '2026-03-01' })
+  const [grantForm, setGrantForm] = useState({ employee_id: '', grant_type: 'RSU', shares: 0, strike_price: 0, vesting_schedule: '4-year with 1-year cliff', grant_date: `${new Date().getFullYear()}-03-01` })
   const [cycleForm, setCycleForm] = useState({ name: '', budget_percent: 4.0, start_date: '', end_date: '' })
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employees[0]?.id || '')
   const [scenarioAdjustPct, setScenarioAdjustPct] = useState(5)

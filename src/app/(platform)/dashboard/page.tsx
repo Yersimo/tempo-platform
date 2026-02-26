@@ -196,7 +196,7 @@ export default function DashboardPage() {
         const announcements = [
           { id: 'ann-1', type: 'announcement' as const, icon: <Megaphone size={14} />, title: 'Q1 All-Hands Meeting', content: 'Join us for our quarterly all-hands this Friday at 2 PM WAT. CEO will share company updates and Q2 roadmap.', author: 'Amara Kone', date: '2 hours ago', color: 'bg-blue-100 text-blue-600' },
           { id: 'ann-2', type: 'celebration' as const, icon: <Award size={14} />, title: 'Kudos to Product Team!', content: 'Congratulations on launching the new mobile app — 4.8★ rating in the first week!', author: 'Folake Adebayo', date: '1 day ago', color: 'bg-green-100 text-green-600' },
-          { id: 'ann-3', type: 'policy' as const, icon: <FileText size={14} />, title: 'Updated Remote Work Policy', content: 'We\'ve expanded our flexible work policy to include 3 remote days per week starting March 1.', author: 'Kofi Mensah', date: '3 days ago', color: 'bg-purple-100 text-purple-600' },
+          { id: 'ann-3', type: 'policy' as const, icon: <FileText size={14} />, title: 'Updated Remote Work Policy', content: 'We\'ve expanded our flexible work policy to include 3 remote days per week. See the full policy in the handbook.', author: 'Kofi Mensah', date: '3 days ago', color: 'bg-purple-100 text-purple-600' },
         ]
         return (
           <Card padding="none" className="mb-6">

@@ -339,7 +339,7 @@ export default function DeveloperPortalPage() {
         <StatCard label="Total API Keys" value={totalKeys} icon={<Key size={20} />} />
         <StatCard label="Active Keys" value={activeKeys} change={totalKeys > 0 ? `${Math.round((activeKeys / totalKeys) * 100)}% active` : 'No keys yet'} changeType="positive" icon={<Shield size={20} />} />
         <StatCard label="Total Requests" value={totalRequests.toLocaleString()} icon={<Zap size={20} />} />
-        <StatCard label="Webhook Endpoints" value={webhooks.filter(w => w.isActive).length} icon={<Webhook size={20} />} href="/marketplace" />
+        <StatCard label="Webhook Endpoints" value={webhooks.filter(w => w.isActive).length} icon={<Webhook size={20} />} />
       </div>
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />

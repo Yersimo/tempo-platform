@@ -157,7 +157,7 @@ export default function ProjectsPage() {
       status: projectForm.status,
       owner_id: projectForm.owner_id || currentEmployeeId,
       start_date: projectForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: projectForm.end_date || '2026-12-31',
+      end_date: projectForm.end_date || `${new Date().getFullYear()}-12-31`,
       budget: projectForm.budget || null,
       currency: projectForm.currency,
     }
@@ -214,7 +214,7 @@ export default function ProjectsPage() {
     addMilestone({
       title: milestoneForm.title,
       project_id: milestoneForm.project_id,
-      due_date: milestoneForm.due_date || '2026-12-31',
+      due_date: milestoneForm.due_date || `${new Date().getFullYear()}-12-31`,
       status: milestoneForm.status,
     })
     setShowMilestoneModal(false)

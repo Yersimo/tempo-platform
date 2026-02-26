@@ -573,10 +573,23 @@ export default function EngagementPage() {
                     </div>
                     <Sparkline data={points} />
                     <div className="flex justify-between text-[0.6rem] text-t3">
-                      <span>Q3 2025</span>
-                      <span>Q4 2025</span>
-                      <span>Q1 2026</span>
-                      <span className="font-medium text-tempo-600">Q2 (pred)</span>
+                      {(() => {
+                        const now = new Date()
+                        const q = Math.ceil((now.getMonth() + 1) / 3)
+                        const y = now.getFullYear()
+                        const quarters = [
+                          { q: ((q - 3 + 4) % 4) || 4, y: q <= 2 ? y - 1 : y },
+                          { q: ((q - 2 + 4) % 4) || 4, y: q <= 1 ? y - 1 : y },
+                          { q: ((q - 1 + 4) % 4) || 4, y: q === 1 ? y - 1 : y },
+                        ]
+                        const nextQ = (q % 4) + 1
+                        return (
+                          <>
+                            {quarters.map((qr, i) => <span key={i}>Q{qr.q} {qr.y}</span>)}
+                            <span className="font-medium text-tempo-600">Q{nextQ} (pred)</span>
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 )

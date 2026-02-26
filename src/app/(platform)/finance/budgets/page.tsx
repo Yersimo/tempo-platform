@@ -211,7 +211,7 @@ export default function BudgetsPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-sm font-semibold text-t1">{dept.department}</h3>
-                  <p className="text-xs text-t3">Q1 2026 - 3 months</p>
+                  <p className="text-xs text-t3">Q{Math.ceil((new Date().getMonth() + 1) / 3)} {new Date().getFullYear()} - 3 months</p>
                 </div>
                 <Badge variant={dept.variancePct > 5 ? 'error' : dept.variancePct < -5 ? 'success' : 'default'}>
                   {dept.variancePct > 5 ? t('overBudget') : dept.variancePct < -5 ? t('underBudget') : t('onBudget')}

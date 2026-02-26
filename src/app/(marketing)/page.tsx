@@ -278,7 +278,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-white/5 pt-6 text-center">
-            <p className="text-xs text-white/15">&copy; 2026 Tempo. All rights reserved.</p>
+            <p className="text-xs text-white/15">&copy; {new Date().getFullYear()} Tempo. All rights reserved.</p>
           </div>
         </div>
       </footer>

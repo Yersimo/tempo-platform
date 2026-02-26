@@ -171,7 +171,7 @@ export default function PerformancePage() {
       description: goalForm.description || null,
       category: goalForm.category,
       employee_id: goalForm.employee_id,
-      due_date: goalForm.due_date || '2026-12-31',
+      due_date: goalForm.due_date || `${new Date().getFullYear()}-12-31`,
       start_date: goalForm.start_date || new Date().toISOString().split('T')[0],
       progress: Number(goalForm.progress) || 0,
       status: Number(goalForm.progress) >= 75 ? 'on_track' : Number(goalForm.progress) >= 40 ? 'at_risk' : 'behind',
@@ -213,7 +213,7 @@ export default function PerformancePage() {
       type: cycleForm.type,
       status: 'active',
       start_date: cycleForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: cycleForm.end_date || '2026-12-31',
+      end_date: cycleForm.end_date || `${new Date().getFullYear()}-12-31`,
     })
     setShowCycleModal(false)
     setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
