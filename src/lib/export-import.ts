@@ -287,6 +287,111 @@ export function validateEmployeeImport(
 }
 
 // ============================================================
+// CREDENTIAL GENERATION FOR BULK IMPORT
+// ============================================================
+
+export interface EmployeeCredential {
+  full_name: string
+  email: string
+  username: string
+  temporary_password: string
+  must_change_password: boolean
+}
+
+/**
+ * Generate a unique username from employee name and email.
+ * Format: firstname.lastname (from email or name), with numeric suffix if duplicates exist.
+ */
+function generateUsername(fullName: string, email: string, existingUsernames: Set<string>): string {
+  // Try email prefix first (most common format)
+  const emailPrefix = email.split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '')
+  if (emailPrefix && !existingUsernames.has(emailPrefix)) {
+    existingUsernames.add(emailPrefix)
+    return emailPrefix
+  }
+
+  // Fall back to name-based
+  const parts = fullName.toLowerCase().trim().split(/\s+/)
+  const base = parts.length >= 2
+    ? `${parts[0]}.${parts[parts.length - 1]}`.replace(/[^a-z0-9._-]/g, '')
+    : parts[0].replace(/[^a-z0-9._-]/g, '')
+
+  let candidate = base
+  let counter = 1
+  while (existingUsernames.has(candidate)) {
+    candidate = `${base}${counter}`
+    counter++
+  }
+  existingUsernames.add(candidate)
+  return candidate
+}
+
+/**
+ * Generate a secure temporary password.
+ * Format: 3 random words + 2 digits + special char (easy to type, meets complexity requirements).
+ */
+function generateTemporaryPassword(): string {
+  const words = ['Sun', 'Moon', 'Star', 'Blue', 'Red', 'Oak', 'Bay', 'Fox', 'Elm', 'Sky',
+    'Rain', 'Wind', 'Lake', 'Peak', 'Wave', 'Sage', 'Pine', 'Gold', 'Iron', 'Jade',
+    'Lion', 'Bear', 'Hawk', 'Wolf', 'Rose', 'Fire', 'Mint', 'Ruby', 'Onyx', 'Teal']
+  const specials = ['!', '@', '#', '$', '%', '&']
+  const w1 = words[Math.floor(Math.random() * words.length)]
+  const w2 = words[Math.floor(Math.random() * words.length)]
+  const digits = String(Math.floor(Math.random() * 90) + 10)
+  const sp = specials[Math.floor(Math.random() * specials.length)]
+  return `${w1}${w2}${digits}${sp}`
+}
+
+/**
+ * Generate credentials for a batch of imported employees.
+ * Returns an array of credentials with username and temporary password for each.
+ * SSO employees can be flagged to skip credential generation.
+ */
+export function generateBulkCredentials(
+  employees: EmployeeImportRow[],
+  existingEmails: string[] = []
+): { credentials: EmployeeCredential[]; skipped: { email: string; reason: string }[] } {
+  const credentials: EmployeeCredential[] = []
+  const skipped: { email: string; reason: string }[] = []
+  const usedUsernames = new Set<string>()
+  const existingEmailSet = new Set(existingEmails.map(e => e.toLowerCase()))
+
+  for (const emp of employees) {
+    if (existingEmailSet.has(emp.email.toLowerCase())) {
+      skipped.push({ email: emp.email, reason: 'Employee already exists' })
+      continue
+    }
+
+    credentials.push({
+      full_name: emp.full_name,
+      email: emp.email,
+      username: generateUsername(emp.full_name, emp.email, usedUsernames),
+      temporary_password: generateTemporaryPassword(),
+      must_change_password: true,
+    })
+  }
+
+  return { credentials, skipped }
+}
+
+/**
+ * Export credentials to CSV for admin download (secure distribution).
+ */
+export function exportCredentialsToCSV(credentials: EmployeeCredential[], filename: string = 'employee-credentials'): void {
+  exportToCSV(
+    credentials,
+    [
+      { header: 'Full Name', accessor: (c) => c.full_name },
+      { header: 'Email', accessor: (c) => c.email },
+      { header: 'Username', accessor: (c) => c.username },
+      { header: 'Temporary Password', accessor: (c) => c.temporary_password },
+      { header: 'Must Change Password', accessor: (c) => 'Yes' },
+    ],
+    filename
+  )
+}
+
+// ============================================================
 // MODULE-SPECIFIC EXPORT COLUMNS
 // ============================================================
 

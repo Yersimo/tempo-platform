@@ -21,6 +21,7 @@ import {
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, type EmployeeCredential } from '@/lib/export-import'
 import Link from 'next/link'
 
 const ITEMS_PER_PAGE = 10
@@ -29,7 +30,7 @@ export default function PeoplePage() {
   const t = useTranslations('people')
   const tc = useTranslations('common')
   const {
-    employees, departments, addEmployee, updateEmployee, deleteEmployee,
+    employees, departments, addEmployee, bulkAddEmployees, updateEmployee, deleteEmployee,
     getDepartmentName, getEmployeeName,
     employeeDocuments, addEmployeeDocument, updateEmployeeDocument,
     employeeTimeline,
@@ -72,6 +73,16 @@ export default function PeoplePage() {
   const [showBulkTransferModal, setShowBulkTransferModal] = useState(false)
   const [showBulkStatusModal, setShowBulkStatusModal] = useState(false)
   const [bulkTransferForm, setBulkTransferForm] = useState({ from_department: '', to_department: '', reason: '' })
+
+  // ---- Bulk Import State ----
+  const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'results'>('idle')
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importPreviewData, setImportPreviewData] = useState<{ valid: any[]; errors: { row: number; message: string }[]; totalRows: number } | null>(null)
+  const [importCredentials, setImportCredentials] = useState<EmployeeCredential[]>([])
+  const [importSkipped, setImportSkipped] = useState<{ email: string; reason: string }[]>([])
+  const [importProgress, setImportProgress] = useState(0)
+  const [generateCredentials, setGenerateCredentials] = useState(true)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   // ---- Computed: Countries & Levels ----
   const countries = useMemo(() => [...new Set(employees.map(e => e.country))].sort(), [employees])
@@ -178,6 +189,127 @@ export default function PeoplePage() {
     })
     setShowDocModal(false)
     setDocForm({ employee_id: '', document_type: 'contract', name: '', expiry_date: '' })
+  }
+
+  // ---- Bulk Import Handlers ----
+  async function handleFileSelect(file: File) {
+    setImportFile(file)
+    try {
+      const parsed = await readFileAsCSV(file)
+      if (parsed.errors.length > 0 && parsed.rows.length === 0) {
+        setImportPreviewData({ valid: [], errors: parsed.errors.map((e, i) => ({ row: i + 1, message: e })), totalRows: 0 })
+        setImportStep('preview')
+        setShowImportModal(true)
+        return
+      }
+      const mapping = mapCSVToEmployeeFields(parsed.headers)
+      const result = validateEmployeeImport(parsed.rows, mapping)
+      setImportPreviewData({ valid: result.valid, errors: result.errors, totalRows: parsed.totalRows })
+      setImportStep('preview')
+      setShowImportModal(true)
+    } catch {
+      setImportPreviewData({ valid: [], errors: [{ row: 0, message: 'Failed to read file. Please ensure it is a valid CSV.' }], totalRows: 0 })
+      setImportStep('preview')
+      setShowImportModal(true)
+    }
+  }
+
+  function handleImportInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) handleFileSelect(file)
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer.files[0]
+    if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
+      handleFileSelect(file)
+    }
+  }
+
+  async function executeImport() {
+    if (!importPreviewData || importPreviewData.valid.length === 0) return
+    setImportStep('importing')
+    setImportProgress(0)
+
+    const existingEmails = employees.map(e => e.profile?.email).filter(Boolean)
+    const { credentials, skipped } = generateBulkCredentials(importPreviewData.valid, existingEmails)
+
+    setImportSkipped(skipped)
+
+    // Build employee records from valid credentials
+    const employeeRecords = credentials.map(cred => {
+      const original = importPreviewData.valid.find(v => v.email === cred.email)
+      const dept = departments.find(d => d.name.toLowerCase() === (original?.department || '').toLowerCase())
+      return {
+        department_id: dept?.id || departments[0]?.id || '',
+        job_title: original?.job_title || 'Team Member',
+        level: original?.level || 'Mid',
+        country: original?.country || 'Nigeria',
+        hire_date: original?.hire_date || new Date().toISOString().split('T')[0],
+        role: 'employee',
+        status: 'active',
+        profile: {
+          full_name: cred.full_name,
+          email: cred.email,
+          avatar_url: null,
+          phone: original?.phone || null,
+        },
+        credentials: generateCredentials ? {
+          username: cred.username,
+          temporary_password: cred.temporary_password,
+          must_change_password: true,
+        } : undefined,
+      }
+    })
+
+    // Import in batches (simulate progress for large imports)
+    const batchSize = 50
+    const total = employeeRecords.length
+    for (let i = 0; i < total; i += batchSize) {
+      const batch = employeeRecords.slice(i, i + batchSize)
+      bulkAddEmployees(batch)
+      setImportProgress(Math.min(100, Math.round(((i + batch.length) / total) * 100)))
+      // Small delay for visual feedback
+      if (total > batchSize) await new Promise(r => setTimeout(r, 200))
+    }
+
+    setImportCredentials(credentials)
+    setImportProgress(100)
+    setImportStep('results')
+  }
+
+  function resetImport() {
+    setImportStep('idle')
+    setImportFile(null)
+    setImportPreviewData(null)
+    setImportCredentials([])
+    setImportSkipped([])
+    setImportProgress(0)
+    setShowImportModal(false)
+  }
+
+  function downloadCredentials() {
+    if (importCredentials.length > 0) {
+      exportCredentialsToCSV(importCredentials, `employee-credentials-${new Date().toISOString().split('T')[0]}`)
+    }
+  }
+
+  function downloadTemplate() {
+    const templateCSV = 'full_name,email,job_title,department,country,hire_date,phone,level,manager_email\nJohn Doe,john.doe@company.com,Software Engineer,Engineering,Nigeria,2026-01-15,+234 800 000 0000,Mid,manager@company.com\nJane Smith,jane.smith@company.com,Product Manager,Product,Ghana,2026-02-01,+233 20 000 0000,Senior,director@company.com'
+    const blob = new Blob([templateCSV], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'employee-import-template.csv'
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const timelineIcon = (type: string) => {
@@ -680,12 +812,30 @@ export default function PeoplePage() {
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('importEmployees')}</h3>
                   <p className="text-xs text-t3 mb-3">{t('importDescription')}</p>
-                  <div className="border-2 border-dashed border-divider rounded-lg p-6 text-center mb-3 bg-canvas">
+                  <div
+                    className="border-2 border-dashed border-divider rounded-lg p-6 text-center mb-3 bg-canvas hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('csv-file-input')?.click()}
+                  >
                     <Upload size={24} className="mx-auto text-t3 mb-2" />
                     <p className="text-sm text-t2">{t('dragDropCsv')}</p>
                     <p className="text-xs text-t3 mt-1">{t('csvFormat')}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full">{t('selectFile')}</Button>
+                  <input id="csv-file-input" type="file" accept=".csv" className="hidden" onChange={handleImportInputChange} />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => document.getElementById('csv-file-input')?.click()}>
+                      <Upload size={14} /> {t('selectFile')}
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={downloadTemplate}>
+                      <Download size={14} /> {tc('downloadTemplate')}
+                    </Button>
+                  </div>
+                  <div className="mt-3 bg-canvas rounded-lg p-3">
+                    <p className="text-[0.65rem] font-medium text-t2 mb-1">{tc('supportedFields')}</p>
+                    <p className="text-[0.6rem] text-t3">full_name, email, job_title, department, country, hire_date, phone, level, manager_email</p>
+                    <p className="text-[0.6rem] text-tempo-600 mt-1">{tc('autoCredentials')}</p>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -847,6 +997,206 @@ export default function PeoplePage() {
             <Button variant="secondary" onClick={() => setShowBulkStatusModal(false)}>{tc('cancel')}</Button>
             <Button>{t('applyChanges')}</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Import Modal */}
+      <Modal open={showImportModal} onClose={resetImport} title={t('importEmployees')} size="lg">
+        <div className="space-y-4">
+          {/* Step 1: Preview */}
+          {importStep === 'preview' && importPreviewData && (
+            <>
+              <div className="bg-canvas rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-t1">{t('importPreview')}</h4>
+                  <Badge variant={importPreviewData.errors.length > 0 ? 'warning' : 'success'}>
+                    {importPreviewData.valid.length} {tc('valid')} / {importPreviewData.errors.length} {tc('errors')}
+                  </Badge>
+                </div>
+
+                {/* File info */}
+                <div className="flex items-center gap-2 mb-3 text-xs text-t3">
+                  <FileText size={14} />
+                  <span>{importFile?.name}</span>
+                  <span>•</span>
+                  <span>{importPreviewData.totalRows} {tc('rows')}</span>
+                </div>
+
+                {/* Preview table */}
+                {importPreviewData.valid.length > 0 && (
+                  <div className="overflow-x-auto mb-3">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-divider">
+                          <th className="text-left py-2 px-2 text-t3 font-medium">{t('fullName')}</th>
+                          <th className="text-left py-2 px-2 text-t3 font-medium">{t('email')}</th>
+                          <th className="text-left py-2 px-2 text-t3 font-medium">{t('jobTitle')}</th>
+                          <th className="text-left py-2 px-2 text-t3 font-medium">{tc('department')}</th>
+                          <th className="text-left py-2 px-2 text-t3 font-medium">{t('countryLabel')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreviewData.valid.slice(0, 10).map((row, i) => (
+                          <tr key={i} className="border-b border-divider/50">
+                            <td className="py-1.5 px-2 text-t1">{row.full_name}</td>
+                            <td className="py-1.5 px-2 text-t2">{row.email}</td>
+                            <td className="py-1.5 px-2 text-t2">{row.job_title}</td>
+                            <td className="py-1.5 px-2 text-t2">{row.department}</td>
+                            <td className="py-1.5 px-2 text-t2">{row.country}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {importPreviewData.valid.length > 10 && (
+                      <p className="text-[0.6rem] text-t3 mt-2 text-center">
+                        {tc('andMore', { count: importPreviewData.valid.length - 10 })}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Validation errors */}
+                {importPreviewData.errors.length > 0 && (
+                  <div className="bg-red-50 rounded-lg p-3 mt-3">
+                    <p className="text-xs font-medium text-red-700 mb-2">{tc('validationErrors')}</p>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                      {importPreviewData.errors.slice(0, 20).map((err, i) => (
+                        <p key={i} className="text-[0.6rem] text-red-600">Row {err.row}: {err.message}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Credential generation toggle */}
+              <div className="bg-tempo-50 rounded-lg p-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={generateCredentials}
+                    onChange={(e) => setGenerateCredentials(e.target.checked)}
+                    className="rounded border-divider text-tempo-600"
+                  />
+                  <div>
+                    <p className="text-xs font-medium text-t1">{tc('generateLoginCredentials')}</p>
+                    <p className="text-[0.6rem] text-t3">{tc('generateCredentialsDesc')}</p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={resetImport}>{tc('cancel')}</Button>
+                <Button onClick={executeImport} disabled={importPreviewData.valid.length === 0}>
+                  <Upload size={14} /> {tc('importCount', { count: importPreviewData.valid.length })}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Importing progress */}
+          {importStep === 'importing' && (
+            <div className="py-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-tempo-50 flex items-center justify-center mx-auto mb-4">
+                <Upload size={32} className="text-tempo-600 animate-pulse" />
+              </div>
+              <h4 className="text-sm font-semibold text-t1 mb-2">{tc('importingEmployees')}</h4>
+              <p className="text-xs text-t3 mb-4">{tc('importingDesc')}</p>
+              <div className="max-w-xs mx-auto">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-tempo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${importProgress}%` }} />
+                </div>
+                <p className="text-xs text-t3 mt-2">{importProgress}%</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Results */}
+          {importStep === 'results' && (
+            <>
+              <div className="py-4 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                  <Award size={32} className="text-emerald-600" />
+                </div>
+                <h4 className="text-sm font-semibold text-t1 mb-2">{tc('importComplete')}</h4>
+                <p className="text-xs text-t3">{tc('importCompleteDesc', { count: importCredentials.length })}</p>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-emerald-600">{importCredentials.length}</p>
+                  <p className="text-[0.6rem] text-emerald-700">{tc('imported')}</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-amber-600">{importSkipped.length}</p>
+                  <p className="text-[0.6rem] text-amber-700">{tc('skipped')}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-blue-600">{generateCredentials ? tc('yes') : tc('no')}</p>
+                  <p className="text-[0.6rem] text-blue-700">{tc('credentialsGenerated')}</p>
+                </div>
+              </div>
+
+              {/* Skipped employees */}
+              {importSkipped.length > 0 && (
+                <div className="bg-amber-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-amber-700 mb-1">{tc('skippedEmployees')}</p>
+                  <div className="space-y-1">
+                    {importSkipped.map((s, i) => (
+                      <p key={i} className="text-[0.6rem] text-amber-600">{s.email}: {s.reason}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Credentials download */}
+              {generateCredentials && importCredentials.length > 0 && (
+                <div className="bg-tempo-50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={16} className="text-tempo-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-t1 mb-1">{tc('downloadCredentials')}</p>
+                      <p className="text-[0.6rem] text-t3 mb-3">{tc('downloadCredentialsDesc')}</p>
+                      <Button size="sm" onClick={downloadCredentials}>
+                        <Download size={14} /> {tc('downloadCredentialsCsv')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Credential preview */}
+              {generateCredentials && importCredentials.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-divider">
+                        <th className="text-left py-2 px-2 text-t3 font-medium">{t('fullName')}</th>
+                        <th className="text-left py-2 px-2 text-t3 font-medium">{tc('username')}</th>
+                        <th className="text-left py-2 px-2 text-t3 font-medium">{tc('tempPassword')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importCredentials.slice(0, 5).map((cred, i) => (
+                        <tr key={i} className="border-b border-divider/50">
+                          <td className="py-1.5 px-2 text-t1">{cred.full_name}</td>
+                          <td className="py-1.5 px-2 font-mono text-tempo-600">{cred.username}</td>
+                          <td className="py-1.5 px-2 font-mono text-t2">{cred.temporary_password}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {importCredentials.length > 5 && (
+                    <p className="text-[0.6rem] text-t3 mt-1 text-center">{tc('andMore', { count: importCredentials.length - 5 })}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={resetImport}>{tc('close')}</Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </>

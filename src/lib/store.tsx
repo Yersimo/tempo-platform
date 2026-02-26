@@ -221,6 +221,7 @@ interface TempoState {
 
   // Employees
   addEmployee: (data: AnyRecord) => void
+  bulkAddEmployees: (data: AnyRecord[]) => string[]
   updateEmployee: (id: string, data: AnyRecord) => void
   deleteEmployee: (id: string) => void
 
@@ -1015,6 +1016,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast(`Employee updated`)
     apiPost('employees', 'update', data, id)
   }, [logAudit, addToast, getEmployeeName])
+
+  const bulkAddEmployees = useCallback((employeesData: AnyRecord[]) => {
+    const newEmployees = employeesData.map(data => {
+      const id = genId('emp')
+      return { id, org_id: orgIdRef.current, ...data }
+    })
+    setEmployees(prev => [...prev, ...newEmployees] as typeof prev)
+    logAudit('create', 'employee', 'bulk', `Bulk imported ${newEmployees.length} employees`)
+    addToast(`${newEmployees.length} employees imported successfully`)
+    apiPost('employees', 'create', { bulk: true, employees: employeesData })
+    return newEmployees.map(e => e.id)
+  }, [logAudit, addToast])
 
   const deleteEmployee = useCallback((id: string) => {
     const name = getEmployeeName(id)
@@ -2237,7 +2250,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     auditLog, toasts,
     isLoading,
     addToast, removeToast,
-    addEmployee, updateEmployee, deleteEmployee,
+    addEmployee, bulkAddEmployees, updateEmployee, deleteEmployee,
     addGoal, updateGoal, deleteGoal,
     addReview, updateReview,
     addReviewCycle, updateReviewCycle,

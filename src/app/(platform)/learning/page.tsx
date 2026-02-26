@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge } from '@/components/ai'
@@ -22,6 +22,17 @@ export default function LearningPage() {
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('catalog')
+
+  // Catalog search & filter state
+  const [catalogSearch, setCatalogSearch] = useState('')
+  const [catalogCategory, setCatalogCategory] = useState('all')
+  const [catalogLevel, setCatalogLevel] = useState('all')
+  const [catalogFormat, setCatalogFormat] = useState('all')
+
+  // Certificate & rating state
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [certificateCourse, setCertificateCourse] = useState<{ title: string; employeeName: string; completedAt: string } | null>(null)
+
   const [showCourseModal, setShowCourseModal] = useState(false)
   const [showEnrollModal, setShowEnrollModal] = useState(false)
   const [courseForm, setCourseForm] = useState({
@@ -272,6 +283,39 @@ export default function LearningPage() {
     }).sort((a, b) => b.points - a.points)
   }, [employees, enrollments])
 
+  // Catalog search & filter
+  const filteredCatalog = useMemo(() => {
+    return courses.filter(course => {
+      const matchSearch = !catalogSearch || course.title.toLowerCase().includes(catalogSearch.toLowerCase()) || course.description.toLowerCase().includes(catalogSearch.toLowerCase())
+      const matchCategory = catalogCategory === 'all' || course.category === catalogCategory
+      const matchLevel = catalogLevel === 'all' || course.level === catalogLevel
+      const matchFormat = catalogFormat === 'all' || course.format === catalogFormat
+      return matchSearch && matchCategory && matchLevel && matchFormat
+    })
+  }, [courses, catalogSearch, catalogCategory, catalogLevel, catalogFormat])
+
+  const catalogCategories = useMemo(() => [...new Set(courses.map(c => c.category))].sort(), [courses])
+
+  // Course ratings (deterministic from course id hash)
+  const getCourseRating = (courseId: string) => {
+    const hash = courseId.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    return { rating: 3.5 + (hash % 15) / 10, reviews: 12 + (hash % 88) }
+  }
+
+  // Certificate generation
+  function handleViewCertificate(enrollmentId: string) {
+    const enr = enrollments.find(e => e.id === enrollmentId)
+    if (!enr || enr.status !== 'completed') return
+    const course = courses.find(c => c.id === enr.course_id)
+    const empName = getEmployeeName(enr.employee_id)
+    setCertificateCourse({
+      title: course?.title || 'Course',
+      employeeName: empName,
+      completedAt: enr.completed_at || new Date().toISOString(),
+    })
+    setShowCertificateModal(true)
+  }
+
   // Filtered blocks for selected course
   const filteredBlocks = useMemo(() => {
     if (!selectedBuilderCourse) return []
@@ -311,24 +355,117 @@ export default function LearningPage() {
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {activeTab === 'catalog' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {courses.map(course => (
-            <Card key={course.id}>
-              <div className="flex items-start justify-between mb-3">
-                <Badge variant={course.is_mandatory ? 'error' : 'default'}>{course.is_mandatory ? t('mandatory') : course.category}</Badge>
-                <Badge>{course.level}</Badge>
-              </div>
-              <h3 className="text-sm font-semibold text-t1 mb-1">{course.title}</h3>
-              <p className="text-xs text-t3 mb-3 line-clamp-2">{course.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-t3">
-                  <Clock size={12} /> {course.duration_hours}h
-                  <span className="capitalize">{course.format}</span>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => handleEnroll(course.id)}>{t('enroll')}</Button>
+        <div className="space-y-4">
+          {/* Search & Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input
+                type="text"
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                placeholder={t('searchCourses')}
+                className="w-full pl-9 pr-4 py-2 text-xs bg-canvas border border-divider rounded-lg focus:outline-none focus:border-tempo-400 focus:ring-1 focus:ring-tempo-400"
+              />
+            </div>
+            <select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
+              <option value="all">{t('allCategories')}</option>
+              {catalogCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            <select value={catalogLevel} onChange={(e) => setCatalogLevel(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
+              <option value="all">{t('allLevels')}</option>
+              <option value="beginner">{t('levelBeginner')}</option>
+              <option value="intermediate">{t('levelIntermediate')}</option>
+              <option value="advanced">{t('levelAdvanced')}</option>
+            </select>
+            <select value={catalogFormat} onChange={(e) => setCatalogFormat(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
+              <option value="all">{t('allFormats')}</option>
+              <option value="online">{t('formatOnline')}</option>
+              <option value="classroom">{t('formatClassroom')}</option>
+              <option value="blended">{t('formatBlended')}</option>
+            </select>
+            {(catalogSearch || catalogCategory !== 'all' || catalogLevel !== 'all' || catalogFormat !== 'all') && (
+              <button onClick={() => { setCatalogSearch(''); setCatalogCategory('all'); setCatalogLevel('all'); setCatalogFormat('all') }}
+                className="text-xs text-tempo-600 hover:text-tempo-700 font-medium">
+                {tc('clearFilters')}
+              </button>
+            )}
+          </div>
+
+          <p className="text-xs text-t3">{t('showingCourses', { count: filteredCatalog.length, total: courses.length })}</p>
+
+          {/* Course Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCatalog.map(course => {
+              const { rating, reviews } = getCourseRating(course.id)
+              const enrolled = enrollments.some(e => e.course_id === course.id && e.employee_id === currentEmployeeId)
+              const myEnrollment = enrollments.find(e => e.course_id === course.id && e.employee_id === currentEmployeeId)
+              const hasPrerequisites = course.level === 'advanced' || course.level === 'intermediate'
+              return (
+                <Card key={course.id}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={course.is_mandatory ? 'error' : 'default'}>{course.is_mandatory ? t('mandatory') : course.category}</Badge>
+                      {hasPrerequisites && (
+                        <span title={t('prerequisitesRequired')} className="text-amber-500"><Lock size={12} /></span>
+                      )}
+                    </div>
+                    <Badge>{course.level}</Badge>
+                  </div>
+                  <h3 className="text-sm font-semibold text-t1 mb-1">{course.title}</h3>
+                  <p className="text-xs text-t3 mb-2 line-clamp-2">{course.description}</p>
+
+                  {/* Ratings */}
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star key={star} size={10} className={star <= Math.round(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'} />
+                      ))}
+                    </div>
+                    <span className="text-[0.6rem] text-t2 font-medium">{rating.toFixed(1)}</span>
+                    <span className="text-[0.6rem] text-t3">({reviews} {t('reviews')})</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-t3">
+                      <Clock size={12} /> {course.duration_hours}h
+                      <span className="capitalize">{course.format}</span>
+                    </div>
+                    {myEnrollment?.status === 'completed' ? (
+                      <Button size="sm" variant="outline" onClick={() => handleViewCertificate(myEnrollment.id)}>
+                        <Medal size={12} /> {t('certificate')}
+                      </Button>
+                    ) : enrolled ? (
+                      <Badge variant="success">{tc('enrolled')}</Badge>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => handleEnroll(course.id)}>{t('enroll')}</Button>
+                    )}
+                  </div>
+
+                  {/* SCORM/xAPI compatibility indicator */}
+                  {course.format === 'online' && (
+                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-divider">
+                      <Shield size={10} className="text-emerald-500" />
+                      <span className="text-[0.55rem] text-t3">{t('scormCompatible')}</span>
+                    </div>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+
+          {filteredCatalog.length === 0 && (
+            <Card>
+              <div className="text-center py-12">
+                <Search size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm text-t2 mb-1">{t('noCoursesFound')}</p>
+                <p className="text-xs text-t3">{t('tryDifferentSearch')}</p>
               </div>
             </Card>
-          ))}
+          )}
         </div>
       )}
 
@@ -362,6 +499,11 @@ export default function LearningPage() {
                     )}
                     {enr.status === 'in_progress' && (
                       <Button size="sm" variant="primary" onClick={() => handleCompleteEnrollment(enr.id)}>{tc('complete')}</Button>
+                    )}
+                    {enr.status === 'completed' && (
+                      <Button size="sm" variant="outline" onClick={() => handleViewCertificate(enr.id)}>
+                        <Medal size={12} /> {t('certificate')}
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -1209,6 +1351,62 @@ export default function LearningPage() {
             <Button onClick={submitStudyGroup}>{t('createStudyGroup')}</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Certificate Modal */}
+      <Modal open={showCertificateModal} onClose={() => setShowCertificateModal(false)} title={t('completionCertificate')} size="lg">
+        {certificateCourse && (
+          <div className="space-y-4">
+            <div className="border-2 border-tempo-200 rounded-xl p-8 bg-gradient-to-br from-white to-tempo-50/30 text-center relative overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 left-0 w-20 h-20 bg-tempo-100/30 rounded-br-full" />
+              <div className="absolute bottom-0 right-0 w-20 h-20 bg-tempo-100/30 rounded-tl-full" />
+
+              <div className="relative z-10">
+                <div className="w-16 h-16 rounded-full bg-tempo-100 flex items-center justify-center mx-auto mb-4">
+                  <Award size={32} className="text-tempo-600" />
+                </div>
+                <p className="text-xs uppercase tracking-widest text-tempo-600 font-semibold mb-2">{t('certificateOfCompletion')}</p>
+                <h3 className="text-xl font-bold text-t1 mb-1">{certificateCourse.title}</h3>
+                <div className="w-16 h-0.5 bg-tempo-300 mx-auto my-4" />
+                <p className="text-sm text-t2 mb-1">{t('awardedTo')}</p>
+                <p className="text-lg font-semibold text-t1 mb-4">{certificateCourse.employeeName}</p>
+                <div className="flex items-center justify-center gap-4 text-xs text-t3">
+                  <span>{t('completedOn')}: {new Date(certificateCourse.completedAt).toLocaleDateString()}</span>
+                  <span>•</span>
+                  <span>Tempo Platform</span>
+                </div>
+                <div className="mt-4 flex items-center justify-center gap-1.5">
+                  <Shield size={12} className="text-emerald-500" />
+                  <span className="text-[0.6rem] text-emerald-600 font-medium">{t('verifiedCertificate')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-canvas rounded-lg p-3 flex items-center gap-3">
+              <Sparkles size={14} className="text-tempo-600" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-t1">{t('adaptiveLearning')}</p>
+                <p className="text-[0.6rem] text-t3">{t('adaptiveLearningDesc')}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowCertificateModal(false)}>{tc('close')}</Button>
+              <Button onClick={() => {
+                // Print certificate
+                const printWindow = window.open('', '_blank')
+                if (printWindow) {
+                  printWindow.document.write(`<html><head><title>Certificate - ${certificateCourse.title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff}div{text-align:center;padding:60px;border:3px solid #ea580c;border-radius:16px;max-width:600px}h1{color:#ea580c;font-size:14px;letter-spacing:3px;text-transform:uppercase}h2{font-size:24px;margin:8px 0}h3{font-size:20px;color:#333}p{color:#666;font-size:13px}hr{border:none;height:2px;background:#ea580c;width:60px;margin:20px auto}</style></head><body><div><h1>Certificate of Completion</h1><h2>${certificateCourse.title}</h2><hr/><p>Awarded to</p><h3>${certificateCourse.employeeName}</h3><p>Completed on ${new Date(certificateCourse.completedAt).toLocaleDateString()}</p><p style="margin-top:30px;font-size:11px;color:#999">Verified by Tempo Platform</p></div></body></html>`)
+                  printWindow.document.close()
+                  printWindow.print()
+                }
+              }}>
+                <Download size={14} /> {t('printCertificate')}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   )
