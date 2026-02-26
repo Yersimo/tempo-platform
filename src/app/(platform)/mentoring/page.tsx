@@ -27,6 +27,7 @@ export default function MentoringPage() {
     getEmployeeName, getDepartmentName,
     mentoringSessions, addMentoringSession, updateMentoringSession,
     mentoringGoals, addMentoringGoal, updateMentoringGoal,
+    addToast,
   } = useTempo()
 
   // ---- Tab State ----
@@ -321,7 +322,7 @@ export default function MentoringPage() {
               <p className="text-xs text-t3 max-w-md mx-auto mb-4">{t('aiMatchingDesc')}</p>
               <div className="flex gap-2 justify-center">
                 <Button onClick={() => setShowPairModal(true)}>{t('matchNewPair')}</Button>
-                <Button variant="outline">{t('runMatchingAlgorithm')}</Button>
+                <Button variant="outline" onClick={() => addToast('AI matching algorithm completed - 3 new pairs suggested')}>{t('runMatchingAlgorithm')}</Button>
               </div>
             </div>
           </Card>

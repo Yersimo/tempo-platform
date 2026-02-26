@@ -862,7 +862,9 @@ export default function RecruitingPage() {
                             <p className="text-sm font-medium text-t1">{cand.name}</p>
                             <p className="text-xs text-t3">{cand.title} - {cand.company}</p>
                           </div>
-                          <Button size="sm" variant="outline" onClick={() => { /* re-engage */ }}>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            updateApplication(cand.id, { status: 'screening' })
+                          }}>
                             <Send size={12} /> {t('reEngageCandidate')}
                           </Button>
                         </div>

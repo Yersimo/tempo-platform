@@ -15,6 +15,7 @@ import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText } fro
 import { useTempo } from '@/lib/store'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk } from '@/lib/ai-engine'
+import { exportToPrint } from '@/lib/export-import'
 
 export default function AnalyticsPage() {
   const t = useTranslations('analytics')
@@ -58,8 +59,14 @@ export default function AnalyticsPage() {
     { id: 'executive', label: 'Executive' },
   ]
 
+  // Filter employees by department selection
+  const filteredEmployees = useMemo(() => {
+    if (deptFilter === 'all') return employees
+    return employees.filter(e => e.department_id === deptFilter)
+  }, [employees, deptFilter])
+
   // Live computed metrics
-  const headcount = employees.length
+  const headcount = filteredEmployees.length
   const reviewCompletion = reviews.length > 0 ? Math.round((reviews.filter(r => r.status === 'submitted').length / reviews.length) * 100) : 0
   const activeLearners = new Set(enrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').map(e => e.employee_id)).size
   const openPositions = jobPostings.filter(j => j.status === 'open').length
@@ -69,12 +76,12 @@ export default function AnalyticsPage() {
   // Headcount by department
   const deptCounts = departments.map(d => ({
     name: d.name,
-    count: employees.filter(e => e.department_id === d.id).length,
+    count: filteredEmployees.filter(e => e.department_id === d.id).length,
   })).sort((a, b) => b.count - a.count)
 
   // Headcount by country
   const countryCounts = Object.entries(
-    employees.reduce((acc, e) => { acc[e.country] = (acc[e.country] || 0) + 1; return acc }, {} as Record<string, number>)
+    filteredEmployees.reduce((acc, e) => { acc[e.country] = (acc[e.country] || 0) + 1; return acc }, {} as Record<string, number>)
   ).sort((a, b) => b[1] - a[1])
 
   // Goal status distribution
@@ -90,7 +97,16 @@ export default function AnalyticsPage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm"><FileText size={14} /> {t('generateReport')}</Button>} />
+        actions={<Button size="sm" onClick={() => exportToPrint(
+          employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
+          [
+            { header: 'Name', accessor: (r: any) => r.name },
+            { header: 'Department', accessor: (r: any) => r.dept },
+            { header: 'Country', accessor: (r: any) => r.country },
+            { header: 'Level', accessor: (r: any) => r.level },
+          ],
+          'Analytics Report - Workforce Overview'
+        )}><FileText size={14} /> {t('generateReport')}</Button>} />
 
       {/* AI Natural Language Query Bar */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
@@ -177,7 +193,7 @@ export default function AnalyticsPage() {
             <h3 className="text-sm font-semibold text-t1 mb-3">{t('roleDistribution')}</h3>
             <div className="space-y-3">
               {['owner', 'admin', 'manager', 'employee'].map(role => {
-                const count = employees.filter(e => e.role === role).length
+                const count = filteredEmployees.filter(e => e.role === role).length
                 return (
                   <div key={role}>
                     <div className="flex justify-between text-xs mb-1">
@@ -300,7 +316,7 @@ export default function AnalyticsPage() {
             <h3 className="text-sm font-semibold text-t1 mb-3">{t('highFlightRisk')}</h3>
             <p className="text-xs text-t3 mb-4">{t('flightRiskDesc')}</p>
             <div className="space-y-2">
-              {employees.map(emp => {
+              {filteredEmployees.map(emp => {
                 const flightRisk = calculateFlightRisk(emp, { reviews, goals, engagementScores, salaryReviews, mentoringPairs, leaveRequests })
                 return { emp, risk: flightRisk.value }
               }).sort((a, b) => b.risk - a.risk).slice(0, 5).map(({ emp, risk }) => (
@@ -347,7 +363,7 @@ export default function AnalyticsPage() {
         compBands.forEach(b => { if (!bandByLevel.has(b.level)) bandByLevel.set(b.level, b.mid_salary) })
         const getSalary = (emp: typeof employees[0]) => salaryMap.get(emp.id) || bandByLevel.get(emp.level) || 50000
 
-        const salaries = employees.map(e => getSalary(e))
+        const salaries = filteredEmployees.map(e => getSalary(e))
         const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((a, s) => a + s, 0) / salaries.length) : 0
         const medianSalary = (() => {
           const sorted = [...salaries].sort((a, b) => a - b)
@@ -356,13 +372,13 @@ export default function AnalyticsPage() {
         })()
         const totalComp = salaries.reduce((a, s) => a + s, 0)
         const compByDept = departments.map(d => {
-          const deptEmps = employees.filter(e => e.department_id === d.id)
+          const deptEmps = filteredEmployees.filter(e => e.department_id === d.id)
           const deptSalaries = deptEmps.map(e => getSalary(e))
           const avg = deptSalaries.length > 0 ? Math.round(deptSalaries.reduce((a, s) => a + s, 0) / deptSalaries.length) : 0
           return { name: d.name, avg, count: deptEmps.length }
         }).sort((a, b) => b.avg - a.avg)
         const compByLevel = ['Executive', 'Director', 'Senior Manager', 'Senior', 'Manager', 'Mid', 'Junior', 'Associate'].map(level => {
-          const levelEmps = employees.filter(e => e.level === level)
+          const levelEmps = filteredEmployees.filter(e => e.level === level)
           const levelSalaries = levelEmps.map(e => getSalary(e))
           const avg = levelSalaries.length > 0 ? Math.round(levelSalaries.reduce((a, s) => a + s, 0) / levelSalaries.length) : 0
           return { level, avg, count: levelEmps.length }

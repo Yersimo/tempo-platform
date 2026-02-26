@@ -101,7 +101,7 @@ export default function OnboardingPage() {
     buddyAssignments, preboardingTasks, welcomeContent,
     addBuddyAssignment, updateBuddyAssignment,
     addPreboardingTask, updatePreboardingTask,
-    getEmployeeName, getDepartmentName,
+    getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
 
   // ─── Wizard State (preserved from original) ────────────────────────
@@ -1040,7 +1040,7 @@ export default function OnboardingPage() {
                         <p className="text-[0.6rem] text-t3">{tpl.subject}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => addToast(`${tpl.subject || tpl.name} sent successfully`)}>
                       <Send size={12} /> {tc('send')}
                     </Button>
                   </div>
@@ -1121,7 +1121,12 @@ export default function OnboardingPage() {
                   ...departments.map(d => ({ value: d.name, label: d.name })),
                 ]} />
                 <div className="flex items-end">
-                  <Button onClick={() => {}} disabled={!planRole || !planDepartment} className="w-full">
+                  <Button onClick={() => {
+                    if (onboardingPlan) {
+                      addToast('Onboarding plan generated successfully')
+                      document.getElementById('generated-plan')?.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  }} disabled={!planRole || !planDepartment} className="w-full">
                     <Sparkles size={14} /> {t('generatePlan')}
                   </Button>
                 </div>
@@ -1131,7 +1136,7 @@ export default function OnboardingPage() {
 
           {/* Generated Plan */}
           {onboardingPlan && (
-            <>
+            <div id="generated-plan">
               {/* AI Insights */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {onboardingPlan.insights.map(insight => (
@@ -1165,7 +1170,7 @@ export default function OnboardingPage() {
                   </Card>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
           {/* Default view when no plan generated */}

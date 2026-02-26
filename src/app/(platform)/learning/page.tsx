@@ -18,7 +18,7 @@ import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, sugge
 import { aiBuilderTemplates } from '@/lib/demo-data'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, employees, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, getEmployeeName, currentEmployeeId } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, employees, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, getEmployeeName, currentEmployeeId, addToast } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('catalog')
@@ -623,7 +623,7 @@ export default function LearningPage() {
                     <div className="flex items-center justify-between">
                       <Progress value={Math.round((session.enrolled_count / session.capacity) * 100)} className="flex-1 mr-3" />
                       {session.status === 'upcoming' && (
-                        <Button size="sm" variant="primary" onClick={() => window.open(session.meeting_url, '_blank')}>
+                        <Button size="sm" variant="primary" onClick={() => session.meeting_url ? window.open(session.meeting_url, '_blank') : addToast('Meeting link not yet available')}>
                           {t('joinSession')}
                         </Button>
                       )}

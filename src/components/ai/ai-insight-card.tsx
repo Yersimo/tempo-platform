@@ -65,14 +65,17 @@ export function AIInsightCard({ insight, onDismiss, onAction, compact = false, c
           </div>
         </div>
         <p className="text-xs text-t2 leading-relaxed mb-3">{insight.description}</p>
-        {insight.suggestedAction && (
+        {insight.suggestedAction && onAction && (
           <button
-            onClick={() => onAction?.(insight.id)}
+            onClick={() => onAction(insight.id)}
             className="inline-flex items-center gap-1 text-xs text-tempo-600 font-medium hover:text-tempo-700 transition-colors"
           >
             {insight.actionLabel || insight.suggestedAction}
             <ArrowRight size={11} />
           </button>
+        )}
+        {insight.suggestedAction && !onAction && (
+          <p className="text-xs text-t3 italic">{insight.suggestedAction}</p>
         )}
       </div>
     </div>

@@ -501,7 +501,7 @@ export default function WorkflowStudioPage() {
                         <td className="px-4 py-3 text-xs font-medium text-t1">{formatDuration(run.started_at, run.completed_at)}</td>
                         <td className="px-4 py-3 text-xs text-t2">{run.triggered_by}</td>
                         <td className="px-4 py-3">
-                          <button className="p-1 text-t3 hover:text-t1" title={t('viewRunDetails')}>
+                          <button className="p-1 text-t3 hover:text-t1" title={t('viewRunDetails')} onClick={(e) => { e.stopPropagation(); setViewingRunId(isViewing ? null : run.id) }}>
                             <Eye size={14} />
                           </button>
                         </td>

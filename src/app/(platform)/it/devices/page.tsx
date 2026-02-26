@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
 import { predictDeviceRefresh, scoreSecurityPosture } from '@/lib/ai-engine'
 import { demoComplianceFrameworks, demoSecurityPosture, demoProvisioningEvents } from '@/lib/demo-data'
@@ -123,7 +124,18 @@ export default function DevicesPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{t('deviceInventory')}</CardTitle>
-            <Button variant="secondary" size="sm">{tc('export')}</Button>
+            <Button variant="secondary" size="sm" onClick={() => exportToCSV(
+              devices,
+              [
+                { header: 'Type', accessor: (d: any) => d.type || '' },
+                { header: 'Brand', accessor: (d: any) => d.brand || '' },
+                { header: 'Model', accessor: (d: any) => d.model || '' },
+                { header: 'Serial', accessor: (d: any) => d.serial_number || '' },
+                { header: 'Status', accessor: (d: any) => d.status || '' },
+                { header: 'Assigned To', accessor: (d: any) => d.assigned_to || '' },
+              ],
+              'devices-export'
+            )}>{tc('export')}</Button>
           </div>
         </CardHeader>
         <div className="overflow-x-auto">

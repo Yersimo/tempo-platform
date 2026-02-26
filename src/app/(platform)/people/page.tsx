@@ -21,7 +21,7 @@ import {
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, type EmployeeCredential } from '@/lib/export-import'
+import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import Link from 'next/link'
 
 const ITEMS_PER_PAGE = 10
@@ -73,6 +73,9 @@ export default function PeoplePage() {
   const [showBulkTransferModal, setShowBulkTransferModal] = useState(false)
   const [showBulkStatusModal, setShowBulkStatusModal] = useState(false)
   const [bulkTransferForm, setBulkTransferForm] = useState({ from_department: '', to_department: '', reason: '' })
+  const [bulkStatusDept, setBulkStatusDept] = useState('')
+  const [bulkStatusRole, setBulkStatusRole] = useState('')
+  const [docFileName, setDocFileName] = useState<string | null>(null)
 
   // ---- Bulk Import State ----
   const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'results'>('idle')
@@ -189,6 +192,7 @@ export default function PeoplePage() {
     })
     setShowDocModal(false)
     setDocForm({ employee_id: '', document_type: 'contract', name: '', expiry_date: '' })
+    setDocFileName(null)
   }
 
   // ---- Bulk Import Handlers ----
@@ -384,7 +388,7 @@ export default function PeoplePage() {
               <Button variant="ghost" size="sm" onClick={resetFilters}>{t('clearFilters')}</Button>
             )}
             <div className="ml-auto">
-              <Button variant="outline" size="sm"><Download size={14} /> {tc('export')}</Button>
+              <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered, EMPLOYEE_EXPORT_COLUMNS, 'employees')}><Download size={14} /> {tc('export')}</Button>
             </div>
           </div>
 
@@ -850,9 +854,9 @@ export default function PeoplePage() {
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('exportEmployees')}</h3>
                   <p className="text-xs text-t3 mb-3">{t('exportDescription')}</p>
                   <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full"><Download size={14} /> {t('exportCsv')}</Button>
-                    <Button variant="outline" size="sm" className="w-full"><Download size={14} /> {t('exportExcel')}</Button>
-                    <Button variant="outline" size="sm" className="w-full"><Download size={14} /> {t('exportPdf')}</Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => exportToCSV(employees, EMPLOYEE_EXPORT_COLUMNS, 'employees-export')}><Download size={14} /> {t('exportCsv')}</Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => exportToCSV(employees, EMPLOYEE_EXPORT_COLUMNS, 'employees-excel')}><Download size={14} /> {t('exportExcel')}</Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => exportToPrint(employees, EMPLOYEE_EXPORT_COLUMNS, 'Employee Directory')}><Download size={14} /> {t('exportPdf')}</Button>
                   </div>
                 </div>
               </div>
@@ -930,7 +934,7 @@ export default function PeoplePage() {
       </Modal>
 
       {/* Upload Document Modal */}
-      <Modal open={showDocModal} onClose={() => setShowDocModal(false)} title={t('uploadDocument')}>
+      <Modal open={showDocModal} onClose={() => { setShowDocModal(false); setDocFileName(null) }} title={t('uploadDocument')}>
         <div className="space-y-4">
           <Select label={t('tableEmployee')} value={docForm.employee_id} onChange={(e) => setDocForm({ ...docForm, employee_id: e.target.value })} options={employees.slice(0, 30).map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
           <Select label={t('docType')} value={docForm.document_type} onChange={(e) => setDocForm({ ...docForm, document_type: e.target.value })} options={[
@@ -940,12 +944,35 @@ export default function PeoplePage() {
           ]} />
           <Input label={t('docName')} placeholder={t('docNamePlaceholder')} value={docForm.name} onChange={(e) => setDocForm({ ...docForm, name: e.target.value })} />
           <Input label={t('expiryDate')} type="date" value={docForm.expiry_date} onChange={(e) => setDocForm({ ...docForm, expiry_date: e.target.value })} />
-          <div className="border-2 border-dashed border-divider rounded-lg p-4 text-center bg-canvas">
-            <Upload size={20} className="mx-auto text-t3 mb-1" />
-            <p className="text-xs text-t3">{t('dragDropFile')}</p>
+          <div
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${docFileName ? 'border-tempo-400 bg-tempo-50/30' : 'border-divider bg-canvas hover:border-tempo-400 hover:bg-tempo-50/30'}`}
+            onClick={() => document.getElementById('doc-file-input')?.click()}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const file = e.dataTransfer.files[0]
+              if (file) setDocFileName(file.name)
+            }}
+          >
+            <Upload size={20} className={`mx-auto mb-1 ${docFileName ? 'text-tempo-600' : 'text-t3'}`} />
+            {docFileName ? (
+              <p className="text-xs text-tempo-600 font-medium">{docFileName}</p>
+            ) : (
+              <p className="text-xs text-t3">{t('dragDropFile')}</p>
+            )}
           </div>
+          <input
+            id="doc-file-input"
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) setDocFileName(file.name)
+            }}
+          />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowDocModal(false)}>{tc('cancel')}</Button>
+            <Button variant="secondary" onClick={() => { setShowDocModal(false); setDocFileName(null) }}>{tc('cancel')}</Button>
             <Button onClick={submitDocument}>{t('uploadDocument')}</Button>
           </div>
         </div>
@@ -982,20 +1009,34 @@ export default function PeoplePage() {
       </Modal>
 
       {/* Bulk Status Change Modal */}
-      <Modal open={showBulkStatusModal} onClose={() => setShowBulkStatusModal(false)} title={t('bulkStatusChange')}>
+      <Modal open={showBulkStatusModal} onClose={() => { setShowBulkStatusModal(false); setBulkStatusDept(''); setBulkStatusRole('') }} title={t('bulkStatusChange')}>
         <div className="space-y-4">
-          <Select label={t('selectDepartment')} value="" onChange={() => {}} options={departments.map(d => ({ value: d.id, label: d.name }))} />
-          <Select label={t('newRole')} value="" onChange={() => {}} options={[
+          <Select label={t('selectDepartment')} value={bulkStatusDept} onChange={(e) => setBulkStatusDept(e.target.value)} options={departments.map(d => ({ value: d.id, label: d.name }))} />
+          <Select label={t('newRole')} value={bulkStatusRole} onChange={(e) => setBulkStatusRole(e.target.value)} options={[
             { value: 'employee', label: t('roleEmployee') },
             { value: 'manager', label: t('roleManager') },
             { value: 'admin', label: t('roleAdmin') },
           ]} />
+          {bulkStatusDept && (
+            <div className="bg-canvas rounded-lg p-3">
+              <p className="text-xs text-t3">
+                {employees.filter(e => e.department_id === bulkStatusDept).length} employee(s) in {getDepartmentName(bulkStatusDept)} will be updated{bulkStatusRole ? ` to role "${bulkStatusRole}"` : ''}.
+              </p>
+            </div>
+          )}
           <div className="bg-canvas rounded-lg p-3">
             <p className="text-xs text-t3">{t('bulkStatusNote')}</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowBulkStatusModal(false)}>{tc('cancel')}</Button>
-            <Button>{t('applyChanges')}</Button>
+            <Button variant="secondary" onClick={() => { setShowBulkStatusModal(false); setBulkStatusDept(''); setBulkStatusRole('') }}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!bulkStatusDept || !bulkStatusRole) return
+              const toUpdate = employees.filter(e => e.department_id === bulkStatusDept)
+              toUpdate.forEach(emp => updateEmployee(emp.id, { role: bulkStatusRole }))
+              setShowBulkStatusModal(false)
+              setBulkStatusDept('')
+              setBulkStatusRole('')
+            }}>{t('applyChanges')}</Button>
           </div>
         </div>
       </Modal>

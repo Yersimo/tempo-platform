@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard, Star, TrendingUp, TrendingDown, Minus, Building2, Brain, PieChart } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
 import { forecastCashFlow, assessVendorConcentration, detectDuplicateSubscriptions, analyzeSavingsOpportunities } from '@/lib/ai-engine'
 import { demoVendorContracts, demoSpendByCategory } from '@/lib/demo-data'
@@ -127,7 +128,17 @@ export default function InvoicesPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{t('allInvoices')}</CardTitle>
-            <Button variant="secondary" size="sm">{tc('export')}</Button>
+            <Button variant="secondary" size="sm" onClick={() => exportToCSV(
+              invoices,
+              [
+                { header: 'Vendor', accessor: (i: any) => i.vendor_name || '' },
+                { header: 'Amount', accessor: (i: any) => i.amount || 0 },
+                { header: 'Status', accessor: (i: any) => i.status || '' },
+                { header: 'Due Date', accessor: (i: any) => i.due_date || '' },
+                { header: 'Invoice #', accessor: (i: any) => i.invoice_number || '' },
+              ],
+              'invoices-export'
+            )}>{tc('export')}</Button>
           </div>
         </CardHeader>
         <div className="overflow-x-auto">
@@ -208,7 +219,16 @@ export default function InvoicesPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('vendorContracts')}</CardTitle>
-              <Button variant="secondary" size="sm">{tc('export')}</Button>
+              <Button variant="secondary" size="sm" onClick={() => exportToCSV(
+                vendors,
+                [
+                  { header: 'Name', accessor: (v: any) => v.name || '' },
+                  { header: 'Category', accessor: (v: any) => v.category || '' },
+                  { header: 'Status', accessor: (v: any) => v.status || '' },
+                  { header: 'Contract Value', accessor: (v: any) => v.contract_value || 0 },
+                ],
+                'vendors-export'
+              )}>{tc('export')}</Button>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">

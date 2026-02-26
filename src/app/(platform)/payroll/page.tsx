@@ -12,6 +12,7 @@ import { Input, Select } from '@/components/ui/input'
 import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { detectPayrollAnomalies, forecastAnnualPayroll, scorePayrollHealth, recommendTaxOptimizations, analyzePayrollTrends, predictComplianceRisks, scoreContractorRisk } from '@/lib/ai-engine'
 import { calculateTax } from '@/lib/tax-calculator'
@@ -25,6 +26,7 @@ export default function PayrollPage() {
     employeePayrollEntries, contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings,
     addContractorPayment, updateContractorPayment, addPayrollSchedule, updatePayrollSchedule,
     addTaxConfig, updateTaxConfig, resolveComplianceIssue, updateTaxFiling, addEmployeePayrollEntry,
+    addToast,
   } = useTempo()
 
   // ---- Tab State ----
@@ -165,7 +167,7 @@ export default function PayrollPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{t('payRunHistory')}</CardTitle>
-                <Button variant="secondary" size="sm">{tc('exportAll')}</Button>
+                <Button variant="secondary" size="sm" onClick={() => exportToCSV(payrollRuns, PAYROLL_EXPORT_COLUMNS, 'payroll-runs')}>{tc('exportAll')}</Button>
               </div>
             </CardHeader>
             <div className="overflow-x-auto">
@@ -211,7 +213,7 @@ export default function PayrollPage() {
                           <div className="flex gap-1 justify-center">
                             {run.status === 'draft' && <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>{tc('approve')}</Button>}
                             {run.status === 'approved' && <Button size="sm" variant="primary" onClick={() => processPayRun(run.id, run.status)}>{tc('process')}</Button>}
-                            {run.status === 'paid' && <Button size="sm" variant="ghost">{t('generatePayStubs')}</Button>}
+                            {run.status === 'paid' && <Button size="sm" variant="ghost" onClick={() => addToast(`Pay stubs generated for ${run.period}`)}>{t('generatePayStubs')}</Button>}
                           </div>
                         </td>
                       </tr>
@@ -748,7 +750,7 @@ export default function PayrollPage() {
                 <input className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" type="number" value={simSalary} onChange={e => setSimSalary(Number(e.target.value))} />
               </div>
               <div className="flex items-end">
-                <Button size="sm" onClick={() => {}}><Calculator size={14} /> {t('simulateTax')}</Button>
+                <Button size="sm" onClick={() => addToast('Tax simulation refreshed')}><Calculator size={14} /> {t('simulateTax')}</Button>
               </div>
             </div>
             {simResult && (

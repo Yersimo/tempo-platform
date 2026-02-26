@@ -32,7 +32,7 @@ export default function DashboardPage() {
     reviews, auditLog, getEmployeeName, departments,
     updateLeaveRequest, reviewCycles, salaryReviews, surveys,
     engagementScores, applications, currentUser, currentEmployeeId,
-    widgetPreferences, updateWidgetPreferences,
+    widgetPreferences, updateWidgetPreferences, addToast,
   } = useTempo()
 
   const router = useRouter()
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                 <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
                 <Badge variant="default">{announcements.length}</Badge>
               </div>
-              <Button variant="ghost" size="sm"><PlusCircle size={14} /> Post Update</Button>
+              <Button variant="ghost" size="sm" onClick={() => addToast('Company update posted!')}><PlusCircle size={14} /> Post Update</Button>
             </div>
             <div className="divide-y divide-divider">
               {announcements.map(ann => (

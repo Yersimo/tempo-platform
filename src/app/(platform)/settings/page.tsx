@@ -94,6 +94,7 @@ export default function SettingsPage() {
   const [orgForm, setOrgForm] = useState({ name: org.name, industry: org.industry, size: org.size, country: org.country })
   const [deptForm, setDeptForm] = useState({ name: '', parent_id: null as string | null, head_id: '' })
   const [auditSearch, setAuditSearch] = useState('')
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, string>>({})
 
   // Integration state
   const [connectedIntegrations, setConnectedIntegrations] = useState<ConnectedIntegration[]>([])
@@ -473,11 +474,21 @@ export default function SettingsPage() {
               <div><h3 className="text-sm font-semibold text-t1">{t('notifications')}</h3><p className="text-xs text-t3">{t('notifPreferences')}</p></div>
             </div>
             <div className="space-y-2">
-              {[t('notifLeaveApprovals'), t('notifExpenseSubmissions'), t('notifPerformanceReviews'), t('notifPayrollProcessing'), t('notifItRequests')].map(item => (
-                <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2">
-                  <span className="text-xs text-t1">{item}</span><Badge variant="info">{t('emailPush')}</Badge>
-                </div>
-              ))}
+              {[t('notifLeaveApprovals'), t('notifExpenseSubmissions'), t('notifPerformanceReviews'), t('notifPayrollProcessing'), t('notifItRequests')].map(item => {
+                const prefs = ['Email & Push', 'Email Only', 'Push Only', 'Off']
+                const currentPref = notifPrefs[item] || 'Email & Push'
+                return (
+                  <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2 cursor-pointer hover:bg-canvas/80 transition-colors"
+                    onClick={() => {
+                      const currentIndex = prefs.indexOf(currentPref)
+                      const nextPref = prefs[(currentIndex + 1) % prefs.length]
+                      setNotifPrefs(prev => ({ ...prev, [item]: nextPref }))
+                    }}>
+                    <span className="text-xs text-t1">{item}</span>
+                    <Badge variant={currentPref === 'Off' ? 'default' : 'info'}>{currentPref}</Badge>
+                  </div>
+                )
+              })}
             </div>
           </Card>
 
@@ -485,6 +496,9 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600"><Palette size={20} /></div>
               <div><h3 className="text-sm font-semibold text-t1">{t('branding')}</h3><p className="text-xs text-t3">{t('customizeAppearance')}</p></div>
+            </div>
+            <div className="flex justify-end mb-2">
+              <Button variant="outline" size="sm" onClick={() => addToast('Branding editor will open in settings')}>Edit</Button>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center"><span className="text-xs text-t2">{t('primaryColor')}</span><div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-tempo-600" /><span className="text-xs text-t1 font-mono">#ea580c</span></div></div>
@@ -963,7 +977,7 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               {['Role-Based Access Control (RBAC)', 'Audit Logging', 'Session Management', 'IP Allowlisting'].map(item => (
-                <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2">
+                <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2 cursor-pointer hover:bg-canvas/80 transition-colors" onClick={() => addToast('Security configuration coming soon')}>
                   <span className="text-xs text-t1">{item}</span><Badge variant="success">Enabled</Badge>
                 </div>
               ))}

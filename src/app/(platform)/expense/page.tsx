@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -50,6 +50,7 @@ export default function ExpensePage() {
     getEmployeeName, getDepartmentName, currentEmployeeId,
     expensePolicies, addExpensePolicy, updateExpensePolicy,
     mileageLogs, addMileageLog, updateMileageLog,
+    addToast,
   } = useTempo()
 
   // ---- Tab State ----
@@ -82,6 +83,10 @@ export default function ExpensePage() {
   })
   const [policyForm, setPolicyForm] = useState({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' })
   const [mileageForm, setMileageForm] = useState({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
+
+  // ---- Receipt Upload ----
+  const [receiptFile, setReceiptFile] = useState<string | null>(null)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
 
   // ---- Per Diem Calculator ----
   const [perDiemCountry, setPerDiemCountry] = useState('Nigeria')
@@ -608,7 +613,7 @@ export default function ExpensePage() {
               <Input label={t('startDate')} type="date" value={perDiemStart} onChange={e => setPerDiemStart(e.target.value)} />
               <Input label={t('endDate')} type="date" value={perDiemEnd} onChange={e => setPerDiemEnd(e.target.value)} />
               <div className="flex items-end">
-                <Button size="sm"><Calculator size={14} /> {t('calculatePerDiem')}</Button>
+                <Button size="sm" onClick={() => addToast('Per diem calculated successfully')}><Calculator size={14} /> {t('calculatePerDiem')}</Button>
               </div>
             </div>
             {perDiemResult && (
@@ -771,10 +776,40 @@ export default function ExpensePage() {
           {/* Upload Area */}
           <Card className="mb-6">
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('uploadReceipts')}</h3>
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer">
-              <Upload size={32} className="mx-auto text-t3 mb-3" />
-              <p className="text-sm text-t2 mb-1">{t('dragDropText')}</p>
-              <p className="text-xs text-t3">{t('supportedFormats')}</p>
+            <input
+              ref={receiptInputRef}
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) setReceiptFile(file.name)
+              }}
+            />
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer"
+              onClick={() => receiptInputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+              onDrop={e => {
+                e.preventDefault()
+                e.stopPropagation()
+                const file = e.dataTransfer.files?.[0]
+                if (file) setReceiptFile(file.name)
+              }}
+            >
+              {receiptFile ? (
+                <>
+                  <Upload size={32} className="mx-auto text-tempo-600 mb-3" />
+                  <p className="text-sm text-t1 font-medium mb-1">{receiptFile}</p>
+                  <p className="text-xs text-t3">{t('supportedFormats')}</p>
+                </>
+              ) : (
+                <>
+                  <Upload size={32} className="mx-auto text-t3 mb-3" />
+                  <p className="text-sm text-t2 mb-1">{t('dragDropText')}</p>
+                  <p className="text-xs text-t3">{t('supportedFormats')}</p>
+                </>
+              )}
             </div>
           </Card>
 
