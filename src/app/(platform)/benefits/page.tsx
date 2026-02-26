@@ -32,12 +32,7 @@ const iconMap: Record<string, React.ReactNode> = {
   dental: <Heart size={20} />,
 }
 
-const coverageLevelLabels: Record<string, string> = {
-  employee_only: 'Employee Only',
-  employee_spouse: 'Employee + Spouse',
-  employee_child: 'Employee + Child',
-  family: 'Family',
-}
+// Coverage level labels are defined inside the component to use translations
 
 const coverageLevelMultiplier: Record<string, number> = {
   employee_only: 1,
@@ -65,6 +60,13 @@ export default function BenefitsPage() {
     lifeEvents, addLifeEvent, updateLifeEvent,
     getEmployeeName, getDepartmentName,
   } = useTempo()
+
+  const coverageLevelLabels: Record<string, string> = {
+    employee_only: t('coverageEmployeeOnly'),
+    employee_spouse: t('coverageEmployeeSpouse'),
+    employee_child: t('coverageEmployeeChild'),
+    family: t('coverageFamily'),
+  }
 
   // ---- Tab State ----
   const [activeTab, setActiveTab] = useState('plans')
@@ -336,7 +338,7 @@ export default function BenefitsPage() {
                           >
                             <ArrowRightLeft size={14} />
                           </button>
-                          <button onClick={() => openEditPlan(plan.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors">
+                          <button onClick={() => openEditPlan(plan.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors" title={t('editPlanModal')} aria-label={t('editPlanModal')}>
                             <Pencil size={14} />
                           </button>
                         </div>

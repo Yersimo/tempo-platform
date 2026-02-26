@@ -42,9 +42,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                .then(function(reg) { console.log('SW registered:', reg.scope); })
-                .catch(function(err) { console.log('SW registration failed:', err); });
+              navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
             });
           }
         `}} />
