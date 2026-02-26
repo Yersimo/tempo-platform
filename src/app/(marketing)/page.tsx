@@ -312,7 +312,10 @@ export default function LandingPage() {
             <a href="#security" onClick={(e) => handleAnchorClick(e, 'security')}>Security</a>
           </div>
         </div>
-        <a href="#demo" className="l-nav-cta" onClick={(e) => handleAnchorClick(e, 'demo')}>Request a Demo</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="/login" style={{ fontSize: 14, fontWeight: 500, color: 'var(--lt2)', textDecoration: 'none', transition: '.15s' }}>Sign In</a>
+          <a href="#demo" className="l-nav-cta" onClick={(e) => handleAnchorClick(e, 'demo')}>Request a Demo</a>
+        </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
