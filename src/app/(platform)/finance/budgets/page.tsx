@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
+import { TempoBarChart, ChartLegend, CHART_COLORS } from '@/components/ui/charts'
 import { PieChart, Plus, DollarSign, Pencil, BarChart3, TrendingUp, TrendingDown, Minus, Users, Building2, ArrowRightLeft, Lightbulb, Calendar, Target, Layers } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIAlertBanner, AIScoreBadge, AIInsightCard } from '@/components/ai'
@@ -200,7 +201,7 @@ export default function BudgetsPage() {
 
       {/* ── Section 1: Forecast vs Actual ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-2 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-2 flex items-center gap-2">
           <BarChart3 size={20} /> {t('forecastVsActual')}
         </h2>
         <p className="text-sm text-t3 mb-4">{t('forecastDesc')}</p>
@@ -267,7 +268,7 @@ export default function BudgetsPage() {
 
       {/* ── Section 2: Financial Planning / Scenario Modeling ── */}
       <div className="mt-8 mb-6">
-        <h2 className="text-lg font-semibold text-t1 mb-2 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-2 flex items-center gap-2">
           <Lightbulb size={20} /> {t('financialPlanning')}
         </h2>
         <p className="text-sm text-t3 mb-4">{t('whatIfAnalysis')}</p>
@@ -296,8 +297,8 @@ export default function BudgetsPage() {
           {/* Scenario 2: New Vendor Contract */}
           <Card>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Building2 size={18} className="text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800/30 flex items-center justify-center">
+                <Building2 size={18} className="text-gray-500" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-t1">{t('newVendorContract')}</h3>
@@ -305,9 +306,9 @@ export default function BudgetsPage() {
               </div>
             </div>
             <div className="p-3 bg-canvas rounded-lg mb-3">
-              <p className="text-sm font-medium text-blue-600">{t('newVendor')}</p>
+              <p className="text-sm font-medium text-gray-600">{t('newVendor')}</p>
             </div>
-            <div className="border-l-2 border-blue-400 pl-3">
+            <div className="border-l-2 border-gray-300 pl-3">
               <p className="text-[0.6rem] uppercase text-t3 font-medium">{t('scenarioImpact')}</p>
               <p className="text-sm text-t1 mt-1">{t('newVendorImpact')}</p>
             </div>
@@ -316,8 +317,8 @@ export default function BudgetsPage() {
           {/* Scenario 3: Budget Reallocation */}
           <Card>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <ArrowRightLeft size={18} className="text-green-600" />
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800/30 flex items-center justify-center">
+                <ArrowRightLeft size={18} className="text-gray-500" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-t1">{t('budgetReallocation')}</h3>
@@ -325,9 +326,9 @@ export default function BudgetsPage() {
               </div>
             </div>
             <div className="p-3 bg-canvas rounded-lg mb-3">
-              <p className="text-sm font-medium text-green-600">{t('reallocate')}</p>
+              <p className="text-sm font-medium text-gray-600">{t('reallocate')}</p>
             </div>
-            <div className="border-l-2 border-green-400 pl-3">
+            <div className="border-l-2 border-gray-300 pl-3">
               <p className="text-[0.6rem] uppercase text-t3 font-medium">{t('scenarioImpact')}</p>
               <p className="text-sm text-t1 mt-1">{t('reallocateImpact')}</p>
             </div>
@@ -338,7 +339,7 @@ export default function BudgetsPage() {
       {/* ── Section 3: Rolling 12-Month Forecast ── */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-t1 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-t1 flex items-center gap-2">
             <Calendar size={20} /> {t('rollingForecast')}
           </h2>
           <div className="flex items-center gap-2">
@@ -376,36 +377,25 @@ export default function BudgetsPage() {
                   </Badge>
                 </div>
 
-                {/* Bar chart visualization */}
-                <div className="mb-4">
-                  <div className="flex items-end gap-1 h-24">
-                    {dept.months.map((m, idx) => {
-                      const maxVal = Math.max(...dept.months.map(x => Math.max(x.budget, x.forecast, x.actual ?? 0)))
-                      const budgetH = maxVal > 0 ? (m.budget / maxVal) * 80 : 0
-                      const forecastH = maxVal > 0 ? (m.forecast / maxVal) * 80 : 0
-                      const actualH = m.actual !== null && maxVal > 0 ? ((m.actual ?? 0) / maxVal) * 80 : 0
-                      return (
-                        <div key={idx} className="flex-1 flex gap-[1px] items-end" title={m.month}>
-                          <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-t" style={{ height: `${budgetH}px` }} />
-                          <div className="flex-1 bg-tempo-500 rounded-t" style={{ height: `${forecastH}px` }} />
-                          {m.actual !== null && <div className="flex-1 bg-green-500 rounded-t" style={{ height: `${actualH}px` }} />}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="flex justify-between text-[0.5rem] text-t3 mt-1 px-0.5">
-                    {dept.months.filter((_, i) => i % 3 === 0).map(m => (
-                      <span key={m.month}>{m.month}</span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center gap-4 mb-3 justify-center">
-                  <span className="flex items-center gap-1 text-[0.6rem] text-t3"><span className="w-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-sm" /> {t('budgetLine')}</span>
-                  <span className="flex items-center gap-1 text-[0.6rem] text-t3"><span className="w-2 h-2 bg-tempo-500 rounded-sm" /> {t('forecastLine')}</span>
-                  <span className="flex items-center gap-1 text-[0.6rem] text-t3"><span className="w-2 h-2 bg-green-500 rounded-sm" /> {t('actualLine')}</span>
-                </div>
+                {/* Grouped bar chart */}
+                <TempoBarChart
+                  data={dept.months.map(m => ({
+                    name: m.month,
+                    budget: m.budget,
+                    forecast: m.forecast,
+                    ...(m.actual !== null ? { actual: m.actual } : {}),
+                  }))}
+                  bars={[
+                    { dataKey: 'budget', name: t('budgetLine'), color: CHART_COLORS.slate },
+                    { dataKey: 'forecast', name: t('forecastLine'), color: CHART_COLORS.primary },
+                    { dataKey: 'actual', name: t('actualLine'), color: CHART_COLORS.emerald },
+                  ]}
+                  xKey="name"
+                  height={140}
+                  showLegend
+                  formatter={(v) => `$${(v / 1000).toFixed(0)}K`}
+                  className="mb-3"
+                />
 
                 {/* Summary */}
                 <div className="grid grid-cols-3 gap-3 py-2 px-3 bg-canvas rounded-lg">
@@ -430,7 +420,7 @@ export default function BudgetsPage() {
 
       {/* ── Section 4: Multi-Year Strategic Planning ── */}
       <div className="mt-8 mb-6">
-        <h2 className="text-lg font-semibold text-t1 mb-2 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-2 flex items-center gap-2">
           <Layers size={20} /> {t('multiYearPlanning')}
         </h2>
         <p className="text-sm text-t3 mb-4">{t('multiYearDesc')}</p>
@@ -501,7 +491,7 @@ export default function BudgetsPage() {
                   <p className="text-[0.6rem] text-t3 uppercase mb-1">{t('capexVsOpex')}</p>
                   <div className="w-full h-3 bg-canvas rounded-full overflow-hidden flex">
                     <div className="h-full bg-tempo-500 transition-all" style={{ width: `${Math.round((adjOpex / (adjOpex + adjCapex)) * 100)}%` }} />
-                    <div className="h-full bg-amber-500 transition-all" style={{ width: `${Math.round((adjCapex / (adjOpex + adjCapex)) * 100)}%` }} />
+                    <div className="h-full bg-gray-400 transition-all" style={{ width: `${Math.round((adjCapex / (adjOpex + adjCapex)) * 100)}%` }} />
                   </div>
                   <div className="flex justify-between text-[0.55rem] text-t3 mt-0.5">
                     <span>{t('opex')} {Math.round((adjOpex / (adjOpex + adjCapex)) * 100)}%</span>

@@ -587,7 +587,7 @@ export default function OnboardingPage() {
                   <Rocket size={24} />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-t1 mb-1">{t('welcomeMessage')}</h2>
+                  <h2 className="text-sm font-semibold text-t1 mb-1">{t('welcomeMessage')}</h2>
                   <p className="text-sm text-t2 leading-relaxed">{welcomeContent.welcome_message}</p>
                 </div>
               </div>
@@ -1032,7 +1032,7 @@ export default function OnboardingPage() {
                 {welcomeContent.communication_templates.map(tpl => (
                   <div key={tpl.id} className="flex items-center justify-between p-3 bg-canvas border border-border rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tpl.type === 'email' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-500`}>
                         {tpl.type === 'email' ? <Mail size={14} /> : <FileText size={14} />}
                       </div>
                       <div>

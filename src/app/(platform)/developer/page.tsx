@@ -371,7 +371,7 @@ export default function DeveloperPortalPage() {
               <tbody className="divide-y divide-border">
                 {apiKeysLoading && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
                       <RefreshCw size={16} className="inline animate-spin mr-2" />
                       Loading API keys...
                     </td>
@@ -379,7 +379,7 @@ export default function DeveloperPortalPage() {
                 )}
                 {!apiKeysLoading && apiKeys.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
                       No API keys yet. Create one to get started.
                     </td>
                   </tr>
@@ -387,7 +387,7 @@ export default function DeveloperPortalPage() {
                 {!apiKeysLoading && apiKeys.map(key => (
                   <tr key={key.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
-                      <p className="text-sm font-medium text-t1">{key.name}</p>
+                      <p className="text-xs font-medium text-t1">{key.name}</p>
                       <p className="text-xs text-t3">{key.tier} tier</p>
                     </td>
                     <td className="px-4 py-3">
@@ -418,7 +418,7 @@ export default function DeveloperPortalPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-sm font-medium text-t1">{key.totalRequests.toLocaleString()}</span>
+                      <span className="text-xs font-medium text-t1">{key.totalRequests.toLocaleString()}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs text-t3">
@@ -468,7 +468,7 @@ export default function DeveloperPortalPage() {
               <tbody className="divide-y divide-border">
                 {webhooksLoading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
                       <RefreshCw size={16} className="inline animate-spin mr-2" />
                       Loading webhooks...
                     </td>
@@ -476,7 +476,7 @@ export default function DeveloperPortalPage() {
                 )}
                 {!webhooksLoading && webhooks.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
                       No webhook endpoints registered yet.
                     </td>
                   </tr>
@@ -558,7 +558,7 @@ export default function DeveloperPortalPage() {
               <tbody className="divide-y divide-border">
                 {oauthLoading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
                       <RefreshCw size={16} className="inline animate-spin mr-2" />
                       Loading OAuth apps...
                     </td>
@@ -566,7 +566,7 @@ export default function DeveloperPortalPage() {
                 )}
                 {!oauthLoading && oauthApps.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
                       No OAuth applications registered yet.
                     </td>
                   </tr>
@@ -574,7 +574,7 @@ export default function DeveloperPortalPage() {
                 {!oauthLoading && oauthApps.map(app => (
                   <tr key={app.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
-                      <p className="text-sm font-medium text-t1">{app.appName}</p>
+                      <p className="text-xs font-medium text-t1">{app.appName}</p>
                       <p className="text-xs text-t3">Created {new Date(app.createdAt).toLocaleDateString()}</p>
                     </td>
                     <td className="px-4 py-3">

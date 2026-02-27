@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { MiniDonutChart } from '@/components/ui/mini-chart'
+import { TempoDonutChart, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -196,10 +196,10 @@ export default function CompensationPage() {
                   const crNum = parseFloat(cr as string)
                   return (
                     <tr key={band.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{band.role_title}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{band.role_title}</td>
                       <td className="px-4 py-3"><Badge variant="default">{band.level}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${band.mid_salary.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${(band.p50 || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${band.mid_salary.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${(band.p50 || 0).toLocaleString()}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`text-sm font-semibold ${crNum >= 1 ? 'text-success' : crNum >= 0.95 ? 'text-warning' : 'text-error'}`}>
                           {cr}
@@ -335,12 +335,12 @@ export default function CompensationPage() {
                 <tbody className="divide-y divide-border">
                   {compBands.map(band => (
                     <tr key={band.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{band.role_title}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{band.role_title}</td>
                       <td className="px-4 py-3"><Badge variant="default">{band.level}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-t2">{band.country || t('global')}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${band.min_salary.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-t1 text-right">${band.mid_salary.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${band.max_salary.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{band.country || t('global')}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${band.min_salary.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-t1 text-right">${band.mid_salary.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${band.max_salary.toLocaleString()}</td>
                       <td className="px-4 py-3 text-center">
                         <Button size="sm" variant="ghost" onClick={() => deleteCompBand(band.id)}>{tc('remove')}</Button>
                       </td>
@@ -423,8 +423,8 @@ export default function CompensationPage() {
                     {[
                       { label: t('annualBaseSalary'), value: totalRewards.base, icon: <Banknote size={16} />, color: 'text-t1' },
                       { label: t('annualBonus'), value: totalRewards.bonus, icon: <Award size={16} />, color: 'text-tempo-600' },
-                      { label: t('equityValue'), value: totalRewards.equity, icon: <Layers size={16} />, color: 'text-blue-600' },
-                      { label: t('benefitsValue'), value: totalRewards.benefits, icon: <Target size={16} />, color: 'text-emerald-600' },
+                      { label: t('equityValue'), value: totalRewards.equity, icon: <Layers size={16} />, color: 'text-gray-500' },
+                      { label: t('benefitsValue'), value: totalRewards.benefits, icon: <Target size={16} />, color: 'text-gray-500' },
                     ].map(item => (
                       <div key={item.label} className="flex items-center justify-between py-2 border-b border-divider last:border-0">
                         <div className="flex items-center gap-2 text-sm text-t2">
@@ -445,18 +445,18 @@ export default function CompensationPage() {
               <div>
                 <Card>
                   <h4 className="text-sm font-semibold text-t1 mb-4">{t('rewardsBreakdown')}</h4>
-                  <MiniDonutChart data={[
-                    { label: t('annualBaseSalary'), value: totalRewards.base, color: 'bg-slate-500' },
-                    { label: t('annualBonus'), value: totalRewards.bonus, color: 'bg-tempo-500' },
-                    { label: t('equityValue'), value: totalRewards.equity, color: 'bg-blue-500' },
-                    { label: t('benefitsValue'), value: totalRewards.benefits, color: 'bg-emerald-500' },
-                  ]} />
+                  <TempoDonutChart data={[
+                    { name: t('annualBaseSalary'), value: totalRewards.base, color: CHART_SERIES[0] },
+                    { name: t('annualBonus'), value: totalRewards.bonus, color: CHART_SERIES[1] },
+                    { name: t('equityValue'), value: totalRewards.equity, color: CHART_SERIES[2] },
+                    { name: t('benefitsValue'), value: totalRewards.benefits, color: CHART_SERIES[3] },
+                  ]} height={180} />
                   <div className="mt-4 space-y-2">
                     {[
                       { label: t('annualBaseSalary'), value: totalRewards.base, pct: Math.round((totalRewards.base / totalRewards.total) * 100), color: 'bg-slate-500' },
                       { label: t('annualBonus'), value: totalRewards.bonus, pct: Math.round((totalRewards.bonus / totalRewards.total) * 100), color: 'bg-tempo-500' },
-                      { label: t('equityValue'), value: totalRewards.equity, pct: Math.round((totalRewards.equity / totalRewards.total) * 100), color: 'bg-blue-500' },
-                      { label: t('benefitsValue'), value: totalRewards.benefits, pct: Math.round((totalRewards.benefits / totalRewards.total) * 100), color: 'bg-emerald-500' },
+                      { label: t('equityValue'), value: totalRewards.equity, pct: Math.round((totalRewards.equity / totalRewards.total) * 100), color: 'bg-gray-400' },
+                      { label: t('benefitsValue'), value: totalRewards.benefits, pct: Math.round((totalRewards.benefits / totalRewards.total) * 100), color: 'bg-gray-300' },
                     ].map(item => (
                       <div key={item.label} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
@@ -516,7 +516,7 @@ export default function CompensationPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {equityGrants.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noEquityGrants')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noEquityGrants')}</td></tr>
                   ) : equityGrants.map(grant => {
                     const vestPct = grant.shares > 0 ? Math.round((grant.vested_shares / grant.shares) * 100) : 0
                     return (
@@ -535,16 +535,16 @@ export default function CompensationPage() {
                             {grant.grant_type === 'stock_option' ? 'Stock Option' : grant.grant_type === 'phantom' ? 'Phantom' : grant.grant_type}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-medium">{grant.shares.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">{grant.strike_price > 0 ? `$${grant.strike_price.toFixed(2)}` : '-'}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{grant.vesting_schedule}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{grant.shares.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{grant.strike_price > 0 ? `$${grant.strike_price.toFixed(2)}` : '-'}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{grant.vesting_schedule}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <span className="text-sm text-t1">{grant.vested_shares.toLocaleString()}</span>
                             <Progress value={vestPct} size="sm" color="orange" className="w-16" />
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${grant.current_value.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${grant.current_value.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={grant.status === 'active' ? 'success' : grant.status === 'fully_vested' ? 'info' : 'default'}>
                             {grant.status === 'fully_vested' ? 'Fully Vested' : grant.status}
@@ -625,15 +625,15 @@ export default function CompensationPage() {
                           {cycle.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right font-medium">{cycle.budget_percent}%</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{cycle.budget_percent}%</td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-sm text-t1">{cycle.employees_reviewed}/{cycle.total_employees}</span>
                         <Progress value={cycle.employees_reviewed} max={cycle.total_employees} size="sm" color="orange" className="mt-1" />
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right">{cycle.avg_increase}%</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${cycle.total_budget.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{cycle.start_date}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{cycle.end_date}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">{cycle.avg_increase}%</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${cycle.total_budget.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{cycle.start_date}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{cycle.end_date}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -662,21 +662,21 @@ export default function CompensationPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-canvas rounded-lg p-4">
                   <p className="text-xs text-t3 mb-1">{t('currentTotalCost')}</p>
-                  <p className="text-lg font-semibold text-t1">${(scenario.totalCurrentCost / 1000000).toFixed(2)}M</p>
+                  <p className="text-sm font-semibold text-t1">${(scenario.totalCurrentCost / 1000000).toFixed(2)}M</p>
                 </div>
                 <div className="bg-canvas rounded-lg p-4">
                   <p className="text-xs text-t3 mb-1">{t('projectedTotalCost')}</p>
-                  <p className="text-lg font-semibold text-tempo-600">${(scenario.totalNewCost / 1000000).toFixed(2)}M</p>
+                  <p className="text-sm font-semibold text-tempo-600">${(scenario.totalNewCost / 1000000).toFixed(2)}M</p>
                 </div>
                 <div className="bg-canvas rounded-lg p-4">
                   <p className="text-xs text-t3 mb-1">{t('budgetDelta')}</p>
-                  <p className={`text-lg font-semibold ${scenario.delta > 0 ? 'text-error' : 'text-success'}`}>
+                  <p className={`text-sm font-semibold ${scenario.delta > 0 ? 'text-error' : 'text-success'}`}>
                     +${(scenario.delta / 1000).toFixed(0)}K
                   </p>
                 </div>
                 <div className="bg-canvas rounded-lg p-4">
                   <p className="text-xs text-t3 mb-1">{t('avgNewSalary')}</p>
-                  <p className="text-lg font-semibold text-t1">${scenario.avgNewSalary.toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-t1">${scenario.avgNewSalary.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -702,10 +702,10 @@ export default function CompensationPage() {
                     const sharePct = scenario.totalCurrentCost > 0 ? Math.round((dept.cost / scenario.totalCurrentCost) * 100) : 0
                     return (
                       <tr key={dept.id} className="hover:bg-canvas/50">
-                        <td className="px-6 py-3 text-sm font-medium text-t1">{dept.name}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">{dept.headcount}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-medium">${(dept.cost / 1000).toFixed(0)}K</td>
-                        <td className="px-4 py-3 text-sm text-right">
+                        <td className="px-6 py-3 text-xs font-medium text-t1">{dept.name}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{dept.headcount}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-medium">${(dept.cost / 1000).toFixed(0)}K</td>
+                        <td className="px-4 py-3 text-xs text-right">
                           <span className="text-tempo-600 font-semibold">+${(budgetAlloc / 1000).toFixed(0)}K</span>
                         </td>
                         <td className="px-4 py-3">
@@ -801,7 +801,7 @@ export default function CompensationPage() {
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-t3 w-20">{t('marketP50Label')}</span>
                             <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-300 rounded-full" style={{ width: `${(bm.p50 / maxVal) * 100}%` }} />
+                              <div className="h-full bg-gray-300 rounded-full" style={{ width: `${(bm.p50 / maxVal) * 100}%` }} />
                             </div>
                             <span className="text-xs text-t2 w-16 text-right">${(bm.p50 / 1000).toFixed(0)}K</span>
                           </div>
@@ -815,14 +815,14 @@ export default function CompensationPage() {
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-t3 w-20">{t('marketP75Label')}</span>
                             <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-green-300 rounded-full" style={{ width: `${(bm.p75 / maxVal) * 100}%` }} />
+                              <div className="h-full bg-gray-400 rounded-full" style={{ width: `${(bm.p75 / maxVal) * 100}%` }} />
                             </div>
                             <span className="text-xs text-t2 w-16 text-right">${(bm.p75 / 1000).toFixed(0)}K</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-t3 w-20">{t('marketP90Label')}</span>
                             <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-purple-300 rounded-full" style={{ width: `${(bm.p90 / maxVal) * 100}%` }} />
+                              <div className="h-full bg-gray-500 rounded-full" style={{ width: `${(bm.p90 / maxVal) * 100}%` }} />
                             </div>
                             <span className="text-xs text-t2 w-16 text-right">${(bm.p90 / 1000).toFixed(0)}K</span>
                           </div>
@@ -846,8 +846,8 @@ export default function CompensationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {marketAnalysis.geoAnalysis.map(geo => {
                   const geoStatus = geo.avgCompaRatio >= 1.05 ? 'above' : geo.avgCompaRatio >= 0.95 ? 'at' : 'below'
-                  const geoColor = geoStatus === 'above' ? 'bg-green-50 border-green-200' : geoStatus === 'at' ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'
-                  const geoTextColor = geoStatus === 'above' ? 'text-green-600' : geoStatus === 'at' ? 'text-blue-600' : 'text-amber-600'
+                  const geoColor = 'bg-gray-50 border-gray-200'
+                  const geoTextColor = 'text-gray-500'
                   return (
                     <div key={geo.country} className={`p-4 rounded-lg border ${geoColor}`}>
                       <div className="flex items-center gap-2 mb-2">
@@ -857,11 +857,11 @@ export default function CompensationPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-t3">{t('compaRatio')}</p>
-                          <p className={`text-lg font-bold ${geoTextColor}`}>{geo.avgCompaRatio}x</p>
+                          <p className={`text-sm font-bold ${geoTextColor}`}>{geo.avgCompaRatio}x</p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-t3">{t('roleComparison')}</p>
-                          <p className="text-lg font-bold text-t1">{geo.roleCount}</p>
+                          <p className="text-sm font-bold text-t1">{geo.roleCount}</p>
                         </div>
                       </div>
                       <div className="mt-2">
@@ -900,11 +900,11 @@ export default function CompensationPage() {
                             <p className="text-sm font-medium text-t1">{bm.role}</p>
                             <p className="text-xs text-t3">{bm.level} · {bm.industry}</p>
                           </td>
-                          <td className="px-4 py-3 text-sm text-t2">{bm.country}</td>
-                          <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${bm.internal_avg.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm text-t2 text-right">${bm.p50.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm text-t2 text-right">${bm.p75.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm text-right font-bold">{ra?.compaRatio || '-'}x</td>
+                          <td className="px-4 py-3 text-xs text-t2">{bm.country}</td>
+                          <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${bm.internal_avg.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-xs text-t2 text-right">${bm.p50.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-xs text-t2 text-right">${bm.p75.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-xs text-right font-bold">{ra?.compaRatio || '-'}x</td>
                           <td className="px-4 py-3"><Badge variant={statusBadge as any}>{statusLabel}</Badge></td>
                         </tr>
                       )

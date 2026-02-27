@@ -6,11 +6,11 @@ import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
 import { StatCard } from '@/components/ui/stat-card'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Select } from '@/components/ui/input'
+import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
@@ -138,31 +138,25 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByDept')}</h3>
-            <div className="space-y-3">
-              {deptCounts.map(d => (
-                <div key={d.name}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-t1 font-medium">{d.name}</span>
-                    <span className="text-t2">{d.count} ({headcount > 0 ? Math.round(d.count / headcount * 100) : 0}%)</span>
-                  </div>
-                  <Progress value={headcount > 0 ? (d.count / headcount * 100) : 0} />
-                </div>
-              ))}
-            </div>
+            <TempoBarChart
+              data={deptCounts}
+              bars={[{ dataKey: 'count', name: 'Employees', color: CHART_COLORS.primary }]}
+              xKey="name"
+              layout="horizontal"
+              height={Math.max(200, deptCounts.length * 36)}
+              showGrid={false}
+            />
           </Card>
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByCountry')}</h3>
-            <div className="space-y-3">
-              {countryCounts.map(([country, count]) => (
-                <div key={country}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-t1 font-medium">{country}</span>
-                    <span className="text-t2">{count} ({headcount > 0 ? Math.round((count as number) / headcount * 100) : 0}%)</span>
-                  </div>
-                  <Progress value={headcount > 0 ? ((count as number) / headcount * 100) : 0} />
-                </div>
-              ))}
-            </div>
+            <TempoBarChart
+              data={countryCounts.map(([country, count]) => ({ name: country, count: count as number }))}
+              bars={[{ dataKey: 'count', name: 'Employees', color: CHART_COLORS.blue }]}
+              xKey="name"
+              layout="horizontal"
+              height={Math.max(200, countryCounts.length * 36)}
+              showGrid={false}
+            />
           </Card>
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-3">{t('keyMetrics')}</h3>
@@ -191,20 +185,16 @@ export default function AnalyticsPage() {
           </Card>
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-3">{t('roleDistribution')}</h3>
-            <div className="space-y-3">
-              {['owner', 'admin', 'manager', 'employee'].map(role => {
-                const count = filteredEmployees.filter(e => e.role === role).length
-                return (
-                  <div key={role}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-t1 font-medium capitalize">{role}</span>
-                      <span className="text-t2">{count}</span>
-                    </div>
-                    <Progress value={headcount > 0 ? (count / headcount * 100) : 0} />
-                  </div>
-                )
-              })}
-            </div>
+            <TempoDonutChart
+              data={['owner', 'admin', 'manager', 'employee'].map(role => ({
+                name: role.charAt(0).toUpperCase() + role.slice(1),
+                value: filteredEmployees.filter(e => e.role === role).length,
+              }))}
+              centerLabel={String(headcount)}
+              centerSub="Total"
+              height={200}
+              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate]}
+            />
           </Card>
         </div>
       )}
@@ -213,54 +203,37 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('goalStatusDistribution')}</h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-success font-medium">{t('onTrack')}</span>
-                  <span className="text-t2">{goalsByStatus.on_track}</span>
-                </div>
-                <Progress value={goals.length > 0 ? (goalsByStatus.on_track / goals.length * 100) : 0} color="success" />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-warning font-medium">{t('atRisk')}</span>
-                  <span className="text-t2">{goalsByStatus.at_risk}</span>
-                </div>
-                <Progress value={goals.length > 0 ? (goalsByStatus.at_risk / goals.length * 100) : 0} color="warning" />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-error font-medium">{t('behindLabel')}</span>
-                  <span className="text-t2">{goalsByStatus.behind}</span>
-                </div>
-                <Progress value={goals.length > 0 ? (goalsByStatus.behind / goals.length * 100) : 0} color="error" />
-              </div>
-            </div>
+            <TempoDonutChart
+              data={[
+                { name: t('onTrack'), value: goalsByStatus.on_track, color: STATUS_COLORS.success },
+                { name: t('atRisk'), value: goalsByStatus.at_risk, color: STATUS_COLORS.warning },
+                { name: t('behindLabel'), value: goalsByStatus.behind, color: STATUS_COLORS.error },
+              ]}
+              centerLabel={String(goals.length)}
+              centerSub="Goals"
+              height={220}
+            />
           </Card>
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('avgGoalProgress')}</h3>
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="tempo-stat text-5xl text-tempo-600">{avgProgress}%</div>
-                <p className="text-xs text-t3 mt-2">{t('acrossGoals', { count: goals.length })}</p>
-              </div>
+            <div className="flex items-center justify-center py-4">
+              <TempoGauge value={avgProgress} label="Progress" size={160} />
             </div>
+            <p className="text-xs text-t3 text-center mt-2">{t('acrossGoals', { count: goals.length })}</p>
           </Card>
           <Card className="md:col-span-2">
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('reviewRatingsDistribution')}</h3>
-            <div className="flex items-end gap-4 h-40 justify-center">
-              {[1, 2, 3, 4, 5].map(rating => {
-                const count = reviews.filter(r => r.overall_rating === rating).length
-                const maxCount = Math.max(...[1, 2, 3, 4, 5].map(r => reviews.filter(rv => rv.overall_rating === r).length), 1)
-                return (
-                  <div key={rating} className="flex flex-col items-center gap-2">
-                    <div className="bg-tempo-600 rounded-t w-12" style={{ height: `${(count / maxCount) * 120}px`, minHeight: count > 0 ? '8px' : '0' }} />
-                    <span className="text-xs text-t3">{rating}</span>
-                    <span className="text-xs font-medium text-t1">{count}</span>
-                  </div>
-                )
-              })}
-            </div>
+            <TempoBarChart
+              data={[1, 2, 3, 4, 5].map(rating => ({
+                name: `${rating} Star${rating > 1 ? 's' : ''}`,
+                count: reviews.filter(r => r.overall_rating === rating).length,
+              }))}
+              bars={[{ dataKey: 'count', name: 'Reviews', color: CHART_COLORS.primary }]}
+              xKey="name"
+              height={200}
+              showGrid={false}
+              barSize={40}
+            />
           </Card>
         </div>
       )}
@@ -269,35 +242,31 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('engagementByDept')}</h3>
-            <div className="space-y-3">
-              {engagementScores.map(score => (
-                <div key={score.id}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-t1 font-medium">{getDepartmentName(score.department_id)}</span>
-                    <span className="text-t2">{score.overall_score}/100</span>
-                  </div>
-                  <Progress value={score.overall_score} color={score.overall_score >= 75 ? 'success' : score.overall_score >= 60 ? 'warning' : 'error'} />
-                </div>
-              ))}
-            </div>
+            <TempoBarChart
+              data={engagementScores.map(score => ({
+                name: getDepartmentName(score.department_id),
+                score: score.overall_score,
+              }))}
+              bars={[{ dataKey: 'score', name: 'Engagement Score', color: CHART_COLORS.primary }]}
+              xKey="name"
+              layout="horizontal"
+              height={Math.max(200, engagementScores.length * 40)}
+              formatter={(v) => `${v}/100`}
+            />
           </Card>
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('enpsByDept')}</h3>
-            <div className="space-y-3">
-              {engagementScores.map(score => (
-                <div key={score.id} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
-                  <span className="text-xs text-t1 font-medium">{getDepartmentName(score.department_id)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`tempo-stat text-lg ${score.enps_score >= 40 ? 'text-success' : score.enps_score >= 20 ? 'text-warning' : 'text-error'}`}>
-                      {score.enps_score > 0 ? '+' : ''}{score.enps_score}
-                    </span>
-                    <Badge variant={score.enps_score >= 40 ? 'success' : score.enps_score >= 20 ? 'warning' : 'error'}>
-                      {t('responseLabel', { rate: score.response_rate })}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TempoBarChart
+              data={engagementScores.map(score => ({
+                name: getDepartmentName(score.department_id),
+                enps: score.enps_score,
+              }))}
+              bars={[{ dataKey: 'enps', name: 'eNPS', color: CHART_COLORS.emerald }]}
+              xKey="name"
+              layout="horizontal"
+              height={Math.max(200, engagementScores.length * 40)}
+              formatter={(v) => `${v > 0 ? '+' : ''}${v}`}
+            />
           </Card>
           <Card className="md:col-span-2">
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('topEngagementThemes')}</h3>
@@ -408,17 +377,15 @@ export default function AnalyticsPage() {
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Average Salary by Department</h3>
-              <div className="space-y-3">
-                {compByDept.map(d => (
-                  <div key={d.name}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-t1 font-medium">{d.name}</span>
-                      <span className="text-t2">${(d.avg / 1000).toFixed(0)}K · {d.count} emp</span>
-                    </div>
-                    <Progress value={maxAvg > 0 ? (d.avg / maxAvg) * 100 : 0} />
-                  </div>
-                ))}
-              </div>
+              <TempoBarChart
+                data={compByDept}
+                bars={[{ dataKey: 'avg', name: 'Avg Salary', color: CHART_COLORS.primary }]}
+                xKey="name"
+                layout="horizontal"
+                height={Math.max(200, compByDept.length * 36)}
+                formatter={(v) => `$${(v / 1000).toFixed(0)}K`}
+                showGrid={false}
+              />
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Compensation by Level</h3>
@@ -468,10 +435,10 @@ export default function AnalyticsPage() {
           count: Math.max(1, Math.round(totalApps * (stage === 'applied' ? 1 : stage === 'screening' ? 0.6 : stage === 'interview' ? 0.3 : stage === 'assessment' ? 0.15 : stage === 'offer' ? 0.08 : stage === 'hired' ? 0.05 : 0.35)))
         }))
         const sources = [
-          { name: 'LinkedIn', apps: Math.round(totalApps * 0.35), hires: 2, color: 'bg-blue-500' },
-          { name: 'Referrals', apps: Math.round(totalApps * 0.25), hires: 3, color: 'bg-green-500' },
-          { name: 'Career Site', apps: Math.round(totalApps * 0.2), hires: 1, color: 'bg-purple-500' },
-          { name: 'Indeed', apps: Math.round(totalApps * 0.12), hires: 1, color: 'bg-amber-500' },
+          { name: 'LinkedIn', apps: Math.round(totalApps * 0.35), hires: 2, color: 'bg-gray-500' },
+          { name: 'Referrals', apps: Math.round(totalApps * 0.25), hires: 3, color: 'bg-gray-400' },
+          { name: 'Career Site', apps: Math.round(totalApps * 0.2), hires: 1, color: 'bg-gray-300' },
+          { name: 'Indeed', apps: Math.round(totalApps * 0.12), hires: 1, color: 'bg-gray-200' },
           { name: 'Other', apps: Math.round(totalApps * 0.08), hires: 0, color: 'bg-gray-400' },
         ]
         const maxApps = Math.max(...sources.map(s => s.apps), 1)
@@ -480,34 +447,30 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="md:col-span-2">
               <h3 className="text-sm font-semibold text-t1 mb-4">Pipeline Funnel</h3>
-              <div className="flex items-end gap-1 justify-center h-40">
-                {pipeline.filter(p => p.stage !== 'rejected').map((p, i) => {
-                  const maxCount = pipeline[0].count || 1
-                  return (
-                    <div key={p.stage} className="flex flex-col items-center gap-1 flex-1">
-                      <span className="text-xs font-bold text-t1">{p.count}</span>
-                      <div className="w-full bg-tempo-500 rounded-t" style={{ height: `${(p.count / maxCount) * 120}px`, opacity: 1 - i * 0.12 }} />
-                      <span className="text-[0.6rem] text-t3 capitalize">{p.stage}</span>
-                    </div>
-                  )
-                })}
-              </div>
+              <TempoBarChart
+                data={pipeline.filter(p => p.stage !== 'rejected').map(p => ({
+                  name: p.stage.charAt(0).toUpperCase() + p.stage.slice(1),
+                  count: p.count,
+                }))}
+                bars={[{ dataKey: 'count', name: 'Candidates', color: CHART_COLORS.primary }]}
+                xKey="name"
+                height={220}
+                barSize={48}
+              />
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Source Effectiveness</h3>
-              <div className="space-y-3">
-                {sources.map(s => (
-                  <div key={s.name}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-t1 font-medium">{s.name}</span>
-                      <span className="text-t2">{s.apps} apps · {s.hires} hires</span>
-                    </div>
-                    <div className="w-full h-2 bg-canvas rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${s.color}`} style={{ width: `${(s.apps / maxApps) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TempoBarChart
+                data={sources.map(s => ({ name: s.name, applications: s.apps, hires: s.hires }))}
+                bars={[
+                  { dataKey: 'applications', name: 'Applications', color: CHART_COLORS.slate },
+                  { dataKey: 'hires', name: 'Hires', color: CHART_COLORS.emerald },
+                ]}
+                xKey="name"
+                layout="horizontal"
+                height={sources.length * 40}
+                showLegend
+              />
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Recruiting Metrics</h3>
@@ -561,23 +524,21 @@ export default function AnalyticsPage() {
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Organizational Health Score</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Employee Engagement', score: 74, max: 100 },
-                  { label: 'Performance Management', score: reviewCompletion, max: 100 },
-                  { label: 'Learning & Development', score: Math.round((activeLearners / Math.max(headcount, 1)) * 100), max: 100 },
-                  { label: 'Diversity & Inclusion', score: 68, max: 100 },
-                  { label: 'Retention', score: 92, max: 100 },
-                ].map(item => (
-                  <div key={item.label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-t1 font-medium">{item.label}</span>
-                      <span className="text-t2">{item.score}%</span>
-                    </div>
-                    <Progress value={item.score} color={item.score >= 75 ? 'success' : item.score >= 50 ? 'warning' : 'error'} />
-                  </div>
-                ))}
-              </div>
+              <TempoBarChart
+                data={[
+                  { name: 'Engagement', score: 74 },
+                  { name: 'Performance', score: reviewCompletion },
+                  { name: 'L&D', score: Math.round((activeLearners / Math.max(headcount, 1)) * 100) },
+                  { name: 'D&I', score: 68 },
+                  { name: 'Retention', score: 92 },
+                ]}
+                bars={[{ dataKey: 'score', name: 'Score', color: CHART_COLORS.primary }]}
+                xKey="name"
+                layout="horizontal"
+                height={220}
+                formatter={(v) => `${v}%`}
+                showGrid={false}
+              />
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Key Risks & Opportunities</h3>
@@ -590,7 +551,7 @@ export default function AnalyticsPage() {
                   { type: 'opportunity', label: 'Mentoring program shows 15% retention lift', severity: 'info' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3 bg-canvas rounded-lg px-4 py-2.5">
-                    <AlertTriangle size={14} className={item.type === 'risk' ? (item.severity === 'high' ? 'text-error' : 'text-warning') : 'text-blue-500'} />
+                    <AlertTriangle size={14} className={item.type === 'risk' ? (item.severity === 'high' ? 'text-error' : 'text-warning') : 'text-gray-400'} />
                     <span className="text-xs text-t1 flex-1">{item.label}</span>
                     <Badge variant={item.severity === 'high' ? 'error' : item.severity === 'medium' ? 'warning' : 'default'}>{item.type}</Badge>
                   </div>

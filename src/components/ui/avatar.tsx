@@ -21,12 +21,12 @@ function getInitials(name: string) {
 function getColor(name: string) {
   const colors = [
     'bg-tempo-100 text-tempo-700',
-    'bg-blue-100 text-blue-700',
-    'bg-green-100 text-green-700',
-    'bg-purple-100 text-purple-700',
-    'bg-amber-100 text-amber-700',
-    'bg-rose-100 text-rose-700',
-    'bg-cyan-100 text-cyan-700',
+    'bg-gray-100 text-gray-600',
+    'bg-gray-200 text-gray-700',
+    'bg-stone-100 text-stone-600',
+    'bg-zinc-100 text-zinc-600',
+    'bg-neutral-200 text-neutral-700',
+    'bg-slate-100 text-slate-600',
   ]
   const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
   return colors[index]

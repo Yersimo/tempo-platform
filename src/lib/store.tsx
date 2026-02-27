@@ -23,7 +23,7 @@ import {
   demoOneOnOnes, demoRecognitions, demoCompetencyFramework, demoCompetencyRatings,
   demoBuddyAssignments, demoPreboardingTasks, demoWelcomeContent,
   demoAutomationRules, demoAutomationLog,
-  demoOffers, demoCareerTracks, demoMarketBenchmarks, demoWidgetPreferences,
+  demoOffers, demoCareerTracks, demoMarketBenchmarks, demoWidgetPreferences, demoJourneys,
   getDemoDataForOrg, allDemoCredentials,
 } from './demo-data'
 import type { DemoRole } from './demo-data'
@@ -197,6 +197,9 @@ interface TempoState {
 
   // Market Benchmarks
   marketBenchmarks: WidenArray<typeof demoMarketBenchmarks>
+
+  // Guided Journeys
+  journeys: import('@/lib/demo-data').Journey[]
 
   // Widget Preferences
   widgetPreferences: typeof demoWidgetPreferences
@@ -498,6 +501,9 @@ interface TempoState {
   addOffer: (data: AnyRecord) => void
   updateOffer: (id: string, data: AnyRecord) => void
 
+  // Journeys
+  updateJourneyStep: (journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => void
+
   // Widget Preferences
   updateWidgetPreferences: (data: AnyRecord) => void
 
@@ -586,12 +592,16 @@ async function apiPost(entity: string, action: 'create' | 'update' | 'delete', d
       body: JSON.stringify({ action, entity, id, data }),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      console.error(`API ${action} ${entity} failed:`, err)
+      // 401/500 are expected in demo mode (no org context / no DB) — don't spam console
+      // The store uses optimistic updates so the UI works regardless
+      if (res.status !== 401 && res.status !== 500) {
+        const err = await res.json().catch(() => ({}))
+        console.error(`API ${action} ${entity} failed:`, err)
+      }
     }
     return res
   } catch (err) {
-    console.error(`API ${action} ${entity} network error:`, err)
+    // Network errors are expected when DB is unavailable in demo mode
     return null
   }
 }
@@ -690,6 +700,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [careerTracks] = useState(demoCareerTracks)
   const [marketBenchmarks, setMarketBenchmarks] = useState(demoMarketBenchmarks)
   const [widgetPreferences, setWidgetPreferences] = useState(demoWidgetPreferences)
+  const [journeys, setJourneys] = useState(demoJourneys)
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -960,6 +971,24 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     initSession()
   }, [])
 
+  // Remap journey employee IDs when DB employees have different IDs (UUIDs vs demo emp-N)
+  useEffect(() => {
+    if (!isLoading && employees.length > 0 && employees[0]?.id && !employees[0].id.startsWith('emp-')) {
+      setJourneys(prev => prev.map(j => {
+        const demoEmp = demoEmployees.find(e => e.id === j.employee_id)
+        const actualEmp = demoEmp ? employees.find(e => e.profile.full_name === demoEmp.profile.full_name) : null
+        const demoAssigner = demoEmployees.find(e => e.id === j.assigned_by)
+        const actualAssigner = demoAssigner ? employees.find(e => e.profile.full_name === demoAssigner.profile.full_name) : null
+        return {
+          ...j,
+          employee_id: actualEmp?.id || j.employee_id,
+          assigned_by: actualAssigner?.id || j.assigned_by,
+        }
+      }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading])
+
   // ---- Helpers ----
   const getEmployeeName = useCallback((id: string) => {
     const emp = employees.find(e => e.id === id)
@@ -1094,6 +1123,25 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'offer', id, 'Updated offer')
     addToast('Offer updated')
   }, [logAudit, addToast])
+
+  // ---- Journeys ----
+  const updateJourneyStep = useCallback((journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => {
+    setJourneys(prev => prev.map(j => {
+      if (j.id !== journeyId) return j
+      const updatedSteps = j.steps.map(s => s.id === stepId ? { ...s, status } : s)
+      const completedCount = updatedSteps.filter(s => s.status === 'completed').length
+      const currentStep = updatedSteps.findIndex(s => s.status !== 'completed' && s.status !== 'skipped')
+      const allDone = updatedSteps.every(s => s.status === 'completed' || s.status === 'skipped')
+      return {
+        ...j,
+        steps: updatedSteps,
+        current_step: currentStep >= 0 ? currentStep : updatedSteps.length - 1,
+        status: allDone ? 'completed' as const : j.status === 'not_started' ? 'in_progress' as const : j.status,
+        started_at: j.started_at || new Date().toISOString(),
+      }
+    }))
+    addToast('Journey step updated')
+  }, [addToast])
 
   // ---- Widget Preferences ----
   const updateWidgetPreferences = useCallback((data: AnyRecord) => {
@@ -2323,7 +2371,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addBuddyAssignment, updateBuddyAssignment,
     addPreboardingTask, updatePreboardingTask,
     offers, careerTracks, marketBenchmarks, widgetPreferences,
-    addOffer, updateOffer, updateWidgetPreferences,
+    addOffer, updateOffer, updateWidgetPreferences, journeys, updateJourneyStep,
     markNotificationRead, markAllNotificationsRead,
     updateOrg,
     login, verifyMFA, logout, switchUser, isLoggedIn,

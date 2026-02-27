@@ -219,7 +219,7 @@ export default function AppsPage() {
 
       {/* ── Section 1: Usage Analytics ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <BarChart3 size={20} /> {t('usageAnalytics')}
         </h2>
 
@@ -282,7 +282,7 @@ export default function AppsPage() {
 
       {/* ── Section 2: Shadow IT Detection ── */}
       <div className="mt-8 mb-6">
-        <h2 className="text-lg font-semibold text-t1 mb-2 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-2 flex items-center gap-2">
           <ShieldAlert size={20} /> {t('shadowItDetection')}
         </h2>
         <p className="text-sm text-t3 mb-4">{t('shadowItDesc')}</p>
@@ -314,11 +314,11 @@ export default function AppsPage() {
                   <tr key={detection.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <div>
-                        <p className="text-sm font-medium text-t1">{detection.app_name}</p>
+                        <p className="text-xs font-medium text-t1">{detection.app_name}</p>
                         <p className="text-xs text-t3">{detection.category}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm font-medium text-t1">{detection.detected_users}</td>
+                    <td className="px-4 py-3 text-center text-xs font-medium text-t1">{detection.detected_users}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={
                         detection.risk_level === 'high' ? 'error' :
@@ -328,8 +328,8 @@ export default function AppsPage() {
                          detection.risk_level === 'medium' ? t('mediumRisk') : t('lowRisk')}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-t2 max-w-[200px]">{detection.data_risk}</td>
-                    <td className="px-4 py-3 text-sm text-tempo-600 font-medium">{detection.recommended_alternative}</td>
+                    <td className="px-4 py-3 text-xs text-t2 max-w-[200px]">{detection.data_risk}</td>
+                    <td className="px-4 py-3 text-xs text-tempo-600 font-medium">{detection.recommended_alternative}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={
                         detection.status === 'flagged' ? 'error' :

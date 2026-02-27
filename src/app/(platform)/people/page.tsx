@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
-import { MiniBarChart, MiniDonutChart } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Avatar } from '@/components/ui/avatar'
 import { Pagination } from '@/components/ui/pagination'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
@@ -113,11 +113,10 @@ export default function PeoplePage() {
 
   // ---- AI Analytics ----
   const headcountRaw = useMemo(() => analyzeHeadcountTrends(employees as any, departments), [employees, departments])
-  const colors = ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-purple-500']
   const headcountData = useMemo(() => ({
-    byDepartment: headcountRaw.departmentBreakdown.map(d => ({ label: d.name, value: d.count })),
-    byCountry: headcountRaw.countryBreakdown.map((c, i) => ({ label: c.name, value: c.count, color: colors[i % colors.length] })),
-    byLevel: headcountRaw.levelBreakdown.map(l => ({ label: l.name, value: l.count })),
+    byDepartment: headcountRaw.departmentBreakdown.map(d => ({ name: d.name, count: d.count })),
+    byCountry: headcountRaw.countryBreakdown.map((c, i) => ({ name: c.name, value: c.count, color: CHART_SERIES[i % CHART_SERIES.length] })),
+    byLevel: headcountRaw.levelBreakdown.map(l => ({ name: l.name, count: l.count })),
     insights: headcountRaw.insights,
   }), [headcountRaw])
   const attritionData = useMemo(() => predictAttritionRisk(employees as any, [] as any, [] as any), [employees])
@@ -318,11 +317,11 @@ export default function PeoplePage() {
 
   const timelineIcon = (type: string) => {
     switch (type) {
-      case 'hire': return <UserPlus size={16} className="text-emerald-500" />
+      case 'hire': return <UserPlus size={16} className="text-gray-400" />
       case 'promotion': return <Award size={16} className="text-tempo-600" />
-      case 'transfer': return <ArrowRightLeft size={16} className="text-blue-500" />
-      case 'salary_change': return <DollarSign size={16} className="text-amber-500" />
-      case 'training': return <GraduationCap size={16} className="text-purple-500" />
+      case 'transfer': return <ArrowRightLeft size={16} className="text-gray-400" />
+      case 'salary_change': return <DollarSign size={16} className="text-gray-400" />
+      case 'training': return <GraduationCap size={16} className="text-gray-400" />
       default: return <Clock size={16} className="text-t3" />
     }
   }
@@ -418,9 +417,9 @@ export default function PeoplePage() {
                           </div>
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{getDepartmentName(emp.department_id)}</td>
-                      <td className="px-4 py-3 text-sm text-t2">{emp.job_title}</td>
-                      <td className="px-4 py-3 text-sm text-t2">{emp.country}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{getDepartmentName(emp.department_id)}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{emp.job_title}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{emp.country}</td>
                       <td className="px-4 py-3"><Badge variant="default">{emp.level}</Badge></td>
                       <td className="px-4 py-3">
                         <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'}>
@@ -430,7 +429,7 @@ export default function PeoplePage() {
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noEmployeesFound')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noEmployeesFound')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -495,7 +494,7 @@ export default function PeoplePage() {
                     <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-2">{t('management')}</p>
                     <div className="flex flex-wrap gap-3">
                       {managers.map(emp => (
-                        <Link key={emp.id} href={`/people/${emp.id}`} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-50 transition-colors">
+                        <Link key={emp.id} href={`/people/${emp.id}`} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-gray-100 transition-colors">
                           <Avatar name={emp.profile?.full_name || ''} size="xs" />
                           <div>
                             <p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p>
@@ -544,12 +543,12 @@ export default function PeoplePage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByDepartment')}</h3>
               {headcountData.byDepartment.length > 0 ? (
                 <>
-                  <MiniBarChart data={headcountData.byDepartment.slice(0, 8)} showLabels height={140} />
+                  <TempoBarChart data={headcountData.byDepartment.slice(0, 8)} bars={[{ dataKey: 'count', name: 'Count', color: CHART_COLORS.primary }]} xKey="name" height={140} showGrid={false} showYAxis={false} />
                   <div className="mt-3 space-y-1">
                     {headcountData.byDepartment.map(d => (
-                      <div key={d.label} className="flex justify-between text-xs">
-                        <span className="text-t2">{d.label}</span>
-                        <span className="text-t1 font-medium">{d.value} {t('people')}</span>
+                      <div key={d.name} className="flex justify-between text-xs">
+                        <span className="text-t2">{d.name}</span>
+                        <span className="text-t1 font-medium">{d.count} {t('people')}</span>
                       </div>
                     ))}
                   </div>
@@ -561,11 +560,11 @@ export default function PeoplePage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByCountry')}</h3>
               {headcountData.byCountry.length > 0 ? (
                 <>
-                  <MiniDonutChart data={headcountData.byCountry} />
+                  <TempoDonutChart data={headcountData.byCountry} height={180} />
                   <div className="mt-3 space-y-1">
                     {headcountData.byCountry.map(c => (
-                      <div key={c.label} className="flex justify-between text-xs">
-                        <span className="text-t2">{c.label}</span>
+                      <div key={c.name} className="flex justify-between text-xs">
+                        <span className="text-t2">{c.name}</span>
                         <span className="text-t1 font-medium">{c.value} {t('people')}</span>
                       </div>
                     ))}
@@ -579,7 +578,7 @@ export default function PeoplePage() {
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByLevel')}</h3>
               {headcountData.byLevel.length > 0 ? (
-                <MiniBarChart data={headcountData.byLevel} showLabels height={140} />
+                <TempoBarChart data={headcountData.byLevel} bars={[{ dataKey: 'count', name: 'Count', color: CHART_COLORS.primary }]} xKey="name" height={140} showGrid={false} showYAxis={false} />
               ) : <p className="text-sm text-t3">{t('noData')}</p>}
             </Card>
 
@@ -619,7 +618,7 @@ export default function PeoplePage() {
                           {risk.employeeName}
                         </Link>
                       </td>
-                      <td className="px-4 py-2 text-sm text-t2">{risk.department}</td>
+                      <td className="px-4 py-2 text-xs text-t2">{risk.department}</td>
                       <td className="px-4 py-2 text-center">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                           risk.riskLevel === 'high' ? 'bg-red-100 text-red-700' :
@@ -709,7 +708,7 @@ export default function PeoplePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredDocs.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noDocumentsFound')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noDocumentsFound')}</td></tr>
                   ) : filteredDocs.map(doc => (
                     <tr key={doc.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
@@ -718,16 +717,16 @@ export default function PeoplePage() {
                           <p className="text-sm font-medium text-t1">{doc.name}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{getEmployeeName(doc.employee_id)}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(doc.employee_id)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={doc.document_type === 'contract' ? 'info' : doc.document_type === 'id' ? 'default' : 'success'}>
                           {doc.document_type}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">{docStatusBadge(doc.status)}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{doc.upload_date}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{doc.expiry_date || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-t3 text-right">{doc.file_size}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{doc.upload_date}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{doc.expiry_date || '-'}</td>
+                      <td className="px-4 py-3 text-xs text-t3 text-right">{doc.file_size}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -810,8 +809,8 @@ export default function PeoplePage() {
             {/* Import Employees */}
             <Card>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                  <Upload size={20} className="text-emerald-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Upload size={20} className="text-gray-500" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('importEmployees')}</h3>
@@ -847,8 +846,8 @@ export default function PeoplePage() {
             {/* Export Employees */}
             <Card>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Download size={20} className="text-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Download size={20} className="text-gray-500" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('exportEmployees')}</h3>
@@ -865,8 +864,8 @@ export default function PeoplePage() {
             {/* Bulk Department Transfer */}
             <Card>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <ArrowRightLeft size={20} className="text-amber-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <ArrowRightLeft size={20} className="text-gray-500" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('bulkDepartmentTransfer')}</h3>
@@ -879,8 +878,8 @@ export default function PeoplePage() {
             {/* Bulk Status Change */}
             <Card>
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
-                  <Layers size={20} className="text-purple-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Layers size={20} className="text-gray-500" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-t1 mb-1">{t('bulkStatusChange')}</h3>
@@ -1155,8 +1154,8 @@ export default function PeoplePage() {
           {importStep === 'results' && (
             <>
               <div className="py-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-                  <Award size={32} className="text-emerald-600" />
+                <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mx-auto mb-4">
+                  <Award size={32} className="text-green-600" />
                 </div>
                 <h4 className="text-sm font-semibold text-t1 mb-2">{tc('importComplete')}</h4>
                 <p className="text-xs text-t3">{tc('importCompleteDesc', { count: importCredentials.length })}</p>
@@ -1164,17 +1163,17 @@ export default function PeoplePage() {
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-emerald-600">{importCredentials.length}</p>
-                  <p className="text-[0.6rem] text-emerald-700">{tc('imported')}</p>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-green-600">{importCredentials.length}</p>
+                  <p className="text-[0.6rem] text-green-700">{tc('imported')}</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-amber-600">{importSkipped.length}</p>
                   <p className="text-[0.6rem] text-amber-700">{tc('skipped')}</p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-blue-600">{generateCredentials ? tc('yes') : tc('no')}</p>
-                  <p className="text-[0.6rem] text-blue-700">{tc('credentialsGenerated')}</p>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-gray-600">{generateCredentials ? tc('yes') : tc('no')}</p>
+                  <p className="text-[0.6rem] text-gray-700">{tc('credentialsGenerated')}</p>
                 </div>
               </div>
 

@@ -23,13 +23,13 @@ interface DemoNotification {
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  info: { icon: Info, color: 'text-gray-500', bg: 'bg-gray-100' },
   success: { icon: CircleCheck, color: 'text-green-500', bg: 'bg-green-500/10' },
   warning: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   action_required: { icon: ShieldAlert, color: 'text-tempo-600', bg: 'bg-tempo-600/10' },
-  mention: { icon: AtSign, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  approval: { icon: ThumbsUp, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  reminder: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-600/10' },
+  mention: { icon: AtSign, color: 'text-gray-500', bg: 'bg-gray-100' },
+  approval: { icon: ThumbsUp, color: 'text-gray-500', bg: 'bg-gray-100' },
+  reminder: { icon: Clock, color: 'text-gray-500', bg: 'bg-gray-100' },
 }
 
 function getRelativeTime(dateStr: string): string {

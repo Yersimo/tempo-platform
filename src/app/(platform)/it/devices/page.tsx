@@ -160,17 +160,17 @@ export default function DevicesPage() {
                         {iconMap[device.type] || <Laptop size={16} />}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-t1">{device.brand} {device.model}</p>
+                        <p className="text-xs font-medium text-t1">{device.brand} {device.model}</p>
                         <p className="text-xs text-t3">{t('purchased', { date: device.purchase_date })}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3"><Badge>{device.type}</Badge></td>
-                  <td className="px-4 py-3 text-sm text-t3 font-mono">{device.serial_number}</td>
-                  <td className="px-4 py-3 text-sm text-t2">
+                  <td className="px-4 py-3 text-xs text-t3 font-mono">{device.serial_number}</td>
+                  <td className="px-4 py-3 text-xs text-t2">
                     {device.assigned_to ? getEmployeeName(device.assigned_to) : '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-t2">{device.warranty_end}</td>
+                  <td className="px-4 py-3 text-xs text-t2">{device.warranty_end}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={
                       device.status === 'assigned' ? 'success' :
@@ -213,7 +213,7 @@ export default function DevicesPage() {
 
       {/* ── Section 1: Security Posture Dashboard ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <Shield size={20} /> {t('securityPosture')}
         </h2>
 
@@ -310,7 +310,7 @@ export default function DevicesPage() {
 
       {/* ── Section 2: Compliance Templates ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <FileCheck size={20} /> {t('complianceTemplates')}
         </h2>
 
@@ -370,7 +370,7 @@ export default function DevicesPage() {
 
       {/* ── Section 3: Provisioning Workflows ── */}
       <div className="mt-8 mb-6">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <ArrowRight size={20} /> {t('provisioningWorkflows')}
         </h2>
 

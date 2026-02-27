@@ -12,7 +12,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { UserCheck, Users, Plus, Sparkles, BookOpen, Target, BarChart3, Video, Phone, MapPin, Star, Calendar, Clock } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge, AIRecommendationList } from '@/components/ai'
@@ -242,7 +242,7 @@ export default function MentoringPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {mentoringPairs.length === 0 ? (
-                  <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noPairs')}</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noPairs')}</td></tr>
                 ) : mentoringPairs.map(pair => {
                   const mentorName = getEmployeeName(pair.mentor_id)
                   const menteeName = getEmployeeName(pair.mentee_id)
@@ -272,11 +272,11 @@ export default function MentoringPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{program?.title || tc('unknown')}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{program?.title || tc('unknown')}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-sm font-semibold text-tempo-600">{pair.match_score}%</span>
                       </td>
-                      <td className="px-4 py-3 text-center text-sm text-t2">{pairSessions.length}</td>
+                      <td className="px-4 py-3 text-center text-xs text-t2">{pairSessions.length}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={avgGoalProgress} size="sm" />
@@ -411,13 +411,13 @@ export default function MentoringPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredSessions.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noSessions')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noSessions')}</td></tr>
                   ) : filteredSessions.map((session: any) => (
                     <tr key={session.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <p className="text-sm font-medium text-t1">{getPairLabel(session.pair_id)}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{session.date}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{session.date}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1 text-sm text-t2">
                           <Clock size={12} /> {session.duration_minutes}{t('mins')}
@@ -428,7 +428,7 @@ export default function MentoringPage() {
                           {typeIcon(session.type)} {session.type.replace('_', ' ')}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1 max-w-xs truncate">{session.topic}</td>
+                      <td className="px-4 py-3 text-xs text-t1 max-w-xs truncate">{session.topic}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">{session.status === 'completed' ? stars(session.rating) : <span className="text-xs text-t3">-</span>}</div>
                       </td>
@@ -487,14 +487,14 @@ export default function MentoringPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredGoals.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noGoals')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noGoals')}</td></tr>
                   ) : filteredGoals.map((goal: any) => (
                     <tr key={goal.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <p className="text-sm font-medium text-t1">{getPairLabel(goal.pair_id)}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1">{goal.title}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{goal.target_date}</td>
+                      <td className="px-4 py-3 text-xs text-t1">{goal.title}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{goal.target_date}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={goal.status === 'completed' ? 'success' : goal.status === 'in_progress' ? 'warning' : 'default'}>
                           {goal.status === 'not_started' ? t('statusNotStarted') : goal.status === 'in_progress' ? t('statusInProgress') : t('statusCompleted')}
@@ -543,11 +543,11 @@ export default function MentoringPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('sessionsPerMonth')}</h3>
               {effectiveness.sessionsPerMonth.some(v => v > 0) ? (
                 <>
-                  <Sparkline data={effectiveness.sessionsPerMonth} />
-                  <MiniBarChart data={effectiveness.sessionsPerMonth.map((v, i) => ({
-                    label: ['2 months ago', 'Last month', 'This month'][i],
-                    value: v,
-                  }))} showLabels height={120} />
+                  <TempoSparkArea data={effectiveness.sessionsPerMonth} />
+                  <TempoBarChart data={effectiveness.sessionsPerMonth.map((v, i) => ({
+                    name: ['2 months ago', 'Last month', 'This month'][i],
+                    count: v,
+                  }))} bars={[{ dataKey: 'count', name: 'Sessions', color: CHART_COLORS.primary }]} xKey="name" height={120} showGrid={false} showYAxis={false} />
                 </>
               ) : <p className="text-sm text-t3">{t('noSessions')}</p>}
             </Card>
@@ -557,7 +557,7 @@ export default function MentoringPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('goalsByStatus')}</h3>
               {effectiveness.goalsByStatus.some(g => g.value > 0) ? (
                 <>
-                  <MiniDonutChart data={effectiveness.goalsByStatus} />
+                  <TempoDonutChart data={effectiveness.goalsByStatus.map((g, i) => ({ name: g.label, value: g.value, color: CHART_SERIES[i % CHART_SERIES.length] }))} height={180} />
                   <div className="mt-3 space-y-1">
                     {effectiveness.goalsByStatus.map(g => (
                       <div key={g.label} className="flex justify-between text-xs">

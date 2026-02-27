@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle2, Car, Globe, Calculator } from 'lucide-react'
 import { useTempo } from '@/lib/store'
@@ -386,7 +386,7 @@ export default function ExpensePage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('spendingByCategory')}</h3>
               {categoryData.length > 0 ? (
                 <>
-                  <MiniBarChart data={categoryData.slice(0, 6).map(c => ({ label: c.category.length > 10 ? c.category.substring(0, 10) + '...' : c.category, value: c.total }))} showLabels height={140} />
+                  <TempoBarChart data={categoryData.slice(0, 6).map(c => ({ name: c.category.length > 10 ? c.category.substring(0, 10) + '...' : c.category, total: c.total }))} bars={[{ dataKey: 'total', name: 'Total', color: CHART_COLORS.primary }]} xKey="name" height={140} showGrid={false} showYAxis={false} />
                   <div className="mt-3 space-y-1">
                     {categoryData.map(c => (
                       <div key={c.category} className="flex justify-between text-xs">
@@ -404,10 +404,10 @@ export default function ExpensePage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('categoryBreakdown')}</h3>
               {categoryData.length > 0 ? (
                 <>
-                  <MiniDonutChart data={categoryData.slice(0, 5).map((c, i) => ({
-                    label: c.category, value: c.total,
-                    color: ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'][i % 5],
-                  }))} />
+                  <TempoDonutChart data={categoryData.slice(0, 5).map((c, i) => ({
+                    name: c.category, value: c.total,
+                    color: CHART_SERIES[i % CHART_SERIES.length],
+                  }))} height={180} />
                   <div className="mt-3 space-y-1">
                     {categoryData.slice(0, 5).map(c => {
                       const pct = totalSpend > 0 ? Math.round((c.total / totalSpend) * 100) : 0
@@ -428,7 +428,7 @@ export default function ExpensePage() {
           {monthlySpendData.length > 0 && (
             <Card className="mb-6">
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('monthlySpendingTrend')}</h3>
-              <Sparkline data={monthlySpendData} />
+              <TempoSparkArea data={monthlySpendData} />
             </Card>
           )}
 
@@ -457,7 +457,7 @@ export default function ExpensePage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${s.total.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${s.total.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right"><Progress value={Math.min(100, Math.round((s.total / Math.max(1, totalSpend)) * 100 * expenseReports.length))} size="sm" showLabel /></td>
                       </tr>
                     ))}
@@ -508,15 +508,15 @@ export default function ExpensePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {expensePolicies.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noPolicies')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noPolicies')}</td></tr>
                   ) : expensePolicies.map(policy => {
                     const p = policy as any
                     return (
                       <tr key={p.id} className="hover:bg-canvas/50">
-                        <td className="px-6 py-3 text-sm font-medium text-t1">{p.category}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right">${p.daily_limit?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">${p.receipt_threshold?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">${p.auto_approve_limit?.toLocaleString()}</td>
+                        <td className="px-6 py-3 text-xs font-medium text-t1">{p.category}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right">${p.daily_limit?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">${p.receipt_threshold?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">${p.auto_approve_limit?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={p.status === 'active' ? 'success' : 'default'}>{p.status === 'active' ? t('active') : t('inactive')}</Badge>
                         </td>
@@ -584,12 +584,12 @@ export default function ExpensePage() {
                 <tbody className="divide-y divide-border">
                   {perDiemRates.map(rate => (
                     <tr key={`${rate.country}-${rate.city}`} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{rate.country}</td>
-                      <td className="px-4 py-3 text-sm text-t2">{rate.city}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${rate.daily}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.meals}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.lodging}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${rate.incidentals}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{rate.country}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{rate.city}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${rate.daily}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.meals}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.lodging}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.incidentals}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -662,17 +662,17 @@ export default function ExpensePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {mileageLogs.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noMileageLogs')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noMileageLogs')}</td></tr>
                   ) : mileageLogs.map(log => {
                     const ml = log as any
                     return (
                       <tr key={ml.id} className="hover:bg-canvas/50">
-                        <td className="px-6 py-3 text-sm font-medium text-t1">{getEmployeeName(ml.employee_id)}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{ml.origin}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{ml.destination}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right">{ml.distance_km} km</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">${ml.rate_per_km}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${ml.amount?.toFixed(2)}</td>
+                        <td className="px-6 py-3 text-xs font-medium text-t1">{getEmployeeName(ml.employee_id)}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{ml.origin}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{ml.destination}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right">{ml.distance_km} km</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">${ml.rate_per_km}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${ml.amount?.toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={ml.status === 'approved' ? 'success' : 'warning'}>{ml.status}</Badge>
                         </td>

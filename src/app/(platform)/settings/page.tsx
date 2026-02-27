@@ -32,11 +32,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  identity: 'bg-blue-50 text-blue-700',
-  productivity: 'bg-green-50 text-green-700',
-  payroll: 'bg-amber-50 text-amber-700',
-  communication: 'bg-purple-50 text-purple-700',
-  storage: 'bg-teal-50 text-teal-700',
+  identity: 'bg-gray-100 text-gray-600',
+  productivity: 'bg-gray-100 text-gray-600',
+  payroll: 'bg-gray-100 text-gray-600',
+  communication: 'bg-gray-100 text-gray-600',
+  storage: 'bg-gray-100 text-gray-600',
 }
 
 interface ConnectedIntegration {
@@ -532,9 +532,9 @@ export default function SettingsPage() {
               <tbody className="divide-y divide-border">
                 {employees.map(emp => (
                   <tr key={emp.id} className="hover:bg-canvas/50">
-                    <td className="px-6 py-3"><div className="flex items-center gap-3"><Avatar name={emp.profile?.full_name || ''} size="sm" /><div><p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p><p className="text-xs text-t3">{emp.profile?.email}</p></div></div></td>
-                    <td className="px-4 py-3 text-sm text-t2">{getDepartmentName(emp.department_id)}</td>
-                    <td className="px-4 py-3 text-sm text-t2">{emp.job_title}</td>
+                    <td className="px-6 py-3"><div className="flex items-center gap-3"><Avatar name={emp.profile?.full_name || ''} size="sm" /><div><p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p><p className="text-xs text-t3">{emp.profile?.email}</p></div></div></td>
+                    <td className="px-4 py-3 text-xs text-t2">{getDepartmentName(emp.department_id)}</td>
+                    <td className="px-4 py-3 text-xs text-t2">{emp.job_title}</td>
                     <td className="px-4 py-3"><Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'}>{emp.role}</Badge></td>
                   </tr>
                 ))}
@@ -790,7 +790,7 @@ export default function SettingsPage() {
             </Card>
             <Card>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600"><Wifi size={18} /></div>
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500"><Wifi size={18} /></div>
                 <div>
                   <p className="text-xs text-t3">{ti('connected')}</p>
                   <p className="text-xl font-bold text-t1 tracking-tight">{connectedIntegrations.filter(c => c.status === 'connected').length}</p>
@@ -799,7 +799,7 @@ export default function SettingsPage() {
             </Card>
             <Card>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><Clock size={18} /></div>
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400"><Clock size={18} /></div>
                 <div>
                   <p className="text-xs text-t3">{ti('comingSoon')}</p>
                   <p className="text-xl font-bold text-t1 tracking-tight">{INTEGRATION_CATALOG.filter(c => c.status === 'coming_soon').length}</p>
@@ -943,15 +943,15 @@ export default function SettingsPage() {
                       <td className="px-6 py-3 text-xs text-t3 whitespace-nowrap">
                         <div className="flex items-center gap-1"><Clock size={12} />{new Date(entry.timestamp).toLocaleString()}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1">{entry.user}</td>
+                      <td className="px-4 py-3 text-xs text-t1">{entry.user}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={entry.action === 'create' ? 'success' : entry.action === 'update' ? 'info' : 'error'}>{entry.action}</Badge>
+                        <Badge variant={entry.action === 'create' ? 'success' : entry.action === 'update' ? 'default' : 'error'}>{entry.action}</Badge>
                       </td>
                       <td className="px-4 py-3 text-xs text-t2">{entry.entity_type}</td>
                       <td className="px-4 py-3 text-xs text-t2 max-w-[300px] truncate">{entry.details}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-t3">
+                    <tr><td colSpan={5} className="px-6 py-12 text-center text-xs text-t3">
                       {auditLog.length === 0 ? t('noAuditEntries') : t('noMatchingEntries')}
                     </td></tr>
                   )}

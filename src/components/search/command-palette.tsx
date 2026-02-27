@@ -9,7 +9,8 @@ import {
   Search, X, Loader2, User, Target, FolderKanban, BookOpen,
   Briefcase, Compass, Zap, LayoutDashboard, Users, TrendingUp,
   Banknote, GraduationCap, HeartPulse, UserCheck, BarChart3,
-  Clock, ArrowRight,
+  Clock, ArrowRight, Receipt, CalendarCheck, Settings, Shield,
+  FileText, Hash,
 } from 'lucide-react'
 
 const RECENT_SEARCHES_KEY = 'tempo_recent_searches'
@@ -24,6 +25,9 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   Briefcase,
   Compass,
   Zap,
+  Shield,
+  CalendarCheck,
+  Receipt,
 }
 
 // Type labels for grouping
@@ -35,10 +39,20 @@ const typeLabels: Record<string, string> = {
   job: 'jobs',
   objective: 'objectives',
   workflow: 'workflows',
+  policy: 'policies',
+  leave: 'leaveRequests',
+  expense: 'expenses',
 }
 
 interface QuickAction {
   label: string
+  href: string
+  icon: React.ReactNode
+}
+
+interface SlashCommand {
+  command: string
+  labelKey: string
   href: string
   icon: React.ReactNode
 }
@@ -91,6 +105,29 @@ export function CommandPalette() {
     { label: t('goToAnalytics'), href: '/analytics', icon: <BarChart3 size={16} /> },
   ]
 
+  // Slash commands — Oracle Fusion "/" prefix navigation
+  const slashCommands: SlashCommand[] = [
+    { command: '/people', labelKey: 'slashPeople', href: '/people', icon: <Users size={16} /> },
+    { command: '/payroll', labelKey: 'slashPayroll', href: '/payroll', icon: <Banknote size={16} /> },
+    { command: '/performance', labelKey: 'slashPerformance', href: '/performance', icon: <TrendingUp size={16} /> },
+    { command: '/recruiting', labelKey: 'slashRecruiting', href: '/recruiting', icon: <Briefcase size={16} /> },
+    { command: '/learning', labelKey: 'slashLearning', href: '/learning', icon: <GraduationCap size={16} /> },
+    { command: '/time', labelKey: 'slashTime', href: '/time-attendance', icon: <CalendarCheck size={16} /> },
+    { command: '/expense', labelKey: 'slashExpense', href: '/expense', icon: <Receipt size={16} /> },
+    { command: '/benefits', labelKey: 'slashBenefits', href: '/benefits', icon: <Shield size={16} /> },
+    { command: '/settings', labelKey: 'slashSettings', href: '/settings', icon: <Settings size={16} /> },
+    { command: '/workflows', labelKey: 'slashWorkflows', href: '/workflow-studio', icon: <Zap size={16} /> },
+    { command: '/analytics', labelKey: 'slashAnalytics', href: '/analytics', icon: <BarChart3 size={16} /> },
+    { command: '/projects', labelKey: 'slashProjects', href: '/projects', icon: <FolderKanban size={16} /> },
+  ]
+
+  const isSlashMode = query.startsWith('/')
+
+  // Filter slash commands based on typed prefix
+  const filteredSlashCommands = isSlashMode
+    ? slashCommands.filter(cmd => cmd.command.startsWith(query.toLowerCase()))
+    : []
+
   // Group results by type
   const groupedResults = results.reduce<Record<string, SearchResult[]>>((acc, result) => {
     const group = result.type
@@ -100,11 +137,18 @@ export function CommandPalette() {
   }, {})
 
   // Flatten for keyboard navigation: build ordered list of all navigable items
-  const flatItems: { type: 'result'; data: SearchResult }[] | { type: 'quick'; data: QuickAction }[] = []
-  const navigableItems: Array<{ kind: 'result'; result: SearchResult } | { kind: 'quick'; action: QuickAction }> = []
+  const navigableItems: Array<
+    { kind: 'result'; result: SearchResult } |
+    { kind: 'quick'; action: QuickAction } |
+    { kind: 'slash'; command: SlashCommand }
+  > = []
 
-  if (query.length >= 2 && results.length > 0) {
-    const typeOrder = ['employee', 'goal', 'project', 'course', 'job', 'objective', 'workflow']
+  if (isSlashMode) {
+    for (const cmd of filteredSlashCommands) {
+      navigableItems.push({ kind: 'slash', command: cmd })
+    }
+  } else if (query.length >= 2 && results.length > 0) {
+    const typeOrder = ['employee', 'goal', 'project', 'course', 'job', 'objective', 'workflow', 'policy', 'leave', 'expense']
     for (const typeName of typeOrder) {
       const group = groupedResults[typeName]
       if (group) {
@@ -113,7 +157,7 @@ export function CommandPalette() {
         }
       }
     }
-  } else if (query.length < 2) {
+  } else if (query.length < 2 && !isSlashMode) {
     for (const action of quickActions) {
       navigableItems.push({ kind: 'quick', action })
     }
@@ -184,8 +228,10 @@ export function CommandPalette() {
       if (item) {
         if (item.kind === 'result') {
           navigateTo(item.result.link, query)
-        } else {
+        } else if (item.kind === 'quick') {
           navigateTo(item.action.href)
+        } else if (item.kind === 'slash') {
+          navigateTo(item.command.href)
         }
       }
     }
@@ -255,7 +301,11 @@ export function CommandPalette() {
         >
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f0f0f0]">
-            <Search size={18} className="text-[#999] shrink-0" />
+            {isSlashMode ? (
+              <Hash size={18} className="text-[#ea580c] shrink-0" />
+            ) : (
+              <Search size={18} className="text-[#999] shrink-0" />
+            )}
             <input
               ref={inputRef}
               type="text"
@@ -270,7 +320,7 @@ export function CommandPalette() {
               autoComplete="off"
               spellCheck={false}
             />
-            {isLoading && <Loader2 size={16} className="text-[#ea580c] animate-spin shrink-0" />}
+            {isLoading && !isSlashMode && <Loader2 size={16} className="text-[#ea580c] animate-spin shrink-0" />}
             {query && !isLoading && (
               <button
                 onClick={() => setQuery('')}
@@ -286,15 +336,69 @@ export function CommandPalette() {
 
           {/* Results area */}
           <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
+
+            {/* Slash command results */}
+            {isSlashMode && (
+              <div className="py-2">
+                <div className="px-4 pt-2 pb-1">
+                  <span className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[#999]">
+                    {t('commands')}
+                  </span>
+                </div>
+                {filteredSlashCommands.length > 0 ? (
+                  filteredSlashCommands.map((cmd, i) => {
+                    flatIndex++
+                    const idx = flatIndex
+                    const isSelected = idx === selectedIndex
+                    return (
+                      <button
+                        key={cmd.command}
+                        data-selected={isSelected}
+                        onClick={() => navigateTo(cmd.href)}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={cn(
+                          'flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors cursor-pointer',
+                          isSelected ? 'bg-[#f5f5f7]' : 'hover:bg-[#fafafa]'
+                        )}
+                      >
+                        <div className={cn(
+                          'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
+                          isSelected ? 'bg-[#ea580c]/10 text-[#ea580c]' : 'bg-[#f0f0f0] text-[#666]'
+                        )}>
+                          {cmd.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[0.82rem] font-medium text-[#0f1117]">
+                            <span className="text-[#ea580c] font-mono">{cmd.command}</span>
+                          </div>
+                          <div className="text-[0.7rem] text-[#999]">
+                            {t(cmd.labelKey)}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <ArrowRight size={14} className="text-[#999] shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="py-8 text-center">
+                    <Hash size={28} className="mx-auto text-[#ddd] mb-2" />
+                    <div className="text-[0.8rem] text-[#999]">No matching commands</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Search results */}
-            {query.length >= 2 && results.length > 0 && (
+            {!isSlashMode && query.length >= 2 && results.length > 0 && (
               <div className="py-2">
                 {total > 0 && (
                   <div className="px-4 py-1.5 text-[0.65rem] text-[#999]">
                     {t('resultsCount', { count: total })}
                   </div>
                 )}
-                {(['employee', 'goal', 'project', 'course', 'job', 'objective', 'workflow'] as const).map((typeName) => {
+                {(['employee', 'goal', 'project', 'course', 'job', 'objective', 'workflow', 'policy', 'leave', 'expense'] as const).map((typeName) => {
                   const group = groupedResults[typeName]
                   if (!group || group.length === 0) return null
                   return (
@@ -347,7 +451,7 @@ export function CommandPalette() {
             )}
 
             {/* No results */}
-            {query.length >= 2 && !isLoading && results.length === 0 && (
+            {!isSlashMode && query.length >= 2 && !isLoading && results.length === 0 && (
               <div className="py-12 text-center">
                 <Search size={32} className="mx-auto text-[#ddd] mb-3" />
                 <div className="text-[0.85rem] font-medium text-[#666]">{t('noResults')}</div>
@@ -356,7 +460,7 @@ export function CommandPalette() {
             )}
 
             {/* Empty state: recent searches + quick actions */}
-            {query.length < 2 && (
+            {!isSlashMode && query.length < 2 && (
               <div className="py-2">
                 {/* Recent searches */}
                 {recentSearches.length > 0 && (
@@ -432,7 +536,7 @@ export function CommandPalette() {
             )}
 
             {/* Type to search hint */}
-            {query.length > 0 && query.length < 2 && (
+            {!isSlashMode && query.length > 0 && query.length < 2 && (
               <div className="px-4 py-3 text-center text-[0.7rem] text-[#999]">
                 {t('typeToSearch')}
               </div>
@@ -456,6 +560,9 @@ export function CommandPalette() {
                 {t('toClose')}
               </span>
             </div>
+            <span className="text-[0.6rem] text-[#bbb]">
+              {t('slashHint')}
+            </span>
           </div>
         </div>
       </div>

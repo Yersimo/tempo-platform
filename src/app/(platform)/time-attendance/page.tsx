@@ -11,7 +11,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { MiniBarChart, Sparkline } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import {
   Clock, Calendar, Plus, CheckCircle, LogIn, BarChart3, CalendarDays,
@@ -121,9 +121,9 @@ const LEAVE_TYPE_VARIANT: Record<string, 'success' | 'error' | 'info' | 'default
 
 const SHIFT_TYPE_COLORS: Record<string, string> = {
   regular: 'bg-tempo-100 text-tempo-700 border-tempo-200',
-  overtime: 'bg-amber-100 text-amber-700 border-amber-200',
-  remote: 'bg-blue-100 text-blue-700 border-blue-200',
-  on_call: 'bg-purple-100 text-purple-700 border-purple-200',
+  overtime: 'bg-gray-100 text-gray-600 border-gray-200',
+  remote: 'bg-gray-100 text-gray-600 border-gray-200',
+  on_call: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 export default function TimeAttendancePage() {
@@ -435,7 +435,7 @@ export default function TimeAttendancePage() {
               <tbody className="divide-y divide-border">
                 {filteredLeaveRequests.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
                       {t('noLeaveRequests')}
                     </td>
                   </tr>
@@ -448,7 +448,7 @@ export default function TimeAttendancePage() {
                         <div className="flex items-center gap-2">
                           <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
                           <div>
-                            <p className="text-sm font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
+                            <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
                             <p className="text-xs text-t3">{emp?.job_title}</p>
                           </div>
                         </div>
@@ -456,9 +456,9 @@ export default function TimeAttendancePage() {
                       <td className="px-4 py-3">
                         <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{lr.start_date} {tc('to')} {lr.end_date}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right font-medium">{lr.days}</td>
-                      <td className="px-4 py-3 text-sm text-t2 max-w-[200px] truncate">{lr.reason}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{lr.start_date} {tc('to')} {lr.end_date}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{lr.days}</td>
+                      <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{lr.reason}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={lr.status === 'approved' ? 'success' : lr.status === 'pending' ? 'warning' : 'error'}>
                           {lr.status}
@@ -567,7 +567,7 @@ export default function TimeAttendancePage() {
                   return (
                     <div key={day} className="bg-canvas rounded-lg p-3 text-center">
                       <p className="text-xs font-medium text-t3 mb-1">{day}</p>
-                      <p className="text-lg font-semibold text-t1">{avg.toFixed(1)}h</p>
+                      <p className="text-sm font-semibold text-t1">{avg.toFixed(1)}h</p>
                       <p className={`text-[0.6rem] ${avg >= 8 ? 'text-success' : avg >= 6 ? 'text-warning' : 'text-t3'}`}>
                         {avg >= 8 ? t('statusComplete') : avg >= 6 ? t('statusPartial') : '-'}
                       </p>
@@ -597,19 +597,19 @@ export default function TimeAttendancePage() {
             <Card>
               <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">Weekly Totals</h4>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Total Hours</span>
                   <span className="text-t1 font-semibold">{timesheets.reduce((s, ts) => s + ts.total, 0)}h</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Overtime</span>
                   <span className="text-amber-600 font-semibold">{timesheets.reduce((s, ts) => s + ts.overtime, 0)}h</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Avg per Employee</span>
                   <span className="text-t1 font-semibold">{timesheets.length > 0 ? (timesheets.reduce((s, ts) => s + ts.total, 0) / timesheets.length).toFixed(1) : '0'}h</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Timesheets</span>
                   <span className="text-t1 font-semibold">{timesheets.length}</span>
                 </div>
@@ -665,15 +665,15 @@ export default function TimeAttendancePage() {
                           <p className="text-sm font-medium text-t1">{getEmployeeName(shift.employee_id)}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{shift.date}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-center font-mono">{shift.start_time}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-center font-mono">{shift.end_time}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{shift.date}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-center font-mono">{shift.start_time}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-center font-mono">{shift.end_time}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${SHIFT_TYPE_COLORS[shift.type]}`}>
                           {shift.type.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right font-medium">{shift.hours}h</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{shift.hours}h</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={shift.status === 'completed' ? 'success' : shift.status === 'missed' ? 'error' : 'default'}>
                           {shift.status}
@@ -748,10 +748,10 @@ export default function TimeAttendancePage() {
           {/* Calendar Legend */}
           <div className="flex flex-wrap gap-3 mb-4">
             {[
-              { type: 'annual', label: 'Annual', color: 'bg-emerald-100 text-emerald-700' },
-              { type: 'sick', label: 'Sick', color: 'bg-red-100 text-red-700' },
-              { type: 'maternity', label: 'Maternity/Paternity', color: 'bg-blue-100 text-blue-700' },
-              { type: 'personal', label: 'Personal', color: 'bg-gray-100 text-gray-700' },
+              { type: 'annual', label: 'Annual', color: 'bg-gray-100 text-gray-600' },
+              { type: 'sick', label: 'Sick', color: 'bg-gray-100 text-gray-600' },
+              { type: 'maternity', label: 'Maternity/Paternity', color: 'bg-gray-100 text-gray-600' },
+              { type: 'personal', label: 'Personal', color: 'bg-gray-100 text-gray-600' },
             ].map(l => (
               <div key={l.type} className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${l.color}`}>
                 <div className={`w-2 h-2 rounded-full ${l.color.split(' ')[0].replace('100', '500')}`} />
@@ -775,10 +775,7 @@ export default function TimeAttendancePage() {
                   <p className={`text-xs font-medium mb-1 ${isToday ? 'text-tempo-600' : 'text-t2'}`}>{day}</p>
                   <div className="space-y-0.5">
                     {leaves.slice(0, 3).map((l, li) => {
-                      const color = l.type === 'annual' ? 'bg-emerald-100 text-emerald-700'
-                        : l.type === 'sick' ? 'bg-red-100 text-red-700'
-                        : l.type === 'maternity' || l.type === 'paternity' ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-700'
+                      const color = 'bg-gray-100 text-gray-600'
                       const name = getEmployeeName(l.employee_id)
                       const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2)
                       return (
@@ -817,12 +814,15 @@ export default function TimeAttendancePage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">Department Attendance (Hours)</h3>
               {Object.keys(analyticsData.deptHours).length > 0 ? (
                 <>
-                  <MiniBarChart
+                  <TempoBarChart
                     data={Object.entries(analyticsData.deptHours).slice(0, 6).map(([dept, d]) => ({
-                      label: dept.length > 12 ? dept.substring(0, 12) + '...' : dept,
-                      value: Math.round(d.hours),
+                      name: dept.length > 12 ? dept.substring(0, 12) + '...' : dept,
+                      hours: Math.round(d.hours),
                     }))}
-                    showLabels
+                    bars={[{ dataKey: 'hours', name: 'Hours', color: CHART_SERIES[0] }]}
+                    xKey="name"
+                    showGrid={false}
+                    showYAxis={false}
                     height={140}
                   />
                   <div className="mt-3 space-y-1">
@@ -842,17 +842,17 @@ export default function TimeAttendancePage() {
             {/* Overtime Trend */}
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">Overtime Trend (8 Weeks)</h3>
-              <Sparkline data={analyticsData.overtimeTrend} height={24} width={80} />
+              <TempoSparkArea data={analyticsData.overtimeTrend} height={24} width={80} />
               <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Current Week OT</span>
                   <span className="text-amber-600 font-semibold">{analyticsData.totalOvertime.toFixed(1)}h</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">8-Week Average</span>
                   <span className="text-t1 font-medium">{(analyticsData.overtimeTrend.reduce((a, b) => a + b, 0) / analyticsData.overtimeTrend.length).toFixed(1)}h</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs">
                   <span className="text-t2">Peak OT Week</span>
                   <span className="text-error font-medium">{Math.max(...analyticsData.overtimeTrend).toFixed(1)}h</span>
                 </div>

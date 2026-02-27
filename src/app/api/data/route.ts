@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, withRetry } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
@@ -15,13 +15,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
     }
 
-    const orgs = await db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId))
+    const orgs = await withRetry(() =>
+      db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId))
+    )
     if (orgs.length === 0) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
     const org = orgs[0]
 
-    // Fetch every table in parallel
+    // Fetch every table in parallel (wrapped in withRetry for Neon cold-start resilience)
     const [
       dbDepartments,
       dbEmployees,
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
       dbWorkflowSteps,
       dbWorkflowRuns,
       dbWorkflowTemplates,
-    ] = await Promise.all([
+    ] = await withRetry(() => Promise.all([
       db.select().from(schema.departments).where(eq(schema.departments.orgId, orgId)),
       db.select().from(schema.employees).where(eq(schema.employees.orgId, orgId)),
       db.select().from(schema.goals).where(eq(schema.goals.orgId, orgId)),
@@ -112,7 +114,7 @@ export async function GET(request: NextRequest) {
       db.select().from(schema.workflowSteps),
       db.select().from(schema.workflowRuns).where(eq(schema.workflowRuns.orgId, orgId)),
       db.select().from(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId)),
-    ])
+    ]))
 
     // Build a set of report IDs that belong to this org so we can scope expense items
     const orgReportIds = new Set(dbExpenseReports.map((r) => r.id))
@@ -688,8 +690,25 @@ function keysToCamel(obj: Record<string, any>): Record<string, any> {
 }
 
 /**
+ * Coerce ISO date strings to Date objects for Drizzle timestamp columns.
+ * Matches camelCase keys ending in At/Date (e.g. runDate, createdAt, submittedAt).
+ */
+function coerceDates(obj: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' && /(?:At|Date)$/.test(key) && !isNaN(Date.parse(value))) {
+      out[key] = new Date(value)
+    } else {
+      out[key] = value
+    }
+  }
+  return out
+}
+
+/**
  * Prepare data for Drizzle insertion/update.
  * - Converts snake_case keys to camelCase
+ * - Coerces date strings to Date objects for timestamp columns
  * - For employees: flattens the nested `profile` object into top-level fields
  */
 function prepareData(entity: string, data: Record<string, any>): Record<string, any> {
@@ -703,10 +722,10 @@ function prepareData(entity: string, data: Record<string, any>): Record<string, 
       avatar_url: profile.avatar_url ?? profile.avatarUrl,
       phone: profile.phone,
     }
-    return keysToCamel(flattened)
+    return coerceDates(keysToCamel(flattened))
   }
 
-  return keysToCamel(data)
+  return coerceDates(keysToCamel(data))
 }
 
 export async function POST(request: NextRequest) {
@@ -841,14 +860,14 @@ export async function POST(request: NextRequest) {
       // Generate a provisional ID for the audit entry
       const provisionalId = crypto.randomUUID()
       try {
-        await db.insert(schema.auditLog).values({
+        await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
           userId: employeeId || null,
           action: 'create',
           entityType: entity,
           entityId: provisionalId,
           details: JSON.stringify({ ...prepared, _provisional: true }),
-        })
+        }))
       } catch (auditErr) {
         console.error('[AUDIT FAIL] Create audit write failed:', auditErr)
         return NextResponse.json(
@@ -858,12 +877,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Now perform the actual mutation
-      const rows = await db.insert(table).values(prepared).returning() as any[]
+      const rows = await withRetry(() => db.insert(table).values(prepared).returning()) as any[]
       const created = rows[0]
 
       // Update audit entry with actual entity ID (best-effort, entity is already created)
       try {
-        await db.update(schema.auditLog)
+        await withRetry(() => db.update(schema.auditLog)
           .set({
             entityId: created.id,
             details: JSON.stringify(prepared),
@@ -872,7 +891,7 @@ export async function POST(request: NextRequest) {
             eq(schema.auditLog.entityId, provisionalId),
             eq(schema.auditLog.entityType, entity),
             eq(schema.auditLog.orgId, orgId),
-          ))
+          )))
       } catch {
         // Non-critical: audit entry exists with provisional ID
         console.warn('[AUDIT] Could not update provisional audit entry')
@@ -902,14 +921,14 @@ export async function POST(request: NextRequest) {
 
       // Write-ahead audit: record intent BEFORE mutation
       try {
-        await db.insert(schema.auditLog).values({
+        await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
           userId: employeeId || null,
           action: 'update',
           entityType: entity,
           entityId: id!,
           details: JSON.stringify(prepared),
-        })
+        }))
       } catch (auditErr) {
         console.error('[AUDIT FAIL] Update audit write failed:', auditErr)
         return NextResponse.json(
@@ -924,11 +943,11 @@ export async function POST(request: NextRequest) {
         ? and(eq(table.id, id!), eq(table.orgId, orgId))
         : eq(table.id, id!)
 
-      const rows = await db
+      const rows = await withRetry(() => db
         .update(table)
         .set(prepared)
         .where(whereClause)
-        .returning() as any[]
+        .returning()) as any[]
 
       if (rows.length === 0) {
         return NextResponse.json(
@@ -945,14 +964,14 @@ export async function POST(request: NextRequest) {
     if (action === 'delete') {
       // Write-ahead audit: record intent BEFORE mutation
       try {
-        await db.insert(schema.auditLog).values({
+        await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
           userId: employeeId || null,
           action: 'delete',
           entityType: entity,
           entityId: id!,
           details: JSON.stringify({ deleted: true }),
-        })
+        }))
       } catch (auditErr) {
         console.error('[AUDIT FAIL] Delete audit write failed:', auditErr)
         return NextResponse.json(
@@ -967,10 +986,10 @@ export async function POST(request: NextRequest) {
         ? and(eq(table.id, id!), eq(table.orgId, orgId))
         : eq(table.id, id!)
 
-      const rows = await db
+      const rows = await withRetry(() => db
         .delete(table)
         .where(whereClause)
-        .returning() as any[]
+        .returning()) as any[]
 
       if (rows.length === 0) {
         return NextResponse.json(

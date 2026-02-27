@@ -448,7 +448,7 @@ export default function LearningPage() {
                   {/* SCORM/xAPI compatibility indicator */}
                   {course.format === 'online' && (
                     <div className="flex items-center gap-1 mt-2 pt-2 border-t border-divider">
-                      <Shield size={10} className="text-emerald-500" />
+                      <Shield size={10} className="text-gray-400" />
                       <span className="text-[0.55rem] text-t3">{t('scormCompatible')}</span>
                     </div>
                   )}
@@ -983,11 +983,11 @@ export default function LearningPage() {
           {/* Leaderboard */}
           {socialSubTab === 'leaderboard' && (
             <Card padding="none">
-              <CardHeader><CardTitle><Trophy size={16} className="inline mr-2 text-yellow-500" />{t('leaderboard')}</CardTitle></CardHeader>
+              <CardHeader><CardTitle><Trophy size={16} className="inline mr-2 text-gray-400" />{t('leaderboard')}</CardTitle></CardHeader>
               <div className="divide-y divide-divider">
                 {leaderboardData.map((learner, i) => (
                   <div key={learner.id} className="px-6 py-3 flex items-center gap-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-canvas text-t3'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-gray-200 text-gray-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-gray-100 text-gray-500' : 'bg-canvas text-t3'}`}>
                       {i + 1}
                     </div>
                     <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-xs font-medium text-tempo-600">
@@ -1377,8 +1377,8 @@ export default function LearningPage() {
                   <span>Tempo Platform</span>
                 </div>
                 <div className="mt-4 flex items-center justify-center gap-1.5">
-                  <Shield size={12} className="text-emerald-500" />
-                  <span className="text-[0.6rem] text-emerald-600 font-medium">{t('verifiedCertificate')}</span>
+                  <Shield size={12} className="text-gray-400" />
+                  <span className="text-[0.6rem] text-gray-500 font-medium">{t('verifiedCertificate')}</span>
                 </div>
               </div>
             </div>

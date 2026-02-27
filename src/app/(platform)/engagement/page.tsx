@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, TempoSparkArea, ChartLegend, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIAlertBanner, AIRecommendationList } from '@/components/ai'
@@ -228,19 +228,19 @@ export default function EngagementPage() {
                     <div className="grid grid-cols-3 gap-4 py-4">
                       <div>
                         <p className="text-xs text-t3 mb-1">{t('responses')}</p>
-                        <p className="text-lg font-semibold text-t1">
+                        <p className="text-sm font-semibold text-t1">
                           {surveyResponses.filter((sr: any) => sr.survey_id === survey.id).reduce((a: number, sr: any) => a + sr.respondents, 0)}
                         </p>
                         <Progress value={avgResponse} showLabel color="success" />
                       </div>
                       <div>
                         <p className="text-xs text-t3 mb-1">{t('avgScore')}</p>
-                        <p className="text-lg font-semibold text-tempo-600">{avgScore}/100</p>
+                        <p className="text-sm font-semibold text-tempo-600">{avgScore}/100</p>
                         <Progress value={avgScore} showLabel />
                       </div>
                       <div>
                         <p className="text-xs text-t3 mb-1">{t('enpsLabel')}</p>
-                        <p className="text-lg font-semibold text-green-600">+{avgENPS}</p>
+                        <p className="text-sm font-semibold text-green-600">+{avgENPS}</p>
                         <p className="text-[0.6rem] text-t3">{t('aboveTarget')}</p>
                       </div>
                     </div>
@@ -299,10 +299,12 @@ export default function EngagementPage() {
                 {/* Category Score Breakdown */}
                 <Card>
                   <h3 className="text-sm font-semibold text-t1 mb-4">{t('categoryScoreBreakdown')}</h3>
-                  <MiniBarChart data={surveyAnalysis.categoryScores.map(cs => ({
-                    label: cs.category.length > 12 ? cs.category.substring(0, 12) + '...' : cs.category,
-                    value: cs.score,
-                  }))} showLabels height={160} />
+                  <TempoBarChart
+                    data={surveyAnalysis.categoryScores.map(cs => ({ name: cs.category, score: cs.score }))}
+                    bars={[{ dataKey: 'score', name: 'Score', color: CHART_COLORS.primary }]}
+                    layout="horizontal"
+                    height={160}
+                  />
                   <div className="mt-4 space-y-2">
                     {surveyAnalysis.categoryScores.map(cs => (
                       <div key={cs.category} className="flex items-center justify-between gap-2">
@@ -321,10 +323,10 @@ export default function EngagementPage() {
                   <h3 className="text-sm font-semibold text-t1 mb-4">{t('responseRateByDept')}</h3>
                   {surveyAnalysis.departmentRates.length > 0 ? (
                     <>
-                      <MiniDonutChart data={surveyAnalysis.departmentRates.map((dr, i) => ({
-                        label: dr.department,
+                      <TempoDonutChart data={surveyAnalysis.departmentRates.map((dr, i) => ({
+                        name: dr.department,
                         value: dr.rate,
-                        color: ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'][i % 5],
+                        color: CHART_SERIES[i % CHART_SERIES.length],
                       }))} />
                       <div className="mt-4 space-y-2">
                         {surveyAnalysis.departmentRates.map(dr => (
@@ -343,28 +345,28 @@ export default function EngagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <Card>
                   <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 size={16} className="text-emerald-500" />
+                    <CheckCircle2 size={16} className="text-gray-400" />
                     <h3 className="text-sm font-semibold text-t1">{t('topStrengths')}</h3>
                   </div>
                   <div className="space-y-2">
                     {surveyAnalysis.strengths.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
-                        <ArrowUpRight size={14} className="text-emerald-600" />
-                        <span className="text-sm text-emerald-800">{s}</span>
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
+                        <ArrowUpRight size={14} className="text-gray-500" />
+                        <span className="text-sm text-gray-700">{s}</span>
                       </div>
                     ))}
                   </div>
                 </Card>
                 <Card>
                   <div className="flex items-center gap-2 mb-3">
-                    <Target size={16} className="text-amber-500" />
+                    <Target size={16} className="text-gray-400" />
                     <h3 className="text-sm font-semibold text-t1">{t('keyConcerns')}</h3>
                   </div>
                   <div className="space-y-2">
                     {surveyAnalysis.concerns.map((c, i) => (
-                      <div key={i} className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg">
-                        <ArrowDownRight size={14} className="text-amber-600" />
-                        <span className="text-sm text-amber-800">{c}</span>
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
+                        <ArrowDownRight size={14} className="text-gray-500" />
+                        <span className="text-sm text-gray-700">{c}</span>
                       </div>
                     ))}
                   </div>
@@ -421,21 +423,21 @@ export default function EngagementPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {actionPlans.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noActionPlans')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noActionPlans')}</td></tr>
                   ) : actionPlans.map((ap: any) => (
                     <tr key={ap.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <p className="text-sm font-medium text-t1">{ap.title}</p>
                         <p className="text-xs text-t3">{getDepartmentName(ap.department_id)}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{ap.owner}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{ap.owner}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={ap.priority === 'high' ? 'error' : ap.priority === 'medium' ? 'warning' : 'default'}>
                           {ap.priority === 'high' ? t('priorityHigh') : ap.priority === 'medium' ? t('priorityMedium') : t('priorityLow')}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center"><Badge variant="info">{ap.category}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-t2 text-center">{ap.due_date}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{ap.due_date}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={ap.status === 'completed' ? 'success' : ap.status === 'in_progress' ? 'orange' : 'default'}>
                           {ap.status === 'completed' ? t('completed') : ap.status === 'in_progress' ? t('inProgress') : t('planned')}
@@ -491,12 +493,12 @@ export default function EngagementPage() {
                 <tbody className="divide-y divide-border">
                   {benchmarks.map(bm => (
                     <tr key={bm.dimension} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{bm.dimension}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{bm.dimension}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm font-semibold text-tempo-600">{bm.orgScore}</span>
                       </td>
-                      <td className="px-4 py-3 text-center text-sm text-t2">{bm.industryAvg}</td>
-                      <td className="px-4 py-3 text-center text-sm text-t2">{bm.topQuartile}</td>
+                      <td className="px-4 py-3 text-center text-xs text-t2">{bm.industryAvg}</td>
+                      <td className="px-4 py-3 text-center text-xs text-t2">{bm.topQuartile}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 max-w-[200px]">
@@ -571,7 +573,7 @@ export default function EngagementPage() {
                         </span>
                       </div>
                     </div>
-                    <Sparkline data={points} />
+                    <TempoSparkArea data={points} width={200} height={32} />
                     <div className="flex justify-between text-[0.6rem] text-t3">
                       {(() => {
                         const now = new Date()
@@ -614,8 +616,8 @@ export default function EngagementPage() {
                 <tbody className="divide-y divide-border">
                   {trendData.predictions.map(pred => (
                     <tr key={pred.dimension} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{pred.dimension}</td>
-                      <td className="px-4 py-3 text-center text-sm font-semibold text-t1">{pred.current}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{pred.dimension}</td>
+                      <td className="px-4 py-3 text-center text-xs font-semibold text-t1">{pred.current}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`text-sm font-semibold ${pred.predicted > pred.current ? 'text-emerald-600' : pred.predicted < pred.current ? 'text-error' : 'text-t1'}`}>
                           {pred.predicted}
@@ -660,10 +662,10 @@ export default function EngagementPage() {
           {/* eNPS Org Donut */}
           <Card className="mb-6">
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('enpsBreakdown')}</h3>
-            <MiniDonutChart data={[
-              { label: t('promoters'), value: Math.round(avgENPS * 0.8 + 35), color: 'bg-emerald-500' },
-              { label: t('passives'), value: Math.round(40 - avgENPS * 0.3), color: 'bg-amber-400' },
-              { label: t('detractors'), value: Math.max(5, Math.round(25 - avgENPS * 0.5)), color: 'bg-rose-500' },
+            <TempoDonutChart data={[
+              { name: t('promoters'), value: Math.round(avgENPS * 0.8 + 35), color: '#10b981' },
+              { name: t('passives'), value: Math.round(40 - avgENPS * 0.3), color: '#f59e0b' },
+              { name: t('detractors'), value: Math.max(5, Math.round(25 - avgENPS * 0.5)), color: '#f43f5e' },
             ]} />
           </Card>
 

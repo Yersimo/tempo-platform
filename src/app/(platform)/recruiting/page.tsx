@@ -541,7 +541,7 @@ export default function RecruitingPage() {
               <tbody className="divide-y divide-border">
                 {applications.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
                       {t('noApplications')}
                     </td>
                   </tr>
@@ -554,10 +554,10 @@ export default function RecruitingPage() {
                   return (
                     <tr key={app.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
-                        <p className="text-sm font-medium text-t1">{app.candidate_name}</p>
+                        <p className="text-xs font-medium text-t1">{app.candidate_name}</p>
                         <p className="text-xs text-t3">{app.candidate_email}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{job?.title || tc('unknown')}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{job?.title || tc('unknown')}</td>
                       <td className="px-4 py-3">
                         <Badge variant={
                           stage === 'offer' || stage === 'hired' ? 'success' :
@@ -912,7 +912,7 @@ export default function RecruitingPage() {
                 <tbody className="divide-y divide-border">
                   {Object.entries(scoreCardsByCandidate).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-sm text-t3">{t('noScorecards')}</td>
+                      <td colSpan={6} className="px-4 py-12 text-center text-xs text-t3">{t('noScorecards')}</td>
                     </tr>
                   )}
                   {Object.entries(scoreCardsByCandidate).map(([appId, data]) => {
@@ -921,15 +921,15 @@ export default function RecruitingPage() {
                     return (
                       <tr key={appId} className="hover:bg-canvas/50">
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-t1">{data.candidate_name}</p>
+                          <p className="text-xs font-medium text-t1">{data.candidate_name}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{data.job_title}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{data.job_title}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`text-sm font-bold ${data.avgScore >= 4 ? 'text-green-600' : data.avgScore >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
                             {data.avgScore}/5
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center text-sm text-t2">{data.cards.length}</td>
+                        <td className="px-4 py-3 text-center text-xs text-t2">{data.cards.length}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={topRec === 'strong_hire' ? 'success' : topRec === 'hire' ? 'info' : topRec === 'no_hire' ? 'error' : 'default'}>
                             {topRec === 'strong_hire' ? t('recStrongHire') : topRec === 'hire' ? t('recHire') : topRec === 'no_hire' ? t('recNoHire') : t('recNoDecision')}
@@ -1026,7 +1026,7 @@ export default function RecruitingPage() {
                         </div>
                         <div className="flex h-4 rounded-full overflow-hidden bg-canvas">
                           {Object.entries(fd.categories).map(([cat, count], idx) => {
-                            const colors = ['bg-blue-500', 'bg-pink-500', 'bg-purple-500', 'bg-green-500', 'bg-yellow-500']
+                            const colors = ['bg-gray-400', 'bg-gray-500', 'bg-gray-600', 'bg-stone-400', 'bg-zinc-400']
                             const pctVal = fd.total > 0 ? (count / fd.total) * 100 : 0
                             return (
                               <div
@@ -1040,7 +1040,7 @@ export default function RecruitingPage() {
                         </div>
                         <div className="flex gap-3 mt-1">
                           {Object.entries(fd.categories).map(([cat, count], idx) => {
-                            const dotColors = ['bg-blue-500', 'bg-pink-500', 'bg-purple-500', 'bg-green-500', 'bg-yellow-500']
+                            const dotColors = ['bg-gray-400', 'bg-gray-500', 'bg-gray-600', 'bg-stone-400', 'bg-zinc-400']
                             return (
                               <span key={cat} className="flex items-center gap-1 text-[0.6rem] text-t3">
                                 <span className={`w-1.5 h-1.5 rounded-full ${dotColors[idx % dotColors.length]}`} />
@@ -1087,15 +1087,15 @@ export default function RecruitingPage() {
                     <p className="text-xs text-t3 mb-1">{t('genderDistribution')}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-3 rounded-full overflow-hidden bg-canvas flex">
-                        <div className="bg-blue-500" style={{ width: '52%' }} />
-                        <div className="bg-pink-500" style={{ width: '40%' }} />
-                        <div className="bg-purple-500" style={{ width: '8%' }} />
+                        <div className="bg-gray-400" style={{ width: '52%' }} />
+                        <div className="bg-gray-600" style={{ width: '40%' }} />
+                        <div className="bg-gray-800" style={{ width: '8%' }} />
                       </div>
                     </div>
                     <div className="flex gap-3 mt-1">
-                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Male 52%</span>
-                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-pink-500" />Female 40%</span>
-                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-500" />NB 8%</span>
+                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" />Male 52%</span>
+                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-600" />Female 40%</span>
+                      <span className="text-[0.6rem] text-t3 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-800" />NB 8%</span>
                     </div>
                   </div>
                   <div className="p-3 bg-canvas rounded-lg">

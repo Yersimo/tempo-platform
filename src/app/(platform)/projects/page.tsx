@@ -659,7 +659,7 @@ export default function ProjectsPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-t1 flex items-center gap-2"><Zap size={20} /> {t('automationRules')}</h2>
+              <h2 className="text-sm font-semibold text-t1 flex items-center gap-2"><Zap size={20} /> {t('automationRules')}</h2>
               <p className="text-sm text-t3 mt-0.5">{t('automationRulesDesc')}</p>
             </div>
             <Button size="sm" onClick={openNewRule}><Plus size={14} /> {t('newRule')}</Button>

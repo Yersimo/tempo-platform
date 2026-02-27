@@ -1,0 +1,589 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { useAI } from '@/lib/use-ai'
+import { useTranslations } from 'next-intl'
+import { StatCard } from '@/components/ui/stat-card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar } from '@/components/ui/avatar'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
+import {
+  Users, TrendingUp, Banknote, GraduationCap, Briefcase,
+  Receipt, UserCheck, Clock, ArrowRight, CheckCircle2,
+  AlertTriangle, FileText, CalendarCheck, ChevronRight,
+  Megaphone, PartyPopper, Cake, Award, Zap, PlusCircle,
+  Send, BarChart3, Heart
+} from 'lucide-react'
+import { useTempo } from '@/lib/store'
+import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
+import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
+import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils/cn'
+import { LiveWorkflowActivity } from '@/components/dashboard/live-workflow-activity'
+import { ActiveJourneysCard } from '@/components/dashboard/active-journeys-card'
+
+export function OrgTab() {
+  const {
+    employees, goals, feedback, leaveRequests, jobPostings,
+    enrollments, mentoringPairs, expenseReports, payrollRuns,
+    reviews, auditLog, getEmployeeName, departments,
+    updateLeaveRequest, reviewCycles, salaryReviews, surveys,
+    engagementScores, applications, currentUser, currentEmployeeId,
+    addToast, workflows, workflowRuns,
+  } = useTempo()
+
+  const router = useRouter()
+  const t = useTranslations('dashboard')
+  const tc = useTranslations('common')
+
+  // Live KPIs
+  const headcount = employees.length
+  const activeGoals = goals.filter(g => g.status === 'on_track' || g.status === 'at_risk').length
+  const ratedReviews = reviews.filter(r => r.overall_rating)
+  const reviewCompletion = reviews.length > 0 ? Math.round((reviews.filter(r => r.status === 'submitted').length / reviews.length) * 100) : 0
+  const activeLearners = new Set(enrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').map(e => e.employee_id)).size
+  const openPositions = jobPostings.filter(j => j.status === 'open').length
+  const pendingExpenses = expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').length
+  const activeMentoringPairs = mentoringPairs.filter(p => p.status === 'active').length
+  const pendingLeave = leaveRequests.filter(l => l.status === 'pending')
+  const lastPayroll = payrollRuns[payrollRuns.length - 1]
+
+  // Action items (Rippling-style "needs your attention")
+  const actionItems = useMemo(() => {
+    const items: { id: string; type: string; title: string; subtitle: string; href: string; icon: React.ReactNode; urgency: 'critical' | 'warning' | 'info' }[] = []
+
+    if (pendingLeave.length > 0) {
+      items.push({
+        id: 'leave',
+        type: 'Leave',
+        title: `${pendingLeave.length} leave request${pendingLeave.length > 1 ? 's' : ''} pending approval`,
+        subtitle: pendingLeave.map(l => getEmployeeName(l.employee_id)).slice(0, 2).join(', ') + (pendingLeave.length > 2 ? ` +${pendingLeave.length - 2} more` : ''),
+        href: '/time-attendance',
+        icon: <CalendarCheck size={16} />,
+        urgency: 'warning',
+      })
+    }
+
+    if (pendingExpenses > 0) {
+      items.push({
+        id: 'expenses',
+        type: 'Expense',
+        title: `${pendingExpenses} expense report${pendingExpenses > 1 ? 's' : ''} awaiting review`,
+        subtitle: `$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()} total`,
+        href: '/expense',
+        icon: <Receipt size={16} />,
+        urgency: 'warning',
+      })
+    }
+
+    const incompleteReviews = reviews.filter(r => r.status === 'in_progress' || r.status === 'draft')
+    if (incompleteReviews.length > 0) {
+      items.push({
+        id: 'reviews',
+        type: 'Performance',
+        title: `${incompleteReviews.length} performance review${incompleteReviews.length > 1 ? 's' : ''} in progress`,
+        subtitle: 'Ensure timely completion of the review cycle',
+        href: '/performance',
+        icon: <FileText size={16} />,
+        urgency: 'info',
+      })
+    }
+
+    const atRiskGoals = goals.filter(g => g.status === 'at_risk' || g.status === 'behind')
+    if (atRiskGoals.length > 0) {
+      items.push({
+        id: 'goals',
+        type: 'Goals',
+        title: `${atRiskGoals.length} goal${atRiskGoals.length > 1 ? 's' : ''} at risk or behind`,
+        subtitle: 'Review progress and provide support',
+        href: '/performance',
+        icon: <AlertTriangle size={16} />,
+        urgency: atRiskGoals.some(g => g.status === 'behind') ? 'critical' : 'warning',
+      })
+    }
+
+    return items
+  }, [pendingLeave, pendingExpenses, reviews, goals, expenseReports, getEmployeeName])
+
+  // Department distribution for donut chart
+  const deptDistribution = useMemo(() => {
+    const colors = ['#ea580c', '#94a3b8', '#64748b', '#a1a1aa', '#78716c', '#71717a', '#6b7280', '#9ca3af']
+    const counts: Record<string, number> = {}
+    employees.forEach(emp => {
+      const deptId = emp.department_id
+      const dept = departments.find(d => d.id === deptId)
+      const name = dept?.name || 'Other'
+      counts[name] = (counts[name] || 0) + 1
+    })
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([label, value], i) => ({ label, value, color: colors[i % colors.length] }))
+  }, [employees, departments])
+
+  // Headcount sparkline data (simulated monthly trend)
+  const headcountTrend = useMemo(() => {
+    const base = Math.max(0, headcount - 12)
+    return Array.from({ length: 6 }, (_, i) => base + Math.floor(Math.random() * 4) + i * 2)
+  }, [headcount])
+
+  // AI-powered insights
+  const execSummary = useMemo(() => generateExecutiveSummary({ employees, goals, reviews, reviewCycles, salaryReviews, surveys, engagementScores, expenseReports, leaveRequests, jobPostings, applications, payrollRuns, mentoringPairs }), [employees, goals, reviews, payrollRuns])
+  const nextActions = useMemo(() => identifyNextBestActions({ reviews, leaveRequests, expenseReports, salaryReviews, goals, jobPostings, applications }), [reviews, leaveRequests, expenseReports])
+  const aiAnomalies = useMemo(() => detectCrossModuleAnomalies({ employees, reviews, engagementScores, salaryReviews, goals, mentoringPairs, leaveRequests }), [employees, reviews, goals])
+
+  // Claude AI enhancement - executive summary
+  const { result: enhancedSummary, isLoading: summaryLoading } = useAI({
+    action: 'enhanceNarrative',
+    data: { summary: execSummary, employees: employees.length, goals: goals.length, reviews: reviews.length },
+    fallback: execSummary,
+    enabled: !!execSummary.summary,
+    cacheKey: `dashboard-summary-${employees.length}-${goals.length}`,
+  })
+
+  return (
+    <>
+      {/* Quick Actions Bar - Workday/BambooHR style */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {[
+            { label: 'Submit PTO', icon: <Clock size={14} />, href: '/time-attendance', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Run Payroll', icon: <Banknote size={14} />, href: '/payroll', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Post a Job', icon: <Briefcase size={14} />, href: '/recruiting', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Give Kudos', icon: <Heart size={14} />, href: '/performance', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'File Expense', icon: <Receipt size={14} />, href: '/expense', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'View Reports', icon: <BarChart3 size={14} />, href: '/analytics', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+          ].map(action => (
+            <button
+              key={action.label}
+              onClick={() => router.push(action.href)}
+              className={cn('flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium whitespace-nowrap hover:shadow-sm transition-all', action.color)}
+            >
+              {action.icon}
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Company Announcements - BambooHR/HiBob style */}
+      {(() => {
+        const announcements = [
+          { id: 'ann-1', type: 'announcement' as const, icon: <Megaphone size={14} />, title: 'Q1 All-Hands Meeting', content: 'Join us for our quarterly all-hands this Friday at 2 PM WAT. CEO will share company updates and Q2 roadmap.', author: 'Amara Kone', date: '2 hours ago', color: 'bg-gray-100 text-gray-500' },
+          { id: 'ann-2', type: 'celebration' as const, icon: <Award size={14} />, title: 'Kudos to Product Team!', content: 'Congratulations on launching the new mobile app — 4.8★ rating in the first week!', author: 'Folake Adebayo', date: '1 day ago', color: 'bg-gray-100 text-gray-500' },
+          { id: 'ann-3', type: 'policy' as const, icon: <FileText size={14} />, title: 'Updated Remote Work Policy', content: 'We\'ve expanded our flexible work policy to include 3 remote days per week. See the full policy in the handbook.', author: 'Kofi Mensah', date: '3 days ago', color: 'bg-gray-100 text-gray-500' },
+        ]
+        return (
+          <Card padding="none" className="mb-6">
+            <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
+              <div className="flex items-center gap-2">
+                <Megaphone size={14} className="text-tempo-600" />
+                <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
+                <Badge variant="default">{announcements.length}</Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => addToast('Company update posted!')}><PlusCircle size={14} /> Post Update</Button>
+            </div>
+            <div className="divide-y divide-divider">
+              {announcements.map(ann => (
+                <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
+                      {ann.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-xs font-semibold text-t1">{ann.title}</p>
+                      </div>
+                      <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[0.65rem] text-t3">{ann.author}</span>
+                        <span className="text-[0.65rem] text-t3">·</span>
+                        <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )
+      })()}
+
+      {/* Action Required Section - Rippling-style "Needs Your Attention" */}
+      {actionItems.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <h2 className="text-xs font-semibold text-t1 uppercase tracking-wider">Needs Your Attention</h2>
+            <Badge variant="warning">{actionItems.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {actionItems.map((item) => (
+              <div key={item.id} onClick={() => router.push(item.href)} role="link" className={cn(
+                  'group flex items-center gap-4 bg-card border rounded-[var(--radius-card)] px-5 py-4 hover:shadow-sm transition-all cursor-pointer',
+                  item.urgency === 'critical' ? 'border-red-200 bg-red-50/30' :
+                  item.urgency === 'warning' ? 'border-amber-200 bg-amber-50/30' :
+                  'border-border'
+                )}>
+                  <div className={cn(
+                    'flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center',
+                    item.urgency === 'critical' ? 'bg-red-100 text-red-600' :
+                    item.urgency === 'warning' ? 'bg-amber-100 text-amber-600' :
+                    'bg-gray-100 text-gray-500'
+                  )}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-t1">{item.title}</p>
+                    <p className="text-xs text-t3 mt-0.5 truncate">{item.subtitle}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-t3 group-hover:text-t1 transition-colors flex-shrink-0" />
+                </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KPI Grid with Sparklines */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="relative overflow-hidden group hover:shadow-md hover:border-tempo-200 transition-all cursor-pointer" onClick={() => router.push('/people')} role="link">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="tempo-th text-t3 mb-1">{t('headcount')}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="tempo-stat text-2xl text-t1">{headcount}</p>
+                  <TempoSparkArea data={headcountTrend} height={20} width={60} />
+                </div>
+                <p className="text-xs mt-1 font-medium text-t3">{activeGoals} {t('activeGoals').toLowerCase()}</p>
+              </div>
+              <div className="text-tempo-400 opacity-50"><Users size={24} /></div>
+            </div>
+          </Card>
+        <StatCard href="/performance" label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
+        <StatCard href="/learning" label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
+        <StatCard href="/recruiting" label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
+        <StatCard href="/expense" label={t('pendingExpenses')} value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
+        <StatCard href="/mentoring" label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
+        <StatCard href="/time-attendance" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
+        <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
+      </div>
+
+      {/* AI Insights Section */}
+      {aiAnomalies.length > 0 && (
+        <AIAlertBanner insights={aiAnomalies} className="mb-4" />
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div className="relative transition-opacity duration-500 ease-in-out" style={{ opacity: summaryLoading ? 0.9 : 1 }}>
+          <AIInsightCard
+            insight={{ id: 'ai-exec-summary', category: 'trend', severity: 'info', title: t('executiveSummary'), description: enhancedSummary.summary, confidence: 'high', confidenceScore: 90, suggestedAction: `${employees.length} active employees across the organization`, actionLabel: `${employees.length} active employees across the organization`, module: 'dashboard' }}
+            onAction={() => router.push('/people')}
+          />
+        </div>
+        <AIRecommendationList title={t('recommendedActions')} recommendations={nextActions} />
+      </div>
+
+      {/* Live Workflow Activity & Guided Journeys */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <LiveWorkflowActivity />
+        <ActiveJourneysCard />
+      </div>
+
+      {/* Analytics Row - Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {/* Department Distribution */}
+        <Card padding="none">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Department Distribution</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/people')}>{tc('viewAll')}</Button>
+            </div>
+          </CardHeader>
+          <div className="px-6 py-4 flex items-center gap-6">
+            <div className="w-[130px] flex-shrink-0">
+              <TempoDonutChart data={deptDistribution.map(d => ({ name: d.label, value: d.value, color: d.color }))} height={130} innerRadius="50%" outerRadius="80%" showLegend={false} />
+            </div>
+            <div className="flex-1 space-y-1.5">
+              {deptDistribution.slice(0, 5).map((d) => (
+                <div key={d.label} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                  <span className="text-[0.65rem] text-t2 flex-1 truncate">{d.label}</span>
+                  <span className="text-[0.65rem] font-semibold text-t1">{d.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* Performance Overview */}
+        <Card padding="none">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Performance Overview</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
+            </div>
+          </CardHeader>
+          <div className="px-6 py-4">
+            <TempoBarChart
+              data={[
+                { name: 'On Track', count: goals.filter(g => g.status === 'on_track').length },
+                { name: 'At Risk', count: goals.filter(g => g.status === 'at_risk').length },
+                { name: 'Behind', count: goals.filter(g => g.status === 'behind').length },
+                { name: 'Complete', count: goals.filter(g => g.status === 'completed').length },
+              ]}
+              bars={[{ dataKey: 'count', name: 'Goals', color: CHART_COLORS.primary }]}
+              xKey="name"
+              height={120}
+              showGrid={false}
+              showYAxis={false}
+            />
+          </div>
+        </Card>
+
+        {/* Quick Stats */}
+        <Card padding="none">
+          <CardHeader><CardTitle>Workforce Snapshot</CardTitle></CardHeader>
+          <div className="divide-y divide-divider">
+            {[
+              { label: 'Active Employees', value: employees.length, total: employees.length, color: 'bg-gray-400', href: '/people' },
+              { label: 'Enrolled in Learning', value: activeLearners, total: employees.length, color: 'bg-gray-500', href: '/learning' },
+              { label: 'In Mentoring', value: activeMentoringPairs * 2, total: employees.length, color: 'bg-gray-300', href: '/mentoring' },
+              { label: 'Open Applications', value: applications.filter(a => a.status === 'applied' || a.status === 'screening' || a.status === 'interview').length, total: applications.length, color: 'bg-tempo-500', href: '/recruiting' },
+            ].map((stat) => (
+              <div key={stat.label} onClick={() => router.push(stat.href)} role="link" className="px-6 py-3 flex items-center gap-3 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-t2">{stat.label}</span>
+                      <span className="text-xs font-semibold text-t1">{stat.value}/{stat.total}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-canvas rounded-full overflow-hidden">
+                      <div className={cn('h-full rounded-full transition-all', stat.color)} style={{ width: `${stat.total > 0 ? (stat.value / stat.total) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
+                </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Goals Progress */}
+        <Card padding="none" className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('goalsTitle')}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
+            </div>
+          </CardHeader>
+          <div className="divide-y divide-divider">
+            {goals.slice(0, 5).map((goal) => (
+              <div key={goal.id} onClick={() => router.push('/performance')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-t1 truncate">{goal.title}</p>
+                    <p className="text-[0.65rem] text-t3">{getEmployeeName(goal.employee_id)}</p>
+                  </div>
+                  <div className="w-32">
+                    <Progress value={goal.progress} showLabel />
+                  </div>
+                  <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
+                    {goal.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
+                </div>
+            ))}
+            {goals.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noGoals')}</div>}
+          </div>
+        </Card>
+
+        {/* Activity Feed (with automation entries) */}
+        <Card padding="none">
+          <CardHeader><CardTitle>{t('recentActivity')}</CardTitle></CardHeader>
+          <div className="divide-y divide-divider">
+            {/* Automation entries - latest 3 workflow runs */}
+            {workflowRuns
+              .slice()
+              .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+              .slice(0, 3)
+              .map(run => {
+                const wf = workflows.find(w => w.id === run.workflow_id)
+                const diffMs = run.completed_at
+                  ? new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()
+                  : new Date().getTime() - new Date(run.started_at).getTime()
+                const mins = Math.floor(diffMs / 60000)
+                return (
+                  <div key={`auto-${run.id}`} onClick={() => router.push('/workflow-studio')} role="link" className="px-6 py-3 hover:bg-canvas/50 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <Zap size={12} className="text-tempo-600" />
+                      <span className="text-xs font-medium text-t1">{wf?.title || 'Workflow'}</span>
+                      <Badge variant={
+                        run.status === 'completed' ? 'success' :
+                        run.status === 'running' ? 'info' :
+                        run.status === 'failed' ? 'error' : 'default'
+                      }>{run.status}</Badge>
+                    </div>
+                    <p className="text-[0.7rem] text-t2 ml-5">
+                      {run.status === 'completed' ? `Completed in ${mins}m` :
+                       run.status === 'running' ? `Running for ${mins}m` :
+                       run.status === 'failed' ? 'Failed' : run.status}
+                      {(run.context as unknown as Record<string, string>)?.employee_name && ` — ${(run.context as unknown as Record<string, string>).employee_name}`}
+                    </p>
+                    <p className="text-[0.6rem] text-t3 mt-0.5 ml-5">{new Date(run.started_at).toLocaleString()}</p>
+                  </div>
+                )
+              })}
+            {/* Standard audit log entries */}
+            {auditLog.length > 0 ? auditLog.slice(0, 5).map((entry) => {
+              const et = entry.entity_type.toLowerCase()
+              const entryHref = et.includes('review') || et.includes('goal') || et.includes('feedback') ? '/performance' : et.includes('payroll') || et.includes('payrun') ? '/payroll' : et.includes('leave') ? '/time-attendance' : et.includes('expense') ? '/expense' : et.includes('job') || et.includes('candidate') || et.includes('application') ? '/recruiting' : null
+              const Inner = (
+                <div className={cn('px-6 py-3', entryHref && 'hover:bg-canvas/50 transition-colors cursor-pointer')}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-medium text-t1">{entry.user}</span>
+                    <Badge variant="default">{entry.action}</Badge>
+                  </div>
+                  <p className="text-[0.7rem] text-t2 line-clamp-1">{entry.details}</p>
+                  <p className="text-[0.6rem] text-t3 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
+                </div>
+              )
+              return entryHref ? <div key={entry.id} onClick={() => router.push(entryHref)} role="link">{Inner}</div> : <div key={entry.id}>{Inner}</div>
+            }) : feedback.slice(0, 5).map((fb) => (
+              <div key={fb.id} onClick={() => router.push('/performance')} role="link" className="cursor-pointer">
+                <div className="px-6 py-3 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Avatar name={getEmployeeName(fb.from_id)} size="xs" />
+                    <span className="text-xs font-medium text-t1">{getEmployeeName(fb.from_id)}</span>
+                    <span className="text-[0.65rem] text-t3">
+                      {fb.type === 'recognition' ? t('recognized') : fb.type === 'feedback' ? t('gaveFeedback') : t('checkedIn')}
+                    </span>
+                    <span className="text-xs font-medium text-t1">{getEmployeeName(fb.to_id)}</span>
+                  </div>
+                  <p className="text-[0.7rem] text-t2 line-clamp-2 ml-8">{fb.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Leave Requests */}
+        <Card padding="none">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('pendingLeaveRequests')}</CardTitle>
+              <Badge variant="warning">{pendingLeave.length}</Badge>
+            </div>
+          </CardHeader>
+          <div className="divide-y divide-divider">
+            {pendingLeave.map((lr) => (
+              <div key={lr.id} className="px-6 py-3 flex items-center gap-3">
+                <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
+                  <p className="text-[0.65rem] text-t3">{lr.type} - {lr.days} days ({lr.start_date})</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="primary" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'approved', approved_by: currentEmployeeId })}>{tc('approve')}</Button>
+                  <Button variant="ghost" size="sm" onClick={() => updateLeaveRequest(lr.id, { status: 'rejected' })}>{tc('deny')}</Button>
+                </div>
+              </div>
+            ))}
+            {pendingLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noPending')}</div>}
+          </div>
+        </Card>
+
+        {/* Open Positions */}
+        <Card padding="none" className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('openPositionsTitle')}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/recruiting')}>{tc('viewAll')}</Button>
+            </div>
+          </CardHeader>
+          <div className="divide-y divide-divider">
+            {jobPostings.filter(j => j.status === 'open').map((job) => (
+              <div key={job.id} onClick={() => router.push('/recruiting')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
+                  <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                    <Briefcase size={18} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-t1">{job.title}</p>
+                    <p className="text-[0.65rem] text-t3">{job.location}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-t1">{job.application_count} {t('applicants')}</p>
+                    <p className="text-[0.65rem] text-t3">{job.type.replace(/_/g, ' ')}</p>
+                  </div>
+                  <Badge variant="orange">{tc('open')}</Badge>
+                  <ChevronRight size={14} className="text-t3 flex-shrink-0" />
+                </div>
+            ))}
+            {jobPostings.filter(j => j.status === 'open').length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noOpenPositions')}</div>}
+          </div>
+        </Card>
+      </div>
+
+      {/* Team Celebrations - HiBob style */}
+      <div className="mt-6">
+        <Card padding="none">
+          <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
+            <div className="flex items-center gap-2">
+              <PartyPopper size={14} className="text-tempo-600" />
+              <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Celebrations & Milestones</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-divider">
+            {/* Birthdays */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Cake size={14} className="text-gray-400" />
+                <span className="text-xs font-semibold text-t1">Upcoming Birthdays</span>
+              </div>
+              <div className="space-y-2">
+                {employees.slice(0, 3).map((emp, i) => {
+                  const months = ['Mar', 'Mar', 'Apr']
+                  const days = [2 + i * 5, 8 + i * 3, 1 + i * 7]
+                  return (
+                    <div key={`bday-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{months[i]} {days[i]}</p>
+                      </div>
+                      <span className="text-lg">🎂</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Work Anniversaries */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Award size={14} className="text-gray-400" />
+                <span className="text-xs font-semibold text-t1">Work Anniversaries</span>
+              </div>
+              <div className="space-y-2">
+                {employees.slice(3, 6).map((emp, i) => {
+                  const years = [5, 3, 1]
+                  return (
+                    <div key={`anni-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{years[i]} year{years[i] > 1 ? 's' : ''} this month</p>
+                      </div>
+                      <Badge variant="success">{years[i]}y</Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </>
+  )
+}

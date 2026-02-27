@@ -1069,6 +1069,92 @@ export const demoWorkflowTemplates = [
 ]
 
 // ============================================================
+// GUIDED JOURNEYS (Oracle Fusion-inspired)
+// ============================================================
+
+export interface JourneyStep {
+  id: string
+  title: string
+  description: string
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped'
+  type: 'task' | 'form' | 'review' | 'approval' | 'info'
+  action_href?: string
+}
+
+export interface Journey {
+  id: string
+  type: 'new_hire_onboarding' | 'performance_review' | 'salary_review' | 'benefits_enrollment'
+  title: string
+  description: string
+  employee_id: string
+  assigned_by: string
+  status: 'not_started' | 'in_progress' | 'completed'
+  current_step: number
+  steps: JourneyStep[]
+  started_at: string | null
+  due_date: string | null
+}
+
+export const demoJourneys: Journey[] = [
+  {
+    id: 'journey-1',
+    type: 'new_hire_onboarding',
+    title: 'New Hire Onboarding',
+    description: 'Complete your onboarding journey to get fully set up at Ecobank.',
+    employee_id: 'emp-30',
+    assigned_by: 'emp-1',
+    status: 'in_progress',
+    current_step: 2,
+    started_at: '2026-02-10T09:00:00Z',
+    due_date: '2026-03-10T09:00:00Z',
+    steps: [
+      { id: 'js-1', title: 'Complete personal profile', description: 'Fill in your personal details, emergency contacts, and banking information.', status: 'completed', type: 'form', action_href: '/people' },
+      { id: 'js-2', title: 'Review company policies', description: 'Read and acknowledge the employee handbook, code of conduct, and IT security policy.', status: 'completed', type: 'info', action_href: '/settings' },
+      { id: 'js-3', title: 'Complete compliance training', description: 'Finish the required Anti-Money Laundering and Data Protection courses.', status: 'in_progress', type: 'task', action_href: '/learning' },
+      { id: 'js-4', title: 'Meet your buddy', description: 'Schedule and complete your first meeting with your onboarding buddy.', status: 'pending', type: 'task', action_href: '/mentoring' },
+      { id: 'js-5', title: 'Set first 90-day goals', description: 'Work with your manager to define your initial goals and objectives.', status: 'pending', type: 'form', action_href: '/performance' },
+      { id: 'js-6', title: '30-day check-in', description: 'Complete your 30-day check-in review with your manager.', status: 'pending', type: 'review', action_href: '/performance' },
+    ],
+  },
+  {
+    id: 'journey-2',
+    type: 'performance_review',
+    title: 'Q1 2026 Performance Review',
+    description: 'Complete the quarterly performance review cycle for your team.',
+    employee_id: 'emp-1',
+    assigned_by: 'emp-5',
+    status: 'in_progress',
+    current_step: 1,
+    started_at: '2026-02-15T09:00:00Z',
+    due_date: '2026-03-31T09:00:00Z',
+    steps: [
+      { id: 'js-7', title: 'Self-assessment', description: 'Complete your self-assessment for Q1 performance.', status: 'completed', type: 'form', action_href: '/performance' },
+      { id: 'js-8', title: 'Peer feedback collection', description: 'Request and gather peer feedback from at least 3 colleagues.', status: 'in_progress', type: 'task', action_href: '/performance' },
+      { id: 'js-9', title: 'Manager review', description: 'Your manager will complete their assessment of your performance.', status: 'pending', type: 'approval', action_href: '/performance' },
+      { id: 'js-10', title: 'Calibration meeting', description: 'Participate in the department-level calibration session.', status: 'pending', type: 'review', action_href: '/performance' },
+    ],
+  },
+  {
+    id: 'journey-3',
+    type: 'benefits_enrollment',
+    title: 'Annual Benefits Enrollment',
+    description: 'Review and update your benefit selections for the new plan year.',
+    employee_id: 'emp-3',
+    assigned_by: 'emp-9',
+    status: 'not_started',
+    current_step: 0,
+    started_at: null,
+    due_date: '2026-03-15T09:00:00Z',
+    steps: [
+      { id: 'js-11', title: 'Review current benefits', description: 'Review your existing benefit enrollments and coverage levels.', status: 'pending', type: 'info', action_href: '/benefits' },
+      { id: 'js-12', title: 'Update dependents', description: 'Add or remove dependents from your benefit plans.', status: 'pending', type: 'form', action_href: '/benefits' },
+      { id: 'js-13', title: 'Select plan options', description: 'Choose your medical, dental, and vision plan options.', status: 'pending', type: 'form', action_href: '/benefits' },
+      { id: 'js-14', title: 'Confirm enrollment', description: 'Review and confirm your benefit elections.', status: 'pending', type: 'approval', action_href: '/benefits' },
+    ],
+  },
+]
+
+// ============================================================
 // NOTIFICATIONS (in-app demo data)
 // ============================================================
 

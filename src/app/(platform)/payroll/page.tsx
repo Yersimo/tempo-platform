@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { MiniBarChart, MiniDonutChart, Sparkline } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
@@ -185,7 +185,7 @@ export default function PayrollPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {payrollRuns.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noPayRuns')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noPayRuns')}</td></tr>
                   ) : payrollRuns.map(run => {
                     const runEntries = employeePayrollEntries.filter(e => (e as any).payroll_run_id === run.id)
                     const isExpanded = expandedRunId === run.id
@@ -195,15 +195,15 @@ export default function PayrollPage() {
                           <div className="flex items-center gap-2">
                             {isExpanded ? <ChevronUp size={14} className="text-t3" /> : <ChevronDown size={14} className="text-t3" />}
                             <div>
-                              <p className="text-sm font-medium text-t1">{run.period}</p>
+                              <p className="text-xs font-medium text-t1">{run.period}</p>
                               <p className="text-xs text-t3">{t('run', { date: new Date(run.run_date).toLocaleDateString() })} · {runEntries.length} {t('employeeBreakdown').toLowerCase()}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-medium">${run.total_gross.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-error text-right">-${run.total_deductions.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${run.total_net.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-right">{run.employee_count}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-medium">${run.total_gross.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-error text-right">-${run.total_deductions.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${run.total_net.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{run.employee_count}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={run.status === 'paid' ? 'success' : run.status === 'approved' ? 'info' : run.status === 'draft' ? 'default' : 'warning'}>
                             {run.status}
@@ -317,20 +317,20 @@ export default function PayrollPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredEntries.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noEntries')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noEntries')}</td></tr>
                   ) : filteredEntries.map(entry => {
                     const e = entry as any
                     return (
                       <tr key={e.id} className="hover:bg-canvas/50">
                         <td className="px-6 py-3">
-                          <p className="text-sm font-medium text-t1">{e.employee_name}</p>
+                          <p className="text-xs font-medium text-t1">{e.employee_name}</p>
                           <p className="text-xs text-t3">{e.employee_id}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{e.department}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{e.country}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-medium">${e.gross_pay?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-error text-right">-${e.total_deductions?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-semibold">${e.net_pay?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{e.department}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{e.country}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-medium">${e.gross_pay?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-error text-right">-${e.total_deductions?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${e.net_pay?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
                           <Button size="sm" variant="ghost" onClick={() => setShowPayStubModal(e.id)}>{t('viewStub')}</Button>
                         </td>
@@ -361,21 +361,19 @@ export default function PayrollPage() {
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('costByDepartment')}</h3>
               {trends.departmentTrends.length > 0 ? (
-                <MiniBarChart data={trends.departmentTrends.slice(0, 6).map(d => ({
-                  label: d.department.length > 10 ? d.department.substring(0, 10) + '…' : d.department,
-                  value: Math.round(d.totalCost / 1000),
-                }))} showLabels height={140} />
+                <TempoBarChart
+                  data={trends.departmentTrends.slice(0, 6).map(d => ({
+                    name: d.department,
+                    cost: Math.round(d.totalCost / 1000),
+                  }))}
+                  bars={[{ dataKey: 'cost', name: 'Cost ($K)', color: CHART_COLORS.primary }]}
+                  xKey="name"
+                  layout="horizontal"
+                  height={trends.departmentTrends.length * 36}
+                  formatter={(v) => `$${v}K`}
+                  showGrid={false}
+                />
               ) : <p className="text-sm text-t3">{t('noEntries')}</p>}
-              {trends.departmentTrends.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {trends.departmentTrends.map(d => (
-                    <div key={d.department} className="flex justify-between text-xs">
-                      <span className="text-t2">{d.department}</span>
-                      <span className="text-t1 font-medium">${(d.totalCost / 1000).toFixed(0)}K · {d.headcount} {t('headcount').toLowerCase()}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </Card>
 
             {/* Cost by Country */}
@@ -390,10 +388,15 @@ export default function PayrollPage() {
                   countryMap[c].count += 1
                 })
                 const items = Object.entries(countryMap).sort((a, b) => b[1].total - a[1].total)
-                const colors = ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500']
                 return items.length > 0 ? (
                   <>
-                    <MiniDonutChart data={items.map(([label, d], i) => ({ label, value: Math.round(d.total / 1000), color: colors[i % colors.length] }))} />
+                    <TempoDonutChart
+                      data={items.map(([name, d]) => ({ name, value: Math.round(d.total / 1000) }))}
+                      colors={items.map((_, i) => CHART_SERIES[i % CHART_SERIES.length])}
+                      centerLabel={`$${Math.round(items.reduce((s, [, d]) => s + d.total, 0) / 1000000)}M`}
+                      centerSub="Total"
+                      height={180}
+                    />
                     <div className="mt-3 space-y-1">
                       {items.map(([c, d]) => (
                         <div key={c} className="flex justify-between text-xs">
@@ -412,10 +415,17 @@ export default function PayrollPage() {
           {payrollRuns.length > 0 && (
             <Card className="mb-6">
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('laborCostTrend')}</h3>
-              <Sparkline data={payrollRuns.map(r => r.total_gross / 1000)} />
-              <div className="flex gap-4 mt-3 text-xs text-t3">
-                {payrollRuns.map(r => <span key={r.id}>{r.period}</span>)}
-              </div>
+              <TempoAreaChart
+                data={payrollRuns.map(r => ({ name: r.period, gross: r.total_gross / 1000, net: r.total_net / 1000 }))}
+                areas={[
+                  { dataKey: 'gross', name: 'Gross ($K)', color: CHART_COLORS.primary },
+                  { dataKey: 'net', name: 'Net ($K)', color: CHART_COLORS.emerald },
+                ]}
+                xKey="name"
+                height={200}
+                showLegend
+                formatter={(v) => `$${v.toFixed(0)}K`}
+              />
             </Card>
           )}
 
@@ -470,16 +480,16 @@ export default function PayrollPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {complianceIssues.filter(i => (i as any).status !== 'resolved').length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3"><CheckCircle2 className="inline mr-2" size={16} />{t('noComplianceIssues')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3"><CheckCircle2 className="inline mr-2" size={16} />{t('noComplianceIssues')}</td></tr>
                   ) : complianceIssues.filter(i => (i as any).status !== 'resolved').map(issue => {
                     const ci = issue as any
                     return (
                       <tr key={ci.id} className="hover:bg-canvas/50">
                         <td className="px-6 py-3"><Badge variant={ci.severity === 'critical' ? 'error' : ci.severity === 'warning' ? 'warning' : 'info'}>{ci.severity}</Badge></td>
-                        <td className="px-4 py-3 text-sm text-t1">{ci.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{ci.country}</td>
-                        <td className="px-4 py-3 text-sm text-t2 max-w-xs truncate">{ci.description}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{ci.deadline}</td>
+                        <td className="px-4 py-3 text-xs text-t1">{ci.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{ci.country}</td>
+                        <td className="px-4 py-3 text-xs text-t2 max-w-xs truncate">{ci.description}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ci.deadline}</td>
                         <td className="px-4 py-3 text-center"><Badge variant={ci.status === 'open' ? 'warning' : 'info'}>{ci.status}</Badge></td>
                         <td className="px-4 py-3 text-center">
                           <Button size="sm" variant="ghost" onClick={() => resolveComplianceIssue(ci.id)}>{t('resolveIssue')}</Button>
@@ -517,10 +527,10 @@ export default function PayrollPage() {
                           <p className="text-sm font-medium text-t1">{tf.form_name}</p>
                           <p className="text-xs text-t3">{tf.description}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{tf.country}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{tf.filing_period}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center capitalize">{tf.frequency}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{tf.deadline}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{tf.country}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{tf.filing_period}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center capitalize">{tf.frequency}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{tf.deadline}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={tf.status === 'filed' ? 'success' : tf.status === 'overdue' ? 'error' : 'warning'}>{tf.status}</Badge>
                         </td>
@@ -598,7 +608,7 @@ export default function PayrollPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {contractorPayments.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noContractorPayments')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noContractorPayments')}</td></tr>
                   ) : contractorPayments.map(payment => {
                     const cp = payment as any
                     return (
@@ -607,10 +617,10 @@ export default function PayrollPage() {
                           <p className="text-sm font-medium text-t1">{cp.contractor_name}</p>
                           <p className="text-xs text-t3">{cp.company} · {cp.country}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{cp.service_type}</td>
-                        <td className="px-4 py-3 text-sm text-t2 font-mono">{cp.invoice_number}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-right font-medium">${cp.amount?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{cp.due_date}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{cp.service_type}</td>
+                        <td className="px-4 py-3 text-xs text-t2 font-mono">{cp.invoice_number}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-medium">${cp.amount?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{cp.due_date}</td>
                         <td className="px-4 py-3 text-center"><Badge variant="default">{cp.tax_form}</Badge></td>
                         <td className="px-4 py-3 text-center"><Badge variant={cp.status === 'paid' ? 'success' : cp.status === 'approved' ? 'info' : 'warning'}>{cp.status}</Badge></td>
                         <td className="px-4 py-3 text-center">
@@ -664,16 +674,16 @@ export default function PayrollPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {payrollSchedules.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-t3">{t('noSchedules')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noSchedules')}</td></tr>
                   ) : payrollSchedules.map(schedule => {
                     const ps = schedule as any
                     return (
                       <tr key={ps.id} className="hover:bg-canvas/50">
-                        <td className="px-6 py-3 text-sm font-medium text-t1">{ps.name}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center capitalize">{ps.frequency === 'biweekly' ? t('biweekly') : ps.frequency === 'semi_monthly' ? t('semiMonthly') : t(ps.frequency)}</td>
-                        <td className="px-4 py-3 text-sm text-t2">{ps.employee_group}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{ps.next_run_date}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{ps.last_run_date || '-'}</td>
+                        <td className="px-6 py-3 text-xs font-medium text-t1">{ps.name}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center capitalize">{ps.frequency === 'biweekly' ? t('biweekly') : ps.frequency === 'semi_monthly' ? t('semiMonthly') : t(ps.frequency)}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{ps.employee_group}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ps.next_run_date}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ps.last_run_date || '-'}</td>
                         <td className="px-4 py-3 text-center">{ps.auto_approve ? <CheckCircle2 size={16} className="inline text-emerald-500" /> : <span className="text-t3">-</span>}</td>
                         <td className="px-4 py-3 text-center"><Badge variant={ps.status === 'active' ? 'success' : 'default'}>{ps.status === 'active' ? t('active') : t('paused')}</Badge></td>
                         <td className="px-4 py-3 text-center">
@@ -715,11 +725,11 @@ export default function PayrollPage() {
                           <p className="text-sm font-medium text-t1">{tc2.country}</p>
                           <p className="text-xs text-t3">{tc2.tax_type}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2 max-w-xs truncate">{tc2.description}</td>
-                        <td className="px-4 py-3 text-sm text-t1 text-center font-semibold">{tc2.rate}%</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{tc2.employer_contribution}%</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{tc2.employee_contribution}%</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{tc2.effective_date}</td>
+                        <td className="px-4 py-3 text-xs text-t2 max-w-xs truncate">{tc2.description}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-center font-semibold">{tc2.rate}%</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{tc2.employer_contribution}%</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{tc2.employee_contribution}%</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{tc2.effective_date}</td>
                         <td className="px-4 py-3 text-center"><Badge variant={tc2.status === 'active' ? 'success' : 'warning'}>{tc2.status}</Badge></td>
                         <td className="px-4 py-3 text-center">
                           <Button size="sm" variant="ghost" onClick={() => setShowTaxConfigModal(tc2.id)}>{t('edit')}</Button>
@@ -765,7 +775,7 @@ export default function PayrollPage() {
                     { label: t('pension'), value: `-$${simResult.pension.toLocaleString()}`, color: 'text-error' },
                     { label: t('stateTax'), value: `-$${simResult.stateOrProvincialTax.toLocaleString()}`, color: 'text-error' },
                     { label: t('totalDeductionsLabel'), value: `-$${simResult.totalTax.toLocaleString()}`, color: 'text-error font-semibold' },
-                    { label: t('netPay'), value: `$${simResult.netPay.toLocaleString()}`, color: 'text-emerald-600 font-bold' },
+                    { label: t('netPay'), value: `$${simResult.netPay.toLocaleString()}`, color: 'text-t1 font-bold' },
                   ].map(item => (
                     <div key={item.label} className="bg-white rounded-lg p-3 border border-border">
                       <p className="text-xs text-t3 mb-1">{item.label}</p>

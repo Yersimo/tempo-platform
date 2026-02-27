@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
-import { MiniBarChart, MiniDonutChart } from '@/components/ui/mini-chart'
+import { TempoBarChart, TempoDonutChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import {
   Shield, Heart, Eye, Wallet, Plus, Pencil, Users, Baby, Calendar,
   BarChart3, Calculator, ArrowRightLeft, Clock, CheckCircle2, AlertTriangle,
@@ -397,27 +397,27 @@ export default function BenefitsPage() {
                 <tbody className="divide-y divide-border">
                   {benefitPlans.map(plan => (
                     <tr key={plan.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3 text-sm font-medium text-t1">{plan.name}</td>
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{plan.name}</td>
                       <td className="px-4 py-3"><Badge>{plan.type}</Badge></td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={plan.is_active ? 'success' : 'default'}>{plan.is_active ? tc('active') : tc('inactive')}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">{getPlanEnrollCount(plan.id)}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${plan.cost_employee}</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${plan.cost_employer}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-t1 text-right">${plan.cost_employee + plan.cost_employer}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-t1 text-right">
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{getPlanEnrollCount(plan.id)}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employee}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employer}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-t1 text-right">${plan.cost_employee + plan.cost_employer}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
                         ${((plan.cost_employee + plan.cost_employer) * getPlanEnrollCount(plan.id) * 12).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                   {benefitPlans.length > 0 && (
                     <tr className="bg-canvas font-semibold">
-                      <td className="px-6 py-3 text-sm text-t1" colSpan={4}>{tc('total')}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee, 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employer, 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee + p.cost_employer, 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-t1 text-right">
+                      <td className="px-6 py-3 text-xs text-t1" colSpan={4}>{tc('total')}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee, 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employer, 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee + p.cost_employer, 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">
                         ${benefitPlans.reduce((a, p) => a + (p.cost_employee + p.cost_employer) * getPlanEnrollCount(p.id) * 12, 0).toLocaleString()}
                       </td>
                     </tr>
@@ -464,7 +464,7 @@ export default function BenefitsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {benefitEnrollments.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noEnrollments')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noEnrollments')}</td></tr>
                   ) : benefitEnrollments.map(enr => {
                     const e = enr as any
                     const plan = benefitPlans.find(p => p.id === e.plan_id)
@@ -483,7 +483,7 @@ export default function BenefitsPage() {
                         <td className="px-4 py-3 text-center">
                           <Badge variant="info">{coverageLevelLabels[e.coverage_level] || e.coverage_level}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{e.effective_date}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{e.effective_date}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={e.status === 'active' ? 'success' : e.status === 'waived' ? 'default' : 'warning'}>
                             {e.status}
@@ -514,13 +514,16 @@ export default function BenefitsPage() {
             <Card>
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('enrollmentByPlan')}</h3>
               {benefitPlans.length > 0 ? (
-                <MiniBarChart
+                <TempoBarChart
                   data={benefitPlans.map(p => ({
-                    label: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
-                    value: getPlanEnrollCount(p.id),
+                    name: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
+                    count: getPlanEnrollCount(p.id),
                   }))}
-                  showLabels
+                  bars={[{ dataKey: 'count', name: 'Enrolled', color: CHART_COLORS.primary }]}
+                  xKey="name"
                   height={140}
+                  showGrid={false}
+                  showYAxis={false}
                 />
               ) : <p className="text-sm text-t3">{t('noBenefitPlans')}</p>}
             </Card>
@@ -533,13 +536,12 @@ export default function BenefitsPage() {
                   levelMap[lvl] = (levelMap[lvl] || 0) + 1
                 })
                 const items = Object.entries(levelMap).sort((a, b) => b[1] - a[1])
-                const colors = ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500']
                 return items.length > 0 ? (
-                  <MiniDonutChart data={items.map(([label, value], i) => ({
-                    label: coverageLevelLabels[label] || label,
+                  <TempoDonutChart data={items.map(([label, value], i) => ({
+                    name: coverageLevelLabels[label] || label,
                     value,
-                    color: colors[i % colors.length],
-                  }))} />
+                    color: CHART_SERIES[i % CHART_SERIES.length],
+                  }))} height={180} />
                 ) : <p className="text-sm text-t3">{t('noEnrollments')}</p>
               })()}
             </Card>
@@ -585,7 +587,7 @@ export default function BenefitsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {benefitDependents.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-12 text-center text-sm text-t3">{t('noDependents')}</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-12 text-center text-xs text-t3">{t('noDependents')}</td></tr>
                   ) : benefitDependents.map(dep => {
                     const d = dep as any
                     return (
@@ -594,13 +596,13 @@ export default function BenefitsPage() {
                           <p className="text-sm font-medium text-t1">{d.first_name} {d.last_name}</p>
                           <p className="text-xs text-t3 capitalize">{d.gender}</p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{getEmployeeName(d.employee_id)}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(d.employee_id)}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={d.relationship === 'spouse' ? 'info' : d.relationship === 'child' ? 'success' : 'default'}>
                             {d.relationship}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{d.date_of_birth}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{d.date_of_birth}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {(d.plan_ids || []).map((pid: string) => {
@@ -666,13 +668,16 @@ export default function BenefitsPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">{t('enrollmentByPlanType')}</h3>
               {enrollTrends.byType.length > 0 ? (
                 <>
-                  <MiniBarChart
+                  <TempoBarChart
                     data={enrollTrends.byType.map(item => ({
-                      label: item.type.charAt(0).toUpperCase() + item.type.slice(1),
-                      value: item.count,
+                      name: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+                      count: item.count,
                     }))}
-                    showLabels
+                    bars={[{ dataKey: 'count', name: 'Enrollments', color: CHART_COLORS.primary }]}
+                    xKey="name"
                     height={140}
+                    showGrid={false}
+                    showYAxis={false}
                   />
                   <div className="mt-3 space-y-1">
                     {enrollTrends.byType.map(item => (
@@ -698,14 +703,13 @@ export default function BenefitsPage() {
                   typeMap[p.type].employee += p.cost_employee * enrolled
                 })
                 const items = Object.entries(typeMap).sort((a, b) => (b[1].employer + b[1].employee) - (a[1].employer + a[1].employee))
-                const colors = ['bg-tempo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500']
                 return items.length > 0 ? (
                   <>
-                    <MiniDonutChart data={items.map(([label, d], i) => ({
-                      label: label.charAt(0).toUpperCase() + label.slice(1),
+                    <TempoDonutChart data={items.map(([label, d], i) => ({
+                      name: label.charAt(0).toUpperCase() + label.slice(1),
                       value: d.employer + d.employee,
-                      color: colors[i % colors.length],
-                    }))} />
+                      color: CHART_SERIES[i % CHART_SERIES.length],
+                    }))} height={180} />
                     <div className="mt-3 space-y-1">
                       {items.map(([type, d]) => (
                         <div key={type} className="flex justify-between text-xs">
@@ -795,7 +799,7 @@ export default function BenefitsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {lifeEvents.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">{t('noLifeEvents')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noLifeEvents')}</td></tr>
                   ) : lifeEvents.map(event => {
                     const ev = event as any
                     const isOverdue = ev.status === 'pending' && new Date(ev.deadline) < new Date()
@@ -810,8 +814,8 @@ export default function BenefitsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t2">{getEmployeeName(ev.employee_id)}</td>
-                        <td className="px-4 py-3 text-sm text-t2 text-center">{ev.event_date}</td>
+                        <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(ev.employee_id)}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ev.event_date}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`text-sm ${isOverdue ? 'text-error font-semibold' : 'text-t2'}`}>
                             {ev.deadline}
@@ -956,13 +960,13 @@ export default function BenefitsPage() {
                       style={{ width: `${(calcResult.erMonthly / calcResult.totalMonthly) * 100}%` }}
                     />
                     <div
-                      className="bg-amber-400 transition-all"
+                      className="bg-gray-400 transition-all"
                       style={{ width: `${(calcResult.empMonthly / calcResult.totalMonthly) * 100}%` }}
                     />
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-[0.6rem] text-tempo-600">{t('employerLabel')}</span>
-                    <span className="text-[0.6rem] text-amber-600">{t('employeeLabel')}</span>
+                    <span className="text-[0.6rem] text-gray-500">{t('employeeLabel')}</span>
                   </div>
                 </div>
               </div>
@@ -1000,10 +1004,10 @@ export default function BenefitsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3"><Badge>{plan.type}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${plan.cost_employee}/mo</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${Math.round(plan.cost_employee * 1.6)}/mo</td>
-                      <td className="px-4 py-3 text-sm text-t2 text-right">${Math.round(plan.cost_employee * 2.2)}/mo</td>
-                      <td className="px-4 py-3 text-sm text-tempo-600 text-right font-medium">${plan.cost_employer}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employee}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${Math.round(plan.cost_employee * 1.6)}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">${Math.round(plan.cost_employee * 2.2)}/mo</td>
+                      <td className="px-4 py-3 text-xs text-tempo-600 text-right font-medium">${plan.cost_employer}/mo</td>
                     </tr>
                   ))}
                 </tbody>

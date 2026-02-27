@@ -476,7 +476,7 @@ export default function MarketplacePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base font-semibold text-t1">{selectedApp.name}</h3>
+                  <h3 className="text-sm font-semibold text-t1">{selectedApp.name}</h3>
                   {selectedApp.status === 'beta' && <Badge variant="warning">Beta</Badge>}
                   {selectedApp.status === 'coming_soon' && <Badge>Coming Soon</Badge>}
                   {pricingBadge(selectedApp.pricing, selectedApp.pricingDetails)}

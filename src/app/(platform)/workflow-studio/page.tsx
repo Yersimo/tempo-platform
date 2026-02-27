@@ -484,7 +484,7 @@ export default function WorkflowStudioPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {workflowRuns.length === 0 && (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">{t('noRuns')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noRuns')}</td></tr>
                   )}
                   {[...workflowRuns].reverse().map(run => {
                     const wf = workflows.find(w => w.id === run.workflow_id)
@@ -496,7 +496,7 @@ export default function WorkflowStudioPage() {
                             {run.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-t1">{wf?.title || run.workflow_id}</td>
+                        <td className="px-4 py-3 text-xs text-t1">{wf?.title || run.workflow_id}</td>
                         <td className="px-4 py-3 text-xs text-t2">{new Date(run.started_at).toLocaleString()}</td>
                         <td className="px-4 py-3 text-xs font-medium text-t1">{formatDuration(run.started_at, run.completed_at)}</td>
                         <td className="px-4 py-3 text-xs text-t2">{run.triggered_by}</td>

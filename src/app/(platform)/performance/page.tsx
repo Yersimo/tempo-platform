@@ -424,7 +424,7 @@ export default function PerformancePage() {
                           <span className="text-sm text-t1">{getEmployeeName(review.employee_id)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{getEmployeeName(review.reviewer_id)}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(review.reviewer_id)}</td>
                       <td className="px-4 py-3"><Badge>{review.type}</Badge></td>
                       <td className="px-4 py-3 text-center">
                         {review.overall_rating ? <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span> : <span className="text-xs text-t3">-</span>}
@@ -453,15 +453,15 @@ export default function PerformancePage() {
       {/* Calibration Tab */}
       {activeTab === 'calibration' && (() => {
         const boxes = [
-          { label: t('enigma'), bg: 'bg-amber-50', pos: t('highPotLowPerf') },
-          { label: t('growthEmployee'), bg: 'bg-blue-50', pos: t('highPotModPerf') },
-          { label: t('star'), bg: 'bg-green-50', pos: t('highPotHighPerf') },
-          { label: t('underperformer'), bg: 'bg-red-50', pos: t('modPotLowPerf') },
+          { label: t('enigma'), bg: 'bg-gray-50', pos: t('highPotLowPerf') },
+          { label: t('growthEmployee'), bg: 'bg-gray-50', pos: t('highPotModPerf') },
+          { label: t('star'), bg: 'bg-gray-100', pos: t('highPotHighPerf') },
+          { label: t('underperformer'), bg: 'bg-gray-50', pos: t('modPotLowPerf') },
           { label: t('corePlayer'), bg: 'bg-gray-50', pos: t('modPotModPerf') },
-          { label: t('highPerformer'), bg: 'bg-green-50', pos: t('modPotHighPerf') },
-          { label: t('risk'), bg: 'bg-red-100', pos: t('lowPotLowPerf') },
-          { label: t('averagePerformer'), bg: 'bg-amber-50', pos: t('lowPotModPerf') },
-          { label: t('workhorse'), bg: 'bg-blue-50', pos: t('lowPotHighPerf') },
+          { label: t('highPerformer'), bg: 'bg-gray-100', pos: t('modPotHighPerf') },
+          { label: t('risk'), bg: 'bg-gray-100', pos: t('lowPotLowPerf') },
+          { label: t('averagePerformer'), bg: 'bg-gray-50', pos: t('lowPotModPerf') },
+          { label: t('workhorse'), bg: 'bg-gray-50', pos: t('lowPotHighPerf') },
         ]
         const boxAssignments: Record<number, typeof employees> = {}
         boxes.forEach((_, i) => { boxAssignments[i] = [] })

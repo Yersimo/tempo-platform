@@ -9,7 +9,7 @@ const variants = {
   success: 'bg-green-50 text-success',
   warning: 'bg-amber-50 text-warning',
   error: 'bg-red-50 text-error',
-  info: 'bg-blue-50 text-info',
+  info: 'bg-gray-100 text-gray-600',
   orange: 'bg-tempo-100 text-tempo-700',
   ai: 'bg-tempo-50 text-tempo-600 border border-tempo-200',
 }

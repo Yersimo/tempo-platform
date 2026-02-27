@@ -157,11 +157,11 @@ export default function InvoicesPage() {
             <tbody className="divide-y divide-border">
               {invoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-canvas/50">
-                  <td className="px-6 py-3 text-sm font-mono font-medium text-t1">{inv.invoice_number}</td>
-                  <td className="px-4 py-3 text-sm text-t2">{getVendorName(inv.vendor_id)}</td>
-                  <td className="px-4 py-3 text-sm text-t2 max-w-[200px] truncate">{inv.description}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-t1 text-right">${inv.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-t2">{inv.due_date}</td>
+                  <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{inv.invoice_number}</td>
+                  <td className="px-4 py-3 text-xs text-t2">{getVendorName(inv.vendor_id)}</td>
+                  <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{inv.description}</td>
+                  <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${inv.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-t2">{inv.due_date}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={
                       inv.status === 'paid' ? 'success' :
@@ -204,7 +204,7 @@ export default function InvoicesPage() {
 
       {/* ── Section 1: Vendor Management ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <Building2 size={20} /> {t('vendorDirectory')}
         </h2>
 
@@ -254,13 +254,13 @@ export default function InvoicesPage() {
                     <tr key={contract.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <div>
-                          <p className="text-sm font-medium text-t1">{vendor?.name || contract.contract_number}</p>
+                          <p className="text-xs font-medium text-t1">{vendor?.name || contract.contract_number}</p>
                           <p className="text-xs text-t3">{vendor?.category}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-t2">{contract.start_date}</td>
-                      <td className="px-4 py-3 text-sm text-t2">{contract.end_date}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-t1 text-right">${contract.annual_value.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{contract.start_date}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{contract.end_date}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${contract.annual_value.toLocaleString()}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={contract.renewal_type === 'auto' ? 'info' : 'default'}>
                           {contract.renewal_type === 'auto' ? t('autoRenewal') : t('manualRenewal')}
@@ -269,7 +269,7 @@ export default function InvoicesPage() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Star size={12} className="text-warning fill-warning" />
-                          <span className="text-sm font-medium text-t1">{contract.performance_rating}</span>
+                          <span className="text-xs font-medium text-t1">{contract.performance_rating}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -297,7 +297,7 @@ export default function InvoicesPage() {
 
       {/* ── Section 2: Spend Analytics ── */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <PieChart size={20} /> {t('spendAnalytics')}
         </h2>
 
@@ -361,7 +361,7 @@ export default function InvoicesPage() {
                 <div key={vendor.id} className="p-3 bg-canvas rounded-lg">
                   <p className="text-sm font-medium text-t1 truncate">{vendor.name}</p>
                   <p className="text-xs text-t3 mb-2">{vendor.category}</p>
-                  <p className="text-lg font-semibold text-t1">${spend.toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-t1">${spend.toLocaleString()}</p>
                   <Progress value={pctVal} color="orange" className="mt-1" />
                   <p className="text-xs text-t3 mt-1">{pctVal}% of total spend</p>
                 </div>
@@ -373,7 +373,7 @@ export default function InvoicesPage() {
 
       {/* ── Section 3: AI Savings Insights ── */}
       <div className="mt-8 mb-6">
-        <h2 className="text-lg font-semibold text-t1 mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
           <Brain size={20} /> {t('aiSavingsInsights')}
         </h2>
 

@@ -47,6 +47,15 @@ export async function GET(request: NextRequest) {
   if (type === 'all' || type === 'workflows') {
     searches.push(searchWorkflows(orgId, searchPattern, limit, results))
   }
+  if (type === 'all' || type === 'policies') {
+    searches.push(searchPolicies(orgId, searchPattern, limit, results))
+  }
+  if (type === 'all' || type === 'leave') {
+    searches.push(searchLeave(orgId, searchPattern, limit, results))
+  }
+  if (type === 'all' || type === 'expenses') {
+    searches.push(searchExpenses(orgId, searchPattern, limit, results))
+  }
 
   await Promise.all(searches)
 
@@ -67,7 +76,7 @@ export async function GET(request: NextRequest) {
 
 interface SearchResult {
   id: string
-  type: 'employee' | 'goal' | 'project' | 'course' | 'job' | 'objective' | 'workflow'
+  type: 'employee' | 'goal' | 'project' | 'course' | 'job' | 'objective' | 'workflow' | 'policy' | 'leave' | 'expense'
   title: string
   subtitle: string
   link: string
@@ -252,6 +261,81 @@ async function searchWorkflows(orgId: string, pattern: string, limit: number, re
         subtitle: `Workflow - ${row.status}`,
         link: '/workflow-studio',
         icon: 'Zap',
+      })
+    }
+  } catch { /* table may not exist in demo mode */ }
+}
+
+async function searchPolicies(orgId: string, pattern: string, limit: number, results: SearchResult[]) {
+  try {
+    const rows = await db.select()
+      .from(schema.benefitPlans)
+      .where(
+        or(
+          ilike(schema.benefitPlans.name, pattern),
+          ilike(schema.benefitPlans.description, pattern)
+        )
+      )
+      .limit(limit)
+
+    for (const row of rows) {
+      if (row.orgId !== orgId) continue
+      results.push({
+        id: row.id,
+        type: 'policy',
+        title: row.name,
+        subtitle: `Benefit Plan - ${row.type}${row.provider ? ` - ${row.provider}` : ''}`,
+        link: '/benefits',
+        icon: 'Shield',
+      })
+    }
+  } catch { /* table may not exist in demo mode */ }
+}
+
+async function searchLeave(orgId: string, pattern: string, limit: number, results: SearchResult[]) {
+  try {
+    const rows = await db.select()
+      .from(schema.leaveRequests)
+      .where(
+        or(
+          ilike(schema.leaveRequests.type, pattern),
+          ilike(schema.leaveRequests.reason, pattern)
+        )
+      )
+      .limit(limit)
+
+    for (const row of rows) {
+      if (row.orgId !== orgId) continue
+      results.push({
+        id: row.id,
+        type: 'leave',
+        title: `${row.type} Leave - ${row.days} days`,
+        subtitle: `${row.status} - ${row.startDate} to ${row.endDate}`,
+        link: '/time-attendance',
+        icon: 'CalendarCheck',
+      })
+    }
+  } catch { /* table may not exist in demo mode */ }
+}
+
+async function searchExpenses(orgId: string, pattern: string, limit: number, results: SearchResult[]) {
+  try {
+    const rows = await db.select()
+      .from(schema.expenseReports)
+      .where(
+        ilike(schema.expenseReports.title, pattern)
+      )
+      .limit(limit)
+
+    for (const row of rows) {
+      if (row.orgId !== orgId) continue
+      results.push({
+        id: row.id,
+        type: 'expense',
+        title: row.title,
+        subtitle: `Expense Report - ${row.status} - $${row.totalAmount.toLocaleString()}`,
+        link: '/expense',
+        icon: 'Receipt',
       })
     }
   } catch { /* table may not exist in demo mode */ }
