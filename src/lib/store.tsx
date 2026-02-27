@@ -534,6 +534,11 @@ export function useTempo() {
   return ctx
 }
 
+/** Like useTempo but returns null instead of throwing when outside TempoProvider */
+export function useTempoSafe(): TempoState | null {
+  return useContext(TempoContext)
+}
+
 // Helper to build CurrentUser from an employee record
 function buildCurrentUser(emp: typeof demoEmployees[number]): CurrentUser {
   return {
