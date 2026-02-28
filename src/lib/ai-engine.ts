@@ -2888,13 +2888,15 @@ export function analyzeExpenseByCategory(
 export function detectPolicyViolations(
   reports: any[],
   policies: any[]
-): Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number }> {
-  const violations: Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number }> = []
+): Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number; policySection?: string; policyCitation?: string }> {
+  const violations: Array<{ reportId: string; violation: string; severity: 'warning' | 'critical'; amount: number; policySection?: string; policyCitation?: string }> = []
 
   const limits: Record<string, number> = {}
+  const policyMap: Record<string, any> = {}
   policies.forEach(p => {
-    const cat = p.category || p.expense_type || 'general'
-    limits[cat] = p.max_amount || p.limit || 0
+    const cat = (p.category || p.expense_type || 'general').toLowerCase()
+    limits[cat] = p.max_amount || p.limit || p.daily_limit || 0
+    policyMap[cat] = p
   })
 
   const generalLimit = limits['general'] || 5000
@@ -2912,6 +2914,8 @@ export function detectPolicyViolations(
         violation: `Total amount $${reportAmount.toLocaleString()} exceeds policy limit of $${generalLimit.toLocaleString()}`,
         severity: reportAmount > generalLimit * 2 ? 'critical' : 'warning',
         amount: reportAmount,
+        policySection: policyMap['general']?.policy_section,
+        policyCitation: policyMap['general']?.policy_citation,
       })
     }
 
@@ -2920,13 +2924,16 @@ export function detectPolicyViolations(
       const amount = item.amount || 0
 
       if ((cat.includes('meal') || cat.includes('food')) && amount > mealLimit) {
-        violations.push({ reportId: report.id, violation: `Meal expense of $${amount} exceeds ${mealLimit} limit`, severity: 'warning', amount })
+        const matched = policyMap['meals'] || policyMap['food']
+        violations.push({ reportId: report.id, violation: `Meal expense of $${amount} exceeds $${mealLimit} limit`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
       if (cat.includes('travel') && amount > travelLimit) {
-        violations.push({ reportId: report.id, violation: `Travel expense of $${amount.toLocaleString()} exceeds $${travelLimit.toLocaleString()} limit`, severity: amount > travelLimit * 1.5 ? 'critical' : 'warning', amount })
+        const matched = policyMap['travel']
+        violations.push({ reportId: report.id, violation: `Travel expense of $${amount.toLocaleString()} exceeds $${travelLimit.toLocaleString()} limit`, severity: amount > travelLimit * 1.5 ? 'critical' : 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
       if ((cat.includes('hotel') || cat.includes('accommodation')) && amount > hotelLimit) {
-        violations.push({ reportId: report.id, violation: `Hotel expense of $${amount} exceeds nightly limit of $${hotelLimit}`, severity: 'warning', amount })
+        const matched = policyMap['hotel'] || policyMap['accommodation']
+        violations.push({ reportId: report.id, violation: `Hotel expense of $${amount} exceeds nightly limit of $${hotelLimit}`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
     })
   })

@@ -12,9 +12,10 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
-import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle2, Car, Globe, Calculator } from 'lucide-react'
+import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle2, Car, Globe, Calculator, Sparkles } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
-import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
+import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
 
 // Per diem rates (static reference data)
@@ -83,6 +84,25 @@ export default function ExpensePage() {
   })
   const [policyForm, setPolicyForm] = useState({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' })
   const [mileageForm, setMileageForm] = useState({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
+
+  // ---- Policy Document Upload ----
+  const policyFileInputRef = useRef<HTMLInputElement>(null)
+  const [isPolicyDragging, setIsPolicyDragging] = useState(false)
+  const [policyDocument, setPolicyDocument] = useState<{
+    filename: string; uploadDate: string; pageCount: number; fileSize: string
+    status: 'idle' | 'uploading' | 'parsing' | 'complete'
+  } | null>(null)
+  const [parsingProgress, setParsingProgress] = useState(0)
+  const [parsingStage, setParsingStage] = useState('')
+  const [extractedRules, setExtractedRules] = useState<Array<{
+    id: string; category: string; daily_limit: number; receipt_threshold: number
+    auto_approve_limit: number; policy_section: string; policy_citation: string
+    source: 'document' | 'manual'; status: string
+  }>>([])
+  const [showParsedRulesPreview, setShowParsedRulesPreview] = useState(false)
+  const [policySummary, setPolicySummary] = useState<{
+    documentTitle: string; effectiveDate: string; keyHighlights: string[]; totalRulesExtracted: number
+  } | null>(null)
 
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
@@ -210,6 +230,86 @@ export default function ExpensePage() {
     if (!policyForm.category) return
     if (editingPolicyId) { updateExpensePolicy(editingPolicyId, policyForm) } else { addExpensePolicy(policyForm) }
     setShowPolicyModal(false)
+  }
+
+  // ---- Policy Document Upload (AI mock) ----
+  function delay(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) }
+
+  async function simulatePolicyParsing(filename: string) {
+    setPolicyDocument({ filename, uploadDate: new Date().toISOString(), pageCount: Math.floor(Math.random() * 8) + 12, fileSize: `${(Math.random() * 2 + 0.5).toFixed(1)} MB`, status: 'uploading' })
+    setParsingProgress(0)
+    setShowParsedRulesPreview(false)
+    setPolicySummary(null)
+
+    const stages = [
+      { label: t('uploadingDocument'), target: 15 },
+      { label: t('processingPdf'), target: 30, statusChange: 'parsing' as const },
+      { label: t('extractingText'), target: 45 },
+      { label: t('identifyingRules'), target: 60 },
+      { label: t('categorizingPolicies'), target: 75 },
+      { label: t('validatingLimits'), target: 90 },
+    ]
+
+    for (const stage of stages) {
+      setParsingStage(stage.label)
+      if (stage.statusChange) setPolicyDocument(prev => prev ? { ...prev, status: stage.statusChange! } : null)
+      await delay(700 + Math.random() * 500)
+      setParsingProgress(stage.target)
+    }
+
+    const mockRules = [
+      { category: 'Travel', daily_limit: 500, receipt_threshold: 25, auto_approve_limit: 200, policy_section: 'Section 3.1 — Business Travel', policy_citation: 'Business travel expenses are reimbursable up to $500 per day with prior manager approval.' },
+      { category: 'Meals', daily_limit: 75, receipt_threshold: 15, auto_approve_limit: 50, policy_section: 'Section 3.2 — Meal Allowances', policy_citation: 'Meal expenses during business travel shall not exceed $75 per day. Receipts required for amounts over $15.' },
+      { category: 'Accommodation', daily_limit: 300, receipt_threshold: 0, auto_approve_limit: 200, policy_section: 'Section 3.3 — Lodging', policy_citation: 'Hotel accommodations up to $300 per night in standard markets. All lodging requires receipts.' },
+      { category: 'Transport', daily_limit: 150, receipt_threshold: 10, auto_approve_limit: 75, policy_section: 'Section 3.4 — Local Transportation', policy_citation: 'Ground transportation reimbursable up to $150/day. Ride-share preferred over taxis.' },
+      { category: 'Equipment', daily_limit: 1000, receipt_threshold: 0, auto_approve_limit: 500, policy_section: 'Section 4.1 — Office Equipment', policy_citation: 'Equipment purchases up to $1,000 require department head approval. IT equipment requires CTO sign-off.' },
+      { category: 'Client Entertainment', daily_limit: 200, receipt_threshold: 25, auto_approve_limit: 100, policy_section: 'Section 5.1 — Client Relations', policy_citation: 'Client entertainment expenses capped at $200 per event. Attendee list and business purpose required.' },
+      { category: 'Conference & Training', daily_limit: 500, receipt_threshold: 0, auto_approve_limit: 250, policy_section: 'Section 6.1 — Professional Development', policy_citation: 'Conference registration and training costs require advance approval. Annual cap of $5,000 per employee.' },
+    ].map((rule, i) => ({ ...rule, id: `extracted-${Date.now()}-${i}`, source: 'document' as const, status: 'active' }))
+
+    setExtractedRules(mockRules)
+    setPolicySummary({
+      documentTitle: 'Ecobank Corporate Expense Policy FY2026',
+      effectiveDate: '2026-01-01',
+      keyHighlights: [
+        'Maximum daily travel allowance: $500',
+        'All expenses over $25 require receipts',
+        'Auto-approval threshold: up to $500 for equipment',
+        'Client entertainment requires attendee list',
+        'Annual professional development cap: $5,000/employee',
+      ],
+      totalRulesExtracted: mockRules.length,
+    })
+
+    setParsingProgress(100)
+    setParsingStage(t('parsingComplete'))
+    setPolicyDocument(prev => prev ? { ...prev, status: 'complete' } : null)
+    setShowParsedRulesPreview(true)
+  }
+
+  function applyExtractedRules() {
+    extractedRules.forEach(rule => {
+      const existing = expensePolicies.find(p => (p as any).category === rule.category)
+      if (existing) {
+        updateExpensePolicy((existing as any).id, { daily_limit: rule.daily_limit, receipt_threshold: rule.receipt_threshold, auto_approve_limit: rule.auto_approve_limit, policy_section: rule.policy_section, policy_citation: rule.policy_citation, source: 'document', status: 'active' })
+      } else {
+        addExpensePolicy({ category: rule.category, daily_limit: rule.daily_limit, receipt_threshold: rule.receipt_threshold, auto_approve_limit: rule.auto_approve_limit, policy_section: rule.policy_section, policy_citation: rule.policy_citation, source: 'document', status: 'active' })
+      }
+    })
+    setShowParsedRulesPreview(false)
+    addToast(t('policiesApplied'))
+  }
+
+  function handlePolicyFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) simulatePolicyParsing(file.name)
+  }
+
+  function handlePolicyDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsPolicyDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file && file.type === 'application/pdf') simulatePolicyParsing(file.name)
   }
 
   // ---- Mileage CRUD ----
@@ -480,6 +580,84 @@ export default function ExpensePage() {
       {/* ============================================================ */}
       {activeTab === 'policy-rules' && (
         <>
+          {/* Policy Document Upload */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={16} className="text-tempo-500" />
+              <span className="text-sm font-semibold text-t1">{t('policyDocumentUpload')}</span>
+              <Badge variant="ai">{t('aiPowered')}</Badge>
+            </div>
+
+            {!policyDocument ? (
+              <div
+                onClick={() => policyFileInputRef.current?.click()}
+                onDrop={handlePolicyDrop}
+                onDragOver={(e) => { e.preventDefault(); setIsPolicyDragging(true) }}
+                onDragLeave={() => setIsPolicyDragging(false)}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-lg cursor-pointer transition-all',
+                  isPolicyDragging ? 'border-tempo-400 bg-tempo-50' : 'border-border bg-canvas hover:border-tempo-300 hover:bg-canvas/80'
+                )}
+              >
+                <div className="w-12 h-12 rounded-full bg-tempo-50 flex items-center justify-center">
+                  <Upload size={24} className="text-tempo-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-t2"><span className="font-medium text-tempo-600">{t('clickToUpload')}</span> {t('orDragDrop')}</p>
+                  <p className="text-xs text-t3 mt-1">{t('pdfPolicyHint')}</p>
+                </div>
+                <input ref={policyFileInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePolicyFileChange} />
+              </div>
+            ) : policyDocument.status !== 'complete' ? (
+              <div className="p-6 bg-canvas rounded-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-tempo-100 flex items-center justify-center">
+                    <FileText size={20} className="text-tempo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-t1 truncate">{policyDocument.filename}</p>
+                    <p className="text-xs text-t3">{parsingStage}</p>
+                  </div>
+                  <AIPulse active size="md" />
+                </div>
+                <Progress value={parsingProgress} color="orange" size="md" showLabel />
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 p-4 bg-canvas rounded-lg">
+                <div className="w-10 h-10 rounded-lg bg-tempo-100 flex items-center justify-center shrink-0">
+                  <FileText size={20} className="text-tempo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-t1">{policyDocument.filename}</p>
+                  <p className="text-xs text-t3">{t('uploadedOn', { date: new Date(policyDocument.uploadDate).toLocaleDateString() })} &middot; {t('pageCount', { count: policyDocument.pageCount })} &middot; {policyDocument.fileSize}</p>
+                </div>
+                <Badge variant="ai">{t('aiParsed')}</Badge>
+                <Button size="sm" variant="secondary" onClick={() => { setPolicyDocument(null); setExtractedRules([]); setPolicySummary(null) }}>{t('reupload')}</Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Policy Summary */}
+          {policySummary && (
+            <Card className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={14} className="text-tempo-500" />
+                <span className="text-sm font-semibold text-t1">{t('policySummaryTitle')}</span>
+              </div>
+              <p className="text-xs font-medium text-t1 mb-0.5">{policySummary.documentTitle}</p>
+              <p className="text-xs text-t3 mb-3">{t('effectiveDate')}: {policySummary.effectiveDate}</p>
+              <div className="space-y-1.5 mb-3">
+                {policySummary.keyHighlights.map((h, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <CheckCircle2 size={12} className="text-success mt-0.5 shrink-0" />
+                    <span className="text-xs text-t2">{h}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-t3">{t('rulesExtracted', { count: policySummary.totalRulesExtracted })}</p>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label={t('policyRulesTitle')} value={expensePolicies.length} change={`${expensePolicies.filter(p => (p as any).status === 'active').length} ${t('active').toLowerCase()}`} changeType="neutral" icon={<Shield size={20} />} />
             <StatCard label={t('policyViolations')} value={policyViolations.length} change={policyViolations.filter(v => v.severity === 'critical').length > 0 ? `${policyViolations.filter(v => v.severity === 'critical').length} critical` : 'None critical'} changeType={policyViolations.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
@@ -503,22 +681,29 @@ export default function ExpensePage() {
                     <th className="tempo-th text-right px-4 py-3">{t('receiptThreshold')}</th>
                     <th className="tempo-th text-right px-4 py-3">{t('autoApproveLimit')}</th>
                     <th className="tempo-th text-center px-4 py-3">{t('policyStatus')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{t('policySource')}</th>
                     <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {expensePolicies.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noPolicies')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noPolicies')}</td></tr>
                   ) : expensePolicies.map(policy => {
                     const p = policy as any
                     return (
                       <tr key={p.id} className="hover:bg-canvas/50">
-                        <td className="px-6 py-3 text-xs font-medium text-t1">{p.category}</td>
+                        <td className="px-6 py-3">
+                          <span className="text-xs font-medium text-t1">{p.category}</span>
+                          {p.policy_section && <p className="text-[10px] text-t3 mt-0.5">{p.policy_section}</p>}
+                        </td>
                         <td className="px-4 py-3 text-xs text-t1 text-right">${p.daily_limit?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-xs text-t2 text-right">${p.receipt_threshold?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-xs text-t2 text-right">${p.auto_approve_limit?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={p.status === 'active' ? 'success' : 'default'}>{p.status === 'active' ? t('active') : t('inactive')}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={p.source === 'document' ? 'ai' : 'default'}>{p.source === 'document' ? t('documentSource') : t('manualSource')}</Badge>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex gap-1 justify-center">
@@ -544,8 +729,11 @@ export default function ExpensePage() {
                 {policyViolations.map((v, i) => (
                   <div key={`${v.reportId}-${i}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
                     <Badge variant={v.severity === 'critical' ? 'error' : 'warning'}>{v.severity}</Badge>
-                    <span className="text-xs text-t1 flex-1">{v.violation}</span>
-                    <span className="text-xs font-medium text-t2">${v.amount.toLocaleString()}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-t1">{v.violation}</span>
+                      {v.policySection && <span className="text-[10px] text-t3 ml-1">({v.policySection})</span>}
+                    </div>
+                    <span className="text-xs font-medium text-t2 shrink-0">${v.amount.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -948,6 +1136,39 @@ export default function ExpensePage() {
             <Button variant="secondary" onClick={() => setShowPolicyModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitPolicy}>{editingPolicyId ? tc('save') : t('addPolicy')}</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Extracted Rules Preview Modal */}
+      <Modal open={showParsedRulesPreview} onClose={() => setShowParsedRulesPreview(false)} title={t('reviewExtractedRules')}>
+        <div className="space-y-3 max-h-[420px] overflow-y-auto">
+          {extractedRules.map(rule => (
+            <div key={rule.id} className="border border-border rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-t1">{rule.category}</span>
+                <Badge variant="ai">{rule.policy_section}</Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                <div>
+                  <p className="text-[10px] text-t3 uppercase tracking-wide">{t('dailyLimit')}</p>
+                  <p className="text-xs font-semibold text-t1">${rule.daily_limit.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-t3 uppercase tracking-wide">{t('receiptThreshold')}</p>
+                  <p className="text-xs font-semibold text-t1">${rule.receipt_threshold}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-t3 uppercase tracking-wide">{t('autoApproveLimit')}</p>
+                  <p className="text-xs font-semibold text-t1">${rule.auto_approve_limit.toLocaleString()}</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-t3 italic bg-canvas rounded p-2">&ldquo;{rule.policy_citation}&rdquo;</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
+          <Button variant="secondary" onClick={() => setShowParsedRulesPreview(false)}>{tc('cancel')}</Button>
+          <Button onClick={applyExtractedRules}><Sparkles size={14} /> {t('applyRules', { count: extractedRules.length })}</Button>
         </div>
       </Modal>
 
