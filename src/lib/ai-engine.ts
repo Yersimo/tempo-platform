@@ -4705,3 +4705,442 @@ export function analyzeVarianceByDepartment(forecastData: any[]): AIInsight[] {
 
   return insights
 }
+
+// ---- Personalized Recommendations ----
+
+export interface PersonalizedCourseRecommendation {
+  courseId: string
+  courseTitle: string
+  reason: 'performance_gap' | 'career_path' | 'role_based' | 'peer_popular'
+  rationale: string
+  relevanceScore: number
+  confidence: ConfidenceLevel
+}
+
+export function generatePersonalizedRecommendations(
+  employee: any,
+  goals: any[],
+  courses: any[],
+  enrollments: any[],
+  reviews: any[]
+): PersonalizedCourseRecommendation[] {
+  const empEnrollments = enrollments.filter((e: any) => e.employee_id === employee.id)
+  const enrolledIds = new Set(empEnrollments.map((e: any) => e.course_id))
+  const completedIds = new Set(empEnrollments.filter((e: any) => e.status === 'completed').map((e: any) => e.course_id))
+  const available = courses.filter((c: any) => !completedIds.has(c.id))
+
+  const empReviews = reviews.filter((r: any) => r.employee_id === employee.id)
+  const empGoals = goals.filter((g: any) => g.employee_id === employee.id)
+  const avgRating = empReviews.length > 0 ? mean(empReviews.map((r: any) => r.overall_rating || 3)) : 3
+
+  // Build peer popularity map: how many employees enrolled in each course
+  const coursePop: Record<string, number> = {}
+  enrollments.forEach((e: any) => {
+    coursePop[e.course_id] = (coursePop[e.course_id] || 0) + 1
+  })
+
+  const goalText = empGoals.map((g: any) => (g.title + ' ' + (g.description || '')).toLowerCase()).join(' ')
+  const roleText = ((employee.job_title || '') + ' ' + (employee.level || '')).toLowerCase()
+
+  const recs: PersonalizedCourseRecommendation[] = []
+
+  available.forEach((course: any) => {
+    const courseText = (course.title + ' ' + (course.description || '') + ' ' + (course.category || '')).toLowerCase()
+    const keywords = courseText.split(/\s+/).filter((w: string) => w.length > 4)
+
+    // Performance gap: low ratings + course aligns with improvement areas
+    const goalMatches = keywords.filter((w: string) => goalText.includes(w)).length
+    if (avgRating < 3.5 && goalMatches > 0) {
+      const score = clamp(50 + goalMatches * 12 + Math.round((3.5 - avgRating) * 20), 0, 98)
+      recs.push({
+        courseId: course.id,
+        courseTitle: course.title,
+        reason: 'performance_gap',
+        rationale: `Rating of ${avgRating.toFixed(1)}/5 suggests development need. This course aligns with ${goalMatches} active goal keyword(s).`,
+        relevanceScore: score,
+        confidence: toConfidence(score),
+      })
+      return
+    }
+
+    // Career path: course level matches next level up
+    const levels = ['junior', 'mid', 'senior', 'lead', 'principal', 'director']
+    const empIdx = levels.findIndex(l => (employee.level || '').toLowerCase().includes(l))
+    const nextLevel = empIdx >= 0 && empIdx < levels.length - 1 ? levels[empIdx + 1] : null
+    if (nextLevel && courseText.includes(nextLevel)) {
+      const score = clamp(60 + (empReviews.length * 5), 0, 95)
+      recs.push({
+        courseId: course.id,
+        courseTitle: course.title,
+        reason: 'career_path',
+        rationale: `Aligns with progression from ${employee.level} to ${nextLevel}. Prepares for next career step.`,
+        relevanceScore: score,
+        confidence: toConfidence(score),
+      })
+      return
+    }
+
+    // Role-based: course text matches employee role/title keywords
+    const roleMatches = keywords.filter((w: string) => roleText.includes(w)).length
+    if (roleMatches > 0 && !enrolledIds.has(course.id)) {
+      const score = clamp(40 + roleMatches * 15, 0, 90)
+      recs.push({
+        courseId: course.id,
+        courseTitle: course.title,
+        reason: 'role_based',
+        rationale: `Matches ${roleMatches} keyword(s) from your role as ${employee.job_title || 'team member'}.`,
+        relevanceScore: score,
+        confidence: toConfidence(score),
+      })
+      return
+    }
+
+    // Peer popular: course is popular among other employees
+    const popularity = coursePop[course.id] || 0
+    const totalEmployees = new Set(enrollments.map((e: any) => e.employee_id)).size || 1
+    const popRate = pct(popularity, totalEmployees)
+    if (popRate > 30 && !enrolledIds.has(course.id)) {
+      const score = clamp(35 + popRate / 2, 0, 85)
+      recs.push({
+        courseId: course.id,
+        courseTitle: course.title,
+        reason: 'peer_popular',
+        rationale: `${popRate}% of employees have enrolled in this course. Widely valued across the organization.`,
+        relevanceScore: score,
+        confidence: toConfidence(score),
+      })
+    }
+  })
+
+  return recs
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, 5)
+}
+
+// ---- Document Parsing Simulation ----
+
+export interface ParsedCourseStructure {
+  filename: string
+  detectedTitle: string
+  description: string
+  modules: Array<{
+    title: string
+    topics: string[]
+    estimatedMinutes: number
+  }>
+  questions: Array<{
+    question: string
+    type: 'multiple_choice' | 'true_false'
+    options: string[]
+    correctAnswer: string
+  }>
+  metadata: {
+    pageCount: number
+    wordCount: number
+    detectedLanguage: string
+    parsedAt: string
+  }
+}
+
+export function simulateDocumentParsing(filename: string): ParsedCourseStructure {
+  // Simple deterministic hash from filename
+  const hash = filename.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
+  const baseName = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+  const titleWords = baseName.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+
+  const moduleTopics = [
+    'Fundamentals & Overview', 'Core Methodology', 'Practical Framework',
+    'Implementation Strategy', 'Advanced Applications', 'Assessment & Review',
+    'Case Studies & Examples', 'Best Practices & Standards'
+  ]
+
+  const subTopics = [
+    'Key terminology and definitions', 'Historical context and evolution',
+    'Stakeholder identification', 'Process mapping techniques',
+    'Risk assessment methods', 'Quality metrics and KPIs',
+    'Communication strategies', 'Change management principles',
+    'Resource allocation planning', 'Continuous improvement cycles',
+    'Compliance requirements', 'Data-driven decision making'
+  ]
+
+  const moduleCount = clamp(((hash % 4) + 3), 3, 6)
+  const modules = Array.from({ length: moduleCount }, (_, i) => ({
+    title: `${moduleTopics[(hash + i) % moduleTopics.length]}`,
+    topics: Array.from({ length: clamp(((hash + i) % 3) + 2, 2, 4) }, (_, j) =>
+      subTopics[(hash + i + j) % subTopics.length]
+    ),
+    estimatedMinutes: 15 + ((hash + i) % 4) * 10,
+  }))
+
+  const questionTemplates = [
+    { q: `What is the primary objective of ${titleWords}?`, type: 'multiple_choice' as const, opts: ['Improve organizational efficiency', 'Reduce headcount', 'Increase complexity', 'Eliminate oversight'], correct: 'Improve organizational efficiency' },
+    { q: `${titleWords} requires continuous stakeholder engagement.`, type: 'true_false' as const, opts: ['True', 'False'], correct: 'True' },
+    { q: `Which phase comes first in the ${titleWords} process?`, type: 'multiple_choice' as const, opts: ['Assessment', 'Implementation', 'Reporting', 'Closure'], correct: 'Assessment' },
+    { q: `${titleWords} principles apply only to large organizations.`, type: 'true_false' as const, opts: ['True', 'False'], correct: 'False' },
+    { q: `What is the recommended approach to measuring ${titleWords} outcomes?`, type: 'multiple_choice' as const, opts: ['Data-driven KPIs', 'Subjective opinions only', 'Annual reviews only', 'No measurement needed'], correct: 'Data-driven KPIs' },
+  ]
+
+  const questionCount = clamp(((hash % 3) + 3), 3, 5)
+  const questions = Array.from({ length: questionCount }, (_, i) => {
+    const t = questionTemplates[(hash + i) % questionTemplates.length]
+    return { question: t.q, type: t.type, options: t.opts, correctAnswer: t.correct }
+  })
+
+  const totalMinutes = modules.reduce((s, m) => s + m.estimatedMinutes, 0)
+
+  return {
+    filename,
+    detectedTitle: titleWords,
+    description: `Automatically parsed course structure from "${filename}". Detected ${moduleCount} modules covering ${titleWords} topics across approximately ${totalMinutes} minutes of content.`,
+    modules,
+    questions,
+    metadata: {
+      pageCount: 10 + (hash % 40),
+      wordCount: 2000 + (hash % 8000),
+      detectedLanguage: 'en',
+      parsedAt: new Date().toISOString(),
+    },
+  }
+}
+
+// ---- Compliance Status Analysis ----
+
+export interface ComplianceStatus {
+  departmentId: string
+  departmentName: string
+  totalEmployees: number
+  compliantCount: number
+  complianceRate: number
+  overdueTrainings: Array<{
+    employeeId: string
+    employeeName: string
+    courseId: string
+    courseTitle: string
+    dueDate: string
+    daysOverdue: number
+  }>
+  riskLevel: 'low' | 'medium' | 'high'
+}
+
+export function analyzeComplianceStatus(
+  employees: any[],
+  enrollments: any[],
+  complianceTraining: any[],
+  departments: any[]
+): ComplianceStatus[] {
+  const complianceCourseIds = new Set(complianceTraining.map((ct: any) => ct.course_id || ct.id))
+  const now = new Date().toISOString()
+
+  return departments.map((dept: any) => {
+    const deptEmployees = employees.filter((e: any) => e.department_id === dept.id)
+    const deptEmployeeIds = new Set(deptEmployees.map((e: any) => e.id))
+
+    const overdueTrainings: ComplianceStatus['overdueTrainings'] = []
+    let compliantCount = 0
+
+    deptEmployees.forEach((emp: any) => {
+      const empEnrollments = enrollments.filter(
+        (en: any) => en.employee_id === emp.id && complianceCourseIds.has(en.course_id)
+      )
+
+      // Check if employee completed all compliance courses
+      const completedCourseIds = new Set(
+        empEnrollments.filter((en: any) => en.status === 'completed').map((en: any) => en.course_id)
+      )
+
+      let isCompliant = true
+      complianceTraining.forEach((ct: any) => {
+        const courseId = ct.course_id || ct.id
+        if (!completedCourseIds.has(courseId)) {
+          isCompliant = false
+          const enrollment = empEnrollments.find((en: any) => en.course_id === courseId)
+          const dueDate = ct.due_date || enrollment?.due_date
+          if (dueDate) {
+            const daysOver = Math.round(daysBetween(dueDate, now))
+            if (new Date(dueDate) < new Date(now)) {
+              overdueTrainings.push({
+                employeeId: emp.id,
+                employeeName: emp.profile?.full_name || emp.name || 'Unknown',
+                courseId,
+                courseTitle: ct.title || ct.course_title || 'Compliance Training',
+                dueDate,
+                daysOverdue: daysOver,
+              })
+            }
+          }
+        }
+      })
+
+      if (isCompliant) compliantCount++
+    })
+
+    const total = deptEmployees.length || 1
+    const rate = pct(compliantCount, total)
+    const riskLevel = rate >= 90 ? 'low' : rate >= 70 ? 'medium' : 'high'
+
+    return {
+      departmentId: dept.id,
+      departmentName: dept.name || dept.title || 'Unknown Department',
+      totalEmployees: deptEmployees.length,
+      compliantCount,
+      complianceRate: rate,
+      overdueTrainings: overdueTrainings.sort((a, b) => b.daysOverdue - a.daysOverdue),
+      riskLevel,
+    }
+  })
+}
+
+// ---- Learning ROI Calculation ----
+
+export interface LearningROIMetrics {
+  performanceImprovementPct: number
+  retentionImpactPct: number
+  productivityGainPct: number
+  costPerLearner: number
+  overallROIScore: number
+  confidence: ConfidenceLevel
+  breakdown: Array<{ metric: string; value: number; unit: string; explanation: string }>
+}
+
+export function calculateLearningROI(
+  enrollments: any[],
+  employees: any[],
+  reviews: any[]
+): LearningROIMetrics {
+  const completedEnrollments = enrollments.filter((e: any) => e.status === 'completed')
+  const employeeIds = new Set(employees.map((e: any) => e.id))
+  const learnersWithCompleted = new Set(
+    completedEnrollments.filter((e: any) => employeeIds.has(e.employee_id)).map((e: any) => e.employee_id)
+  )
+
+  // Performance improvement: compare ratings of learners vs non-learners
+  const learnerRatings: number[] = []
+  const nonLearnerRatings: number[] = []
+  employees.forEach((emp: any) => {
+    const empReviews = reviews.filter((r: any) => r.employee_id === emp.id)
+    if (empReviews.length === 0) return
+    const avgRating = mean(empReviews.map((r: any) => r.overall_rating || 3))
+    if (learnersWithCompleted.has(emp.id)) {
+      learnerRatings.push(avgRating)
+    } else {
+      nonLearnerRatings.push(avgRating)
+    }
+  })
+
+  const learnerAvg = learnerRatings.length > 0 ? mean(learnerRatings) : 3
+  const nonLearnerAvg = nonLearnerRatings.length > 0 ? mean(nonLearnerRatings) : 3
+  const perfImprovement = nonLearnerAvg > 0
+    ? clamp(Math.round(((learnerAvg - nonLearnerAvg) / nonLearnerAvg) * 100), -20, 40)
+    : 0
+
+  // Retention impact: learners who completed courses tend to stay (heuristic)
+  const totalLearners = learnersWithCompleted.size
+  const totalEmployees = employees.length || 1
+  const learnerRatio = totalLearners / totalEmployees
+  const retentionImpact = clamp(Math.round(learnerRatio * 18 + (perfImprovement > 0 ? 5 : 0)), 0, 25)
+
+  // Productivity gain: based on course completion rate and average progress
+  const avgProgress = enrollments.length > 0 ? mean(enrollments.map((e: any) => e.progress || 0)) : 0
+  const completionRate = enrollments.length > 0 ? pct(completedEnrollments.length, enrollments.length) : 0
+  const productivityGain = clamp(Math.round(completionRate * 0.15 + avgProgress * 0.05), 0, 30)
+
+  // Cost per learner: estimate based on enrollment count and hours
+  const totalHours = enrollments.reduce((s: number, e: any) => s + (e.duration_hours || e.hours || 4), 0)
+  const costPerHour = 45 // average blended cost per training hour
+  const totalCost = totalHours * costPerHour
+  const costPerLearner = totalLearners > 0 ? Math.round(totalCost / totalLearners) : 0
+
+  // Overall ROI score
+  const overallROI = clamp(
+    Math.round(perfImprovement * 0.35 + retentionImpact * 0.25 + productivityGain * 0.25 + (completionRate > 50 ? 15 : 5)),
+    0, 100
+  )
+
+  const confidenceScore = clamp(
+    Math.round(40 + (enrollments.length > 10 ? 20 : enrollments.length * 2) + (reviews.length > 10 ? 20 : reviews.length * 2)),
+    0, 95
+  )
+
+  return {
+    performanceImprovementPct: perfImprovement,
+    retentionImpactPct: retentionImpact,
+    productivityGainPct: productivityGain,
+    costPerLearner,
+    overallROIScore: overallROI,
+    confidence: toConfidence(confidenceScore),
+    breakdown: [
+      { metric: 'Performance Improvement', value: perfImprovement, unit: '%', explanation: `Learners average ${learnerAvg.toFixed(1)}/5 vs non-learners ${nonLearnerAvg.toFixed(1)}/5 in reviews.` },
+      { metric: 'Retention Impact', value: retentionImpact, unit: '%', explanation: `${pct(totalLearners, totalEmployees)}% of employees have completed training, correlating with higher retention.` },
+      { metric: 'Productivity Gain', value: productivityGain, unit: '%', explanation: `Course completion rate of ${completionRate}% with ${avgProgress.toFixed(0)}% average progress across all enrollments.` },
+      { metric: 'Cost per Learner', value: costPerLearner, unit: '$', explanation: `Estimated $${totalCost.toLocaleString()} total training cost across ${totalLearners} learner(s) (${totalHours} hours at $${costPerHour}/hr).` },
+    ],
+  }
+}
+
+// ---- Adaptive Difficulty ----
+
+export interface AdaptiveDifficultyResult {
+  courseId: string
+  recommendedDifficulty: 'beginner' | 'intermediate' | 'advanced'
+  currentMastery: number
+  adjustmentReason: string
+  nextQuizTargetScore: number
+  confidence: ConfidenceLevel
+}
+
+export function generateAdaptiveDifficulty(
+  attempts: any[],
+  courseId: string
+): AdaptiveDifficultyResult {
+  const courseAttempts = attempts.filter((a: any) => a.course_id === courseId)
+  const scores = courseAttempts.map((a: any) => a.score ?? a.quiz_score ?? a.percentage ?? 0)
+
+  if (scores.length === 0) {
+    return {
+      courseId,
+      recommendedDifficulty: 'beginner',
+      currentMastery: 0,
+      adjustmentReason: 'No prior attempts found. Starting at beginner difficulty.',
+      nextQuizTargetScore: 60,
+      confidence: 'low',
+    }
+  }
+
+  const avgScore = mean(scores)
+  const recentScores = scores.slice(-3)
+  const recentAvg = mean(recentScores)
+  const trend = recentScores.length >= 2 ? recentScores[recentScores.length - 1] - recentScores[0] : 0
+
+  // Mastery = weighted blend of overall average and recent performance
+  const mastery = clamp(Math.round(avgScore * 0.4 + recentAvg * 0.6), 0, 100)
+
+  let difficulty: 'beginner' | 'intermediate' | 'advanced'
+  let reason: string
+  let targetScore: number
+
+  if (mastery >= 80 && trend >= 0) {
+    difficulty = 'advanced'
+    reason = `Mastery at ${mastery}% with stable/improving trend (+${trend.toFixed(0)}). Advancing to challenge the learner.`
+    targetScore = 75
+  } else if (mastery >= 50) {
+    difficulty = 'intermediate'
+    reason = `Mastery at ${mastery}% indicates solid foundation.${trend < -10 ? ' Recent decline detected; reinforcing at intermediate level.' : ' Progressing through intermediate material.'}`
+    targetScore = 70
+  } else {
+    difficulty = 'beginner'
+    reason = `Mastery at ${mastery}% suggests foundational gaps.${trend > 10 ? ' Positive trend detected; keep building.' : ' Reinforcing fundamentals before advancing.'}`
+    targetScore = 60
+  }
+
+  const confidenceScore = clamp(40 + scores.length * 8 + (stdDev(scores) < 15 ? 15 : 0), 0, 95)
+
+  return {
+    courseId,
+    recommendedDifficulty: difficulty,
+    currentMastery: mastery,
+    adjustmentReason: reason,
+    nextQuizTargetScore: targetScore,
+    confidence: toConfidence(confidenceScore),
+  }
+}

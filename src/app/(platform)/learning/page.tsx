@@ -10,18 +10,19 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
-import { AIInsightCard, AIScoreBadge } from '@/components/ai'
+import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
 import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
+import { cn } from '@/lib/utils/cn'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, employees, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, getEmployeeName, currentEmployeeId, addToast } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, getEmployeeName, currentEmployeeId, addToast } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
-  const [activeTab, setActiveTab] = useState('catalog')
+  const [activeTab, setActiveTab] = useState('home')
 
   // Catalog search & filter state
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -86,13 +87,39 @@ export default function LearningPage() {
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState({ name: '', description: '', course_id: '', max_members: 10, meeting_frequency: 'biweekly' as string })
 
+  // Document upload state
+  const [docUploadState, setDocUploadState] = useState<'idle' | 'parsing' | 'done'>('idle')
+  const [docParsingProgress, setDocParsingProgress] = useState(0)
+  const [docParsingStage, setDocParsingStage] = useState('')
+  const [parsedDocCourse, setParsedDocCourse] = useState<{ title: string; modules: Array<{ title: string; lessons: string[]; duration_minutes: number }>; questions: number; description: string } | null>(null)
+
+  // Assessment state
+  const [activeAssessment, setActiveAssessment] = useState<{ courseId: string; questionIndex: number; answers: Record<string, string>; startedAt: string } | null>(null)
+  const [showAssessmentResult, setShowAssessmentResult] = useState<{ score: number; passed: boolean; correct: number; total: number } | null>(null)
+
+  // Admin state
+  const [showRuleModal, setShowRuleModal] = useState(false)
+  const [ruleForm, setRuleForm] = useState({ name: '', condition_type: 'department_join' as string, condition_value: '', action_type: 'enroll_course' as string, action_target_id: '', action_target_name: '', is_active: true })
+
+  // Assignment state
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [assignForm, setAssignForm] = useState({ employee_id: '', course_id: '', reason: '', due_date: '' })
+
+  // Compliance policy upload
+  const [compliancePolicyState, setCompliancePolicyState] = useState<'idle' | 'parsing' | 'done'>('idle')
+
   const tabs = [
+    { id: 'home', label: t('tabHome') },
     { id: 'catalog', label: t('tabCourseCatalog'), count: courses.length },
     { id: 'enrollments', label: t('tabEnrollments'), count: enrollments.filter(e => e.status !== 'completed').length },
+    { id: 'compliance', label: t('tabCompliance'), count: complianceTraining.length },
+    { id: 'assessments', label: t('tabAssessments'), count: assessmentAttempts.length },
     { id: 'skills', label: t('tabSkillsMatrix') },
     { id: 'builder', label: t('aiBuilder'), count: aiBuilderTemplates.length },
     { id: 'sessions', label: t('liveSessions'), count: liveSessions.filter(s => s.status === 'upcoming').length },
     { id: 'paths', label: t('learningPaths'), count: learningPaths.length },
+    { id: 'analytics', label: t('tabAnalytics') },
+    { id: 'admin', label: t('tabAdmin'), count: autoEnrollRules.filter(r => r.is_active).length },
     { id: 'course-builder', label: t('tabCourseBuilder'), count: courseBlocks.length },
     { id: 'quiz-builder', label: t('tabQuizBuilder'), count: quizQuestions.length },
     { id: 'social', label: t('tabSocialLearning'), count: discussions.length },
@@ -267,6 +294,199 @@ export default function LearningPage() {
     }
   }
 
+  // Current employee info for personalized homepage
+  const currentEmployee = employees.find(e => e.id === currentEmployeeId)
+  const currentEmployeeName = currentEmployee?.profile.full_name.split(' ')[0] || 'Learner'
+  const myEnrollments = useMemo(() => enrollments.filter(e => e.employee_id === currentEmployeeId), [enrollments, currentEmployeeId])
+  const myInProgress = myEnrollments.filter(e => e.status === 'in_progress')
+  const myCompleted = myEnrollments.filter(e => e.status === 'completed')
+  const myAssessments = useMemo(() => assessmentAttempts.filter(a => a.employee_id === currentEmployeeId), [assessmentAttempts, currentEmployeeId])
+  const myAssignments = useMemo(() => learningAssignments.filter(a => a.employee_id === currentEmployeeId), [learningAssignments, currentEmployeeId])
+
+  // AI personalized recommendations (deterministic)
+  const personalizedRecs = useMemo(() => {
+    const notEnrolled = courses.filter(c => !enrollments.some(e => e.course_id === c.id && e.employee_id === currentEmployeeId))
+    return notEnrolled.slice(0, 4).map((c, i) => ({
+      ...c,
+      reason: i === 0 ? 'performanceGap' : i === 1 ? 'careerPath' : i === 2 ? 'roleBased' : 'peerPopular',
+    }))
+  }, [courses, enrollments, currentEmployeeId])
+
+  // Compliance computed data
+  const complianceStats = useMemo(() => {
+    const mandatoryCourses = courses.filter(c => c.is_mandatory)
+    const allEmployeeCount = employees.length
+    const mandatoryEnrollments = enrollments.filter(e => mandatoryCourses.some(c => c.id === e.course_id))
+    const completedMandatory = mandatoryEnrollments.filter(e => e.status === 'completed')
+    const complianceRate = allEmployeeCount > 0 && mandatoryCourses.length > 0
+      ? Math.round((completedMandatory.length / (allEmployeeCount * mandatoryCourses.length)) * 100)
+      : 0
+    const overdueCount = complianceTraining.filter(ct => new Date(ct.deadline) < new Date()).length
+    const upcomingCount = complianceTraining.filter(ct => {
+      const d = new Date(ct.deadline)
+      const now = new Date()
+      return d > now && d < new Date(now.getTime() + 30 * 86400000)
+    }).length
+    return { complianceRate, mandatoryCount: mandatoryCourses.length, overdueCount, upcomingCount, totalRequired: allEmployeeCount * mandatoryCourses.length, totalCompleted: completedMandatory.length }
+  }, [courses, enrollments, employees, complianceTraining])
+
+  // Department compliance breakdown
+  const deptCompliance = useMemo(() => {
+    return departments.map(dept => {
+      const deptEmployees = employees.filter(e => e.department_id === dept.id)
+      const mandatoryCourses = courses.filter(c => c.is_mandatory)
+      const deptMandatoryEnrollments = enrollments.filter(e =>
+        deptEmployees.some(emp => emp.id === e.employee_id) && mandatoryCourses.some(c => c.id === e.course_id)
+      )
+      const completed = deptMandatoryEnrollments.filter(e => e.status === 'completed').length
+      const required = deptEmployees.length * mandatoryCourses.length
+      return { department: dept.name, rate: required > 0 ? Math.round((completed / required) * 100) : 0, completed, required, employeeCount: deptEmployees.length }
+    })
+  }, [departments, employees, courses, enrollments])
+
+  // Assessment center data
+  const availableAssessments = useMemo(() => {
+    return courses.filter(c => quizQuestions.some(q => q.course_id === c.id)).map(c => {
+      const questions = quizQuestions.filter(q => q.course_id === c.id)
+      const myAttempts = assessmentAttempts.filter(a => a.course_id === c.id && a.employee_id === currentEmployeeId)
+      const bestScore = myAttempts.length > 0 ? Math.max(...myAttempts.map(a => a.score)) : null
+      return { course: c, questionCount: questions.length, attempts: myAttempts.length, maxAttempts: 3, bestScore, passed: myAttempts.some(a => a.status === 'passed') }
+    })
+  }, [courses, quizQuestions, assessmentAttempts, currentEmployeeId])
+
+  // Analytics data
+  const analyticsData = useMemo(() => {
+    const monthlyCompletions = [12, 18, 15, 22, 19, 25, 28, 24, 30, 27, 32, 35]
+    const deptLearningHours = departments.map(d => {
+      const deptEmps = employees.filter(e => e.department_id === d.id)
+      const deptEnrollments = enrollments.filter(e => deptEmps.some(emp => emp.id === e.employee_id))
+      const completedHours = deptEnrollments.filter(e => e.status === 'completed').reduce((acc, e) => {
+        const course = courses.find(c => c.id === e.course_id)
+        return acc + (course?.duration_hours || 0)
+      }, 0)
+      return { name: d.name, hours: completedHours, enrollments: deptEnrollments.length }
+    })
+    const courseEffectiveness = courses.slice(0, 6).map(c => {
+      const courseEnrollments = enrollments.filter(e => e.course_id === c.id)
+      const completed = courseEnrollments.filter(e => e.status === 'completed').length
+      const hash = c.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)
+      return { title: c.title, completionRate: courseEnrollments.length > 0 ? Math.round((completed / courseEnrollments.length) * 100) : 0, avgScore: 65 + (hash % 30), satisfaction: 3.5 + (hash % 15) / 10, dropoff: 5 + (hash % 20) }
+    })
+    return { monthlyCompletions, deptLearningHours, courseEffectiveness, roiMultiplier: 4.2, performanceImprovement: 18, retentionImpact: 23, costPerLearner: 450, totalInvestment: 135000 }
+  }, [departments, employees, enrollments, courses])
+
+  // Simulate document parsing
+  function simulateDocumentParsing(filename: string) {
+    setDocUploadState('parsing')
+    setDocParsingProgress(0)
+    const stages = [
+      { progress: 15, stage: t('extractingContent') },
+      { progress: 35, stage: t('identifyingTopics') },
+      { progress: 60, stage: t('generatingModules') },
+      { progress: 80, stage: t('creatingAssessments') },
+      { progress: 95, stage: t('finalizingCourse') },
+    ]
+    let i = 0
+    const interval = setInterval(() => {
+      if (i < stages.length) {
+        setDocParsingProgress(stages[i].progress)
+        setDocParsingStage(stages[i].stage)
+        i++
+      } else {
+        clearInterval(interval)
+        setDocParsingProgress(100)
+        setDocUploadState('done')
+        const title = filename.replace(/\.(pdf|docx|pptx)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        setParsedDocCourse({
+          title: `${title} - Complete Training`,
+          description: `Auto-generated course from ${filename}. Covers all key topics with assessments.`,
+          modules: [
+            { title: 'Introduction & Overview', lessons: ['Course objectives', 'Key terminology', 'Industry context'], duration_minutes: 30 },
+            { title: 'Core Concepts', lessons: ['Fundamental principles', 'Best practices', 'Case studies', 'Common pitfalls'], duration_minutes: 45 },
+            { title: 'Advanced Topics', lessons: ['Advanced techniques', 'Real-world applications', 'Expert insights'], duration_minutes: 40 },
+            { title: 'Practical Exercises', lessons: ['Hands-on workshop', 'Group activity', 'Individual assessment'], duration_minutes: 35 },
+            { title: 'Assessment & Certification', lessons: ['Knowledge check', 'Final assessment', 'Certificate issuance'], duration_minutes: 20 },
+          ],
+          questions: 15,
+        })
+      }
+    }, 800)
+  }
+
+  function handleDocFileSelect() {
+    simulateDocumentParsing('Company_Expense_Policy_2026.pdf')
+  }
+
+  function handleSaveDocCourse() {
+    if (!parsedDocCourse) return
+    addCourse({
+      title: parsedDocCourse.title,
+      description: parsedDocCourse.description,
+      category: 'AI Generated',
+      duration_hours: Math.ceil(parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0) / 60),
+      format: 'online',
+      level: 'intermediate',
+      is_mandatory: false,
+    })
+    addToast('Course created from document')
+    setDocUploadState('idle')
+    setParsedDocCourse(null)
+  }
+
+  // Assessment handlers
+  function startAssessment(courseId: string) {
+    setActiveAssessment({ courseId, questionIndex: 0, answers: {}, startedAt: new Date().toISOString() })
+    setShowAssessmentResult(null)
+  }
+
+  function submitAssessmentAnswers() {
+    if (!activeAssessment) return
+    const courseQuestions = quizQuestions.filter(q => q.course_id === activeAssessment.courseId)
+    const correct = courseQuestions.filter(q => activeAssessment.answers[q.id] === q.correct_answer).length
+    const score = Math.round((correct / courseQuestions.length) * 100)
+    const passed = score >= 70
+    const existingAttempts = assessmentAttempts.filter(a => a.course_id === activeAssessment.courseId && a.employee_id === currentEmployeeId)
+    const course = courses.find(c => c.id === activeAssessment.courseId)
+    addAssessmentAttempt({
+      employee_id: currentEmployeeId,
+      course_id: activeAssessment.courseId,
+      quiz_title: `${course?.title || 'Course'} Assessment`,
+      score,
+      passing_score: 70,
+      total_questions: courseQuestions.length,
+      correct_answers: correct,
+      time_taken_minutes: Math.round((new Date().getTime() - new Date(activeAssessment.startedAt).getTime()) / 60000) || 1,
+      attempt_number: existingAttempts.length + 1,
+      max_attempts: 3,
+      status: passed ? 'passed' : 'failed',
+      completed_at: new Date().toISOString(),
+      answers: activeAssessment.answers,
+    })
+    setShowAssessmentResult({ score, passed, correct, total: courseQuestions.length })
+    setActiveAssessment(null)
+  }
+
+  // Admin rule submit
+  function submitRule() {
+    if (!ruleForm.name || !ruleForm.condition_value) return
+    addAutoEnrollRule(ruleForm)
+    setShowRuleModal(false)
+    setRuleForm({ name: '', condition_type: 'department_join', condition_value: '', action_type: 'enroll_course', action_target_id: '', action_target_name: '', is_active: true })
+  }
+
+  // Assignment submit
+  function submitAssignment() {
+    if (!assignForm.employee_id || !assignForm.course_id) return
+    addLearningAssignment({ ...assignForm, assigned_by: currentEmployeeId, linked_review_id: null, status: 'not_started' })
+    setShowAssignModal(false)
+    setAssignForm({ employee_id: '', course_id: '', reason: '', due_date: '' })
+  }
+
+  // Send compliance reminder
+  function sendComplianceReminder(employeeId: string) {
+    addToast(t('reminderSent'))
+  }
+
   // Leaderboard data
   const leaderboardData = useMemo(() => {
     return employees.slice(0, 10).map((emp, i) => {
@@ -353,6 +573,171 @@ export default function LearningPage() {
       </div>
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
+
+      {/* AI Personalized Homepage */}
+      {activeTab === 'home' && (
+        <div className="space-y-6">
+          {/* Welcome Banner */}
+          <Card>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-t1 mb-1">{t('homeWelcome', { name: currentEmployeeName })}</h3>
+                <p className="text-xs text-t3">{t('homeSubtitle')}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles size={20} className="text-tempo-600" />
+                <Badge variant="ai">{tc('aiPowered')}</Badge>
+              </div>
+            </div>
+          </Card>
+
+          {/* Progress Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center"><BookOpen size={18} className="text-tempo-600" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-t1">{myInProgress.length}</p>
+                  <p className="text-[0.6rem] text-t3">{t('coursesStarted')}</p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center"><Clock size={18} className="text-green-600" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-t1">{myCompleted.reduce((a, e) => { const c = courses.find(c => c.id === e.course_id); return a + (c?.duration_hours || 0) }, 0)}</p>
+                  <p className="text-[0.6rem] text-t3">{t('hoursLearned')}</p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center"><Award size={18} className="text-amber-600" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-t1">{myCompleted.length}</p>
+                  <p className="text-[0.6rem] text-t3">{t('certificatesEarned')}</p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center"><Target size={18} className="text-purple-600" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-t1">{t('daysStreak', { count: 12 })}</p>
+                  <p className="text-[0.6rem] text-t3">{t('currentStreak')}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Resume Learning */}
+          {myInProgress.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Play size={14} className="text-tempo-600" /> {t('resumeLearning')}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myInProgress.map(enr => {
+                  const course = courses.find(c => c.id === enr.course_id)
+                  return (
+                    <Card key={enr.id}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-tempo-50 flex items-center justify-center"><GraduationCap size={22} className="text-tempo-600" /></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-t1">{course?.title}</p>
+                          <p className="text-xs text-t3">{course?.category} · {course?.duration_hours}h</p>
+                          <Progress value={enr.progress} showLabel className="mt-1" color="orange" />
+                        </div>
+                        <Button size="sm" variant="primary" onClick={() => handleCompleteEnrollment(enr.id)}>{t('resumeLearning')}</Button>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Manager Learning Assignments (Tempo Differentiator) */}
+          {myAssignments.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Briefcase size={14} className="text-blue-600" /> {t('learningAssignments')}</h4>
+              <div className="space-y-2">
+                {myAssignments.map(assignment => {
+                  const course = courses.find(c => c.id === assignment.course_id)
+                  const assignerName = getEmployeeName(assignment.assigned_by)
+                  return (
+                    <Card key={assignment.id}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center"><UserCheck size={16} className="text-blue-600" /></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{course?.title}</p>
+                          <p className="text-xs text-t3">{t('assignedBy', { name: assignerName })} · {assignment.reason}</p>
+                          {assignment.linked_review_id && <Badge variant="ai">{t('linkedToReview')}</Badge>}
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={assignment.status === 'in_progress' ? 'warning' : assignment.status === 'not_started' ? 'default' : 'success'}>{assignment.status.replace('_', ' ')}</Badge>
+                          {assignment.due_date && <p className="text-[0.6rem] text-t3 mt-1">{t('dueIn', { days: Math.max(0, Math.ceil((new Date(assignment.due_date).getTime() - Date.now()) / 86400000)) })}</p>}
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* AI Recommendations (Performance-Linked) */}
+          <div>
+            <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Sparkles size={14} className="text-tempo-600" /> {t('recommendedForYou')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {personalizedRecs.map(rec => (
+                <Card key={rec.id}>
+                  <div className="flex items-start justify-between mb-2">
+                    <Badge variant="ai">{t('aiRecommended')}</Badge>
+                  </div>
+                  <h3 className="text-sm font-semibold text-t1 mb-1">{rec.title}</h3>
+                  <p className="text-xs text-t3 mb-2 line-clamp-2">{rec.description}</p>
+                  <p className="text-[0.6rem] text-tempo-600 mb-3 flex items-center gap-1">
+                    {rec.reason === 'performanceGap' && <><TrendingUp size={10} /> {t('basedOnPerformance')}</>}
+                    {rec.reason === 'careerPath' && <><ArrowRight size={10} /> {t('basedOnCareerPath')}</>}
+                    {rec.reason === 'roleBased' && <><Briefcase size={10} /> {t('basedOnRole', { role: currentEmployee?.job_title || '' })}</>}
+                    {rec.reason === 'peerPopular' && <><UsersIcon size={10} /> {t('basedOnPeers')}</>}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-t3"><Clock size={10} className="inline" /> {rec.duration_hours}h</span>
+                    <Button size="sm" variant="outline" onClick={() => handleEnroll(rec.id)}>{t('enroll')}</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Upcoming Compliance Deadlines */}
+          {complianceTraining.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><AlertTriangle size={14} className="text-amber-600" /> {t('upcomingDeadlines')}</h4>
+              <Card padding="none">
+                <div className="divide-y divide-divider">
+                  {complianceTraining.slice(0, 3).map(ct => {
+                    const daysUntil = Math.ceil((new Date(ct.deadline).getTime() - Date.now()) / 86400000)
+                    return (
+                      <div key={ct.id} className="px-6 py-3 flex items-center gap-4">
+                        <ShieldCheck size={16} className={daysUntil < 0 ? 'text-red-500' : daysUntil < 14 ? 'text-amber-500' : 'text-green-500'} />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{ct.title}</p>
+                          <p className="text-xs text-t3">{ct.regulatory_body}</p>
+                        </div>
+                        <Badge variant={daysUntil < 0 ? 'error' : daysUntil < 14 ? 'warning' : 'success'}>
+                          {daysUntil < 0 ? t('overdueDays', { days: Math.abs(daysUntil) }) : t('dueIn', { days: daysUntil })}
+                        </Badge>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === 'catalog' && (
         <div className="space-y-4">
@@ -445,13 +830,19 @@ export default function LearningPage() {
                     )}
                   </div>
 
-                  {/* SCORM/xAPI compatibility indicator */}
-                  {course.format === 'online' && (
-                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-divider">
-                      <Shield size={10} className="text-gray-400" />
-                      <span className="text-[0.55rem] text-t3">{t('scormCompatible')}</span>
+                  {/* SCORM/xAPI + Adaptive Learning indicators */}
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-divider">
+                    {course.format === 'online' && (
+                      <div className="flex items-center gap-1">
+                        <Shield size={10} className="text-gray-400" />
+                        <span className="text-[0.55rem] text-t3">{t('scormCompatible')}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Brain size={10} className="text-tempo-500" />
+                      <span className="text-[0.55rem] text-tempo-600">{t('adaptiveDifficulty')}</span>
                     </div>
-                  )}
+                  </div>
                 </Card>
               )
             })}
@@ -513,6 +904,256 @@ export default function LearningPage() {
         </Card>
       )}
 
+      {/* Compliance Training Tab */}
+      {activeTab === 'compliance' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('complianceOverview')}</h3>
+              <p className="text-xs text-t3">{t('complianceDesc')}</p>
+            </div>
+            <div className="flex gap-2">
+              {compliancePolicyState === 'idle' && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  setCompliancePolicyState('parsing')
+                  setTimeout(() => {
+                    setCompliancePolicyState('done')
+                    addToast(t('policyParsed', { count: 4 }))
+                  }, 2000)
+                }}>
+                  <Upload size={14} /> {t('uploadCompliancePolicy')}
+                </Button>
+              )}
+              {compliancePolicyState === 'parsing' && (
+                <Badge variant="ai"><AIPulse size="sm" /> {t('parsingDocument')}</Badge>
+              )}
+              {compliancePolicyState === 'done' && (
+                <Badge variant="success"><ShieldCheck size={12} /> {t('policyParsed', { count: 4 })}</Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Compliance Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label={t('complianceRate')} value={`${complianceStats.complianceRate}%`} icon={<ShieldCheck size={20} />} />
+            <StatCard label={t('mandatoryCourses')} value={complianceStats.mandatoryCount} icon={<Shield size={20} />} />
+            <StatCard label={t('overdueTrainings')} value={complianceStats.overdueCount} change={complianceStats.overdueCount > 0 ? 'Action required' : 'All clear'} changeType={complianceStats.overdueCount > 0 ? 'negative' : 'positive'} />
+            <StatCard label={t('upcomingDue')} value={complianceStats.upcomingCount} change="Next 30 days" changeType="neutral" />
+          </div>
+
+          {/* Compliance Trainings */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('regulatoryRequirements')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {complianceTraining.map(ct => {
+                const daysUntil = Math.ceil((new Date(ct.deadline).getTime() - Date.now()) / 86400000)
+                const course = ct.course_id ? courses.find(c => c.id === ct.course_id) : null
+                return (
+                  <div key={ct.id} className="px-6 py-4 flex items-center gap-4">
+                    <ShieldCheck size={18} className={daysUntil < 0 ? 'text-red-500' : daysUntil < 30 ? 'text-amber-500' : 'text-green-500'} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{ct.title}</p>
+                      <p className="text-xs text-t3">{ct.regulatory_body} · {ct.frequency}</p>
+                      {course && <p className="text-[0.6rem] text-tempo-600">{course.title}</p>}
+                      {ct.penalty && <p className="text-[0.6rem] text-red-500">Penalty: {ct.penalty}</p>}
+                    </div>
+                    <Badge variant={daysUntil < 0 ? 'error' : daysUntil < 30 ? 'warning' : 'success'}>
+                      {daysUntil < 0 ? t('overdueDays', { days: Math.abs(daysUntil) }) : t('dueIn', { days: daysUntil })}
+                    </Badge>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+
+          {/* Department Compliance */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('deptCompliance')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {deptCompliance.map(dc => (
+                <div key={dc.department} className="px-6 py-3 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-t1">{dc.department}</p>
+                    <p className="text-[0.6rem] text-t3">{dc.completed}/{dc.required} completed · {dc.employeeCount} employees</p>
+                  </div>
+                  <div className="w-32">
+                    <Progress value={dc.rate} showLabel color={dc.rate >= 80 ? 'success' : dc.rate >= 50 ? 'orange' : 'error'} />
+                  </div>
+                  <Badge variant={dc.rate >= 80 ? 'success' : dc.rate >= 50 ? 'warning' : 'error'}>
+                    {dc.rate >= 80 ? t('compliant') : t('nonCompliant')}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Employee Compliance Status */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('employeeCompliance')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {employees.slice(0, 10).map(emp => {
+                const mandatoryCourseIds = courses.filter(c => c.is_mandatory).map(c => c.id)
+                const empMandatoryEnrollments = enrollments.filter(e => e.employee_id === emp.id && mandatoryCourseIds.includes(e.course_id))
+                const completedMandatory = empMandatoryEnrollments.filter(e => e.status === 'completed').length
+                const totalMandatory = mandatoryCourseIds.length
+                const isCompliant = completedMandatory >= totalMandatory
+                return (
+                  <div key={emp.id} className="px-6 py-3 flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-xs font-medium text-tempo-600">
+                      {emp.profile.full_name.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{emp.profile.full_name}</p>
+                      <p className="text-[0.6rem] text-t3">{emp.job_title} · {completedMandatory}/{totalMandatory} mandatory</p>
+                    </div>
+                    <Badge variant={isCompliant ? 'success' : 'error'}>
+                      {isCompliant ? t('compliant') : t('nonCompliant')}
+                    </Badge>
+                    {!isCompliant && (
+                      <Button size="sm" variant="outline" onClick={() => sendComplianceReminder(emp.id)}>{t('sendReminder')}</Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Assessment Center Tab */}
+      {activeTab === 'assessments' && (
+        <div className="space-y-6">
+          {activeAssessment ? (() => {
+            const courseQuestions = quizQuestions.filter(q => q.course_id === activeAssessment.courseId)
+            const currentQ = courseQuestions[activeAssessment.questionIndex]
+            const course = courses.find(c => c.id === activeAssessment.courseId)
+            if (!currentQ) return null
+            return (
+              <Card>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{course?.title} - Assessment</h3>
+                    <p className="text-xs text-t3">{t('questionOf', { current: activeAssessment.questionIndex + 1, total: courseQuestions.length })}</p>
+                  </div>
+                  <Progress value={Math.round(((activeAssessment.questionIndex + 1) / courseQuestions.length) * 100)} showLabel className="w-32" />
+                </div>
+
+                <div className="bg-canvas rounded-lg p-6 mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge>{currentQ.type === 'multiple_choice' ? t('typeMultipleChoice') : currentQ.type === 'true_false' ? t('typeTrueFalse') : currentQ.type === 'fill_blank' ? t('typeFillBlank') : t('typeEssay')}</Badge>
+                    <span className="text-xs text-t3">{currentQ.points} {t('points')}</span>
+                  </div>
+                  <p className="text-sm font-medium text-t1 mb-4">{currentQ.question}</p>
+
+                  {(currentQ.type === 'multiple_choice' || currentQ.type === 'true_false') && (
+                    <div className="space-y-2">
+                      {(currentQ.type === 'true_false' ? ['True', 'False'] : currentQ.options).map((opt, i) => (
+                        <button key={i} onClick={() => setActiveAssessment(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: opt } } : null)}
+                          className={cn('w-full text-left p-3 rounded-lg border text-sm transition-colors',
+                            activeAssessment.answers[currentQ.id] === opt
+                              ? 'border-tempo-500 bg-tempo-50 text-tempo-700'
+                              : 'border-divider hover:border-tempo-300')}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentQ.type === 'fill_blank' && (
+                    <input type="text" value={activeAssessment.answers[currentQ.id] || ''}
+                      onChange={(e) => setActiveAssessment(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: e.target.value } } : null)}
+                      className="w-full p-3 border border-divider rounded-lg text-sm focus:outline-none focus:border-tempo-500"
+                      placeholder="Type your answer..." />
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Button variant="secondary" onClick={() => setActiveAssessment(prev => prev && prev.questionIndex > 0 ? { ...prev, questionIndex: prev.questionIndex - 1 } : prev)}
+                    disabled={activeAssessment.questionIndex === 0}>{t('prevQuestion')}</Button>
+                  {activeAssessment.questionIndex < courseQuestions.length - 1 ? (
+                    <Button onClick={() => setActiveAssessment(prev => prev ? { ...prev, questionIndex: prev.questionIndex + 1 } : null)}>{t('nextQuestion')}</Button>
+                  ) : (
+                    <Button onClick={submitAssessmentAnswers}>{t('submitAssessment')}</Button>
+                  )}
+                </div>
+              </Card>
+            )
+          })() : showAssessmentResult ? (
+            <Card>
+              <div className="text-center py-8">
+                <div className={cn('w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4', showAssessmentResult.passed ? 'bg-green-100' : 'bg-red-100')}>
+                  {showAssessmentResult.passed ? <CheckCircle size={36} className="text-green-600" /> : <AlertTriangle size={36} className="text-red-600" />}
+                </div>
+                <h3 className="text-lg font-bold text-t1 mb-1">{t('assessmentResult')}</h3>
+                <Badge variant={showAssessmentResult.passed ? 'success' : 'error'} className="mb-4">
+                  {showAssessmentResult.passed ? t('passed') : t('failed')}
+                </Badge>
+                <p className="text-3xl font-bold text-t1 mb-1">{showAssessmentResult.score}%</p>
+                <p className="text-xs text-t3 mb-2">{t('passingRequired', { score: 70 })}</p>
+                <p className="text-xs text-t3">{t('correctAnswers')}: {showAssessmentResult.correct}/{showAssessmentResult.total}</p>
+                <Button className="mt-6" onClick={() => setShowAssessmentResult(null)}>{tc('back')}</Button>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">{t('assessmentCenter')}</h3>
+                  <p className="text-xs text-t3">{t('assessmentDesc')}</p>
+                </div>
+              </div>
+
+              {/* Available Assessments */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableAssessments.map(assess => (
+                  <Card key={assess.course.id}>
+                    <div className="flex items-start justify-between mb-2">
+                      <Badge variant={assess.passed ? 'success' : 'default'}>{assess.passed ? t('passed') : assess.course.category}</Badge>
+                      <span className="text-xs text-t3">{assess.questionCount} questions</span>
+                    </div>
+                    <h3 className="text-sm font-semibold text-t1 mb-1">{assess.course.title}</h3>
+                    <p className="text-xs text-t3 mb-3">{assess.course.description}</p>
+                    {assess.bestScore !== null && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs text-t3">{t('bestScore')}: <span className="font-semibold text-t1">{assess.bestScore}%</span></span>
+                        <span className="text-xs text-t3">{t('attemptsUsed', { used: assess.attempts, max: assess.maxAttempts })}</span>
+                      </div>
+                    )}
+                    <Button size="sm" variant={assess.passed ? 'outline' : 'primary'}
+                      onClick={() => startAssessment(assess.course.id)}
+                      disabled={assess.attempts >= assess.maxAttempts && !assess.passed}>
+                      {assess.passed ? t('retakeAssessment') : assess.attempts > 0 ? t('retakeAssessment') : t('startAssessment')}
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Assessment History */}
+              {myAssessments.length > 0 && (
+                <Card padding="none">
+                  <CardHeader><CardTitle>{t('assessmentHistory')}</CardTitle></CardHeader>
+                  <div className="divide-y divide-divider">
+                    {myAssessments.map(att => (
+                      <div key={att.id} className="px-6 py-3 flex items-center gap-4">
+                        <div className={cn('w-8 h-8 rounded-full flex items-center justify-center', att.status === 'passed' ? 'bg-green-100' : 'bg-red-100')}>
+                          {att.status === 'passed' ? <CheckCircle size={14} className="text-green-600" /> : <AlertTriangle size={14} className="text-red-600" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{att.quiz_title}</p>
+                          <p className="text-[0.6rem] text-t3">{t('attemptDate')}: {new Date(att.completed_at).toLocaleDateString()} · {att.time_taken_minutes} min</p>
+                        </div>
+                        <span className="text-sm font-bold text-t1">{att.score}%</span>
+                        <Badge variant={att.status === 'passed' ? 'success' : 'error'}>{att.status === 'passed' ? t('passed') : t('failed')}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {activeTab === 'skills' && (() => {
         // Build skills matrix from courses and enrollments
         const categories = [...new Set(courses.map(c => c.category))].filter(Boolean)
@@ -565,6 +1206,72 @@ export default function LearningPage() {
               <Sparkles size={14} /> {t('createFromScratch')}
             </Button>
           </div>
+
+          {/* AI Course Generation from Documents */}
+          <Card>
+            <div className="flex items-center gap-2 mb-3">
+              <Brain size={16} className="text-tempo-600" />
+              <h4 className="text-sm font-semibold text-t1">{t('docUploadTitle')}</h4>
+              <Badge variant="ai">{tc('aiPowered')}</Badge>
+            </div>
+            <p className="text-xs text-t3 mb-4">{t('docUploadDesc')}</p>
+
+            {docUploadState === 'idle' && (
+              <button onClick={handleDocFileSelect}
+                className="w-full border-2 border-dashed border-divider rounded-xl p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-all group">
+                <Upload size={28} className="mx-auto text-t3 group-hover:text-tempo-600 mb-2" />
+                <p className="text-sm font-medium text-t2 group-hover:text-tempo-600">{t('dropPdfHere')}</p>
+                <p className="text-xs text-t3 mt-1">{t('pdfHint')}</p>
+              </button>
+            )}
+
+            {docUploadState === 'parsing' && (
+              <div className="bg-canvas rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <AIPulse size="md" />
+                  <div>
+                    <p className="text-sm font-medium text-t1">{t('parsingDocument')}</p>
+                    <p className="text-xs text-t3">{docParsingStage}</p>
+                  </div>
+                </div>
+                <Progress value={docParsingProgress} showLabel color="orange" />
+              </div>
+            )}
+
+            {docUploadState === 'done' && parsedDocCourse && (
+              <div className="space-y-4">
+                <div className="bg-canvas rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText size={16} className="text-tempo-600" />
+                    <h4 className="text-sm font-semibold text-t1">{parsedDocCourse.title}</h4>
+                    <Badge variant="success">{t('documentParsed')}</Badge>
+                  </div>
+                  <p className="text-xs text-t3 mb-3">{parsedDocCourse.description}</p>
+                  <div className="flex items-center gap-4 text-xs text-t3 mb-3">
+                    <span>{t('moduleCount', { count: parsedDocCourse.modules.length })}</span>
+                    <span>{t('questionCount', { count: parsedDocCourse.questions })}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {parsedDocCourse.modules.map((mod, i) => (
+                      <div key={i} className="bg-surface rounded-lg p-3">
+                        <p className="text-xs font-medium text-t1 mb-1">{mod.title}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {mod.lessons.map((lesson, j) => (
+                            <span key={j} className="text-[0.6rem] bg-canvas px-2 py-0.5 rounded text-t3">{lesson}</span>
+                          ))}
+                        </div>
+                        <p className="text-[0.6rem] text-t3 mt-1">{mod.duration_minutes} min</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => { setDocUploadState('idle'); setParsedDocCourse(null) }}>{tc('cancel')}</Button>
+                  <Button onClick={handleSaveDocCourse}><Sparkles size={14} /> {t('applyGeneratedCourse')}</Button>
+                </div>
+              </div>
+            )}
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {aiBuilderTemplates.map(tpl => (
@@ -684,11 +1391,210 @@ export default function LearningPage() {
                         <Progress value={avgProgress} showLabel color="orange" />
                       </div>
                     )}
+                    {/* Career Path Integration (Tempo Differentiator) */}
+                    {path.level === 'advanced' && (
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-divider">
+                        <Briefcase size={10} className="text-purple-500" />
+                        <span className="text-[0.6rem] text-purple-600 font-medium">{t('linkedToCareer')} · {t('requiredForPromotion', { role: 'Senior Manager' })}</span>
+                      </div>
+                    )}
                   </Card>
                 )
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Analytics Dashboard Tab */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('analyticsOverview')}</h3>
+              <p className="text-xs text-t3">{t('analyticsDesc')}</p>
+            </div>
+            <Badge variant="ai"><Sparkles size={12} /> {tc('aiPowered')}</Badge>
+          </div>
+
+          {/* ROI Dashboard (Tempo Differentiator) */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <StatCard label={t('roiMultiplier')} value={`${analyticsData.roiMultiplier}x`} icon={<TrendingUp size={20} />} change="vs 3.1x last quarter" changeType="positive" />
+            <StatCard label={t('performanceImprovement')} value={`+${analyticsData.performanceImprovement}%`} icon={<Activity size={20} />} change={t('afterTraining')} changeType="positive" />
+            <StatCard label={t('retentionImpact')} value={`+${analyticsData.retentionImpact}%`} icon={<UsersIcon size={20} />} change="Year over year" changeType="positive" />
+            <StatCard label={t('costPerLearner')} value={`$${analyticsData.costPerLearner}`} icon={<BarChart3 size={20} />} change={tc('perEmployee')} changeType="neutral" />
+            <StatCard label={t('totalInvestment')} value={`$${(analyticsData.totalInvestment / 1000).toFixed(0)}K`} icon={<Layers size={20} />} change="Annual budget" changeType="neutral" />
+          </div>
+
+          {/* AI Insight */}
+          <AIInsightCard insight={{
+            id: 'ai-roi-learning',
+            category: 'recommendation' as const,
+            severity: 'positive' as const,
+            title: t('roiDashboard'),
+            description: t('roiDesc'),
+            confidence: 'high' as const,
+            confidenceScore: 88,
+            suggestedAction: 'Invest 15% more in technical training for highest ROI impact',
+            module: 'learning',
+          }} compact />
+
+          {/* Course Effectiveness */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('courseEffectiveness')}</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-canvas">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-t3 font-medium">Course</th>
+                    <th className="text-center px-4 py-3 text-t3 font-medium">{t('completionRate')}</th>
+                    <th className="text-center px-4 py-3 text-t3 font-medium">{t('avgScore')}</th>
+                    <th className="text-center px-4 py-3 text-t3 font-medium">{t('satisfactionScore')}</th>
+                    <th className="text-center px-4 py-3 text-t3 font-medium">{t('dropoffRate')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider">
+                  {analyticsData.courseEffectiveness.map(ce => (
+                    <tr key={ce.title}>
+                      <td className="px-6 py-3 font-medium text-t1">{ce.title}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Progress value={ce.completionRate} className="w-16" />
+                          <span>{ce.completionRate}%</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium">{ce.avgScore}%</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Star size={10} className="text-yellow-400 fill-yellow-400" />
+                          <span>{ce.satisfaction.toFixed(1)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-amber-600">{ce.dropoff}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Department Comparison */}
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('departmentComparison')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {analyticsData.deptLearningHours.filter(d => d.enrollments > 0).map(d => (
+                <div key={d.name} className="px-6 py-3 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-t1">{d.name}</p>
+                    <p className="text-[0.6rem] text-t3">{d.enrollments} enrollments · {d.hours}h completed</p>
+                  </div>
+                  <div className="w-40">
+                    <Progress value={Math.min(100, d.hours * 2)} showLabel />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Monthly Completion Trend */}
+          <Card>
+            <h4 className="text-sm font-semibold text-t1 mb-4">{t('completionTrends')}</h4>
+            <div className="flex items-end gap-2 h-32">
+              {analyticsData.monthlyCompletions.map((v, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full bg-tempo-100 rounded-t" style={{ height: `${(v / 35) * 100}%` }}>
+                    <div className="w-full bg-tempo-500 rounded-t h-full" />
+                  </div>
+                  <span className="text-[0.5rem] text-t3">{['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][i]}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Administration Tab */}
+      {activeTab === 'admin' && (
+        <div className="space-y-6">
+          {/* Auto-Enrollment Rules Section */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('autoEnrollment')}</h3>
+              <p className="text-xs text-t3">{t('autoEnrollmentDesc')}</p>
+            </div>
+            <Button size="sm" onClick={() => setShowRuleModal(true)}><Plus size={14} /> {t('createRule')}</Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {autoEnrollRules.map(rule => (
+              <Card key={rule.id}>
+                <div className="flex items-start justify-between mb-2">
+                  <Badge variant={rule.is_active ? 'success' : 'default'}>{rule.is_active ? tc('active') : tc('inactive')}</Badge>
+                  <div className="flex gap-1">
+                    <button onClick={() => updateAutoEnrollRule(rule.id, { is_active: !rule.is_active })}
+                      className="text-xs text-t3 hover:text-tempo-600">{rule.is_active ? tc('deactivate') : tc('activate')}</button>
+                    <button onClick={() => deleteAutoEnrollRule(rule.id)}
+                      className="text-xs text-red-500 hover:text-red-700 ml-2">×</button>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-t1 mb-1">{rule.name}</h3>
+                <div className="space-y-1 text-xs text-t3 mb-3">
+                  <p><span className="font-medium text-t2">{t('ruleCondition')}:</span> {rule.condition_type === 'department_join' ? t('whenEmployeeJoins') : rule.condition_type === 'role_match' ? t('whenRoleIs') : t('whenComplianceDue')}: {rule.condition_value}</p>
+                  <p><span className="font-medium text-t2">{t('ruleAction')}:</span> {rule.action_type === 'enroll_course' ? t('enrollInCourse') : t('enrollInPath')}: {rule.action_target_name}</p>
+                </div>
+                <div className="flex items-center justify-between text-[0.6rem] text-t3 pt-2 border-t border-divider">
+                  <span>{t('ruleTriggered', { count: rule.triggered_count })}</span>
+                  <span>{new Date(rule.created_at).toLocaleDateString()}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Manager Learning Plans Section (Tempo Differentiator) */}
+          <div className="flex items-center justify-between mt-8">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">{t('managerLearningPlans')}</h3>
+              <p className="text-xs text-t3">{t('managerPlansDesc')}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setShowAssignModal(true)}><Plus size={14} /> {t('assignLearning')}</Button>
+          </div>
+
+          <Card padding="none">
+            <CardHeader><CardTitle>{t('learningAssignments')}</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {learningAssignments.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">{t('noAssignments')}</div>
+              ) : learningAssignments.map(assignment => {
+                const emp = employees.find(e => e.id === assignment.employee_id)
+                const course = courses.find(c => c.id === assignment.course_id)
+                const assigner = employees.find(e => e.id === assignment.assigned_by)
+                const daysUntil = assignment.due_date ? Math.ceil((new Date(assignment.due_date).getTime() - Date.now()) / 86400000) : null
+                return (
+                  <div key={assignment.id} className="px-6 py-4 flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
+                      {(emp?.profile.full_name || '?').charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{emp?.profile.full_name} → {course?.title}</p>
+                      <p className="text-xs text-t3">{t('assignedBy', { name: assigner?.profile.full_name || 'Manager' })} · {assignment.reason}</p>
+                      {assignment.linked_review_id && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Badge variant="ai">{t('performanceLinked')}</Badge>
+                          <span className="text-[0.6rem] text-t3">{t('fromPerformanceReview')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={assignment.status === 'in_progress' ? 'warning' : assignment.status === 'completed' ? 'success' : 'default'}>{assignment.status.replace('_', ' ')}</Badge>
+                    {daysUntil !== null && (
+                      <span className={cn('text-xs', daysUntil < 7 ? 'text-red-500' : 'text-t3')}>
+                        {daysUntil < 0 ? t('overdueDays', { days: Math.abs(daysUntil) }) : t('dueIn', { days: daysUntil })}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
         </div>
       )}
 
@@ -721,6 +1627,16 @@ export default function LearningPage() {
               <div>
                 <h3 className="text-sm font-semibold text-t1">{t('courseBuilder')}</h3>
                 <p className="text-xs text-t3">{t('courseBuilderDesc')}</p>
+                {/* Collaborative authoring indicator */}
+                {selectedBuilderCourse && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex -space-x-1.5">
+                      <div className="w-5 h-5 rounded-full bg-green-400 border-2 border-surface" />
+                      <div className="w-5 h-5 rounded-full bg-blue-400 border-2 border-surface" />
+                    </div>
+                    <span className="text-[0.6rem] text-green-600 flex items-center gap-1"><Eye size={10} /> {t('liveEditing')} · {t('currentEditors')}: 2</span>
+                  </div>
+                )}
               </div>
               {selectedBuilderCourse && (
                 <div className="flex gap-2">
@@ -1407,6 +2323,58 @@ export default function LearningPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Auto-Enrollment Rule Modal */}
+      <Modal open={showRuleModal} onClose={() => setShowRuleModal(false)} title={t('createRule')}>
+        <div className="space-y-4">
+          <Input label={t('ruleName')} value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} placeholder="e.g. New Hire Compliance" />
+          <Select label={t('ruleCondition')} value={ruleForm.condition_type} onChange={(e) => setRuleForm({ ...ruleForm, condition_type: e.target.value })} options={[
+            { value: 'department_join', label: t('whenEmployeeJoins') },
+            { value: 'role_match', label: t('whenRoleIs') },
+            { value: 'compliance_due', label: t('whenComplianceDue') },
+          ]} />
+          <Input label="Condition Value" value={ruleForm.condition_value} onChange={(e) => setRuleForm({ ...ruleForm, condition_value: e.target.value })} placeholder="e.g. dept-1,dept-2 or Manager,Director" />
+          <Select label={t('ruleAction')} value={ruleForm.action_type} onChange={(e) => setRuleForm({ ...ruleForm, action_type: e.target.value })} options={[
+            { value: 'enroll_course', label: t('enrollInCourse') },
+            { value: 'enroll_path', label: t('enrollInPath') },
+          ]} />
+          <Select label="Target" value={ruleForm.action_target_id} onChange={(e) => {
+            const target = ruleForm.action_type === 'enroll_course'
+              ? courses.find(c => c.id === e.target.value)
+              : learningPaths.find(p => p.id === e.target.value)
+            setRuleForm({ ...ruleForm, action_target_id: e.target.value, action_target_name: (target as any)?.title || '' })
+          }} options={[
+            { value: '', label: '-- Select --' },
+            ...(ruleForm.action_type === 'enroll_course'
+              ? courses.map(c => ({ value: c.id, label: c.title }))
+              : learningPaths.map(p => ({ value: p.id, label: p.title }))),
+          ]} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowRuleModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitRule}>{t('createRule')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Assign Learning Modal */}
+      <Modal open={showAssignModal} onClose={() => setShowAssignModal(false)} title={t('assignLearning')}>
+        <div className="space-y-4">
+          <Select label={tc('employee')} value={assignForm.employee_id} onChange={(e) => setAssignForm({ ...assignForm, employee_id: e.target.value })} options={[
+            { value: '', label: t('selectEmployeePlaceholder') },
+            ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' })),
+          ]} />
+          <Select label={t('courseTitle')} value={assignForm.course_id} onChange={(e) => setAssignForm({ ...assignForm, course_id: e.target.value })} options={[
+            { value: '', label: t('selectCoursePlaceholder') },
+            ...courses.map(c => ({ value: c.id, label: c.title })),
+          ]} />
+          <Textarea label="Reason" value={assignForm.reason} onChange={(e) => setAssignForm({ ...assignForm, reason: e.target.value })} rows={2} placeholder="Why is this learning assigned?" />
+          <Input label="Due Date" type="date" value={assignForm.due_date} onChange={(e) => setAssignForm({ ...assignForm, due_date: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitAssignment}>{t('assignLearning')}</Button>
+          </div>
+        </div>
       </Modal>
     </>
   )

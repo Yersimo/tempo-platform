@@ -1778,6 +1778,55 @@ export const demoStudyGroups = [
 ]
 
 // ============================================================
+// COMPLIANCE TRAINING TRACKING
+// ============================================================
+
+export const demoComplianceTraining = [
+  { id: 'ct-1', org_id: 'org-1', course_id: 'course-2', title: 'AML Compliance Annual', regulatory_body: 'Central Bank of Nigeria', deadline: '2026-03-31', frequency: 'annual' as const, required_departments: ['dept-1', 'dept-2', 'dept-6', 'dept-7'] as string[], required_roles: ['all'] as string[], penalty: 'Regulatory fine up to $50,000', status: 'active' as const },
+  { id: 'ct-2', org_id: 'org-1', course_id: 'course-6', title: 'Data Privacy & GDPR', regulatory_body: 'NDPR / GDPR Authority', deadline: '2026-04-15', frequency: 'annual' as const, required_departments: ['dept-1', 'dept-2', 'dept-3', 'dept-4', 'dept-5', 'dept-6', 'dept-7', 'dept-8'] as string[], required_roles: ['all'] as string[], penalty: 'Data processing suspension', status: 'active' as const },
+  { id: 'ct-3', org_id: 'org-1', course_id: 'course-3', title: 'Credit Risk Certification', regulatory_body: 'UEMOA Banking Commission', deadline: '2026-06-30', frequency: 'biannual' as const, required_departments: ['dept-2'] as string[], required_roles: ['analyst', 'manager'] as string[], penalty: 'License review', status: 'active' as const },
+  { id: 'ct-4', org_id: 'org-1', course_id: null, title: 'Cybersecurity Awareness', regulatory_body: 'ISO 27001', deadline: '2026-05-01', frequency: 'annual' as const, required_departments: ['dept-4'] as string[], required_roles: ['all'] as string[], penalty: 'Audit non-compliance', status: 'active' as const },
+]
+
+// ============================================================
+// AUTO-ENROLLMENT RULES
+// ============================================================
+
+export const demoAutoEnrollRules = [
+  { id: 'aer-1', org_id: 'org-1', name: 'New Hire Compliance', condition_type: 'department_join' as const, condition_value: 'all', action_type: 'enroll_course' as const, action_target_id: 'course-2', action_target_name: 'Anti-Money Laundering (AML) Compliance', is_active: true, triggered_count: 24, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'aer-2', org_id: 'org-1', name: 'Banking Staff GDPR', condition_type: 'department_join' as const, condition_value: 'dept-1,dept-2', action_type: 'enroll_course' as const, action_target_id: 'course-6', action_target_name: 'Data Privacy & GDPR', is_active: true, triggered_count: 18, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'aer-3', org_id: 'org-1', name: 'Manager Track Auto-Enroll', condition_type: 'role_match' as const, condition_value: 'Manager,Senior Manager,Director', action_type: 'enroll_path' as const, action_target_id: 'lp-1', action_target_name: 'New Manager Essentials', is_active: true, triggered_count: 8, created_at: '2025-09-15T00:00:00Z' },
+  { id: 'aer-4', org_id: 'org-1', name: 'Tech Team Onboarding', condition_type: 'department_join' as const, condition_value: 'dept-4', action_type: 'enroll_path' as const, action_target_id: 'lp-3', action_target_name: 'Digital Banking Specialist', is_active: false, triggered_count: 5, created_at: '2025-10-01T00:00:00Z' },
+  { id: 'aer-5', org_id: 'org-1', name: 'Annual Compliance Renewal', condition_type: 'compliance_due' as const, condition_value: 'annual', action_type: 'enroll_course' as const, action_target_id: 'course-2', action_target_name: 'Anti-Money Laundering (AML) Compliance', is_active: true, triggered_count: 30, created_at: '2025-01-01T00:00:00Z' },
+]
+
+// ============================================================
+// ASSESSMENT ATTEMPTS
+// ============================================================
+
+export const demoAssessmentAttempts = [
+  { id: 'att-1', org_id: 'org-1', employee_id: 'emp-2', course_id: 'course-1', quiz_title: 'Leadership Essentials Assessment', score: 85, passing_score: 70, total_questions: 10, correct_answers: 8, time_taken_minutes: 22, attempt_number: 1, max_attempts: 3, status: 'passed' as const, completed_at: '2026-02-10T14:30:00Z', answers: {} as Record<string, string> },
+  { id: 'att-2', org_id: 'org-1', employee_id: 'emp-4', course_id: 'course-2', quiz_title: 'AML Compliance Test', score: 92, passing_score: 80, total_questions: 15, correct_answers: 14, time_taken_minutes: 18, attempt_number: 1, max_attempts: 3, status: 'passed' as const, completed_at: '2026-01-22T10:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-3', org_id: 'org-1', employee_id: 'emp-6', course_id: 'course-3', quiz_title: 'Credit Analysis Mid-Term', score: 60, passing_score: 70, total_questions: 12, correct_answers: 7, time_taken_minutes: 35, attempt_number: 1, max_attempts: 3, status: 'failed' as const, completed_at: '2026-02-15T16:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-4', org_id: 'org-1', employee_id: 'emp-6', course_id: 'course-3', quiz_title: 'Credit Analysis Mid-Term', score: 78, passing_score: 70, total_questions: 12, correct_answers: 9, time_taken_minutes: 28, attempt_number: 2, max_attempts: 3, status: 'passed' as const, completed_at: '2026-02-20T11:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-5', org_id: 'org-1', employee_id: 'emp-14', course_id: 'course-7', quiz_title: 'Agile PM Certification', score: 95, passing_score: 75, total_questions: 20, correct_answers: 19, time_taken_minutes: 25, attempt_number: 1, max_attempts: 2, status: 'passed' as const, completed_at: '2025-09-20T09:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-6', org_id: 'org-1', employee_id: 'emp-10', course_id: 'course-4', quiz_title: 'Digital Banking Basics', score: 45, passing_score: 70, total_questions: 10, correct_answers: 4, time_taken_minutes: 15, attempt_number: 1, max_attempts: 3, status: 'failed' as const, completed_at: '2026-02-25T14:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-7', org_id: 'org-1', employee_id: 'emp-26', course_id: 'course-2', quiz_title: 'AML Compliance Test', score: 88, passing_score: 80, total_questions: 15, correct_answers: 13, time_taken_minutes: 20, attempt_number: 1, max_attempts: 3, status: 'passed' as const, completed_at: '2026-01-18T13:00:00Z', answers: {} as Record<string, string> },
+  { id: 'att-8', org_id: 'org-1', employee_id: 'emp-3', course_id: 'course-5', quiz_title: 'Customer Excellence Final', score: 90, passing_score: 70, total_questions: 15, correct_answers: 13, time_taken_minutes: 30, attempt_number: 1, max_attempts: 3, status: 'passed' as const, completed_at: '2025-12-10T16:30:00Z', answers: {} as Record<string, string> },
+]
+
+// ============================================================
+// MANAGER LEARNING ASSIGNMENTS
+// ============================================================
+
+export const demoLearningAssignments = [
+  { id: 'la-1', org_id: 'org-1', employee_id: 'emp-11', assigned_by: 'emp-9', course_id: 'course-7', reason: 'Process improvement skills needed based on Q4 review', linked_review_id: 'review-5', due_date: '2026-04-30', status: 'in_progress' as const, created_at: '2026-02-01T00:00:00Z' },
+  { id: 'la-2', org_id: 'org-1', employee_id: 'emp-3', assigned_by: 'emp-1', course_id: 'course-1', reason: 'Developing leadership skills for branch manager track', linked_review_id: 'review-3', due_date: '2026-06-30', status: 'in_progress' as const, created_at: '2026-01-20T00:00:00Z' },
+  { id: 'la-3', org_id: 'org-1', employee_id: 'emp-16', assigned_by: 'emp-13', course_id: 'course-4', reason: 'Strengthen digital banking understanding for UX projects', linked_review_id: null, due_date: '2026-05-15', status: 'not_started' as const, created_at: '2026-02-15T00:00:00Z' },
+  { id: 'la-4', org_id: 'org-1', employee_id: 'emp-7', assigned_by: 'emp-5', course_id: 'course-3', reason: 'Advanced credit skills required for senior analyst promotion', linked_review_id: 'review-6', due_date: '2026-06-30', status: 'in_progress' as const, created_at: '2026-01-15T00:00:00Z' },
+]
+
+// ============================================================
 // CAREER SITE CONFIG
 // ============================================================
 
@@ -2225,6 +2274,10 @@ export function getDemoDataForOrg(orgId: string) {
       quizQuestions: [] as typeof demoQuizQuestions,
       discussions: [] as typeof demoDiscussions,
       studyGroups: [] as typeof demoStudyGroups,
+      complianceTraining: [] as typeof demoComplianceTraining,
+      autoEnrollRules: [] as typeof demoAutoEnrollRules,
+      assessmentAttempts: [] as typeof demoAssessmentAttempts,
+      learningAssignments: [] as typeof demoLearningAssignments,
       careerSiteConfig: kashCareerSiteConfig,
       jobDistributions: kashJobDistributions,
       interviews: [] as typeof demoInterviews,
@@ -2308,6 +2361,10 @@ export function getDemoDataForOrg(orgId: string) {
     quizQuestions: demoQuizQuestions,
     discussions: demoDiscussions,
     studyGroups: demoStudyGroups,
+    complianceTraining: demoComplianceTraining,
+    autoEnrollRules: demoAutoEnrollRules,
+    assessmentAttempts: demoAssessmentAttempts,
+    learningAssignments: demoLearningAssignments,
     careerSiteConfig: demoCareerSiteConfig,
     jobDistributions: demoJobDistributions,
     interviews: demoInterviews,

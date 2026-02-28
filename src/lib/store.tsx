@@ -17,7 +17,7 @@ import {
   demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
   demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
   demoNotifications,
-  demoLearningPaths, demoLiveSessions, demoCourseBlocks, demoQuizQuestions, demoDiscussions, demoStudyGroups, demoCareerSiteConfig, demoJobDistributions,
+  demoLearningPaths, demoLiveSessions, demoCourseBlocks, demoQuizQuestions, demoDiscussions, demoStudyGroups, demoComplianceTraining, demoAutoEnrollRules, demoAssessmentAttempts, demoLearningAssignments, demoCareerSiteConfig, demoJobDistributions,
   demoEmployeePayrollEntries, demoContractorPayments, demoPayrollSchedules, demoTaxConfigs, demoComplianceIssues, demoTaxFilings,
   demoEmployeeDocuments, demoEmployeeTimeline,
   demoOneOnOnes, demoRecognitions, demoCompetencyFramework, demoCompetencyRatings,
@@ -104,6 +104,10 @@ interface TempoState {
   quizQuestions: WidenArray<typeof demoQuizQuestions>
   discussions: WidenArray<typeof demoDiscussions>
   studyGroups: WidenArray<typeof demoStudyGroups>
+  complianceTraining: WidenArray<typeof demoComplianceTraining>
+  autoEnrollRules: WidenArray<typeof demoAutoEnrollRules>
+  assessmentAttempts: WidenArray<typeof demoAssessmentAttempts>
+  learningAssignments: WidenArray<typeof demoLearningAssignments>
 
   // Engagement
   surveys: WidenArray<typeof demoSurveys>
@@ -306,6 +310,23 @@ interface TempoState {
   // Study Groups
   addStudyGroup: (data: AnyRecord) => void
   updateStudyGroup: (id: string, data: AnyRecord) => void
+
+  // Compliance Training
+  addComplianceTraining: (data: AnyRecord) => void
+  updateComplianceTraining: (id: string, data: AnyRecord) => void
+
+  // Auto-Enrollment Rules
+  addAutoEnrollRule: (data: AnyRecord) => void
+  updateAutoEnrollRule: (id: string, data: AnyRecord) => void
+  deleteAutoEnrollRule: (id: string) => void
+
+  // Assessment Attempts
+  addAssessmentAttempt: (data: AnyRecord) => void
+  updateAssessmentAttempt: (id: string, data: AnyRecord) => void
+
+  // Learning Assignments
+  addLearningAssignment: (data: AnyRecord) => void
+  updateLearningAssignment: (id: string, data: AnyRecord) => void
 
   // Surveys
   addSurvey: (data: AnyRecord) => void
@@ -637,6 +658,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [quizQuestions, setQuizQuestions] = useState(demoQuizQuestions)
   const [discussions, setDiscussions] = useState(demoDiscussions)
   const [studyGroups, setStudyGroups] = useState(demoStudyGroups)
+  const [complianceTraining, setComplianceTraining] = useState(demoComplianceTraining)
+  const [autoEnrollRules, setAutoEnrollRules] = useState(demoAutoEnrollRules)
+  const [assessmentAttempts, setAssessmentAttempts] = useState(demoAssessmentAttempts)
+  const [learningAssignments, setLearningAssignments] = useState(demoLearningAssignments)
   const [surveys, setSurveys] = useState(demoSurveys)
   const [engagementScores, setEngagementScores] = useState(demoEngagementScores)
   const [actionPlans, setActionPlans] = useState(demoActionPlans)
@@ -741,6 +766,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).quizQuestions) setQuizQuestions((data as any).quizQuestions)
     if ((data as any).discussions) setDiscussions((data as any).discussions)
     if ((data as any).studyGroups) setStudyGroups((data as any).studyGroups)
+    if ((data as any).complianceTraining) setComplianceTraining((data as any).complianceTraining)
+    if ((data as any).autoEnrollRules) setAutoEnrollRules((data as any).autoEnrollRules)
+    if ((data as any).assessmentAttempts) setAssessmentAttempts((data as any).assessmentAttempts)
+    if ((data as any).learningAssignments) setLearningAssignments((data as any).learningAssignments)
     setSurveys(data.surveys as any)
     setEngagementScores(data.engagementScores as any)
     setActionPlans(data.actionPlans as any)
@@ -870,29 +899,50 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           if (data.salaryReviews?.length) setSalaryReviews(data.salaryReviews)
           if (data.courses?.length) setCourses(data.courses)
           if (data.enrollments?.length) setEnrollments(data.enrollments)
+
+          // Build a course ID remap: demo "course-N" → actual DB UUID
+          const courseIdMap = new Map<string, string>()
+          if (data.courses?.length) {
+            (data.courses as Array<{ id: string }>).forEach((c, i) => { courseIdMap.set(`course-${i + 1}`, c.id) })
+          }
+          const remapCourseId = (cid: string) => courseIdMap.get(cid) || cid
+
           if (data.learningPaths?.length) {
             setLearningPaths(data.learningPaths)
-          } else if (data.courses?.length) {
-            // Remap demo learning path course_ids to actual DB course IDs
-            const dbCourses = data.courses as Array<{ id: string }>
-            const idMap = new Map<string, string>()
-            dbCourses.forEach((c, i) => { idMap.set(`course-${i + 1}`, c.id) })
+          } else if (courseIdMap.size > 0) {
             setLearningPaths(prev => prev.map(lp => ({
               ...lp,
-              course_ids: (lp as any).course_ids.map((cid: string) => idMap.get(cid) || cid),
+              course_ids: (lp as any).course_ids.map((cid: string) => remapCourseId(cid)),
             })) as typeof prev)
           }
           if (data.liveSessions?.length) {
             setLiveSessions(data.liveSessions)
-          } else if (data.courses?.length) {
-            // Remap demo live session course_id to actual DB course IDs
-            const dbCourses2 = data.courses as Array<{ id: string }>
-            const cMap = new Map<string, string>()
-            dbCourses2.forEach((c, i) => { cMap.set(`course-${i + 1}`, c.id) })
+          } else if (courseIdMap.size > 0) {
             setLiveSessions(prev => prev.map(s => ({
               ...s,
-              course_id: cMap.get((s as any).course_id) || (s as any).course_id,
+              course_id: remapCourseId((s as any).course_id),
             })) as typeof prev)
+          }
+          // Remap course_id in demo quiz questions, course blocks, discussions, study groups, etc.
+          if (courseIdMap.size > 0) {
+            if (!data.courseBlocks?.length) {
+              setCourseBlocks(prev => prev.map(b => ({ ...b, course_id: remapCourseId(b.course_id) })) as typeof prev)
+            }
+            if (!data.quizQuestions?.length) {
+              setQuizQuestions(prev => prev.map(q => ({ ...q, course_id: remapCourseId(q.course_id) })) as typeof prev)
+            }
+            if (!data.discussions?.length) {
+              setDiscussions(prev => prev.map(d => ({ ...d, course_id: d.course_id ? remapCourseId(d.course_id) : d.course_id })) as typeof prev)
+            }
+            if (!data.studyGroups?.length) {
+              setStudyGroups(prev => prev.map(s => ({ ...s, course_id: remapCourseId(s.course_id) })) as typeof prev)
+            }
+            if (!data.assessmentAttempts?.length) {
+              setAssessmentAttempts(prev => prev.map(a => ({ ...a, course_id: remapCourseId(a.course_id) })) as typeof prev)
+            }
+            if (!data.enrollments?.length) {
+              setEnrollments(prev => prev.map(e => ({ ...e, course_id: remapCourseId(e.course_id) })) as typeof prev)
+            }
           }
           if (data.surveys?.length) setSurveys(data.surveys)
           if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
@@ -1398,6 +1448,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const updateDiscussion = useCallback((id: string, data: AnyRecord) => { setDiscussions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev); logAudit('update', 'discussion', id, 'Updated discussion'); addToast('Discussion updated') }, [logAudit, addToast])
   const addStudyGroup = useCallback((data: AnyRecord) => { const id = genId('sg'); setStudyGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'study_group', id, `Created group: ${data.name}`); addToast('Study group created') }, [logAudit, addToast])
   const updateStudyGroup = useCallback((id: string, data: AnyRecord) => { setStudyGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev); logAudit('update', 'study_group', id, 'Updated study group'); addToast('Study group updated') }, [logAudit, addToast])
+
+  // ---- CRUD: Compliance Training ----
+  const addComplianceTraining = useCallback((data: AnyRecord) => { const id = genId('ct'); setComplianceTraining(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'compliance_training', id, `Added compliance: ${data.title}`); addToast('Compliance training added') }, [logAudit, addToast])
+  const updateComplianceTraining = useCallback((id: string, data: AnyRecord) => { setComplianceTraining(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'compliance_training', id, 'Updated compliance training') }, [logAudit])
+
+  // ---- CRUD: Auto-Enrollment Rules ----
+  const addAutoEnrollRule = useCallback((data: AnyRecord) => { const id = genId('aer'); setAutoEnrollRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), triggered_count: 0, ...data }] as typeof prev); logAudit('create', 'auto_enroll_rule', id, `Created rule: ${data.name}`); addToast('Auto-enrollment rule created') }, [logAudit, addToast])
+  const updateAutoEnrollRule = useCallback((id: string, data: AnyRecord) => { setAutoEnrollRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev); logAudit('update', 'auto_enroll_rule', id, 'Updated rule'); addToast('Rule updated') }, [logAudit, addToast])
+  const deleteAutoEnrollRule = useCallback((id: string) => { setAutoEnrollRules(prev => prev.filter(r => r.id !== id)); logAudit('delete', 'auto_enroll_rule', id, 'Deleted rule'); addToast('Rule deleted') }, [logAudit, addToast])
+
+  // ---- CRUD: Assessment Attempts ----
+  const addAssessmentAttempt = useCallback((data: AnyRecord) => { const id = genId('att'); setAssessmentAttempts(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'assessment_attempt', id, 'Assessment submitted'); addToast('Assessment submitted') }, [logAudit, addToast])
+  const updateAssessmentAttempt = useCallback((id: string, data: AnyRecord) => { setAssessmentAttempts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev) }, [])
+
+  // ---- CRUD: Learning Assignments ----
+  const addLearningAssignment = useCallback((data: AnyRecord) => { const id = genId('la'); setLearningAssignments(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learning_assignment', id, `Assigned learning: ${data.course_id}`); addToast('Learning assigned') }, [logAudit, addToast])
+  const updateLearningAssignment = useCallback((id: string, data: AnyRecord) => { setLearningAssignments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev); logAudit('update', 'learning_assignment', id, 'Updated assignment'); addToast('Assignment updated') }, [logAudit, addToast])
 
   // ---- CRUD: Surveys ----
   const addSurvey = useCallback((data: AnyRecord) => {
@@ -2287,7 +2354,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     goals, reviewCycles, reviews, feedback,
     oneOnOnes, recognitions, competencyFramework, competencyRatings,
     compBands, salaryReviews, equityGrants, compPlanningCycles,
-    courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups,
+    courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments,
     surveys, engagementScores, actionPlans, surveyResponses,
     mentoringPrograms, mentoringPairs, mentoringSessions, mentoringGoals,
     payrollRuns, employeePayrollEntries, contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings,
@@ -2323,6 +2390,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addQuizQuestion, updateQuizQuestion, deleteQuizQuestion,
     addDiscussion, updateDiscussion,
     addStudyGroup, updateStudyGroup,
+    addComplianceTraining, updateComplianceTraining,
+    addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule,
+    addAssessmentAttempt, updateAssessmentAttempt,
+    addLearningAssignment, updateLearningAssignment,
     addSurvey, updateSurvey,
     addActionPlan, updateActionPlan,
     addMentoringProgram, updateMentoringProgram,
