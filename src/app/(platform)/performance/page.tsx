@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
-import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search } from 'lucide-react'
+import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
@@ -27,6 +27,10 @@ export default function PerformancePage() {
     addFeedback, getEmployeeName, currentEmployeeId,
     addOneOnOne, updateOneOnOne, addRecognition, addCompetencyRating, updateCompetencyRating,
     careerTracks, getDepartmentName, addToast,
+    pips, pipCheckIns, meritCycles, meritRecommendations, reviewTemplates,
+    addPIP, updatePIP, deletePIP, addPIPCheckIn,
+    addMeritCycle, updateMeritCycle, addMeritRecommendation, updateMeritRecommendation,
+    addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
   } = useTempo()
 
   const t = useTranslations('performance')
@@ -86,6 +90,30 @@ export default function PerformancePage() {
   const [selectedCareerTrack, setSelectedCareerTrack] = useState('')
   const [careerEmployeeId, setCareerEmployeeId] = useState('')
 
+  // PIP state
+  const [showPIPModal, setShowPIPModal] = useState(false)
+  const [showCheckInModal, setShowCheckInModal] = useState(false)
+  const [expandedPIP, setExpandedPIP] = useState<string | null>(null)
+  const [selectedPIPForCheckIn, setSelectedPIPForCheckIn] = useState<string | null>(null)
+  const [pipForm, setPipForm] = useState({ employee_id: '', reason: '', start_date: '', end_date: '', support_provided: '', check_in_frequency: 'weekly' as string, objectives: [] as { title: string; description: string; targetDate: string; measure: string }[] })
+  const [pipObjForm, setPipObjForm] = useState({ title: '', description: '', targetDate: '', measure: '' })
+  const [checkInForm, setCheckInForm] = useState({ progress: 'on_track' as string, notes: '', next_steps: '' })
+
+  // Merit Cycle state
+  const [showMeritModal, setShowMeritModal] = useState(false)
+  const [showMeritRecModal, setShowMeritRecModal] = useState(false)
+  const [expandedMeritCycle, setExpandedMeritCycle] = useState<string | null>(null)
+  const [meritForm, setMeritForm] = useState({ name: '', type: 'annual_merit' as string, fiscal_year: '2026', total_budget: 0, currency: 'USD', start_date: '', end_date: '' })
+  const [meritRecForm, setMeritRecForm] = useState({ cycle_id: '', employee_id: '', current_salary: 0, proposed_salary: 0, rating: 3, justification: '' })
+
+  // Review Template state
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<string | null>(null)
+  const [templateForm, setTemplateForm] = useState({ name: '', type: 'annual' as string, is_default: false, sections: [] as { title: string; description: string; questions: { text: string; type: string; required: boolean; options?: string[]; scale?: { min: number; max: number; labels: string[] } }[] }[] })
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [newSectionDesc, setNewSectionDesc] = useState('')
+
   const tabs = [
     { id: 'goals', label: t('tabGoals'), count: goals.length },
     { id: 'reviews', label: t('tabReviews'), count: reviews.length },
@@ -95,6 +123,9 @@ export default function PerformancePage() {
     { id: 'recognition', label: t('tabRecognition'), count: recognitions.length },
     { id: 'competencies', label: t('tabCompetencies') },
     { id: 'career-paths', label: t('tabCareerPaths') },
+    { id: 'pips', label: 'PIPs', count: pips.filter(p => p.status === 'active').length },
+    { id: 'merit-cycles', label: 'Merit Cycles', count: meritCycles.length },
+    { id: 'review-templates', label: 'Templates', count: reviewTemplates.length },
   ]
 
   const completedReviews = reviews.filter(r => r.status === 'submitted').length
@@ -396,6 +427,9 @@ export default function PerformancePage() {
             {activeTab === 'one-on-ones' && <Button size="sm" onClick={() => { setOoForm({ employee_id: '', manager_id: currentEmployeeId, scheduled_date: '', duration_minutes: 30, recurring: 'weekly', location: '', agenda: [] }); setShow1on1Modal(true) }}><Calendar size={14} /> {t('schedule1on1')}</Button>}
             {activeTab === 'recognition' && <Button size="sm" onClick={() => setShowKudosModal(true)}><Heart size={14} /> {t('giveKudos')}</Button>}
             {activeTab === 'competencies' && <Button size="sm" onClick={() => setShowCompRatingModal(true)}><BarChart3 size={14} /> {t('rateCompetency')}</Button>}
+            {activeTab === 'pips' && <Button size="sm" onClick={() => { setPipForm({ employee_id: '', reason: '', start_date: '', end_date: '', support_provided: '', check_in_frequency: 'weekly', objectives: [] }); setShowPIPModal(true) }}><AlertTriangle size={14} /> Create PIP</Button>}
+            {activeTab === 'merit-cycles' && <Button size="sm" onClick={() => { setMeritForm({ name: '', type: 'annual_merit', fiscal_year: '2026', total_budget: 0, currency: 'USD', start_date: '', end_date: '' }); setShowMeritModal(true) }}><DollarSign size={14} /> New Merit Cycle</Button>}
+            {activeTab === 'review-templates' && <Button size="sm" onClick={() => { setEditingTemplate(null); setTemplateForm({ name: '', type: 'annual', is_default: false, sections: [] }); setShowTemplateModal(true) }}><FileText size={14} /> Create Template</Button>}
           </div>
         }
       />
@@ -1139,7 +1173,867 @@ export default function PerformancePage() {
         </div>
       )}
 
+      {/* ---- PIPs TAB ---- */}
+      {activeTab === 'pips' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Active PIPs" value={pips.filter(p => p.status === 'active').length} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Completed (Success)" value={pips.filter(p => p.status === 'completed_success').length} changeType="positive" />
+            <StatCard label="Completed (Failure)" value={pips.filter(p => p.status === 'completed_failure').length} changeType="negative" />
+            <StatCard label="Total Check-ins" value={pipCheckIns.length} icon={<CheckCircle2 size={20} />} />
+          </div>
+
+          <Card padding="none">
+            <CardHeader><CardTitle>Performance Improvement Plans</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {pips.length === 0 && <div className="px-6 py-12 text-center text-sm text-t3">No PIPs found. Create one to get started.</div>}
+              {pips.map(pip => {
+                const isExpanded = expandedPIP === pip.id
+                const pipCheckInsForPIP = pipCheckIns.filter(c => c.pip_id === pip.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                const objectives = (pip.objectives || []) as { title: string; description: string; targetDate: string; status: string; measure: string }[]
+                const completedObjs = objectives.filter(o => o.status === 'completed').length
+                const statusColors: Record<string, string> = { active: 'warning', completed_success: 'success', completed_failure: 'error', draft: 'default', extended: 'info', cancelled: 'default' }
+
+                return (
+                  <div key={pip.id}>
+                    <div className="px-6 py-4 hover:bg-canvas/50 transition-colors cursor-pointer" onClick={() => setExpandedPIP(isExpanded ? null : pip.id)}>
+                      <div className="flex items-start gap-4">
+                        {isExpanded ? <ChevronDown size={16} className="mt-1 text-t3" /> : <ChevronRight size={16} className="mt-1 text-t3" />}
+                        <Avatar name={getEmployeeName(pip.employee_id)} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-medium text-t1">{getEmployeeName(pip.employee_id)}</p>
+                            <Badge variant={(statusColors[pip.status] || 'default') as 'warning' | 'success' | 'error' | 'default' | 'info'}>{pip.status.replace(/_/g, ' ')}</Badge>
+                          </div>
+                          <p className="text-xs text-t3 line-clamp-1">{pip.reason}</p>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-t3">
+                            <span>{pip.start_date} to {pip.end_date}</span>
+                            <span>{completedObjs}/{objectives.length} objectives met</span>
+                            <span>Check-ins: {pip.check_in_frequency}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Progress value={objectives.length > 0 ? (completedObjs / objectives.length) * 100 : 0} className="w-24" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="px-6 pb-6 ml-6 border-l-2 border-divider space-y-4">
+                        {/* Objectives */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-t1 mb-2">Objectives</h4>
+                          <div className="space-y-2">
+                            {objectives.map((obj, i) => {
+                              const objStatusColors: Record<string, string> = { completed: 'text-green-600', in_progress: 'text-yellow-600', not_started: 'text-gray-400', not_met: 'text-red-600', almost_done: 'text-blue-600' }
+                              return (
+                                <div key={i} className="p-3 rounded-lg bg-surface-secondary border border-divider">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle2 size={14} className={objStatusColors[obj.status] || 'text-gray-400'} />
+                                        <span className="text-sm font-medium text-t1">{obj.title}</span>
+                                      </div>
+                                      <p className="text-xs text-t3 mt-1 ml-6">{obj.description}</p>
+                                      <p className="text-xs text-t3 ml-6">Measure: {obj.measure}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <Badge variant={obj.status === 'completed' ? 'success' : obj.status === 'not_met' ? 'error' : 'default'}>{obj.status.replace(/_/g, ' ')}</Badge>
+                                      <p className="text-xs text-t3 mt-1">Due: {obj.targetDate}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Support Provided */}
+                        {pip.support_provided && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-t1 mb-1">Support Provided</h4>
+                            <p className="text-xs text-t2 p-3 rounded-lg bg-surface-secondary">{pip.support_provided}</p>
+                          </div>
+                        )}
+
+                        {/* Check-in Timeline */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-t1">Check-in Timeline</h4>
+                            {pip.status === 'active' && (
+                              <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setSelectedPIPForCheckIn(pip.id); setCheckInForm({ progress: 'on_track', notes: '', next_steps: '' }); setShowCheckInModal(true) }}>
+                                <Plus size={14} /> Add Check-in
+                              </Button>
+                            )}
+                          </div>
+                          {pipCheckInsForPIP.length === 0 && <p className="text-xs text-t3">No check-ins recorded yet.</p>}
+                          <div className="space-y-3">
+                            {pipCheckInsForPIP.map(ci => {
+                              const progressColors: Record<string, string> = { on_track: 'success', behind: 'error', at_risk: 'warning', improved: 'info' }
+                              return (
+                                <div key={ci.id} className="p-3 rounded-lg bg-surface-secondary border border-divider">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-t1">{ci.date}</span>
+                                    <Badge variant={(progressColors[ci.progress] || 'default') as 'success' | 'error' | 'warning' | 'info'}>{ci.progress.replace(/_/g, ' ')}</Badge>
+                                    <span className="text-xs text-t3">by {getEmployeeName(ci.conducted_by)}</span>
+                                  </div>
+                                  <p className="text-xs text-t2">{ci.notes}</p>
+                                  {ci.next_steps && <p className="text-xs text-t3 mt-1">Next steps: {ci.next_steps}</p>}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Status Actions */}
+                        {pip.status === 'active' && (
+                          <div className="flex gap-2 pt-2 border-t border-divider">
+                            <Button size="sm" variant="secondary" onClick={() => updatePIP(pip.id, { end_date: new Date(new Date(pip.end_date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'extended' })}>Extend PIP</Button>
+                            <Button size="sm" variant="secondary" onClick={() => updatePIP(pip.id, { status: 'completed_success', outcome: 'Successfully met all improvement objectives.' })} className="text-green-600">Complete (Success)</Button>
+                            <Button size="sm" variant="secondary" onClick={() => updatePIP(pip.id, { status: 'completed_failure', outcome: 'Did not meet required improvement objectives.' })} className="text-red-600">Complete (Failure)</Button>
+                            <Button size="sm" variant="secondary" onClick={() => updatePIP(pip.id, { status: 'cancelled' })}>Cancel</Button>
+                          </div>
+                        )}
+
+                        {/* Outcome */}
+                        {pip.outcome && (
+                          <div className="p-3 rounded-lg bg-surface-secondary border border-divider">
+                            <h4 className="text-sm font-semibold text-t1 mb-1">Outcome</h4>
+                            <p className="text-xs text-t2">{pip.outcome}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ---- MERIT CYCLES TAB ---- */}
+      {activeTab === 'merit-cycles' && (
+        <div className="space-y-4">
+          {meritCycles.map(cycle => {
+            const isExpanded = expandedMeritCycle === cycle.id
+            const recs = meritRecommendations.filter(r => r.cycle_id === cycle.id)
+            const totalAllocated = recs.reduce((sum, r) => sum + r.increase_amount, 0)
+            const remaining = cycle.total_budget - totalAllocated
+            const utilization = cycle.total_budget > 0 ? (totalAllocated / cycle.total_budget) * 100 : 0
+            const guidelines = (cycle.guidelines_config as { rating_ranges: { rating: number; label: string; min_percent: number; max_percent: number }[] } | null)
+            const statusColors: Record<string, string> = { planning: 'default', budgeting: 'info', manager_allocation: 'warning', review: 'orange', approved: 'success', completed: 'success' }
+            const approvedCount = recs.filter(r => r.status === 'hr_approved' || r.status === 'final_approved').length
+
+            return (
+              <Card key={cycle.id}>
+                <div className="cursor-pointer" onClick={() => setExpandedMeritCycle(isExpanded ? null : cycle.id)}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? <ChevronDown size={16} className="text-t3" /> : <ChevronRight size={16} className="text-t3" />}
+                      <h3 className="text-sm font-semibold text-t1">{cycle.name}</h3>
+                      <Badge variant={(statusColors[cycle.status] || 'default') as 'default' | 'info' | 'warning' | 'success' | 'orange'}>{cycle.status.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    <span className="text-xs text-t3">{cycle.fiscal_year} | {cycle.type.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                    <div className="text-center p-2 bg-surface-secondary rounded-lg">
+                      <p className="text-xs text-t3">Total Budget</p>
+                      <p className="text-lg font-bold text-t1">${cycle.total_budget.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center p-2 bg-surface-secondary rounded-lg">
+                      <p className="text-xs text-t3">Allocated</p>
+                      <p className="text-lg font-bold text-tempo-600">${totalAllocated.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center p-2 bg-surface-secondary rounded-lg">
+                      <p className="text-xs text-t3">Remaining</p>
+                      <p className={`text-lg font-bold ${remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>${remaining.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center p-2 bg-surface-secondary rounded-lg">
+                      <p className="text-xs text-t3">Utilization</p>
+                      <p className={`text-lg font-bold ${utilization > 100 ? 'text-red-600' : 'text-t1'}`}>{utilization.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                  {utilization > 100 && (
+                    <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+                      <AlertTriangle size={14} className="text-red-600" />
+                      <span className="text-xs text-red-700">Over budget by ${Math.abs(remaining).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {isExpanded && (
+                  <div className="mt-4 space-y-4 border-t border-divider pt-4">
+                    {/* Guidelines */}
+                    {guidelines && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-t1 mb-2">Merit Guidelines</h4>
+                        <div className="grid grid-cols-5 gap-2">
+                          {guidelines.rating_ranges.map(g => (
+                            <div key={g.rating} className="p-2 rounded-lg bg-surface-secondary text-center">
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                {Array.from({ length: g.rating }).map((_, i) => <Star key={i} size={10} className="text-yellow-500 fill-yellow-500" />)}
+                              </div>
+                              <p className="text-xs font-medium text-t1">{g.label}</p>
+                              <p className="text-xs text-t3">{g.min_percent}% - {g.max_percent}%</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Department Summary */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-t1 mb-2">Department Allocation</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-divider bg-canvas">
+                              <th className="tempo-th text-left px-4 py-2">Department</th>
+                              <th className="tempo-th text-center px-4 py-2">Headcount</th>
+                              <th className="tempo-th text-center px-4 py-2">Avg Rating</th>
+                              <th className="tempo-th text-right px-4 py-2">Total Recommended</th>
+                              <th className="tempo-th text-center px-4 py-2">Utilization</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {departments.map(dept => {
+                              const deptRecs = recs.filter(r => {
+                                const emp = employees.find(e => e.id === r.employee_id)
+                                return emp?.department_id === dept.id
+                              })
+                              if (deptRecs.length === 0) return null
+                              const avgRating = deptRecs.reduce((s, r) => s + (r.rating || 0), 0) / deptRecs.length
+                              const totalRec = deptRecs.reduce((s, r) => s + r.increase_amount, 0)
+                              return (
+                                <tr key={dept.id} className="hover:bg-canvas/50">
+                                  <td className="px-4 py-2 text-sm text-t1">{dept.name}</td>
+                                  <td className="px-4 py-2 text-sm text-t2 text-center">{deptRecs.length}</td>
+                                  <td className="px-4 py-2 text-sm text-t2 text-center">{avgRating.toFixed(1)}</td>
+                                  <td className="px-4 py-2 text-sm text-t1 text-right font-medium">${totalRec.toLocaleString()}</td>
+                                  <td className="px-4 py-2 text-center"><Progress value={cycle.total_budget > 0 ? (totalRec / cycle.total_budget) * 100 : 0} className="w-20 mx-auto" /></td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Individual Recommendations */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold text-t1">Individual Recommendations ({recs.length})</h4>
+                        <div className="flex gap-2">
+                          {recs.some(r => r.status === 'pending' || r.status === 'manager_approved') && (
+                            <Button size="sm" variant="secondary" onClick={() => {
+                              recs.filter(r => r.status === 'pending' || r.status === 'manager_approved').forEach(r => updateMeritRecommendation(r.id, { status: 'hr_approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }))
+                            }}>Bulk Approve All</Button>
+                          )}
+                          <Button size="sm" variant="secondary" onClick={() => { setMeritRecForm({ cycle_id: cycle.id, employee_id: '', current_salary: 0, proposed_salary: 0, rating: 3, justification: '' }); setShowMeritRecModal(true) }}>
+                            <Plus size={14} /> Add Recommendation
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-divider bg-canvas">
+                              <th className="tempo-th text-left px-4 py-2">Employee</th>
+                              <th className="tempo-th text-left px-4 py-2">Manager</th>
+                              <th className="tempo-th text-center px-4 py-2">Rating</th>
+                              <th className="tempo-th text-right px-4 py-2">Current</th>
+                              <th className="tempo-th text-right px-4 py-2">Proposed</th>
+                              <th className="tempo-th text-center px-4 py-2">Increase %</th>
+                              <th className="tempo-th text-left px-4 py-2">Status</th>
+                              <th className="tempo-th text-left px-4 py-2">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {recs.map(rec => {
+                              const recStatusColors: Record<string, string> = { pending: 'default', manager_approved: 'info', hr_approved: 'warning', final_approved: 'success', rejected: 'error' }
+                              return (
+                                <tr key={rec.id} className="hover:bg-canvas/50">
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <Avatar name={getEmployeeName(rec.employee_id)} size="sm" />
+                                      <span className="text-sm text-t1">{getEmployeeName(rec.employee_id)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2 text-xs text-t2">{getEmployeeName(rec.manager_id || '')}</td>
+                                  <td className="px-4 py-2 text-center">
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      {Array.from({ length: rec.rating || 0 }).map((_, i) => <Star key={i} size={10} className="text-yellow-500 fill-yellow-500" />)}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-t2 text-right">${rec.current_salary.toLocaleString()}</td>
+                                  <td className="px-4 py-2 text-sm text-t1 text-right font-medium">${rec.proposed_salary.toLocaleString()}</td>
+                                  <td className="px-4 py-2 text-center">
+                                    <span className={`text-sm font-medium ${rec.increase_percent > 8 ? 'text-green-600' : rec.increase_percent > 4 ? 'text-yellow-600' : 'text-t2'}`}>
+                                      {rec.increase_percent.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <Badge variant={(recStatusColors[rec.status] || 'default') as 'default' | 'info' | 'warning' | 'success' | 'error'}>{rec.status.replace(/_/g, ' ')}</Badge>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex gap-1">
+                                      {(rec.status === 'pending' || rec.status === 'manager_approved') && (
+                                        <>
+                                          <Button size="sm" variant="secondary" onClick={() => updateMeritRecommendation(rec.id, { status: 'hr_approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })}>Approve</Button>
+                                          <Button size="sm" variant="secondary" onClick={() => updateMeritRecommendation(rec.id, { status: 'rejected' })} className="text-red-600">Reject</Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Push to Payroll */}
+                    {cycle.status !== 'completed' && approvedCount > 0 && (
+                      <div className="flex justify-end pt-2 border-t border-divider">
+                        <Button onClick={() => { updateMeritCycle(cycle.id, { status: 'completed' }); addToast(`Merit cycle completed. ${approvedCount} salary adjustments ready for payroll.`) }}>
+                          <DollarSign size={14} /> Push to Payroll ({approvedCount} approved)
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+          {meritCycles.length === 0 && (
+            <Card>
+              <div className="text-center py-12 text-t3">
+                <DollarSign size={48} className="mx-auto mb-4 opacity-40" />
+                <p className="text-sm">No merit cycles found. Create one to get started.</p>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ---- REVIEW TEMPLATES TAB ---- */}
+      {activeTab === 'review-templates' && (
+        <div className="space-y-4">
+          {/* Templates List */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Review Templates</CardTitle>
+              </div>
+            </CardHeader>
+            <div className="divide-y divide-divider">
+              {reviewTemplates.length === 0 && <div className="px-6 py-12 text-center text-sm text-t3">No templates found. Create one to get started.</div>}
+              {reviewTemplates.map(template => {
+                const sections = (template.sections || []) as { title: string; description: string; questions: { text: string; type: string; required: boolean }[] }[]
+                const questionCount = sections.reduce((sum, s) => sum + s.questions.length, 0)
+                const isPreviewing = previewTemplate === template.id
+
+                return (
+                  <div key={template.id}>
+                    <div className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-tempo-50 text-tempo-600 flex items-center justify-center shrink-0">
+                          <FileText size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-medium text-t1">{template.name}</p>
+                            <Badge variant="info">{template.type}</Badge>
+                            {template.is_default && <Badge variant="success">Default</Badge>}
+                          </div>
+                          <p className="text-xs text-t3">{sections.length} sections, {questionCount} questions</p>
+                          <p className="text-xs text-t3">Created: {new Date(template.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setPreviewTemplate(isPreviewing ? null : template.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors" title="Preview">
+                            <Eye size={14} />
+                          </button>
+                          <button onClick={() => {
+                            setEditingTemplate(template.id)
+                            setTemplateForm({
+                              name: template.name,
+                              type: template.type,
+                              is_default: template.is_default,
+                              sections: sections.map(s => ({
+                                title: s.title,
+                                description: s.description,
+                                questions: s.questions.map(q => ({
+                                  text: q.text,
+                                  type: q.type,
+                                  required: q.required,
+                                  options: (q as { options?: string[] }).options,
+                                  scale: (q as { scale?: { min: number; max: number; labels: string[] } }).scale,
+                                })),
+                              })),
+                            })
+                            setShowTemplateModal(true)
+                          }} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors" title="Edit">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => {
+                            addReviewTemplate({
+                              name: `${template.name} (Copy)`,
+                              type: template.type,
+                              is_default: false,
+                              sections: template.sections,
+                              created_by: currentEmployeeId,
+                            })
+                          }} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors" title="Duplicate">
+                            <Copy size={14} />
+                          </button>
+                          {!template.is_default && (
+                            <button onClick={() => {
+                              // Set as default: unset others first
+                              reviewTemplates.filter(t => t.is_default && t.type === template.type).forEach(t => updateReviewTemplate(t.id, { is_default: false }))
+                              updateReviewTemplate(template.id, { is_default: true })
+                            }} className="p-1.5 text-t3 hover:text-yellow-600 hover:bg-canvas rounded-lg transition-colors" title="Set as default">
+                              <Star size={14} />
+                            </button>
+                          )}
+                          <button onClick={() => deleteReviewTemplate(template.id)} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    {isPreviewing && (
+                      <div className="px-6 pb-6 border-t border-divider bg-canvas/50">
+                        <div className="max-w-2xl mx-auto py-4 space-y-6">
+                          <div className="text-center">
+                            <h3 className="text-lg font-semibold text-t1">{template.name}</h3>
+                            <p className="text-xs text-t3">Preview Mode</p>
+                          </div>
+                          {sections.map((section, si) => (
+                            <div key={si} className="space-y-3">
+                              <div className="border-b border-divider pb-2">
+                                <h4 className="text-sm font-semibold text-t1">{section.title}</h4>
+                                <p className="text-xs text-t3">{section.description}</p>
+                              </div>
+                              {section.questions.map((q, qi) => (
+                                <div key={qi} className="p-3 rounded-lg bg-white border border-divider">
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-xs text-t3 mt-0.5">{si + 1}.{qi + 1}</span>
+                                    <div className="flex-1">
+                                      <p className="text-sm text-t1">{q.text} {q.required && <span className="text-red-500">*</span>}</p>
+                                      {q.type === 'rating' && (
+                                        <div className="mt-2 flex gap-1">
+                                          {Array.from({ length: ((q as { scale?: { max: number } }).scale?.max || 5) }).map((_, i) => (
+                                            <div key={i} className="w-8 h-8 rounded border border-divider flex items-center justify-center text-xs text-t3">{i + 1}</div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {q.type === 'text' && <div className="mt-2 h-16 rounded border border-divider bg-gray-50" />}
+                                      {q.type === 'multiple_choice' && (q as { options?: string[] }).options && (
+                                        <div className="mt-2 space-y-1">
+                                          {((q as { options?: string[] }).options || []).map((opt, oi) => (
+                                            <label key={oi} className="flex items-center gap-2 text-xs text-t2">
+                                              <div className="w-3.5 h-3.5 rounded-full border border-divider" />
+                                              {opt}
+                                            </label>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* ---- MODALS ---- */}
+
+      {/* Create PIP */}
+      <Modal open={showPIPModal} onClose={() => setShowPIPModal(false)} title="Create Performance Improvement Plan" size="xl">
+        <div className="space-y-4">
+          <Select label="Employee" value={pipForm.employee_id} onChange={(e) => setPipForm({ ...pipForm, employee_id: e.target.value })} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+          <Textarea label="Reason for PIP" placeholder="Describe the performance issues that necessitate this PIP..." rows={3} value={pipForm.reason} onChange={(e) => setPipForm({ ...pipForm, reason: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Date" type="date" value={pipForm.start_date} onChange={(e) => setPipForm({ ...pipForm, start_date: e.target.value })} />
+            <Input label="End Date" type="date" value={pipForm.end_date} onChange={(e) => setPipForm({ ...pipForm, end_date: e.target.value })} />
+          </div>
+          <Select label="Check-in Frequency" value={pipForm.check_in_frequency} onChange={(e) => setPipForm({ ...pipForm, check_in_frequency: e.target.value })} options={[
+            { value: 'weekly', label: 'Weekly' },
+            { value: 'biweekly', label: 'Bi-weekly' },
+            { value: 'monthly', label: 'Monthly' },
+          ]} />
+          <Textarea label="Support Provided" placeholder="Describe resources, mentoring, training, etc..." rows={2} value={pipForm.support_provided} onChange={(e) => setPipForm({ ...pipForm, support_provided: e.target.value })} />
+
+          {/* Objectives */}
+          <div>
+            <label className="block text-sm font-medium text-t1 mb-2">Objectives ({pipForm.objectives.length})</label>
+            {pipForm.objectives.map((obj, i) => (
+              <div key={i} className="flex items-start gap-2 mb-2 p-2 rounded-lg bg-surface-secondary border border-divider">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-t1">{obj.title}</p>
+                  <p className="text-xs text-t3">{obj.description}</p>
+                  <p className="text-xs text-t3">Due: {obj.targetDate} | Measure: {obj.measure}</p>
+                </div>
+                <button onClick={() => setPipForm({ ...pipForm, objectives: pipForm.objectives.filter((_, j) => j !== i) })} className="text-t3 hover:text-error"><X size={14} /></button>
+              </div>
+            ))}
+            <div className="space-y-2 p-3 rounded-lg border border-dashed border-divider">
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Objective title" value={pipObjForm.title} onChange={(e) => setPipObjForm({ ...pipObjForm, title: e.target.value })} />
+                <Input placeholder="Target date" type="date" value={pipObjForm.targetDate} onChange={(e) => setPipObjForm({ ...pipObjForm, targetDate: e.target.value })} />
+              </div>
+              <Input placeholder="Description" value={pipObjForm.description} onChange={(e) => setPipObjForm({ ...pipObjForm, description: e.target.value })} />
+              <Input placeholder="How will success be measured?" value={pipObjForm.measure} onChange={(e) => setPipObjForm({ ...pipObjForm, measure: e.target.value })} />
+              <Button size="sm" variant="secondary" onClick={() => {
+                if (pipObjForm.title && pipObjForm.targetDate) {
+                  setPipForm({ ...pipForm, objectives: [...pipForm.objectives, { ...pipObjForm }] })
+                  setPipObjForm({ title: '', description: '', targetDate: '', measure: '' })
+                }
+              }}><Plus size={14} /> Add Objective</Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPIPModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!pipForm.employee_id || !pipForm.reason || !pipForm.start_date || !pipForm.end_date) return
+              addPIP({
+                employee_id: pipForm.employee_id,
+                created_by: currentEmployeeId,
+                reason: pipForm.reason,
+                start_date: pipForm.start_date,
+                end_date: pipForm.end_date,
+                status: 'active',
+                objectives: pipForm.objectives.map(o => ({ ...o, status: 'not_started' })),
+                support_provided: pipForm.support_provided,
+                check_in_frequency: pipForm.check_in_frequency,
+                next_check_in: pipForm.start_date,
+                outcome: null,
+                notes: null,
+              })
+              setShowPIPModal(false)
+            }}>Create PIP</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* PIP Check-in */}
+      <Modal open={showCheckInModal} onClose={() => setShowCheckInModal(false)} title="Add PIP Check-in">
+        <div className="space-y-4">
+          <Select label="Progress Rating" value={checkInForm.progress} onChange={(e) => setCheckInForm({ ...checkInForm, progress: e.target.value })} options={[
+            { value: 'on_track', label: 'On Track' },
+            { value: 'improved', label: 'Improved' },
+            { value: 'behind', label: 'Behind' },
+            { value: 'at_risk', label: 'At Risk' },
+          ]} />
+          <Textarea label="Notes" placeholder="Describe progress observations..." rows={4} value={checkInForm.notes} onChange={(e) => setCheckInForm({ ...checkInForm, notes: e.target.value })} />
+          <Textarea label="Next Steps" placeholder="What actions should be taken before the next check-in?" rows={2} value={checkInForm.next_steps} onChange={(e) => setCheckInForm({ ...checkInForm, next_steps: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCheckInModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!selectedPIPForCheckIn || !checkInForm.notes) return
+              addPIPCheckIn({
+                pip_id: selectedPIPForCheckIn,
+                date: new Date().toISOString().split('T')[0],
+                conducted_by: currentEmployeeId,
+                progress: checkInForm.progress,
+                notes: checkInForm.notes,
+                objectives_status: [],
+                next_steps: checkInForm.next_steps,
+              })
+              setShowCheckInModal(false)
+            }}>Record Check-in</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Merit Cycle */}
+      <Modal open={showMeritModal} onClose={() => setShowMeritModal(false)} title="Create Merit Cycle">
+        <div className="space-y-4">
+          <Input label="Cycle Name" placeholder="e.g., Annual Merit Review 2026" value={meritForm.name} onChange={(e) => setMeritForm({ ...meritForm, name: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Type" value={meritForm.type} onChange={(e) => setMeritForm({ ...meritForm, type: e.target.value })} options={[
+              { value: 'annual_merit', label: 'Annual Merit' },
+              { value: 'promotion', label: 'Promotion' },
+              { value: 'market_adjustment', label: 'Market Adjustment' },
+              { value: 'bonus', label: 'Bonus' },
+            ]} />
+            <Input label="Fiscal Year" value={meritForm.fiscal_year} onChange={(e) => setMeritForm({ ...meritForm, fiscal_year: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Total Budget ($)" type="number" value={meritForm.total_budget} onChange={(e) => setMeritForm({ ...meritForm, total_budget: Number(e.target.value) })} />
+            <Select label="Currency" value={meritForm.currency} onChange={(e) => setMeritForm({ ...meritForm, currency: e.target.value })} options={[
+              { value: 'USD', label: 'USD' },
+              { value: 'EUR', label: 'EUR' },
+              { value: 'GBP', label: 'GBP' },
+              { value: 'NGN', label: 'NGN' },
+            ]} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Date" type="date" value={meritForm.start_date} onChange={(e) => setMeritForm({ ...meritForm, start_date: e.target.value })} />
+            <Input label="End Date" type="date" value={meritForm.end_date} onChange={(e) => setMeritForm({ ...meritForm, end_date: e.target.value })} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowMeritModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!meritForm.name || !meritForm.total_budget) return
+              addMeritCycle({
+                name: meritForm.name,
+                type: meritForm.type,
+                status: 'planning',
+                fiscal_year: meritForm.fiscal_year,
+                total_budget: meritForm.total_budget,
+                currency: meritForm.currency,
+                guidelines_config: {
+                  rating_ranges: [
+                    { rating: 5, label: 'Exceptional', min_percent: 8, max_percent: 12 },
+                    { rating: 4, label: 'Exceeds Expectations', min_percent: 5, max_percent: 8 },
+                    { rating: 3, label: 'Meets Expectations', min_percent: 2, max_percent: 4 },
+                    { rating: 2, label: 'Needs Improvement', min_percent: 0, max_percent: 2 },
+                    { rating: 1, label: 'Unsatisfactory', min_percent: 0, max_percent: 0 },
+                  ],
+                },
+                start_date: meritForm.start_date || new Date().toISOString().split('T')[0],
+                end_date: meritForm.end_date || `${meritForm.fiscal_year}-12-31`,
+                created_by: currentEmployeeId,
+              })
+              setShowMeritModal(false)
+            }}>Create Merit Cycle</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Merit Recommendation */}
+      <Modal open={showMeritRecModal} onClose={() => setShowMeritRecModal(false)} title="Add Merit Recommendation">
+        <div className="space-y-4">
+          <Select label="Employee" value={meritRecForm.employee_id} onChange={(e) => {
+            const emp = employees.find(e2 => e2.id === e.target.value)
+            // Try to guess current salary from existing salary reviews or comp bands
+            setMeritRecForm({ ...meritRecForm, employee_id: e.target.value, current_salary: 0, proposed_salary: 0 })
+          }} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Current Salary ($)" type="number" value={meritRecForm.current_salary} onChange={(e) => {
+              const current = Number(e.target.value)
+              setMeritRecForm({ ...meritRecForm, current_salary: current })
+            }} />
+            <Input label="Proposed Salary ($)" type="number" value={meritRecForm.proposed_salary} onChange={(e) => {
+              const proposed = Number(e.target.value)
+              const increase = meritRecForm.current_salary > 0 ? ((proposed - meritRecForm.current_salary) / meritRecForm.current_salary) * 100 : 0
+              setMeritRecForm({ ...meritRecForm, proposed_salary: proposed })
+            }} />
+          </div>
+          {meritRecForm.current_salary > 0 && meritRecForm.proposed_salary > 0 && (
+            <div className="p-2 rounded-lg bg-surface-secondary text-center">
+              <span className="text-sm font-medium text-t1">
+                Increase: {((meritRecForm.proposed_salary - meritRecForm.current_salary) / meritRecForm.current_salary * 100).toFixed(1)}%
+                (${(meritRecForm.proposed_salary - meritRecForm.current_salary).toLocaleString()})
+              </span>
+            </div>
+          )}
+          <Select label="Performance Rating" value={String(meritRecForm.rating)} onChange={(e) => setMeritRecForm({ ...meritRecForm, rating: Number(e.target.value) })} options={[
+            { value: '5', label: '5 - Exceptional' },
+            { value: '4', label: '4 - Exceeds Expectations' },
+            { value: '3', label: '3 - Meets Expectations' },
+            { value: '2', label: '2 - Needs Improvement' },
+            { value: '1', label: '1 - Unsatisfactory' },
+          ]} />
+          <Textarea label="Justification" placeholder="Provide detailed justification for this recommendation..." rows={3} value={meritRecForm.justification} onChange={(e) => setMeritRecForm({ ...meritRecForm, justification: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowMeritRecModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!meritRecForm.employee_id || !meritRecForm.current_salary || !meritRecForm.proposed_salary) return
+              const increaseAmount = meritRecForm.proposed_salary - meritRecForm.current_salary
+              const increasePercent = (increaseAmount / meritRecForm.current_salary) * 100
+              addMeritRecommendation({
+                cycle_id: meritRecForm.cycle_id,
+                employee_id: meritRecForm.employee_id,
+                manager_id: currentEmployeeId,
+                current_salary: meritRecForm.current_salary,
+                proposed_salary: meritRecForm.proposed_salary,
+                increase_percent: Number(increasePercent.toFixed(1)),
+                increase_amount: increaseAmount,
+                rating: meritRecForm.rating,
+                justification: meritRecForm.justification,
+                status: 'pending',
+                approved_by: null,
+                approved_at: null,
+              })
+              setShowMeritRecModal(false)
+            }}>Submit Recommendation</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create/Edit Review Template */}
+      <Modal open={showTemplateModal} onClose={() => setShowTemplateModal(false)} title={editingTemplate ? 'Edit Review Template' : 'Create Review Template'} size="xl">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Template Name" placeholder="e.g., Annual Performance Review" value={templateForm.name} onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })} />
+            <Select label="Type" value={templateForm.type} onChange={(e) => setTemplateForm({ ...templateForm, type: e.target.value })} options={[
+              { value: 'annual', label: 'Annual' },
+              { value: 'mid_year', label: 'Mid-Year' },
+              { value: 'quarterly', label: 'Quarterly' },
+              { value: 'probation', label: 'Probation' },
+              { value: '360', label: '360 Feedback' },
+              { value: 'self', label: 'Self Assessment' },
+              { value: 'manager', label: 'Manager Review' },
+              { value: 'peer', label: 'Peer Review' },
+            ]} />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-t2">
+            <input type="checkbox" checked={templateForm.is_default} onChange={(e) => setTemplateForm({ ...templateForm, is_default: e.target.checked })} className="rounded border-divider" />
+            Set as default template for this type
+          </label>
+
+          {/* Sections */}
+          <div>
+            <label className="block text-sm font-medium text-t1 mb-2">Sections ({templateForm.sections.length})</label>
+            {templateForm.sections.map((section, si) => (
+              <div key={si} className="mb-4 p-4 rounded-lg border border-divider bg-surface-secondary">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <GripVertical size={14} className="text-t3" />
+                    <div>
+                      <Input placeholder="Section title" value={section.title} onChange={(e) => {
+                        const updated = [...templateForm.sections]
+                        updated[si] = { ...updated[si], title: e.target.value }
+                        setTemplateForm({ ...templateForm, sections: updated })
+                      }} />
+                    </div>
+                  </div>
+                  <button onClick={() => setTemplateForm({ ...templateForm, sections: templateForm.sections.filter((_, i) => i !== si) })} className="text-t3 hover:text-error"><X size={14} /></button>
+                </div>
+                <Input placeholder="Section description" value={section.description} onChange={(e) => {
+                  const updated = [...templateForm.sections]
+                  updated[si] = { ...updated[si], description: e.target.value }
+                  setTemplateForm({ ...templateForm, sections: updated })
+                }} />
+
+                {/* Questions */}
+                <div className="mt-3 space-y-2">
+                  {section.questions.map((q, qi) => (
+                    <div key={qi} className="flex items-start gap-2 p-2 rounded bg-white border border-divider">
+                      <div className="flex-1 space-y-1">
+                        <Input placeholder="Question text" value={q.text} onChange={(e) => {
+                          const updated = [...templateForm.sections]
+                          updated[si].questions[qi] = { ...updated[si].questions[qi], text: e.target.value }
+                          setTemplateForm({ ...templateForm, sections: updated })
+                        }} />
+                        <div className="flex items-center gap-2">
+                          <Select value={q.type} onChange={(e) => {
+                            const updated = [...templateForm.sections]
+                            updated[si].questions[qi] = { ...updated[si].questions[qi], type: e.target.value }
+                            setTemplateForm({ ...templateForm, sections: updated })
+                          }} options={[
+                            { value: 'rating', label: 'Rating (1-5)' },
+                            { value: 'text', label: 'Text Response' },
+                            { value: 'multiple_choice', label: 'Multiple Choice' },
+                          ]} />
+                          <label className="flex items-center gap-1 text-xs text-t2 whitespace-nowrap">
+                            <input type="checkbox" checked={q.required} onChange={(e) => {
+                              const updated = [...templateForm.sections]
+                              updated[si].questions[qi] = { ...updated[si].questions[qi], required: e.target.checked }
+                              setTemplateForm({ ...templateForm, sections: updated })
+                            }} className="rounded border-divider" />
+                            Required
+                          </label>
+                        </div>
+                        {q.type === 'multiple_choice' && (
+                          <div className="space-y-1">
+                            {(q.options || []).map((opt, oi) => (
+                              <div key={oi} className="flex items-center gap-1">
+                                <Input placeholder={`Option ${oi + 1}`} value={opt} onChange={(e) => {
+                                  const updated = [...templateForm.sections]
+                                  const opts = [...(updated[si].questions[qi].options || [])]
+                                  opts[oi] = e.target.value
+                                  updated[si].questions[qi] = { ...updated[si].questions[qi], options: opts }
+                                  setTemplateForm({ ...templateForm, sections: updated })
+                                }} />
+                                <button onClick={() => {
+                                  const updated = [...templateForm.sections]
+                                  const opts = [...(updated[si].questions[qi].options || [])]
+                                  opts.splice(oi, 1)
+                                  updated[si].questions[qi] = { ...updated[si].questions[qi], options: opts }
+                                  setTemplateForm({ ...templateForm, sections: updated })
+                                }} className="text-t3 hover:text-error"><X size={12} /></button>
+                              </div>
+                            ))}
+                            <Button size="sm" variant="secondary" onClick={() => {
+                              const updated = [...templateForm.sections]
+                              updated[si].questions[qi] = { ...updated[si].questions[qi], options: [...(updated[si].questions[qi].options || []), ''] }
+                              setTemplateForm({ ...templateForm, sections: updated })
+                            }}>Add Option</Button>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => {
+                        const updated = [...templateForm.sections]
+                        updated[si] = { ...updated[si], questions: updated[si].questions.filter((_, i) => i !== qi) }
+                        setTemplateForm({ ...templateForm, sections: updated })
+                      }} className="text-t3 hover:text-error mt-1"><X size={14} /></button>
+                    </div>
+                  ))}
+                  <Button size="sm" variant="secondary" onClick={() => {
+                    const updated = [...templateForm.sections]
+                    updated[si] = { ...updated[si], questions: [...updated[si].questions, { text: '', type: 'rating', required: true }] }
+                    setTemplateForm({ ...templateForm, sections: updated })
+                  }}><Plus size={14} /> Add Question</Button>
+                </div>
+              </div>
+            ))}
+
+            {/* Add Section */}
+            <div className="p-3 rounded-lg border border-dashed border-divider space-y-2">
+              <Input placeholder="New section title" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} />
+              <Input placeholder="Section description" value={newSectionDesc} onChange={(e) => setNewSectionDesc(e.target.value)} />
+              <Button size="sm" variant="secondary" onClick={() => {
+                if (newSectionTitle) {
+                  setTemplateForm({ ...templateForm, sections: [...templateForm.sections, { title: newSectionTitle, description: newSectionDesc, questions: [] }] })
+                  setNewSectionTitle('')
+                  setNewSectionDesc('')
+                }
+              }}><Plus size={14} /> Add Section</Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-divider">
+            <Button variant="secondary" onClick={() => setShowTemplateModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!templateForm.name || templateForm.sections.length === 0) return
+              if (editingTemplate) {
+                updateReviewTemplate(editingTemplate, {
+                  name: templateForm.name,
+                  type: templateForm.type,
+                  is_default: templateForm.is_default,
+                  sections: templateForm.sections,
+                })
+              } else {
+                addReviewTemplate({
+                  name: templateForm.name,
+                  type: templateForm.type,
+                  is_default: templateForm.is_default,
+                  sections: templateForm.sections,
+                  created_by: currentEmployeeId,
+                })
+              }
+              setShowTemplateModal(false)
+            }}>{editingTemplate ? 'Save Changes' : 'Create Template'}</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create/Edit Goal */}
       <Modal open={showGoalModal} onClose={() => setShowGoalModal(false)} title={editingGoal ? t('editGoalModal') : t('createGoalModal')}>

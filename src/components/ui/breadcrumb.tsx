@@ -26,6 +26,7 @@ const routeLabels: Record<string, string> = {
   projects: 'Projects',
   strategy: 'Strategy',
   'workflow-studio': 'Workflow Studio',
+  workflows: 'Workflow Automation',
   analytics: 'Analytics',
   settings: 'Settings',
 }

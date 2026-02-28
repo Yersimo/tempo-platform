@@ -16,6 +16,8 @@ import {
   Shield, Heart, Eye, Wallet, Plus, Pencil, Users, Baby, Calendar,
   BarChart3, Calculator, ArrowRightLeft, Clock, CheckCircle2, AlertTriangle,
   UserPlus, HeartHandshake, Scale, Globe, Building2, Search, Layers, UserCheck, ArrowRight, CheckCircle,
+  FileText, Bell, DollarSign, Landmark, CreditCard, Receipt, Timer, Send,
+  Stethoscope, Car, ParkingCircle, TrendingUp, CircleDollarSign,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
@@ -31,7 +33,38 @@ const iconMap: Record<string, React.ReactNode> = {
   vision: <Eye size={20} />,
   retirement: <Wallet size={20} />,
   life: <Shield size={20} />,
-  dental: <Heart size={20} />,
+  dental: <Stethoscope size={20} />,
+  hsa: <Landmark size={20} />,
+  fsa: <CreditCard size={20} />,
+  commuter: <Car size={20} />,
+  disability: <Shield size={20} />,
+  voluntary: <Heart size={20} />,
+  wellness: <Heart size={20} />,
+}
+
+const flexAccountLabels: Record<string, string> = {
+  hsa: 'Health Savings Account (HSA)',
+  fsa_health: 'Healthcare FSA',
+  fsa_dependent: 'Dependent Care FSA',
+  commuter_transit: 'Commuter Transit',
+  commuter_parking: 'Commuter Parking',
+}
+
+const flexAccountIcons: Record<string, React.ReactNode> = {
+  hsa: <Landmark size={20} />,
+  fsa_health: <CreditCard size={20} />,
+  fsa_dependent: <Baby size={20} />,
+  commuter_transit: <Car size={20} />,
+  commuter_parking: <ParkingCircle size={20} />,
+}
+
+const irsLimits2026: Record<string, number> = {
+  hsa: 4300, // individual
+  hsa_family: 8550,
+  fsa_health: 3300,
+  fsa_dependent: 5000,
+  commuter_transit: 325,
+  commuter_parking: 325,
 }
 
 // Coverage level labels are defined inside the component to use translations
@@ -60,6 +93,11 @@ export default function BenefitsPage() {
     benefitEnrollments, addBenefitEnrollment, updateBenefitEnrollment,
     benefitDependents, addBenefitDependent, updateBenefitDependent,
     lifeEvents, addLifeEvent, updateLifeEvent,
+    openEnrollmentPeriods, addOpenEnrollmentPeriod, updateOpenEnrollmentPeriod,
+    cobraEvents, addCobraEvent, updateCobraEvent,
+    acaTracking, addAcaTracking, updateAcaTracking,
+    flexBenefitAccounts, addFlexBenefitAccount, updateFlexBenefitAccount,
+    flexBenefitTransactions, addFlexBenefitTransaction, updateFlexBenefitTransaction,
     getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
 
@@ -75,6 +113,10 @@ export default function BenefitsPage() {
   const tabDefs = [
     { id: 'plans', label: t('tabPlans'), count: benefitPlans.length },
     { id: 'enrollment', label: t('tabEnrollment'), count: benefitEnrollments.filter(e => (e as any).status === 'active').length },
+    { id: 'open-enrollment', label: 'Open Enrollment', count: openEnrollmentPeriods.filter(p => (p as any).status === 'active').length },
+    { id: 'flex-benefits', label: 'Flex Benefits', count: flexBenefitAccounts.length },
+    { id: 'cobra', label: 'COBRA', count: cobraEvents.filter(e => (e as any).status !== 'declined' && (e as any).status !== 'expired').length },
+    { id: 'aca-compliance', label: 'ACA Compliance', count: acaTracking.filter(a => (a as any).form_1095_status === 'pending').length },
     { id: 'dependents', label: t('tabDependents'), count: benefitDependents.length },
     { id: 'analytics', label: t('tabAnalytics') },
     { id: 'life-events', label: t('tabLifeEvents'), count: lifeEvents.filter(e => (e as any).status === 'pending').length },
@@ -88,6 +130,10 @@ export default function BenefitsPage() {
   const [showDependentModal, setShowDependentModal] = useState(false)
   const [showLifeEventModal, setShowLifeEventModal] = useState(false)
   const [comparePlans, setComparePlans] = useState<string[]>([])
+  const [showOEPModal, setShowOEPModal] = useState(false)
+  const [showCobraModal, setShowCobraModal] = useState(false)
+  const [showFlexAccountModal, setShowFlexAccountModal] = useState(false)
+  const [showFlexExpenseModal, setShowFlexExpenseModal] = useState(false)
 
   // ---- Forms ----
   const [planForm, setPlanForm] = useState({
@@ -106,6 +152,21 @@ export default function BenefitsPage() {
   const [lifeEventForm, setLifeEventForm] = useState({
     employee_id: '', type: 'marriage' as string,
     event_date: '', notes: '',
+  })
+  const [oepForm, setOepForm] = useState({
+    name: '', start_date: '', end_date: '', plan_ids: [] as string[],
+  })
+  const [cobraForm, setCobraForm] = useState({
+    employee_id: '', qualifying_event: 'termination' as string,
+    event_date: '', notification_date: '', coverage_end_date: '',
+    monthly_premium: 0,
+  })
+  const [flexAccountForm, setFlexAccountForm] = useState({
+    employee_id: '', account_type: 'hsa' as string,
+    annual_election: 0,
+  })
+  const [flexExpenseForm, setFlexExpenseForm] = useState({
+    account_id: '', amount: 0, description: '', receipt_date: '',
   })
 
   // Bulk enrollment state
@@ -270,6 +331,75 @@ export default function BenefitsPage() {
     })
     setShowLifeEventModal(false)
     setLifeEventForm({ employee_id: '', type: 'marriage', event_date: '', notes: '' })
+  }
+
+  // ---- Open Enrollment CRUD ----
+  function submitOEP() {
+    if (!oepForm.name || !oepForm.start_date || !oepForm.end_date) return
+    addOpenEnrollmentPeriod({
+      name: oepForm.name,
+      start_date: oepForm.start_date,
+      end_date: oepForm.end_date,
+      status: new Date(oepForm.start_date) <= new Date() && new Date(oepForm.end_date) >= new Date() ? 'active' : 'upcoming',
+      eligible_plan_ids: oepForm.plan_ids,
+      enrolled_count: 0,
+      eligible_count: employees.length,
+    })
+    setShowOEPModal(false)
+    setOepForm({ name: '', start_date: '', end_date: '', plan_ids: [] })
+  }
+
+  // ---- COBRA CRUD ----
+  function submitCobra() {
+    if (!cobraForm.employee_id || !cobraForm.event_date) return
+    const notifDeadline = new Date(new Date(cobraForm.event_date).getTime() + 14 * 86400000).toISOString().split('T')[0]
+    const electionDeadline = new Date(new Date(cobraForm.event_date).getTime() + 60 * 86400000).toISOString().split('T')[0]
+    const coverageEnd = cobraForm.coverage_end_date || new Date(new Date(cobraForm.event_date).getTime() + 547 * 86400000).toISOString().split('T')[0]
+    addCobraEvent({
+      employee_id: cobraForm.employee_id,
+      qualifying_event: cobraForm.qualifying_event,
+      event_date: cobraForm.event_date,
+      notification_date: cobraForm.notification_date || new Date().toISOString().split('T')[0],
+      notification_deadline: notifDeadline,
+      election_deadline: electionDeadline,
+      coverage_end_date: coverageEnd,
+      monthly_premium: Number(cobraForm.monthly_premium) || 0,
+      status: 'pending_notification',
+    })
+    setShowCobraModal(false)
+    setCobraForm({ employee_id: '', qualifying_event: 'termination', event_date: '', notification_date: '', coverage_end_date: '', monthly_premium: 0 })
+  }
+
+  // ---- Flex Account CRUD ----
+  function submitFlexAccount() {
+    if (!flexAccountForm.employee_id || !flexAccountForm.account_type) return
+    const limit = irsLimits2026[flexAccountForm.account_type] || 3300
+    addFlexBenefitAccount({
+      employee_id: flexAccountForm.employee_id,
+      account_type: flexAccountForm.account_type,
+      annual_election: Math.min(Number(flexAccountForm.annual_election) || 0, limit),
+      current_balance: 0,
+      ytd_contributions: 0,
+      ytd_expenses: 0,
+      status: 'active',
+    })
+    setShowFlexAccountModal(false)
+    setFlexAccountForm({ employee_id: '', account_type: 'hsa', annual_election: 0 })
+  }
+
+  // ---- Flex Expense CRUD ----
+  function submitFlexExpense() {
+    if (!flexExpenseForm.account_id || !flexExpenseForm.amount) return
+    addFlexBenefitTransaction({
+      account_id: flexExpenseForm.account_id,
+      type: 'expense',
+      amount: Number(flexExpenseForm.amount) || 0,
+      description: flexExpenseForm.description,
+      transaction_date: flexExpenseForm.receipt_date || new Date().toISOString().split('T')[0],
+      status: 'pending',
+    })
+    setShowFlexExpenseModal(false)
+    setFlexExpenseForm({ account_id: '', amount: 0, description: '', receipt_date: '' })
   }
 
   // ---- Bulk Enrollment ----
@@ -1118,6 +1248,736 @@ export default function BenefitsPage() {
       )}
 
       {/* ============================================================ */}
+      {/* TAB: OPEN ENROLLMENT */}
+      {/* ============================================================ */}
+      {activeTab === 'open-enrollment' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'active').length} icon={<Calendar size={20} />} />
+            <StatCard label="Upcoming Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'upcoming').length} icon={<Clock size={20} />} />
+            <StatCard label="Total Eligible" value={employees.length} icon={<Users size={20} />} />
+            <StatCard
+              label="Enrollment Progress"
+              value={`${openEnrollmentPeriods.filter(p => (p as any).status === 'active').reduce((a, p) => a + ((p as any).enrolled_count || 0), 0)}/${openEnrollmentPeriods.filter(p => (p as any).status === 'active').reduce((a, p) => a + ((p as any).eligible_count || employees.length), 0)}`}
+              icon={<CheckCircle2 size={20} />}
+            />
+          </div>
+
+          {/* Active / Upcoming Enrollment Periods */}
+          {openEnrollmentPeriods.length === 0 ? (
+            <Card className="text-center py-12">
+              <Calendar size={32} className="mx-auto text-t3 mb-3" />
+              <p className="text-sm text-t3 mb-4">No enrollment periods configured</p>
+              <Button size="sm" onClick={() => setShowOEPModal(true)}><Plus size={14} /> Create Enrollment Period</Button>
+            </Card>
+          ) : (
+            <div className="space-y-4 mb-6">
+              {openEnrollmentPeriods.map(period => {
+                const p = period as any
+                const startDate = new Date(p.start_date)
+                const endDate = new Date(p.end_date)
+                const now = new Date()
+                const isActive = p.status === 'active'
+                const isUpcoming = p.status === 'upcoming'
+                const daysRemaining = isActive ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)) : isUpcoming ? Math.ceil((startDate.getTime() - now.getTime()) / 86400000) : 0
+                const progressPct = p.eligible_count > 0 ? Math.round(((p.enrolled_count || 0) / p.eligible_count) * 100) : 0
+                return (
+                  <Card key={p.id}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-semibold text-t1">{p.name}</h3>
+                          <Badge variant={isActive ? 'success' : isUpcoming ? 'info' : 'default'}>{p.status}</Badge>
+                        </div>
+                        <p className="text-xs text-t3">{p.start_date} to {p.end_date}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isActive && (
+                          <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg">
+                            <Timer size={14} />
+                            <span className="text-xs font-semibold">{daysRemaining} days remaining</span>
+                          </div>
+                        )}
+                        {isUpcoming && (
+                          <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg">
+                            <Clock size={14} />
+                            <span className="text-xs font-semibold">Starts in {daysRemaining} days</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {isActive && (
+                      <>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-t3">Enrollment Progress</span>
+                          <span className="text-t2 font-medium">{p.enrolled_count || 0} / {p.eligible_count || employees.length} ({progressPct}%)</span>
+                        </div>
+                        <Progress value={progressPct} color={progressPct >= 80 ? 'success' : progressPct >= 50 ? 'warning' : 'error'} />
+                        <div className="flex justify-between mt-4">
+                          <Button size="sm" variant="secondary" onClick={() => {
+                            addToast(`Reminder sent to ${(p.eligible_count || employees.length) - (p.enrolled_count || 0)} employees`)
+                          }}>
+                            <Send size={14} /> Send Reminder
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => updateOpenEnrollmentPeriod(p.id, { status: 'closed' })}>
+                            Close Enrollment
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Eligible Plans */}
+                    {(p.eligible_plan_ids || []).length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-divider">
+                        <p className="text-xs text-t3 mb-2">Eligible Plans</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(p.eligible_plan_ids || []).map((pid: string) => {
+                            const plan = benefitPlans.find(pl => pl.id === pid)
+                            return plan ? (
+                              <div key={pid} className="flex items-center gap-1.5 bg-canvas rounded-lg px-2.5 py-1.5">
+                                <span className="text-tempo-600">{iconMap[plan.type] || <Shield size={14} />}</span>
+                                <span className="text-xs font-medium text-t1">{plan.name}</span>
+                              </div>
+                            ) : null
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Employee Enrollment Status Table */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Employee Enrollment Status</CardTitle>
+                <Button size="sm" onClick={() => setShowOEPModal(true)}><Plus size={14} /> New Period</Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Employee</th>
+                    <th className="tempo-th text-center px-4 py-3">Active Plans</th>
+                    <th className="tempo-th text-center px-4 py-3">Dependents</th>
+                    <th className="tempo-th text-center px-4 py-3">Coverage</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {employees.slice(0, 20).map(emp => {
+                    const empEnrollments = benefitEnrollments.filter(e => (e as any).employee_id === emp.id && (e as any).status === 'active')
+                    const depCount = getEmployeeDependentCount(emp.id)
+                    const isEnrolled = empEnrollments.length > 0
+                    return (
+                      <tr key={emp.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                            <div>
+                              <p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p>
+                              <p className="text-xs text-t3">{getDepartmentName(emp.department_id)}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{empEnrollments.length}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{depCount}</td>
+                        <td className="px-4 py-3 text-center">
+                          {empEnrollments.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {empEnrollments.slice(0, 2).map(e => {
+                                const plan = benefitPlans.find(p => p.id === (e as any).plan_id)
+                                return <Badge key={(e as any).id} variant="default">{plan?.name || 'Plan'}</Badge>
+                              })}
+                              {empEnrollments.length > 2 && <Badge variant="default">+{empEnrollments.length - 2}</Badge>}
+                            </div>
+                          ) : <span className="text-xs text-t3">None</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={isEnrolled ? 'success' : 'warning'}>
+                            {isEnrolled ? 'Enrolled' : 'Not Enrolled'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: FLEX BENEFITS (HSA/FSA/COMMUTER) */}
+      {/* ============================================================ */}
+      {activeTab === 'flex-benefits' && (
+        <>
+          {/* Account Overview Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Accounts" value={flexBenefitAccounts.filter(a => (a as any).status === 'active').length} icon={<Landmark size={20} />} />
+            <StatCard
+              label="Total Balance"
+              value={`$${flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).current_balance || 0), 0).toLocaleString()}`}
+              icon={<DollarSign size={20} />}
+            />
+            <StatCard
+              label="YTD Contributions"
+              value={`$${flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).ytd_contributions || 0), 0).toLocaleString()}`}
+              icon={<TrendingUp size={20} />}
+              changeType="positive"
+            />
+            <StatCard
+              label="Pending Expenses"
+              value={flexBenefitTransactions.filter(t => (t as any).type === 'expense' && (t as any).status === 'pending').length}
+              icon={<Receipt size={20} />}
+              change="Awaiting approval"
+              changeType="neutral"
+            />
+          </div>
+
+          {/* Account Cards by Type */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {(['hsa', 'fsa_health', 'fsa_dependent', 'commuter_transit', 'commuter_parking'] as const).map(type => {
+              const accounts = flexBenefitAccounts.filter(a => (a as any).account_type === type && (a as any).status === 'active')
+              if (accounts.length === 0) return null
+              const totalBalance = accounts.reduce((a, acc) => a + ((acc as any).current_balance || 0), 0)
+              const totalElection = accounts.reduce((a, acc) => a + ((acc as any).annual_election || 0), 0)
+              const totalContrib = accounts.reduce((a, acc) => a + ((acc as any).ytd_contributions || 0), 0)
+              const totalExpenses = accounts.reduce((a, acc) => a + ((acc as any).ytd_expenses || 0), 0)
+              const limit = irsLimits2026[type] || 0
+              return (
+                <Card key={type}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-tempo-50 flex items-center justify-center text-tempo-600">
+                      {flexAccountIcons[type]}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-t1">{flexAccountLabels[type]}</h3>
+                      <p className="text-xs text-t3">{accounts.length} active account{accounts.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-canvas rounded-lg p-3">
+                      <p className="text-[0.6rem] text-t3 uppercase">Total Balance</p>
+                      <p className="text-lg font-bold text-t1">${totalBalance.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg p-3">
+                      <p className="text-[0.6rem] text-t3 uppercase">Annual Election</p>
+                      <p className="text-lg font-bold text-t1">${totalElection.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-t3">YTD Contributions</span>
+                      <span className="text-green-600 font-medium">${totalContrib.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-t3">YTD Expenses</span>
+                      <span className="text-red-500 font-medium">${totalExpenses.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {limit > 0 && (
+                    <div className="mt-3 pt-3 border-t border-divider">
+                      <p className="text-[0.6rem] text-t3 uppercase mb-1">2026 IRS Limit: ${limit.toLocaleString()}/yr</p>
+                      <Progress value={Math.min(100, Math.round((totalContrib / (limit * accounts.length)) * 100))} color="success" />
+                    </div>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* IRS Contribution Limits */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CircleDollarSign size={18} className="text-tempo-600" />
+              <h3 className="text-sm font-semibold text-t1">2026 IRS Contribution Limits</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {Object.entries(irsLimits2026).map(([key, limit]) => (
+                <div key={key} className="bg-canvas rounded-lg p-3 text-center">
+                  <p className="text-xs text-t3 mb-1">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                  <p className="text-lg font-bold text-t1">${limit.toLocaleString()}</p>
+                  <p className="text-[0.6rem] text-t3">per year</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Transaction Log */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Transaction History</CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setShowFlexAccountModal(true)}>
+                    <Plus size={14} /> New Account
+                  </Button>
+                  <Button size="sm" onClick={() => setShowFlexExpenseModal(true)}>
+                    <Receipt size={14} /> Submit Expense
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Date</th>
+                    <th className="tempo-th text-left px-4 py-3">Employee</th>
+                    <th className="tempo-th text-left px-4 py-3">Account</th>
+                    <th className="tempo-th text-center px-4 py-3">Type</th>
+                    <th className="tempo-th text-right px-4 py-3">Amount</th>
+                    <th className="tempo-th text-left px-4 py-3">Description</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {flexBenefitTransactions.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">No transactions yet</td></tr>
+                  ) : flexBenefitTransactions.map(txn => {
+                    const tx = txn as any
+                    const account = flexBenefitAccounts.find(a => (a as any).id === tx.account_id) as any
+                    return (
+                      <tr key={tx.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3 text-xs text-t2">{tx.transaction_date}</td>
+                        <td className="px-4 py-3 text-xs text-t1 font-medium">{account ? getEmployeeName(account.employee_id) : '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant="default">{account ? flexAccountLabels[account.account_type] || account.account_type : tx.account_id}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={tx.type === 'contribution' ? 'success' : tx.type === 'expense' ? 'warning' : tx.type === 'reimbursement' ? 'info' : 'default'}>
+                            {tx.type}
+                          </Badge>
+                        </td>
+                        <td className={cn('px-4 py-3 text-xs font-medium text-right', tx.type === 'contribution' || tx.type === 'rollover' ? 'text-green-600' : 'text-red-500')}>
+                          {tx.type === 'contribution' || tx.type === 'rollover' ? '+' : '-'}${(tx.amount || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2">{tx.description || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={tx.status === 'approved' ? 'success' : tx.status === 'denied' ? 'error' : 'warning'}>
+                            {tx.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {tx.status === 'pending' && tx.type === 'expense' && (
+                            <div className="flex items-center gap-1 justify-center">
+                              <Button size="sm" variant="ghost" onClick={() => updateFlexBenefitTransaction(tx.id, { status: 'approved' })}>
+                                <CheckCircle2 size={14} className="text-green-600" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => updateFlexBenefitTransaction(tx.id, { status: 'denied' })}>
+                                <AlertTriangle size={14} className="text-red-500" />
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: COBRA ADMINISTRATION */}
+      {/* ============================================================ */}
+      {activeTab === 'cobra' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active COBRA" value={cobraEvents.filter(e => (e as any).status === 'elected').length} icon={<Shield size={20} />} />
+            <StatCard label="Pending Notification" value={cobraEvents.filter(e => (e as any).status === 'pending_notification').length} icon={<Bell size={20} />} change="Requires action" changeType={cobraEvents.filter(e => (e as any).status === 'pending_notification').length > 0 ? 'negative' : 'positive'} />
+            <StatCard label="Election Pending" value={cobraEvents.filter(e => (e as any).status === 'notified').length} icon={<Clock size={20} />} />
+            <StatCard
+              label="Monthly Premiums"
+              value={`$${cobraEvents.filter(e => (e as any).status === 'elected').reduce((a, e) => a + ((e as any).monthly_premium || 0), 0).toLocaleString()}`}
+              icon={<DollarSign size={20} />}
+            />
+          </div>
+
+          {/* Expiring COBRA Alerts */}
+          {(() => {
+            const expiringEvents = cobraEvents.filter(e => {
+              const ev = e as any
+              if (ev.status !== 'elected') return false
+              const endDate = new Date(ev.coverage_end_date)
+              const now = new Date()
+              const daysUntil = Math.ceil((endDate.getTime() - now.getTime()) / 86400000)
+              return daysUntil <= 30 && daysUntil > 0
+            })
+            return expiringEvents.length > 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-amber-600" />
+                  <h3 className="text-sm font-semibold text-amber-800">Expiring COBRA Coverage</h3>
+                </div>
+                <div className="space-y-2">
+                  {expiringEvents.map(e => {
+                    const ev = e as any
+                    const daysLeft = Math.ceil((new Date(ev.coverage_end_date).getTime() - new Date().getTime()) / 86400000)
+                    return (
+                      <div key={ev.id} className="flex items-center justify-between text-xs">
+                        <span className="text-amber-700 font-medium">{getEmployeeName(ev.employee_id)}</span>
+                        <span className="text-amber-600">Expires in {daysLeft} days ({ev.coverage_end_date})</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null
+          })()}
+
+          {/* COBRA Events Table */}
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>COBRA Events</CardTitle>
+                <Button size="sm" onClick={() => setShowCobraModal(true)}><Plus size={14} /> New COBRA Event</Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Employee</th>
+                    <th className="tempo-th text-left px-4 py-3">Qualifying Event</th>
+                    <th className="tempo-th text-center px-4 py-3">Event Date</th>
+                    <th className="tempo-th text-center px-4 py-3">Election Deadline</th>
+                    <th className="tempo-th text-center px-4 py-3">Coverage End</th>
+                    <th className="tempo-th text-right px-4 py-3">Premium</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {cobraEvents.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">No COBRA events</td></tr>
+                  ) : cobraEvents.map(event => {
+                    const ev = event as any
+                    const isOverdue = ev.status === 'pending_notification' && new Date(ev.notification_deadline) < new Date()
+                    return (
+                      <tr key={ev.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3">
+                          <p className="text-sm font-medium text-t1">{getEmployeeName(ev.employee_id)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="info">{(ev.qualifying_event || '').replace(/_/g, ' ')}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ev.event_date}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={cn('text-xs', isOverdue ? 'text-error font-semibold' : 'text-t2')}>
+                            {ev.election_deadline}
+                          </span>
+                          {isOverdue && (
+                            <div className="flex items-center justify-center gap-1 text-xs text-error mt-0.5">
+                              <AlertTriangle size={10} /> Overdue
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{ev.coverage_end_date}</td>
+                        <td className="px-4 py-3 text-xs text-t1 font-medium text-right">${(ev.monthly_premium || 0).toLocaleString()}/mo</td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={
+                            ev.status === 'elected' ? 'success' :
+                            ev.status === 'declined' ? 'default' :
+                            ev.status === 'expired' ? 'default' :
+                            ev.status === 'notified' ? 'info' : 'warning'
+                          }>
+                            {(ev.status || '').replace(/_/g, ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            {ev.status === 'pending_notification' && (
+                              <Button size="sm" variant="ghost" onClick={() => updateCobraEvent(ev.id, { status: 'notified', notification_date: new Date().toISOString().split('T')[0] })}>
+                                <Send size={14} /> Notify
+                              </Button>
+                            )}
+                            {ev.status === 'notified' && (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => updateCobraEvent(ev.id, { status: 'elected' })}>
+                                  Elect
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => updateCobraEvent(ev.id, { status: 'declined' })}>
+                                  Decline
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* COBRA Timeline */}
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">COBRA Event Timeline</h3>
+            <div className="space-y-4">
+              {cobraEvents.map(event => {
+                const ev = event as any
+                const steps = [
+                  { label: 'Qualifying Event', date: ev.event_date, done: true },
+                  { label: 'Notification Sent', date: ev.notification_date, done: ev.status !== 'pending_notification' },
+                  { label: 'Election Deadline', date: ev.election_deadline, done: ev.status === 'elected' || ev.status === 'declined' || ev.status === 'expired' },
+                  { label: 'Coverage End', date: ev.coverage_end_date, done: ev.status === 'expired' },
+                ]
+                return (
+                  <div key={ev.id} className="border border-divider rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-t1">{getEmployeeName(ev.employee_id)}</p>
+                      <Badge variant={ev.status === 'elected' ? 'success' : ev.status === 'declined' ? 'default' : 'warning'}>
+                        {(ev.status || '').replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {steps.map((step, i) => (
+                        <div key={i} className="flex items-center gap-2 flex-1">
+                          <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[0.6rem] font-bold',
+                            step.done ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-t3')}>
+                            {step.done ? <CheckCircle2 size={12} /> : i + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[0.6rem] font-medium text-t2 truncate">{step.label}</p>
+                            <p className="text-[0.55rem] text-t3">{step.date || '-'}</p>
+                          </div>
+                          {i < steps.length - 1 && <div className={cn('h-px flex-1', step.done ? 'bg-green-300' : 'bg-divider')} />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              {cobraEvents.length === 0 && (
+                <div className="text-center py-8 text-sm text-t3">No COBRA events to display</div>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: ACA COMPLIANCE */}
+      {/* ============================================================ */}
+      {activeTab === 'aca-compliance' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Tracked Employees" value={acaTracking.length} icon={<Users size={20} />} />
+            <StatCard
+              label="Full-Time Eligible"
+              value={acaTracking.filter(a => (a as any).aca_status === 'full_time').length}
+              icon={<UserCheck size={20} />}
+            />
+            <StatCard
+              label="1095-C Pending"
+              value={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length}
+              icon={<FileText size={20} />}
+              change={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length > 0 ? 'Action needed' : 'All filed'}
+              changeType={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length > 0 ? 'negative' : 'positive'}
+            />
+            <StatCard
+              label="Offer Rate"
+              value={`${acaTracking.length > 0 ? Math.round((acaTracking.filter(a => (a as any).offered_coverage).length / acaTracking.length) * 100) : 0}%`}
+              icon={<Shield size={20} />}
+              change={acaTracking.filter(a => (a as any).offered_coverage).length > 0 ? 'Compliant' : 'Review needed'}
+              changeType={acaTracking.filter(a => !(a as any).offered_coverage && (a as any).aca_status === 'full_time').length === 0 ? 'positive' : 'negative'}
+            />
+          </div>
+
+          {/* ACA Dashboard Summary */}
+          {(() => {
+            const nonCompliant = acaTracking.filter(a => {
+              const t = a as any
+              return t.aca_status === 'full_time' && !t.offered_coverage
+            })
+            return nonCompliant.length > 0 ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-red-600" />
+                  <h3 className="text-sm font-semibold text-red-800">Non-Compliant Employees ({nonCompliant.length})</h3>
+                </div>
+                <p className="text-xs text-red-700 mb-3">The following full-time employees have not been offered coverage, which may result in ACA penalties.</p>
+                <div className="space-y-2">
+                  {nonCompliant.map(a => {
+                    const t = a as any
+                    return (
+                      <div key={t.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-100">
+                        <div>
+                          <span className="text-sm font-medium text-t1">{getEmployeeName(t.employee_id)}</span>
+                          <span className="text-xs text-t3 ml-2">Avg {(t.average_hours || 0).toFixed(1)} hrs/week</span>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => updateAcaTracking(t.id, { offered_coverage: true })}>
+                          Mark Offered
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-green-600" />
+                  <h3 className="text-sm font-semibold text-green-800">All full-time employees have been offered coverage</h3>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ACA Tracking Table */}
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Employee Eligibility Tracking</CardTitle>
+                <Button size="sm" variant="secondary" onClick={() => {
+                  const pending = acaTracking.filter(a => (a as any).form_1095_status === 'pending')
+                  pending.forEach(a => updateAcaTracking((a as any).id, { form_1095_status: 'generated' }))
+                  if (pending.length > 0) addToast(`Generated ${pending.length} 1095-C forms`)
+                  else addToast('No pending forms to generate')
+                }}>
+                  <FileText size={14} /> Generate 1095-C Forms
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Employee</th>
+                    <th className="tempo-th text-center px-4 py-3">ACA Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Avg Hours/Week</th>
+                    <th className="tempo-th text-center px-4 py-3">Measurement Period</th>
+                    <th className="tempo-th text-center px-4 py-3">Offered Coverage</th>
+                    <th className="tempo-th text-center px-4 py-3">Enrolled</th>
+                    <th className="tempo-th text-center px-4 py-3">1095-C Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {acaTracking.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">No ACA tracking records</td></tr>
+                  ) : acaTracking.map(record => {
+                    const r = record as any
+                    const isNonCompliant = r.aca_status === 'full_time' && !r.offered_coverage
+                    return (
+                      <tr key={r.id} className={cn('hover:bg-canvas/50', isNonCompliant && 'bg-red-50/50')}>
+                        <td className="px-6 py-3">
+                          <p className="text-sm font-medium text-t1">{getEmployeeName(r.employee_id)}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={r.aca_status === 'full_time' ? 'success' : r.aca_status === 'part_time' ? 'warning' : 'default'}>
+                            {(r.aca_status || '').replace(/_/g, ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{(r.average_hours || 0).toFixed(1)}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">
+                          {r.measurement_start && r.measurement_end ? `${r.measurement_start} - ${r.measurement_end}` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {r.offered_coverage ? (
+                            <CheckCircle2 size={16} className="text-green-600 mx-auto" />
+                          ) : (
+                            <AlertTriangle size={16} className={cn('mx-auto', r.aca_status === 'full_time' ? 'text-red-500' : 'text-t3')} />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {r.enrolled_in_coverage ? (
+                            <CheckCircle2 size={16} className="text-green-600 mx-auto" />
+                          ) : (
+                            <span className="text-xs text-t3">No</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={
+                            r.form_1095_status === 'filed' ? 'success' :
+                            r.form_1095_status === 'generated' ? 'info' :
+                            r.form_1095_status === 'corrected' ? 'warning' : 'default'
+                          }>
+                            {r.form_1095_status || 'pending'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            {!r.offered_coverage && r.aca_status === 'full_time' && (
+                              <Button size="sm" variant="ghost" onClick={() => updateAcaTracking(r.id, { offered_coverage: true })}>
+                                Offer
+                              </Button>
+                            )}
+                            {r.form_1095_status === 'pending' && (
+                              <Button size="sm" variant="ghost" onClick={() => updateAcaTracking(r.id, { form_1095_status: 'generated' })}>
+                                <FileText size={14} />
+                              </Button>
+                            )}
+                            {r.form_1095_status === 'generated' && (
+                              <Button size="sm" variant="ghost" onClick={() => updateAcaTracking(r.id, { form_1095_status: 'filed' })}>
+                                File
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* ACA Compliance Summary Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Workforce ACA Status</h3>
+              {(() => {
+                const statusMap: Record<string, number> = {}
+                acaTracking.forEach(a => {
+                  const status = (a as any).aca_status || 'unknown'
+                  statusMap[status] = (statusMap[status] || 0) + 1
+                })
+                const items = Object.entries(statusMap)
+                return items.length > 0 ? (
+                  <TempoDonutChart data={items.map(([label, value], i) => ({
+                    name: label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    value,
+                    color: CHART_SERIES[i % CHART_SERIES.length],
+                  }))} height={180} />
+                ) : <p className="text-sm text-t3">No data</p>
+              })()}
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">1095-C Filing Status</h3>
+              {(() => {
+                const formMap: Record<string, number> = {}
+                acaTracking.forEach(a => {
+                  const status = (a as any).form_1095_status || 'pending'
+                  formMap[status] = (formMap[status] || 0) + 1
+                })
+                const items = Object.entries(formMap)
+                return items.length > 0 ? (
+                  <TempoDonutChart data={items.map(([label, value], i) => ({
+                    name: label.replace(/\b\w/g, l => l.toUpperCase()),
+                    value,
+                    color: CHART_SERIES[i % CHART_SERIES.length],
+                  }))} height={180} />
+                ) : <p className="text-sm text-t3">No data</p>
+              })()}
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* ============================================================ */}
       {/* MODALS */}
       {/* ============================================================ */}
 
@@ -1138,6 +1998,12 @@ export default function BenefitsPage() {
                 { value: 'vision', label: t('typeVision') },
                 { value: 'life', label: t('typeLife') },
                 { value: 'retirement', label: t('typeRetirement') },
+                { value: 'hsa', label: 'HSA' },
+                { value: 'fsa', label: 'FSA' },
+                { value: 'commuter', label: 'Commuter' },
+                { value: 'disability', label: 'Disability' },
+                { value: 'voluntary', label: 'Voluntary' },
+                { value: 'wellness', label: 'Wellness' },
               ]}
             />
             <Input
@@ -1605,6 +2471,180 @@ export default function BenefitsPage() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Create Enrollment Period Modal */}
+      <Modal open={showOEPModal} onClose={() => setShowOEPModal(false)} title="Create Enrollment Period">
+        <div className="space-y-4">
+          <Input
+            label="Period Name" placeholder="e.g. 2026 Annual Open Enrollment"
+            value={oepForm.name} onChange={e => setOepForm({ ...oepForm, name: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start Date" type="date"
+              value={oepForm.start_date} onChange={e => setOepForm({ ...oepForm, start_date: e.target.value })}
+            />
+            <Input
+              label="End Date" type="date"
+              value={oepForm.end_date} onChange={e => setOepForm({ ...oepForm, end_date: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-t2 mb-2">Eligible Plans</label>
+            <div className="space-y-2 max-h-48 overflow-y-auto border border-divider rounded-lg p-3">
+              {activePlans.map(plan => (
+                <label key={plan.id} className="flex items-center gap-2 text-sm text-t1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-border accent-[var(--color-tempo-600)]"
+                    checked={oepForm.plan_ids.includes(plan.id)}
+                    onChange={e => {
+                      if (e.target.checked) setOepForm({ ...oepForm, plan_ids: [...oepForm.plan_ids, plan.id] })
+                      else setOepForm({ ...oepForm, plan_ids: oepForm.plan_ids.filter(id => id !== plan.id) })
+                    }}
+                  />
+                  <span className="text-tempo-600">{iconMap[plan.type] || <Shield size={14} />}</span>
+                  {plan.name}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowOEPModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitOEP}>Create Period</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create COBRA Event Modal */}
+      <Modal open={showCobraModal} onClose={() => setShowCobraModal(false)} title="Create COBRA Event">
+        <div className="space-y-4">
+          <Select
+            label="Employee" value={cobraForm.employee_id}
+            onChange={e => setCobraForm({ ...cobraForm, employee_id: e.target.value })}
+            options={[
+              { value: '', label: 'Select employee...' },
+              ...employees.slice(0, 30).map(emp => ({ value: emp.id, label: emp.profile.full_name })),
+            ]}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Qualifying Event" value={cobraForm.qualifying_event}
+              onChange={e => setCobraForm({ ...cobraForm, qualifying_event: e.target.value })}
+              options={[
+                { value: 'termination', label: 'Termination' },
+                { value: 'hours_reduction', label: 'Hours Reduction' },
+                { value: 'divorce', label: 'Divorce' },
+                { value: 'dependent_aging_out', label: 'Dependent Aging Out' },
+                { value: 'death', label: 'Death' },
+              ]}
+            />
+            <Input
+              label="Event Date" type="date"
+              value={cobraForm.event_date} onChange={e => setCobraForm({ ...cobraForm, event_date: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Notification Date" type="date"
+              value={cobraForm.notification_date} onChange={e => setCobraForm({ ...cobraForm, notification_date: e.target.value })}
+            />
+            <Input
+              label="Coverage End Date" type="date"
+              value={cobraForm.coverage_end_date} onChange={e => setCobraForm({ ...cobraForm, coverage_end_date: e.target.value })}
+            />
+          </div>
+          <Input
+            label="Monthly Premium ($)" type="number" min={0}
+            value={cobraForm.monthly_premium} onChange={e => setCobraForm({ ...cobraForm, monthly_premium: Number(e.target.value) })}
+          />
+          <div className="bg-canvas rounded-lg p-3">
+            <p className="text-xs text-t3">Notification must be sent within 14 days of the qualifying event. The employee has 60 days from notification to elect COBRA coverage. Coverage may last up to 18 months (36 months for certain events).</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCobraModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitCobra}>Create COBRA Event</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Flex Benefit Account Modal */}
+      <Modal open={showFlexAccountModal} onClose={() => setShowFlexAccountModal(false)} title="Create Flex Benefit Account">
+        <div className="space-y-4">
+          <Select
+            label="Employee" value={flexAccountForm.employee_id}
+            onChange={e => setFlexAccountForm({ ...flexAccountForm, employee_id: e.target.value })}
+            options={[
+              { value: '', label: 'Select employee...' },
+              ...employees.slice(0, 30).map(emp => ({ value: emp.id, label: emp.profile.full_name })),
+            ]}
+          />
+          <Select
+            label="Account Type" value={flexAccountForm.account_type}
+            onChange={e => setFlexAccountForm({ ...flexAccountForm, account_type: e.target.value })}
+            options={[
+              { value: 'hsa', label: 'Health Savings Account (HSA)' },
+              { value: 'fsa_health', label: 'Healthcare FSA' },
+              { value: 'fsa_dependent', label: 'Dependent Care FSA' },
+              { value: 'commuter_transit', label: 'Commuter Transit' },
+              { value: 'commuter_parking', label: 'Commuter Parking' },
+            ]}
+          />
+          <Input
+            label={`Annual Election ($) — IRS Limit: $${(irsLimits2026[flexAccountForm.account_type] || 0).toLocaleString()}/yr`}
+            type="number" min={0} max={irsLimits2026[flexAccountForm.account_type] || 99999}
+            value={flexAccountForm.annual_election}
+            onChange={e => setFlexAccountForm({ ...flexAccountForm, annual_election: Number(e.target.value) })}
+          />
+          {flexAccountForm.annual_election > (irsLimits2026[flexAccountForm.account_type] || 99999) && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-xs text-red-700">Election exceeds the IRS limit of ${(irsLimits2026[flexAccountForm.account_type] || 0).toLocaleString()} for this account type.</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowFlexAccountModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitFlexAccount}>Create Account</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Submit Flex Expense Modal */}
+      <Modal open={showFlexExpenseModal} onClose={() => setShowFlexExpenseModal(false)} title="Submit Expense">
+        <div className="space-y-4">
+          <Select
+            label="Account" value={flexExpenseForm.account_id}
+            onChange={e => setFlexExpenseForm({ ...flexExpenseForm, account_id: e.target.value })}
+            options={[
+              { value: '', label: 'Select account...' },
+              ...flexBenefitAccounts.filter(a => (a as any).status === 'active').map(a => {
+                const acc = a as any
+                return { value: acc.id, label: `${getEmployeeName(acc.employee_id)} — ${flexAccountLabels[acc.account_type] || acc.account_type} ($${(acc.current_balance || 0).toLocaleString()} balance)` }
+              }),
+            ]}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Amount ($)" type="number" min={0}
+              value={flexExpenseForm.amount}
+              onChange={e => setFlexExpenseForm({ ...flexExpenseForm, amount: Number(e.target.value) })}
+            />
+            <Input
+              label="Receipt Date" type="date"
+              value={flexExpenseForm.receipt_date}
+              onChange={e => setFlexExpenseForm({ ...flexExpenseForm, receipt_date: e.target.value })}
+            />
+          </div>
+          <Textarea
+            label="Description" placeholder="e.g. Prescription medication, dental visit..." rows={3}
+            value={flexExpenseForm.description}
+            onChange={e => setFlexExpenseForm({ ...flexExpenseForm, description: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowFlexExpenseModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitFlexExpense}>Submit Expense</Button>
+          </div>
         </div>
       </Modal>
     </>

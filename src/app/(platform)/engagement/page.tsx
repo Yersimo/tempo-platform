@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +12,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, ChartLegend, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2, Search, Users, Building2, Globe, Send } from 'lucide-react'
+import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2, Search, Users, Building2, Globe, Send, FileText, Calendar, Zap, MessageSquareText, Copy, Eye, GripVertical, GitBranch, Trash2, Power, Clock, AlertTriangle, Sparkles, ThumbsUp, ThumbsDown, MinusCircle, Hash, Star, ListChecks, LayoutGrid } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard, AIAlertBanner, AIRecommendationList } from '@/components/ai'
@@ -25,6 +25,10 @@ export default function EngagementPage() {
     surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName,
     surveyResponses, actionPlans, addActionPlan, updateActionPlan, employees,
     departments, addToast, getEmployeeName,
+    surveyTemplates, surveySchedules, surveyTriggers, openEndedResponses,
+    addSurveyTemplate, updateSurveyTemplate, deleteSurveyTemplate,
+    addSurveySchedule, updateSurveySchedule, deleteSurveySchedule,
+    addSurveyTrigger, updateSurveyTrigger, deleteSurveyTrigger,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('surveys')
@@ -43,6 +47,41 @@ export default function EngagementPage() {
   const [bulkSurveySelectedLevels, setBulkSurveySelectedLevels] = useState<Set<string>>(new Set())
   const [bulkSurveySurveyId, setBulkSurveySurveyId] = useState('')
 
+  // ---- Survey Builder State ----
+  const [showBuilderModal, setShowBuilderModal] = useState(false)
+  const [builderQuestions, setBuilderQuestions] = useState<Array<{ id: string; text: string; type: string; required: boolean; options?: any; branchLogic?: any }>>([])
+  const [builderTitle, setBuilderTitle] = useState('')
+  const [builderType, setBuilderType] = useState('custom')
+  const [builderDesc, setBuilderDesc] = useState('')
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null)
+  const [newQuestion, setNewQuestion] = useState({ text: '', type: 'rating' as string, required: true })
+  const [showBranchModal, setShowBranchModal] = useState(false)
+  const [branchQuestionId, setBranchQuestionId] = useState<string | null>(null)
+  const [branchCondition, setBranchCondition] = useState({ operator: 'lte', value: '2' })
+  const [branchAction, setBranchAction] = useState('skip_to')
+  const [branchTarget, setBranchTarget] = useState('')
+
+  // ---- Templates State ----
+  const [showUseTemplateId, setShowUseTemplateId] = useState<string | null>(null)
+
+  // ---- Schedule State ----
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({
+    survey_title: '', frequency: 'monthly' as string, start_date: '', end_date: '',
+    target_department: '', target_country: '',
+  })
+
+  // ---- Trigger State ----
+  const [showTriggerModal, setShowTriggerModal] = useState(false)
+  const [triggerForm, setTriggerForm] = useState({
+    template_id: '', trigger_event: 'employee_hired' as string, delay_days: 0,
+    target_department: '', target_country: '',
+  })
+
+  // ---- Text Analysis State ----
+  const [textAnalysisFilter, setTextAnalysisFilter] = useState({ sentiment: 'all', survey: 'all', department: 'all' })
+
   const [surveyForm, setSurveyForm] = useState({
     title: '', type: 'pulse' as 'pulse' | 'enps' | 'annual',
     status: 'active' as 'active' | 'closed', start_date: '', end_date: '', anonymous: true,
@@ -56,7 +95,12 @@ export default function EngagementPage() {
   // ---- Tab Config ----
   const tabs = [
     { id: 'surveys', label: t('tabSurveys'), count: surveys.length },
+    { id: 'builder', label: 'Survey Builder' },
+    { id: 'templates', label: 'Templates', count: surveyTemplates.length },
+    { id: 'schedules', label: 'Schedules', count: surveySchedules.filter((s: any) => s.is_active).length },
+    { id: 'triggers', label: 'Triggers', count: surveyTriggers.filter((t: any) => t.is_active).length },
     { id: 'results', label: t('tabResults') },
+    { id: 'text-analysis', label: 'Text Analysis', count: openEndedResponses.length },
     { id: 'action-plans', label: t('tabActionPlans'), count: actionPlans.filter((ap: any) => ap.status !== 'completed').length },
     { id: 'benchmarks', label: t('tabBenchmarks') },
     { id: 'trends', label: t('tabTrends') },
@@ -227,6 +271,129 @@ export default function EngagementPage() {
     resetBulkSurvey()
   }
 
+  // ---- Survey Builder Helpers ----
+  function addQuestionToBuilder() {
+    if (!newQuestion.text) return
+    const q = { id: `bq-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, text: newQuestion.text, type: newQuestion.type, required: newQuestion.required, options: newQuestion.type === 'multiple_choice' ? { choices: ['Option 1', 'Option 2', 'Option 3'], multiSelect: false } : newQuestion.type === 'matrix' ? { rows: ['Item 1', 'Item 2', 'Item 3'], scale: 5 } : newQuestion.type === 'rating' ? { scale: 5 } : undefined }
+    setBuilderQuestions(prev => [...prev, q])
+    setNewQuestion({ text: '', type: 'rating', required: true })
+  }
+
+  function removeQuestionFromBuilder(id: string) {
+    setBuilderQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
+  function moveQuestion(idx: number, direction: 'up' | 'down') {
+    setBuilderQuestions(prev => {
+      const next = [...prev]
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= next.length) return prev
+      ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+      return next
+    })
+  }
+
+  function saveBuilderAsTemplate() {
+    if (!builderTitle || builderQuestions.length === 0) { addToast('Please add a title and at least one question', 'error'); return }
+    addSurveyTemplate({ name: builderTitle, type: builderType, description: builderDesc, questions: builderQuestions, isDefault: false, usageCount: 0 })
+    resetBuilder()
+  }
+
+  function saveBuilderAsSurvey() {
+    if (!builderTitle || builderQuestions.length === 0) { addToast('Please add a title and at least one question', 'error'); return }
+    addSurvey({ title: builderTitle, type: builderType === 'custom' ? 'custom' : builderType, status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', anonymous: true, questions: builderQuestions })
+    resetBuilder()
+  }
+
+  function resetBuilder() {
+    setBuilderTitle(''); setBuilderType('custom'); setBuilderDesc('')
+    setBuilderQuestions([]); setShowBuilderModal(false); setShowPreviewModal(false)
+  }
+
+  function loadTemplateIntoBuilder(templateId: string) {
+    const tpl = surveyTemplates.find((t: any) => t.id === templateId) as any
+    if (!tpl) return
+    setBuilderTitle(tpl.name + ' (Copy)')
+    setBuilderType(tpl.type)
+    setBuilderDesc(tpl.description || '')
+    setBuilderQuestions(tpl.questions.map((q: any) => ({ ...q, id: `bq-${Date.now()}-${Math.random().toString(36).slice(2, 5)}` })))
+    setActiveTab('builder')
+    setShowUseTemplateId(null)
+  }
+
+  function saveBranch() {
+    if (!branchQuestionId) return
+    setBuilderQuestions(prev => prev.map(q => q.id === branchQuestionId ? { ...q, branchLogic: { condition: { field: 'value', operator: branchCondition.operator, value: Number(branchCondition.value) }, action: branchAction, targetQuestionId: branchTarget } } : q))
+    setShowBranchModal(false)
+    setBranchQuestionId(null)
+    addToast('Branch logic added')
+  }
+
+  function removeBranch(questionId: string) {
+    setBuilderQuestions(prev => prev.map(q => q.id === questionId ? { ...q, branchLogic: undefined } : q))
+  }
+
+  // ---- Schedule Helpers ----
+  function submitSchedule() {
+    if (!scheduleForm.survey_title || !scheduleForm.frequency || !scheduleForm.start_date) return
+    const nextRun = new Date(scheduleForm.start_date)
+    if (scheduleForm.frequency === 'weekly') nextRun.setDate(nextRun.getDate() + 7)
+    else if (scheduleForm.frequency === 'biweekly') nextRun.setDate(nextRun.getDate() + 14)
+    else if (scheduleForm.frequency === 'monthly') nextRun.setMonth(nextRun.getMonth() + 1)
+    else if (scheduleForm.frequency === 'quarterly') nextRun.setMonth(nextRun.getMonth() + 3)
+    else nextRun.setFullYear(nextRun.getFullYear() + 1)
+    addSurveySchedule({
+      survey_title: scheduleForm.survey_title, frequency: scheduleForm.frequency,
+      start_date: scheduleForm.start_date, next_run_date: nextRun.toISOString().split('T')[0],
+      end_date: scheduleForm.end_date || null, target_audience: { department: scheduleForm.target_department || null, country: scheduleForm.target_country || null },
+    })
+    setShowScheduleModal(false)
+    setScheduleForm({ survey_title: '', frequency: 'monthly', start_date: '', end_date: '', target_department: '', target_country: '' })
+  }
+
+  // ---- Trigger Helpers ----
+  function submitTrigger() {
+    if (!triggerForm.template_id || !triggerForm.trigger_event) return
+    const tpl = surveyTemplates.find((t: any) => t.id === triggerForm.template_id) as any
+    addSurveyTrigger({
+      template_id: triggerForm.template_id, template_name: tpl?.name || '', trigger_event: triggerForm.trigger_event,
+      delay_days: triggerForm.delay_days, target_audience: { department: triggerForm.target_department || null, country: triggerForm.target_country || null },
+    })
+    setShowTriggerModal(false)
+    setTriggerForm({ template_id: '', trigger_event: 'employee_hired', delay_days: 0, target_department: '', target_country: '' })
+  }
+
+  // ---- Text Analysis Computed ----
+  const filteredResponses = useMemo(() => {
+    return openEndedResponses.filter((r: any) => {
+      if (textAnalysisFilter.sentiment !== 'all' && r.sentiment !== textAnalysisFilter.sentiment) return false
+      if (textAnalysisFilter.department !== 'all' && r.department_id !== textAnalysisFilter.department) return false
+      return true
+    })
+  }, [openEndedResponses, textAnalysisFilter])
+
+  const sentimentCounts = useMemo(() => {
+    const counts = { positive: 0, neutral: 0, negative: 0 }
+    filteredResponses.forEach((r: any) => { if (r.sentiment in counts) counts[r.sentiment as keyof typeof counts]++ })
+    return counts
+  }, [filteredResponses])
+
+  const themeCounts = useMemo(() => {
+    const map: Record<string, number> = {}
+    filteredResponses.forEach((r: any) => { (r.themes || []).forEach((t: string) => { map[t] = (map[t] || 0) + 1 }) })
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15)
+  }, [filteredResponses])
+
+  const triggerEventLabels: Record<string, string> = {
+    employee_hired: 'Employee Hired', employee_terminated: 'Employee Terminated', review_completed: 'Review Completed',
+    anniversary: 'Work Anniversary', promotion: 'Promotion', transfer: 'Transfer', return_from_leave: 'Return from Leave',
+  }
+
+  const questionTypeIcons: Record<string, JSX.Element> = {
+    rating: <Star size={14} />, text: <FileText size={14} />, multiple_choice: <ListChecks size={14} />,
+    nps: <Hash size={14} />, matrix: <LayoutGrid size={14} />,
+  }
+
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
@@ -351,6 +518,357 @@ export default function EngagementPage() {
       )}
 
       {/* ============================================================ */}
+      {/* TAB: SURVEY BUILDER */}
+      {/* ============================================================ */}
+      {activeTab === 'builder' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Questions" value={builderQuestions.length} icon={<FileText size={20} />} />
+            <StatCard label="With Branching" value={builderQuestions.filter(q => q.branchLogic).length} icon={<GitBranch size={20} />} />
+            <StatCard label="Required" value={builderQuestions.filter(q => q.required).length} changeType="neutral" />
+            <StatCard label="Templates" value={surveyTemplates.length} icon={<Copy size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Survey Details & Question List */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-4">Survey Details</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Input label="Survey Title" value={builderTitle} onChange={e => setBuilderTitle(e.target.value)} placeholder="Enter survey title..." />
+                  <Select label="Survey Type" value={builderType} onChange={e => setBuilderType(e.target.value)} options={[
+                    { value: 'pulse', label: 'Pulse Check' }, { value: 'enps', label: 'eNPS' },
+                    { value: 'onboarding', label: 'Onboarding' }, { value: 'exit', label: 'Exit Survey' },
+                    { value: 'annual', label: 'Annual' }, { value: 'dei', label: 'DEI Climate' },
+                    { value: 'custom', label: 'Custom' },
+                  ]} />
+                </div>
+                <Input label="Description" value={builderDesc} onChange={e => setBuilderDesc(e.target.value)} placeholder="Brief description of this survey..." />
+              </Card>
+
+              {/* Questions List */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-t1">Questions ({builderQuestions.length})</h3>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setShowPreviewModal(true)} disabled={builderQuestions.length === 0}><Eye size={14} /> Preview</Button>
+                  </div>
+                </div>
+
+                {builderQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-t3">No questions added yet. Use the form on the right to add questions.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {builderQuestions.map((q, idx) => (
+                      <div key={q.id} className="border border-divider rounded-lg p-3 group hover:border-tempo-300 transition-all">
+                        <div className="flex items-start gap-3">
+                          <div className="flex flex-col gap-1 pt-1">
+                            <button onClick={() => moveQuestion(idx, 'up')} disabled={idx === 0} className="text-t3 hover:text-t1 disabled:opacity-30"><ChevronUp size={14} /></button>
+                            <GripVertical size={14} className="text-t3" />
+                            <button onClick={() => moveQuestion(idx, 'down')} disabled={idx === builderQuestions.length - 1} className="text-t3 hover:text-t1 disabled:opacity-30"><ChevronDown size={14} /></button>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold text-t3">Q{idx + 1}</span>
+                              <span className="flex items-center gap-1 text-xs text-tempo-600 bg-tempo-50 px-2 py-0.5 rounded-full">
+                                {questionTypeIcons[q.type] || <FileText size={12} />} {q.type.replace('_', ' ')}
+                              </span>
+                              {q.required && <Badge variant="default">Required</Badge>}
+                              {q.branchLogic && (
+                                <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                  <GitBranch size={12} /> Branch
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-t1">{q.text}</p>
+                            {q.branchLogic && (
+                              <div className="mt-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                                <GitBranch size={12} />
+                                If answer {q.branchLogic.condition?.operator} {q.branchLogic.condition?.value} &rarr; {q.branchLogic.action?.replace('_', ' ')}
+                                <button onClick={() => removeBranch(q.id)} className="ml-auto text-amber-500 hover:text-amber-700"><Trash2 size={12} /></button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => { setBranchQuestionId(q.id); setShowBranchModal(true) }} className="p-1 text-t3 hover:text-tempo-600" title="Add branching"><GitBranch size={14} /></button>
+                            <button onClick={() => removeQuestionFromBuilder(q.id)} className="p-1 text-t3 hover:text-error" title="Remove"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Right: Add Question Form & Actions */}
+            <div className="space-y-4">
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-3">Add Question</h3>
+                <div className="space-y-3">
+                  <Input label="Question Text" value={newQuestion.text} onChange={e => setNewQuestion({ ...newQuestion, text: e.target.value })} placeholder="Enter your question..." />
+                  <Select label="Type" value={newQuestion.type} onChange={e => setNewQuestion({ ...newQuestion, type: e.target.value })} options={[
+                    { value: 'rating', label: 'Rating (1-5 Stars)' },
+                    { value: 'text', label: 'Open Text' },
+                    { value: 'multiple_choice', label: 'Multiple Choice' },
+                    { value: 'nps', label: 'NPS (0-10)' },
+                    { value: 'matrix', label: 'Matrix' },
+                  ]} />
+                  <label className="flex items-center gap-2 text-xs text-t1">
+                    <input type="checkbox" checked={newQuestion.required} onChange={e => setNewQuestion({ ...newQuestion, required: e.target.checked })} className="rounded border-divider" />
+                    Required question
+                  </label>
+                  <Button size="sm" className="w-full" onClick={addQuestionToBuilder} disabled={!newQuestion.text}><Plus size={14} /> Add Question</Button>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-3">Actions</h3>
+                <div className="space-y-2">
+                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsSurvey} disabled={!builderTitle || builderQuestions.length === 0}>
+                    <Send size={14} /> Create Survey
+                  </Button>
+                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsTemplate} disabled={!builderTitle || builderQuestions.length === 0}>
+                    <Copy size={14} /> Save as Template
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Quick load from template */}
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-3">Load from Template</h3>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {surveyTemplates.map((tpl: any) => (
+                    <button key={tpl.id} onClick={() => loadTemplateIntoBuilder(tpl.id)}
+                      className="w-full text-left px-3 py-2 border border-divider rounded-lg hover:border-tempo-300 transition-all">
+                      <p className="text-xs font-medium text-t1">{tpl.name}</p>
+                      <p className="text-[0.65rem] text-t3">{tpl.questions?.length || 0} questions</p>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: TEMPLATES */}
+      {/* ============================================================ */}
+      {activeTab === 'templates' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Templates" value={surveyTemplates.length} icon={<Copy size={20} />} />
+            <StatCard label="Default Templates" value={surveyTemplates.filter((t: any) => t.isDefault).length} changeType="neutral" />
+            <StatCard label="Custom Templates" value={surveyTemplates.filter((t: any) => !t.isDefault).length} changeType="neutral" />
+            <StatCard label="Total Usage" value={surveyTemplates.reduce((a: number, t: any) => a + (t.usageCount || 0), 0)} icon={<BarChart3 size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {surveyTemplates.map((tpl: any) => (
+              <Card key={tpl.id} className="relative group">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{tpl.name}</h3>
+                    <Badge variant={tpl.type === 'pulse' ? 'orange' : tpl.type === 'enps' ? 'info' : tpl.type === 'exit' ? 'error' : tpl.type === 'dei' ? 'warning' : tpl.type === 'onboarding' ? 'success' : 'default'} className="mt-1">
+                      {tpl.type.toUpperCase()}
+                    </Badge>
+                  </div>
+                  {tpl.isDefault && <Badge variant="default">Default</Badge>}
+                </div>
+                <p className="text-xs text-t3 mb-3 line-clamp-2">{tpl.description}</p>
+                <div className="flex items-center justify-between text-xs text-t3 mb-4">
+                  <span>{tpl.questions?.length || 0} questions</span>
+                  <span>Used {tpl.usageCount || 0} times</span>
+                </div>
+
+                {/* Question type breakdown */}
+                <div className="flex gap-1 flex-wrap mb-4">
+                  {(() => {
+                    const types: Record<string, number> = {}
+                    ;(tpl.questions || []).forEach((q: any) => { types[q.type] = (types[q.type] || 0) + 1 })
+                    return Object.entries(types).map(([type, count]) => (
+                      <span key={type} className="flex items-center gap-1 text-[0.65rem] text-t2 bg-canvas px-2 py-0.5 rounded-full">
+                        {questionTypeIcons[type] || <FileText size={10} />} {count}
+                      </span>
+                    ))
+                  })()}
+                </div>
+
+                {/* Question preview */}
+                {showUseTemplateId === tpl.id && (
+                  <div className="border-t border-divider pt-3 mt-3 space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {(tpl.questions || []).map((q: any, i: number) => (
+                      <div key={q.id} className="flex items-start gap-2 text-xs">
+                        <span className="text-t3 font-mono w-5 flex-shrink-0">{i + 1}.</span>
+                        <span className="text-t1">{q.text}</span>
+                        {q.branchLogic && <GitBranch size={12} className="text-amber-500 flex-shrink-0 mt-0.5" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setShowUseTemplateId(showUseTemplateId === tpl.id ? null : tpl.id)}>
+                    <Eye size={14} /> {showUseTemplateId === tpl.id ? 'Hide' : 'Preview'}
+                  </Button>
+                  <Button size="sm" className="flex-1" onClick={() => loadTemplateIntoBuilder(tpl.id)}>
+                    <Plus size={14} /> Use Template
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: SCHEDULES */}
+      {/* ============================================================ */}
+      {activeTab === 'schedules' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Schedules" value={surveySchedules.filter((s: any) => s.is_active).length} icon={<Calendar size={20} />} changeType="positive" />
+            <StatCard label="Total Schedules" value={surveySchedules.length} changeType="neutral" />
+            <StatCard label="Next Run" value={(() => { const next = surveySchedules.filter((s: any) => s.is_active && s.next_run_date).sort((a: any, b: any) => a.next_run_date.localeCompare(b.next_run_date))[0]; return next ? (next as any).next_run_date : 'N/A' })()} changeType="neutral" />
+            <StatCard label="Frequencies" value={[...new Set(surveySchedules.map((s: any) => s.frequency))].length} changeType="neutral" />
+          </div>
+
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Survey Schedules</CardTitle>
+                <Button size="sm" onClick={() => setShowScheduleModal(true)}><Plus size={14} /> Create Schedule</Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Survey</th>
+                    <th className="tempo-th text-center px-4 py-3">Frequency</th>
+                    <th className="tempo-th text-center px-4 py-3">Next Run</th>
+                    <th className="tempo-th text-center px-4 py-3">Last Run</th>
+                    <th className="tempo-th text-center px-4 py-3">Target Audience</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {surveySchedules.length === 0 ? (
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">No schedules created yet.</td></tr>
+                  ) : surveySchedules.map((sched: any) => {
+                    const daysUntilNext = sched.next_run_date ? Math.ceil((new Date(sched.next_run_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
+                    return (
+                      <tr key={sched.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3">
+                          <p className="text-sm font-medium text-t1">{sched.survey_title || 'Unnamed Survey'}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant="info">{sched.frequency}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="text-xs text-t1">{sched.next_run_date || 'N/A'}</div>
+                          {daysUntilNext !== null && daysUntilNext > 0 && (
+                            <div className="text-[0.6rem] text-tempo-600 flex items-center justify-center gap-1 mt-0.5"><Clock size={10} /> {daysUntilNext}d</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2 text-center">{sched.last_run_at ? new Date(sched.last_run_at).toLocaleDateString() : 'Never'}</td>
+                        <td className="px-4 py-3 text-center">
+                          {sched.target_audience?.department || sched.target_audience?.country ? (
+                            <span className="text-xs text-t2">{sched.target_audience.department || ''} {sched.target_audience.country || ''}</span>
+                          ) : <Badge variant="default">All Employees</Badge>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={sched.is_active ? 'success' : 'default'}>{sched.is_active ? 'Active' : 'Paused'}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex gap-1 justify-center">
+                            <button onClick={() => updateSurveySchedule(sched.id, { is_active: !sched.is_active })} className={`p-1.5 rounded-lg ${sched.is_active ? 'text-success hover:bg-success/10' : 'text-t3 hover:bg-canvas'}`} title={sched.is_active ? 'Pause' : 'Activate'}>
+                              <Power size={14} />
+                            </button>
+                            <button onClick={() => deleteSurveySchedule(sched.id)} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10" title="Delete"><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: TRIGGERS */}
+      {/* ============================================================ */}
+      {activeTab === 'triggers' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Triggers" value={surveyTriggers.filter((t: any) => t.is_active).length} icon={<Zap size={20} />} changeType="positive" />
+            <StatCard label="Total Triggers" value={surveyTriggers.length} changeType="neutral" />
+            <StatCard label="Events Covered" value={[...new Set(surveyTriggers.map((t: any) => t.trigger_event))].length} changeType="neutral" />
+            <StatCard label="Recent Firings" value={surveyTriggers.reduce((a: number, t: any) => a + (t.recent_firings?.length || 0), 0)} icon={<Send size={20} />} />
+          </div>
+
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Event-Based Triggers</CardTitle>
+                <Button size="sm" onClick={() => setShowTriggerModal(true)}><Plus size={14} /> Create Trigger</Button>
+              </div>
+            </CardHeader>
+            <div className="divide-y divide-divider">
+              {surveyTriggers.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">No triggers created yet.</div>
+              ) : surveyTriggers.map((trigger: any) => (
+                <div key={trigger.id} className="px-6 py-4">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                      <Zap size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{trigger.template_name || 'Unknown Template'}</p>
+                      <p className="text-xs text-t3">
+                        When: <span className="text-t2 font-medium">{triggerEventLabels[trigger.trigger_event] || trigger.trigger_event}</span>
+                        {trigger.delay_days > 0 && <> &middot; Delay: {trigger.delay_days} days</>}
+                      </p>
+                    </div>
+                    <Badge variant={trigger.is_active ? 'success' : 'default'}>{trigger.is_active ? 'Active' : 'Disabled'}</Badge>
+                    <div className="flex gap-1">
+                      <button onClick={() => updateSurveyTrigger(trigger.id, { is_active: !trigger.is_active })} className={`p-1.5 rounded-lg ${trigger.is_active ? 'text-success hover:bg-success/10' : 'text-t3 hover:bg-canvas'}`}>
+                        <Power size={14} />
+                      </button>
+                      <button onClick={() => deleteSurveyTrigger(trigger.id)} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Recent Activity Log */}
+                  {trigger.recent_firings?.length > 0 && (
+                    <div className="ml-14 space-y-1.5">
+                      <p className="text-xs font-medium text-t2 mb-1">Recent Activity:</p>
+                      {trigger.recent_firings.map((firing: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-3 text-xs bg-canvas rounded-lg px-3 py-2">
+                          <Avatar name={firing.employee_name} size="xs" />
+                          <span className="text-t1 font-medium">{firing.employee_name}</span>
+                          <Badge variant="default">{firing.event}</Badge>
+                          <span className="text-t3 ml-auto">{firing.survey_sent_date}</span>
+                          <Badge variant={firing.status === 'completed' ? 'success' : 'warning'}>{firing.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
       {/* TAB 2: RESULTS & ANALYTICS */}
       {/* ============================================================ */}
       {activeTab === 'results' && (
@@ -450,6 +968,137 @@ export default function EngagementPage() {
               )}
             </>
           )}
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: TEXT ANALYSIS */}
+      {/* ============================================================ */}
+      {activeTab === 'text-analysis' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Responses" value={filteredResponses.length} icon={<MessageSquareText size={20} />} />
+            <StatCard label="Positive" value={sentimentCounts.positive} changeType="positive" icon={<ThumbsUp size={20} />} />
+            <StatCard label="Neutral" value={sentimentCounts.neutral} changeType="neutral" icon={<MinusCircle size={20} />} />
+            <StatCard label="Negative" value={sentimentCounts.negative} changeType="negative" icon={<ThumbsDown size={20} />} />
+          </div>
+
+          {/* Filters */}
+          <Card className="mb-6">
+            <div className="flex flex-wrap gap-4 items-end">
+              <Select label="Sentiment" value={textAnalysisFilter.sentiment} onChange={e => setTextAnalysisFilter(p => ({ ...p, sentiment: e.target.value }))} options={[
+                { value: 'all', label: 'All Sentiments' }, { value: 'positive', label: 'Positive' }, { value: 'neutral', label: 'Neutral' }, { value: 'negative', label: 'Negative' },
+              ]} />
+              <Select label="Department" value={textAnalysisFilter.department} onChange={e => setTextAnalysisFilter(p => ({ ...p, department: e.target.value }))} options={[
+                { value: 'all', label: 'All Departments' }, ...departments.map((d: any) => ({ value: d.id, label: d.name })),
+              ]} />
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Sentiment Breakdown */}
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Sentiment Breakdown</h3>
+              <TempoDonutChart data={[
+                { name: 'Positive', value: sentimentCounts.positive, color: '#10b981' },
+                { name: 'Neutral', value: sentimentCounts.neutral, color: '#f59e0b' },
+                { name: 'Negative', value: sentimentCounts.negative, color: '#f43f5e' },
+              ]} />
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span className="text-t2">Positive</span></div>
+                  <span className="text-t1 font-medium">{filteredResponses.length > 0 ? Math.round((sentimentCounts.positive / filteredResponses.length) * 100) : 0}%</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-t2">Neutral</span></div>
+                  <span className="text-t1 font-medium">{filteredResponses.length > 0 ? Math.round((sentimentCounts.neutral / filteredResponses.length) * 100) : 0}%</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500" /><span className="text-t2">Negative</span></div>
+                  <span className="text-t1 font-medium">{filteredResponses.length > 0 ? Math.round((sentimentCounts.negative / filteredResponses.length) * 100) : 0}%</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Top Themes */}
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4">Top Themes</h3>
+              {themeCounts.length === 0 ? <p className="text-sm text-t3 text-center py-8">No themes detected.</p> : (
+                <div className="space-y-2">
+                  {themeCounts.map(([theme, count]) => {
+                    const maxCount = themeCounts[0][1]
+                    const pct = Math.round((count / maxCount) * 100)
+                    return (
+                      <div key={theme} className="flex items-center gap-3">
+                        <span className="text-xs text-t2 w-28 truncate capitalize">{theme}</span>
+                        <div className="flex-1">
+                          <div className="relative h-5 bg-canvas rounded-full overflow-hidden">
+                            <div className="absolute h-full bg-tempo-100 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            <span className="absolute inset-0 flex items-center pl-2 text-[0.6rem] font-medium text-tempo-700">{count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* AI Insights Summary */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={16} className="text-tempo-600" />
+              <h3 className="text-sm font-semibold text-t1">AI-Generated Insights</h3>
+            </div>
+            <div className="space-y-2">
+              {sentimentCounts.negative > sentimentCounts.positive ? (
+                <div className="flex items-start gap-2 px-3 py-2 bg-rose-50 rounded-lg">
+                  <AlertTriangle size={14} className="text-rose-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-rose-700">Negative sentiment outweighs positive responses. Key concerns center around {themeCounts.filter(([_, c]) => c > 1).slice(0, 3).map(([t]) => t).join(', ')}. Consider addressing these areas with targeted action plans.</p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+                  <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-emerald-700">Overall sentiment is positive. Employees particularly appreciate {themeCounts.slice(0, 3).map(([t]) => t).join(', ')}. Continue reinforcing these strengths.</p>
+                </div>
+              )}
+              <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+                <Sparkles size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700">Top {themeCounts.length} themes detected across {filteredResponses.length} responses. Most common: &ldquo;{themeCounts[0]?.[0] || 'N/A'}&rdquo; ({themeCounts[0]?.[1] || 0} mentions). Consider creating targeted surveys around emerging themes.</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Individual Responses */}
+          <Card padding="none">
+            <CardHeader><CardTitle>Individual Responses ({filteredResponses.length})</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {filteredResponses.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">No responses match your filters.</div>
+              ) : filteredResponses.map((resp: any) => (
+                <div key={resp.id} className="px-6 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${resp.sentiment === 'positive' ? 'bg-emerald-100 text-emerald-600' : resp.sentiment === 'negative' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                      {resp.sentiment === 'positive' ? <ThumbsUp size={14} /> : resp.sentiment === 'negative' ? <ThumbsDown size={14} /> : <Minus size={14} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-t1 leading-relaxed">{resp.text}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <Badge variant={resp.sentiment === 'positive' ? 'success' : resp.sentiment === 'negative' ? 'error' : 'warning'}>
+                          {resp.sentiment}
+                        </Badge>
+                        {(resp.themes || []).map((theme: string) => (
+                          <Badge key={theme} variant="default">{theme}</Badge>
+                        ))}
+                        {resp.department_id && <span className="text-[0.65rem] text-t3 ml-auto">{getDepartmentName(resp.department_id)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </>
       )}
 
@@ -1051,6 +1700,161 @@ export default function EngagementPage() {
                 <Send size={14} /> Send Survey
               </Button>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Preview Survey Modal */}
+      <Modal open={showPreviewModal} onClose={() => setShowPreviewModal(false)} title="Survey Preview" size="lg">
+        <div className="space-y-4">
+          <div className="border-b border-divider pb-3">
+            <h3 className="text-lg font-semibold text-t1">{builderTitle || 'Untitled Survey'}</h3>
+            {builderDesc && <p className="text-sm text-t3 mt-1">{builderDesc}</p>}
+          </div>
+          {builderQuestions.map((q, idx) => (
+            <div key={q.id} className="border border-divider rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold text-tempo-600">Q{idx + 1}</span>
+                {q.required && <span className="text-error text-xs">*</span>}
+                {q.branchLogic && <GitBranch size={12} className="text-amber-500" />}
+              </div>
+              <p className="text-sm font-medium text-t1 mb-3">{q.text}</p>
+              {q.type === 'rating' && (
+                <div className="flex gap-2">
+                  {Array.from({ length: q.options?.scale || 5 }).map((_, i) => (
+                    <div key={i} className="w-10 h-10 rounded-lg border border-divider flex items-center justify-center text-t3 hover:border-tempo-300 cursor-pointer">
+                      <Star size={16} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {q.type === 'text' && <div className="border border-divider rounded-lg p-3 bg-canvas text-xs text-t3 min-h-[60px]">Type your answer here...</div>}
+              {q.type === 'multiple_choice' && (
+                <div className="space-y-2">
+                  {(q.options?.choices || ['Option 1', 'Option 2', 'Option 3']).map((opt: string, i: number) => (
+                    <label key={i} className="flex items-center gap-2 text-sm text-t2">
+                      <input type="radio" name={`preview-${q.id}`} className="text-tempo-500" disabled /> {opt}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {q.type === 'nps' && (
+                <div className="flex gap-1">
+                  {Array.from({ length: 11 }).map((_, i) => (
+                    <div key={i} className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs cursor-pointer ${i <= 6 ? 'border-rose-200 text-rose-500' : i <= 8 ? 'border-amber-200 text-amber-500' : 'border-emerald-200 text-emerald-500'}`}>
+                      {i}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {q.type === 'matrix' && (
+                <table className="w-full text-xs">
+                  <thead><tr><th className="text-left py-1"></th>{Array.from({ length: q.options?.scale || 5 }).map((_, i) => <th key={i} className="text-center py-1 text-t3">{i + 1}</th>)}</tr></thead>
+                  <tbody>
+                    {(q.options?.rows || ['Item 1', 'Item 2']).map((row: string, ri: number) => (
+                      <tr key={ri} className="border-t border-divider">
+                        <td className="py-2 text-t2">{row}</td>
+                        {Array.from({ length: q.options?.scale || 5 }).map((_, i) => (
+                          <td key={i} className="text-center py-2"><input type="radio" name={`matrix-${q.id}-${ri}`} disabled className="text-tempo-500" /></td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ))}
+          <div className="flex justify-end pt-2">
+            <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>Close Preview</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Branch Logic Modal */}
+      <Modal open={showBranchModal} onClose={() => { setShowBranchModal(false); setBranchQuestionId(null) }} title="Add Branch Logic">
+        <div className="space-y-4">
+          <p className="text-xs text-t3">Define a condition that determines what happens after this question is answered.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Condition" value={branchCondition.operator} onChange={e => setBranchCondition(p => ({ ...p, operator: e.target.value }))} options={[
+              { value: 'eq', label: 'Equals' }, { value: 'neq', label: 'Not Equals' },
+              { value: 'lte', label: 'Less than or equal' }, { value: 'gte', label: 'Greater than or equal' },
+              { value: 'lt', label: 'Less than' }, { value: 'gt', label: 'Greater than' },
+            ]} />
+            <Input label="Value" type="number" value={branchCondition.value} onChange={e => setBranchCondition(p => ({ ...p, value: e.target.value }))} />
+          </div>
+          <Select label="Action" value={branchAction} onChange={e => setBranchAction(e.target.value)} options={[
+            { value: 'skip_to', label: 'Skip to question' }, { value: 'hide', label: 'Hide question' },
+            { value: 'show', label: 'Show question' }, { value: 'end_survey', label: 'End survey' },
+          ]} />
+          {branchAction !== 'end_survey' && (
+            <Select label="Target Question" value={branchTarget} onChange={e => setBranchTarget(e.target.value)} options={[
+              { value: '', label: 'Select question...' },
+              ...builderQuestions.filter(q => q.id !== branchQuestionId).map((q, i) => ({ value: q.id, label: `Q${i + 1}: ${q.text.substring(0, 40)}...` })),
+            ]} />
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => { setShowBranchModal(false); setBranchQuestionId(null) }}>Cancel</Button>
+            <Button onClick={saveBranch}>Save Branch Logic</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Schedule Modal */}
+      <Modal open={showScheduleModal} onClose={() => setShowScheduleModal(false)} title="Create Survey Schedule">
+        <div className="space-y-4">
+          <Input label="Survey Name" value={scheduleForm.survey_title} onChange={e => setScheduleForm(p => ({ ...p, survey_title: e.target.value }))} placeholder="Name for this recurring survey..." />
+          <Select label="Frequency" value={scheduleForm.frequency} onChange={e => setScheduleForm(p => ({ ...p, frequency: e.target.value }))} options={[
+            { value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Biweekly' },
+            { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' },
+            { value: 'annually', label: 'Annually' },
+          ]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Date" type="date" value={scheduleForm.start_date} onChange={e => setScheduleForm(p => ({ ...p, start_date: e.target.value }))} />
+            <Input label="End Date (optional)" type="date" value={scheduleForm.end_date} onChange={e => setScheduleForm(p => ({ ...p, end_date: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Department (optional)" value={scheduleForm.target_department} onChange={e => setScheduleForm(p => ({ ...p, target_department: e.target.value }))} options={[
+              { value: '', label: 'All Departments' }, ...departments.map((d: any) => ({ value: d.id, label: d.name })),
+            ]} />
+            <Select label="Country (optional)" value={scheduleForm.target_country} onChange={e => setScheduleForm(p => ({ ...p, target_country: e.target.value }))} options={[
+              { value: '', label: 'All Countries' }, ...uniqueCountries.map((c: string) => ({ value: c, label: c })),
+            ]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
+            <Button onClick={submitSchedule} disabled={!scheduleForm.survey_title || !scheduleForm.start_date}>Create Schedule</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Trigger Modal */}
+      <Modal open={showTriggerModal} onClose={() => setShowTriggerModal(false)} title="Create Survey Trigger">
+        <div className="space-y-4">
+          <Select label="Template" value={triggerForm.template_id} onChange={e => setTriggerForm(p => ({ ...p, template_id: e.target.value }))} options={[
+            { value: '', label: 'Select a template...' },
+            ...surveyTemplates.map((t: any) => ({ value: t.id, label: t.name })),
+          ]} />
+          <Select label="Trigger Event" value={triggerForm.trigger_event} onChange={e => setTriggerForm(p => ({ ...p, trigger_event: e.target.value }))} options={[
+            { value: 'employee_hired', label: 'Employee Hired' },
+            { value: 'employee_terminated', label: 'Employee Terminated' },
+            { value: 'review_completed', label: 'Review Completed' },
+            { value: 'anniversary', label: 'Work Anniversary' },
+            { value: 'promotion', label: 'Promotion' },
+            { value: 'transfer', label: 'Transfer' },
+            { value: 'return_from_leave', label: 'Return from Leave' },
+          ]} />
+          <Input label="Delay (days)" type="number" value={String(triggerForm.delay_days)} onChange={e => setTriggerForm(p => ({ ...p, delay_days: Number(e.target.value) || 0 }))} placeholder="Days after event to send survey" />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Department (optional)" value={triggerForm.target_department} onChange={e => setTriggerForm(p => ({ ...p, target_department: e.target.value }))} options={[
+              { value: '', label: 'All Departments' }, ...departments.map((d: any) => ({ value: d.id, label: d.name })),
+            ]} />
+            <Select label="Country (optional)" value={triggerForm.target_country} onChange={e => setTriggerForm(p => ({ ...p, target_country: e.target.value }))} options={[
+              { value: '', label: 'All Countries' }, ...uniqueCountries.map((c: string) => ({ value: c, label: c })),
+            ]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowTriggerModal(false)}>Cancel</Button>
+            <Button onClick={submitTrigger} disabled={!triggerForm.template_id}>Create Trigger</Button>
           </div>
         </div>
       </Modal>

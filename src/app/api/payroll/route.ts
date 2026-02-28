@@ -7,7 +7,15 @@ import {
   getPayrollAnalytics,
   validatePayrollCompliance,
   convertCurrency,
+  getPayrollEntries,
+  getEmployeePayrollHistory,
+  approvePayrollRun,
+  markPayrollProcessing,
+  markPayrollPaid,
+  cancelPayrollRun,
 } from '@/lib/payroll-engine'
+import { payrollPostBody, calculateTaxParams, convertCurrencyParams } from '@/lib/validations/payroll'
+import { formatZodError } from '@/lib/validations/common'
 
 // GET /api/payroll - Analytics, compliance, tax info, currency conversion
 export async function GET(request: NextRequest) {
@@ -36,26 +44,50 @@ export async function GET(request: NextRequest) {
       }
 
       case 'calculate-tax': {
-        const country = url.searchParams.get('country') || 'US'
-        const salary = parseInt(url.searchParams.get('salary') || '0')
-        const state = url.searchParams.get('state') || undefined
-        const filingStatus = url.searchParams.get('filingStatus') || undefined
-        if (!salary) {
-          return NextResponse.json({ error: 'salary is required' }, { status: 400 })
+        const parsed = calculateTaxParams.safeParse({
+          country: url.searchParams.get('country'),
+          salary: url.searchParams.get('salary'),
+          state: url.searchParams.get('state') || undefined,
+          filingStatus: url.searchParams.get('filingStatus') || undefined,
+        })
+        if (!parsed.success) {
+          return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
         }
+        const { country, salary, state, filingStatus } = parsed.data
         const result = await calculateTax(country as any, salary, { state, filingStatus: filingStatus as any })
         return NextResponse.json(result)
       }
 
       case 'convert': {
-        const amount = parseFloat(url.searchParams.get('amount') || '0')
-        const from = url.searchParams.get('from') || 'USD'
-        const to = url.searchParams.get('to') || 'EUR'
-        if (!amount) {
-          return NextResponse.json({ error: 'amount is required' }, { status: 400 })
+        const parsed = convertCurrencyParams.safeParse({
+          amount: url.searchParams.get('amount'),
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+        })
+        if (!parsed.success) {
+          return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
         }
+        const { amount, from, to } = parsed.data
         const result = await convertCurrency(amount, from as any, to as any)
         return NextResponse.json({ amount, from, to, converted: result })
+      }
+
+      case 'entries': {
+        const payrollRunId = url.searchParams.get('payrollRunId')
+        if (!payrollRunId) {
+          return NextResponse.json({ error: 'payrollRunId is required' }, { status: 400 })
+        }
+        const result = await getPayrollEntries(orgId, payrollRunId)
+        return NextResponse.json(result)
+      }
+
+      case 'employee-history': {
+        const employeeId = url.searchParams.get('employeeId')
+        if (!employeeId) {
+          return NextResponse.json({ error: 'employeeId is required' }, { status: 400 })
+        }
+        const result = await getEmployeePayrollHistory(orgId, employeeId)
+        return NextResponse.json(result)
       }
 
       default:
@@ -67,36 +99,55 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/payroll - Process payroll, generate pay stubs
+// POST /api/payroll - Process payroll, generate pay stubs, approve/cancel runs, update status
 export async function POST(request: NextRequest) {
   try {
     const orgId = request.headers.get('x-org-id')
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { action } = body
+    const parsed = payrollPostBody.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
+    }
 
-    switch (action) {
+    switch (parsed.data.action) {
       case 'process': {
-        const { period } = body
-        if (!period) {
-          return NextResponse.json({ error: 'period is required (e.g., "2026-02")' }, { status: 400 })
-        }
-        const result = await processPayroll(orgId, period)
+        const result = await processPayroll(orgId, parsed.data.period, {
+          overtime: parsed.data.overtime,
+          bonuses: parsed.data.bonuses,
+          garnishments: parsed.data.garnishments,
+        })
         return NextResponse.json(result)
       }
 
       case 'pay-stub': {
-        const { employeeId, payrollRunId } = body
-        if (!employeeId || !payrollRunId) {
-          return NextResponse.json({ error: 'employeeId and payrollRunId are required' }, { status: 400 })
-        }
-        const result = await generatePayStub(orgId, employeeId, payrollRunId)
+        const result = await generatePayStub(orgId, parsed.data.employeeId, parsed.data.payrollRunId)
+        return NextResponse.json(result)
+      }
+
+      case 'approve': {
+        const result = await approvePayrollRun(orgId, parsed.data.payrollRunId, parsed.data.approverId, parsed.data.approverRole)
+        return NextResponse.json(result)
+      }
+
+      case 'mark-processing': {
+        const result = await markPayrollProcessing(orgId, parsed.data.payrollRunId)
+        return NextResponse.json(result)
+      }
+
+      case 'mark-paid': {
+        const result = await markPayrollPaid(orgId, parsed.data.payrollRunId, parsed.data.paymentReference)
+        return NextResponse.json(result)
+      }
+
+      case 'cancel': {
+        const result = await cancelPayrollRun(orgId, parsed.data.payrollRunId, parsed.data.reason)
         return NextResponse.json(result)
       }
 
       default:
-        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
+        return NextResponse.json({ error: `Unknown action` }, { status: 400 })
     }
   } catch (error: any) {
     console.error('[POST /api/payroll] Error:', error)

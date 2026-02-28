@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
-import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users } from 'lucide-react'
+import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
@@ -51,12 +51,22 @@ export default function ExpensePage() {
     getEmployeeName, getDepartmentName, currentEmployeeId,
     expensePolicies, addExpensePolicy, updateExpensePolicy,
     mileageLogs, addMileageLog, updateMileageLog,
+    receiptMatches, addReceiptMatch, updateReceiptMatch,
+    mileageEntries, addMileageEntry, updateMileageEntry,
+    advancedExpensePolicies, addAdvancedExpensePolicy, updateAdvancedExpensePolicy, deleteAdvancedExpensePolicy,
+    reimbursementBatches, addReimbursementBatch, updateReimbursementBatch,
+    duplicateDetections, addDuplicateDetection, updateDuplicateDetection,
+    payrollRuns,
     addToast,
   } = useTempo()
 
   // ---- Tab State ----
   const tabs = [
     { id: 'reports', label: t('reports'), icon: FileText },
+    { id: 'receipt-management', label: 'Receipt Management', icon: Receipt },
+    { id: 'mileage', label: 'Mileage', icon: Navigation },
+    { id: 'advanced-policies', label: 'Policies', icon: Zap },
+    { id: 'reimbursement', label: 'Reimbursement', icon: Banknote },
     { id: 'analytics', label: t('analytics'), icon: BarChart3 },
     { id: 'policy-rules', label: t('policyRules'), icon: Shield },
     { id: 'per-diem-mileage', label: t('perDiemMileage'), icon: Car },
@@ -111,6 +121,27 @@ export default function ExpensePage() {
   const [policySummary, setPolicySummary] = useState<{
     documentTitle: string; effectiveDate: string; keyHighlights: string[]; totalRulesExtracted: number
   } | null>(null)
+
+  // ---- Receipt Management (new) ----
+  const [showDuplicateDetail, setShowDuplicateDetail] = useState<string | null>(null)
+
+  // ---- Mileage Entry (new) ----
+  const [showMileageEntryModal, setShowMileageEntryModal] = useState(false)
+  const [mileageEntryForm, setMileageEntryForm] = useState({
+    employee_id: '', date: '', start_location: '', end_location: '', distance_miles: 0, rate: 0.67, purpose: '', vehicle_type: 'personal' as string, trip_type: 'one_way' as string,
+  })
+
+  // ---- Advanced Policy (new) ----
+  const [showAdvancedPolicyModal, setShowAdvancedPolicyModal] = useState(false)
+  const [advancedPolicyForm, setAdvancedPolicyForm] = useState({
+    name: '', is_active: true, applies_to: 'all' as string,
+    rules: [{ field: 'amount', operator: '>', value: 0 as string | number, action: 'warn' as string }],
+  })
+
+  // ---- Reimbursement (new) ----
+  const [showReimbursementModal, setShowReimbursementModal] = useState(false)
+  const [reimbursementMethod, setReimbursementMethod] = useState<'payroll' | 'direct_deposit' | 'manual'>('payroll')
+  const [selectedReimbursementIds, setSelectedReimbursementIds] = useState<Set<string>>(new Set())
 
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
@@ -187,6 +218,135 @@ export default function ExpensePage() {
     const pending = demoReceipts.filter(r => r.status === 'pending').length
     return { total: demoReceipts.length, matched, unmatched, pending, matchRate: demoReceipts.length > 0 ? Math.round((matched / demoReceipts.length) * 100) : 0 }
   }, [])
+
+  // ---- Receipt Matching Stats ----
+  const receiptMatchStats = useMemo(() => {
+    const matched = receiptMatches.filter((r: any) => r.match_status === 'matched').length
+    const mismatches = receiptMatches.filter((r: any) => ['mismatch_amount', 'mismatch_vendor', 'mismatch_date'].includes(r.match_status)).length
+    const pending = receiptMatches.filter((r: any) => r.match_status === 'pending').length
+    const noReceipt = receiptMatches.filter((r: any) => r.match_status === 'no_receipt').length
+    const avgConfidence = receiptMatches.filter((r: any) => r.confidence != null).reduce((a: number, r: any) => a + (r.confidence || 0), 0) / Math.max(1, receiptMatches.filter((r: any) => r.confidence != null).length)
+    return { total: receiptMatches.length, matched, mismatches, pending, noReceipt, avgConfidence: Math.round(avgConfidence * 100) }
+  }, [receiptMatches])
+
+  // ---- Mileage Entry Stats ----
+  const mileageEntryStats = useMemo(() => {
+    const totalMiles = mileageEntries.reduce((a: number, m: any) => a + m.distance_miles, 0)
+    const totalAmount = mileageEntries.reduce((a: number, m: any) => a + m.amount, 0)
+    const pendingCount = mileageEntries.filter((m: any) => m.status === 'pending').length
+    const approvedCount = mileageEntries.filter((m: any) => m.status === 'approved').length
+    // Monthly summary
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const monthEntries = mileageEntries.filter((m: any) => m.date?.startsWith(currentMonth))
+    const monthlyMiles = monthEntries.reduce((a: number, m: any) => a + m.distance_miles, 0)
+    const monthlyAmount = monthEntries.reduce((a: number, m: any) => a + m.amount, 0)
+    return { totalMiles, totalAmount, pendingCount, approvedCount, monthlyMiles, monthlyAmount, total: mileageEntries.length }
+  }, [mileageEntries])
+
+  // ---- Reimbursement Stats ----
+  const reimbursementStats = useMemo(() => {
+    const totalBatches = reimbursementBatches.length
+    const completedBatches = reimbursementBatches.filter((b: any) => b.status === 'completed').length
+    const pendingBatches = reimbursementBatches.filter((b: any) => b.status === 'pending').length
+    const totalReimbursed = reimbursementBatches.filter((b: any) => b.status === 'completed').reduce((a: number, b: any) => a + b.total_amount, 0)
+    const pendingAmount = reimbursementBatches.filter((b: any) => b.status === 'pending').reduce((a: number, b: any) => a + b.total_amount, 0)
+    return { totalBatches, completedBatches, pendingBatches, totalReimbursed, pendingAmount }
+  }, [reimbursementBatches])
+
+  // ---- Duplicate Detection Stats ----
+  const duplicateStats = useMemo(() => {
+    const flagged = duplicateDetections.filter((d: any) => d.status === 'flagged').length
+    const confirmed = duplicateDetections.filter((d: any) => d.status === 'confirmed_duplicate').length
+    const dismissed = duplicateDetections.filter((d: any) => d.status === 'dismissed').length
+    const amountSaved = duplicateDetections.filter((d: any) => d.status === 'confirmed_duplicate').reduce((a: number, d: any) => a + (d.duplicate_amount || 0), 0)
+    return { total: duplicateDetections.length, flagged, confirmed, dismissed, amountSaved }
+  }, [duplicateDetections])
+
+  // ---- Advanced Policy Violation Log ----
+  const advancedPolicyViolationLog = useMemo(() => {
+    const violations: Array<{ id: string; employee: string; expense: string; policy: string; rule: string; action: string; amount: number }> = []
+    expenseReports.forEach((report: any) => {
+      if (!report.items) return
+      report.items.forEach((item: any) => {
+        advancedExpensePolicies.forEach((policy: any) => {
+          if (!policy.is_active || !policy.rules) return
+          policy.rules.forEach((rule: any) => {
+            let violated = false
+            if (rule.field === 'amount' && rule.operator === '>' && item.amount > rule.value) violated = true
+            if (rule.field === 'amount' && rule.operator === '<' && item.amount < rule.value) violated = true
+            if (rule.field === 'category' && rule.operator === '=' && item.category?.toLowerCase() === String(rule.value).toLowerCase()) violated = true
+            if (rule.field === 'category' && rule.operator === 'contains' && item.category?.toLowerCase().includes(String(rule.value).toLowerCase())) violated = true
+            if (violated) {
+              violations.push({
+                id: `v-${report.id}-${item.id}-${policy.id}`,
+                employee: getEmployeeName(report.employee_id),
+                expense: item.description || report.title,
+                policy: policy.name,
+                rule: `${rule.field} ${rule.operator} ${rule.value}`,
+                action: rule.action,
+                amount: item.amount,
+              })
+            }
+          })
+        })
+      })
+    })
+    return violations
+  }, [expenseReports, advancedExpensePolicies, getEmployeeName])
+
+  // Approved reports available for reimbursement
+  const approvedForReimbursement = useMemo(() => {
+    const reimbursedIds = new Set<string>()
+    reimbursementBatches.forEach((b: any) => {
+      if (b.items) b.items.forEach((item: any) => { if (item.expense_report_id) reimbursedIds.add(item.expense_report_id) })
+    })
+    return expenseReports.filter((r: any) => r.status === 'approved' && !reimbursedIds.has(r.id))
+  }, [expenseReports, reimbursementBatches])
+
+  // ---- Mileage Entry CRUD ----
+  function submitMileageEntry() {
+    if (!mileageEntryForm.employee_id || !mileageEntryForm.start_location || !mileageEntryForm.end_location || !mileageEntryForm.distance_miles) return
+    const amount = Number((mileageEntryForm.distance_miles * mileageEntryForm.rate).toFixed(2))
+    addMileageEntry({ ...mileageEntryForm, amount, status: 'pending', approved_by: null })
+    setShowMileageEntryModal(false)
+    setMileageEntryForm({ employee_id: '', date: '', start_location: '', end_location: '', distance_miles: 0, rate: 0.67, purpose: '', vehicle_type: 'personal', trip_type: 'one_way' })
+  }
+
+  // ---- Advanced Policy CRUD ----
+  function submitAdvancedPolicy() {
+    if (!advancedPolicyForm.name) return
+    addAdvancedExpensePolicy({ ...advancedPolicyForm })
+    setShowAdvancedPolicyModal(false)
+    setAdvancedPolicyForm({ name: '', is_active: true, applies_to: 'all', rules: [{ field: 'amount', operator: '>', value: 0, action: 'warn' }] })
+  }
+
+  // ---- Reimbursement Batch ----
+  function submitReimbursementBatch() {
+    if (selectedReimbursementIds.size === 0) return
+    const selectedReports = approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id))
+    const totalAmount = selectedReports.reduce((a: number, r: any) => a + r.total_amount, 0)
+    const items = selectedReports.map((r: any) => ({
+      id: `ri-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      expense_report_id: r.id,
+      employee_id: r.employee_id,
+      amount: r.total_amount,
+      currency: r.currency || 'USD',
+      status: 'pending' as const,
+      notes: r.title,
+    }))
+    addReimbursementBatch({
+      status: 'pending',
+      method: reimbursementMethod,
+      total_amount: totalAmount,
+      currency: 'USD',
+      employee_count: new Set(selectedReports.map((r: any) => r.employee_id)).size,
+      processed_at: null,
+      payroll_run_id: null,
+      items,
+    })
+    setShowReimbursementModal(false)
+    setSelectedReimbursementIds(new Set())
+  }
 
   // ---- Bulk Expense Approval Memos ----
   const pendingExpenseReports = useMemo(() => {
@@ -534,6 +694,89 @@ export default function ExpensePage() {
               })}
             </div>
           </Card>
+
+          {/* Duplicate Detection */}
+          {duplicateDetections.length > 0 && (
+            <Card padding="none" className="mt-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Copy size={16} className="text-amber-500" />
+                    <CardTitle>Duplicate Detection</CardTitle>
+                    <Badge variant="warning">{duplicateStats.flagged} flagged</Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-t3">
+                    <span>{duplicateStats.confirmed} confirmed</span>
+                    <span>{duplicateStats.dismissed} dismissed</span>
+                    <span className="text-emerald-600 font-medium">${duplicateStats.amountSaved.toLocaleString()} saved</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {duplicateDetections.map((dup: any) => (
+                  <div key={dup.id} className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${dup.status === 'flagged' ? 'bg-amber-50 dark:bg-amber-950/30' : dup.status === 'confirmed_duplicate' ? 'bg-red-50 dark:bg-red-950/30' : 'bg-gray-50 dark:bg-gray-800/30'}`}>
+                        <Copy size={16} className={dup.status === 'flagged' ? 'text-amber-500' : dup.status === 'confirmed_duplicate' ? 'text-red-500' : 'text-gray-400'} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-t1">{dup.expense_description}</span>
+                          <span className="text-xs text-t3">vs</span>
+                          <span className="text-xs font-medium text-t1">{dup.duplicate_description}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-t3">
+                          <span>{getEmployeeName(dup.employee_id)}</span>
+                          <span className="font-medium">{Math.round((dup.similarity || 0) * 100)}% similar</span>
+                          {dup.fields && (
+                            <span>Matching: {Object.entries(dup.fields).filter(([, v]) => v).map(([k]) => k).join(', ')}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-t1">${dup.expense_amount} / ${dup.duplicate_amount}</p>
+                      </div>
+                      <Badge variant={dup.status === 'flagged' ? 'warning' : dup.status === 'confirmed_duplicate' ? 'error' : 'default'}>
+                        {dup.status.replace('_', ' ')}
+                      </Badge>
+                      {dup.status === 'flagged' && (
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => updateDuplicateDetection(dup.id, { status: 'confirmed_duplicate', reviewed_by: currentEmployeeId })}>
+                            Confirm
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => updateDuplicateDetection(dup.id, { status: 'dismissed', reviewed_by: currentEmployeeId })}>
+                            Dismiss
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {showDuplicateDetail === dup.id && (
+                      <div className="mt-3 ml-12 grid grid-cols-2 gap-3">
+                        <div className="bg-canvas rounded-lg p-3 border border-border">
+                          <p className="text-[10px] uppercase text-t3 mb-1 font-medium">Original Expense</p>
+                          <p className="text-xs font-medium text-t1">{dup.expense_description}</p>
+                          <p className="text-xs text-t2">${dup.expense_amount}</p>
+                        </div>
+                        <div className="bg-canvas rounded-lg p-3 border border-border">
+                          <p className="text-[10px] uppercase text-t3 mb-1 font-medium">Potential Duplicate</p>
+                          <p className="text-xs font-medium text-t1">{dup.duplicate_description}</p>
+                          <p className="text-xs text-t2">${dup.duplicate_amount}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => setShowDuplicateDetail(showDuplicateDetail === dup.id ? null : dup.id)}
+                      className="ml-12 mt-1 text-[10px] text-tempo-600 hover:text-tempo-700"
+                    >
+                      {showDuplicateDetail === dup.id ? 'Hide details' : 'Show details'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </>
       )}
 
@@ -1107,6 +1350,518 @@ export default function ExpensePage() {
       )}
 
       {/* ============================================================ */}
+      {/* TAB: RECEIPT MANAGEMENT */}
+      {/* ============================================================ */}
+      {activeTab === 'receipt-management' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Receipts" value={receiptMatchStats.total} icon={<Receipt size={20} />} />
+            <StatCard label="Matched" value={receiptMatchStats.matched} change={`${receiptMatchStats.avgConfidence}% avg confidence`} changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label="Mismatches" value={receiptMatchStats.mismatches} change="Needs review" changeType={receiptMatchStats.mismatches > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Pending" value={receiptMatchStats.pending} change="AI processing" changeType="neutral" icon={<Clock size={20} />} />
+          </div>
+
+          {/* Bulk Upload Area */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Upload size={16} className="text-tempo-500" />
+              <span className="text-sm font-semibold text-t1">Bulk Receipt Upload</span>
+              <Badge variant="ai">AI-Powered</Badge>
+            </div>
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer">
+              <Upload size={32} className="mx-auto text-t3 mb-3" />
+              <p className="text-sm text-t2 mb-1">Drag & drop multiple receipts here</p>
+              <p className="text-xs text-t3">PNG, JPG, PDF supported. AI will auto-extract amount, vendor, and date.</p>
+            </div>
+          </Card>
+
+          {/* Mismatch Alerts */}
+          {receiptMatches.filter((r: any) => ['mismatch_amount', 'mismatch_vendor', 'mismatch_date'].includes(r.match_status)).length > 0 && (
+            <Card className="mb-6">
+              <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-amber-500" /> Mismatch Alerts
+              </h3>
+              <div className="space-y-2">
+                {receiptMatches.filter((r: any) => ['mismatch_amount', 'mismatch_vendor', 'mismatch_date'].includes(r.match_status)).map((match: any) => (
+                  <div key={match.id} className="flex items-center gap-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-lg px-4 py-3">
+                    <Badge variant="warning">{match.match_status.replace('mismatch_', '').replace('_', ' ')}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-t1">{match.extracted_vendor}</p>
+                      <p className="text-xs text-t3">{match.discrepancy_notes}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-semibold text-t1">${match.extracted_amount}</p>
+                      <p className="text-xs text-t3">{match.confidence ? `${Math.round(match.confidence * 100)}% confidence` : 'N/A'}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" onClick={() => updateReceiptMatch(match.id, { match_status: 'matched' })}>
+                        <CheckCircle size={12} /> Accept
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => updateReceiptMatch(match.id, { match_status: 'no_receipt' })}>
+                        <XCircle size={12} /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Receipt Match Table */}
+          <Card padding="none">
+            <CardHeader>
+              <CardTitle>Receipt Matching Results</CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Receipt</th>
+                    <th className="tempo-th text-left px-4 py-3">Vendor</th>
+                    <th className="tempo-th text-right px-4 py-3">Amount</th>
+                    <th className="tempo-th text-center px-4 py-3">Date</th>
+                    <th className="tempo-th text-center px-4 py-3">Confidence</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {receiptMatches.length === 0 ? (
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">No receipt matches yet</td></tr>
+                  ) : receiptMatches.map((match: any) => (
+                    <tr key={match.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-t3" />
+                          <span className="text-xs font-medium text-t1">{match.receipt_url?.split('/').pop() || 'Receipt'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2">{match.extracted_vendor || 'Unknown'}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${match.extracted_amount || 0}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-center">{match.extracted_date || 'N/A'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {match.confidence != null ? (
+                          <span className={`text-xs font-semibold ${match.confidence >= 0.9 ? 'text-emerald-600' : match.confidence >= 0.7 ? 'text-amber-600' : 'text-red-600'}`}>
+                            {Math.round(match.confidence * 100)}%
+                          </span>
+                        ) : <span className="text-xs text-t3">--</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={
+                          match.match_status === 'matched' ? 'success' :
+                          match.match_status === 'pending' ? 'warning' :
+                          match.match_status === 'no_receipt' ? 'error' : 'warning'
+                        }>
+                          {match.match_status.replace(/_/g, ' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {match.match_status === 'pending' && (
+                          <Button size="sm" variant="ghost" onClick={() => updateReceiptMatch(match.id, { match_status: 'matched', confidence: 0.95 })}>
+                            Match
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: MILEAGE */}
+      {/* ============================================================ */}
+      {activeTab === 'mileage' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Miles" value={`${mileageEntryStats.totalMiles.toFixed(1)} mi`} icon={<Navigation size={20} />} />
+            <StatCard label="Total Amount" value={`$${mileageEntryStats.totalAmount.toFixed(2)}`} change={`${mileageEntryStats.total} entries`} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label="Pending Approval" value={mileageEntryStats.pendingCount} change="Awaiting review" changeType={mileageEntryStats.pendingCount > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
+            <StatCard label="This Month" value={`${mileageEntryStats.monthlyMiles.toFixed(1)} mi`} change={`$${mileageEntryStats.monthlyAmount.toFixed(2)}`} changeType="neutral" icon={<Car size={20} />} />
+          </div>
+
+          {/* Monthly Mileage Summary */}
+          <Card className="mb-6">
+            <h3 className="text-sm font-semibold text-t1 mb-3">Monthly Summary</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-canvas rounded-lg p-4">
+                <p className="text-xs text-t3 mb-1">Approved This Month</p>
+                <p className="text-lg font-bold text-t1">{mileageEntries.filter((m: any) => m.status === 'approved' && m.date?.startsWith(new Date().toISOString().slice(0, 7))).length}</p>
+                <p className="text-xs text-emerald-600">$
+                  {mileageEntries.filter((m: any) => m.status === 'approved' && m.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((a: number, m: any) => a + m.amount, 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4">
+                <p className="text-xs text-t3 mb-1">IRS Rate (2026)</p>
+                <p className="text-lg font-bold text-t1">$0.67</p>
+                <p className="text-xs text-t3">per mile</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4">
+                <p className="text-xs text-t3 mb-1">Avg Trip Distance</p>
+                <p className="text-lg font-bold text-t1">
+                  {mileageEntries.length > 0 ? (mileageEntryStats.totalMiles / mileageEntries.length).toFixed(1) : 0} mi
+                </p>
+                <p className="text-xs text-t3">across {mileageEntries.length} trips</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Map Visualization Placeholder */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin size={16} className="text-tempo-500" />
+              <h3 className="text-sm font-semibold text-t1">Route Map</h3>
+              <Badge variant="default">Preview</Badge>
+            </div>
+            <div className="bg-canvas rounded-lg p-8 text-center border border-dashed border-border">
+              <Globe size={48} className="mx-auto text-t3 mb-3 opacity-50" />
+              <p className="text-sm text-t2 mb-1">Route visualization</p>
+              <p className="text-xs text-t3">Map integration showing trip routes will be available in the next release</p>
+            </div>
+          </Card>
+
+          {/* Mileage Log Table */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Mileage Log</CardTitle>
+                <Button size="sm" onClick={() => { setMileageEntryForm({ employee_id: employees[0]?.id || '', date: '', start_location: '', end_location: '', distance_miles: 0, rate: 0.67, purpose: '', vehicle_type: 'personal', trip_type: 'one_way' }); setShowMileageEntryModal(true) }}>
+                  <Plus size={14} /> Add Entry
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Employee</th>
+                    <th className="tempo-th text-left px-4 py-3">Date</th>
+                    <th className="tempo-th text-left px-4 py-3">Route</th>
+                    <th className="tempo-th text-right px-4 py-3">Distance</th>
+                    <th className="tempo-th text-right px-4 py-3">Amount</th>
+                    <th className="tempo-th text-center px-4 py-3">Vehicle</th>
+                    <th className="tempo-th text-center px-4 py-3">Trip</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {mileageEntries.length === 0 ? (
+                    <tr><td colSpan={9} className="px-6 py-12 text-center text-xs text-t3">No mileage entries</td></tr>
+                  ) : mileageEntries.map((entry: any) => (
+                    <tr key={entry.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={getEmployeeName(entry.employee_id)} size="sm" />
+                          <span className="text-xs font-medium text-t1">{getEmployeeName(entry.employee_id)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2">{entry.date}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 text-xs text-t2">
+                          <span>{entry.start_location}</span>
+                          <ArrowRight size={10} className="text-t3 shrink-0" />
+                          <span>{entry.end_location}</span>
+                        </div>
+                        {entry.purpose && <p className="text-[10px] text-t3 mt-0.5">{entry.purpose}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{entry.distance_miles} mi</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${entry.amount?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="default">{entry.vehicle_type}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="default">{entry.trip_type?.replace('_', ' ')}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={entry.status === 'approved' ? 'success' : entry.status === 'rejected' ? 'error' : 'warning'}>
+                          {entry.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {entry.status === 'pending' && (
+                          <div className="flex gap-1 justify-center">
+                            <Button size="sm" variant="primary" onClick={() => updateMileageEntry(entry.id, { status: 'approved', approved_by: currentEmployeeId })}>
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => updateMileageEntry(entry.id, { status: 'rejected', approved_by: currentEmployeeId })}>
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: ADVANCED POLICIES */}
+      {/* ============================================================ */}
+      {activeTab === 'advanced-policies' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Policies" value={advancedExpensePolicies.filter((p: any) => p.is_active).length} icon={<Zap size={20} />} />
+            <StatCard label="Total Rules" value={advancedExpensePolicies.reduce((a: number, p: any) => a + (p.rules?.length || 0), 0)} change="Across all policies" changeType="neutral" icon={<Shield size={20} />} />
+            <StatCard label="Violations Caught" value={advancedPolicyViolationLog.length} change={`$${advancedPolicyViolationLog.reduce((a, v) => a + v.amount, 0).toLocaleString()} flagged`} changeType={advancedPolicyViolationLog.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Blocked Amount" value={`$${advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0).toLocaleString()}`} change="Prevented overspend" changeType="positive" icon={<XCircle size={20} />} />
+          </div>
+
+          {/* Policy Rules Builder */}
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Policy Rules</CardTitle>
+                <Button size="sm" onClick={() => { setAdvancedPolicyForm({ name: '', is_active: true, applies_to: 'all', rules: [{ field: 'amount', operator: '>', value: 0, action: 'warn' }] }); setShowAdvancedPolicyModal(true) }}>
+                  <Plus size={14} /> Add Policy
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="divide-y divide-divider">
+              {advancedExpensePolicies.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">No advanced policies configured</div>
+              ) : advancedExpensePolicies.map((policy: any) => (
+                <div key={policy.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${policy.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                      <span className="text-sm font-medium text-t1">{policy.name}</span>
+                      <Badge variant={policy.is_active ? 'success' : 'default'}>{policy.is_active ? 'Active' : 'Inactive'}</Badge>
+                      <Badge variant="default">Applies to: {policy.applies_to}</Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => updateAdvancedExpensePolicy(policy.id, { is_active: !policy.is_active })}>
+                        {policy.is_active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteAdvancedExpensePolicy(policy.id)}>
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
+                  </div>
+                  {policy.rules && (
+                    <div className="ml-5 space-y-1">
+                      {policy.rules.map((rule: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-t2 bg-canvas rounded px-3 py-1.5">
+                          <span className="font-medium text-t1">{rule.field}</span>
+                          <span className="text-t3">{rule.operator}</span>
+                          <span className="font-medium text-t1">{typeof rule.value === 'number' ? `$${rule.value}` : rule.value}</span>
+                          <ArrowRight size={10} className="text-t3" />
+                          <Badge variant={rule.action === 'block' ? 'error' : rule.action === 'warn' ? 'warning' : 'info'}>
+                            {rule.action.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Policy Violation Log */}
+          <Card padding="none" className="mb-6">
+            <CardHeader><CardTitle>Violation Log</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Employee</th>
+                    <th className="tempo-th text-left px-4 py-3">Expense</th>
+                    <th className="tempo-th text-left px-4 py-3">Policy</th>
+                    <th className="tempo-th text-left px-4 py-3">Rule Violated</th>
+                    <th className="tempo-th text-right px-4 py-3">Amount</th>
+                    <th className="tempo-th text-center px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {advancedPolicyViolationLog.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
+                      <CheckCircle2 size={20} className="inline text-emerald-500 mb-1" /><br />No policy violations detected
+                    </td></tr>
+                  ) : advancedPolicyViolationLog.map(v => (
+                    <tr key={v.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-xs font-medium text-t1">{v.employee}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{v.expense}</td>
+                      <td className="px-4 py-3 text-xs text-t1 font-medium">{v.policy}</td>
+                      <td className="px-4 py-3 text-xs text-t3">{v.rule}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${v.amount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={v.action === 'block' ? 'error' : v.action === 'warn' ? 'warning' : 'info'}>
+                          {v.action.replace('_', ' ')}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Policy Effectiveness */}
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-3">Policy Effectiveness</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-t1">{advancedPolicyViolationLog.length}</p>
+                <p className="text-xs text-t3 mt-1">Violations Caught</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-red-600">${advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0).toLocaleString()}</p>
+                <p className="text-xs text-t3 mt-1">Blocked Amount</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-amber-600">{advancedPolicyViolationLog.filter(v => v.action === 'warn').length}</p>
+                <p className="text-xs text-t3 mt-1">Warnings Issued</p>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB: REIMBURSEMENT */}
+      {/* ============================================================ */}
+      {activeTab === 'reimbursement' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total Batches" value={reimbursementStats.totalBatches} icon={<Layers size={20} />} />
+            <StatCard label="Completed" value={reimbursementStats.completedBatches} change={`$${reimbursementStats.totalReimbursed.toLocaleString()}`} changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label="Pending" value={reimbursementStats.pendingBatches} change={`$${reimbursementStats.pendingAmount.toLocaleString()}`} changeType={reimbursementStats.pendingBatches > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
+            <StatCard label="Awaiting Batch" value={approvedForReimbursement.length} change="Approved expenses" changeType="neutral" icon={<Banknote size={20} />} />
+          </div>
+
+          {/* Pending Reimbursements */}
+          {approvedForReimbursement.length > 0 && (
+            <Card padding="none" className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Pending Reimbursements</CardTitle>
+                  <Button size="sm" onClick={() => setShowReimbursementModal(true)}>
+                    <Plus size={14} /> Create Batch
+                  </Button>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {approvedForReimbursement.map((report: any) => (
+                  <div key={report.id} className="px-6 py-3 flex items-center gap-4">
+                    <Avatar name={getEmployeeName(report.employee_id)} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-t1">{report.title}</p>
+                      <p className="text-xs text-t3">{getEmployeeName(report.employee_id)} - Approved {report.approved_at ? new Date(report.approved_at).toLocaleDateString() : 'recently'}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
+                    <Badge variant="success">Approved</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Reimbursement Batches */}
+          <Card padding="none" className="mb-6">
+            <CardHeader><CardTitle>Reimbursement Batches</CardTitle></CardHeader>
+            <div className="divide-y divide-divider">
+              {reimbursementBatches.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-t3">No reimbursement batches</div>
+              ) : reimbursementBatches.map((batch: any) => (
+                <div key={batch.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={batch.status === 'completed' ? 'success' : batch.status === 'processing' ? 'info' : batch.status === 'failed' ? 'error' : 'warning'}>
+                        {batch.status}
+                      </Badge>
+                      <span className="text-sm font-semibold text-t1">${batch.total_amount.toLocaleString()}</span>
+                      <span className="text-xs text-t3">{batch.employee_count} employee{batch.employee_count !== 1 ? 's' : ''}</span>
+                      <Badge variant="default">{batch.method?.replace('_', ' ')}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {batch.processed_at && <span className="text-xs text-t3">Processed {new Date(batch.processed_at).toLocaleDateString()}</span>}
+                      {batch.status === 'pending' && (
+                        <Button size="sm" variant="primary" onClick={() => updateReimbursementBatch(batch.id, { status: 'processing' })}>
+                          Process
+                        </Button>
+                      )}
+                      {batch.status === 'processing' && (
+                        <Button size="sm" variant="primary" onClick={() => updateReimbursementBatch(batch.id, { status: 'completed', processed_at: new Date().toISOString() })}>
+                          Mark Complete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Batch Items */}
+                  {batch.items && batch.items.length > 0 && (
+                    <div className="ml-4 space-y-1">
+                      {batch.items.map((item: any) => (
+                        <div key={item.id} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                          <Avatar name={getEmployeeName(item.employee_id)} size="xs" />
+                          <span className="text-xs text-t1 flex-1">{getEmployeeName(item.employee_id)}</span>
+                          <span className="text-xs text-t3">{item.notes}</span>
+                          <span className="text-xs font-semibold text-t1">${item.amount.toLocaleString()}</span>
+                          <Badge variant={item.status === 'processed' ? 'success' : item.status === 'failed' ? 'error' : 'warning'} >{item.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Processing Progress */}
+                  {batch.status === 'processing' && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <RotateCcw size={12} className="text-tempo-500 animate-spin" />
+                        <span className="text-xs text-t2">Processing reimbursement...</span>
+                      </div>
+                      <Progress value={65} color="orange" size="sm" />
+                    </div>
+                  )}
+
+                  {/* Payroll Sync Indicator */}
+                  {batch.method === 'payroll' && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-tempo-600">
+                      <Banknote size={12} />
+                      <span>{batch.payroll_run_id ? 'Linked to payroll run' : 'Will sync with next payroll run'}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Historical Summary */}
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-3">Historical Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-t1">{reimbursementStats.totalBatches}</p>
+                <p className="text-xs text-t3 mt-1">Total Batches</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-600">${reimbursementStats.totalReimbursed.toLocaleString()}</p>
+                <p className="text-xs text-t3 mt-1">Total Reimbursed</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-amber-600">${reimbursementStats.pendingAmount.toLocaleString()}</p>
+                <p className="text-xs text-t3 mt-1">Pending Amount</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-t1">
+                  {reimbursementBatches.reduce((a: number, b: any) => a + (b.employee_count || 0), 0)}
+                </p>
+                <p className="text-xs text-t3 mt-1">Employees Reimbursed</p>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
       {/* MODALS */}
       {/* ============================================================ */}
 
@@ -1465,6 +2220,242 @@ export default function ExpensePage() {
             >
               <CheckCircle size={14} />
               {bulkExpAction === 'approve' ? 'Approve' : 'Reject'} {bulkExpSelectedReports.length} Report{bulkExpSelectedReports.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mileage Entry Modal */}
+      <Modal open={showMileageEntryModal} onClose={() => setShowMileageEntryModal(false)} title="New Mileage Entry" size="lg">
+        <div className="space-y-4">
+          <Select label="Employee" value={mileageEntryForm.employee_id}
+            onChange={e => setMileageEntryForm({ ...mileageEntryForm, employee_id: e.target.value })}
+            options={employees.slice(0, 20).map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
+          <Input label="Date" type="date" value={mileageEntryForm.date}
+            onChange={e => setMileageEntryForm({ ...mileageEntryForm, date: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Location" value={mileageEntryForm.start_location} placeholder="e.g., Lagos Office"
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, start_location: e.target.value })} />
+            <Input label="End Location" value={mileageEntryForm.end_location} placeholder="e.g., Client Site"
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, end_location: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Input label="Distance (miles)" type="number" value={mileageEntryForm.distance_miles || ''}
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, distance_miles: Number(e.target.value) })} />
+            <Input label="Rate ($/mile)" type="number" value={mileageEntryForm.rate}
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, rate: Number(e.target.value) })} />
+            <div>
+              <label className="block text-xs font-medium text-t2 mb-1">Calculated Amount</label>
+              <p className="px-3 py-2 text-sm font-semibold text-t1 bg-canvas rounded-lg border border-border">
+                ${(mileageEntryForm.distance_miles * mileageEntryForm.rate).toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <Textarea label="Purpose" value={mileageEntryForm.purpose} placeholder="Business purpose for the trip"
+            onChange={e => setMileageEntryForm({ ...mileageEntryForm, purpose: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Vehicle Type" value={mileageEntryForm.vehicle_type}
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, vehicle_type: e.target.value })}
+              options={[{ value: 'personal', label: 'Personal Vehicle' }, { value: 'company', label: 'Company Vehicle' }]} />
+            <Select label="Trip Type" value={mileageEntryForm.trip_type}
+              onChange={e => setMileageEntryForm({ ...mileageEntryForm, trip_type: e.target.value })}
+              options={[{ value: 'one_way', label: 'One Way' }, { value: 'round_trip', label: 'Round Trip' }]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowMileageEntryModal(false)}>Cancel</Button>
+            <Button onClick={submitMileageEntry}>Add Entry</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Advanced Policy Modal */}
+      <Modal open={showAdvancedPolicyModal} onClose={() => setShowAdvancedPolicyModal(false)} title="New Expense Policy" size="lg">
+        <div className="space-y-4">
+          <Input label="Policy Name" value={advancedPolicyForm.name} placeholder="e.g., Maximum Meal Expense"
+            onChange={e => setAdvancedPolicyForm({ ...advancedPolicyForm, name: e.target.value })} />
+          <Select label="Applies To" value={advancedPolicyForm.applies_to}
+            onChange={e => setAdvancedPolicyForm({ ...advancedPolicyForm, applies_to: e.target.value })}
+            options={[
+              { value: 'all', label: 'All Employees' },
+              { value: 'department', label: 'Specific Department' },
+              { value: 'role', label: 'Specific Role' },
+              { value: 'level', label: 'Specific Level' },
+            ]} />
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-t1">Rules</label>
+              <Button size="sm" variant="secondary" onClick={() => setAdvancedPolicyForm({
+                ...advancedPolicyForm,
+                rules: [...advancedPolicyForm.rules, { field: 'amount', operator: '>', value: 0, action: 'warn' }]
+              })}>
+                <Plus size={12} /> Add Rule
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {advancedPolicyForm.rules.map((rule, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-3">
+                    <Select label={index === 0 ? 'Field' : undefined} value={rule.field}
+                      onChange={e => {
+                        const updated = [...advancedPolicyForm.rules]
+                        updated[index] = { ...rule, field: e.target.value }
+                        setAdvancedPolicyForm({ ...advancedPolicyForm, rules: updated })
+                      }}
+                      options={[
+                        { value: 'amount', label: 'Amount' },
+                        { value: 'category', label: 'Category' },
+                        { value: 'vendor', label: 'Vendor' },
+                      ]} />
+                  </div>
+                  <div className="col-span-2">
+                    <Select label={index === 0 ? 'Operator' : undefined} value={rule.operator}
+                      onChange={e => {
+                        const updated = [...advancedPolicyForm.rules]
+                        updated[index] = { ...rule, operator: e.target.value }
+                        setAdvancedPolicyForm({ ...advancedPolicyForm, rules: updated })
+                      }}
+                      options={[
+                        { value: '>', label: '>' },
+                        { value: '<', label: '<' },
+                        { value: '=', label: '=' },
+                        { value: 'contains', label: 'contains' },
+                      ]} />
+                  </div>
+                  <div className="col-span-3">
+                    <Input label={index === 0 ? 'Value' : undefined} type={rule.field === 'amount' ? 'number' : 'text'}
+                      value={rule.value}
+                      onChange={e => {
+                        const updated = [...advancedPolicyForm.rules]
+                        updated[index] = { ...rule, value: rule.field === 'amount' ? Number(e.target.value) : e.target.value }
+                        setAdvancedPolicyForm({ ...advancedPolicyForm, rules: updated })
+                      }} />
+                  </div>
+                  <div className="col-span-3">
+                    <Select label={index === 0 ? 'Action' : undefined} value={rule.action}
+                      onChange={e => {
+                        const updated = [...advancedPolicyForm.rules]
+                        updated[index] = { ...rule, action: e.target.value }
+                        setAdvancedPolicyForm({ ...advancedPolicyForm, rules: updated })
+                      }}
+                      options={[
+                        { value: 'block', label: 'Block' },
+                        { value: 'warn', label: 'Warn' },
+                        { value: 'require_approval', label: 'Require Approval' },
+                      ]} />
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      onClick={() => {
+                        if (advancedPolicyForm.rules.length <= 1) return
+                        setAdvancedPolicyForm({ ...advancedPolicyForm, rules: advancedPolicyForm.rules.filter((_, i) => i !== index) })
+                      }}
+                      disabled={advancedPolicyForm.rules.length <= 1}
+                      className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAdvancedPolicyModal(false)}>Cancel</Button>
+            <Button onClick={submitAdvancedPolicy}>Create Policy</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reimbursement Batch Modal */}
+      <Modal open={showReimbursementModal} onClose={() => { setShowReimbursementModal(false); setSelectedReimbursementIds(new Set()) }} title="Create Reimbursement Batch" size="lg">
+        <div className="space-y-4">
+          <Select label="Reimbursement Method" value={reimbursementMethod}
+            onChange={e => setReimbursementMethod(e.target.value as 'payroll' | 'direct_deposit' | 'manual')}
+            options={[
+              { value: 'payroll', label: 'Payroll Sync' },
+              { value: 'direct_deposit', label: 'Direct Deposit' },
+              { value: 'manual', label: 'Manual' },
+            ]} />
+
+          {reimbursementMethod === 'payroll' && (
+            <div className="flex items-center gap-2 p-3 bg-tempo-50/50 dark:bg-tempo-950/20 rounded-lg border border-tempo-200 dark:border-tempo-800/30">
+              <Banknote size={14} className="text-tempo-600" />
+              <span className="text-xs text-tempo-700">Reimbursement will be included in the next payroll run</span>
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-t1">Select Approved Expenses ({selectedReimbursementIds.size} selected)</label>
+              {approvedForReimbursement.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (selectedReimbursementIds.size === approvedForReimbursement.length) {
+                      setSelectedReimbursementIds(new Set())
+                    } else {
+                      setSelectedReimbursementIds(new Set(approvedForReimbursement.map((r: any) => r.id)))
+                    }
+                  }}
+                  className="text-xs text-tempo-600 hover:text-tempo-700 font-medium"
+                >
+                  {selectedReimbursementIds.size === approvedForReimbursement.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
+            </div>
+            <div className="max-h-[280px] overflow-y-auto border border-border rounded-lg divide-y divide-divider">
+              {approvedForReimbursement.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-t3">No approved expenses awaiting reimbursement</div>
+              ) : approvedForReimbursement.map((report: any) => {
+                const isSelected = selectedReimbursementIds.has(report.id)
+                return (
+                  <div
+                    key={report.id}
+                    onClick={() => {
+                      const next = new Set(selectedReimbursementIds)
+                      if (next.has(report.id)) next.delete(report.id)
+                      else next.add(report.id)
+                      setSelectedReimbursementIds(next)
+                    }}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-canvas transition-colors',
+                      isSelected ? 'bg-tempo-50/50' : ''
+                    )}
+                  >
+                    <div className={cn(
+                      'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                      isSelected ? 'bg-tempo-600 border-tempo-600' : 'border-border'
+                    )}>
+                      {isSelected && <CheckCircle size={12} className="text-white" />}
+                    </div>
+                    <Avatar name={getEmployeeName(report.employee_id)} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1 truncate">{report.title}</p>
+                      <p className="text-xs text-t3">{getEmployeeName(report.employee_id)}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-t1 shrink-0">${report.total_amount.toLocaleString()}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedReimbursementIds.size > 0 && (
+            <div className="rounded-lg p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                {selectedReimbursementIds.size} expense{selectedReimbursementIds.size !== 1 ? 's' : ''} selected for reimbursement
+              </p>
+              <p className="text-xs mt-1 text-emerald-700 dark:text-emerald-400">
+                Total: ${approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id)).reduce((a: number, r: any) => a + r.total_amount, 0).toLocaleString()} via {reimbursementMethod.replace('_', ' ')}
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="secondary" onClick={() => { setShowReimbursementModal(false); setSelectedReimbursementIds(new Set()) }}>Cancel</Button>
+            <Button onClick={submitReimbursementBatch} disabled={selectedReimbursementIds.size === 0}>
+              <Banknote size={14} /> Create Batch
             </Button>
           </div>
         </div>

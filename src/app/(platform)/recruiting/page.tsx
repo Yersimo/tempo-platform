@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search } from 'lucide-react'
+import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search, Shield, Gift, HelpCircle, CalendarClock, Trash2, GripVertical, Link2, User, Award, TrendingUp } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
@@ -26,13 +26,18 @@ export default function RecruitingPage() {
     jobPostings, applications, employees, departments,
     addJobPosting, updateJobPosting,
     addApplication, updateApplication,
-    getDepartmentName,
+    getDepartmentName, getEmployeeName,
     careerSiteConfig, jobDistributions, updateCareerSiteConfig, addJobDistribution,
     interviews, talentPools, scoreCards,
     addInterview, updateInterview,
     addTalentPool, updateTalentPool,
     addScoreCard, updateScoreCard,
     offers, addOffer, updateOffer,
+    backgroundChecks, addBackgroundCheck, updateBackgroundCheck,
+    referralProgram, updateReferralProgram,
+    referrals, addReferral, updateReferral,
+    knockoutQuestions, addKnockoutQuestion, updateKnockoutQuestion, deleteKnockoutQuestion,
+    candidateScheduling, addCandidateScheduling, updateCandidateScheduling,
     addToast,
   } = useTempo()
 
@@ -127,6 +132,50 @@ export default function RecruitingPage() {
   // Scorecard view
   const [selectedCandidateForSC, setSelectedCandidateForSC] = useState<string | null>(null)
 
+  // Background Check modal
+  const [showBGCheckModal, setShowBGCheckModal] = useState(false)
+  const [bgCheckForm, setBGCheckForm] = useState({
+    application_id: '',
+    candidate_name: '',
+    candidate_email: '',
+    type: 'criminal' as string,
+    provider: 'checkr' as string,
+  })
+
+  // Referral modal
+  const [showReferralModal, setShowReferralModal] = useState(false)
+  const [referralForm, setReferralForm] = useState({
+    candidate_name: '',
+    candidate_email: '',
+    job_id: '',
+    notes: '',
+  })
+
+  // Knockout question modal
+  const [showKQModal, setShowKQModal] = useState(false)
+  const [kqForm, setKQForm] = useState({
+    job_id: '',
+    question: '',
+    type: 'yes_no' as string,
+    options: '' as string,
+    correct_answer: '',
+    is_required: true,
+    eliminate_on_wrong: true,
+  })
+
+  // Scheduling modal
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({
+    application_id: '',
+    interview_type: 'Technical Interview',
+    interviewer_ids: [] as string[],
+    slots: [{ date: '', startTime: '', endTime: '' }],
+  })
+
+  // Candidate portal preview
+  const [showPortalPreview, setShowPortalPreview] = useState(false)
+  const [portalCandidateId, setPortalCandidateId] = useState<string | null>(null)
+
   const openPositions = jobPostings.filter(j => j.status === 'open').length
   const totalApplicants = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)
   const inInterview = applications.filter(a => a.stage === 'interview' || a.status === 'interview').length
@@ -137,6 +186,8 @@ export default function RecruitingPage() {
     { id: 'pipeline', label: t('tabPipeline'), count: applications.length },
     { id: 'career_site', label: t('careerSite') },
     { id: 'interviews', label: t('tabInterviews'), count: interviews.length },
+    { id: 'bg_checks', label: 'Background Checks', count: backgroundChecks.length },
+    { id: 'referrals', label: 'Referral Hub', count: referrals.length },
     { id: 'talent_pool', label: t('tabTalentPool'), count: talentPools.reduce((a, p) => a + (p.candidates?.length || 0), 0) },
     { id: 'scorecards', label: t('tabScorecards'), count: scoreCards.length },
     { id: 'dei', label: t('tabDEI') },
@@ -508,6 +559,17 @@ export default function RecruitingPage() {
             )}
             {activeTab === 'interviews' && (
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => {
+                  setScheduleForm({
+                    application_id: applications.find(a => a.stage !== 'rejected' && a.stage !== 'hired')?.id || '',
+                    interview_type: 'Technical Interview',
+                    interviewer_ids: [],
+                    slots: [{ date: '', startTime: '', endTime: '' }],
+                  })
+                  setShowScheduleModal(true)
+                }}>
+                  <CalendarClock size={14} /> Send Scheduling Link
+                </Button>
                 <Button size="sm" variant="outline" onClick={openAIQuestions}>
                   <MessageSquare size={14} /> {t('aiInterviewQuestions')}
                 </Button>
@@ -515,6 +577,29 @@ export default function RecruitingPage() {
                   <Plus size={14} /> {t('scheduleInterview')}
                 </Button>
               </div>
+            )}
+            {activeTab === 'bg_checks' && (
+              <Button size="sm" onClick={() => {
+                const firstApp = applications[0]
+                setBGCheckForm({
+                  application_id: firstApp?.id || '',
+                  candidate_name: firstApp?.candidate_name || '',
+                  candidate_email: firstApp?.candidate_email || '',
+                  type: 'criminal',
+                  provider: 'checkr',
+                })
+                setShowBGCheckModal(true)
+              }}>
+                <Plus size={14} /> Request Check
+              </Button>
+            )}
+            {activeTab === 'referrals' && (
+              <Button size="sm" onClick={() => {
+                setReferralForm({ candidate_name: '', candidate_email: '', job_id: jobPostings.find(j => j.status === 'open')?.id || '', notes: '' })
+                setShowReferralModal(true)
+              }}>
+                <Plus size={14} /> Submit Referral
+              </Button>
             )}
             {activeTab === 'talent_pool' && (
               <Button size="sm" onClick={openNewPool}>
@@ -582,6 +667,44 @@ export default function RecruitingPage() {
                   </div>
                 </div>
               )}
+              {/* Screening Questions */}
+              {(() => {
+                const jobKQs = knockoutQuestions.filter(q => q.job_id === job.id)
+                return jobKQs.length > 0 ? (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[0.6rem] text-t3 uppercase flex items-center gap-1">
+                        <HelpCircle size={10} /> Screening Questions ({jobKQs.length})
+                      </p>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setKQForm({ job_id: job.id, question: '', type: 'yes_no', options: '', correct_answer: '', is_required: true, eliminate_on_wrong: true })
+                        setShowKQModal(true)
+                      }}>
+                        <Plus size={10} />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      {jobKQs.sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).slice(0, 3).map(q => (
+                        <div key={q.id} className="flex items-center gap-2 text-[0.6rem]">
+                          <span className="text-t2 truncate flex-1">{q.question}</span>
+                          {q.eliminate_on_wrong && <Badge variant="error">Knockout</Badge>}
+                          <button onClick={() => deleteKnockoutQuestion(q.id)} className="text-t3 hover:text-red-500 transition-colors">
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      ))}
+                      {jobKQs.length > 3 && <p className="text-[0.6rem] text-t3">+{jobKQs.length - 3} more</p>}
+                    </div>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="ghost" className="mb-3 text-xs" onClick={() => {
+                    setKQForm({ job_id: job.id, question: '', type: 'yes_no', options: '', correct_answer: '', is_required: true, eliminate_on_wrong: true })
+                    setShowKQModal(true)
+                  }}>
+                    <HelpCircle size={12} /> Add Screening Questions
+                  </Button>
+                )
+              })()}
               <div className="flex items-center justify-between pt-2 border-t border-divider">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-t3">{(job.application_count || 0) !== 1 ? t('applicantCountPlural', { count: job.application_count || 0 }) : t('applicantCount', { count: job.application_count || 0 })}</span>
@@ -890,6 +1013,385 @@ export default function RecruitingPage() {
                     </div>
                   ))}
                 </div>
+              </Card>
+
+              {/* Self-Scheduling */}
+              <Card>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
+                    <CalendarClock size={16} className="text-tempo-600" /> Self-Scheduling
+                  </h3>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setScheduleForm({
+                      application_id: applications.find(a => a.stage !== 'rejected' && a.stage !== 'hired')?.id || '',
+                      interview_type: 'Technical Interview',
+                      interviewer_ids: [],
+                      slots: [{ date: '', startTime: '', endTime: '' }],
+                    })
+                    setShowScheduleModal(true)
+                  }}>
+                    <Plus size={12} /> Send Link
+                  </Button>
+                </div>
+                {candidateScheduling.length === 0 ? (
+                  <p className="text-xs text-t3 text-center py-4">No scheduling links sent yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {candidateScheduling.map(cs => {
+                      const app = applications.find(a => a.id === cs.application_id)
+                      return (
+                        <div key={cs.id} className="p-2 bg-canvas rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-medium text-t1">{app?.candidate_name || 'Unknown'}</p>
+                            <Badge variant={
+                              cs.status === 'confirmed' ? 'success' :
+                              cs.status === 'candidate_selected' ? 'info' :
+                              cs.status === 'cancelled' ? 'error' : 'default'
+                            }>
+                              {(cs.status || '').replace(/_/g, ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-[0.6rem] text-t3">{cs.interview_type}</p>
+                          {cs.selected_slot && (
+                            <p className="text-[0.6rem] text-tempo-600 font-medium mt-1">
+                              Selected: {(cs.selected_slot as { date: string; startTime: string; endTime: string }).date} {(cs.selected_slot as { date: string; startTime: string; endTime: string }).startTime}-{(cs.selected_slot as { date: string; startTime: string; endTime: string }).endTime}
+                            </p>
+                          )}
+                          {cs.status === 'candidate_selected' && (
+                            <Button size="sm" variant="secondary" className="mt-1 w-full" onClick={() => {
+                              updateCandidateScheduling(cs.id, { status: 'confirmed', meeting_url: 'https://meet.google.com/new-meeting' })
+                              if (app) {
+                                const slot = cs.selected_slot as { date: string; startTime: string; endTime: string }
+                                addInterview({
+                                  application_id: cs.application_id,
+                                  job_id: app.job_id,
+                                  candidate_name: app.candidate_name,
+                                  interviewer_id: (cs.interviewer_ids as string[])[0] || 'emp-17',
+                                  interviewer_name: getEmployeeName((cs.interviewer_ids as string[])[0] || 'emp-17'),
+                                  type: 'technical',
+                                  scheduled_at: `${slot.date}T${slot.startTime}:00Z`,
+                                  duration_min: 60,
+                                  kit_name: cs.interview_type,
+                                  status: 'scheduled',
+                                  score: null,
+                                  feedback: null,
+                                })
+                              }
+                              addToast('Interview confirmed and created!')
+                            }}>
+                              <Check size={12} /> Confirm
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              {/* Candidate Portal Preview */}
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <User size={16} className="text-tempo-600" /> Candidate Portal
+                </h3>
+                <p className="text-xs text-t3 mb-3">Preview what candidates see in their portal - job details, application status, and scheduled interviews.</p>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => { setPortalCandidateId(null); setShowPortalPreview(true) }}>
+                  <Eye size={12} /> Preview Portal
+                </Button>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== BACKGROUND CHECKS TAB ========== */}
+      {activeTab === 'bg_checks' && (
+        <div className="space-y-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <StatCard label="Total Checks" value={backgroundChecks.length} icon={<Shield size={20} />} />
+            <StatCard label="Pending" value={backgroundChecks.filter(bc => bc.status === 'pending').length} icon={<Clock size={20} />} />
+            <StatCard label="In Progress" value={backgroundChecks.filter(bc => bc.status === 'in_progress').length} icon={<ClipboardList size={20} />} />
+            <StatCard label="Completed" value={backgroundChecks.filter(bc => bc.status === 'completed').length} icon={<CheckCircle2 size={20} />} />
+            <StatCard label="Flagged" value={backgroundChecks.filter(bc => bc.status === 'flagged').length} icon={<AlertCircle size={20} />} />
+          </div>
+
+          {/* Check List */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Active Background Checks</CardTitle>
+                <Button size="sm" onClick={() => {
+                  const firstApp = applications[0]
+                  setBGCheckForm({
+                    application_id: firstApp?.id || '',
+                    candidate_name: firstApp?.candidate_name || '',
+                    candidate_email: firstApp?.candidate_email || '',
+                    type: 'criminal',
+                    provider: 'checkr',
+                  })
+                  setShowBGCheckModal(true)
+                }}>
+                  <Plus size={14} /> Request Check
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Candidate</th>
+                    <th className="tempo-th text-left px-4 py-3">Type</th>
+                    <th className="tempo-th text-left px-4 py-3">Provider</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Result</th>
+                    <th className="tempo-th text-left px-4 py-3">Requested</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {backgroundChecks.length === 0 && (
+                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">No background checks requested yet</td></tr>
+                  )}
+                  {backgroundChecks.map(bc => (
+                    <tr key={bc.id} className={`hover:bg-canvas/50 ${bc.status === 'flagged' ? 'bg-red-50/50 dark:bg-red-950/20' : ''}`}>
+                      <td className="px-6 py-3">
+                        <p className="text-xs font-medium text-t1">{bc.candidate_name}</p>
+                        <p className="text-xs text-t3">{bc.candidate_email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge>{bc.type.replace(/_/g, ' ')}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2 capitalize">{bc.provider}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={
+                          bc.status === 'completed' ? 'success' :
+                          bc.status === 'in_progress' ? 'info' :
+                          bc.status === 'flagged' ? 'error' :
+                          bc.status === 'failed' ? 'error' : 'default'
+                        }>
+                          {bc.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {bc.result ? (
+                          <Badge variant={
+                            bc.result === 'clear' ? 'success' :
+                            bc.result === 'review_needed' ? 'warning' :
+                            bc.result === 'adverse' ? 'error' : 'default'
+                          }>
+                            {bc.result === 'clear' ? 'Clear' : bc.result === 'review_needed' ? 'Review Needed' : 'Adverse'}
+                          </Badge>
+                        ) : <span className="text-xs text-t3">--</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t3">{new Date(bc.requested_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex gap-1 justify-center">
+                          {bc.status === 'pending' && (
+                            <Button size="sm" variant="secondary" onClick={() => updateBackgroundCheck(bc.id, { status: 'in_progress' })}>
+                              Start
+                            </Button>
+                          )}
+                          {bc.status === 'in_progress' && (
+                            <Button size="sm" variant="secondary" onClick={() => updateBackgroundCheck(bc.id, { status: 'completed', result: 'clear', completed_at: new Date().toISOString() })}>
+                              Complete
+                            </Button>
+                          )}
+                          {bc.status === 'flagged' && (
+                            <Button size="sm" variant="outline" onClick={() => updateBackgroundCheck(bc.id, { status: 'completed', result: 'clear', notes: bc.notes + ' - Reviewed and cleared.' })}>
+                              Clear Flag
+                            </Button>
+                          )}
+                          {bc.report_url && (
+                            <Button size="sm" variant="ghost" onClick={() => addToast('Report opened in new tab')}>
+                              <ExternalLink size={12} />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Timeline for flagged checks */}
+          {backgroundChecks.filter(bc => bc.status === 'flagged' || bc.result === 'review_needed').length > 0 && (
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
+                <AlertCircle size={16} className="text-red-500" /> Checks Requiring Attention
+              </h3>
+              <div className="space-y-3">
+                {backgroundChecks.filter(bc => bc.status === 'flagged' || bc.result === 'review_needed').map(bc => (
+                  <div key={bc.id} className="p-3 bg-red-50/50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-800/30 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-t1">{bc.candidate_name}</p>
+                        <p className="text-xs text-t3">{bc.type.replace(/_/g, ' ')} check via {bc.provider}</p>
+                      </div>
+                      <Badge variant="error">{bc.result === 'review_needed' ? 'Review Needed' : 'Flagged'}</Badge>
+                    </div>
+                    {bc.notes && <p className="text-xs text-t2 mt-2">{bc.notes}</p>}
+                    <div className="flex items-center gap-4 mt-2 text-[0.6rem] text-t3">
+                      <span>Requested: {new Date(bc.requested_at).toLocaleDateString()}</span>
+                      {bc.completed_at && <span>Completed: {new Date(bc.completed_at).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ========== REFERRAL HUB TAB ========== */}
+      {activeTab === 'referrals' && (
+        <div className="space-y-6">
+          {/* Referral Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Total Referrals" value={referrals.length} icon={<Gift size={20} />} />
+            <StatCard label="Conversion Rate" value={`${referrals.length > 0 ? Math.round((referrals.filter(r => r.status === 'hired' || r.status === 'bonus_paid' || r.status === 'bonus_pending').length / referrals.length) * 100) : 0}%`} icon={<TrendingUp size={20} />} />
+            <StatCard label="Bonuses Paid" value={`$${referrals.filter(r => r.status === 'bonus_paid').reduce((sum, r) => sum + (r.bonus_amount || 0), 0).toLocaleString()}`} icon={<DollarSign size={20} />} />
+            <StatCard label="Pending Bonuses" value={referrals.filter(r => r.status === 'hired' || r.status === 'bonus_pending').length} icon={<Clock size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Program Config */}
+            <div className="space-y-4">
+              <Card>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-t1">Referral Program</h3>
+                  <Badge variant={referralProgram.is_active ? 'success' : 'default'}>
+                    {referralProgram.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-t2 mb-4">{referralProgram.description}</p>
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-t3">Bonus Amount</span>
+                    <span className="font-medium text-t1">${referralProgram.bonus_amount?.toLocaleString()} {referralProgram.currency}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-t3">Bonus Trigger</span>
+                    <span className="font-medium text-t1">{(referralProgram.bonus_trigger || '').replace(/_/g, ' ')}</span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => updateReferralProgram({ is_active: !referralProgram.is_active })}
+                >
+                  {referralProgram.is_active ? 'Deactivate Program' : 'Activate Program'}
+                </Button>
+              </Card>
+
+              {/* Leaderboard */}
+              <Card>
+                <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <Award size={16} className="text-tempo-600" /> Top Referrers
+                </h3>
+                <div className="space-y-2">
+                  {(() => {
+                    const referrerCounts: Record<string, { id: string; count: number; hired: number }> = {}
+                    referrals.forEach(r => {
+                      if (!referrerCounts[r.referrer_id]) referrerCounts[r.referrer_id] = { id: r.referrer_id, count: 0, hired: 0 }
+                      referrerCounts[r.referrer_id].count++
+                      if (r.status === 'hired' || r.status === 'bonus_paid' || r.status === 'bonus_pending') referrerCounts[r.referrer_id].hired++
+                    })
+                    return Object.values(referrerCounts)
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 5)
+                      .map((rc, idx) => (
+                        <div key={rc.id} className="flex items-center gap-3 p-2 bg-canvas rounded-lg">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>{idx + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-t1 truncate">{getEmployeeName(rc.id)}</p>
+                            <p className="text-[0.6rem] text-t3">{rc.count} referral{rc.count !== 1 ? 's' : ''} / {rc.hired} hired</p>
+                          </div>
+                        </div>
+                      ))
+                  })()}
+                </div>
+              </Card>
+            </div>
+
+            {/* Referral Pipeline */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-t1">Referral Pipeline</h3>
+                  <Button size="sm" onClick={() => {
+                    setReferralForm({ candidate_name: '', candidate_email: '', job_id: jobPostings.find(j => j.status === 'open')?.id || '', notes: '' })
+                    setShowReferralModal(true)
+                  }}>
+                    <Plus size={14} /> Submit Referral
+                  </Button>
+                </div>
+                {referrals.length === 0 ? (
+                  <p className="text-xs text-t3 text-center py-8">No referrals yet. Start referring great candidates!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {referrals.map(ref => {
+                      const job = jobPostings.find(j => j.id === ref.job_id)
+                      return (
+                        <div key={ref.id} className="p-3 bg-canvas rounded-lg">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-medium text-t1">{ref.candidate_name}</p>
+                              <p className="text-xs text-t3">{ref.candidate_email} - {job?.title || 'Unknown position'}</p>
+                            </div>
+                            <Badge variant={
+                              ref.status === 'bonus_paid' ? 'success' :
+                              ref.status === 'hired' || ref.status === 'bonus_pending' ? 'success' :
+                              ref.status === 'interviewing' ? 'info' :
+                              ref.status === 'reviewing' ? 'warning' :
+                              ref.status === 'rejected' ? 'error' : 'default'
+                            }>
+                              {ref.status.replace(/_/g, ' ')}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-[0.6rem] text-t3">
+                            <span>Referred by: {getEmployeeName(ref.referrer_id)}</span>
+                            <span>Submitted: {new Date(ref.submitted_at).toLocaleDateString()}</span>
+                            {ref.bonus_amount && ref.status === 'bonus_paid' && (
+                              <span className="text-green-600 font-medium">Bonus: ${ref.bonus_amount.toLocaleString()}</span>
+                            )}
+                          </div>
+                          {ref.notes && <p className="text-xs text-t2 mt-2">{ref.notes}</p>}
+                          <div className="flex gap-1 mt-2">
+                            {ref.status === 'submitted' && (
+                              <Button size="sm" variant="secondary" onClick={() => updateReferral(ref.id, { status: 'reviewing' })}>
+                                Start Review
+                              </Button>
+                            )}
+                            {ref.status === 'reviewing' && (
+                              <>
+                                <Button size="sm" variant="secondary" onClick={() => updateReferral(ref.id, { status: 'interviewing' })}>
+                                  Move to Interview
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => updateReferral(ref.id, { status: 'rejected' })}>
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {ref.status === 'interviewing' && (
+                              <Button size="sm" onClick={() => updateReferral(ref.id, { status: 'hired', bonus_amount: referralProgram.bonus_amount })}>
+                                Mark Hired
+                              </Button>
+                            )}
+                            {ref.status === 'hired' && (
+                              <Button size="sm" onClick={() => updateReferral(ref.id, { status: 'bonus_paid', bonus_paid_at: new Date().toISOString() })}>
+                                <DollarSign size={12} /> Pay Bonus
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </Card>
             </div>
           </div>
@@ -1949,6 +2451,410 @@ export default function RecruitingPage() {
               )}
             </div>
           </div>
+        </div>
+      </Modal>
+
+      {/* Background Check Modal */}
+      <Modal open={showBGCheckModal} onClose={() => setShowBGCheckModal(false)} title="Request Background Check" size="md">
+        <div className="space-y-4">
+          <Select
+            label="Candidate"
+            value={bgCheckForm.application_id}
+            onChange={(e) => {
+              const app = applications.find(a => a.id === e.target.value)
+              setBGCheckForm({
+                ...bgCheckForm,
+                application_id: e.target.value,
+                candidate_name: app?.candidate_name || '',
+                candidate_email: app?.candidate_email || '',
+              })
+            }}
+            options={applications.map(a => ({ value: a.id, label: `${a.candidate_name} (${a.candidate_email})` }))}
+          />
+          <Select
+            label="Check Type"
+            value={bgCheckForm.type}
+            onChange={(e) => setBGCheckForm({ ...bgCheckForm, type: e.target.value })}
+            options={[
+              { value: 'criminal', label: 'Criminal Record' },
+              { value: 'employment', label: 'Employment Verification' },
+              { value: 'education', label: 'Education Verification' },
+              { value: 'credit', label: 'Credit Check' },
+              { value: 'reference', label: 'Reference Check' },
+              { value: 'identity', label: 'Identity Verification' },
+            ]}
+          />
+          <Select
+            label="Provider"
+            value={bgCheckForm.provider}
+            onChange={(e) => setBGCheckForm({ ...bgCheckForm, provider: e.target.value })}
+            options={[
+              { value: 'checkr', label: 'Checkr' },
+              { value: 'goodhire', label: 'GoodHire' },
+              { value: 'internal', label: 'Internal' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBGCheckModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!bgCheckForm.application_id || !bgCheckForm.candidate_name) return
+              addBackgroundCheck({
+                application_id: bgCheckForm.application_id,
+                candidate_name: bgCheckForm.candidate_name,
+                candidate_email: bgCheckForm.candidate_email,
+                type: bgCheckForm.type,
+                provider: bgCheckForm.provider,
+                status: 'pending',
+                result: null,
+                report_url: null,
+                requested_by: 'emp-17',
+                completed_at: null,
+                notes: null,
+              })
+              setShowBGCheckModal(false)
+            }}>
+              <Shield size={14} /> Request Check
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Submit Referral Modal */}
+      <Modal open={showReferralModal} onClose={() => setShowReferralModal(false)} title="Submit Referral" size="md">
+        <div className="space-y-4">
+          <Input
+            label="Candidate Name"
+            placeholder="Full name of the referred candidate"
+            value={referralForm.candidate_name}
+            onChange={(e) => setReferralForm({ ...referralForm, candidate_name: e.target.value })}
+          />
+          <Input
+            label="Candidate Email"
+            type="email"
+            placeholder="candidate@email.com"
+            value={referralForm.candidate_email}
+            onChange={(e) => setReferralForm({ ...referralForm, candidate_email: e.target.value })}
+          />
+          <Select
+            label="Job Position"
+            value={referralForm.job_id}
+            onChange={(e) => setReferralForm({ ...referralForm, job_id: e.target.value })}
+            options={jobPostings.filter(j => j.status === 'open').map(j => ({ value: j.id, label: j.title }))}
+          />
+          <Textarea
+            label="Notes"
+            placeholder="How do you know this person? Why are they a good fit?"
+            rows={3}
+            value={referralForm.notes}
+            onChange={(e) => setReferralForm({ ...referralForm, notes: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowReferralModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!referralForm.candidate_name || !referralForm.candidate_email || !referralForm.job_id) return
+              addReferral({
+                referrer_id: 'emp-17',
+                candidate_name: referralForm.candidate_name,
+                candidate_email: referralForm.candidate_email,
+                job_id: referralForm.job_id,
+                status: 'submitted',
+                bonus_amount: null,
+                bonus_paid_at: null,
+                notes: referralForm.notes,
+              })
+              setShowReferralModal(false)
+            }}>
+              <Gift size={14} /> Submit Referral
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Knockout Question Modal */}
+      <Modal open={showKQModal} onClose={() => setShowKQModal(false)} title="Add Screening Question" size="md">
+        <div className="space-y-4">
+          <Select
+            label="Job Posting"
+            value={kqForm.job_id}
+            onChange={(e) => setKQForm({ ...kqForm, job_id: e.target.value })}
+            options={jobPostings.filter(j => j.status === 'open').map(j => ({ value: j.id, label: j.title }))}
+          />
+          <Textarea
+            label="Question"
+            placeholder="Enter the screening question..."
+            rows={2}
+            value={kqForm.question}
+            onChange={(e) => setKQForm({ ...kqForm, question: e.target.value })}
+          />
+          <Select
+            label="Question Type"
+            value={kqForm.type}
+            onChange={(e) => setKQForm({ ...kqForm, type: e.target.value })}
+            options={[
+              { value: 'yes_no', label: 'Yes / No' },
+              { value: 'multiple_choice', label: 'Multiple Choice' },
+              { value: 'numeric', label: 'Numeric (minimum value)' },
+            ]}
+          />
+          {kqForm.type === 'multiple_choice' && (
+            <Input
+              label="Options (comma-separated)"
+              placeholder="Option A, Option B, Option C"
+              value={kqForm.options}
+              onChange={(e) => setKQForm({ ...kqForm, options: e.target.value })}
+            />
+          )}
+          <Input
+            label={kqForm.type === 'numeric' ? 'Minimum Acceptable Value' : kqForm.type === 'yes_no' ? 'Correct Answer (yes/no)' : 'Correct Answer'}
+            placeholder={kqForm.type === 'numeric' ? '3' : kqForm.type === 'yes_no' ? 'yes' : 'Correct option'}
+            value={kqForm.correct_answer}
+            onChange={(e) => setKQForm({ ...kqForm, correct_answer: e.target.value })}
+          />
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-xs text-t1">
+              <input type="checkbox" checked={kqForm.is_required} onChange={(e) => setKQForm({ ...kqForm, is_required: e.target.checked })} className="rounded border-divider" />
+              Required
+            </label>
+            <label className="flex items-center gap-2 text-xs text-t1">
+              <input type="checkbox" checked={kqForm.eliminate_on_wrong} onChange={(e) => setKQForm({ ...kqForm, eliminate_on_wrong: e.target.checked })} className="rounded border-divider" />
+              Auto-reject on wrong answer
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowKQModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!kqForm.job_id || !kqForm.question || !kqForm.correct_answer) return
+              const jobKQs = knockoutQuestions.filter(q => q.job_id === kqForm.job_id)
+              addKnockoutQuestion({
+                job_id: kqForm.job_id,
+                question: kqForm.question,
+                type: kqForm.type,
+                options: kqForm.type === 'multiple_choice' ? kqForm.options.split(',').map(o => o.trim()) : null,
+                correct_answer: kqForm.correct_answer,
+                is_required: kqForm.is_required,
+                order_index: jobKQs.length,
+                eliminate_on_wrong: kqForm.eliminate_on_wrong,
+              })
+              setShowKQModal(false)
+            }}>
+              <HelpCircle size={14} /> Add Question
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Send Scheduling Link Modal */}
+      <Modal open={showScheduleModal} onClose={() => setShowScheduleModal(false)} title="Send Scheduling Link" size="lg">
+        <div className="space-y-4">
+          <Select
+            label="Candidate"
+            value={scheduleForm.application_id}
+            onChange={(e) => setScheduleForm({ ...scheduleForm, application_id: e.target.value })}
+            options={applications.filter(a => a.stage !== 'rejected' && a.stage !== 'hired').map(a => ({ value: a.id, label: `${a.candidate_name} (${a.candidate_email})` }))}
+          />
+          <Input
+            label="Interview Type"
+            placeholder="e.g., Technical Interview, Phone Screen"
+            value={scheduleForm.interview_type}
+            onChange={(e) => setScheduleForm({ ...scheduleForm, interview_type: e.target.value })}
+          />
+          <div>
+            <label className="text-xs font-medium text-t1 mb-2 block">Available Time Slots</label>
+            <div className="space-y-2">
+              {scheduleForm.slots.map((slot, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={slot.date}
+                    onChange={(e) => {
+                      const newSlots = [...scheduleForm.slots]
+                      newSlots[idx] = { ...newSlots[idx], date: e.target.value }
+                      setScheduleForm({ ...scheduleForm, slots: newSlots })
+                    }}
+                  />
+                  <Input
+                    type="time"
+                    value={slot.startTime}
+                    onChange={(e) => {
+                      const newSlots = [...scheduleForm.slots]
+                      newSlots[idx] = { ...newSlots[idx], startTime: e.target.value }
+                      setScheduleForm({ ...scheduleForm, slots: newSlots })
+                    }}
+                  />
+                  <span className="text-xs text-t3">to</span>
+                  <Input
+                    type="time"
+                    value={slot.endTime}
+                    onChange={(e) => {
+                      const newSlots = [...scheduleForm.slots]
+                      newSlots[idx] = { ...newSlots[idx], endTime: e.target.value }
+                      setScheduleForm({ ...scheduleForm, slots: newSlots })
+                    }}
+                  />
+                  {scheduleForm.slots.length > 1 && (
+                    <button
+                      onClick={() => setScheduleForm({ ...scheduleForm, slots: scheduleForm.slots.filter((_, i) => i !== idx) })}
+                      className="p-1 text-t3 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={() => setScheduleForm({ ...scheduleForm, slots: [...scheduleForm.slots, { date: '', startTime: '', endTime: '' }] })}>
+                <Plus size={12} /> Add Slot
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowScheduleModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!scheduleForm.application_id || scheduleForm.slots.filter(s => s.date && s.startTime && s.endTime).length === 0) return
+              const validSlots = scheduleForm.slots.filter(s => s.date && s.startTime && s.endTime)
+              addCandidateScheduling({
+                application_id: scheduleForm.application_id,
+                interview_type: scheduleForm.interview_type,
+                available_slots: validSlots,
+                selected_slot: null,
+                interviewer_ids: scheduleForm.interviewer_ids.length > 0 ? scheduleForm.interviewer_ids : ['emp-17'],
+                meeting_url: null,
+                status: 'slots_offered',
+                expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+              })
+              setShowScheduleModal(false)
+            }}>
+              <CalendarClock size={14} /> Send Scheduling Link
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Candidate Portal Preview Modal */}
+      <Modal open={showPortalPreview} onClose={() => setShowPortalPreview(false)} title="Candidate Portal Preview" size="lg">
+        <div className="space-y-4">
+          {!portalCandidateId ? (
+            <div>
+              <p className="text-xs text-t3 mb-3">Select a candidate to preview their portal experience:</p>
+              <div className="space-y-2">
+                {applications.slice(0, 5).map(app => {
+                  const job = jobPostings.find(j => j.id === app.job_id)
+                  return (
+                    <button
+                      key={app.id}
+                      onClick={() => setPortalCandidateId(app.id)}
+                      className="w-full flex items-center gap-3 p-3 bg-canvas rounded-lg hover:bg-canvas/70 transition-colors text-left"
+                    >
+                      <Avatar name={app.candidate_name} size="sm" />
+                      <div>
+                        <p className="text-xs font-medium text-t1">{app.candidate_name}</p>
+                        <p className="text-[0.6rem] text-t3">{job?.title || 'Unknown position'}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (() => {
+            const app = applications.find(a => a.id === portalCandidateId)
+            const job = app ? jobPostings.find(j => j.id === app.job_id) : null
+            const appInterviews = interviews.filter(i => i.application_id === portalCandidateId)
+            const appScheduling = candidateScheduling.filter(cs => cs.application_id === portalCandidateId)
+            if (!app) return <p className="text-xs text-t3">Candidate not found</p>
+            return (
+              <div className="space-y-4">
+                <button onClick={() => setPortalCandidateId(null)} className="text-xs text-tempo-600 hover:underline flex items-center gap-1">
+                  <ArrowRight size={12} className="rotate-180" /> Back to candidates
+                </button>
+
+                {/* Portal Header */}
+                <div className="bg-gradient-to-r from-tempo-600 to-tempo-700 rounded-lg p-4 text-white">
+                  <p className="text-xs opacity-75">Welcome back,</p>
+                  <h3 className="text-lg font-bold">{app.candidate_name}</h3>
+                  <p className="text-sm opacity-90">{job?.title || 'Position'}</p>
+                </div>
+
+                {/* Application Status */}
+                <div className="p-4 bg-canvas rounded-lg">
+                  <h4 className="text-xs font-semibold text-t1 mb-3">Application Status</h4>
+                  <div className="flex items-center gap-2">
+                    {['Applied', 'Screening', 'Interview', 'Assessment', 'Offer'].map((step, idx) => {
+                      const currentIdx = ['applied', 'screening', 'interview', 'assessment', 'offer'].indexOf((app.stage || app.status || 'applied').toLowerCase())
+                      const isActive = idx <= currentIdx
+                      return (
+                        <div key={step} className="flex items-center gap-2 flex-1">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[0.5rem] font-bold ${isActive ? 'bg-tempo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
+                            {isActive ? <Check size={10} /> : idx + 1}
+                          </div>
+                          <span className={`text-[0.6rem] ${isActive ? 'text-t1 font-medium' : 'text-t3'}`}>{step}</span>
+                          {idx < 4 && <div className={`flex-1 h-0.5 ${idx < currentIdx ? 'bg-tempo-600' : 'bg-gray-200 dark:bg-gray-700'}`} />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Job Details */}
+                {job && (
+                  <div className="p-4 bg-canvas rounded-lg">
+                    <h4 className="text-xs font-semibold text-t1 mb-2">Position Details</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-t3">Role:</span> <span className="text-t1">{job.title}</span></div>
+                      <div><span className="text-t3">Location:</span> <span className="text-t1">{job.location}</span></div>
+                      <div><span className="text-t3">Type:</span> <span className="text-t1">{(job.type || '').replace(/_/g, ' ')}</span></div>
+                      <div><span className="text-t3">Department:</span> <span className="text-t1">{getDepartmentName(job.department_id)}</span></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upcoming Interviews */}
+                {appInterviews.filter(i => i.status === 'scheduled').length > 0 && (
+                  <div className="p-4 bg-canvas rounded-lg">
+                    <h4 className="text-xs font-semibold text-t1 mb-2">Upcoming Interviews</h4>
+                    <div className="space-y-2">
+                      {appInterviews.filter(i => i.status === 'scheduled').map(intv => (
+                        <div key={intv.id} className="flex items-center gap-3 p-2 bg-white dark:bg-gray-900 rounded-lg">
+                          <Calendar size={14} className="text-tempo-600" />
+                          <div>
+                            <p className="text-xs font-medium text-t1">{intv.kit_name}</p>
+                            <p className="text-[0.6rem] text-t3">{new Date(intv.scheduled_at).toLocaleDateString()} at {new Date(intv.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {intv.duration_min} min</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Scheduling */}
+                {appScheduling.filter(cs => cs.status === 'slots_offered').length > 0 && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 rounded-lg">
+                    <h4 className="text-xs font-semibold text-t1 mb-2 flex items-center gap-2">
+                      <CalendarClock size={14} className="text-blue-600" /> Schedule Your Interview
+                    </h4>
+                    {appScheduling.filter(cs => cs.status === 'slots_offered').map(cs => (
+                      <div key={cs.id}>
+                        <p className="text-xs text-t2 mb-2">{cs.interview_type} - Please select a time slot:</p>
+                        <div className="space-y-1">
+                          {(cs.available_slots as Array<{ date: string; startTime: string; endTime: string }>).map((slot, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                updateCandidateScheduling(cs.id, { selected_slot: slot, status: 'candidate_selected' })
+                                addToast('Time slot selected! Awaiting confirmation.')
+                              }}
+                              className="w-full flex items-center gap-2 p-2 bg-white dark:bg-gray-900 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors text-left"
+                            >
+                              <Calendar size={12} className="text-blue-600" />
+                              <span className="text-xs text-t1">{slot.date} {slot.startTime} - {slot.endTime}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       </Modal>
     </>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef as useRefReact } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
@@ -22,7 +22,7 @@ import {
   BookOpen, Heart, UserPlus, Clock, DollarSign, FolderKanban,
   Star, Lightbulb, Calendar, Laptop, Play, FileText, Package,
   GraduationCap, Send, Sparkles, Timer, ChevronRight, User,
-  CheckSquare, Video, Coffee, MapPin
+  CheckSquare, Video, Coffee, MapPin, Upload, Download, AlertCircle, Table
 } from 'lucide-react'
 
 // ─── Platform Setup Wizard (preserved from original) ─────────────────
@@ -51,6 +51,12 @@ const setupSteps = [
     icon: <Users size={32} />,
     title: 'Invite Your Team',
     subtitle: 'Add team members to get started collaborating',
+  },
+  {
+    id: 'import',
+    icon: <Upload size={32} />,
+    title: 'Import Employees',
+    subtitle: 'Bulk import from CSV or skip to add them later',
   },
   {
     id: 'complete',
@@ -104,16 +110,166 @@ export default function OnboardingPage() {
     getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
 
-  // ─── Wizard State (preserved from original) ────────────────────────
+  // ─── Wizard State ────────────────────────────────────────────────
   const [showSetupWizard, setShowSetupWizard] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedModules, setSelectedModules] = useState<string[]>(['performance', 'people', 'analytics'])
   const [companySize, setCompanySize] = useState(org?.size || '')
   const [industry, setIndustry] = useState(org?.industry || '')
+  const [companyCountry, setCompanyCountry] = useState('')
+  const [defaultCurrency, setDefaultCurrency] = useState('USD')
   const [inviteEmails, setInviteEmails] = useState('')
   const [saving, setSaving] = useState(false)
   const [invitesSent, setInvitesSent] = useState(false)
   const [inviteError, setInviteError] = useState('')
+
+  // ─── CSV Import State ──────────────────────────────────────────────
+  const csvInputRef = useRefReact<HTMLInputElement>(null)
+  const [csvData, setCsvData] = useState<Array<Record<string, string>>>([])
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvColumnMap, setCsvColumnMap] = useState<Record<string, string>>({})
+  const [csvImportStatus, setCsvImportStatus] = useState<'idle' | 'preview' | 'mapping' | 'importing' | 'done'>('idle')
+  const [csvImportCount, setCsvImportCount] = useState(0)
+  const [csvErrors, setCsvErrors] = useState<string[]>([])
+
+  // ─── Progress Persistence ──────────────────────────────────────────
+  const WIZARD_STORAGE_KEY = 'tempo_onboarding_wizard'
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(WIZARD_STORAGE_KEY)
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (data.currentStep !== undefined) setCurrentStep(data.currentStep)
+        if (data.selectedModules) setSelectedModules(data.selectedModules)
+        if (data.companySize) setCompanySize(data.companySize)
+        if (data.industry) setIndustry(data.industry)
+        if (data.companyCountry) setCompanyCountry(data.companyCountry)
+        if (data.defaultCurrency) setDefaultCurrency(data.defaultCurrency)
+        if (data.showSetupWizard) setShowSetupWizard(true)
+      }
+    } catch {}
+  }, [])
+
+  const persistWizardState = useCallback((overrides?: Record<string, unknown>) => {
+    try {
+      localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
+        currentStep, selectedModules, companySize, industry,
+        companyCountry, defaultCurrency, showSetupWizard: true,
+        ...overrides,
+      }))
+    } catch {}
+  }, [currentStep, selectedModules, companySize, industry, companyCountry, defaultCurrency])
+
+  // ─── CSV Parser ────────────────────────────────────────────────────
+  const requiredFields = ['first_name', 'last_name', 'email']
+  const optionalFields = ['department', 'job_title', 'start_date', 'phone', 'location', 'manager_email', 'employee_id']
+  const allFieldOptions = [...requiredFields, ...optionalFields]
+
+  const parseCSV = useCallback((text: string) => {
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) { setCsvErrors(['CSV must have a header row and at least one data row']); return }
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+    setCsvHeaders(headers)
+    // Auto-map columns
+    const autoMap: Record<string, string> = {}
+    const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, '_')
+    headers.forEach(h => {
+      const norm = normalizeHeader(h)
+      const match = allFieldOptions.find(f => {
+        const fNorm = f.replace(/_/g, '')
+        const hNorm = norm.replace(/_/g, '')
+        return hNorm.includes(fNorm) || fNorm.includes(hNorm) || norm === f
+      })
+      if (match) autoMap[h] = match
+    })
+    setCsvColumnMap(autoMap)
+    const rows = lines.slice(1).filter(l => l.trim()).map(line => {
+      const values: string[] = []
+      let current = '', inQuotes = false
+      for (const char of line) {
+        if (char === '"') { inQuotes = !inQuotes }
+        else if (char === ',' && !inQuotes) { values.push(current.trim()); current = '' }
+        else { current += char }
+      }
+      values.push(current.trim())
+      const row: Record<string, string> = {}
+      headers.forEach((h, i) => { row[h] = values[i] || '' })
+      return row
+    })
+    setCsvData(rows)
+    setCsvImportStatus('preview')
+  }, [])
+
+  const handleCSVFile = useCallback((file: File) => {
+    setCsvErrors([])
+    const reader = new FileReader()
+    reader.onload = (e) => { parseCSV(e.target?.result as string) }
+    reader.readAsText(file)
+  }, [parseCSV])
+
+  const importCSVEmployees = useCallback(async () => {
+    setCsvImportStatus('importing')
+    setCsvErrors([])
+    const errors: string[] = []
+    let imported = 0
+
+    // Validate mapping has required fields
+    const mappedFields = Object.values(csvColumnMap)
+    const missingRequired = requiredFields.filter(f => !mappedFields.includes(f))
+    if (missingRequired.length > 0) {
+      setCsvErrors([`Missing required column mappings: ${missingRequired.join(', ')}`])
+      setCsvImportStatus('mapping')
+      return
+    }
+
+    const reverseMap: Record<string, string> = {}
+    Object.entries(csvColumnMap).forEach(([csvCol, field]) => { reverseMap[field] = csvCol })
+
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i]
+      const firstName = row[reverseMap['first_name']]?.trim()
+      const lastName = row[reverseMap['last_name']]?.trim()
+      const email = row[reverseMap['email']]?.trim()
+
+      if (!firstName || !lastName || !email) {
+        errors.push(`Row ${i + 2}: Missing required fields (first_name, last_name, or email)`)
+        continue
+      }
+      if (!email.includes('@')) {
+        errors.push(`Row ${i + 2}: Invalid email "${email}"`)
+        continue
+      }
+
+      try {
+        await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entity: 'employees',
+            action: 'create',
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              email,
+              job_title: row[reverseMap['job_title']]?.trim() || '',
+              phone: row[reverseMap['phone']]?.trim() || '',
+              location: row[reverseMap['location']]?.trim() || '',
+              start_date: row[reverseMap['start_date']]?.trim() || new Date().toISOString().split('T')[0],
+              status: 'active',
+            },
+          }),
+        })
+        imported++
+      } catch {
+        errors.push(`Row ${i + 2}: Failed to import ${firstName} ${lastName}`)
+      }
+    }
+
+    setCsvImportCount(imported)
+    setCsvErrors(errors)
+    setCsvImportStatus('done')
+  }, [csvData, csvColumnMap])
 
   // ─── Module Tab State ──────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('welcome-portal')
@@ -252,6 +408,9 @@ export default function OnboardingPage() {
     if (!companySize && !industry) return
     setSaving(true)
     try {
+      const data: Record<string, string> = { size: companySize, industry }
+      if (companyCountry) data.country = companyCountry
+      if (defaultCurrency) data.default_currency = defaultCurrency
       const res = await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,7 +418,7 @@ export default function OnboardingPage() {
           entity: 'organizations',
           action: 'update',
           id: org?.id,
-          data: { size: companySize, industry },
+          data,
         }),
       })
       if (res.ok) {
@@ -346,6 +505,7 @@ export default function OnboardingPage() {
     } finally {
       setSaving(false)
     }
+    try { localStorage.removeItem(WIZARD_STORAGE_KEY) } catch {}
     router.push('/dashboard')
   }
 
@@ -359,7 +519,9 @@ export default function OnboardingPage() {
     } else if (step.id === 'modules') {
       await saveModules()
     }
-    setCurrentStep(prev => Math.min(prev + 1, setupSteps.length - 1))
+    const next = Math.min(currentStep + 1, setupSteps.length - 1)
+    setCurrentStep(next)
+    persistWizardState({ currentStep: next })
   }
 
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0))
@@ -466,43 +628,92 @@ export default function OnboardingPage() {
 
               {step.id === 'organization' && (
                 <div className="space-y-4 max-w-md mx-auto">
-                  <div>
-                    <label className="text-sm font-medium text-t1 block mb-1.5">Company Size</label>
-                    <select
-                      value={companySize}
-                      onChange={e => setCompanySize(e.target.value)}
-                      className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
-                    >
-                      <option value="">Select size...</option>
-                      <option value="1-10">1-10 employees</option>
-                      <option value="11-50">11-50 employees</option>
-                      <option value="51-200">51-200 employees</option>
-                      <option value="201-1000">201-1,000 employees</option>
-                      <option value="1001-5000">1,001-5,000 employees</option>
-                      <option value="5000+">5,000+ employees</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-t1 block mb-1.5">Company Size</label>
+                      <select
+                        value={companySize}
+                        onChange={e => setCompanySize(e.target.value)}
+                        className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                      >
+                        <option value="">Select size...</option>
+                        <option value="1-10">1-10 employees</option>
+                        <option value="11-50">11-50 employees</option>
+                        <option value="51-200">51-200 employees</option>
+                        <option value="201-1000">201-1,000 employees</option>
+                        <option value="1001-5000">1,001-5,000 employees</option>
+                        <option value="5000+">5,000+ employees</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-t1 block mb-1.5">Industry</label>
+                      <select
+                        value={industry}
+                        onChange={e => setIndustry(e.target.value)}
+                        className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                      >
+                        <option value="">Select industry...</option>
+                        <option value="technology">Technology</option>
+                        <option value="finance">Finance & Banking</option>
+                        <option value="healthcare">Healthcare</option>
+                        <option value="manufacturing">Manufacturing</option>
+                        <option value="retail">Retail & E-commerce</option>
+                        <option value="education">Education</option>
+                        <option value="consulting">Consulting & Professional Services</option>
+                        <option value="energy">Energy & Utilities</option>
+                        <option value="telecom">Telecommunications</option>
+                        <option value="government">Government & Public Sector</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-t1 block mb-1.5">Industry</label>
-                    <select
-                      value={industry}
-                      onChange={e => setIndustry(e.target.value)}
-                      className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
-                    >
-                      <option value="">Select industry...</option>
-                      <option value="technology">Technology</option>
-                      <option value="finance">Finance & Banking</option>
-                      <option value="healthcare">Healthcare</option>
-                      <option value="manufacturing">Manufacturing</option>
-                      <option value="retail">Retail & E-commerce</option>
-                      <option value="education">Education</option>
-                      <option value="consulting">Consulting & Professional Services</option>
-                      <option value="energy">Energy & Utilities</option>
-                      <option value="telecom">Telecommunications</option>
-                      <option value="government">Government & Public Sector</option>
-                      <option value="other">Other</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-t1 block mb-1.5">Country / Region</label>
+                      <select
+                        value={companyCountry}
+                        onChange={e => setCompanyCountry(e.target.value)}
+                        className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                      >
+                        <option value="">Select country...</option>
+                        <option value="NG">Nigeria</option>
+                        <option value="KE">Kenya</option>
+                        <option value="GH">Ghana</option>
+                        <option value="ZA">South Africa</option>
+                        <option value="SN">Senegal</option>
+                        <option value="CI">Cote d&apos;Ivoire</option>
+                        <option value="TZ">Tanzania</option>
+                        <option value="UG">Uganda</option>
+                        <option value="RW">Rwanda</option>
+                        <option value="ET">Ethiopia</option>
+                        <option value="US">United States</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="CA">Canada</option>
+                        <option value="FR">France</option>
+                        <option value="DE">Germany</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-t1 block mb-1.5">Default Currency</label>
+                      <select
+                        value={defaultCurrency}
+                        onChange={e => setDefaultCurrency(e.target.value)}
+                        className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                      >
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="NGN">NGN - Nigerian Naira</option>
+                        <option value="KES">KES - Kenyan Shilling</option>
+                        <option value="GHS">GHS - Ghanaian Cedi</option>
+                        <option value="ZAR">ZAR - South African Rand</option>
+                        <option value="XOF">XOF - West African CFA</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="CAD">CAD - Canadian Dollar</option>
+                      </select>
+                    </div>
                   </div>
+                  <p className="text-xs text-t3 text-center mt-2">These settings determine payroll compliance rules and default formatting across the platform.</p>
                 </div>
               )}
 
@@ -574,20 +785,180 @@ export default function OnboardingPage() {
                 </div>
               )}
 
+              {step.id === 'import' && (
+                <div className="space-y-4 max-w-lg mx-auto">
+                  {csvImportStatus === 'idle' && (
+                    <>
+                      <div
+                        className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-tempo-600/40 transition-colors cursor-pointer"
+                        onClick={() => csvInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f) }}
+                      >
+                        <Upload size={32} className="mx-auto text-t3 mb-3" />
+                        <p className="text-sm font-medium text-t1 mb-1">Drop a CSV file here, or click to browse</p>
+                        <p className="text-xs text-t3">Supports .csv files with employee data</p>
+                        <input
+                          ref={csvInputRef}
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCSVFile(f) }}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <button
+                          onClick={() => {
+                            const csv = 'first_name,last_name,email,department,job_title,start_date\nJane,Doe,jane@example.com,Engineering,Software Engineer,2026-03-01\nJohn,Smith,john@example.com,Marketing,Marketing Lead,2026-03-01'
+                            const blob = new Blob([csv], { type: 'text/csv' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url; a.download = 'tempo_employee_template.csv'; a.click()
+                            URL.revokeObjectURL(url)
+                          }}
+                          className="text-xs text-tempo-600 hover:text-tempo-700 font-medium inline-flex items-center gap-1"
+                        >
+                          <Download size={12} /> Download CSV template
+                        </button>
+                      </div>
+                      {csvErrors.length > 0 && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                          {csvErrors.map((e, i) => <p key={i} className="text-xs text-red-700">{e}</p>)}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {csvImportStatus === 'preview' && (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-t1">
+                          <Table size={14} className="inline mr-1.5" />
+                          {csvData.length} employees found
+                        </p>
+                        <button onClick={() => { setCsvImportStatus('idle'); setCsvData([]); setCsvHeaders([]) }} className="text-xs text-t3 hover:text-t1">
+                          Upload different file
+                        </button>
+                      </div>
+                      <div className="border border-border rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-canvas border-b border-border">
+                              {csvHeaders.slice(0, 5).map(h => (
+                                <th key={h} className="px-3 py-2 text-left font-medium text-t3">{h}</th>
+                              ))}
+                              {csvHeaders.length > 5 && <th className="px-3 py-2 text-left font-medium text-t3">+{csvHeaders.length - 5} more</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {csvData.slice(0, 5).map((row, i) => (
+                              <tr key={i}>
+                                {csvHeaders.slice(0, 5).map(h => (
+                                  <td key={h} className="px-3 py-1.5 text-t2 truncate max-w-[120px]">{row[h]}</td>
+                                ))}
+                                {csvHeaders.length > 5 && <td className="px-3 py-1.5 text-t3">...</td>}
+                              </tr>
+                            ))}
+                            {csvData.length > 5 && (
+                              <tr><td colSpan={Math.min(csvHeaders.length, 6)} className="px-3 py-1.5 text-t3 text-center">...and {csvData.length - 5} more rows</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-t3 uppercase tracking-wider">Column Mapping</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {csvHeaders.map(h => (
+                            <div key={h} className="flex items-center gap-2">
+                              <span className="text-xs text-t2 w-28 truncate shrink-0">{h}</span>
+                              <select
+                                value={csvColumnMap[h] || ''}
+                                onChange={e => setCsvColumnMap(prev => ({ ...prev, [h]: e.target.value }))}
+                                className="flex-1 px-2 py-1 bg-canvas border border-border rounded text-xs text-t1 focus:border-tempo-600 outline-none"
+                              >
+                                <option value="">— skip —</option>
+                                {allFieldOptions.map(f => (
+                                  <option key={f} value={f}>{f.replace(/_/g, ' ')}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                        {!Object.values(csvColumnMap).includes('first_name') || !Object.values(csvColumnMap).includes('last_name') || !Object.values(csvColumnMap).includes('email') ? (
+                          <div className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                            <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-xs text-amber-700">Map at least first_name, last_name, and email columns to proceed.</p>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={importCSVEmployees}
+                            className="w-full"
+                          >
+                            <Upload size={14} /> Import {csvData.length} Employees
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {csvImportStatus === 'importing' && (
+                    <div className="text-center py-8">
+                      <Loader2 size={32} className="mx-auto text-tempo-600 animate-spin mb-3" />
+                      <p className="text-sm font-medium text-t1">Importing employees...</p>
+                      <p className="text-xs text-t3 mt-1">This may take a moment</p>
+                    </div>
+                  )}
+
+                  {csvImportStatus === 'done' && (
+                    <div className="text-center py-4">
+                      <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+                        <CheckCircle size={28} className="text-green-600" />
+                      </div>
+                      <p className="text-sm font-medium text-t1 mb-1">{csvImportCount} employees imported</p>
+                      {csvErrors.length > 0 && (
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-left max-h-[120px] overflow-y-auto">
+                          <p className="text-xs font-medium text-amber-800 mb-1">{csvErrors.length} row(s) skipped:</p>
+                          {csvErrors.map((e, i) => <p key={i} className="text-xs text-amber-700">{e}</p>)}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => { setCsvImportStatus('idle'); setCsvData([]); setCsvHeaders([]); setCsvImportCount(0); setCsvErrors([]) }}
+                        className="text-xs text-tempo-600 hover:text-tempo-700 font-medium mt-3"
+                      >
+                        Import more employees
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setCurrentStep(prev => prev + 1)}
+                    className="text-sm text-t3 hover:text-t1 font-medium block mx-auto mt-2"
+                  >
+                    Skip — I&apos;ll add employees later
+                  </button>
+                </div>
+              )}
+
               {step.id === 'complete' && (
                 <div className="space-y-4 max-w-md mx-auto text-center">
                   <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto">
                     <CheckCircle size={40} className="text-green-600" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="grid grid-cols-3 gap-3 mt-6">
                     <div className="p-3 rounded-lg bg-canvas border border-border">
-                      <p className="text-xs text-t3">Modules Enabled</p>
+                      <p className="text-xs text-t3">Modules</p>
                       <p className="text-lg font-semibold text-t1">{selectedModules.length}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-canvas border border-border">
                       <p className="text-xs text-t3">Organization</p>
                       <p className="text-lg font-semibold text-t1 truncate">{org?.name || 'Ready'}</p>
                     </div>
+                    {csvImportCount > 0 && (
+                      <div className="p-3 rounded-lg bg-canvas border border-border">
+                        <p className="text-xs text-t3">Imported</p>
+                        <p className="text-lg font-semibold text-t1">{csvImportCount}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -608,7 +979,7 @@ export default function OnboardingPage() {
                   <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === currentStep ? 'bg-tempo-600' : 'bg-border'}`} />
                 ))}
               </div>
-              {step.id !== 'team' && (
+              {step.id !== 'team' && step.id !== 'import' && (
                 <Button onClick={nextStep} disabled={saving}>
                   {saving ? (
                     <><Loader2 size={14} className="animate-spin" /> Saving...</>
@@ -625,6 +996,11 @@ export default function OnboardingPage() {
                 </Button>
               )}
               {step.id === 'team' && invitesSent && (
+                <Button onClick={nextStep}>
+                  Continue <ArrowRight size={14} />
+                </Button>
+              )}
+              {step.id === 'import' && csvImportStatus === 'done' && (
                 <Button onClick={nextStep}>
                   Continue <ArrowRight size={14} />
                 </Button>
@@ -694,7 +1070,7 @@ export default function OnboardingPage() {
             </CardHeader>
             <div className="px-5 pb-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {welcomeContent.company_values.map((value, i) => (
+                {(welcomeContent.company_values || []).map((value, i) => (
                   <div key={i} className="p-4 bg-canvas border border-border rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-8 h-8 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
@@ -735,7 +1111,7 @@ export default function OnboardingPage() {
             </CardHeader>
             <div className="px-5 pb-5">
               <div className="space-y-3">
-                {welcomeContent.first_week_schedule.map((day, i) => (
+                {(welcomeContent.first_week_schedule || []).map((day, i) => (
                   <div key={i} className="flex gap-4">
                     <div className="w-24 shrink-0">
                       <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600 mb-1">
@@ -764,7 +1140,7 @@ export default function OnboardingPage() {
             </CardHeader>
             <div className="px-5 pb-5">
               <div className="space-y-2">
-                {welcomeContent.it_checklist.map((item, i) => (
+                {(welcomeContent.it_checklist || []).map((item, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-canvas border border-border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
@@ -1110,7 +1486,7 @@ export default function OnboardingPage() {
             </CardHeader>
             <div className="px-5 pb-5">
               <div className="space-y-2">
-                {welcomeContent.communication_templates.map(tpl => (
+                {(welcomeContent.communication_templates || []).map(tpl => (
                   <div key={tpl.id} className="flex items-center justify-between p-3 bg-canvas border border-border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-500`}>

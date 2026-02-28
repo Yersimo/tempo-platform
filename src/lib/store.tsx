@@ -1,32 +1,13 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
-import {
-  demoOrg, demoUser, demoDepartments, demoEmployees,
-  demoGoals, demoReviewCycles, demoReviews, demoFeedback,
-  demoCompBands, demoSalaryReviews, demoEquityGrants, demoCompPlanningCycles,
-  demoCourses, demoEnrollments,
-  demoSurveys, demoEngagementScores, demoActionPlans, demoSurveyResponses,
-  demoMentoringPrograms, demoMentoringPairs, demoMentoringSessions, demoMentoringGoals,
-  demoPayrollRuns, demoLeaveRequests,
-  demoBenefitPlans, demoBenefitEnrollments, demoBenefitDependents, demoLifeEvents, demoExpenseReports, demoExpensePolicies, demoMileageLogs,
-  demoJobPostings, demoApplications, demoInterviews, demoTalentPools, demoScoreCards,
-  demoDevices, demoSoftwareLicenses, demoITRequests,
-  demoInvoices, demoBudgets, demoVendors,
-  demoProjects, demoMilestones, demoTasks, demoTaskDependencies,
-  demoStrategicObjectives, demoKeyResults, demoInitiatives, demoKPIDefinitions, demoKPIMeasurements,
-  demoWorkflows, demoWorkflowSteps, demoWorkflowRuns, demoWorkflowTemplates,
-  demoNotifications,
-  demoLearningPaths, demoLiveSessions, demoCourseBlocks, demoQuizQuestions, demoDiscussions, demoStudyGroups, demoComplianceTraining, demoAutoEnrollRules, demoAssessmentAttempts, demoLearningAssignments, demoCareerSiteConfig, demoJobDistributions,
-  demoEmployeePayrollEntries, demoContractorPayments, demoPayrollSchedules, demoTaxConfigs, demoComplianceIssues, demoTaxFilings,
-  demoEmployeeDocuments, demoEmployeeTimeline,
-  demoOneOnOnes, demoRecognitions, demoCompetencyFramework, demoCompetencyRatings,
-  demoBuddyAssignments, demoPreboardingTasks, demoWelcomeContent,
-  demoAutomationRules, demoAutomationLog,
-  demoOffers, demoCareerTracks, demoMarketBenchmarks, demoWidgetPreferences, demoJourneys,
-  getDemoDataForOrg, allDemoCredentials,
-} from './demo-data'
+import { fetchModules as fetchModulesFromAPI, MODULE_SLUGS, clearModuleCache } from '@/lib/hooks/use-module-data'
+// Type-only imports: erased at compile time, no bundle impact
 import type { DemoRole } from './demo-data'
+// DemoData gives us the types of all demo exports without including the runtime data (~323KB)
+type DemoData = typeof import('./demo-data')
+/** Lazy-load demo-data module. Returns the full module; bundler code-splits it into a separate chunk. */
+const loadDemoModule = () => import('./demo-data')
 
 // ---- Audit Log ----
 export interface AuditEntry {
@@ -72,144 +53,218 @@ export interface CurrentUser {
 
 interface TempoState {
   // Organization
-  org: typeof demoOrg
-  user: typeof demoUser
+  org: DemoData['demoOrg']
+  user: DemoData['demoUser']
   currentUser: CurrentUser | null
   currentEmployeeId: string
-  departments: typeof demoDepartments
-  employees: typeof demoEmployees
+  departments: DemoData['demoDepartments']
+  employees: DemoData['demoEmployees']
 
   // Performance
-  goals: WidenArray<typeof demoGoals>
-  reviewCycles: WidenArray<typeof demoReviewCycles>
-  reviews: WidenArray<typeof demoReviews>
-  feedback: typeof demoFeedback
-  oneOnOnes: WidenArray<typeof demoOneOnOnes>
-  recognitions: WidenArray<typeof demoRecognitions>
-  competencyFramework: typeof demoCompetencyFramework
-  competencyRatings: WidenArray<typeof demoCompetencyRatings>
+  goals: WidenArray<DemoData['demoGoals']>
+  reviewCycles: WidenArray<DemoData['demoReviewCycles']>
+  reviews: WidenArray<DemoData['demoReviews']>
+  feedback: DemoData['demoFeedback']
+  oneOnOnes: WidenArray<DemoData['demoOneOnOnes']>
+  recognitions: WidenArray<DemoData['demoRecognitions']>
+  competencyFramework: DemoData['demoCompetencyFramework']
+  competencyRatings: WidenArray<DemoData['demoCompetencyRatings']>
+
+  // PIPs, Merit Cycles, Review Templates
+  pips: WidenArray<DemoData['demoPIPs']>
+  pipCheckIns: WidenArray<DemoData['demoPIPCheckIns']>
+  meritCycles: WidenArray<DemoData['demoMeritCycles']>
+  meritRecommendations: WidenArray<DemoData['demoMeritRecommendations']>
+  reviewTemplates: WidenArray<DemoData['demoReviewTemplates']>
 
   // Compensation
-  compBands: typeof demoCompBands
-  salaryReviews: WidenArray<typeof demoSalaryReviews>
-  equityGrants: WidenArray<typeof demoEquityGrants>
-  compPlanningCycles: WidenArray<typeof demoCompPlanningCycles>
+  compBands: DemoData['demoCompBands']
+  salaryReviews: WidenArray<DemoData['demoSalaryReviews']>
+  equityGrants: WidenArray<DemoData['demoEquityGrants']>
+  compPlanningCycles: WidenArray<DemoData['demoCompPlanningCycles']>
 
   // Learning
-  courses: typeof demoCourses
-  enrollments: WidenArray<typeof demoEnrollments>
-  learningPaths: WidenArray<typeof demoLearningPaths>
-  liveSessions: WidenArray<typeof demoLiveSessions>
-  courseBlocks: WidenArray<typeof demoCourseBlocks>
-  quizQuestions: WidenArray<typeof demoQuizQuestions>
-  discussions: WidenArray<typeof demoDiscussions>
-  studyGroups: WidenArray<typeof demoStudyGroups>
-  complianceTraining: WidenArray<typeof demoComplianceTraining>
-  autoEnrollRules: WidenArray<typeof demoAutoEnrollRules>
-  assessmentAttempts: WidenArray<typeof demoAssessmentAttempts>
-  learningAssignments: WidenArray<typeof demoLearningAssignments>
+  courses: DemoData['demoCourses']
+  enrollments: WidenArray<DemoData['demoEnrollments']>
+  learningPaths: WidenArray<DemoData['demoLearningPaths']>
+  liveSessions: WidenArray<DemoData['demoLiveSessions']>
+  courseBlocks: WidenArray<DemoData['demoCourseBlocks']>
+  quizQuestions: WidenArray<DemoData['demoQuizQuestions']>
+  discussions: WidenArray<DemoData['demoDiscussions']>
+  studyGroups: WidenArray<DemoData['demoStudyGroups']>
+  complianceTraining: WidenArray<DemoData['demoComplianceTraining']>
+  autoEnrollRules: WidenArray<DemoData['demoAutoEnrollRules']>
+  assessmentAttempts: WidenArray<DemoData['demoAssessmentAttempts']>
+  learningAssignments: WidenArray<DemoData['demoLearningAssignments']>
+  coursePrerequisites: WidenArray<DemoData['demoCoursePrerequisites']>
+  scormPackages: WidenArray<DemoData['demoScormPackages']>
+  scormTracking: WidenArray<DemoData['demoScormTracking']>
+  contentLibrary: WidenArray<DemoData['demoContentLibrary']>
+  learnerBadges: WidenArray<DemoData['demoLearnerBadges']>
+  learnerPoints: WidenArray<DemoData['demoLearnerPoints']>
 
   // Engagement
-  surveys: WidenArray<typeof demoSurveys>
-  engagementScores: typeof demoEngagementScores
-  actionPlans: WidenArray<typeof demoActionPlans>
-  surveyResponses: WidenArray<typeof demoSurveyResponses>
+  surveys: WidenArray<DemoData['demoSurveys']>
+  engagementScores: DemoData['demoEngagementScores']
+  actionPlans: WidenArray<DemoData['demoActionPlans']>
+  surveyResponses: WidenArray<DemoData['demoSurveyResponses']>
+  surveyTemplates: WidenArray<DemoData['demoSurveyTemplates']>
+  surveySchedules: WidenArray<DemoData['demoSurveySchedules']>
+  surveyTriggers: WidenArray<DemoData['demoSurveyTriggers']>
+  openEndedResponses: WidenArray<DemoData['demoOpenEndedResponses']>
 
   // Mentoring
-  mentoringPrograms: WidenArray<typeof demoMentoringPrograms>
-  mentoringPairs: WidenArray<typeof demoMentoringPairs>
-  mentoringSessions: WidenArray<typeof demoMentoringSessions>
-  mentoringGoals: WidenArray<typeof demoMentoringGoals>
+  mentoringPrograms: WidenArray<DemoData['demoMentoringPrograms']>
+  mentoringPairs: WidenArray<DemoData['demoMentoringPairs']>
+  mentoringSessions: WidenArray<DemoData['demoMentoringSessions']>
+  mentoringGoals: WidenArray<DemoData['demoMentoringGoals']>
 
   // Payroll
-  payrollRuns: WidenArray<typeof demoPayrollRuns>
-  employeePayrollEntries: WidenArray<typeof demoEmployeePayrollEntries>
-  contractorPayments: WidenArray<typeof demoContractorPayments>
-  payrollSchedules: WidenArray<typeof demoPayrollSchedules>
-  taxConfigs: WidenArray<typeof demoTaxConfigs>
-  complianceIssues: WidenArray<typeof demoComplianceIssues>
-  taxFilings: WidenArray<typeof demoTaxFilings>
+  payrollRuns: WidenArray<DemoData['demoPayrollRuns']>
+  employeePayrollEntries: WidenArray<DemoData['demoEmployeePayrollEntries']>
+  contractorPayments: WidenArray<DemoData['demoContractorPayments']>
+  payrollSchedules: WidenArray<DemoData['demoPayrollSchedules']>
+  taxConfigs: WidenArray<DemoData['demoTaxConfigs']>
+  complianceIssues: WidenArray<DemoData['demoComplianceIssues']>
+  taxFilings: WidenArray<DemoData['demoTaxFilings']>
 
-  // Time
-  leaveRequests: WidenArray<typeof demoLeaveRequests>
+  // Time & Attendance
+  leaveRequests: WidenArray<DemoData['demoLeaveRequests']>
+  timeEntries: WidenArray<DemoData['demoTimeEntries']>
+  timeOffPolicies: WidenArray<DemoData['demoTimeOffPolicies']>
+  timeOffBalances: WidenArray<DemoData['demoTimeOffBalances']>
+  overtimeRules: WidenArray<DemoData['demoOvertimeRules']>
+  shifts: WidenArray<DemoData['demoShifts']>
 
   // Benefits
-  benefitPlans: WidenArray<typeof demoBenefitPlans>
-  benefitEnrollments: WidenArray<typeof demoBenefitEnrollments>
-  benefitDependents: WidenArray<typeof demoBenefitDependents>
-  lifeEvents: WidenArray<typeof demoLifeEvents>
+  benefitPlans: WidenArray<DemoData['demoBenefitPlans']>
+  benefitEnrollments: WidenArray<DemoData['demoBenefitEnrollments']>
+  benefitDependents: WidenArray<DemoData['demoBenefitDependents']>
+  lifeEvents: WidenArray<DemoData['demoLifeEvents']>
+  openEnrollmentPeriods: WidenArray<DemoData['demoOpenEnrollmentPeriods']>
+  cobraEvents: WidenArray<DemoData['demoCobraEvents']>
+  acaTracking: WidenArray<DemoData['demoAcaTracking']>
+  flexBenefitAccounts: WidenArray<DemoData['demoFlexBenefitAccounts']>
+  flexBenefitTransactions: WidenArray<DemoData['demoFlexBenefitTransactions']>
 
   // Expense
-  expenseReports: WidenArray<typeof demoExpenseReports>
-  expensePolicies: WidenArray<typeof demoExpensePolicies>
-  mileageLogs: WidenArray<typeof demoMileageLogs>
+  expenseReports: WidenArray<DemoData['demoExpenseReports']>
+  expensePolicies: WidenArray<DemoData['demoExpensePolicies']>
+  mileageLogs: WidenArray<DemoData['demoMileageLogs']>
+  receiptMatches: WidenArray<DemoData['demoReceiptMatches']>
+  mileageEntries: WidenArray<DemoData['demoMileageEntries']>
+  advancedExpensePolicies: WidenArray<DemoData['demoAdvancedExpensePolicies']>
+  reimbursementBatches: WidenArray<DemoData['demoReimbursementBatches']>
+  duplicateDetections: WidenArray<DemoData['demoDuplicateDetections']>
 
   // Recruiting
-  jobPostings: WidenArray<typeof demoJobPostings>
-  applications: WidenArray<typeof demoApplications>
-  careerSiteConfig: typeof demoCareerSiteConfig
-  jobDistributions: WidenArray<typeof demoJobDistributions>
-  interviews: WidenArray<typeof demoInterviews>
-  talentPools: WidenArray<typeof demoTalentPools>
-  scoreCards: WidenArray<typeof demoScoreCards>
+  jobPostings: WidenArray<DemoData['demoJobPostings']>
+  applications: WidenArray<DemoData['demoApplications']>
+  careerSiteConfig: DemoData['demoCareerSiteConfig']
+  jobDistributions: WidenArray<DemoData['demoJobDistributions']>
+  interviews: WidenArray<DemoData['demoInterviews']>
+  talentPools: WidenArray<DemoData['demoTalentPools']>
+  scoreCards: WidenArray<DemoData['demoScoreCards']>
+  backgroundChecks: WidenArray<DemoData['demoBackgroundChecks']>
+  referralProgram: Widen<DemoData['demoReferralProgram']>
+  referrals: WidenArray<DemoData['demoReferrals']>
+  knockoutQuestions: WidenArray<DemoData['demoKnockoutQuestions']>
+  candidateScheduling: WidenArray<DemoData['demoCandidateScheduling']>
 
   // IT
-  devices: WidenArray<typeof demoDevices>
-  softwareLicenses: typeof demoSoftwareLicenses
-  itRequests: WidenArray<typeof demoITRequests>
+  devices: WidenArray<DemoData['demoDevices']>
+  softwareLicenses: DemoData['demoSoftwareLicenses']
+  itRequests: WidenArray<DemoData['demoITRequests']>
+  managedDevices: WidenArray<DemoData['demoManagedDevices']>
+  deviceActions: WidenArray<DemoData['demoDeviceActions']>
+  appCatalog: WidenArray<DemoData['demoAppCatalog']>
+  appAssignments: WidenArray<DemoData['demoAppAssignments']>
+  securityPoliciesIT: WidenArray<DemoData['demoSecurityPoliciesIT']>
+  deviceInventory: WidenArray<DemoData['demoDeviceInventory']>
 
   // Finance
-  invoices: WidenArray<typeof demoInvoices>
-  budgets: WidenArray<typeof demoBudgets>
-  vendors: typeof demoVendors
+  invoices: WidenArray<DemoData['demoInvoices']>
+  budgets: WidenArray<DemoData['demoBudgets']>
+  vendors: DemoData['demoVendors']
 
   // Project Management
-  projects: WidenArray<typeof demoProjects>
-  milestones: WidenArray<typeof demoMilestones>
-  tasks: WidenArray<typeof demoTasks>
-  taskDependencies: typeof demoTaskDependencies
-  automationRules: WidenArray<typeof demoAutomationRules>
-  automationLog: WidenArray<typeof demoAutomationLog>
+  projects: WidenArray<DemoData['demoProjects']>
+  milestones: WidenArray<DemoData['demoMilestones']>
+  tasks: WidenArray<DemoData['demoTasks']>
+  taskDependencies: DemoData['demoTaskDependencies']
+  automationRules: WidenArray<DemoData['demoAutomationRules']>
+  automationLog: WidenArray<DemoData['demoAutomationLog']>
 
   // Strategy Execution
-  strategicObjectives: WidenArray<typeof demoStrategicObjectives>
-  keyResults: WidenArray<typeof demoKeyResults>
-  initiatives: WidenArray<typeof demoInitiatives>
-  kpiDefinitions: WidenArray<typeof demoKPIDefinitions>
-  kpiMeasurements: WidenArray<typeof demoKPIMeasurements>
+  strategicObjectives: WidenArray<DemoData['demoStrategicObjectives']>
+  keyResults: WidenArray<DemoData['demoKeyResults']>
+  initiatives: WidenArray<DemoData['demoInitiatives']>
+  kpiDefinitions: WidenArray<DemoData['demoKPIDefinitions']>
+  kpiMeasurements: WidenArray<DemoData['demoKPIMeasurements']>
 
   // Workflow Studio
-  workflows: WidenArray<typeof demoWorkflows>
-  workflowSteps: WidenArray<typeof demoWorkflowSteps>
-  workflowRuns: WidenArray<typeof demoWorkflowRuns>
-  workflowTemplates: WidenArray<typeof demoWorkflowTemplates>
+  workflows: WidenArray<DemoData['demoWorkflows']>
+  workflowSteps: WidenArray<DemoData['demoWorkflowSteps']>
+  workflowRuns: WidenArray<DemoData['demoWorkflowRuns']>
+  workflowTemplates: WidenArray<DemoData['demoWorkflowTemplates']>
+
+  // Workflow Automation Engine
+  automationWorkflows: WidenArray<DemoData['demoAutomationWorkflows']>
+  automationWorkflowSteps: WidenArray<DemoData['demoAutomationWorkflowSteps']>
+  automationWorkflowRuns: WidenArray<DemoData['demoAutomationWorkflowRuns']>
+  automationWorkflowRunSteps: WidenArray<DemoData['demoAutomationWorkflowRunSteps']>
+  automationWorkflowTemplates: WidenArray<DemoData['demoAutomationWorkflowTemplates']>
+
+  // Headcount Planning
+  headcountPlans: WidenArray<DemoData['demoHeadcountPlans']>
+  headcountPositions: WidenArray<DemoData['demoHeadcountPositions']>
+  headcountBudgetItems: WidenArray<DemoData['demoHeadcountBudgetItems']>
+
+  // Custom Fields
+  customFieldDefinitions: WidenArray<DemoData['demoCustomFieldDefinitions']>
+  customFieldValues: WidenArray<DemoData['demoCustomFieldValues']>
+
+  // Emergency Contacts
+  emergencyContacts: WidenArray<DemoData['demoEmergencyContacts']>
+
+  // Compliance Management
+  complianceRequirements: WidenArray<DemoData['demoComplianceRequirements']>
+  complianceDocuments: WidenArray<DemoData['demoComplianceDocuments']>
+  complianceAlerts: WidenArray<DemoData['demoComplianceAlerts']>
 
   // People / HR
-  employeeDocuments: WidenArray<typeof demoEmployeeDocuments>
-  employeeTimeline: WidenArray<typeof demoEmployeeTimeline>
+  employeeDocuments: WidenArray<DemoData['demoEmployeeDocuments']>
+  employeeTimeline: WidenArray<DemoData['demoEmployeeTimeline']>
 
   // Onboarding
-  buddyAssignments: WidenArray<typeof demoBuddyAssignments>
-  preboardingTasks: WidenArray<typeof demoPreboardingTasks>
-  welcomeContent: typeof demoWelcomeContent
+  buddyAssignments: WidenArray<DemoData['demoBuddyAssignments']>
+  preboardingTasks: WidenArray<DemoData['demoPreboardingTasks']>
+  welcomeContent: DemoData['demoWelcomeContent']
+
+  // Offboarding
+  offboardingChecklists: WidenArray<DemoData['demoOffboardingChecklists']>
+  offboardingChecklistItems: WidenArray<DemoData['demoOffboardingChecklistItems']>
+  offboardingProcesses: WidenArray<DemoData['demoOffboardingProcesses']>
+  offboardingTasks: WidenArray<DemoData['demoOffboardingTasks']>
+  exitSurveys: WidenArray<DemoData['demoExitSurveys']>
 
   // Offers
-  offers: WidenArray<typeof demoOffers>
+  offers: WidenArray<DemoData['demoOffers']>
 
   // Career Tracks
-  careerTracks: typeof demoCareerTracks
+  careerTracks: DemoData['demoCareerTracks']
 
   // Market Benchmarks
-  marketBenchmarks: WidenArray<typeof demoMarketBenchmarks>
+  marketBenchmarks: WidenArray<DemoData['demoMarketBenchmarks']>
 
   // Guided Journeys
   journeys: import('@/lib/demo-data').Journey[]
 
   // Widget Preferences
-  widgetPreferences: typeof demoWidgetPreferences
+  widgetPreferences: DemoData['demoWidgetPreferences']
 
   // Notifications
-  notifications: WidenArray<typeof demoNotifications>
+  notifications: WidenArray<DemoData['demoNotifications']>
   unreadNotificationCount: number
 
   // Audit
@@ -220,6 +275,8 @@ interface TempoState {
 
   // Loading state
   isLoading: boolean
+  /** Lazily load modules from DB. No-op for already-loaded modules or demo users. */
+  ensureModulesLoaded: (modules: string[]) => Promise<void>
 
   // ---- CRUD Functions ----
   // Generic
@@ -258,6 +315,27 @@ interface TempoState {
   // Competency Ratings
   addCompetencyRating: (data: AnyRecord) => void
   updateCompetencyRating: (id: string, data: AnyRecord) => void
+
+  // PIPs
+  addPIP: (data: AnyRecord) => void
+  updatePIP: (id: string, data: AnyRecord) => void
+  deletePIP: (id: string) => void
+
+  // PIP Check-Ins
+  addPIPCheckIn: (data: AnyRecord) => void
+
+  // Merit Cycles
+  addMeritCycle: (data: AnyRecord) => void
+  updateMeritCycle: (id: string, data: AnyRecord) => void
+
+  // Merit Recommendations
+  addMeritRecommendation: (data: AnyRecord) => void
+  updateMeritRecommendation: (id: string, data: AnyRecord) => void
+
+  // Review Templates
+  addReviewTemplate: (data: AnyRecord) => void
+  updateReviewTemplate: (id: string, data: AnyRecord) => void
+  deleteReviewTemplate: (id: string) => void
 
   // Comp Bands
   addCompBand: (data: AnyRecord) => void
@@ -328,6 +406,29 @@ interface TempoState {
   addLearningAssignment: (data: AnyRecord) => void
   updateLearningAssignment: (id: string, data: AnyRecord) => void
 
+  // Course Prerequisites
+  addCoursePrerequisite: (data: AnyRecord) => void
+  deleteCoursePrerequisite: (id: string) => void
+
+  // SCORM Packages
+  addScormPackage: (data: AnyRecord) => void
+  updateScormPackage: (id: string, data: AnyRecord) => void
+
+  // SCORM Tracking
+  addScormTracking: (data: AnyRecord) => void
+  updateScormTracking: (id: string, data: AnyRecord) => void
+
+  // Content Library
+  addContentLibraryItem: (data: AnyRecord) => void
+  updateContentLibraryItem: (id: string, data: AnyRecord) => void
+  deleteContentLibraryItem: (id: string) => void
+
+  // Learner Badges
+  addLearnerBadge: (data: AnyRecord) => void
+
+  // Learner Points
+  addLearnerPoints: (data: AnyRecord) => void
+
   // Surveys
   addSurvey: (data: AnyRecord) => void
   updateSurvey: (id: string, data: AnyRecord) => void
@@ -335,6 +436,25 @@ interface TempoState {
   // Action Plans
   addActionPlan: (data: AnyRecord) => void
   updateActionPlan: (id: string, data: AnyRecord) => void
+
+  // Survey Templates
+  addSurveyTemplate: (data: AnyRecord) => void
+  updateSurveyTemplate: (id: string, data: AnyRecord) => void
+  deleteSurveyTemplate: (id: string) => void
+
+  // Survey Schedules
+  addSurveySchedule: (data: AnyRecord) => void
+  updateSurveySchedule: (id: string, data: AnyRecord) => void
+  deleteSurveySchedule: (id: string) => void
+
+  // Survey Triggers
+  addSurveyTrigger: (data: AnyRecord) => void
+  updateSurveyTrigger: (id: string, data: AnyRecord) => void
+  deleteSurveyTrigger: (id: string) => void
+
+  // Open-Ended Responses
+  addOpenEndedResponse: (data: AnyRecord) => void
+  updateOpenEndedResponse: (id: string, data: AnyRecord) => void
 
   // Mentoring Programs
   addMentoringProgram: (data: AnyRecord) => void
@@ -369,6 +489,30 @@ interface TempoState {
   addLeaveRequest: (data: AnyRecord) => void
   updateLeaveRequest: (id: string, data: AnyRecord) => void
 
+  // Time Entries
+  addTimeEntry: (data: AnyRecord) => void
+  updateTimeEntry: (id: string, data: AnyRecord) => void
+  deleteTimeEntry: (id: string) => void
+
+  // Time Off Policies
+  addTimeOffPolicy: (data: AnyRecord) => void
+  updateTimeOffPolicy: (id: string, data: AnyRecord) => void
+  deleteTimeOffPolicy: (id: string) => void
+
+  // Time Off Balances
+  addTimeOffBalance: (data: AnyRecord) => void
+  updateTimeOffBalance: (id: string, data: AnyRecord) => void
+
+  // Overtime Rules
+  addOvertimeRule: (data: AnyRecord) => void
+  updateOvertimeRule: (id: string, data: AnyRecord) => void
+  deleteOvertimeRule: (id: string) => void
+
+  // Shifts
+  addShift: (data: AnyRecord) => void
+  updateShift: (id: string, data: AnyRecord) => void
+  deleteShift: (id: string) => void
+
   // Benefit Plans
   addBenefitPlan: (data: AnyRecord) => void
   updateBenefitPlan: (id: string, data: AnyRecord) => void
@@ -385,6 +529,26 @@ interface TempoState {
   addLifeEvent: (data: AnyRecord) => void
   updateLifeEvent: (id: string, data: AnyRecord) => void
 
+  // Open Enrollment Periods
+  addOpenEnrollmentPeriod: (data: AnyRecord) => void
+  updateOpenEnrollmentPeriod: (id: string, data: AnyRecord) => void
+
+  // COBRA Events
+  addCobraEvent: (data: AnyRecord) => void
+  updateCobraEvent: (id: string, data: AnyRecord) => void
+
+  // ACA Tracking
+  addAcaTracking: (data: AnyRecord) => void
+  updateAcaTracking: (id: string, data: AnyRecord) => void
+
+  // Flex Benefit Accounts
+  addFlexBenefitAccount: (data: AnyRecord) => void
+  updateFlexBenefitAccount: (id: string, data: AnyRecord) => void
+
+  // Flex Benefit Transactions
+  addFlexBenefitTransaction: (data: AnyRecord) => void
+  updateFlexBenefitTransaction: (id: string, data: AnyRecord) => void
+
   // Expense Reports
   addExpenseReport: (data: AnyRecord) => void
   updateExpenseReport: (id: string, data: AnyRecord) => void
@@ -397,6 +561,27 @@ interface TempoState {
   // Mileage Logs
   addMileageLog: (data: AnyRecord) => void
   updateMileageLog: (id: string, data: AnyRecord) => void
+
+  // Receipt Matches
+  addReceiptMatch: (data: AnyRecord) => void
+  updateReceiptMatch: (id: string, data: AnyRecord) => void
+
+  // Mileage Entries
+  addMileageEntry: (data: AnyRecord) => void
+  updateMileageEntry: (id: string, data: AnyRecord) => void
+
+  // Advanced Expense Policies
+  addAdvancedExpensePolicy: (data: AnyRecord) => void
+  updateAdvancedExpensePolicy: (id: string, data: AnyRecord) => void
+  deleteAdvancedExpensePolicy: (id: string) => void
+
+  // Reimbursement Batches
+  addReimbursementBatch: (data: AnyRecord) => void
+  updateReimbursementBatch: (id: string, data: AnyRecord) => void
+
+  // Duplicate Detections
+  addDuplicateDetection: (data: AnyRecord) => void
+  updateDuplicateDetection: (id: string, data: AnyRecord) => void
 
   // Job Postings
   addJobPosting: (data: AnyRecord) => void
@@ -425,6 +610,26 @@ interface TempoState {
   addScoreCard: (data: AnyRecord) => void
   updateScoreCard: (id: string, data: AnyRecord) => void
 
+  // Background Checks
+  addBackgroundCheck: (data: AnyRecord) => void
+  updateBackgroundCheck: (id: string, data: AnyRecord) => void
+
+  // Referral Program
+  updateReferralProgram: (data: AnyRecord) => void
+
+  // Referrals
+  addReferral: (data: AnyRecord) => void
+  updateReferral: (id: string, data: AnyRecord) => void
+
+  // Knockout Questions
+  addKnockoutQuestion: (data: AnyRecord) => void
+  updateKnockoutQuestion: (id: string, data: AnyRecord) => void
+  deleteKnockoutQuestion: (id: string) => void
+
+  // Candidate Scheduling
+  addCandidateScheduling: (data: AnyRecord) => void
+  updateCandidateScheduling: (id: string, data: AnyRecord) => void
+
   // Devices
   addDevice: (data: AnyRecord) => void
   updateDevice: (id: string, data: AnyRecord) => void
@@ -436,6 +641,35 @@ interface TempoState {
   // IT Requests
   addITRequest: (data: AnyRecord) => void
   updateITRequest: (id: string, data: AnyRecord) => void
+
+  // IT Cloud: Managed Devices
+  addManagedDevice: (data: AnyRecord) => void
+  updateManagedDevice: (id: string, data: AnyRecord) => void
+  deleteManagedDevice: (id: string) => void
+
+  // IT Cloud: Device Actions
+  addDeviceAction: (data: AnyRecord) => void
+  updateDeviceAction: (id: string, data: AnyRecord) => void
+
+  // IT Cloud: App Catalog
+  addAppCatalogItem: (data: AnyRecord) => void
+  updateAppCatalogItem: (id: string, data: AnyRecord) => void
+  deleteAppCatalogItem: (id: string) => void
+
+  // IT Cloud: App Assignments
+  addAppAssignment: (data: AnyRecord) => void
+  updateAppAssignment: (id: string, data: AnyRecord) => void
+  deleteAppAssignment: (id: string) => void
+
+  // IT Cloud: Security Policies
+  addSecurityPolicyIT: (data: AnyRecord) => void
+  updateSecurityPolicyIT: (id: string, data: AnyRecord) => void
+  deleteSecurityPolicyIT: (id: string) => void
+
+  // IT Cloud: Device Inventory
+  addDeviceInventoryItem: (data: AnyRecord) => void
+  updateDeviceInventoryItem: (id: string, data: AnyRecord) => void
+  deleteDeviceInventoryItem: (id: string) => void
 
   // Invoices
   addInvoice: (data: AnyRecord) => void
@@ -508,6 +742,53 @@ interface TempoState {
   addWorkflowRun: (data: AnyRecord) => void
   updateWorkflowRun: (id: string, data: AnyRecord) => void
 
+  // Automation Workflows
+  addAutomationWorkflow: (data: AnyRecord) => string
+  updateAutomationWorkflow: (id: string, data: AnyRecord) => void
+  deleteAutomationWorkflow: (id: string) => void
+
+  // Automation Workflow Steps
+  addAutomationWorkflowStep: (data: AnyRecord) => void
+  updateAutomationWorkflowStep: (id: string, data: AnyRecord) => void
+  deleteAutomationWorkflowStep: (id: string) => void
+
+  // Automation Workflow Runs
+  addAutomationWorkflowRun: (data: AnyRecord) => void
+  updateAutomationWorkflowRun: (id: string, data: AnyRecord) => void
+
+  // Headcount Planning
+  addHeadcountPlan: (data: AnyRecord) => void
+  updateHeadcountPlan: (id: string, data: AnyRecord) => void
+  addHeadcountPosition: (data: AnyRecord) => void
+  updateHeadcountPosition: (id: string, data: AnyRecord) => void
+  deleteHeadcountPosition: (id: string) => void
+  addHeadcountBudgetItem: (data: AnyRecord) => void
+  updateHeadcountBudgetItem: (id: string, data: AnyRecord) => void
+  deleteHeadcountBudgetItem: (id: string) => void
+
+  // Custom Fields
+  addCustomFieldDefinition: (data: AnyRecord) => void
+  updateCustomFieldDefinition: (id: string, data: AnyRecord) => void
+  deleteCustomFieldDefinition: (id: string) => void
+  addCustomFieldValue: (data: AnyRecord) => void
+  updateCustomFieldValue: (id: string, data: AnyRecord) => void
+
+  // Emergency Contacts
+  addEmergencyContact: (data: AnyRecord) => void
+  updateEmergencyContact: (id: string, data: AnyRecord) => void
+  deleteEmergencyContact: (id: string) => void
+
+  // Compliance Management
+  addComplianceRequirement: (data: AnyRecord) => void
+  updateComplianceRequirement: (id: string, data: AnyRecord) => void
+  deleteComplianceRequirement: (id: string) => void
+  addComplianceDocument: (data: AnyRecord) => void
+  updateComplianceDocument: (id: string, data: AnyRecord) => void
+  deleteComplianceDocument: (id: string) => void
+  addComplianceAlert: (data: AnyRecord) => void
+  updateComplianceAlert: (id: string, data: AnyRecord) => void
+  dismissComplianceAlert: (id: string) => void
+
   // Employee Documents
   addEmployeeDocument: (data: AnyRecord) => void
   updateEmployeeDocument: (id: string, data: AnyRecord) => void
@@ -517,6 +798,18 @@ interface TempoState {
   updateBuddyAssignment: (id: string, data: AnyRecord) => void
   addPreboardingTask: (data: AnyRecord) => void
   updatePreboardingTask: (id: string, data: AnyRecord) => void
+
+  // Offboarding
+  addOffboardingChecklist: (data: AnyRecord) => void
+  updateOffboardingChecklist: (id: string, data: AnyRecord) => void
+  addOffboardingChecklistItem: (data: AnyRecord) => void
+  updateOffboardingChecklistItem: (id: string, data: AnyRecord) => void
+  deleteOffboardingChecklistItem: (id: string) => void
+  addOffboardingProcess: (data: AnyRecord) => void
+  updateOffboardingProcess: (id: string, data: AnyRecord) => void
+  addOffboardingTask: (data: AnyRecord) => void
+  updateOffboardingTask: (id: string, data: AnyRecord) => void
+  addExitSurvey: (data: AnyRecord) => void
 
   // Offers
   addOffer: (data: AnyRecord) => void
@@ -561,7 +854,7 @@ export function useTempoSafe(): TempoState | null {
 }
 
 // Helper to build CurrentUser from an employee record
-function buildCurrentUser(emp: typeof demoEmployees[number]): CurrentUser {
+function buildCurrentUser(emp: DemoData['demoEmployees'][number]): CurrentUser {
   return {
     id: `user-${emp.id}`,
     email: emp.profile.email,
@@ -634,116 +927,215 @@ async function apiPost(entity: string, action: 'create' | 'update' | 'delete', d
 
 export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Initialize with demo data as fallback, but will be overwritten by DB data
-  const [org, setOrg] = useState(demoOrg)
-  const [departments, setDepartments] = useState(demoDepartments)
-  const [employees, setEmployees] = useState(demoEmployees)
+  const [org, setOrg] = useState<any>({ id: '', name: '', slug: '', logo_url: null, plan: 'enterprise', industry: '', size: '', country: '', created_at: '', updated_at: '' })
+  const [departments, setDepartments] = useState<any[]>([])
+  const [employees, setEmployees] = useState<any[]>([])
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => getStoredUser())
-  const [goals, setGoals] = useState(demoGoals)
-  const [reviewCycles, setReviewCycles] = useState(demoReviewCycles)
-  const [reviews, setReviews] = useState(demoReviews)
-  const [feedback, setFeedback] = useState(demoFeedback)
-  const [oneOnOnes, setOneOnOnes] = useState(demoOneOnOnes)
-  const [recognitions, setRecognitions] = useState(demoRecognitions)
-  const [competencyFramework] = useState(demoCompetencyFramework)
-  const [competencyRatings, setCompetencyRatings] = useState(demoCompetencyRatings)
-  const [compBands, setCompBands] = useState(demoCompBands)
-  const [salaryReviews, setSalaryReviews] = useState(demoSalaryReviews)
-  const [equityGrants, setEquityGrants] = useState(demoEquityGrants)
-  const [compPlanningCycles, setCompPlanningCycles] = useState(demoCompPlanningCycles)
-  const [courses, setCourses] = useState(demoCourses)
-  const [enrollments, setEnrollments] = useState(demoEnrollments)
-  const [learningPaths, setLearningPaths] = useState(demoLearningPaths)
-  const [liveSessions, setLiveSessions] = useState(demoLiveSessions)
-  const [courseBlocks, setCourseBlocks] = useState(demoCourseBlocks)
-  const [quizQuestions, setQuizQuestions] = useState(demoQuizQuestions)
-  const [discussions, setDiscussions] = useState(demoDiscussions)
-  const [studyGroups, setStudyGroups] = useState(demoStudyGroups)
-  const [complianceTraining, setComplianceTraining] = useState(demoComplianceTraining)
-  const [autoEnrollRules, setAutoEnrollRules] = useState(demoAutoEnrollRules)
-  const [assessmentAttempts, setAssessmentAttempts] = useState(demoAssessmentAttempts)
-  const [learningAssignments, setLearningAssignments] = useState(demoLearningAssignments)
-  const [surveys, setSurveys] = useState(demoSurveys)
-  const [engagementScores, setEngagementScores] = useState(demoEngagementScores)
-  const [actionPlans, setActionPlans] = useState(demoActionPlans)
-  const [surveyResponses, setSurveyResponses] = useState(demoSurveyResponses)
-  const [mentoringPrograms, setMentoringPrograms] = useState(demoMentoringPrograms)
-  const [mentoringPairs, setMentoringPairs] = useState(demoMentoringPairs)
-  const [mentoringSessions, setMentoringSessions] = useState(demoMentoringSessions)
-  const [mentoringGoals, setMentoringGoals] = useState(demoMentoringGoals)
-  const [payrollRuns, setPayrollRuns] = useState(demoPayrollRuns)
-  const [employeePayrollEntries, setEmployeePayrollEntries] = useState(demoEmployeePayrollEntries)
-  const [contractorPayments, setContractorPayments] = useState(demoContractorPayments)
-  const [payrollSchedules, setPayrollSchedules] = useState(demoPayrollSchedules)
-  const [taxConfigs, setTaxConfigs] = useState(demoTaxConfigs)
-  const [complianceIssues, setComplianceIssues] = useState(demoComplianceIssues)
-  const [taxFilings, setTaxFilings] = useState(demoTaxFilings)
-  const [leaveRequests, setLeaveRequests] = useState(demoLeaveRequests)
-  const [benefitPlans, setBenefitPlans] = useState(demoBenefitPlans)
-  const [benefitEnrollments, setBenefitEnrollments] = useState(demoBenefitEnrollments)
-  const [benefitDependents, setBenefitDependents] = useState(demoBenefitDependents)
-  const [lifeEvents, setLifeEvents] = useState(demoLifeEvents)
-  const [expenseReports, setExpenseReports] = useState(demoExpenseReports)
-  const [expensePolicies, setExpensePolicies] = useState(demoExpensePolicies)
-  const [mileageLogs, setMileageLogs] = useState(demoMileageLogs)
-  const [jobPostings, setJobPostings] = useState(demoJobPostings)
-  const [applications, setApplications] = useState(demoApplications)
-  const [careerSiteConfig, setCareerSiteConfig] = useState(demoCareerSiteConfig)
-  const [jobDistributions, setJobDistributions] = useState(demoJobDistributions)
-  const [interviews, setInterviews] = useState(demoInterviews)
-  const [talentPools, setTalentPools] = useState(demoTalentPools)
-  const [scoreCards, setScoreCards] = useState(demoScoreCards)
-  const [devices, setDevices] = useState(demoDevices)
-  const [softwareLicenses, setSoftwareLicenses] = useState(demoSoftwareLicenses)
-  const [itRequests, setITRequests] = useState(demoITRequests)
-  const [invoices, setInvoices] = useState(demoInvoices)
-  const [budgets, setBudgets] = useState(demoBudgets)
-  const [vendors, setVendors] = useState(demoVendors)
+  const [goals, setGoals] = useState<any[]>([])
+  const [reviewCycles, setReviewCycles] = useState<any[]>([])
+  const [reviews, setReviews] = useState<any[]>([])
+  const [feedback, setFeedback] = useState<any[]>([])
+  const [oneOnOnes, setOneOnOnes] = useState<any[]>([])
+  const [recognitions, setRecognitions] = useState<any[]>([])
+  const [competencyFramework] = useState<any>({})
+  const [competencyRatings, setCompetencyRatings] = useState<any[]>([])
+  const [pips, setPIPs] = useState<any[]>([])
+  const [pipCheckIns, setPIPCheckIns] = useState<any[]>([])
+  const [meritCycles, setMeritCycles] = useState<any[]>([])
+  const [meritRecommendations, setMeritRecommendations] = useState<any[]>([])
+  const [reviewTemplates, setReviewTemplates] = useState<any[]>([])
+  const [compBands, setCompBands] = useState<any[]>([])
+  const [salaryReviews, setSalaryReviews] = useState<any[]>([])
+  const [equityGrants, setEquityGrants] = useState<any[]>([])
+  const [compPlanningCycles, setCompPlanningCycles] = useState<any[]>([])
+  const [courses, setCourses] = useState<any[]>([])
+  const [enrollments, setEnrollments] = useState<any[]>([])
+  const [learningPaths, setLearningPaths] = useState<any[]>([])
+  const [liveSessions, setLiveSessions] = useState<any[]>([])
+  const [courseBlocks, setCourseBlocks] = useState<any[]>([])
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([])
+  const [discussions, setDiscussions] = useState<any[]>([])
+  const [studyGroups, setStudyGroups] = useState<any[]>([])
+  const [complianceTraining, setComplianceTraining] = useState<any[]>([])
+  const [autoEnrollRules, setAutoEnrollRules] = useState<any[]>([])
+  const [assessmentAttempts, setAssessmentAttempts] = useState<any[]>([])
+  const [learningAssignments, setLearningAssignments] = useState<any[]>([])
+  const [coursePrerequisites, setCoursePrerequisites] = useState<any[]>([])
+  const [scormPackages, setScormPackages] = useState<any[]>([])
+  const [scormTracking, setScormTracking] = useState<any[]>([])
+  const [contentLibrary, setContentLibrary] = useState<any[]>([])
+  const [learnerBadges, setLearnerBadges] = useState<any[]>([])
+  const [learnerPoints, setLearnerPoints] = useState<any[]>([])
+  const [surveys, setSurveys] = useState<any[]>([])
+  const [engagementScores, setEngagementScores] = useState<any[]>([])
+  const [actionPlans, setActionPlans] = useState<any[]>([])
+  const [surveyResponses, setSurveyResponses] = useState<any[]>([])
+  const [surveyTemplates, setSurveyTemplates] = useState<any[]>([])
+  const [surveySchedules, setSurveySchedules] = useState<any[]>([])
+  const [surveyTriggers, setSurveyTriggers] = useState<any[]>([])
+  const [openEndedResponses, setOpenEndedResponses] = useState<any[]>([])
+  const [mentoringPrograms, setMentoringPrograms] = useState<any[]>([])
+  const [mentoringPairs, setMentoringPairs] = useState<any[]>([])
+  const [mentoringSessions, setMentoringSessions] = useState<any[]>([])
+  const [mentoringGoals, setMentoringGoals] = useState<any[]>([])
+  const [payrollRuns, setPayrollRuns] = useState<any[]>([])
+  const [employeePayrollEntries, setEmployeePayrollEntries] = useState<any[]>([])
+  const [contractorPayments, setContractorPayments] = useState<any[]>([])
+  const [payrollSchedules, setPayrollSchedules] = useState<any[]>([])
+  const [taxConfigs, setTaxConfigs] = useState<any[]>([])
+  const [complianceIssues, setComplianceIssues] = useState<any[]>([])
+  const [taxFilings, setTaxFilings] = useState<any[]>([])
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([])
+  const [timeEntries, setTimeEntries] = useState<any[]>([])
+  const [timeOffPolicies, setTimeOffPolicies] = useState<any[]>([])
+  const [timeOffBalances, setTimeOffBalances] = useState<any[]>([])
+  const [overtimeRules, setOvertimeRules] = useState<any[]>([])
+  const [shifts_data, setShiftsData] = useState<any[]>([])
+  const [benefitPlans, setBenefitPlans] = useState<any[]>([])
+  const [benefitEnrollments, setBenefitEnrollments] = useState<any[]>([])
+  const [benefitDependents, setBenefitDependents] = useState<any[]>([])
+  const [lifeEvents, setLifeEvents] = useState<any[]>([])
+  const [openEnrollmentPeriods, setOpenEnrollmentPeriods] = useState<any[]>([])
+  const [cobraEvents, setCobraEvents] = useState<any[]>([])
+  const [acaTracking, setAcaTracking] = useState<any[]>([])
+  const [flexBenefitAccounts, setFlexBenefitAccounts] = useState<any[]>([])
+  const [flexBenefitTransactions, setFlexBenefitTransactions] = useState<any[]>([])
+  const [expenseReports, setExpenseReports] = useState<any[]>([])
+  const [expensePolicies, setExpensePolicies] = useState<any[]>([])
+  const [mileageLogs, setMileageLogs] = useState<any[]>([])
+  const [receiptMatches, setReceiptMatches] = useState<any[]>([])
+  const [mileageEntries, setMileageEntries] = useState<any[]>([])
+  const [advancedExpensePolicies, setAdvancedExpensePolicies] = useState<any[]>([])
+  const [reimbursementBatches, setReimbursementBatches] = useState<any[]>([])
+  const [duplicateDetections, setDuplicateDetections] = useState<any[]>([])
+  const [jobPostings, setJobPostings] = useState<any[]>([])
+  const [applications, setApplications] = useState<any[]>([])
+  const [careerSiteConfig, setCareerSiteConfig] = useState<any>({})
+  const [jobDistributions, setJobDistributions] = useState<any[]>([])
+  const [interviews, setInterviews] = useState<any[]>([])
+  const [talentPools, setTalentPools] = useState<any[]>([])
+  const [scoreCards, setScoreCards] = useState<any[]>([])
+  const [backgroundChecks, setBackgroundChecks] = useState<any[]>([])
+  const [referralProgram, setReferralProgram] = useState<any>({})
+  const [referrals, setReferrals] = useState<any[]>([])
+  const [knockoutQuestions, setKnockoutQuestions] = useState<any[]>([])
+  const [candidateScheduling, setCandidateScheduling] = useState<any[]>([])
+  const [devices, setDevices] = useState<any[]>([])
+  const [softwareLicenses, setSoftwareLicenses] = useState<any[]>([])
+  const [itRequests, setITRequests] = useState<any[]>([])
+  const [managedDevices, setManagedDevices] = useState<any[]>([])
+  const [deviceActions, setDeviceActions] = useState<any[]>([])
+  const [appCatalog, setAppCatalog] = useState<any[]>([])
+  const [appAssignments, setAppAssignments] = useState<any[]>([])
+  const [securityPoliciesIT, setSecurityPoliciesIT] = useState<any[]>([])
+  const [deviceInventory, setDeviceInventory] = useState<any[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [budgets, setBudgets] = useState<any[]>([])
+  const [vendors, setVendors] = useState<any[]>([])
   // Project Management
-  const [projects, setProjects] = useState(demoProjects)
-  const [milestones, setMilestones] = useState(demoMilestones)
-  const [tasks, setTasks] = useState(demoTasks)
-  const [taskDependencies, setTaskDependencies] = useState(demoTaskDependencies)
-  const [automationRules, setAutomationRules] = useState(demoAutomationRules)
-  const [automationLog, setAutomationLog] = useState(demoAutomationLog)
+  const [projects, setProjects] = useState<any[]>([])
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
+  const [taskDependencies, setTaskDependencies] = useState<any[]>([])
+  const [automationRules, setAutomationRules] = useState<any[]>([])
+  const [automationLog, setAutomationLog] = useState<any[]>([])
   // Strategy Execution
-  const [strategicObjectives, setStrategicObjectives] = useState(demoStrategicObjectives)
-  const [keyResults, setKeyResults] = useState(demoKeyResults)
-  const [initiatives, setInitiatives] = useState(demoInitiatives)
-  const [kpiDefinitions, setKPIDefinitions] = useState(demoKPIDefinitions)
-  const [kpiMeasurements, setKPIMeasurements] = useState(demoKPIMeasurements)
+  const [strategicObjectives, setStrategicObjectives] = useState<any[]>([])
+  const [keyResults, setKeyResults] = useState<any[]>([])
+  const [initiatives, setInitiatives] = useState<any[]>([])
+  const [kpiDefinitions, setKPIDefinitions] = useState<any[]>([])
+  const [kpiMeasurements, setKPIMeasurements] = useState<any[]>([])
   // Workflow Studio
-  const [workflows, setWorkflows] = useState(demoWorkflows)
-  const [workflowSteps, setWorkflowSteps] = useState(demoWorkflowSteps)
-  const [workflowRuns, setWorkflowRuns] = useState(demoWorkflowRuns)
-  const [workflowTemplates, setWorkflowTemplates] = useState(demoWorkflowTemplates)
+  const [workflows, setWorkflows] = useState<any[]>([])
+  const [workflowSteps, setWorkflowSteps] = useState<any[]>([])
+  const [workflowRuns, setWorkflowRuns] = useState<any[]>([])
+  const [workflowTemplates, setWorkflowTemplates] = useState<any[]>([])
+  // Automation Workflows
+  const [automationWorkflows, setAutomationWorkflows] = useState<any[]>([])
+  const [automationWorkflowSteps, setAutomationWorkflowSteps] = useState<any[]>([])
+  const [automationWorkflowRuns, setAutomationWorkflowRuns] = useState<any[]>([])
+  const [automationWorkflowRunSteps, setAutomationWorkflowRunSteps] = useState<any[]>([])
+  const [automationWorkflowTemplates] = useState<any[]>([])
+  // Headcount Planning
+  const [headcountPlans, setHeadcountPlans] = useState<any[]>([])
+  const [headcountPositions, setHeadcountPositions] = useState<any[]>([])
+  const [headcountBudgetItems, setHeadcountBudgetItems] = useState<any[]>([])
+  // Custom Fields
+  const [customFieldDefinitions, setCustomFieldDefinitions] = useState<any[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<any[]>([])
+  // Emergency Contacts
+  const [emergencyContacts, setEmergencyContacts] = useState<any[]>([])
+  // Compliance Management
+  const [complianceRequirements, setComplianceRequirements] = useState<any[]>([])
+  const [complianceDocuments, setComplianceDocuments] = useState<any[]>([])
+  const [complianceAlerts, setComplianceAlerts] = useState<any[]>([])
   // People / HR
-  const [employeeDocuments, setEmployeeDocuments] = useState(demoEmployeeDocuments)
-  const [employeeTimeline, setEmployeeTimeline] = useState(demoEmployeeTimeline)
+  const [employeeDocuments, setEmployeeDocuments] = useState<any[]>([])
+  const [employeeTimeline, setEmployeeTimeline] = useState<any[]>([])
   // Onboarding
-  const [buddyAssignments, setBuddyAssignments] = useState(demoBuddyAssignments)
-  const [preboardingTasks, setPreboardingTasks] = useState(demoPreboardingTasks)
-  const [welcomeContent] = useState(demoWelcomeContent)
+  const [buddyAssignments, setBuddyAssignments] = useState<any[]>([])
+  const [preboardingTasks, setPreboardingTasks] = useState<any[]>([])
+  const [welcomeContent] = useState<any>({
+    welcome_message: 'Welcome to the team! We\'re excited to have you on board.',
+    mission_statement: 'Empowering organizations to build exceptional teams and drive meaningful impact across Africa and beyond.',
+    company_values: [
+      { icon: 'star', title: 'Excellence', description: 'We strive for the highest quality in everything we do.' },
+      { icon: 'users', title: 'Collaboration', description: 'Together we achieve more than we ever could alone.' },
+      { icon: 'lightbulb', title: 'Innovation', description: 'We embrace new ideas and creative solutions.' },
+      { icon: 'heart', title: 'Empathy', description: 'We lead with understanding and compassion.' },
+      { icon: 'shield', title: 'Integrity', description: 'We act with honesty, transparency, and accountability.' },
+    ],
+    first_week_schedule: [
+      { day: 'Day 1', items: ['Team introduction & welcome', 'Office tour & workstation setup', 'Lunch with your buddy'] },
+      { day: 'Day 2', items: ['HR orientation & benefits overview', 'IT systems access & training', 'Meet your manager 1:1'] },
+      { day: 'Day 3', items: ['Department deep dive', 'Product walkthrough', 'Team standup participation'] },
+      { day: 'Day 4', items: ['Shadow a colleague', 'Complete compliance training', 'First project introduction'] },
+      { day: 'Day 5', items: ['Week 1 check-in with manager', 'Set 30-60-90 day goals', 'Team social'] },
+    ],
+    it_checklist: [
+      { label: 'Email account setup', status: 'complete' },
+      { label: 'Laptop provisioned', status: 'complete' },
+      { label: 'Slack & Teams access', status: 'complete' },
+      { label: 'VPN configuration', status: 'pending' },
+      { label: 'Security training', status: 'pending' },
+    ],
+    communication_templates: [
+      { id: 'welcome', name: 'Welcome Email', type: 'email', description: 'Sent to new hires before day 1' },
+      { id: 'intro', name: 'Team Introduction', type: 'slack', description: 'Announces new hire to the team' },
+      { id: 'checkin', name: '30-Day Check-in', type: 'email', description: 'Automated follow-up after first month' },
+    ],
+  })
+  // Offboarding
+  const [offboardingChecklists, setOffboardingChecklists] = useState<any[]>([])
+  const [offboardingChecklistItems, setOffboardingChecklistItems] = useState<any[]>([])
+  const [offboardingProcesses, setOffboardingProcesses] = useState<any[]>([])
+  const [offboardingTasks, setOffboardingTasks] = useState<any[]>([])
+  const [exitSurveys, setExitSurveys] = useState<any[]>([])
   // Notifications
-  const [notifications, setNotifications] = useState(demoNotifications)
+  const [notifications, setNotifications] = useState<any[]>([])
   // Offers, Career Tracks, Market Benchmarks, Widget Preferences
-  const [offers, setOffers] = useState(demoOffers)
-  const [careerTracks] = useState(demoCareerTracks)
-  const [marketBenchmarks, setMarketBenchmarks] = useState(demoMarketBenchmarks)
-  const [widgetPreferences, setWidgetPreferences] = useState(demoWidgetPreferences)
-  const [journeys, setJourneys] = useState(demoJourneys)
+  const [offers, setOffers] = useState<any[]>([])
+  const [careerTracks] = useState<any[]>([])
+  const [marketBenchmarks, setMarketBenchmarks] = useState<any[]>([])
+  const [widgetPreferences, setWidgetPreferences] = useState<any>({})
+  const [journeys, setJourneys] = useState<any[]>([])
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const hasFetched = useRef(false)
+  const isDemoUserRef = useRef(false)
+  const loadedModulesRef = useRef(new Set<string>())
   // Track current org ID for CRUD operations without causing re-renders
   const orgIdRef = useRef(org.id)
   useEffect(() => { orgIdRef.current = org.id }, [org.id])
 
   // Load all demo data for a specific org (used when switching between demo tenants)
+  // Uses dynamic import so demo-data.ts (~323KB) is code-split into a separate chunk
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const loadDemoData = useCallback((orgId: string) => {
+  const loadDemoData = useCallback(async (orgId: string) => {
+    const { getDemoDataForOrg } = await loadDemoModule()
     const data = getDemoDataForOrg(orgId)
     // Use type assertions to handle narrowed literal type differences between orgs
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -822,9 +1214,159 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setNotifications(data.notifications as any)
     if (data.employeeDocuments) setEmployeeDocuments(data.employeeDocuments as any)
     if (data.employeeTimeline) setEmployeeTimeline(data.employeeTimeline as any)
+    // Offboarding
+    if ((data as any).offboardingChecklists) setOffboardingChecklists((data as any).offboardingChecklists)
+    if ((data as any).offboardingChecklistItems) setOffboardingChecklistItems((data as any).offboardingChecklistItems)
+    if ((data as any).offboardingProcesses) setOffboardingProcesses((data as any).offboardingProcesses)
+    if ((data as any).offboardingTasks) setOffboardingTasks((data as any).offboardingTasks)
+    if ((data as any).exitSurveys) setExitSurveys((data as any).exitSurveys)
+    // Time & Attendance
+    if ((data as any).timeEntries) setTimeEntries((data as any).timeEntries)
+    if ((data as any).timeOffPolicies) setTimeOffPolicies((data as any).timeOffPolicies)
+    if ((data as any).timeOffBalances) setTimeOffBalances((data as any).timeOffBalances)
+    if ((data as any).overtimeRules) setOvertimeRules((data as any).overtimeRules)
+    if ((data as any).shifts) setShiftsData((data as any).shifts)
+    // Benefits enhancements
+    if ((data as any).openEnrollmentPeriods) setOpenEnrollmentPeriods((data as any).openEnrollmentPeriods)
+    if ((data as any).cobraEvents) setCobraEvents((data as any).cobraEvents)
+    if ((data as any).acaTracking) setAcaTracking((data as any).acaTracking)
+    if ((data as any).flexBenefitAccounts) setFlexBenefitAccounts((data as any).flexBenefitAccounts)
+    if ((data as any).flexBenefitTransactions) setFlexBenefitTransactions((data as any).flexBenefitTransactions)
+    // Expense enhancements
+    if ((data as any).receiptMatches) setReceiptMatches((data as any).receiptMatches)
+    if ((data as any).mileageEntries) setMileageEntries((data as any).mileageEntries)
+    if ((data as any).advancedExpensePolicies) setAdvancedExpensePolicies((data as any).advancedExpensePolicies)
+    if ((data as any).reimbursementBatches) setReimbursementBatches((data as any).reimbursementBatches)
+    if ((data as any).duplicateDetections) setDuplicateDetections((data as any).duplicateDetections)
+    // Recruiting enhancements
+    if ((data as any).backgroundChecks) setBackgroundChecks((data as any).backgroundChecks)
+    if ((data as any).referralProgram) setReferralProgram((data as any).referralProgram)
+    if ((data as any).referrals) setReferrals((data as any).referrals)
+    if ((data as any).knockoutQuestions) setKnockoutQuestions((data as any).knockoutQuestions)
+    if ((data as any).candidateScheduling) setCandidateScheduling((data as any).candidateScheduling)
+    // IT Cloud
+    if ((data as any).managedDevices) setManagedDevices((data as any).managedDevices)
+    if ((data as any).deviceActions) setDeviceActions((data as any).deviceActions)
+    if ((data as any).appCatalog) setAppCatalog((data as any).appCatalog)
+    if ((data as any).appAssignments) setAppAssignments((data as any).appAssignments)
+    if ((data as any).securityPoliciesIT) setSecurityPoliciesIT((data as any).securityPoliciesIT)
+    if ((data as any).deviceInventory) setDeviceInventory((data as any).deviceInventory)
+    // PIPs/Merit/Templates
+    if ((data as any).pips) setPIPs((data as any).pips)
+    if ((data as any).pipCheckIns) setPIPCheckIns((data as any).pipCheckIns)
+    if ((data as any).meritCycles) setMeritCycles((data as any).meritCycles)
+    if ((data as any).meritRecommendations) setMeritRecommendations((data as any).meritRecommendations)
+    if ((data as any).reviewTemplates) setReviewTemplates((data as any).reviewTemplates)
+    // LMS enhancements
+    if ((data as any).coursePrerequisites) setCoursePrerequisites((data as any).coursePrerequisites)
+    if ((data as any).scormPackages) setScormPackages((data as any).scormPackages)
+    if ((data as any).scormTracking) setScormTracking((data as any).scormTracking)
+    if ((data as any).contentLibrary) setContentLibrary((data as any).contentLibrary)
+    if ((data as any).learnerBadges) setLearnerBadges((data as any).learnerBadges)
+    if ((data as any).learnerPoints) setLearnerPoints((data as any).learnerPoints)
+    // Survey enhancements
+    if ((data as any).surveyTemplates) setSurveyTemplates((data as any).surveyTemplates)
+    if ((data as any).surveySchedules) setSurveySchedules((data as any).surveySchedules)
+    if ((data as any).surveyTriggers) setSurveyTriggers((data as any).surveyTriggers)
+    if ((data as any).openEndedResponses) setOpenEndedResponses((data as any).openEndedResponses)
+    // Automation Workflows
+    if ((data as any).automationWorkflows) setAutomationWorkflows((data as any).automationWorkflows)
+    if ((data as any).automationWorkflowSteps) setAutomationWorkflowSteps((data as any).automationWorkflowSteps)
+    if ((data as any).automationWorkflowRuns) setAutomationWorkflowRuns((data as any).automationWorkflowRuns)
+    if ((data as any).automationWorkflowRunSteps) setAutomationWorkflowRunSteps((data as any).automationWorkflowRunSteps)
+    // Headcount Planning
+    if ((data as any).headcountPlans) setHeadcountPlans((data as any).headcountPlans)
+    if ((data as any).headcountPositions) setHeadcountPositions((data as any).headcountPositions)
+    if ((data as any).headcountBudgetItems) setHeadcountBudgetItems((data as any).headcountBudgetItems)
+    // Custom Fields/Compliance
+    if ((data as any).customFieldDefinitions) setCustomFieldDefinitions((data as any).customFieldDefinitions)
+    if ((data as any).customFieldValues) setCustomFieldValues((data as any).customFieldValues)
+    if ((data as any).emergencyContacts) setEmergencyContacts((data as any).emergencyContacts)
+    if ((data as any).complianceRequirements) setComplianceRequirements((data as any).complianceRequirements)
+    if ((data as any).complianceDocuments) setComplianceDocuments((data as any).complianceDocuments)
+    if ((data as any).complianceAlerts) setComplianceAlerts((data as any).complianceAlerts)
     /* eslint-enable @typescript-eslint/no-explicit-any */
     setAuditLog([])
     try { localStorage.setItem('tempo_current_org', orgId) } catch { /* ignore */ }
+  }, [])
+
+  // ---- Module setter registry for lazy loading ----
+  // Maps store keys to their useState setter functions.
+  // useState setters are stable references, so this object can be built once.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const moduleSetters = useRef<Record<string, (data: any) => void>>({})
+  // Build once on first render
+  if (Object.keys(moduleSetters.current).length === 0) {
+    moduleSetters.current = {
+      employees: (d) => setEmployees(d),
+      departments: (d) => setDepartments(d),
+      goals: (d) => setGoals(d),
+      reviewCycles: (d) => setReviewCycles(d),
+      reviews: (d) => setReviews(d),
+      feedback: (d) => setFeedback(d),
+      compBands: (d) => setCompBands(d),
+      salaryReviews: (d) => setSalaryReviews(d),
+      courses: (d) => setCourses(d),
+      enrollments: (d) => setEnrollments(d),
+      surveys: (d) => setSurveys(d),
+      engagementScores: (d) => setEngagementScores(d),
+      mentoringPrograms: (d) => setMentoringPrograms(d),
+      mentoringPairs: (d) => setMentoringPairs(d),
+      payrollRuns: (d) => setPayrollRuns(d),
+      leaveRequests: (d) => setLeaveRequests(d),
+      benefitPlans: (d) => setBenefitPlans(d),
+      benefitEnrollments: (d) => setBenefitEnrollments(d),
+      expenseReports: (d) => setExpenseReports(d),
+      jobPostings: (d) => setJobPostings(d),
+      applications: (d) => setApplications(d),
+      devices: (d) => setDevices(d),
+      softwareLicenses: (d) => setSoftwareLicenses(d),
+      itRequests: (d) => setITRequests(d),
+      invoices: (d) => setInvoices(d),
+      budgets: (d) => setBudgets(d),
+      vendors: (d) => setVendors(d),
+      projects: (d) => setProjects(d),
+      milestones: (d) => setMilestones(d),
+      tasks: (d) => setTasks(d),
+      strategicObjectives: (d) => setStrategicObjectives(d),
+      keyResults: (d) => setKeyResults(d),
+      initiatives: (d) => setInitiatives(d),
+      kpiDefinitions: (d) => setKPIDefinitions(d),
+      workflows: (d) => setWorkflows(d),
+      workflowTemplates: (d) => setWorkflowTemplates(d),
+      auditLog: (d) => setAuditLog(d),
+    }
+  }
+
+  /**
+   * Lazily load modules from the per-module API.
+   * - No-op for demo users (all data loaded from demo-data.ts)
+   * - No-op for modules already loaded from DB
+   * - Fetches missing modules in parallel and updates store state
+   */
+  const ensureModulesLoaded = useCallback(async (modules: string[]) => {
+    // Demo users already have all data from loadDemoData()
+    if (isDemoUserRef.current) return
+
+    // Filter to modules that: (1) have a per-module API endpoint, (2) haven't been loaded yet
+    const toFetch = modules.filter(
+      (m) => MODULE_SLUGS[m] && !loadedModulesRef.current.has(m),
+    )
+    if (toFetch.length === 0) return
+
+    try {
+      const results = await fetchModulesFromAPI(toFetch)
+      for (const [key, result] of Object.entries(results)) {
+        const setter = moduleSetters.current[key]
+        if (setter && result.data.length > 0) {
+          setter(result.data as any)
+        }
+        // Mark as loaded even if empty (no data in DB for this org)
+        loadedModulesRef.current.add(key)
+      }
+    } catch (err) {
+      console.warn('Failed to load modules:', toFetch, err)
+    }
   }, [])
 
   // ---- Validate session and fetch data on mount ----
@@ -844,7 +1386,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           isDemoUser = sessEmpId.startsWith('emp-') || sessEmpId.startsWith('kemp-')
           if (isDemoUser) {
             const sessOrgId = sessEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
-            loadDemoData(sessOrgId)
+            await loadDemoData(sessOrgId)
           }
           setCurrentUser(sessionUser)
           try { localStorage.setItem('tempo_current_user', JSON.stringify(sessionUser)) } catch { /* ignore */ }
@@ -860,7 +1402,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
             isDemoUser = cachedEmpId.startsWith('emp-') || cachedEmpId.startsWith('kemp-')
             if (isDemoUser) {
               const cachedOrgId = cachedEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
-              loadDemoData(cachedOrgId)
+              await loadDemoData(cachedOrgId)
             }
           } else {
             // No cached user and API is down — can't authenticate
@@ -877,144 +1419,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Step 2: Fetch all data from DB (session cookie sent automatically)
+        // Step 2: Fetch core data from DB via per-module endpoints (not monolithic)
         // Skip DB fetch for demo users — their data was already loaded by loadDemoData()
+        isDemoUserRef.current = isDemoUser
         if (!isDemoUser) {
-          const res = await fetch('/api/data')
-          if (!res.ok) {
-            console.warn('Failed to load data from DB, using demo data')
-            setIsLoading(false)
-            return
+          try {
+            // Only fetch universally-needed modules on init (~2-3 queries instead of 40+)
+            // Other modules are loaded lazily via ensureModulesLoaded() when their page mounts
+            const coreData = await fetchModulesFromAPI(['employees', 'departments'])
+            if (coreData.employees?.data?.length) setEmployees(coreData.employees.data as any)
+            if (coreData.departments?.data?.length) setDepartments(coreData.departments.data as any)
+            loadedModulesRef.current.add('employees')
+            loadedModulesRef.current.add('departments')
+          } catch (err) {
+            console.warn('Failed to load core data from DB, using demo data:', err)
           }
-          const data = await res.json()
-
-          if (data.org) setOrg(data.org)
-          if (data.departments?.length) setDepartments(data.departments)
-          if (data.employees?.length) setEmployees(data.employees)
-          if (data.goals?.length) setGoals(data.goals)
-          if (data.reviewCycles?.length) setReviewCycles(data.reviewCycles)
-          if (data.reviews?.length) setReviews(data.reviews)
-          if (data.feedback?.length) setFeedback(data.feedback)
-          if (data.compBands?.length) setCompBands(data.compBands)
-          if (data.salaryReviews?.length) setSalaryReviews(data.salaryReviews)
-          if (data.courses?.length) setCourses(data.courses)
-          if (data.enrollments?.length) setEnrollments(data.enrollments)
-
-          // Build a course ID remap: demo "course-N" → actual DB UUID
-          const courseIdMap = new Map<string, string>()
-          if (data.courses?.length) {
-            (data.courses as Array<{ id: string }>).forEach((c, i) => { courseIdMap.set(`course-${i + 1}`, c.id) })
-          }
-          const remapCourseId = (cid: string) => courseIdMap.get(cid) || cid
-
-          if (data.learningPaths?.length) {
-            setLearningPaths(data.learningPaths)
-          } else if (courseIdMap.size > 0) {
-            setLearningPaths(prev => prev.map(lp => ({
-              ...lp,
-              course_ids: (lp as any).course_ids.map((cid: string) => remapCourseId(cid)),
-            })) as typeof prev)
-          }
-          if (data.liveSessions?.length) {
-            setLiveSessions(data.liveSessions)
-          } else if (courseIdMap.size > 0) {
-            setLiveSessions(prev => prev.map(s => ({
-              ...s,
-              course_id: remapCourseId((s as any).course_id),
-            })) as typeof prev)
-          }
-          // Remap course_id in demo quiz questions, course blocks, discussions, study groups, etc.
-          if (courseIdMap.size > 0) {
-            if (!data.courseBlocks?.length) {
-              setCourseBlocks(prev => prev.map(b => ({ ...b, course_id: remapCourseId(b.course_id) })) as typeof prev)
-            }
-            if (!data.quizQuestions?.length) {
-              setQuizQuestions(prev => prev.map(q => ({ ...q, course_id: remapCourseId(q.course_id) })) as typeof prev)
-            }
-            if (!data.discussions?.length) {
-              setDiscussions(prev => prev.map(d => ({ ...d, course_id: d.course_id ? remapCourseId(d.course_id) : d.course_id })) as typeof prev)
-            }
-            if (!data.studyGroups?.length) {
-              setStudyGroups(prev => prev.map(s => ({ ...s, course_id: remapCourseId(s.course_id) })) as typeof prev)
-            }
-            if (!data.assessmentAttempts?.length) {
-              setAssessmentAttempts(prev => prev.map(a => ({ ...a, course_id: remapCourseId(a.course_id) })) as typeof prev)
-            }
-            if (!data.enrollments?.length) {
-              setEnrollments(prev => prev.map(e => ({ ...e, course_id: remapCourseId(e.course_id) })) as typeof prev)
-            }
-          }
-          if (data.surveys?.length) setSurveys(data.surveys)
-          if (data.engagementScores?.length) setEngagementScores(data.engagementScores)
-          if (data.actionPlans?.length) setActionPlans(data.actionPlans)
-          if (data.surveyResponses?.length) setSurveyResponses(data.surveyResponses)
-          if (data.mentoringPrograms?.length) setMentoringPrograms(data.mentoringPrograms)
-          if (data.mentoringPairs?.length) setMentoringPairs(data.mentoringPairs)
-          if (data.mentoringSessions?.length) setMentoringSessions(data.mentoringSessions)
-          if (data.mentoringGoals?.length) setMentoringGoals(data.mentoringGoals)
-          if (data.payrollRuns?.length) setPayrollRuns(data.payrollRuns)
-          if (data.employeePayrollEntries?.length) setEmployeePayrollEntries(data.employeePayrollEntries)
-          if (data.contractorPayments?.length) setContractorPayments(data.contractorPayments)
-          if (data.payrollSchedules?.length) setPayrollSchedules(data.payrollSchedules)
-          if (data.taxConfigs?.length) setTaxConfigs(data.taxConfigs)
-          if (data.complianceIssues?.length) setComplianceIssues(data.complianceIssues)
-          if (data.taxFilings?.length) setTaxFilings(data.taxFilings)
-          if (data.leaveRequests?.length) setLeaveRequests(data.leaveRequests)
-          if (data.benefitPlans?.length) setBenefitPlans(data.benefitPlans)
-          if (data.benefitEnrollments?.length) setBenefitEnrollments(data.benefitEnrollments)
-          if (data.benefitDependents?.length) setBenefitDependents(data.benefitDependents)
-          if (data.lifeEvents?.length) setLifeEvents(data.lifeEvents)
-          if (data.expenseReports?.length) setExpenseReports(data.expenseReports)
-          if (data.expensePolicies?.length) setExpensePolicies(data.expensePolicies)
-          if (data.mileageLogs?.length) setMileageLogs(data.mileageLogs)
-          if (data.jobPostings?.length) setJobPostings(data.jobPostings)
-          if (data.applications?.length) setApplications(data.applications)
-          if (data.careerSiteConfig) setCareerSiteConfig(data.careerSiteConfig)
-          if (data.jobDistributions?.length) {
-            setJobDistributions(data.jobDistributions)
-          } else if (data.jobPostings?.length) {
-            // Remap demo job distribution job_id to actual DB job IDs
-            const dbJobs = data.jobPostings as Array<{ id: string }>
-            const jMap = new Map<string, string>()
-            dbJobs.forEach((j, i) => { jMap.set(`job-${i + 1}`, j.id) })
-            setJobDistributions(prev => prev.map(d => ({
-              ...d,
-              job_id: jMap.get((d as any).job_id) || (d as any).job_id,
-            })) as typeof prev)
-          }
-          if (data.devices?.length) setDevices(data.devices)
-          if (data.softwareLicenses?.length) setSoftwareLicenses(data.softwareLicenses)
-          if (data.itRequests?.length) setITRequests(data.itRequests)
-          if (data.invoices?.length) setInvoices(data.invoices)
-          if (data.budgets?.length) setBudgets(data.budgets)
-          if (data.vendors?.length) setVendors(data.vendors)
-          // Phase 3: Project Management
-          if (data.projects?.length) setProjects(data.projects)
-          if (data.milestones?.length) setMilestones(data.milestones)
-          if (data.tasks?.length) setTasks(data.tasks)
-          if (data.taskDependencies?.length) setTaskDependencies(data.taskDependencies)
-          // Phase 3: Strategy Execution
-          if (data.strategicObjectives?.length) setStrategicObjectives(data.strategicObjectives)
-          if (data.keyResults?.length) setKeyResults(data.keyResults)
-          if (data.initiatives?.length) setInitiatives(data.initiatives)
-          if (data.kpiDefinitions?.length) setKPIDefinitions(data.kpiDefinitions)
-          if (data.kpiMeasurements?.length) setKPIMeasurements(data.kpiMeasurements)
-          // Phase 3: Workflow Studio
-          if (data.workflows?.length) setWorkflows(data.workflows)
-          if (data.workflowSteps?.length) setWorkflowSteps(data.workflowSteps)
-          if (data.workflowRuns?.length) setWorkflowRuns(data.workflowRuns)
-          if (data.workflowTemplates?.length) setWorkflowTemplates(data.workflowTemplates)
-          // Notifications
-          if (data.notifications?.length) setNotifications(data.notifications)
-          if (data.auditLog?.length) setAuditLog(data.auditLog.map((a: AnyRecord) => ({
-            id: a.id,
-            user: a.user_id || '',
-            action: a.action,
-            entity_type: a.entity_type,
-            entity_id: a.entity_id || '',
-            details: a.details || '',
-            timestamp: a.timestamp,
-          })))
         }
       } catch (err) {
         console.warn('Failed to initialize session:', err)
@@ -1029,17 +1448,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Remap journey employee IDs when DB employees have different IDs (UUIDs vs demo emp-N)
   useEffect(() => {
     if (!isLoading && employees.length > 0 && employees[0]?.id && !employees[0].id.startsWith('emp-')) {
-      setJourneys(prev => prev.map(j => {
-        const demoEmp = demoEmployees.find(e => e.id === j.employee_id)
-        const actualEmp = demoEmp ? employees.find(e => e.profile.full_name === demoEmp.profile.full_name) : null
-        const demoAssigner = demoEmployees.find(e => e.id === j.assigned_by)
-        const actualAssigner = demoAssigner ? employees.find(e => e.profile.full_name === demoAssigner.profile.full_name) : null
-        return {
-          ...j,
-          employee_id: actualEmp?.id || j.employee_id,
-          assigned_by: actualAssigner?.id || j.assigned_by,
-        }
-      }))
+      loadDemoModule().then(({ demoEmployees: demoEmps }) => {
+        setJourneys(prev => prev.map(j => {
+          const demoEmp = demoEmps.find(e => e.id === j.employee_id)
+          const actualEmp = demoEmp ? employees.find(e => e.profile.full_name === demoEmp.profile.full_name) : null
+          const demoAssigner = demoEmps.find(e => e.id === j.assigned_by)
+          const actualAssigner = demoAssigner ? employees.find(e => e.profile.full_name === demoAssigner.profile.full_name) : null
+          return {
+            ...j,
+            employee_id: actualEmp?.id || j.employee_id,
+            assigned_by: actualAssigner?.id || j.assigned_by,
+          }
+        }))
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading])
@@ -1058,7 +1479,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const logAudit = useCallback((action: string, entity_type: string, entity_id: string, details: string) => {
     setAuditLog(prev => [{
       id: genId('audit'),
-      user: currentUser?.full_name || demoUser.full_name,
+      user: currentUser?.full_name || 'Unknown User',
       action,
       entity_type,
       entity_id,
@@ -1179,14 +1600,825 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast('Offer updated')
   }, [logAudit, addToast])
 
+  // ---- CRUD: Offboarding ----
+  const addOffboardingChecklist = useCallback((data: AnyRecord) => {
+    const id = genId('ob-cl')
+    setOffboardingChecklists(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'offboarding_checklist', id, `Created checklist: ${data.name}`)
+    addToast('Offboarding checklist created')
+  }, [logAudit, addToast])
+
+  const updateOffboardingChecklist = useCallback((id: string, data: AnyRecord) => {
+    setOffboardingChecklists(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
+    logAudit('update', 'offboarding_checklist', id, 'Updated offboarding checklist')
+    addToast('Checklist updated')
+  }, [logAudit, addToast])
+
+  const addOffboardingChecklistItem = useCallback((data: AnyRecord) => {
+    const id = genId('ob-cli')
+    setOffboardingChecklistItems(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'offboarding_checklist_item', id, `Added item: ${data.title}`)
+    addToast('Checklist item added')
+  }, [logAudit, addToast])
+
+  const updateOffboardingChecklistItem = useCallback((id: string, data: AnyRecord) => {
+    setOffboardingChecklistItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
+    logAudit('update', 'offboarding_checklist_item', id, 'Updated checklist item')
+    addToast('Checklist item updated')
+  }, [logAudit, addToast])
+
+  const deleteOffboardingChecklistItem = useCallback((id: string) => {
+    setOffboardingChecklistItems(prev => prev.filter(i => i.id !== id))
+    logAudit('delete', 'offboarding_checklist_item', id, 'Deleted checklist item')
+    addToast('Checklist item removed')
+  }, [logAudit, addToast])
+
+  const addOffboardingProcess = useCallback((data: AnyRecord) => {
+    const id = genId('ob-proc')
+    setOffboardingProcesses(prev => [...prev, { id, org_id: orgIdRef.current, started_at: new Date().toISOString(), completed_at: null, ...data }] as typeof prev)
+    logAudit('create', 'offboarding_process', id, `Initiated offboarding for ${getEmployeeName(data.employee_id)}`)
+    addToast('Offboarding process initiated')
+  }, [logAudit, addToast, getEmployeeName])
+
+  const updateOffboardingProcess = useCallback((id: string, data: AnyRecord) => {
+    setOffboardingProcesses(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'offboarding_process', id, 'Updated offboarding process')
+    addToast('Offboarding process updated')
+  }, [logAudit, addToast])
+
+  const addOffboardingTask = useCallback((data: AnyRecord) => {
+    const id = genId('ob-task')
+    setOffboardingTasks(prev => [...prev, { id, completed_at: null, completed_by: null, notes: null, ...data }] as typeof prev)
+    logAudit('create', 'offboarding_task', id, 'Created offboarding task')
+    addToast('Offboarding task created')
+  }, [logAudit, addToast])
+
+  const updateOffboardingTask = useCallback((id: string, data: AnyRecord) => {
+    setOffboardingTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'offboarding_task', id, 'Updated offboarding task')
+    addToast('Task updated')
+  }, [logAudit, addToast])
+
+  const addExitSurvey = useCallback((data: AnyRecord) => {
+    const id = genId('exit-survey')
+    setExitSurveys(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'exit_survey', id, 'Exit survey submitted')
+    addToast('Exit survey submitted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Time Entries ----
+  const addTimeEntry = useCallback((data: AnyRecord) => {
+    const id = genId('te')
+    setTimeEntries(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'time_entry', id, 'Logged time entry')
+    addToast('Time entry recorded')
+    apiPost('timeEntries', 'create', data)
+  }, [logAudit, addToast])
+  const updateTimeEntry = useCallback((id: string, data: AnyRecord) => {
+    setTimeEntries(prev => prev.map(te => te.id === id ? { ...te, ...data } : te) as typeof prev)
+    logAudit('update', 'time_entry', id, 'Updated time entry')
+    addToast('Time entry updated')
+    apiPost('timeEntries', 'update', data, id)
+  }, [logAudit, addToast])
+  const deleteTimeEntry = useCallback((id: string) => {
+    setTimeEntries(prev => prev.filter(te => te.id !== id))
+    logAudit('delete', 'time_entry', id, 'Deleted time entry')
+    addToast('Time entry deleted')
+    apiPost('timeEntries', 'delete', undefined, id)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Time Off Policies ----
+  const addTimeOffPolicy = useCallback((data: AnyRecord) => {
+    const id = genId('top')
+    setTimeOffPolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'time_off_policy', id, `Created time off policy: ${data.name}`)
+    addToast('Time off policy created')
+  }, [logAudit, addToast])
+  const updateTimeOffPolicy = useCallback((id: string, data: AnyRecord) => {
+    setTimeOffPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'time_off_policy', id, 'Updated time off policy')
+    addToast('Time off policy updated')
+  }, [logAudit, addToast])
+  const deleteTimeOffPolicy = useCallback((id: string) => {
+    setTimeOffPolicies(prev => prev.filter(p => p.id !== id))
+    logAudit('delete', 'time_off_policy', id, 'Deleted time off policy')
+    addToast('Time off policy deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Time Off Balances ----
+  const addTimeOffBalance = useCallback((data: AnyRecord) => {
+    const id = genId('tob')
+    setTimeOffBalances(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'time_off_balance', id, 'Added time off balance')
+    addToast('Balance updated')
+  }, [logAudit, addToast])
+  const updateTimeOffBalance = useCallback((id: string, data: AnyRecord) => {
+    setTimeOffBalances(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'time_off_balance', id, 'Updated time off balance')
+    addToast('Balance updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Overtime Rules ----
+  const addOvertimeRule = useCallback((data: AnyRecord) => {
+    const id = genId('otr')
+    setOvertimeRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'overtime_rule', id, `Created overtime rule: ${data.name}`)
+    addToast('Overtime rule created')
+  }, [logAudit, addToast])
+  const updateOvertimeRule = useCallback((id: string, data: AnyRecord) => {
+    setOvertimeRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'overtime_rule', id, 'Updated overtime rule')
+    addToast('Overtime rule updated')
+  }, [logAudit, addToast])
+  const deleteOvertimeRule = useCallback((id: string) => {
+    setOvertimeRules(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'overtime_rule', id, 'Deleted overtime rule')
+    addToast('Overtime rule deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Shifts ----
+  const addShift = useCallback((data: AnyRecord) => {
+    const id = genId('sh')
+    setShiftsData(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'shift', id, 'Created shift')
+    addToast('Shift created')
+  }, [logAudit, addToast])
+  const updateShift = useCallback((id: string, data: AnyRecord) => {
+    setShiftsData(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'shift', id, 'Updated shift')
+    addToast('Shift updated')
+  }, [logAudit, addToast])
+  const deleteShift = useCallback((id: string) => {
+    setShiftsData(prev => prev.filter(s => s.id !== id))
+    logAudit('delete', 'shift', id, 'Deleted shift')
+    addToast('Shift deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Open Enrollment Periods ----
+  const addOpenEnrollmentPeriod = useCallback((data: AnyRecord) => {
+    const id = genId('oep')
+    setOpenEnrollmentPeriods(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), reminders_sent: 0, ...data }] as typeof prev)
+    logAudit('create', 'open_enrollment', id, `Created enrollment period: ${data.name}`)
+    addToast('Open enrollment period created')
+  }, [logAudit, addToast])
+  const updateOpenEnrollmentPeriod = useCallback((id: string, data: AnyRecord) => {
+    setOpenEnrollmentPeriods(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'open_enrollment', id, 'Updated enrollment period')
+    addToast('Enrollment period updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: COBRA Events ----
+  const addCobraEvent = useCallback((data: AnyRecord) => {
+    const id = genId('cobra')
+    setCobraEvents(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'cobra_event', id, `Created COBRA event for ${getEmployeeName(data.employee_id)}`)
+    addToast('COBRA event created')
+  }, [logAudit, addToast, getEmployeeName])
+  const updateCobraEvent = useCallback((id: string, data: AnyRecord) => {
+    setCobraEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e) as typeof prev)
+    logAudit('update', 'cobra_event', id, 'Updated COBRA event')
+    addToast('COBRA event updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: ACA Tracking ----
+  const addAcaTracking = useCallback((data: AnyRecord) => {
+    const id = genId('aca')
+    setAcaTracking(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'aca_tracking', id, `Added ACA tracking for ${getEmployeeName(data.employee_id)}`)
+    addToast('ACA tracking record added')
+  }, [logAudit, addToast, getEmployeeName])
+  const updateAcaTracking = useCallback((id: string, data: AnyRecord) => {
+    setAcaTracking(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'aca_tracking', id, 'Updated ACA tracking')
+    addToast('ACA tracking updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Flex Benefit Accounts ----
+  const addFlexBenefitAccount = useCallback((data: AnyRecord) => {
+    const id = genId('fba')
+    setFlexBenefitAccounts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'flex_benefit_account', id, `Created flex account for ${getEmployeeName(data.employee_id)}`)
+    addToast('Flex benefit account created')
+  }, [logAudit, addToast, getEmployeeName])
+  const updateFlexBenefitAccount = useCallback((id: string, data: AnyRecord) => {
+    setFlexBenefitAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'flex_benefit_account', id, 'Updated flex account')
+    addToast('Flex benefit account updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Flex Benefit Transactions ----
+  const addFlexBenefitTransaction = useCallback((data: AnyRecord) => {
+    const id = genId('fbt')
+    setFlexBenefitTransactions(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'flex_transaction', id, `Added flex transaction: ${data.description}`)
+    addToast('Transaction recorded')
+  }, [logAudit, addToast])
+  const updateFlexBenefitTransaction = useCallback((id: string, data: AnyRecord) => {
+    setFlexBenefitTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'flex_transaction', id, 'Updated flex transaction')
+    addToast('Transaction updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Receipt Matches ----
+  const addReceiptMatch = useCallback((data: AnyRecord) => {
+    const id = genId('rm')
+    setReceiptMatches(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'receipt_match', id, 'Created receipt match')
+    addToast('Receipt match created')
+  }, [logAudit, addToast])
+  const updateReceiptMatch = useCallback((id: string, data: AnyRecord) => {
+    setReceiptMatches(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'receipt_match', id, 'Updated receipt match')
+    addToast('Receipt match updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Mileage Entries ----
+  const addMileageEntry = useCallback((data: AnyRecord) => {
+    const id = genId('me')
+    setMileageEntries(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'mileage_entry', id, 'Created mileage entry')
+    addToast('Mileage entry added')
+  }, [logAudit, addToast])
+  const updateMileageEntry = useCallback((id: string, data: AnyRecord) => {
+    setMileageEntries(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
+    logAudit('update', 'mileage_entry', id, 'Updated mileage entry')
+  }, [logAudit])
+
+  // ---- CRUD: Advanced Expense Policies ----
+  const addAdvancedExpensePolicy = useCallback((data: AnyRecord) => {
+    const id = genId('aep')
+    setAdvancedExpensePolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'advanced_expense_policy', id, `Created advanced policy: ${data.name}`)
+    addToast('Expense policy created')
+  }, [logAudit, addToast])
+  const updateAdvancedExpensePolicy = useCallback((id: string, data: AnyRecord) => {
+    setAdvancedExpensePolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'advanced_expense_policy', id, 'Updated advanced expense policy')
+    addToast('Expense policy updated')
+  }, [logAudit, addToast])
+  const deleteAdvancedExpensePolicy = useCallback((id: string) => {
+    setAdvancedExpensePolicies(prev => prev.filter(p => p.id !== id))
+    logAudit('delete', 'advanced_expense_policy', id, 'Deleted advanced expense policy')
+    addToast('Expense policy deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Reimbursement Batches ----
+  const addReimbursementBatch = useCallback((data: AnyRecord) => {
+    const id = genId('rb')
+    setReimbursementBatches(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'reimbursement_batch', id, 'Created reimbursement batch')
+    addToast('Reimbursement batch created')
+  }, [logAudit, addToast])
+  const updateReimbursementBatch = useCallback((id: string, data: AnyRecord) => {
+    setReimbursementBatches(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'reimbursement_batch', id, 'Updated reimbursement batch')
+    addToast('Reimbursement batch updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Duplicate Detections ----
+  const addDuplicateDetection = useCallback((data: AnyRecord) => {
+    const id = genId('dd')
+    setDuplicateDetections(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'duplicate_detection', id, 'Flagged duplicate expense')
+    addToast('Duplicate expense flagged')
+  }, [logAudit, addToast])
+  const updateDuplicateDetection = useCallback((id: string, data: AnyRecord) => {
+    setDuplicateDetections(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    const action = data.status === 'confirmed_duplicate' ? 'Confirmed duplicate' : data.status === 'dismissed' ? 'Dismissed flag' : 'Updated'
+    logAudit('update', 'duplicate_detection', id, action)
+    addToast(`Duplicate ${action.toLowerCase()}`)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Background Checks ----
+  const addBackgroundCheck = useCallback((data: AnyRecord) => {
+    const id = genId('bgc')
+    setBackgroundChecks(prev => [...prev, { id, org_id: orgIdRef.current, requested_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'background_check', id, `Requested background check for ${data.candidate_name || 'candidate'}`)
+    addToast('Background check requested')
+  }, [logAudit, addToast])
+  const updateBackgroundCheck = useCallback((id: string, data: AnyRecord) => {
+    setBackgroundChecks(prev => prev.map(bc => bc.id === id ? { ...bc, ...data } : bc) as typeof prev)
+    logAudit('update', 'background_check', id, 'Updated background check')
+    addToast('Background check updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Referral Program ----
+  const updateReferralProgram = useCallback((data: AnyRecord) => {
+    setReferralProgram((prev: any) => ({ ...prev, ...data }))
+    logAudit('update', 'referral_program', 'config', 'Updated referral program')
+    addToast('Referral program updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Referrals ----
+  const addReferral = useCallback((data: AnyRecord) => {
+    const id = genId('ref')
+    setReferrals(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'referral', id, `Submitted referral: ${data.candidate_name}`)
+    addToast('Referral submitted')
+  }, [logAudit, addToast])
+  const updateReferral = useCallback((id: string, data: AnyRecord) => {
+    setReferrals(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'referral', id, 'Updated referral')
+    addToast('Referral updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Knockout Questions ----
+  const addKnockoutQuestion = useCallback((data: AnyRecord) => {
+    const id = genId('kq')
+    setKnockoutQuestions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'knockout_question', id, 'Added screening question')
+    addToast('Screening question added')
+  }, [logAudit, addToast])
+  const updateKnockoutQuestion = useCallback((id: string, data: AnyRecord) => {
+    setKnockoutQuestions(prev => prev.map(q => q.id === id ? { ...q, ...data } : q) as typeof prev)
+    logAudit('update', 'knockout_question', id, 'Updated screening question')
+    addToast('Screening question updated')
+  }, [logAudit, addToast])
+  const deleteKnockoutQuestion = useCallback((id: string) => {
+    setKnockoutQuestions(prev => prev.filter(q => q.id !== id))
+    logAudit('delete', 'knockout_question', id, 'Deleted screening question')
+    addToast('Screening question removed')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Candidate Scheduling ----
+  const addCandidateScheduling = useCallback((data: AnyRecord) => {
+    const id = genId('cs')
+    setCandidateScheduling(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'candidate_scheduling', id, 'Sent scheduling link to candidate')
+    addToast('Scheduling link sent')
+  }, [logAudit, addToast])
+  const updateCandidateScheduling = useCallback((id: string, data: AnyRecord) => {
+    setCandidateScheduling(prev => prev.map(cs => cs.id === id ? { ...cs, ...data } : cs) as typeof prev)
+    logAudit('update', 'candidate_scheduling', id, 'Updated scheduling')
+    addToast('Scheduling updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: IT Cloud — Managed Devices ----
+  const addManagedDevice = useCallback((data: AnyRecord) => {
+    const id = genId('md')
+    setManagedDevices(prev => [...prev, { id, org_id: orgIdRef.current, enrolledAt: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'managed_device', id, `Enrolled device: ${data.name}`)
+    addToast('Device enrolled')
+  }, [logAudit, addToast])
+  const updateManagedDevice = useCallback((id: string, data: AnyRecord) => {
+    setManagedDevices(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    logAudit('update', 'managed_device', id, 'Updated managed device')
+    addToast('Device updated')
+  }, [logAudit, addToast])
+  const deleteManagedDevice = useCallback((id: string) => {
+    setManagedDevices(prev => prev.filter(d => d.id !== id))
+    setDeviceActions(prev => prev.filter(a => a.deviceId !== id))
+    logAudit('delete', 'managed_device', id, 'Removed managed device')
+    addToast('Device removed')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: IT Cloud — Device Actions ----
+  const addDeviceAction = useCallback((data: AnyRecord) => {
+    const id = genId('da')
+    setDeviceActions(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'device_action', id, `Initiated ${data.actionType} on device`)
+    addToast(`Device action "${data.actionType}" initiated`)
+  }, [logAudit, addToast])
+  const updateDeviceAction = useCallback((id: string, data: AnyRecord) => {
+    setDeviceActions(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'device_action', id, 'Updated device action')
+    addToast('Device action updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: IT Cloud — App Catalog ----
+  const addAppCatalogItem = useCallback((data: AnyRecord) => {
+    const id = genId('app')
+    setAppCatalog(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'app_catalog', id, `Added app: ${data.name}`)
+    addToast(`App "${data.name}" added to catalog`)
+  }, [logAudit, addToast])
+  const updateAppCatalogItem = useCallback((id: string, data: AnyRecord) => {
+    setAppCatalog(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'app_catalog', id, 'Updated app catalog entry')
+    addToast('App updated')
+  }, [logAudit, addToast])
+  const deleteAppCatalogItem = useCallback((id: string) => {
+    setAppCatalog(prev => prev.filter(a => a.id !== id))
+    setAppAssignments(prev => prev.filter(a => a.appId !== id))
+    logAudit('delete', 'app_catalog', id, 'Removed app from catalog')
+    addToast('App removed from catalog')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: IT Cloud — App Assignments ----
+  const addAppAssignment = useCallback((data: AnyRecord) => {
+    const id = genId('aa')
+    setAppAssignments(prev => [...prev, { id, org_id: orgIdRef.current, assignedAt: new Date().toISOString(), ...data }] as typeof prev)
+    if (data.appId) {
+      setAppCatalog(prev => prev.map(a => a.id === data.appId ? { ...a, assignedCount: (a.assignedCount || 0) + 1 } : a) as typeof prev)
+    }
+    logAudit('create', 'app_assignment', id, `Assigned app ${data.appId} to employee`)
+    addToast('App assigned')
+  }, [logAudit, addToast])
+  const updateAppAssignment = useCallback((id: string, data: AnyRecord) => {
+    setAppAssignments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'app_assignment', id, 'Updated app assignment')
+    addToast('App assignment updated')
+  }, [logAudit, addToast])
+  const deleteAppAssignment = useCallback((id: string) => {
+    const assignment = appAssignments.find(a => a.id === id)
+    setAppAssignments(prev => prev.filter(a => a.id !== id))
+    if (assignment?.appId) {
+      setAppCatalog(prev => prev.map(a => a.id === assignment.appId ? { ...a, assignedCount: Math.max(0, (a.assignedCount || 0) - 1) } : a) as typeof prev)
+    }
+    logAudit('delete', 'app_assignment', id, 'Removed app assignment')
+    addToast('App unassigned')
+  }, [logAudit, addToast, appAssignments])
+
+  // ---- CRUD: IT Cloud — Security Policies ----
+  const addSecurityPolicyIT = useCallback((data: AnyRecord) => {
+    const id = genId('sp')
+    setSecurityPoliciesIT(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'security_policy', id, `Created policy: ${data.name}`)
+    addToast('Security policy created')
+  }, [logAudit, addToast])
+  const updateSecurityPolicyIT = useCallback((id: string, data: AnyRecord) => {
+    setSecurityPoliciesIT(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
+    logAudit('update', 'security_policy', id, 'Updated security policy')
+    addToast('Security policy updated')
+  }, [logAudit, addToast])
+  const deleteSecurityPolicyIT = useCallback((id: string) => {
+    setSecurityPoliciesIT(prev => prev.filter(p => p.id !== id))
+    logAudit('delete', 'security_policy', id, 'Deleted security policy')
+    addToast('Security policy deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: IT Cloud — Device Inventory ----
+  const addDeviceInventoryItem = useCallback((data: AnyRecord) => {
+    const id = genId('inv-it')
+    setDeviceInventory(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'device_inventory', id, `Added inventory item: ${data.name}`)
+    addToast('Inventory item added')
+  }, [logAudit, addToast])
+  const updateDeviceInventoryItem = useCallback((id: string, data: AnyRecord) => {
+    setDeviceInventory(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
+    logAudit('update', 'device_inventory', id, 'Updated inventory item')
+    addToast('Inventory item updated')
+  }, [logAudit, addToast])
+  const deleteDeviceInventoryItem = useCallback((id: string) => {
+    setDeviceInventory(prev => prev.filter(i => i.id !== id))
+    logAudit('delete', 'device_inventory', id, 'Deleted inventory item')
+    addToast('Inventory item deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: PIPs ----
+  const addPIP = useCallback((data: AnyRecord) => {
+    const id = genId('pip')
+    setPIPs(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'pip', id, `Created PIP for ${getEmployeeName(data.employee_id)}`)
+    addToast('Performance Improvement Plan created')
+  }, [logAudit, addToast, getEmployeeName])
+  const updatePIP = useCallback((id: string, data: AnyRecord) => {
+    setPIPs(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
+    logAudit('update', 'pip', id, 'Updated PIP')
+    addToast('PIP updated')
+  }, [logAudit, addToast])
+  const deletePIP = useCallback((id: string) => {
+    setPIPs(prev => prev.filter(p => p.id !== id))
+    setPIPCheckIns(prev => prev.filter(c => c.pip_id !== id))
+    logAudit('delete', 'pip', id, 'Deleted PIP')
+    addToast('PIP deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: PIP Check-Ins ----
+  const addPIPCheckIn = useCallback((data: AnyRecord) => {
+    const id = genId('pip-ci')
+    setPIPCheckIns(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'pip_checkin', id, 'Added PIP check-in')
+    addToast('PIP check-in recorded')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Merit Cycles ----
+  const addMeritCycle = useCallback((data: AnyRecord) => {
+    const id = genId('merit')
+    setMeritCycles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'merit_cycle', id, `Created merit cycle: ${data.name}`)
+    addToast('Merit cycle created')
+  }, [logAudit, addToast])
+  const updateMeritCycle = useCallback((id: string, data: AnyRecord) => {
+    setMeritCycles(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
+    logAudit('update', 'merit_cycle', id, 'Updated merit cycle')
+    addToast('Merit cycle updated')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Merit Recommendations ----
+  const addMeritRecommendation = useCallback((data: AnyRecord) => {
+    const id = genId('mr')
+    setMeritRecommendations(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'merit_recommendation', id, `Submitted merit recommendation for ${getEmployeeName(data.employee_id)}`)
+    addToast('Merit recommendation submitted')
+  }, [logAudit, addToast, getEmployeeName])
+  const updateMeritRecommendation = useCallback((id: string, data: AnyRecord) => {
+    setMeritRecommendations(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    const action = data.status === 'final_approved' ? 'Approved' : data.status === 'rejected' ? 'Rejected' : 'Updated'
+    logAudit('update', 'merit_recommendation', id, `${action} merit recommendation`)
+    addToast(`Merit recommendation ${action.toLowerCase()}`)
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Review Templates ----
+  const addReviewTemplate = useCallback((data: AnyRecord) => {
+    const id = genId('rt')
+    setReviewTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'review_template', id, `Created review template: ${data.name}`)
+    addToast('Review template created')
+  }, [logAudit, addToast])
+  const updateReviewTemplate = useCallback((id: string, data: AnyRecord) => {
+    setReviewTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'review_template', id, 'Updated review template')
+    addToast('Review template updated')
+  }, [logAudit, addToast])
+  const deleteReviewTemplate = useCallback((id: string) => {
+    setReviewTemplates(prev => prev.filter(t => t.id !== id))
+    logAudit('delete', 'review_template', id, 'Deleted review template')
+    addToast('Review template deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Course Prerequisites ----
+  const addCoursePrerequisite = useCallback((data: AnyRecord) => { const id = genId('prereq'); setCoursePrerequisites(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'course_prerequisite', id, 'Added prerequisite'); addToast('Prerequisite added') }, [logAudit, addToast])
+  const deleteCoursePrerequisite = useCallback((id: string) => { setCoursePrerequisites(prev => prev.filter(p => p.id !== id)); logAudit('delete', 'course_prerequisite', id, 'Removed prerequisite'); addToast('Prerequisite removed') }, [logAudit, addToast])
+
+  // ---- CRUD: SCORM Packages ----
+  const addScormPackage = useCallback((data: AnyRecord) => { const id = genId('scorm'); setScormPackages(prev => [...prev, { id, org_id: orgIdRef.current, uploaded_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'scorm_package', id, 'Uploaded SCORM package'); addToast('SCORM package uploaded') }, [logAudit, addToast])
+  const updateScormPackage = useCallback((id: string, data: AnyRecord) => { setScormPackages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev); logAudit('update', 'scorm_package', id, 'Updated SCORM package') }, [logAudit])
+
+  // ---- CRUD: SCORM Tracking ----
+  const addScormTracking = useCallback((data: AnyRecord) => { const id = genId('st'); setScormTracking(prev => [...prev, { id, org_id: orgIdRef.current, last_accessed: new Date().toISOString(), ...data }] as typeof prev) }, [])
+  const updateScormTracking = useCallback((id: string, data: AnyRecord) => { setScormTracking(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev) }, [])
+
+  // ---- CRUD: Content Library ----
+  const addContentLibraryItem = useCallback((data: AnyRecord) => { const id = genId('cl'); setContentLibrary(prev => [...prev, { id, org_id: orgIdRef.current, added_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'content_library', id, `Added content: ${data.title}`); addToast('Content added to library') }, [logAudit, addToast])
+  const updateContentLibraryItem = useCallback((id: string, data: AnyRecord) => { setContentLibrary(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'content_library', id, 'Updated content'); addToast('Content updated') }, [logAudit, addToast])
+  const deleteContentLibraryItem = useCallback((id: string) => { setContentLibrary(prev => prev.filter(c => c.id !== id)); logAudit('delete', 'content_library', id, 'Removed content'); addToast('Content removed') }, [logAudit, addToast])
+
+  // ---- CRUD: Learner Badges ----
+  const addLearnerBadge = useCallback((data: AnyRecord) => { const id = genId('badge'); setLearnerBadges(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learner_badge', id, `Awarded badge: ${data.badge_name}`); addToast(`Badge earned: ${data.badge_name}`) }, [logAudit, addToast])
+
+  // ---- CRUD: Learner Points ----
+  const addLearnerPoints = useCallback((data: AnyRecord) => { const id = genId('lp'); setLearnerPoints(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev) }, [])
+
+  // ---- CRUD: Survey Templates ----
+  const addSurveyTemplate = useCallback((data: AnyRecord) => {
+    const id = genId('tpl')
+    setSurveyTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), usageCount: 0, isDefault: false, ...data }] as typeof prev)
+    logAudit('create', 'survey_template', id, `Created survey template: ${data.name}`)
+    addToast('Survey template created')
+  }, [logAudit, addToast])
+  const updateSurveyTemplate = useCallback((id: string, data: AnyRecord) => {
+    setSurveyTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'survey_template', id, 'Updated survey template')
+    addToast('Survey template updated')
+  }, [logAudit, addToast])
+  const deleteSurveyTemplate = useCallback((id: string) => {
+    setSurveyTemplates(prev => prev.filter(t => t.id !== id))
+    logAudit('delete', 'survey_template', id, 'Deleted survey template')
+    addToast('Survey template deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Survey Schedules ----
+  const addSurveySchedule = useCallback((data: AnyRecord) => {
+    const id = genId('sched')
+    setSurveySchedules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), is_active: true, ...data }] as typeof prev)
+    logAudit('create', 'survey_schedule', id, 'Created survey schedule')
+    addToast('Survey schedule created')
+  }, [logAudit, addToast])
+  const updateSurveySchedule = useCallback((id: string, data: AnyRecord) => {
+    setSurveySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'survey_schedule', id, 'Updated survey schedule')
+    addToast('Survey schedule updated')
+  }, [logAudit, addToast])
+  const deleteSurveySchedule = useCallback((id: string) => {
+    setSurveySchedules(prev => prev.filter(s => s.id !== id))
+    logAudit('delete', 'survey_schedule', id, 'Deleted survey schedule')
+    addToast('Survey schedule deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Survey Triggers ----
+  const addSurveyTrigger = useCallback((data: AnyRecord) => {
+    const id = genId('trig')
+    setSurveyTriggers(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), is_active: true, recent_firings: [], ...data }] as typeof prev)
+    logAudit('create', 'survey_trigger', id, 'Created survey trigger')
+    addToast('Survey trigger created')
+  }, [logAudit, addToast])
+  const updateSurveyTrigger = useCallback((id: string, data: AnyRecord) => {
+    setSurveyTriggers(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'survey_trigger', id, 'Updated survey trigger')
+    addToast('Survey trigger updated')
+  }, [logAudit, addToast])
+  const deleteSurveyTrigger = useCallback((id: string) => {
+    setSurveyTriggers(prev => prev.filter(t => t.id !== id))
+    logAudit('delete', 'survey_trigger', id, 'Deleted survey trigger')
+    addToast('Survey trigger deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Open-Ended Responses ----
+  const addOpenEndedResponse = useCallback((data: AnyRecord) => {
+    const id = genId('oer')
+    setOpenEndedResponses(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+  }, [])
+  const updateOpenEndedResponse = useCallback((id: string, data: AnyRecord) => {
+    setOpenEndedResponses(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+  }, [])
+
+  // ---- CRUD: Automation Workflows ----
+  const addAutomationWorkflow = useCallback((data: AnyRecord) => {
+    const id = genId('awf')
+    setAutomationWorkflows(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'automation_workflow', id, `Created automation workflow: ${data.name}`)
+    addToast('Workflow created')
+    return id
+  }, [logAudit, addToast])
+  const updateAutomationWorkflow = useCallback((id: string, data: AnyRecord) => {
+    setAutomationWorkflows(prev => prev.map(w => w.id === id ? { ...w, ...data, updatedAt: new Date().toISOString() } : w) as typeof prev)
+    logAudit('update', 'automation_workflow', id, 'Updated automation workflow')
+    addToast('Workflow updated')
+  }, [logAudit, addToast])
+  const deleteAutomationWorkflow = useCallback((id: string) => {
+    setAutomationWorkflows(prev => prev.filter(w => w.id !== id))
+    setAutomationWorkflowSteps(prev => prev.filter(s => s.workflowId !== id))
+    logAudit('delete', 'automation_workflow', id, 'Deleted automation workflow')
+    addToast('Workflow deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Automation Workflow Steps ----
+  const addAutomationWorkflowStep = useCallback((data: AnyRecord) => {
+    const id = genId('aws')
+    setAutomationWorkflowSteps(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'automation_workflow_step', id, 'Added step to workflow')
+    addToast('Step added')
+  }, [logAudit, addToast])
+  const updateAutomationWorkflowStep = useCallback((id: string, data: AnyRecord) => {
+    setAutomationWorkflowSteps(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
+    logAudit('update', 'automation_workflow_step', id, 'Updated automation step')
+  }, [logAudit])
+  const deleteAutomationWorkflowStep = useCallback((id: string) => {
+    setAutomationWorkflowSteps(prev => prev.filter(s => s.id !== id))
+    logAudit('delete', 'automation_workflow_step', id, 'Deleted automation step')
+    addToast('Step removed')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Automation Workflow Runs ----
+  const addAutomationWorkflowRun = useCallback((data: AnyRecord) => {
+    const id = genId('awr')
+    setAutomationWorkflowRuns(prev => [...prev, { id, orgId: orgIdRef.current, startedAt: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'automation_workflow_run', id, 'Started automation workflow run')
+    addToast('Workflow run started')
+  }, [logAudit, addToast])
+  const updateAutomationWorkflowRun = useCallback((id: string, data: AnyRecord) => {
+    setAutomationWorkflowRuns(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'automation_workflow_run', id, 'Updated automation workflow run')
+  }, [logAudit])
+
+  // ---- CRUD: Headcount Planning ----
+  const addHeadcountPlan = useCallback((data: AnyRecord) => {
+    const id = genId('hcp')
+    setHeadcountPlans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'headcount_plan', id, `Created headcount plan: ${data.name}`)
+    addToast('Headcount plan created')
+  }, [logAudit, addToast])
+  const updateHeadcountPlan = useCallback((id: string, data: AnyRecord) => {
+    setHeadcountPlans(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
+    logAudit('update', 'headcount_plan', id, 'Updated headcount plan')
+    addToast('Headcount plan updated')
+  }, [logAudit, addToast])
+  const addHeadcountPosition = useCallback((data: AnyRecord) => {
+    const id = genId('hcpos')
+    setHeadcountPositions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'headcount_position', id, `Created position: ${data.job_title}`)
+    addToast('Position created')
+  }, [logAudit, addToast])
+  const updateHeadcountPosition = useCallback((id: string, data: AnyRecord) => {
+    setHeadcountPositions(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
+    logAudit('update', 'headcount_position', id, 'Updated position')
+    addToast('Position updated')
+  }, [logAudit, addToast])
+  const deleteHeadcountPosition = useCallback((id: string) => {
+    setHeadcountPositions(prev => prev.filter(p => p.id !== id) as typeof prev)
+    setHeadcountBudgetItems(prev => prev.filter(b => b.position_id !== id) as typeof prev)
+    logAudit('delete', 'headcount_position', id, 'Deleted position')
+    addToast('Position deleted')
+  }, [logAudit, addToast])
+  const addHeadcountBudgetItem = useCallback((data: AnyRecord) => {
+    const id = genId('hcbi')
+    setHeadcountBudgetItems(prev => [...prev, { id, ...data }] as typeof prev)
+    logAudit('create', 'headcount_budget_item', id, `Created budget item: ${data.category}`)
+  }, [logAudit])
+  const updateHeadcountBudgetItem = useCallback((id: string, data: AnyRecord) => {
+    setHeadcountBudgetItems(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
+    logAudit('update', 'headcount_budget_item', id, 'Updated budget item')
+  }, [logAudit])
+  const deleteHeadcountBudgetItem = useCallback((id: string) => {
+    setHeadcountBudgetItems(prev => prev.filter(b => b.id !== id) as typeof prev)
+    logAudit('delete', 'headcount_budget_item', id, 'Deleted budget item')
+  }, [logAudit])
+
+  // ---- CRUD: Custom Field Definitions ----
+  const addCustomFieldDefinition = useCallback((data: AnyRecord) => {
+    const id = genId('cfd')
+    setCustomFieldDefinitions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'custom_field_definition', id, `Created custom field: ${data.name}`)
+    addToast('Custom field created')
+  }, [logAudit, addToast])
+  const updateCustomFieldDefinition = useCallback((id: string, data: AnyRecord) => {
+    setCustomFieldDefinitions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    logAudit('update', 'custom_field_definition', id, 'Updated custom field definition')
+    addToast('Custom field updated')
+  }, [logAudit, addToast])
+  const deleteCustomFieldDefinition = useCallback((id: string) => {
+    setCustomFieldDefinitions(prev => prev.filter(d => d.id !== id))
+    setCustomFieldValues(prev => prev.filter(v => v.field_definition_id !== id))
+    logAudit('delete', 'custom_field_definition', id, 'Deleted custom field definition')
+    addToast('Custom field deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Custom Field Values ----
+  const addCustomFieldValue = useCallback((data: AnyRecord) => {
+    const id = genId('cfv')
+    setCustomFieldValues(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
+  }, [])
+  const updateCustomFieldValue = useCallback((id: string, data: AnyRecord) => {
+    setCustomFieldValues(prev => prev.map(v => v.id === id ? { ...v, ...data, updated_at: new Date().toISOString() } : v) as typeof prev)
+  }, [])
+
+  // ---- CRUD: Emergency Contacts ----
+  const addEmergencyContact = useCallback((data: AnyRecord) => {
+    const id = genId('ec')
+    setEmergencyContacts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'emergency_contact', id, `Added emergency contact: ${data.name}`)
+    addToast('Emergency contact added')
+  }, [logAudit, addToast])
+  const updateEmergencyContact = useCallback((id: string, data: AnyRecord) => {
+    setEmergencyContacts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
+    logAudit('update', 'emergency_contact', id, 'Updated emergency contact')
+    addToast('Emergency contact updated')
+  }, [logAudit, addToast])
+  const deleteEmergencyContact = useCallback((id: string) => {
+    setEmergencyContacts(prev => prev.filter(c => c.id !== id))
+    logAudit('delete', 'emergency_contact', id, 'Deleted emergency contact')
+    addToast('Emergency contact removed')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Compliance Requirements ----
+  const addComplianceRequirement = useCallback((data: AnyRecord) => {
+    const id = genId('creq')
+    setComplianceRequirements(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'compliance_requirement', id, `Created requirement: ${data.name}`)
+    addToast('Compliance requirement created')
+  }, [logAudit, addToast])
+  const updateComplianceRequirement = useCallback((id: string, data: AnyRecord) => {
+    setComplianceRequirements(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    logAudit('update', 'compliance_requirement', id, 'Updated compliance requirement')
+    addToast('Compliance requirement updated')
+  }, [logAudit, addToast])
+  const deleteComplianceRequirement = useCallback((id: string) => {
+    setComplianceRequirements(prev => prev.filter(r => r.id !== id))
+    setComplianceDocuments(prev => prev.filter(d => d.requirement_id !== id))
+    setComplianceAlerts(prev => prev.filter(a => a.requirement_id !== id))
+    logAudit('delete', 'compliance_requirement', id, 'Deleted compliance requirement')
+    addToast('Compliance requirement deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Compliance Documents ----
+  const addComplianceDocument = useCallback((data: AnyRecord) => {
+    const id = genId('cdoc')
+    setComplianceDocuments(prev => [...prev, { id, org_id: orgIdRef.current, uploaded_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'compliance_document', id, `Uploaded document: ${data.name}`)
+    addToast('Compliance document uploaded')
+  }, [logAudit, addToast])
+  const updateComplianceDocument = useCallback((id: string, data: AnyRecord) => {
+    setComplianceDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
+    logAudit('update', 'compliance_document', id, 'Updated compliance document')
+    addToast('Compliance document updated')
+  }, [logAudit, addToast])
+  const deleteComplianceDocument = useCallback((id: string) => {
+    setComplianceDocuments(prev => prev.filter(d => d.id !== id))
+    logAudit('delete', 'compliance_document', id, 'Deleted compliance document')
+    addToast('Compliance document deleted')
+  }, [logAudit, addToast])
+
+  // ---- CRUD: Compliance Alerts ----
+  const addComplianceAlert = useCallback((data: AnyRecord) => {
+    const id = genId('calert')
+    setComplianceAlerts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+  }, [])
+  const updateComplianceAlert = useCallback((id: string, data: AnyRecord) => {
+    setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+  }, [])
+  const dismissComplianceAlert = useCallback((id: string) => {
+    setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a) as typeof prev)
+  }, [])
+
   // ---- Journeys ----
   const updateJourneyStep = useCallback((journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => {
     setJourneys(prev => prev.map(j => {
       if (j.id !== journeyId) return j
-      const updatedSteps = j.steps.map(s => s.id === stepId ? { ...s, status } : s)
-      const completedCount = updatedSteps.filter(s => s.status === 'completed').length
-      const currentStep = updatedSteps.findIndex(s => s.status !== 'completed' && s.status !== 'skipped')
-      const allDone = updatedSteps.every(s => s.status === 'completed' || s.status === 'skipped')
+      const updatedSteps = j.steps.map((s: any) => s.id === stepId ? { ...s, status } : s)
+      const completedCount = updatedSteps.filter((s: any) => s.status === 'completed').length
+      const currentStep = updatedSteps.findIndex((s: any) => s.status !== 'completed' && s.status !== 'skipped')
+      const allDone = updatedSteps.every((s: any) => s.status === 'completed' || s.status === 'skipped')
       return {
         ...j,
         steps: updatedSteps,
@@ -1200,7 +2432,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Widget Preferences ----
   const updateWidgetPreferences = useCallback((data: AnyRecord) => {
-    setWidgetPreferences(prev => ({ ...prev, ...data }) as typeof prev)
+    setWidgetPreferences((prev: any) => ({ ...prev, ...data }))
     addToast('Dashboard layout updated')
   }, [addToast])
 
@@ -1800,7 +3032,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- CRUD: Career Site ----
   const updateCareerSiteConfig = useCallback((data: AnyRecord) => {
-    setCareerSiteConfig(prev => ({ ...prev, ...data }))
+    setCareerSiteConfig((prev: any) => ({ ...prev, ...data }))
     logAudit('update', 'career_site', 'config', 'Updated career site configuration')
     addToast('Career site updated')
     apiPost('career_site', 'update', data)
@@ -2235,7 +3467,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- CRUD: Org ----
   const updateOrg = useCallback((data: AnyRecord) => {
-    setOrg(prev => ({ ...prev, ...data }))
+    setOrg((prev: any) => ({ ...prev, ...data }))
     logAudit('update', 'organization', orgIdRef.current, 'Updated organization settings')
     addToast('Organization settings updated')
     apiPost('organizations', 'update', data, org.id)
@@ -2260,7 +3492,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         const empId = data.user?.employee_id || ''
         if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
           const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
-          loadDemoData(demoOrgId)
+          await loadDemoData(demoOrgId)
         }
         setCurrentUser(data.user)
         // Keep localStorage as client-side cache for instant hydration
@@ -2272,13 +3504,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Fallback: demo credentials for offline/development (searches both orgs)
-    const cred = allDemoCredentials.find(c => c.email === email && c.password === password)
+    const demoModule = await loadDemoModule()
+    const cred = demoModule.allDemoCredentials.find(c => c.email === email && c.password === password)
     if (!cred) return false
     // Determine which org this credential belongs to
     const orgId = cred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
     // Load the correct org's demo data
-    loadDemoData(orgId)
-    const orgData = getDemoDataForOrg(orgId)
+    await loadDemoData(orgId)
+    const orgData = demoModule.getDemoDataForOrg(orgId)
     const emp = orgData.employees.find((e: { id: string }) => e.id === cred.employeeId)
     if (!emp) return false
     const user = buildCurrentUser(emp)
@@ -2336,8 +3569,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     let emp = employees.find(e => e.id === employeeId)
     if (!emp) {
       const orgId = employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
-      loadDemoData(orgId)
-      const orgData = getDemoDataForOrg(orgId)
+      await loadDemoData(orgId)
+      const demoModule = await loadDemoModule()
+      const orgData = demoModule.getDemoDataForOrg(orgId)
       emp = orgData.employees.find((e: { id: string }) => e.id === employeeId)
     }
     if (!emp) return
@@ -2350,7 +3584,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const isLoggedIn = currentUser !== null
 
   const value: TempoState = {
-    org, user: demoUser, currentUser, currentEmployeeId, departments, employees,
+    org, user: { full_name: currentUser?.full_name || 'User', email: currentUser?.email || '' } as any, currentUser, currentEmployeeId, departments, employees,
     goals, reviewCycles, reviews, feedback,
     oneOnOnes, recognitions, competencyFramework, competencyRatings,
     compBands, salaryReviews, equityGrants, compPlanningCycles,
@@ -2368,7 +3602,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     workflows, workflowSteps, workflowRuns, workflowTemplates,
     notifications, unreadNotificationCount,
     auditLog, toasts,
-    isLoading,
+    isLoading, ensureModulesLoaded,
     addToast, removeToast,
     addEmployee, bulkAddEmployees, updateEmployee, deleteEmployee,
     addGoal, updateGoal, deleteGoal,
@@ -2394,8 +3628,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule,
     addAssessmentAttempt, updateAssessmentAttempt,
     addLearningAssignment, updateLearningAssignment,
+    coursePrerequisites, addCoursePrerequisite, deleteCoursePrerequisite,
+    scormPackages, addScormPackage, updateScormPackage,
+    scormTracking, addScormTracking, updateScormTracking,
+    contentLibrary, addContentLibraryItem, updateContentLibraryItem, deleteContentLibraryItem,
+    learnerBadges, addLearnerBadge,
+    learnerPoints, addLearnerPoints,
     addSurvey, updateSurvey,
     addActionPlan, updateActionPlan,
+    surveyTemplates, surveySchedules, surveyTriggers, openEndedResponses,
+    addSurveyTemplate, updateSurveyTemplate, deleteSurveyTemplate,
+    addSurveySchedule, updateSurveySchedule, deleteSurveySchedule,
+    addSurveyTrigger, updateSurveyTrigger, deleteSurveyTrigger,
+    addOpenEndedResponse, updateOpenEndedResponse,
     addMentoringProgram, updateMentoringProgram,
     addMentoringPair, updateMentoringPair,
     addMentoringSession, updateMentoringSession,
@@ -2407,13 +3652,30 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addTaxConfig, updateTaxConfig,
     resolveComplianceIssue, updateTaxFiling,
     addLeaveRequest, updateLeaveRequest,
+    timeEntries, timeOffPolicies, timeOffBalances, overtimeRules, shifts: shifts_data,
+    addTimeEntry, updateTimeEntry, deleteTimeEntry,
+    addTimeOffPolicy, updateTimeOffPolicy, deleteTimeOffPolicy,
+    addTimeOffBalance, updateTimeOffBalance,
+    addOvertimeRule, updateOvertimeRule, deleteOvertimeRule,
+    addShift, updateShift, deleteShift,
     addBenefitPlan, updateBenefitPlan,
     addBenefitEnrollment, updateBenefitEnrollment,
     addBenefitDependent, updateBenefitDependent,
     addLifeEvent, updateLifeEvent,
+    openEnrollmentPeriods, cobraEvents, acaTracking, flexBenefitAccounts, flexBenefitTransactions,
+    addOpenEnrollmentPeriod, updateOpenEnrollmentPeriod,
+    addCobraEvent, updateCobraEvent,
+    addAcaTracking, updateAcaTracking,
+    addFlexBenefitAccount, updateFlexBenefitAccount,
+    addFlexBenefitTransaction, updateFlexBenefitTransaction,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
     addExpensePolicy, updateExpensePolicy,
     addMileageLog, updateMileageLog,
+    receiptMatches, addReceiptMatch, updateReceiptMatch,
+    mileageEntries, addMileageEntry, updateMileageEntry,
+    advancedExpensePolicies, addAdvancedExpensePolicy, updateAdvancedExpensePolicy, deleteAdvancedExpensePolicy,
+    reimbursementBatches, addReimbursementBatch, updateReimbursementBatch,
+    duplicateDetections, addDuplicateDetection, updateDuplicateDetection,
     addJobPosting, updateJobPosting,
     addApplication, updateApplication,
     updateCareerSiteConfig,
@@ -2422,9 +3684,22 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addInterview, updateInterview,
     addTalentPool, updateTalentPool,
     addScoreCard, updateScoreCard,
+    backgroundChecks, referralProgram, referrals, knockoutQuestions, candidateScheduling,
+    addBackgroundCheck, updateBackgroundCheck,
+    updateReferralProgram,
+    addReferral, updateReferral,
+    addKnockoutQuestion, updateKnockoutQuestion, deleteKnockoutQuestion,
+    addCandidateScheduling, updateCandidateScheduling,
     addDevice, updateDevice,
     addSoftwareLicense, updateSoftwareLicense,
     addITRequest, updateITRequest,
+    managedDevices, deviceActions, appCatalog, appAssignments, securityPoliciesIT, deviceInventory,
+    addManagedDevice, updateManagedDevice, deleteManagedDevice,
+    addDeviceAction, updateDeviceAction,
+    addAppCatalogItem, updateAppCatalogItem, deleteAppCatalogItem,
+    addAppAssignment, updateAppAssignment, deleteAppAssignment,
+    addSecurityPolicyIT, updateSecurityPolicyIT, deleteSecurityPolicyIT,
+    addDeviceInventoryItem, updateDeviceInventoryItem, deleteDeviceInventoryItem,
     addInvoice, updateInvoice,
     addBudget, updateBudget,
     addVendor, updateVendor,
@@ -2441,13 +3716,40 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addWorkflow, updateWorkflow, deleteWorkflow,
     addWorkflowStep, updateWorkflowStep, deleteWorkflowStep,
     addWorkflowRun, updateWorkflowRun,
+    automationWorkflows, automationWorkflowSteps, automationWorkflowRuns, automationWorkflowRunSteps, automationWorkflowTemplates,
+    addAutomationWorkflow, updateAutomationWorkflow, deleteAutomationWorkflow,
+    addAutomationWorkflowStep, updateAutomationWorkflowStep, deleteAutomationWorkflowStep,
+    addAutomationWorkflowRun, updateAutomationWorkflowRun,
     employeeDocuments, employeeTimeline,
     addEmployeeDocument, updateEmployeeDocument,
     buddyAssignments, preboardingTasks, welcomeContent,
     addBuddyAssignment, updateBuddyAssignment,
     addPreboardingTask, updatePreboardingTask,
+    offboardingChecklists, offboardingChecklistItems, offboardingProcesses, offboardingTasks, exitSurveys,
+    addOffboardingChecklist, updateOffboardingChecklist,
+    addOffboardingChecklistItem, updateOffboardingChecklistItem, deleteOffboardingChecklistItem,
+    addOffboardingProcess, updateOffboardingProcess,
+    addOffboardingTask, updateOffboardingTask,
+    addExitSurvey,
+    headcountPlans, headcountPositions, headcountBudgetItems,
+    addHeadcountPlan, updateHeadcountPlan,
+    addHeadcountPosition, updateHeadcountPosition, deleteHeadcountPosition,
+    addHeadcountBudgetItem, updateHeadcountBudgetItem, deleteHeadcountBudgetItem,
+    pips, pipCheckIns, meritCycles, meritRecommendations, reviewTemplates,
+    addPIP, updatePIP, deletePIP, addPIPCheckIn,
+    addMeritCycle, updateMeritCycle, addMeritRecommendation, updateMeritRecommendation,
+    addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
     offers, careerTracks, marketBenchmarks, widgetPreferences,
     addOffer, updateOffer, updateWidgetPreferences, journeys, updateJourneyStep,
+    customFieldDefinitions, customFieldValues,
+    addCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition,
+    addCustomFieldValue, updateCustomFieldValue,
+    emergencyContacts,
+    addEmergencyContact, updateEmergencyContact, deleteEmergencyContact,
+    complianceRequirements, complianceDocuments, complianceAlerts,
+    addComplianceRequirement, updateComplianceRequirement, deleteComplianceRequirement,
+    addComplianceDocument, updateComplianceDocument, deleteComplianceDocument,
+    addComplianceAlert, updateComplianceAlert, dismissComplianceAlert,
     markNotificationRead, markAllNotificationsRead,
     updateOrg,
     login, verifyMFA, logout, switchUser, isLoggedIn,

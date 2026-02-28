@@ -9,7 +9,7 @@ import { TempoLockup } from '@/components/brand/tempo-lockup'
 import { useTempo } from '@/lib/store'
 import {
   LayoutDashboard, Users, TrendingUp, Banknote, GraduationCap, HeartPulse,
-  UserCheck, Wallet, Clock, Shield, Receipt, Briefcase, Laptop, AppWindow,
+  UserCheck, UserMinus, UserPlus, Wallet, Clock, Shield, ShieldCheck, Receipt, Briefcase, Laptop, AppWindow, Cloud,
   FileText, PieChart, BarChart3, Settings, ChevronLeft, Menu,
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
 } from 'lucide-react'
@@ -64,6 +64,7 @@ export function Sidebar() {
         { label: t('learning'), href: '/learning', icon: <GraduationCap size={18} /> },
         { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
         { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
+        { label: 'Offboarding', href: '/offboarding', icon: <UserMinus size={18} /> },
       ],
     },
     {
@@ -78,6 +79,7 @@ export function Sidebar() {
     {
       title: t('it') + ' & ' + t('finance'),
       items: [
+        { label: 'IT Cloud', href: '/it-cloud', icon: <Cloud size={18} /> },
         { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
         { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
         { label: 'Marketplace', href: '/marketplace', icon: <Store size={18} /> },
@@ -90,6 +92,9 @@ export function Sidebar() {
       items: [
         { label: t('projects'), href: '/projects', icon: <FolderKanban size={18} /> },
         { label: t('strategy'), href: '/strategy', icon: <Compass size={18} /> },
+        { label: 'Headcount', href: '/headcount', icon: <UserPlus size={18} /> },
+        { label: 'Compliance', href: '/compliance', icon: <ShieldCheck size={18} /> },
+        { label: 'Automation', href: '/workflows', icon: <Zap size={18} /> },
         { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
         { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
         { label: 'Developer', href: '/developer', icon: <Code size={18} /> },

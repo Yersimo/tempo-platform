@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,615 +8,662 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
-import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { TempoBarChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
+import { TempoBarChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import {
-  Clock, Calendar, Plus, CheckCircle, XCircle, LogIn, BarChart3, CalendarDays,
-  Sun, Filter, ChevronLeft, ChevronRight, Send, AlertTriangle, Users, Search,
+  Clock, Calendar, Plus, CheckCircle, XCircle, LogIn, LogOut, BarChart3, CalendarDays,
+  Timer, Coffee, Filter, ChevronLeft, ChevronRight, AlertTriangle, Users, Search,
+  Settings, Download, TrendingUp, MapPin, Briefcase, ArrowRightLeft, Pause, Play,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
-import { AIAlertBanner, AIInsightCard, AIRecommendationList } from '@/components/ai'
-import { detectCoverageGaps, analyzeLeavePatterns, assessBurnoutRisk } from '@/lib/ai-engine'
 
-// ---- Local types for shift & timesheet data ----
-interface Shift {
-  id: string
-  employee_id: string
-  date: string
-  start_time: string
-  end_time: string
-  type: 'regular' | 'overtime' | 'remote' | 'on_call'
-  hours: number
-  status: 'scheduled' | 'completed' | 'missed'
+// ---- Helpers ----
+function formatHours(h: number) { return h.toFixed(1) }
+function formatTime(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
-
-interface TimesheetEntry {
-  id: string
-  employee_id: string
-  week_start: string
-  hours: number[]
-  total: number
-  overtime: number
-  status: 'draft' | 'submitted' | 'approved' | 'rejected'
-  submitted_at?: string
+function getWeekDates(offset = 0): { dates: string[]; weekStart: Date } {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1) + offset * 7
+  const monday = new Date(now.getFullYear(), now.getMonth(), diff)
+  const dates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    dates.push(d.toISOString().split('T')[0])
+  }
+  return { dates, weekStart: monday }
 }
-
-// ---- Seed data generators ----
-function generateShifts(employees: { id: string }[]): Shift[] {
-  const types: Shift['type'][] = ['regular', 'overtime', 'remote', 'on_call']
-  const statuses: Shift['status'][] = ['scheduled', 'completed', 'completed']
-  const shifts: Shift[] = []
-  const baseDate = new Date()
-  baseDate.setDate(baseDate.getDate() - baseDate.getDay() + 1) // Monday
-  employees.slice(0, 12).forEach((emp, ei) => {
-    for (let d = 0; d < 5; d++) {
-      const date = new Date(baseDate)
-      date.setDate(date.getDate() + d)
-      const type = types[(ei + d) % types.length]
-      const start = type === 'on_call' ? '18:00' : type === 'overtime' ? '07:00' : '09:00'
-      const end = type === 'on_call' ? '06:00' : type === 'overtime' ? '19:00' : '17:00'
-      const hours = type === 'on_call' ? 12 : type === 'overtime' ? 12 : 8
-      shifts.push({
-        id: `shift-${ei}-${d}`,
-        employee_id: emp.id,
-        date: date.toISOString().split('T')[0],
-        start_time: start,
-        end_time: end,
-        type,
-        hours,
-        status: statuses[(ei + d) % statuses.length],
-      })
-    }
-  })
-  return shifts
-}
-
-function generateTimesheets(employees: { id: string }[]): TimesheetEntry[] {
-  const baseDate = new Date()
-  baseDate.setDate(baseDate.getDate() - baseDate.getDay() + 1)
-  const weekStart = baseDate.toISOString().split('T')[0]
-  const statuses: TimesheetEntry['status'][] = ['approved', 'submitted', 'draft', 'approved', 'submitted']
-  return employees.slice(0, 10).map((emp, i) => {
-    const hours = [7 + (i % 3), 8, 8 + (i % 2), 7.5, 8 - (i % 2)]
-    const total = hours.reduce((a, b) => a + b, 0)
-    return {
-      id: `ts-${i}`,
-      employee_id: emp.id,
-      week_start: weekStart,
-      hours,
-      total,
-      overtime: Math.max(0, total - 40),
-      status: statuses[i % statuses.length],
-      submitted_at: statuses[i % statuses.length] !== 'draft' ? new Date().toISOString() : undefined,
-    }
-  })
-}
-
-// ---- Holiday data ----
-const PUBLIC_HOLIDAYS = [
-  { date: '2026-01-01', name: 'New Year\'s Day', countries: ['All'], month: 'January' },
-  { date: '2026-01-20', name: 'Martin Luther King Jr. Day', countries: ['US'], month: 'January' },
-  { date: '2026-03-30', name: 'Eid al-Fitr', countries: ['Nigeria', 'Senegal', 'Mali'], month: 'March' },
-  { date: '2026-04-03', name: 'Good Friday', countries: ['All'], month: 'April' },
-  { date: '2026-04-06', name: 'Easter Monday', countries: ['All'], month: 'April' },
-  { date: '2026-05-01', name: 'Labour Day', countries: ['All'], month: 'May' },
-  { date: '2026-05-25', name: 'Africa Day', countries: ['All'], month: 'May' },
-  { date: '2026-06-06', name: 'Eid al-Adha', countries: ['Nigeria', 'Senegal', 'Mali'], month: 'June' },
-  { date: '2026-06-12', name: 'Democracy Day', countries: ['Nigeria'], month: 'June' },
-  { date: '2026-07-04', name: 'Independence Day', countries: ['US'], month: 'July' },
-  { date: '2026-08-07', name: 'Independence Day', countries: ["Cote d'Ivoire"], month: 'August' },
-  { date: '2026-10-01', name: 'Independence Day', countries: ['Nigeria'], month: 'October' },
-  { date: '2026-11-04', name: 'Independence Day', countries: ['Ghana'], month: 'November' },
-  { date: '2026-12-25', name: 'Christmas Day', countries: ['All'], month: 'December' },
-  { date: '2026-12-26', name: 'Boxing Day', countries: ['Nigeria', 'Ghana', 'Kenya'], month: 'December' },
-]
-
-const LEAVE_TYPE_VARIANT: Record<string, 'success' | 'error' | 'info' | 'default' | 'warning' | 'orange'> = {
-  annual: 'success', sick: 'error', maternity: 'info', paternity: 'info',
-  personal: 'default', compassionate: 'warning', unpaid: 'orange',
-}
-
-const SHIFT_TYPE_COLORS: Record<string, string> = {
-  regular: 'bg-tempo-100 text-tempo-700 border-tempo-200',
-  overtime: 'bg-gray-100 text-gray-600 border-gray-200',
-  remote: 'bg-gray-100 text-gray-600 border-gray-200',
-  on_call: 'bg-gray-100 text-gray-600 border-gray-200',
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'default' | 'info'> = {
+  approved: 'success', pending: 'warning', rejected: 'error', completed: 'success',
+  scheduled: 'info', no_show: 'error', swapped: 'default',
 }
 
 export default function TimeAttendancePage() {
   const t = useTranslations('timeAttendance')
   const tc = useTranslations('common')
   const {
+    timeEntries, timeOffPolicies, timeOffBalances, overtimeRules, shifts: _shifts,
     leaveRequests, employees, departments,
+    addTimeEntry, updateTimeEntry,
+    addTimeOffPolicy, updateTimeOffPolicy, deleteTimeOffPolicy,
+    addTimeOffBalance, updateTimeOffBalance,
+    addOvertimeRule, updateOvertimeRule, deleteOvertimeRule,
+    addShift, updateShift, deleteShift,
     addLeaveRequest, updateLeaveRequest,
     getEmployeeName, getDepartmentName, currentEmployeeId,
     addToast,
   } = useTempo()
-
-  // ---- AI Insights ----
-  const coverageInsights = useMemo(() => detectCoverageGaps(leaveRequests, employees), [leaveRequests, employees])
-  const leaveInsights = useMemo(() => analyzeLeavePatterns(leaveRequests), [leaveRequests])
-
-  // ---- Local state for shifts & timesheets (no store yet) ----
-  const [shifts, setShifts] = useState<Shift[]>(() => generateShifts(employees))
-  const [timesheets, setTimesheets] = useState<TimesheetEntry[]>(() => generateTimesheets(employees))
+  const shifts = _shifts as any[]
 
   // ---- Tabs ----
-  const [activeTab, setActiveTab] = useState('leave')
-  const pendingRequests = leaveRequests.filter(l => l.status === 'pending')
-  const approvedRequests = leaveRequests.filter(l => l.status === 'approved')
-  const today = new Date().toISOString().split('T')[0]
-  const onLeaveToday = leaveRequests.filter(
-    l => l.status === 'approved' && l.start_date <= today && l.end_date >= today
-  ).length
-
+  const [activeTab, setActiveTab] = useState('time-clock')
   const tabs = [
-    { id: 'leave', label: t('tabLeaveRequests'), count: pendingRequests.length },
-    { id: 'timesheet', label: t('tabTimesheets') },
-    { id: 'schedules', label: 'Schedules' },
-    { id: 'calendar', label: 'Team Calendar' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'holidays', label: t('tabHolidayCalendar') },
+    { id: 'time-clock', label: 'Time Clock', icon: Clock },
+    { id: 'timesheets', label: 'Timesheets', icon: CalendarDays },
+    { id: 'scheduling', label: 'Scheduling', icon: Calendar },
+    { id: 'overtime', label: 'Overtime', icon: TrendingUp },
+    { id: 'pto', label: 'PTO Management', icon: Briefcase },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ]
 
-  // ---- Leave filters ----
-  const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>('all')
-  const filteredLeaveRequests = useMemo(() => {
-    if (leaveStatusFilter === 'all') return leaveRequests
-    return leaveRequests.filter(lr => lr.status === leaveStatusFilter)
-  }, [leaveRequests, leaveStatusFilter])
+  // ---- Global state ----
+  const today = new Date().toISOString().split('T')[0]
+  const [weekOffset, setWeekOffset] = useState(0)
+  const { dates: weekDates } = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterDept, setFilterDept] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
-  // ---- Leave Modal ----
-  const [showLeaveModal, setShowLeaveModal] = useState(false)
-  const [leaveForm, setLeaveForm] = useState({
-    employee_id: '', type: 'annual' as string, start_date: '', end_date: '', days: 1, reason: '',
-  })
+  // ---- Time Clock State ----
+  const [clockedIn, setClockedIn] = useState(false)
+  const [clockInTime, setClockInTime] = useState<Date | null>(null)
+  const [onBreak, setOnBreak] = useState(false)
+  const [breakStart, setBreakStart] = useState<Date | null>(null)
+  const [totalBreakMinutes, setTotalBreakMinutes] = useState(0)
+  const [elapsed, setElapsed] = useState('00:00:00')
+  const [selectedEmployee, setSelectedEmployee] = useState(currentEmployeeId)
 
-  // ---- Shift Modal ----
+  // Timer effect
+  useEffect(() => {
+    if (!clockedIn || !clockInTime) return
+    const interval = setInterval(() => {
+      const now = new Date()
+      const diffMs = now.getTime() - clockInTime.getTime()
+      const hours = Math.floor(diffMs / 3600000)
+      const mins = Math.floor((diffMs % 3600000) / 60000)
+      const secs = Math.floor((diffMs % 60000) / 1000)
+      setElapsed(`${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [clockedIn, clockInTime])
+
+  // Clock handlers
+  function handleClockIn() {
+    const now = new Date()
+    setClockedIn(true)
+    setClockInTime(now)
+    setTotalBreakMinutes(0)
+    setOnBreak(false)
+    addToast('Clocked in successfully')
+  }
+
+  function handleClockOut() {
+    if (!clockInTime) return
+    const now = new Date()
+    const totalMs = now.getTime() - clockInTime.getTime()
+    const totalHrs = (totalMs / 3600000) - (totalBreakMinutes / 60)
+    const otHrs = Math.max(0, totalHrs - 8)
+    addTimeEntry({
+      employee_id: selectedEmployee,
+      date: today,
+      clock_in: clockInTime.toISOString(),
+      clock_out: now.toISOString(),
+      break_minutes: totalBreakMinutes,
+      total_hours: Math.round(totalHrs * 100) / 100,
+      overtime_hours: Math.round(otHrs * 100) / 100,
+      status: 'pending',
+      approved_by: null,
+      location: 'Office',
+      notes: null,
+    })
+    setClockedIn(false)
+    setClockInTime(null)
+    setElapsed('00:00:00')
+    setTotalBreakMinutes(0)
+    addToast('Clocked out - time entry recorded')
+  }
+
+  function handleBreakToggle() {
+    if (onBreak && breakStart) {
+      const breakMs = new Date().getTime() - breakStart.getTime()
+      setTotalBreakMinutes(prev => prev + Math.round(breakMs / 60000))
+      setOnBreak(false)
+      setBreakStart(null)
+      addToast('Break ended')
+    } else {
+      setOnBreak(true)
+      setBreakStart(new Date())
+      addToast('Break started')
+    }
+  }
+
+  // Today's entries for current employee
+  const todayEntries = useMemo(() =>
+    timeEntries.filter(e => e.date === today && e.employee_id === selectedEmployee),
+  [timeEntries, today, selectedEmployee])
+
+  // Weekly summary for current employee
+  const weeklyHoursByDay = useMemo(() => {
+    return weekDates.map(date => {
+      const dayEntries = timeEntries.filter(e => e.date === date && e.employee_id === selectedEmployee)
+      return dayEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
+    })
+  }, [timeEntries, weekDates, selectedEmployee])
+
+  const weeklyTotal = weeklyHoursByDay.reduce((a, b) => a + b, 0)
+  const weeklyOvertime = Math.max(0, weeklyTotal - 40)
+
+  // ---- Timesheets Tab data ----
+  const timesheetData = useMemo(() => {
+    const empMap = new Map<string, { hours: number[]; total: number; overtime: number; statuses: string[] }>()
+
+    // Build per-employee weekly hours
+    employees.forEach(emp => {
+      let match = true
+      if (searchQuery && !emp.profile.full_name.toLowerCase().includes(searchQuery.toLowerCase())) match = false
+      if (filterDept && emp.department_id !== filterDept) match = false
+      if (!match) return
+
+      const hours = weekDates.map(date => {
+        const dayEntries = timeEntries.filter(e => e.date === date && e.employee_id === emp.id)
+        return dayEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
+      })
+      const total = hours.reduce((a, b) => a + b, 0)
+      const overtime = Math.max(0, total - 40)
+      const statuses = weekDates.map(date => {
+        const dayEntries = timeEntries.filter(e => e.date === date && e.employee_id === emp.id)
+        if (dayEntries.length === 0) return 'none'
+        if (dayEntries.every(e => e.status === 'approved')) return 'approved'
+        if (dayEntries.some(e => e.status === 'rejected')) return 'rejected'
+        return 'pending'
+      })
+
+      if (total > 0 || hours.some(h => h > 0)) {
+        empMap.set(emp.id, { hours, total, overtime, statuses })
+      }
+    })
+
+    if (filterStatus) {
+      // Filter to only employees that have entries matching the status
+      for (const [empId, data] of empMap.entries()) {
+        const weekEntries = timeEntries.filter(e => weekDates.includes(e.date) && e.employee_id === empId)
+        const hasMatchingStatus = weekEntries.some(e => e.status === filterStatus)
+        if (!hasMatchingStatus && filterStatus !== 'none') empMap.delete(empId)
+      }
+    }
+
+    return empMap
+  }, [employees, timeEntries, weekDates, searchQuery, filterDept, filterStatus])
+
+  // Bulk approve handler
+  function bulkApproveTimesheets() {
+    const pendingEntries = timeEntries.filter(e =>
+      weekDates.includes(e.date) && e.status === 'pending' &&
+      Array.from(timesheetData.keys()).includes(e.employee_id)
+    )
+    pendingEntries.forEach(entry => {
+      updateTimeEntry(entry.id, { status: 'approved', approved_by: currentEmployeeId })
+    })
+    addToast(`Approved ${pendingEntries.length} time entries`)
+  }
+
+  function bulkRejectTimesheets() {
+    const pendingEntries = timeEntries.filter(e =>
+      weekDates.includes(e.date) && e.status === 'pending' &&
+      Array.from(timesheetData.keys()).includes(e.employee_id)
+    )
+    pendingEntries.forEach(entry => {
+      updateTimeEntry(entry.id, { status: 'rejected', approved_by: currentEmployeeId })
+    })
+    addToast(`Rejected ${pendingEntries.length} time entries`)
+  }
+
+  // Export CSV for timesheets
+  function exportTimesheetCSV() {
+    const rows = [['Employee', ...DAY_NAMES, 'Total', 'Overtime', 'Status'].join(',')]
+    timesheetData.forEach((data, empId) => {
+      const name = getEmployeeName(empId)
+      const weekStatus = data.statuses.includes('pending') ? 'Pending' : data.statuses.includes('rejected') ? 'Rejected' : 'Approved'
+      rows.push([name, ...data.hours.map(h => h.toFixed(1)), data.total.toFixed(1), data.overtime.toFixed(1), weekStatus].join(','))
+    })
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `timesheet-${weekDates[0]}.csv`; a.click()
+    URL.revokeObjectURL(url)
+    addToast('Timesheet exported')
+  }
+
+  // ---- Scheduling Tab data ----
   const [showShiftModal, setShowShiftModal] = useState(false)
   const [shiftForm, setShiftForm] = useState({
-    employee_id: '', date: '', start_time: '09:00', end_time: '17:00', type: 'regular' as Shift['type'],
+    employee_id: '', date: '', start_time: '09:00', end_time: '17:00', role: '', location: '',
   })
 
-  // ---- Holiday Modal ----
-  const [showHolidayModal, setShowHolidayModal] = useState(false)
-  const [holidayForm, setHolidayForm] = useState({ date: '', name: '', countries: '' })
-  const [customHolidays, setCustomHolidays] = useState<typeof PUBLIC_HOLIDAYS>([])
-  const [holidayCountryFilter, setHolidayCountryFilter] = useState<string>('all')
+  const weekShifts = useMemo(() =>
+    shifts.filter(s => weekDates.includes(s.date)),
+  [shifts, weekDates])
 
-  // ---- Bulk leave approval state ----
-  const [showBulkLeaveModal, setShowBulkLeaveModal] = useState(false)
-  const [bulkLeaveSelectMode, setBulkLeaveSelectMode] = useState<'all_pending' | 'department' | 'type' | 'individual'>('all_pending')
-  const [bulkLeaveSelectedIds, setBulkLeaveSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkLeaveSelectedDepts, setBulkLeaveSelectedDepts] = useState<Set<string>>(new Set())
-  const [bulkLeaveSelectedTypes, setBulkLeaveSelectedTypes] = useState<Set<string>>(new Set())
-  const [bulkLeaveAction, setBulkLeaveAction] = useState<'approve' | 'deny'>('approve')
-
-  // ---- Clock state ----
-  const [clockedIn, setClockedIn] = useState(false)
-  const [clockInTime, setClockInTime] = useState<string | null>(null)
-
-  // ---- Calendar state ----
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const now = new Date()
-    return { year: now.getFullYear(), month: now.getMonth() }
-  })
-
-  // ---- Computed analytics ----
-  const analyticsData = useMemo(() => {
-    const totalHours = timesheets.reduce((s, ts) => s + ts.total, 0)
-    const avgHours = timesheets.length > 0 ? totalHours / timesheets.length : 0
-    const totalOvertime = timesheets.reduce((s, ts) => s + ts.overtime, 0)
-    const overtimeRate = totalHours > 0 ? (totalOvertime / totalHours) * 100 : 0
-    const missedShifts = shifts.filter(s => s.status === 'missed').length
-    const totalShifts = shifts.length
-    const absenteeismRate = totalShifts > 0 ? (missedShifts / totalShifts) * 100 : 0
-
-    // Department hours
-    const deptHours: Record<string, { hours: number; count: number }> = {}
-    timesheets.forEach(ts => {
-      const emp = employees.find(e => e.id === ts.employee_id)
-      const deptName = emp ? getDepartmentName(emp.department_id) : 'Other'
-      if (!deptHours[deptName]) deptHours[deptName] = { hours: 0, count: 0 }
-      deptHours[deptName].hours += ts.total
-      deptHours[deptName].count += 1
-    })
-
-    // Weekly overtime trend (simulated 8 weeks)
-    const overtimeTrend = [3.2, 4.1, 2.8, 5.5, 3.9, 4.7, totalOvertime || 3.0, totalOvertime * 1.1 || 2.5]
-
-    // Burnout risk per employee
-    const burnoutRisks = employees.slice(0, 8).map(emp => ({
-      employee: emp,
-      score: assessBurnoutRisk(emp, leaveRequests),
-    })).filter(r => r.score.value >= 40).sort((a, b) => b.score.value - a.score.value)
-
-    return { avgHours, overtimeRate, absenteeismRate, deptHours, overtimeTrend, burnoutRisks, totalOvertime }
-  }, [timesheets, shifts, employees, leaveRequests, getDepartmentName])
-
-  // ---- Bulk leave approval computed ----
-  const pendingLeaveRequests = useMemo(
-    () => leaveRequests.filter(lr => lr.status === 'pending'),
-    [leaveRequests],
-  )
-
-  const leaveTypes = useMemo(
-    () => Array.from(new Set(pendingLeaveRequests.map(lr => lr.type))).sort(),
-    [pendingLeaveRequests],
-  )
-
-  const bulkLeaveTargetRequests = useMemo(() => {
-    if (bulkLeaveSelectMode === 'all_pending') return pendingLeaveRequests
-    if (bulkLeaveSelectMode === 'department') {
-      return pendingLeaveRequests.filter(lr => {
-        const emp = employees.find(e => e.id === lr.employee_id)
-        return emp && bulkLeaveSelectedDepts.has(emp.department_id)
-      })
-    }
-    if (bulkLeaveSelectMode === 'type') {
-      return pendingLeaveRequests.filter(lr => bulkLeaveSelectedTypes.has(lr.type))
-    }
-    // individual
-    return pendingLeaveRequests.filter(lr => bulkLeaveSelectedIds.has(lr.id))
-  }, [bulkLeaveSelectMode, pendingLeaveRequests, employees, bulkLeaveSelectedDepts, bulkLeaveSelectedTypes, bulkLeaveSelectedIds])
-
-  const bulkLeaveSelectedRequests = bulkLeaveTargetRequests
-
-  // ---- Handlers ----
-  function openNewLeaveRequest() {
-    setLeaveForm({ employee_id: employees[0]?.id || '', type: 'annual', start_date: '', end_date: '', days: 1, reason: '' })
-    setShowLeaveModal(true)
-  }
-
-  function submitLeaveRequest() {
-    if (!leaveForm.employee_id || !leaveForm.start_date || !leaveForm.end_date) return
-    addLeaveRequest({
-      employee_id: leaveForm.employee_id, type: leaveForm.type,
-      start_date: leaveForm.start_date, end_date: leaveForm.end_date,
-      days: Number(leaveForm.days) || 1, reason: leaveForm.reason, status: 'pending',
-    })
-    setShowLeaveModal(false)
-  }
-
-  function approveLeave(id: string) {
-    updateLeaveRequest(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
-  }
-
-  function denyLeave(id: string) {
-    updateLeaveRequest(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
-  }
-
-  function handleClockIn() {
-    if (clockedIn) {
-      setClockedIn(false)
-      setClockInTime(null)
-    } else {
-      setClockedIn(true)
-      setClockInTime(new Date().toLocaleTimeString())
-    }
-  }
+  // Coverage analysis
+  const coverageByDay = useMemo(() =>
+    weekDates.map(date => {
+      const dayShifts = shifts.filter(s => s.date === date)
+      const scheduled = dayShifts.filter(s => s.status === 'scheduled' || s.status === 'completed').length
+      return { date, scheduled, gap: Math.max(0, 5 - scheduled) }
+    }),
+  [shifts, weekDates])
 
   function submitShift() {
     if (!shiftForm.employee_id || !shiftForm.date) return
-    const startH = parseInt(shiftForm.start_time.split(':')[0])
-    const endH = parseInt(shiftForm.end_time.split(':')[0])
-    const hours = endH > startH ? endH - startH : 24 - startH + endH
-    setShifts(prev => [...prev, {
-      id: `shift-new-${Date.now()}`, employee_id: shiftForm.employee_id,
-      date: shiftForm.date, start_time: shiftForm.start_time, end_time: shiftForm.end_time,
-      type: shiftForm.type, hours, status: 'scheduled',
-    }])
-    setShowShiftModal(false)
-  }
-
-  function submitTimesheet(tsId: string) {
-    setTimesheets(prev => prev.map(ts =>
-      ts.id === tsId ? { ...ts, status: 'submitted', submitted_at: new Date().toISOString() } : ts
-    ))
-  }
-
-  function approveTimesheet(tsId: string) {
-    setTimesheets(prev => prev.map(ts =>
-      ts.id === tsId ? { ...ts, status: 'approved' } : ts
-    ))
-  }
-
-  function addCustomHoliday() {
-    if (!holidayForm.date || !holidayForm.name) return
-    const month = new Date(holidayForm.date).toLocaleString('en', { month: 'long' })
-    setCustomHolidays(prev => [...prev, {
-      date: holidayForm.date, name: holidayForm.name,
-      countries: holidayForm.countries ? holidayForm.countries.split(',').map(c => c.trim()) : ['Custom'],
-      month,
-    }])
-    setShowHolidayModal(false)
-    setHolidayForm({ date: '', name: '', countries: '' })
-  }
-
-  // ---- Bulk leave handlers ----
-  function toggleBulkLeaveSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
-    const next = new Set(set)
-    if (next.has(value)) next.delete(value)
-    else next.add(value)
-    setter(next)
-  }
-
-  function resetBulkLeave() {
-    setShowBulkLeaveModal(false)
-    setBulkLeaveSelectMode('all_pending')
-    setBulkLeaveSelectedIds(new Set())
-    setBulkLeaveSelectedDepts(new Set())
-    setBulkLeaveSelectedTypes(new Set())
-    setBulkLeaveAction('approve')
-  }
-
-  function submitBulkLeave() {
-    const status = bulkLeaveAction === 'approve' ? 'approved' : 'rejected'
-    const now = new Date().toISOString()
-    bulkLeaveSelectedRequests.forEach(lr => {
-      updateLeaveRequest(lr.id, { status, approved_by: currentEmployeeId, approved_at: now })
+    addShift({
+      employee_id: shiftForm.employee_id, date: shiftForm.date,
+      start_time: shiftForm.start_time, end_time: shiftForm.end_time,
+      break_duration: 60, role: shiftForm.role || null, location: shiftForm.location || null,
+      status: 'scheduled', swapped_with: null, notes: null,
     })
-    const count = bulkLeaveSelectedRequests.length
-    const actionLabel = bulkLeaveAction === 'approve' ? 'approved' : 'denied'
-    addToast(`${count} leave request${count !== 1 ? 's' : ''} ${actionLabel}`)
-    resetBulkLeave()
+    setShowShiftModal(false)
+    setShiftForm({ employee_id: '', date: '', start_time: '09:00', end_time: '17:00', role: '', location: '' })
   }
 
-  // ---- Calendar helpers ----
-  const calendarDays = useMemo(() => {
-    const { year, month } = calendarMonth
-    const firstDay = new Date(year, month, 1).getDay()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const days: (number | null)[] = []
-    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) days.push(null)
-    for (let d = 1; d <= daysInMonth; d++) days.push(d)
-    return days
-  }, [calendarMonth])
+  // ---- Overtime Tab ----
+  const [showOTRuleModal, setShowOTRuleModal] = useState(false)
+  const [editingOTRule, setEditingOTRule] = useState<string | null>(null)
+  const [otRuleForm, setOTRuleForm] = useState({
+    name: '', country: '', daily_threshold_hours: 8, weekly_threshold_hours: 40,
+    multiplier: 1.5, double_overtime_threshold: '', double_overtime_multiplier: '',
+  })
 
-  const leaveByDate = useMemo(() => {
-    const map: Record<string, { employee_id: string; type: string }[]> = {}
-    leaveRequests.filter(lr => lr.status === 'approved').forEach(lr => {
-      const start = new Date(lr.start_date)
-      const end = new Date(lr.end_date)
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().split('T')[0]
-        if (!map[key]) map[key] = []
-        map[key].push({ employee_id: lr.employee_id, type: lr.type })
+  // Overtime by department
+  const overtimeByDept = useMemo(() => {
+    const deptMap: Record<string, { hours: number; cost: number; employees: number }> = {}
+    employees.forEach(emp => {
+      const empEntries = timeEntries.filter(e => e.employee_id === emp.id && weekDates.includes(e.date))
+      const otHours = empEntries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0)
+      if (otHours <= 0) return
+      const deptName = getDepartmentName(emp.department_id)
+      if (!deptMap[deptName]) deptMap[deptName] = { hours: 0, cost: 0, employees: 0 }
+      deptMap[deptName].hours += otHours
+      deptMap[deptName].cost += otHours * 45 // Estimated hourly OT rate
+      deptMap[deptName].employees += 1
+    })
+    return Object.entries(deptMap).map(([dept, data]) => ({ department: dept, ...data }))
+      .sort((a, b) => b.hours - a.hours)
+  }, [employees, timeEntries, weekDates, getDepartmentName])
+
+  // Employees approaching overtime threshold
+  const approachingOT = useMemo(() => {
+    return employees.map(emp => {
+      const empEntries = timeEntries.filter(e => e.employee_id === emp.id && weekDates.includes(e.date))
+      const totalHrs = empEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
+      return { emp, totalHrs, remaining: Math.max(0, 40 - totalHrs) }
+    }).filter(x => x.totalHrs >= 35 && x.totalHrs < 45).sort((a, b) => b.totalHrs - a.totalHrs)
+  }, [employees, timeEntries, weekDates])
+
+  function submitOTRule() {
+    if (!otRuleForm.name || !otRuleForm.country) return
+    const data = {
+      name: otRuleForm.name, country: otRuleForm.country,
+      daily_threshold_hours: Number(otRuleForm.daily_threshold_hours),
+      weekly_threshold_hours: Number(otRuleForm.weekly_threshold_hours),
+      multiplier: Number(otRuleForm.multiplier),
+      double_overtime_threshold: otRuleForm.double_overtime_threshold ? Number(otRuleForm.double_overtime_threshold) : null,
+      double_overtime_multiplier: otRuleForm.double_overtime_multiplier ? Number(otRuleForm.double_overtime_multiplier) : null,
+      is_active: true,
+    }
+    if (editingOTRule) {
+      updateOvertimeRule(editingOTRule, data)
+    } else {
+      addOvertimeRule(data)
+    }
+    setShowOTRuleModal(false)
+    setEditingOTRule(null)
+    setOTRuleForm({ name: '', country: '', daily_threshold_hours: 8, weekly_threshold_hours: 40, multiplier: 1.5, double_overtime_threshold: '', double_overtime_multiplier: '' })
+  }
+
+  // ---- PTO Tab ----
+  const [showPTOPolicyModal, setShowPTOPolicyModal] = useState(false)
+  const [editingPolicy, setEditingPolicy] = useState<string | null>(null)
+  const [ptoPolicyForm, setPtoPolicyForm] = useState({
+    name: '', type: 'annual', accrual_rate: 1.67, accrual_period: 'monthly',
+    max_balance: 20, carryover_limit: 0, waiting_period_days: 0,
+  })
+
+  // PTO upcoming leaves
+  const upcomingLeaves = useMemo(() =>
+    leaveRequests.filter(lr => lr.status === 'approved' && lr.start_date >= today)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+      .slice(0, 10),
+  [leaveRequests, today])
+
+  function submitPTOPolicy() {
+    if (!ptoPolicyForm.name) return
+    const data = {
+      name: ptoPolicyForm.name, type: ptoPolicyForm.type,
+      accrual_rate: Number(ptoPolicyForm.accrual_rate),
+      accrual_period: ptoPolicyForm.accrual_period,
+      max_balance: Number(ptoPolicyForm.max_balance),
+      carryover_limit: Number(ptoPolicyForm.carryover_limit),
+      waiting_period_days: Number(ptoPolicyForm.waiting_period_days),
+      is_active: true,
+    }
+    if (editingPolicy) {
+      updateTimeOffPolicy(editingPolicy, data)
+    } else {
+      addTimeOffPolicy(data)
+    }
+    setShowPTOPolicyModal(false)
+    setEditingPolicy(null)
+    setPtoPolicyForm({ name: '', type: 'annual', accrual_rate: 1.67, accrual_period: 'monthly', max_balance: 20, carryover_limit: 0, waiting_period_days: 0 })
+  }
+
+  // ---- Analytics Tab ----
+  const analyticsData = useMemo(() => {
+    // Average hours by week (last 4 weeks)
+    const weeklyAvgs = [-3, -2, -1, 0].map(off => {
+      const { dates } = getWeekDates(off)
+      const weekEntries = timeEntries.filter(e => dates.includes(e.date))
+      const totalHrs = weekEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
+      const uniqueEmps = new Set(weekEntries.map(e => e.employee_id)).size
+      return {
+        week: `W${dates[0].slice(5)}`,
+        avgHours: uniqueEmps > 0 ? totalHrs / uniqueEmps : 0,
+        totalOvertime: weekEntries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0),
       }
     })
-    return map
-  }, [leaveRequests])
 
-  // ---- Holiday filtering ----
-  const allHolidays = [...PUBLIC_HOLIDAYS, ...customHolidays].sort((a, b) => a.date.localeCompare(b.date))
-  const allCountries = useMemo(() => {
-    const set = new Set<string>()
-    allHolidays.forEach(h => h.countries.forEach(c => set.add(c)))
-    return Array.from(set).sort()
-  }, [allHolidays])
-  const filteredHolidays = holidayCountryFilter === 'all'
-    ? allHolidays
-    : allHolidays.filter(h => h.countries.includes(holidayCountryFilter) || h.countries.includes('All'))
-
-  // Group holidays by month
-  const holidaysByMonth = useMemo(() => {
-    const map: Record<string, typeof filteredHolidays> = {}
-    filteredHolidays.forEach(h => {
-      if (!map[h.month]) map[h.month] = []
-      map[h.month].push(h)
+    // Attendance rate (punctuality: clocked in before 9am)
+    const allEntries = timeEntries.filter(e => weekDates.includes(e.date))
+    const onTimeEntries = allEntries.filter(e => {
+      const clockIn = new Date(e.clock_in)
+      return clockIn.getHours() < 9 || (clockIn.getHours() === 9 && clockIn.getMinutes() <= 15)
     })
-    return map
-  }, [filteredHolidays])
+    const punctualityRate = allEntries.length > 0 ? Math.round((onTimeEntries.length / allEntries.length) * 100) : 0
 
-  // Weekday headers for schedules
-  const weekDays = [t('weekdayMon'), t('weekdayTue'), t('weekdayWed'), t('weekdayThu'), t('weekdayFri')]
+    // PTO utilization
+    const totalPTOBalance = timeOffBalances.reduce((sum, b) => sum + b.balance, 0)
+    const totalPTOUsed = timeOffBalances.reduce((sum, b) => sum + b.used, 0)
+    const ptoUtilization = totalPTOBalance > 0 ? Math.round((totalPTOUsed / (totalPTOBalance + totalPTOUsed)) * 100) : 0
+
+    // Department labor cost
+    const deptCosts: Record<string, number> = {}
+    employees.forEach(emp => {
+      const empEntries = timeEntries.filter(e => e.employee_id === emp.id)
+      const totalHrs = empEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
+      const deptName = getDepartmentName(emp.department_id)
+      deptCosts[deptName] = (deptCosts[deptName] || 0) + totalHrs * 35 // Estimated hourly cost
+    })
+
+    return { weeklyAvgs, punctualityRate, ptoUtilization, deptCosts }
+  }, [timeEntries, weekDates, timeOffBalances, employees, getDepartmentName])
+
+  // Stats
+  const pendingCount = timeEntries.filter(e => e.status === 'pending').length
+  const approvedToday = timeEntries.filter(e => e.date === today && e.status === 'approved').length
+  const totalOTWeek = timeEntries.filter(e => weekDates.includes(e.date)).reduce((s, e) => s + (e.overtime_hours || 0), 0)
+  const activeEmployeesToday = new Set(timeEntries.filter(e => e.date === today).map(e => e.employee_id)).size
 
   return (
     <>
-      <Header
-        title={t('title')}
-        subtitle={t('subtitle')}
+      <Header title="Time & Attendance" subtitle="Track hours, manage schedules, and oversee time-off"
         actions={
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={handleClockIn}>
-              <LogIn size={14} /> {clockedIn ? t('clockOut') : t('clockIn')}
-            </Button>
-            <Button size="sm" onClick={openNewLeaveRequest}>
-              <Plus size={14} /> {t('requestLeave')}
-            </Button>
+            {activeTab === 'scheduling' && <Button size="sm" onClick={() => setShowShiftModal(true)}><Plus size={14} /> Add Shift</Button>}
+            {activeTab === 'overtime' && <Button size="sm" onClick={() => { setEditingOTRule(null); setShowOTRuleModal(true) }}><Plus size={14} /> Add Rule</Button>}
+            {activeTab === 'pto' && <Button size="sm" onClick={() => { setEditingPolicy(null); setShowPTOPolicyModal(true) }}><Plus size={14} /> Add Policy</Button>}
           </div>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label={t('pendingRequests')} value={pendingRequests.length} change="Awaiting approval" changeType="neutral" icon={<Clock size={20} />} />
-        <StatCard label={t('approvedLabel')} value={approvedRequests.length} change={tc('thisQuarter')} changeType="positive" icon={<CheckCircle size={20} />} />
-        <StatCard label={t('onLeaveToday')} value={onLeaveToday} change={t('acrossAllRegions')} changeType="neutral" icon={<Calendar size={20} />} />
-        <StatCard label={t('avgLeaveBalance')} value="14.5" change={t('daysRemaining')} changeType="neutral" />
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-tempo-600 text-tempo-600' : 'border-transparent text-t3 hover:text-t1 hover:border-border'}`}>
+              <Icon size={16} /> {tab.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* AI Insights */}
-      <AIAlertBanner insights={coverageInsights} className="mb-4" />
-      {leaveInsights.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {leaveInsights.map(insight => (
-            <AIInsightCard key={insight.id} insight={insight} compact />
-          ))}
-        </div>
-      )}
-
-      {/* Clock-in banner */}
-      {clockedIn && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-sm font-medium text-emerald-800">{t('clockedIn')}</p>
-            <p className="text-xs text-emerald-600">{t('clockedInSince', { time: clockInTime ?? '' })}</p>
+      {/* ============================================================ */}
+      {/* TAB 1: TIME CLOCK */}
+      {/* ============================================================ */}
+      {activeTab === 'time-clock' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Today" value={activeEmployeesToday} change={`of ${employees.length}`} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label="Pending Approvals" value={pendingCount} change="entries" changeType={pendingCount > 5 ? 'negative' : 'neutral'} icon={<Clock size={20} />} />
+            <StatCard label="Weekly Overtime" value={`${formatHours(totalOTWeek)}h`} change="this week" changeType={totalOTWeek > 20 ? 'negative' : 'neutral'} icon={<TrendingUp size={20} />} />
+            <StatCard label="Approved Today" value={approvedToday} change="entries" changeType="positive" icon={<CheckCircle size={20} />} />
           </div>
-          <Button size="sm" variant="secondary" onClick={handleClockIn}><LogIn size={14} /> {t('clockOut')}</Button>
-        </div>
-      )}
 
-      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Clock In/Out Panel */}
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Time Clock</CardTitle>
+                  <Badge variant={clockedIn ? 'success' : 'default'}>{clockedIn ? 'Clocked In' : 'Clocked Out'}</Badge>
+                </div>
+              </CardHeader>
+              <div className="p-6 pt-0 space-y-6">
+                {/* Employee Selector */}
+                <Select label="Employee" value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)}
+                  options={employees.map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
 
-      {/* ============================================================ */}
-      {/* TAB 1: LEAVE REQUESTS */}
-      {/* ============================================================ */}
-      {activeTab === 'leave' && (
-        <Card padding="none">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{t('leaveRequestsTitle')}</CardTitle>
-              <div className="flex items-center gap-2">
-                <Filter size={14} className="text-t3" />
-                <select
-                  className="px-2 py-1 text-xs border border-border rounded-lg bg-surface text-t1"
-                  value={leaveStatusFilter} onChange={e => setLeaveStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                {pendingLeaveRequests.length > 0 && (
-                  <Button size="sm" variant="secondary" onClick={() => setShowBulkLeaveModal(true)}>
-                    <CheckCircle size={14} /> Bulk Approve
-                  </Button>
+                {/* Timer Display */}
+                <div className="text-center">
+                  <p className="text-5xl font-mono font-bold text-t1 tracking-wider">{elapsed}</p>
+                  {clockInTime && (
+                    <p className="text-sm text-t3 mt-2">
+                      Started at {clockInTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      {onBreak && <span className="text-orange-500 ml-2">(On Break)</span>}
+                    </p>
+                  )}
+                </div>
+
+                {/* Clock Buttons */}
+                <div className="space-y-3">
+                  {!clockedIn ? (
+                    <Button className="w-full py-4 text-lg" onClick={handleClockIn}>
+                      <LogIn size={20} /> Clock In
+                    </Button>
+                  ) : (
+                    <>
+                      <Button className="w-full py-4 text-lg" variant="secondary" onClick={handleClockOut}>
+                        <LogOut size={20} /> Clock Out
+                      </Button>
+                      <Button className="w-full" variant={onBreak ? 'primary' : 'ghost'} onClick={handleBreakToggle}>
+                        {onBreak ? <><Play size={16} /> End Break</> : <><Coffee size={16} /> Start Break</>}
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* Break Summary */}
+                {totalBreakMinutes > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-t3 bg-canvas rounded-lg p-3">
+                    <Coffee size={14} /> Total break: {totalBreakMinutes} min
+                  </div>
                 )}
               </div>
-            </div>
-          </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-divider bg-canvas">
-                  <th className="tempo-th text-left px-6 py-3">{t('tableEmployee')}</th>
-                  <th className="tempo-th text-left px-4 py-3">{t('tableType')}</th>
-                  <th className="tempo-th text-left px-4 py-3">{t('tableDates')}</th>
-                  <th className="tempo-th text-right px-4 py-3">{t('tableDays')}</th>
-                  <th className="tempo-th text-left px-4 py-3">{t('tableReason')}</th>
-                  <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
-                  <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredLeaveRequests.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
-                      {t('noLeaveRequests')}
-                    </td>
-                  </tr>
-                )}
-                {filteredLeaveRequests.map(lr => {
-                  const emp = employees.find(e => e.id === lr.employee_id)
-                  return (
-                    <tr key={lr.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
+            </Card>
+
+            {/* Today's Log */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Today&apos;s Time Log</CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-6">
+                {todayEntries.length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-8">No entries logged today</p>
+                ) : (
+                  <div className="space-y-3">
+                    {todayEntries.map(entry => (
+                      <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg border border-divider bg-canvas">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-tempo-100 text-tempo-600 flex items-center justify-center">
+                            <Clock size={14} />
+                          </div>
                           <div>
-                            <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
-                            <p className="text-xs text-t3">{emp?.job_title}</p>
+                            <p className="text-sm font-medium text-t1">{formatTime(entry.clock_in)} - {entry.clock_out ? formatTime(entry.clock_out) : 'Active'}</p>
+                            <p className="text-xs text-t3 flex items-center gap-1"><MapPin size={10} /> {entry.location}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-t2">{lr.start_date} {tc('to')} {lr.end_date}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{lr.days}</td>
-                      <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{lr.reason}</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={lr.status === 'approved' ? 'success' : lr.status === 'pending' ? 'warning' : 'error'}>
-                          {lr.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {lr.status === 'pending' && (
-                          <div className="flex gap-1 justify-center">
-                            <Button size="sm" variant="primary" onClick={() => approveLeave(lr.id)}>{tc('approve')}</Button>
-                            <Button size="sm" variant="ghost" onClick={() => denyLeave(lr.id)}>{tc('deny')}</Button>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-t1">{formatHours(entry.total_hours || 0)}h</p>
+                            {(entry.overtime_hours || 0) > 0 && <p className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)}h OT</p>}
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                          <Badge variant={STATUS_COLORS[entry.status] || 'default'}>{entry.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Weekly Timesheet Mini */}
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold text-t1 mb-3">Weekly Summary</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-divider">
+                          {DAY_NAMES.map((d, i) => (
+                            <th key={d} className={`px-3 py-2 font-medium text-center ${weekDates[i] === today ? 'text-tempo-600' : 'text-t3'}`}>{d}</th>
+                          ))}
+                          <th className="px-3 py-2 font-medium text-center text-t1">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          {weeklyHoursByDay.map((h, i) => (
+                            <td key={i} className={`px-3 py-2 text-center ${weekDates[i] === today ? 'font-semibold text-tempo-600' : h > 0 ? 'text-t1' : 'text-t3'}`}>
+                              {h > 0 ? formatHours(h) : '-'}
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 text-center font-bold text-t1">{formatHours(weeklyTotal)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  {weeklyOvertime > 0 && (
+                    <p className="text-xs text-orange-500 mt-2 flex items-center gap-1">
+                      <AlertTriangle size={12} /> {formatHours(weeklyOvertime)}h overtime this week
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
           </div>
-        </Card>
+        </>
       )}
 
       {/* ============================================================ */}
       {/* TAB 2: TIMESHEETS */}
       {/* ============================================================ */}
-      {activeTab === 'timesheet' && (
+      {activeTab === 'timesheets' && (
         <>
-          {/* Weekly Timesheet Grid */}
-          <Card className="mb-6">
-            <h3 className="text-sm font-semibold text-t1 mb-4">{t('weeklyTimesheet')}</h3>
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg border border-divider hover:bg-canvas"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-medium text-t1">
+                Week of {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg border border-divider hover:bg-canvas"><ChevronRight size={16} /></button>
+              {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="text-xs text-tempo-600 hover:underline">Current Week</button>}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={exportTimesheetCSV}><Download size={14} /> Export CSV</Button>
+              <Button size="sm" variant="primary" onClick={bulkApproveTimesheets}><CheckCircle size={14} /> Bulk Approve</Button>
+              <Button size="sm" variant="ghost" onClick={bulkRejectTimesheets}><XCircle size={14} /> Reject</Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
+                placeholder="Search employees..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            </div>
+            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
+              <option value="">All Departments</option>
+              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          {/* Timesheet Grid */}
+          <Card padding="none">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-divider bg-canvas">
-                    <th className="tempo-th text-left px-4 py-3">{t('tableEmployee')}</th>
-                    {weekDays.map(d => <th key={d} className="tempo-th text-center px-3 py-3 w-20">{d}</th>)}
-                    <th className="tempo-th text-right px-4 py-3">Total</th>
-                    <th className="tempo-th text-right px-4 py-3">OT</th>
-                    <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
-                    <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
+                    <th className="tempo-th text-left px-4 py-3 sticky left-0 bg-canvas z-10">Employee</th>
+                    {DAY_NAMES.map((d, i) => (
+                      <th key={d} className={`tempo-th text-center px-3 py-3 ${weekDates[i] === today ? 'text-tempo-600' : ''}`}>
+                        <div>{d}</div>
+                        <div className="text-xs font-normal">{weekDates[i]?.slice(5)}</div>
+                      </th>
+                    ))}
+                    <th className="tempo-th text-center px-3 py-3">Total</th>
+                    <th className="tempo-th text-center px-3 py-3">OT</th>
+                    <th className="tempo-th text-center px-3 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {timesheets.map(ts => {
-                    const emp = employees.find(e => e.id === ts.employee_id)
+                  {timesheetData.size === 0 ? (
+                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-t3">No timesheet data for this week</td></tr>
+                  ) : Array.from(timesheetData.entries()).map(([empId, data]) => {
+                    const emp = employees.find(e => e.id === empId)
+                    const weekStatus = data.statuses.includes('pending') ? 'pending' : data.statuses.includes('rejected') ? 'rejected' : 'approved'
                     return (
-                      <tr key={ts.id} className="hover:bg-canvas/50">
-                        <td className="px-4 py-3">
+                      <tr key={empId} className="hover:bg-canvas/50">
+                        <td className="px-4 py-3 sticky left-0 bg-surface z-10">
                           <div className="flex items-center gap-2">
-                            <Avatar name={getEmployeeName(ts.employee_id)} size="sm" />
+                            <Avatar name={emp?.profile.full_name || ''} src={emp?.profile.avatar_url} size="sm" />
                             <div>
-                              <p className="text-sm font-medium text-t1">{getEmployeeName(ts.employee_id)}</p>
-                              <p className="text-xs text-t3">{emp?.job_title}</p>
+                              <p className="text-xs font-medium text-t1">{emp?.profile.full_name}</p>
+                              <p className="text-xs text-t3">{emp ? getDepartmentName(emp.department_id) : ''}</p>
                             </div>
                           </div>
                         </td>
-                        {ts.hours.map((h, i) => (
-                          <td key={i} className="px-3 py-3 text-center">
-                            <span className={`text-sm font-medium ${h >= 8 ? 'text-t1' : h > 0 ? 'text-warning' : 'text-t3'}`}>
-                              {h > 0 ? `${h}h` : '-'}
-                            </span>
+                        {data.hours.map((h, i) => (
+                          <td key={i} className={`px-3 py-3 text-center text-xs ${h > 8 ? 'text-orange-500 font-semibold' : h > 0 ? 'text-t1' : 'text-t3'}`}>
+                            {h > 0 ? formatHours(h) : '-'}
                           </td>
                         ))}
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-sm font-semibold text-t1">{ts.total}h</span>
+                        <td className="px-3 py-3 text-center text-xs font-bold text-t1">{formatHours(data.total)}</td>
+                        <td className="px-3 py-3 text-center text-xs">
+                          {data.overtime > 0 ? <span className="text-orange-500 font-semibold">{formatHours(data.overtime)}</span> : '-'}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`text-sm font-medium ${ts.overtime > 0 ? 'text-amber-600' : 'text-t3'}`}>
-                            {ts.overtime > 0 ? `+${ts.overtime}h` : '-'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge variant={ts.status === 'approved' ? 'success' : ts.status === 'submitted' ? 'info' : ts.status === 'rejected' ? 'error' : 'default'}>
-                            {ts.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {ts.status === 'draft' && (
-                            <Button size="sm" variant="primary" onClick={() => submitTimesheet(ts.id)}>
-                              <Send size={12} /> Submit
-                            </Button>
-                          )}
-                          {ts.status === 'submitted' && (
-                            <Button size="sm" variant="primary" onClick={() => approveTimesheet(ts.id)}>
-                              {tc('approve')}
-                            </Button>
-                          )}
+                        <td className="px-3 py-3 text-center">
+                          <Badge variant={STATUS_COLORS[weekStatus] || 'default'} className="text-xs">{weekStatus}</Badge>
                         </td>
                       </tr>
                     )
@@ -625,130 +672,240 @@ export default function TimeAttendancePage() {
               </table>
             </div>
           </Card>
-
-          {/* Weekly Summary Card */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">{t('thisWeek')}</h4>
-              <div className="grid grid-cols-5 gap-2">
-                {weekDays.map((day, i) => {
-                  const avg = timesheets.length > 0
-                    ? timesheets.reduce((s, ts) => s + (ts.hours[i] || 0), 0) / timesheets.length
-                    : 0
-                  return (
-                    <div key={day} className="bg-canvas rounded-lg p-3 text-center">
-                      <p className="text-xs font-medium text-t3 mb-1">{day}</p>
-                      <p className="text-sm font-semibold text-t1">{avg.toFixed(1)}h</p>
-                      <p className={`text-[0.6rem] ${avg >= 8 ? 'text-success' : avg >= 6 ? 'text-warning' : 'text-t3'}`}>
-                        {avg >= 8 ? t('statusComplete') : avg >= 6 ? t('statusPartial') : '-'}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-            <Card>
-              <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">Approval Progress</h4>
-              <div className="space-y-3">
-                {(['approved', 'submitted', 'draft'] as const).map(status => {
-                  const count = timesheets.filter(ts => ts.status === status).length
-                  const pct = timesheets.length > 0 ? (count / timesheets.length) * 100 : 0
-                  return (
-                    <div key={status}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-t2 capitalize">{status}</span>
-                        <span className="text-t1 font-medium">{count}</span>
-                      </div>
-                      <Progress value={pct} size="sm" color={status === 'approved' ? 'success' : status === 'submitted' ? 'orange' : 'warning'} />
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-            <Card>
-              <h4 className="text-xs font-medium text-t3 mb-3 uppercase tracking-wide">Weekly Totals</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Total Hours</span>
-                  <span className="text-t1 font-semibold">{timesheets.reduce((s, ts) => s + ts.total, 0)}h</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Overtime</span>
-                  <span className="text-amber-600 font-semibold">{timesheets.reduce((s, ts) => s + ts.overtime, 0)}h</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Avg per Employee</span>
-                  <span className="text-t1 font-semibold">{timesheets.length > 0 ? (timesheets.reduce((s, ts) => s + ts.total, 0) / timesheets.length).toFixed(1) : '0'}h</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Timesheets</span>
-                  <span className="text-t1 font-semibold">{timesheets.length}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
         </>
       )}
 
       {/* ============================================================ */}
-      {/* TAB 3: SCHEDULES */}
+      {/* TAB 3: SCHEDULING */}
       {/* ============================================================ */}
-      {activeTab === 'schedules' && (
+      {activeTab === 'scheduling' && (
         <>
-          {/* Shift Legend */}
-          <div className="flex flex-wrap gap-3 mb-4">
-            {Object.entries(SHIFT_TYPE_COLORS).map(([type, cls]) => (
-              <div key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${cls}`}>
-                <div className={`w-2 h-2 rounded-full ${cls.split(' ')[0].replace('100', '500')}`} />
-                <span className="capitalize">{type.replace('_', ' ')}</span>
-              </div>
-            ))}
-            <div className="flex-1" />
-            <Button size="sm" onClick={() => {
-              setShiftForm({ employee_id: employees[0]?.id || '', date: '', start_time: '09:00', end_time: '17:00', type: 'regular' })
-              setShowShiftModal(true)
-            }}>
-              <Plus size={14} /> Add Shift
-            </Button>
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg border border-divider hover:bg-canvas"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-medium text-t1">
+                Week of {new Date(weekDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(weekDates[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg border border-divider hover:bg-canvas"><ChevronRight size={16} /></button>
+            </div>
           </div>
 
+          {/* Coverage Gaps */}
+          <div className="grid grid-cols-7 gap-2 mb-6">
+            {coverageByDay.map((day, i) => (
+              <div key={day.date} className={`rounded-lg border p-3 text-center ${day.gap > 2 ? 'border-red-500/30 bg-red-500/5' : day.gap > 0 ? 'border-orange-500/30 bg-orange-500/5' : 'border-divider bg-canvas'}`}>
+                <p className="text-xs font-medium text-t3">{DAY_NAMES[i]}</p>
+                <p className="text-lg font-bold text-t1">{day.scheduled}</p>
+                <p className="text-xs text-t3">scheduled</p>
+                {day.gap > 0 && (
+                  <p className="text-xs text-orange-500 mt-1 flex items-center justify-center gap-1">
+                    <AlertTriangle size={10} /> {day.gap} gap{day.gap > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Schedule Calendar Grid */}
           <Card padding="none">
-            <CardHeader><CardTitle>Shift Schedule</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Weekly Schedule</CardTitle>
+                <div className="flex gap-2 text-xs">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-tempo-500" /> Completed</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Scheduled</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> No Show</span>
+                </div>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider">
+                    {DAY_NAMES.map((d, i) => (
+                      <th key={d} className={`tempo-th text-center px-2 py-3 ${weekDates[i] === today ? 'text-tempo-600' : ''}`}>
+                        {d} {weekDates[i]?.slice(8)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {weekDates.map((date, di) => {
+                      const dayShifts = weekShifts.filter(s => s.date === date)
+                      return (
+                        <td key={date} className="px-2 py-2 align-top border-r last:border-r-0 border-divider" style={{ minWidth: 140 }}>
+                          <div className="space-y-1.5 min-h-[100px]">
+                            {dayShifts.map(shift => {
+                              const colorClass = shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
+                                shift.status === 'no_show' ? 'bg-red-50 border-red-200 text-red-700' :
+                                'bg-blue-50 border-blue-200 text-blue-700'
+                              return (
+                                <div key={shift.id} className={`rounded-md border p-1.5 text-xs ${colorClass}`}>
+                                  <p className="font-medium truncate">{getEmployeeName(shift.employee_id).split(' ')[0]}</p>
+                                  <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
+                                  {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                </div>
+                              )
+                            })}
+                            {dayShifts.length === 0 && <p className="text-xs text-t3 text-center py-4">No shifts</p>}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Shift Swap Requests */}
+          <Card className="mt-6">
+            <CardHeader><CardTitle>Recent Shift Activity</CardTitle></CardHeader>
+            <div className="px-6 pb-6">
+              <div className="space-y-3">
+                {weekShifts.filter(s => s.status === 'no_show').slice(0, 5).map(shift => (
+                  <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg border border-red-500/20 bg-red-500/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center"><AlertTriangle size={14} /></div>
+                      <div>
+                        <p className="text-sm font-medium text-t1">{getEmployeeName(shift.employee_id)} - No Show</p>
+                        <p className="text-xs text-t3">{shift.date} {shift.start_time}-{shift.end_time} at {shift.location || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <Badge variant="error">No Show</Badge>
+                  </div>
+                ))}
+                {weekShifts.filter(s => s.swapped_with).slice(0, 5).map(shift => (
+                  <div key={shift.id} className="flex items-center justify-between p-3 rounded-lg border border-divider">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><ArrowRightLeft size={14} /></div>
+                      <div>
+                        <p className="text-sm font-medium text-t1">Shift Swap: {getEmployeeName(shift.employee_id)} &rarr; {getEmployeeName(shift.swapped_with || '')}</p>
+                        <p className="text-xs text-t3">{shift.date} {shift.start_time}-{shift.end_time}</p>
+                      </div>
+                    </div>
+                    <Badge variant="info">Swapped</Badge>
+                  </div>
+                ))}
+                {weekShifts.filter(s => s.status === 'no_show' || s.swapped_with).length === 0 && (
+                  <p className="text-sm text-t3 text-center py-4">No shift issues this week</p>
+                )}
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* TAB 4: OVERTIME */}
+      {/* ============================================================ */}
+      {activeTab === 'overtime' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total OT This Week" value={`${formatHours(totalOTWeek)}h`} change="across all employees" changeType="neutral" icon={<Clock size={20} />} />
+            <StatCard label="OT Cost Estimate" value={`$${Math.round(totalOTWeek * 45).toLocaleString()}`} change="at 1.5x rate" changeType="neutral" icon={<TrendingUp size={20} />} />
+            <StatCard label="Employees in OT" value={overtimeByDept.reduce((s, d) => s + d.employees, 0)} change="this week" changeType={overtimeByDept.reduce((s, d) => s + d.employees, 0) > 5 ? 'negative' : 'neutral'} icon={<Users size={20} />} />
+            <StatCard label="Active Rules" value={overtimeRules.filter(r => r.is_active).length} change="configured" changeType="neutral" icon={<Settings size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* OT by Department Chart */}
+            <Card>
+              <CardHeader><CardTitle>Overtime by Department</CardTitle></CardHeader>
+              <div className="px-6 pb-6">
+                {overtimeByDept.length > 0 ? (
+                  <TempoBarChart
+                    data={overtimeByDept.map(d => ({ name: d.department, hours: d.hours, cost: d.cost }))}
+                    bars={[{ dataKey: 'hours', name: 'OT Hours', color: CHART_COLORS.primary }]}
+                    xKey="name"
+                    height={250}
+                  />
+                ) : (
+                  <p className="text-sm text-t3 text-center py-12">No overtime recorded this week</p>
+                )}
+              </div>
+            </Card>
+
+            {/* Approaching OT Alerts */}
+            <Card>
+              <CardHeader><CardTitle>Approaching Overtime Threshold</CardTitle></CardHeader>
+              <div className="px-6 pb-6 space-y-3">
+                {approachingOT.length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-8">No employees near overtime threshold</p>
+                ) : approachingOT.map(({ emp, totalHrs, remaining }) => (
+                  <div key={emp.id} className="flex items-center justify-between p-3 rounded-lg border border-divider">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={emp.profile.full_name} src={emp.profile.avatar_url} size="sm" />
+                      <div>
+                        <p className="text-sm font-medium text-t1">{emp.profile.full_name}</p>
+                        <p className="text-xs text-t3">{getDepartmentName(emp.department_id)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-t1">{formatHours(totalHrs)}h</p>
+                      <p className={`text-xs ${remaining <= 2 ? 'text-red-500' : 'text-orange-500'}`}>
+                        {remaining > 0 ? `${formatHours(remaining)}h to OT` : `${formatHours(totalHrs - 40)}h OT`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Overtime Rules Management */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Overtime Rules</CardTitle>
+              </div>
+            </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-divider bg-canvas">
-                    <th className="tempo-th text-left px-6 py-3">{t('tableEmployee')}</th>
-                    <th className="tempo-th text-left px-4 py-3">{tc('date')}</th>
-                    <th className="tempo-th text-center px-4 py-3">Start</th>
-                    <th className="tempo-th text-center px-4 py-3">End</th>
-                    <th className="tempo-th text-center px-4 py-3">{tc('type')}</th>
-                    <th className="tempo-th text-right px-4 py-3">Hours</th>
-                    <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                    <th className="tempo-th text-left px-6 py-3">Rule Name</th>
+                    <th className="tempo-th text-left px-4 py-3">Country</th>
+                    <th className="tempo-th text-center px-4 py-3">Daily Threshold</th>
+                    <th className="tempo-th text-center px-4 py-3">Weekly Threshold</th>
+                    <th className="tempo-th text-center px-4 py-3">Multiplier</th>
+                    <th className="tempo-th text-center px-4 py-3">Double OT</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {shifts.slice(0, 25).map(shift => (
-                    <tr key={shift.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={getEmployeeName(shift.employee_id)} size="sm" />
-                          <p className="text-sm font-medium text-t1">{getEmployeeName(shift.employee_id)}</p>
+                  {overtimeRules.map(rule => (
+                    <tr key={rule.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-sm font-medium text-t1">{rule.name}</td>
+                      <td className="px-4 py-3 text-sm text-t2">{rule.country}</td>
+                      <td className="px-4 py-3 text-sm text-t1 text-center">{rule.daily_threshold_hours}h</td>
+                      <td className="px-4 py-3 text-sm text-t1 text-center">{rule.weekly_threshold_hours}h</td>
+                      <td className="px-4 py-3 text-sm text-t1 text-center">{rule.multiplier}x</td>
+                      <td className="px-4 py-3 text-sm text-t2 text-center">
+                        {rule.double_overtime_threshold ? `${rule.double_overtime_threshold}h @ ${rule.double_overtime_multiplier}x` : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={rule.is_active ? 'success' : 'default'}>{rule.is_active ? 'Active' : 'Inactive'}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex gap-1 justify-center">
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            setEditingOTRule(rule.id)
+                            setOTRuleForm({
+                              name: rule.name, country: rule.country,
+                              daily_threshold_hours: rule.daily_threshold_hours,
+                              weekly_threshold_hours: rule.weekly_threshold_hours,
+                              multiplier: rule.multiplier,
+                              double_overtime_threshold: rule.double_overtime_threshold ? String(rule.double_overtime_threshold) : '',
+                              double_overtime_multiplier: rule.double_overtime_multiplier ? String(rule.double_overtime_multiplier) : '',
+                            })
+                            setShowOTRuleModal(true)
+                          }}>Edit</Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteOvertimeRule(rule.id)}>Delete</Button>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-t2">{shift.date}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-center font-mono">{shift.start_time}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-center font-mono">{shift.end_time}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${SHIFT_TYPE_COLORS[shift.type]}`}>
-                          {shift.type.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{shift.hours}h</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={shift.status === 'completed' ? 'success' : shift.status === 'missed' ? 'error' : 'default'}>
-                          {shift.status}
-                        </Badge>
                       </td>
                     </tr>
                   ))}
@@ -756,287 +913,246 @@ export default function TimeAttendancePage() {
               </table>
             </div>
           </Card>
+        </>
+      )}
 
-          {/* Weekly Visual Grid */}
-          <Card className="mt-6">
-            <h3 className="text-sm font-semibold text-t1 mb-4">Weekly View</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {weekDays.map((day, di) => {
-                const baseDate = new Date()
-                baseDate.setDate(baseDate.getDate() - baseDate.getDay() + 1 + di)
-                const dateStr = baseDate.toISOString().split('T')[0]
-                const dayShifts = shifts.filter(s => s.date === dateStr)
-                return (
-                  <div key={day} className="bg-canvas rounded-lg p-3">
-                    <p className="text-xs font-semibold text-t2 mb-2 text-center">{day}</p>
-                    <div className="space-y-1">
-                      {dayShifts.slice(0, 4).map(s => (
-                        <div key={s.id} className={`px-2 py-1 rounded text-[0.6rem] font-medium border ${SHIFT_TYPE_COLORS[s.type]}`}>
-                          {getEmployeeName(s.employee_id).split(' ')[0]} · {s.hours}h
-                        </div>
-                      ))}
-                      {dayShifts.length > 4 && (
-                        <p className="text-[0.6rem] text-t3 text-center">+{dayShifts.length - 4} more</p>
-                      )}
-                      {dayShifts.length === 0 && (
-                        <p className="text-[0.6rem] text-t3 text-center py-2">No shifts</p>
-                      )}
+      {/* ============================================================ */}
+      {/* TAB 5: PTO MANAGEMENT */}
+      {/* ============================================================ */}
+      {activeTab === 'pto' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Active Policies" value={timeOffPolicies.filter(p => p.is_active).length} change="configured" changeType="neutral" icon={<Briefcase size={20} />} />
+            <StatCard label="Pending Requests" value={leaveRequests.filter(l => l.status === 'pending').length} change="awaiting review" changeType="neutral" icon={<Clock size={20} />} />
+            <StatCard label="On Leave Today" value={leaveRequests.filter(l => l.status === 'approved' && l.start_date <= today && l.end_date >= today).length} change="employees" changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label="Upcoming Time Off" value={upcomingLeaves.length} change="approved" changeType="neutral" icon={<Calendar size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* PTO Policies */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>PTO Policies</CardTitle>
+                </div>
+              </CardHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-divider bg-canvas">
+                      <th className="tempo-th text-left px-4 py-3">Policy</th>
+                      <th className="tempo-th text-left px-3 py-3">Type</th>
+                      <th className="tempo-th text-center px-3 py-3">Accrual</th>
+                      <th className="tempo-th text-center px-3 py-3">Max Balance</th>
+                      <th className="tempo-th text-center px-3 py-3">Carryover</th>
+                      <th className="tempo-th text-center px-3 py-3">Wait Period</th>
+                      <th className="tempo-th text-center px-3 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {timeOffPolicies.map(policy => (
+                      <tr key={policy.id} className="hover:bg-canvas/50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${policy.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                            <span className="text-sm font-medium text-t1">{policy.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3"><Badge variant="default" className="capitalize">{policy.type}</Badge></td>
+                        <td className="px-3 py-3 text-xs text-t1 text-center">{policy.accrual_rate}d/{policy.accrual_period === 'monthly' ? 'mo' : policy.accrual_period === 'quarterly' ? 'qtr' : 'yr'}</td>
+                        <td className="px-3 py-3 text-xs text-t1 text-center">{policy.max_balance}d</td>
+                        <td className="px-3 py-3 text-xs text-t1 text-center">{policy.carryover_limit}d</td>
+                        <td className="px-3 py-3 text-xs text-t1 text-center">{policy.waiting_period_days}d</td>
+                        <td className="px-3 py-3 text-center">
+                          <div className="flex gap-1 justify-center">
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setEditingPolicy(policy.id)
+                              setPtoPolicyForm({
+                                name: policy.name, type: policy.type,
+                                accrual_rate: policy.accrual_rate,
+                                accrual_period: policy.accrual_period,
+                                max_balance: policy.max_balance,
+                                carryover_limit: policy.carryover_limit,
+                                waiting_period_days: policy.waiting_period_days,
+                              })
+                              setShowPTOPolicyModal(true)
+                            }}>Edit</Button>
+                            <Button size="sm" variant="ghost" onClick={() => deleteTimeOffPolicy(policy.id)}>Delete</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Upcoming Time Off */}
+            <Card>
+              <CardHeader><CardTitle>Upcoming Time Off</CardTitle></CardHeader>
+              <div className="px-6 pb-6 space-y-3">
+                {upcomingLeaves.length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-4">No upcoming approved leave</p>
+                ) : upcomingLeaves.map(leave => (
+                  <div key={leave.id} className="flex items-center justify-between p-3 rounded-lg border border-divider">
+                    <div>
+                      <p className="text-sm font-medium text-t1">{getEmployeeName(leave.employee_id)}</p>
+                      <p className="text-xs text-t3">{leave.start_date} - {leave.end_date} ({leave.days}d)</p>
                     </div>
+                    <Badge variant={leave.type === 'sick' ? 'error' : leave.type === 'annual' ? 'success' : 'info'} className="capitalize">{leave.type}</Badge>
                   </div>
-                )
-              })}
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Employee Balance Overview */}
+          <Card>
+            <CardHeader><CardTitle>Employee Balance Overview</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-4 py-3">Employee</th>
+                    {timeOffPolicies.filter(p => p.is_active).map(p => (
+                      <th key={p.id} className="tempo-th text-center px-3 py-3">{p.name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {employees.slice(0, 15).map(emp => {
+                    const empBalances = timeOffBalances.filter(b => b.employee_id === emp.id)
+                    return (
+                      <tr key={emp.id} className="hover:bg-canvas/50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={emp.profile.full_name} src={emp.profile.avatar_url} size="sm" />
+                            <span className="text-xs font-medium text-t1">{emp.profile.full_name}</span>
+                          </div>
+                        </td>
+                        {timeOffPolicies.filter(p => p.is_active).map(policy => {
+                          const bal = empBalances.find(b => b.policy_id === policy.id)
+                          if (!bal) return <td key={policy.id} className="px-3 py-3 text-center text-xs text-t3">-</td>
+                          const pct = policy.max_balance > 0 ? ((bal.balance) / policy.max_balance) * 100 : 0
+                          return (
+                            <td key={policy.id} className="px-3 py-3 text-center">
+                              <div className="text-xs">
+                                <span className="font-semibold text-t1">{bal.balance}</span>
+                                <span className="text-t3">/{policy.max_balance}</span>
+                              </div>
+                              <Progress value={pct} size="sm" className="mt-1" />
+                              {bal.pending > 0 && <p className="text-[10px] text-orange-500 mt-0.5">{bal.pending}d pending</p>}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </Card>
         </>
       )}
 
       {/* ============================================================ */}
-      {/* TAB 4: TEAM CALENDAR */}
-      {/* ============================================================ */}
-      {activeTab === 'calendar' && (
-        <Card>
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <Button size="sm" variant="ghost" onClick={() => setCalendarMonth(prev => {
-              const m = prev.month === 0 ? 11 : prev.month - 1
-              const y = prev.month === 0 ? prev.year - 1 : prev.year
-              return { year: y, month: m }
-            })}>
-              <ChevronLeft size={16} />
-            </Button>
-            <h3 className="text-sm font-semibold text-t1">
-              {new Date(calendarMonth.year, calendarMonth.month).toLocaleString('en', { month: 'long', year: 'numeric' })}
-            </h3>
-            <Button size="sm" variant="ghost" onClick={() => setCalendarMonth(prev => {
-              const m = prev.month === 11 ? 0 : prev.month + 1
-              const y = prev.month === 11 ? prev.year + 1 : prev.year
-              return { year: y, month: m }
-            })}>
-              <ChevronRight size={16} />
-            </Button>
-          </div>
-
-          {/* Calendar Legend */}
-          <div className="flex flex-wrap gap-3 mb-4">
-            {[
-              { type: 'annual', label: 'Annual', color: 'bg-gray-100 text-gray-600' },
-              { type: 'sick', label: 'Sick', color: 'bg-gray-100 text-gray-600' },
-              { type: 'maternity', label: 'Maternity/Paternity', color: 'bg-gray-100 text-gray-600' },
-              { type: 'personal', label: 'Personal', color: 'bg-gray-100 text-gray-600' },
-            ].map(l => (
-              <div key={l.type} className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${l.color}`}>
-                <div className={`w-2 h-2 rounded-full ${l.color.split(' ')[0].replace('100', '500')}`} />
-                {l.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-              <div key={d} className="text-center text-xs font-semibold text-t3 py-2">{d}</div>
-            ))}
-            {calendarDays.map((day, i) => {
-              if (day === null) return <div key={`empty-${i}`} className="min-h-[80px]" />
-              const dateStr = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const leaves = leaveByDate[dateStr] || []
-              const isToday = dateStr === today
-              return (
-                <div key={dateStr} className={`min-h-[80px] rounded-lg border p-1.5 ${isToday ? 'border-tempo-400 bg-tempo-50/30' : 'border-border bg-canvas/30'}`}>
-                  <p className={`text-xs font-medium mb-1 ${isToday ? 'text-tempo-600' : 'text-t2'}`}>{day}</p>
-                  <div className="space-y-0.5">
-                    {leaves.slice(0, 3).map((l, li) => {
-                      const color = 'bg-gray-100 text-gray-600'
-                      const name = getEmployeeName(l.employee_id)
-                      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2)
-                      return (
-                        <div key={li} className={`flex items-center gap-1 px-1 py-0.5 rounded text-[0.55rem] font-medium ${color}`} title={name}>
-                          <span className="font-bold">{initials}</span>
-                          <span className="truncate">{l.type}</span>
-                        </div>
-                      )
-                    })}
-                    {leaves.length > 3 && (
-                      <p className="text-[0.5rem] text-t3 text-center">+{leaves.length - 3}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* ============================================================ */}
-      {/* TAB 5: ANALYTICS */}
+      {/* TAB 6: ANALYTICS */}
       {/* ============================================================ */}
       {activeTab === 'analytics' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Avg Hours / Week" value={`${analyticsData.avgHours.toFixed(1)}h`} change="Per employee" changeType="neutral" icon={<Clock size={20} />} />
-            <StatCard label="Overtime Rate" value={`${analyticsData.overtimeRate.toFixed(1)}%`} change={`${analyticsData.totalOvertime.toFixed(1)}h total OT`} changeType={analyticsData.overtimeRate > 10 ? 'negative' : 'neutral'} icon={<AlertTriangle size={20} />} />
-            <StatCard label="Absenteeism Rate" value={`${analyticsData.absenteeismRate.toFixed(1)}%`} change="Missed shifts" changeType={analyticsData.absenteeismRate > 5 ? 'negative' : 'positive'} icon={<CalendarDays size={20} />} />
-            <StatCard label="On Leave Today" value={onLeaveToday} change={t('acrossAllRegions')} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label="Avg Hours/Week" value={analyticsData.weeklyAvgs.length > 0 ? `${formatHours(analyticsData.weeklyAvgs[analyticsData.weeklyAvgs.length - 1].avgHours)}h` : '-'} change="per employee" changeType="neutral" icon={<Clock size={20} />} />
+            <StatCard label="Punctuality Rate" value={`${analyticsData.punctualityRate}%`} change="on time arrivals" changeType={analyticsData.punctualityRate >= 90 ? 'positive' : 'negative'} icon={<Timer size={20} />} />
+            <StatCard label="PTO Utilization" value={`${analyticsData.ptoUtilization}%`} change="of allocated days" changeType="neutral" icon={<Briefcase size={20} />} />
+            <StatCard label="Weekly OT Total" value={`${formatHours(totalOTWeek)}h`} change={`$${Math.round(totalOTWeek * 45).toLocaleString()} cost`} changeType="neutral" icon={<TrendingUp size={20} />} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Department Attendance Comparison */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Average Hours Trend */}
             <Card>
-              <h3 className="text-sm font-semibold text-t1 mb-4">Department Attendance (Hours)</h3>
-              {Object.keys(analyticsData.deptHours).length > 0 ? (
-                <>
+              <CardHeader><CardTitle>Average Hours Worked per Week</CardTitle></CardHeader>
+              <div className="px-6 pb-6">
+                <TempoAreaChart
+                  data={analyticsData.weeklyAvgs.map(w => ({ name: w.week, hours: Math.round(w.avgHours * 10) / 10 }))}
+                  areas={[{ dataKey: 'hours', name: 'Avg Hours', color: CHART_COLORS.primary }]}
+                  xKey="name"
+                  height={250}
+                />
+              </div>
+            </Card>
+
+            {/* Overtime Distribution */}
+            <Card>
+              <CardHeader><CardTitle>Overtime Distribution by Department</CardTitle></CardHeader>
+              <div className="px-6 pb-6">
+                {overtimeByDept.length > 0 ? (
                   <TempoBarChart
-                    data={Object.entries(analyticsData.deptHours).slice(0, 6).map(([dept, d]) => ({
-                      name: dept.length > 12 ? dept.substring(0, 12) + '...' : dept,
-                      hours: Math.round(d.hours),
-                    }))}
-                    bars={[{ dataKey: 'hours', name: 'Hours', color: CHART_SERIES[0] }]}
+                    data={overtimeByDept.map(d => ({ name: d.department, hours: Math.round(d.hours * 10) / 10, cost: d.cost }))}
+                    bars={[
+                      { dataKey: 'hours', name: 'OT Hours', color: CHART_COLORS.primary },
+                    ]}
                     xKey="name"
-                    showGrid={false}
-                    showYAxis={false}
-                    height={140}
+                    height={250}
                   />
-                  <div className="mt-3 space-y-1">
-                    {Object.entries(analyticsData.deptHours).map(([dept, d]) => (
-                      <div key={dept} className="flex justify-between text-xs">
-                        <span className="text-t2">{dept}</span>
-                        <span className="text-t1 font-medium">{d.hours.toFixed(0)}h avg · {d.count} employees</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-t3">No timesheet data available</p>
-              )}
-            </Card>
-
-            {/* Overtime Trend */}
-            <Card>
-              <h3 className="text-sm font-semibold text-t1 mb-4">Overtime Trend (8 Weeks)</h3>
-              <TempoSparkArea data={analyticsData.overtimeTrend} height={24} width={80} />
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Current Week OT</span>
-                  <span className="text-amber-600 font-semibold">{analyticsData.totalOvertime.toFixed(1)}h</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">8-Week Average</span>
-                  <span className="text-t1 font-medium">{(analyticsData.overtimeTrend.reduce((a, b) => a + b, 0) / analyticsData.overtimeTrend.length).toFixed(1)}h</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-t2">Peak OT Week</span>
-                  <span className="text-error font-medium">{Math.max(...analyticsData.overtimeTrend).toFixed(1)}h</span>
-                </div>
+                ) : (
+                  <p className="text-sm text-t3 text-center py-12">No overtime data available</p>
+                )}
               </div>
             </Card>
           </div>
 
-          {/* AI Burnout Risk Predictions */}
-          {analyticsData.burnoutRisks.length > 0 && (
-            <Card className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle size={16} className="text-amber-500" />
-                <h3 className="text-sm font-semibold text-t1">AI Burnout Risk Predictions</h3>
-                <Badge variant="ai">AI-Powered</Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {analyticsData.burnoutRisks.map(({ employee, score }) => (
-                  <div key={employee.id} className="flex items-center gap-3 bg-canvas rounded-lg px-4 py-3">
-                    <Avatar name={employee.profile?.full_name || ''} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-t1 truncate">{employee.profile?.full_name}</p>
-                      <p className="text-xs text-t3">{employee.job_title}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-bold ${score.value >= 60 ? 'text-error' : 'text-amber-500'}`}>{score.value}/100</p>
-                      <p className="text-xs text-t3">{score.label}</p>
-                    </div>
-                    <div className="w-16">
-                      <Progress value={score.value} size="sm" color={score.value >= 60 ? 'error' : 'orange'} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-t3 mt-3">
-                Employees with low leave utilization may be at risk. Encourage regular time off to maintain well-being.
-              </p>
-            </Card>
-          )}
-
-          {/* AI Absence Pattern Insights */}
-          {leaveInsights.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Attendance Patterns */}
             <Card>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart3 size={16} className="text-tempo-600" />
-                <h3 className="text-sm font-semibold text-t1">AI Absence Pattern Insights</h3>
+              <CardHeader><CardTitle>Attendance Patterns</CardTitle></CardHeader>
+              <div className="px-6 pb-6 space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-canvas">
+                  <span className="text-sm text-t2">On-Time Arrival Rate</span>
+                  <div className="flex items-center gap-2">
+                    <Progress value={analyticsData.punctualityRate} size="sm" className="w-24" />
+                    <span className="text-sm font-semibold text-t1">{analyticsData.punctualityRate}%</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-canvas">
+                  <span className="text-sm text-t2">Shift Completion Rate</span>
+                  <div className="flex items-center gap-2">
+                    <Progress value={shifts.length > 0 ? Math.round((shifts.filter(s => s.status === 'completed').length / shifts.length) * 100) : 0} size="sm" className="w-24" />
+                    <span className="text-sm font-semibold text-t1">{shifts.length > 0 ? Math.round((shifts.filter(s => s.status === 'completed').length / shifts.length) * 100) : 0}%</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-canvas">
+                  <span className="text-sm text-t2">No-Show Rate</span>
+                  <div className="flex items-center gap-2">
+                    <Progress value={shifts.length > 0 ? Math.round((shifts.filter(s => s.status === 'no_show').length / shifts.length) * 100) : 0} size="sm" className="w-24" />
+                    <span className="text-sm font-semibold text-t1">{shifts.length > 0 ? Math.round((shifts.filter(s => s.status === 'no_show').length / shifts.length) * 100) : 0}%</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-canvas">
+                  <span className="text-sm text-t2">Average Break Duration</span>
+                  <span className="text-sm font-semibold text-t1">
+                    {timeEntries.length > 0 ? Math.round(timeEntries.reduce((s, e) => s + e.break_minutes, 0) / timeEntries.length) : 0} min
+                  </span>
+                </div>
               </div>
-              <AIRecommendationList recommendations={[
-                { id: 'rec-1', title: 'Monday Absence Cluster', rationale: 'Leave requests are 35% more likely on Mondays. Consider flexible Monday schedules.', impact: 'medium' as const, effort: 'low' as const, category: 'scheduling' },
-                { id: 'rec-2', title: 'Q4 Leave Spike', rationale: 'Historical data shows 2x leave requests in December. Plan coverage early.', impact: 'high' as const, effort: 'medium' as const, category: 'planning' },
-                { id: 'rec-3', title: 'Sick Leave Correlation', rationale: 'Teams with low engagement scores show 40% higher sick leave. Address root causes.', impact: 'high' as const, effort: 'high' as const, category: 'wellbeing' },
-              ]} />
             </Card>
-          )}
-        </>
-      )}
 
-      {/* ============================================================ */}
-      {/* TAB 6: HOLIDAYS */}
-      {/* ============================================================ */}
-      {activeTab === 'holidays' && (
-        <>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Sun size={18} className="text-tempo-600" />
-              <h3 className="text-sm font-semibold text-t1">{t('publicHolidays')}</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter size={14} className="text-t3" />
-              <select
-                className="px-2 py-1 text-xs border border-border rounded-lg bg-surface text-t1"
-                value={holidayCountryFilter} onChange={e => setHolidayCountryFilter(e.target.value)}
-              >
-                <option value="all">All Countries</option>
-                {allCountries.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <Button size="sm" variant="secondary" onClick={() => {
-                setHolidayForm({ date: '', name: '', countries: '' })
-                setShowHolidayModal(true)
-              }}>
-                <Plus size={14} /> Add Holiday
-              </Button>
-            </div>
-          </div>
-
-          {Object.entries(holidaysByMonth).map(([month, holidays]) => (
-            <div key={month} className="mb-6">
-              <h4 className="text-xs font-semibold text-t3 uppercase tracking-wide mb-3">{month}</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {holidays.map(h => {
-                  const dateObj = new Date(h.date + 'T12:00:00')
-                  const dayNum = dateObj.getDate()
-                  const monthShort = dateObj.toLocaleString('en', { month: 'short' })
-                  const dayName = dateObj.toLocaleString('en', { weekday: 'short' })
-                  const isCustom = customHolidays.some(ch => ch.date === h.date && ch.name === h.name)
-                  return (
-                    <div key={h.date + h.name} className="flex items-center gap-3 bg-canvas rounded-lg px-4 py-3 border border-border/50">
-                      <div className="w-12 h-12 rounded-lg bg-tempo-50 flex flex-col items-center justify-center text-tempo-600 shrink-0">
-                        <span className="text-[0.6rem] font-semibold uppercase">{monthShort}</span>
-                        <span className="text-sm font-bold">{dayNum}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-t1">{h.name}</p>
-                          {isCustom && <Badge variant="info">Custom</Badge>}
-                        </div>
-                        <p className="text-xs text-t3">{dayName} · {h.countries.join(', ')}</p>
-                      </div>
-                    </div>
-                  )
-                })}
+            {/* Labor Cost by Department */}
+            <Card>
+              <CardHeader><CardTitle>Labor Cost by Department</CardTitle></CardHeader>
+              <div className="px-6 pb-6">
+                {Object.keys(analyticsData.deptCosts).length > 0 ? (
+                  <TempoBarChart
+                    data={Object.entries(analyticsData.deptCosts).map(([dept, cost]) => ({ name: dept, cost: Math.round(cost) })).sort((a, b) => b.cost - a.cost)}
+                    bars={[{ dataKey: 'cost', name: 'Estimated Cost ($)', color: CHART_SERIES[1] }]}
+                    xKey="name"
+                    height={250}
+                  />
+                ) : (
+                  <p className="text-sm text-t3 text-center py-12">No labor cost data available</p>
+                )}
               </div>
-            </div>
-          ))}
+            </Card>
+          </div>
         </>
       )}
 
@@ -1044,304 +1160,72 @@ export default function TimeAttendancePage() {
       {/* MODALS */}
       {/* ============================================================ */}
 
-      {/* Request Leave Modal */}
-      <Modal open={showLeaveModal} onClose={() => setShowLeaveModal(false)} title={t('requestLeaveModal')}>
-        <div className="space-y-4">
-          <Select
-            label={tc('employee')}
-            value={leaveForm.employee_id}
-            onChange={(e) => setLeaveForm({ ...leaveForm, employee_id: e.target.value })}
-            options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))}
-          />
-          <Select
-            label={t('leaveType')}
-            value={leaveForm.type}
-            onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}
-            options={[
-              { value: 'annual', label: t('leaveAnnual') },
-              { value: 'sick', label: t('leaveSick') },
-              { value: 'personal', label: t('leavePersonal') },
-              { value: 'maternity', label: t('leaveMaternity') },
-              { value: 'paternity', label: t('leavePaternity') },
-              { value: 'compassionate', label: t('leaveCompassionate') },
-              { value: 'unpaid', label: t('leaveUnpaid') },
-            ]}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label={t('startDate')} type="date" value={leaveForm.start_date}
-              onChange={(e) => setLeaveForm({ ...leaveForm, start_date: e.target.value })} />
-            <Input label={t('endDate')} type="date" value={leaveForm.end_date}
-              onChange={(e) => setLeaveForm({ ...leaveForm, end_date: e.target.value })} />
-          </div>
-          <Input label={t('numberOfDays')} type="number" min={1} max={60} value={leaveForm.days}
-            onChange={(e) => setLeaveForm({ ...leaveForm, days: Number(e.target.value) })} />
-          <Textarea label={t('reason')} placeholder={t('reasonPlaceholder')} rows={3}
-            value={leaveForm.reason} onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitLeaveRequest}>{t('submitRequest')}</Button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Add Shift Modal */}
       <Modal open={showShiftModal} onClose={() => setShowShiftModal(false)} title="Add Shift">
         <div className="space-y-4">
-          <Select label={tc('employee')} value={shiftForm.employee_id}
-            onChange={e => setShiftForm({ ...shiftForm, employee_id: e.target.value })}
-            options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
-          <Input label={tc('date')} type="date" value={shiftForm.date}
-            onChange={e => setShiftForm({ ...shiftForm, date: e.target.value })} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Start Time" type="time" value={shiftForm.start_time}
-              onChange={e => setShiftForm({ ...shiftForm, start_time: e.target.value })} />
-            <Input label="End Time" type="time" value={shiftForm.end_time}
-              onChange={e => setShiftForm({ ...shiftForm, end_time: e.target.value })} />
+          <Select label="Employee" value={shiftForm.employee_id} onChange={e => setShiftForm(f => ({ ...f, employee_id: e.target.value }))}
+            options={[{ value: '', label: 'Select Employee' }, ...employees.map(emp => ({ value: emp.id, label: emp.profile.full_name }))]} />
+          <Input label="Date" type="date" value={shiftForm.date} onChange={e => setShiftForm(f => ({ ...f, date: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Start Time" type="time" value={shiftForm.start_time} onChange={e => setShiftForm(f => ({ ...f, start_time: e.target.value }))} />
+            <Input label="End Time" type="time" value={shiftForm.end_time} onChange={e => setShiftForm(f => ({ ...f, end_time: e.target.value }))} />
           </div>
-          <Select label="Shift Type" value={shiftForm.type}
-            onChange={e => setShiftForm({ ...shiftForm, type: e.target.value as Shift['type'] })}
-            options={[
-              { value: 'regular', label: 'Regular' },
-              { value: 'overtime', label: 'Overtime' },
-              { value: 'remote', label: 'Remote' },
-              { value: 'on_call', label: 'On Call' },
-            ]} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowShiftModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitShift}>Add Shift</Button>
+          <Input label="Role" value={shiftForm.role} onChange={e => setShiftForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Branch Manager" />
+          <Input label="Location" value={shiftForm.location} onChange={e => setShiftForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Lagos HQ" />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowShiftModal(false)}>Cancel</Button>
+            <Button onClick={submitShift}>Create Shift</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Add Custom Holiday Modal */}
-      <Modal open={showHolidayModal} onClose={() => setShowHolidayModal(false)} title="Add Custom Holiday">
+      {/* Overtime Rule Modal */}
+      <Modal open={showOTRuleModal} onClose={() => { setShowOTRuleModal(false); setEditingOTRule(null) }} title={editingOTRule ? 'Edit Overtime Rule' : 'Add Overtime Rule'}>
         <div className="space-y-4">
-          <Input label="Holiday Name" value={holidayForm.name}
-            onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
-            placeholder="e.g., Company Founding Day" />
-          <Input label={tc('date')} type="date" value={holidayForm.date}
-            onChange={e => setHolidayForm({ ...holidayForm, date: e.target.value })} />
-          <Input label="Applicable Countries" value={holidayForm.countries}
-            onChange={e => setHolidayForm({ ...holidayForm, countries: e.target.value })}
-            placeholder="e.g., Nigeria, Ghana (comma-separated)" />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowHolidayModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={addCustomHoliday}>Add Holiday</Button>
+          <Input label="Rule Name" value={otRuleForm.name} onChange={e => setOTRuleForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Nigeria Standard Overtime" />
+          <Input label="Country" value={otRuleForm.country} onChange={e => setOTRuleForm(f => ({ ...f, country: e.target.value }))} placeholder="e.g. Nigeria" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Daily Threshold (hours)" type="number" value={otRuleForm.daily_threshold_hours} onChange={e => setOTRuleForm(f => ({ ...f, daily_threshold_hours: Number(e.target.value) }))} />
+            <Input label="Weekly Threshold (hours)" type="number" value={otRuleForm.weekly_threshold_hours} onChange={e => setOTRuleForm(f => ({ ...f, weekly_threshold_hours: Number(e.target.value) }))} />
+          </div>
+          <Input label="Overtime Multiplier" type="number" step="0.1" value={otRuleForm.multiplier} onChange={e => setOTRuleForm(f => ({ ...f, multiplier: Number(e.target.value) }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Double OT Threshold (optional)" type="number" value={otRuleForm.double_overtime_threshold} onChange={e => setOTRuleForm(f => ({ ...f, double_overtime_threshold: e.target.value }))} placeholder="e.g. 12" />
+            <Input label="Double OT Multiplier (optional)" type="number" step="0.1" value={otRuleForm.double_overtime_multiplier} onChange={e => setOTRuleForm(f => ({ ...f, double_overtime_multiplier: e.target.value }))} placeholder="e.g. 2.0" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => { setShowOTRuleModal(false); setEditingOTRule(null) }}>Cancel</Button>
+            <Button onClick={submitOTRule}>{editingOTRule ? 'Update Rule' : 'Create Rule'}</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Bulk Leave Approval Modal */}
-      <Modal open={showBulkLeaveModal} onClose={resetBulkLeave} title="Bulk Leave Approval" size="xl">
-        <div className="space-y-6">
-          {/* Mode selection */}
-          <div>
-            <label className="block text-xs font-medium text-t2 mb-2">Selection Mode</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {([
-                { value: 'all_pending' as const, label: 'All Pending', icon: Users },
-                { value: 'department' as const, label: 'By Department', icon: Users },
-                { value: 'type' as const, label: 'By Leave Type', icon: Calendar },
-                { value: 'individual' as const, label: 'Individual', icon: Search },
-              ]).map(mode => (
-                <button
-                  key={mode.value}
-                  onClick={() => setBulkLeaveSelectMode(mode.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                    bulkLeaveSelectMode === mode.value
-                      ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
-                      : 'border-border bg-surface text-t2 hover:bg-canvas'
-                  }`}
-                >
-                  <mode.icon size={14} />
-                  {mode.label}
-                </button>
-              ))}
-            </div>
+      {/* PTO Policy Modal */}
+      <Modal open={showPTOPolicyModal} onClose={() => { setShowPTOPolicyModal(false); setEditingPolicy(null) }} title={editingPolicy ? 'Edit PTO Policy' : 'Add PTO Policy'}>
+        <div className="space-y-4">
+          <Input label="Policy Name" value={ptoPolicyForm.name} onChange={e => setPtoPolicyForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Annual Leave" />
+          <Select label="Leave Type" value={ptoPolicyForm.type} onChange={e => setPtoPolicyForm(f => ({ ...f, type: e.target.value }))}
+            options={[
+              { value: 'annual', label: 'Annual' }, { value: 'sick', label: 'Sick' },
+              { value: 'personal', label: 'Personal' }, { value: 'maternity', label: 'Maternity' },
+              { value: 'paternity', label: 'Paternity' }, { value: 'bereavement', label: 'Bereavement' },
+              { value: 'jury_duty', label: 'Jury Duty' }, { value: 'military', label: 'Military' },
+            ]} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Accrual Rate (days)" type="number" step="0.01" value={ptoPolicyForm.accrual_rate} onChange={e => setPtoPolicyForm(f => ({ ...f, accrual_rate: Number(e.target.value) }))} />
+            <Select label="Accrual Period" value={ptoPolicyForm.accrual_period} onChange={e => setPtoPolicyForm(f => ({ ...f, accrual_period: e.target.value }))}
+              options={[
+                { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'annually', label: 'Annually' },
+              ]} />
           </div>
-
-          {/* Department filter chips */}
-          {bulkLeaveSelectMode === 'department' && (
-            <div>
-              <label className="block text-xs font-medium text-t2 mb-2">Select Departments</label>
-              <div className="flex flex-wrap gap-2">
-                {departments.map(dept => {
-                  const hasPending = pendingLeaveRequests.some(lr => {
-                    const emp = employees.find(e => e.id === lr.employee_id)
-                    return emp?.department_id === dept.id
-                  })
-                  if (!hasPending) return null
-                  const selected = bulkLeaveSelectedDepts.has(dept.id)
-                  return (
-                    <button
-                      key={dept.id}
-                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedDepts, dept.id, setBulkLeaveSelectedDepts)}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                        selected
-                          ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
-                          : 'border-border bg-surface text-t2 hover:bg-canvas'
-                      }`}
-                    >
-                      {dept.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Leave type filter chips */}
-          {bulkLeaveSelectMode === 'type' && (
-            <div>
-              <label className="block text-xs font-medium text-t2 mb-2">Select Leave Types</label>
-              <div className="flex flex-wrap gap-2">
-                {leaveTypes.map(lt => {
-                  const selected = bulkLeaveSelectedTypes.has(lt)
-                  return (
-                    <button
-                      key={lt}
-                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedTypes, lt, setBulkLeaveSelectedTypes)}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-medium capitalize transition-colors ${
-                        selected
-                          ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
-                          : 'border-border bg-surface text-t2 hover:bg-canvas'
-                      }`}
-                    >
-                      {lt}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Individual selection */}
-          {bulkLeaveSelectMode === 'individual' && (
-            <div>
-              <label className="block text-xs font-medium text-t2 mb-2">Select Requests</label>
-              <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                {pendingLeaveRequests.map(lr => {
-                  const selected = bulkLeaveSelectedIds.has(lr.id)
-                  return (
-                    <button
-                      key={lr.id}
-                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedIds, lr.id, setBulkLeaveSelectedIds)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-                        selected ? 'bg-tempo-50' : 'hover:bg-canvas'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                        selected ? 'border-tempo-500 bg-tempo-500 text-white' : 'border-border'
-                      }`}>
-                        {selected && <CheckCircle size={10} />}
-                      </div>
-                      <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
-                        <p className="text-xs text-t3">{lr.type} &middot; {lr.start_date} to {lr.end_date}</p>
-                      </div>
-                      <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
-                      <span className="text-xs text-t2 font-medium">{lr.days}d</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Matching requests list */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-t2">
-                Matching Requests ({bulkLeaveSelectedRequests.length})
-              </label>
-            </div>
-            {bulkLeaveSelectedRequests.length === 0 ? (
-              <div className="text-center py-6 text-xs text-t3 bg-canvas rounded-lg border border-border">
-                {bulkLeaveSelectMode === 'all_pending'
-                  ? 'No pending leave requests'
-                  : 'Select a filter above to see matching requests'}
-              </div>
-            ) : (
-              <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                {bulkLeaveSelectedRequests.map(lr => {
-                  const emp = employees.find(e => e.id === lr.employee_id)
-                  return (
-                    <div key={lr.id} className="flex items-center gap-3 px-3 py-2">
-                      <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
-                        <p className="text-xs text-t3">
-                          {emp?.job_title} &middot; {getDepartmentName(emp?.department_id || '')}
-                        </p>
-                      </div>
-                      <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
-                      <span className="text-xs text-t2">{lr.start_date} to {lr.end_date}</span>
-                      <span className="text-xs text-t1 font-medium">{lr.days}d</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Max Balance (days)" type="number" value={ptoPolicyForm.max_balance} onChange={e => setPtoPolicyForm(f => ({ ...f, max_balance: Number(e.target.value) }))} />
+            <Input label="Carryover Limit" type="number" value={ptoPolicyForm.carryover_limit} onChange={e => setPtoPolicyForm(f => ({ ...f, carryover_limit: Number(e.target.value) }))} />
+            <Input label="Wait Period (days)" type="number" value={ptoPolicyForm.waiting_period_days} onChange={e => setPtoPolicyForm(f => ({ ...f, waiting_period_days: Number(e.target.value) }))} />
           </div>
-
-          {/* Action toggle */}
-          <div>
-            <label className="block text-xs font-medium text-t2 mb-2">Action</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setBulkLeaveAction('approve')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  bulkLeaveAction === 'approve'
-                    ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                    : 'border-border bg-surface text-t2 hover:bg-canvas'
-                }`}
-              >
-                <CheckCircle size={16} />
-                Approve All
-              </button>
-              <button
-                onClick={() => setBulkLeaveAction('deny')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  bulkLeaveAction === 'deny'
-                    ? 'border-red-400 bg-red-50 text-red-700'
-                    : 'border-border bg-surface text-t2 hover:bg-canvas'
-                }`}
-              >
-                <XCircle size={16} />
-                Deny All
-              </button>
-            </div>
-          </div>
-
-          {/* Summary */}
-          {bulkLeaveSelectedRequests.length > 0 && (
-            <div className="bg-canvas rounded-lg border border-border px-4 py-3">
-              <p className="text-sm text-t1">
-                <span className="font-semibold">{bulkLeaveSelectedRequests.length}</span>
-                {' '}request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''} will be{' '}
-                <span className={`font-semibold ${bulkLeaveAction === 'approve' ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {bulkLeaveAction === 'approve' ? 'approved' : 'denied'}
-                </span>
-                {' '}({bulkLeaveSelectedRequests.reduce((s, lr) => s + lr.days, 0)} total days)
-              </p>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="flex justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="secondary" onClick={resetBulkLeave}>Cancel</Button>
-            <Button
-              onClick={submitBulkLeave}
-              disabled={bulkLeaveSelectedRequests.length === 0}
-              variant={bulkLeaveAction === 'deny' ? 'secondary' : 'primary'}
-            >
-              {bulkLeaveAction === 'approve' ? (
-                <><CheckCircle size={14} /> Approve {bulkLeaveSelectedRequests.length} Request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''}</>
-              ) : (
-                <><XCircle size={14} /> Deny {bulkLeaveSelectedRequests.length} Request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''}</>
-              )}
-            </Button>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => { setShowPTOPolicyModal(false); setEditingPolicy(null) }}>Cancel</Button>
+            <Button onClick={submitPTOPolicy}>{editingPolicy ? 'Update Policy' : 'Create Policy'}</Button>
           </div>
         </div>
       </Modal>

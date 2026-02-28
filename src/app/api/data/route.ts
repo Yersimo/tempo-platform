@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, withRetry } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { genericMutation, formatZodError } from '@/lib/validations/common'
 
 // ---------------------------------------------------------------------------
-// GET /api/data -- hydrate the entire store for the current org
+// GET /api/data -- DEPRECATED: Use GET /api/data/[module] for per-module loading
+// This monolithic endpoint fires 40+ parallel DB queries and does not scale.
+// Kept for backwards compatibility; the store now uses per-module lazy loading.
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
@@ -731,32 +734,16 @@ function prepareData(entity: string, data: Record<string, any>): Record<string, 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, entity, id, data } = body as {
-      action: 'create' | 'update' | 'delete'
-      entity: string
-      id?: string
-      data?: Record<string, any>
+    const parsed = genericMutation.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
     }
-
-    // Validate required fields
-    if (!action || !entity) {
-      return NextResponse.json(
-        { error: 'Missing required fields: action, entity' },
-        { status: 400 },
-      )
-    }
+    const { action, entity, id, data } = parsed.data
 
     const table = tables[entity]
     if (!table) {
       return NextResponse.json(
         { error: `Unknown entity: ${entity}` },
-        { status: 400 },
-      )
-    }
-
-    if ((action === 'update' || action === 'delete') && !id) {
-      return NextResponse.json(
-        { error: 'Missing required field: id (for update/delete)' },
         { status: 400 },
       )
     }

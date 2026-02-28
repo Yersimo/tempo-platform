@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
 
 const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
 if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
@@ -9,9 +11,35 @@ const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 const COOKIE_NAME = 'tempo_session'
 const ADMIN_COOKIE_NAME = 'tempo_admin_session'
 
-// Simple in-memory rate limiter for middleware
+// ─── Rate Limiting ────────────────────────────────────────────────────────
+// Use Upstash Redis when configured (persists across cold starts),
+// fall back to in-memory for development.
+const hasRedis = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+
+// Upstash Redis rate limiters (production)
+const redis = hasRedis
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null
+
+const loginRateLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, '15 m'), prefix: 'rl:login' })
+  : null
+const adminLoginRateLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '15 m'), prefix: 'rl:admin-login' })
+  : null
+const resetRateLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '15 m'), prefix: 'rl:reset' })
+  : null
+const apiRateLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(100, '1 m'), prefix: 'rl:api' })
+  : null
+
+// In-memory fallback rate limiter (development / when Redis is not configured)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-function checkRateLimit(key: string, max: number, windowMs: number): { limited: boolean } {
+function checkRateLimitInMemory(key: string, max: number, windowMs: number): { limited: boolean } {
   const now = Date.now()
   const entry = rateLimitStore.get(key)
   if (!entry || now > entry.resetAt) {
@@ -22,8 +50,27 @@ function checkRateLimit(key: string, max: number, windowMs: number): { limited: 
   return { limited: entry.count > max }
 }
 
+// Unified rate limit check: Redis if available, else in-memory
+async function checkRateLimit(
+  key: string,
+  max: number,
+  windowMs: number,
+  redisLimiter?: Ratelimit | null
+): Promise<{ limited: boolean }> {
+  if (redisLimiter) {
+    try {
+      const { success } = await redisLimiter.limit(key)
+      return { limited: !success }
+    } catch {
+      // Redis failure → fall back to in-memory (don't block requests)
+      return checkRateLimitInMemory(key, max, windowMs)
+    }
+  }
+  return checkRateLimitInMemory(key, max, windowMs)
+}
+
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite']
+const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -55,7 +102,7 @@ export async function middleware(request: NextRequest) {
   // But rate limit admin login attempts
   if (pathname.startsWith('/api/admin/auth') && request.method === 'POST') {
     const adminIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const { limited } = checkRateLimit(`admin-login:${adminIp}`, 5, 15 * 60 * 1000) // 5 attempts per 15 min
+    const { limited } = await checkRateLimit(`admin-login:${adminIp}`, 5, 15 * 60 * 1000, adminLoginRateLimiter)
     if (limited) {
       return NextResponse.json(
         { error: 'Too many admin login attempts. Please try again later.' },
@@ -113,12 +160,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ─── Rate Limiting (lightweight, in-memory) ──────────────────────────
+  // ─── SSO Routes (public - handle their own auth) ─────────────────────
+  if (pathname.startsWith('/api/auth/sso/')) {
+    return NextResponse.next()
+  }
+
+  // ─── Integration OAuth Callbacks (public) ───────────────────────────
+  if (pathname.startsWith('/api/integrations/') && pathname.includes('/callback')) {
+    return NextResponse.next()
+  }
+
+  // ─── Rate Limiting (Redis-backed in production, in-memory in dev) ───
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 
   // Rate limit login attempts
   if (pathname === '/api/auth' && request.method === 'POST') {
-    const { limited } = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000)
+    const { limited } = await checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000, loginRateLimiter)
     if (limited) {
       return NextResponse.json(
         { error: 'Too many attempts. Please try again later.' },
@@ -127,17 +184,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Rate limit signup
-  if (pathname === '/api/auth' && request.method === 'POST') {
-    // We can't read the body in middleware, but we rate limit all auth POSTs per IP
-  }
-
   // Rate limit password reset
   if (pathname === '/api/auth/reset-password' && request.method === 'POST') {
-    const { limited } = checkRateLimit(`reset:${ip}`, 5, 15 * 60 * 1000)
+    const { limited } = await checkRateLimit(`reset:${ip}`, 5, 15 * 60 * 1000, resetRateLimiter)
     if (limited) {
       return NextResponse.json(
         { error: 'Too many reset attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
+  // General API rate limiting (100 requests/minute per IP)
+  if (pathname.startsWith('/api/') && apiRateLimiter) {
+    const { limited } = await checkRateLimit(`api:${ip}`, 100, 60 * 1000, apiRateLimiter)
+    if (limited) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
       )
     }

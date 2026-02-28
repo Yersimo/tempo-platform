@@ -2199,6 +2199,1437 @@ export const demoWidgetPreferences = {
 // MULTI-ORG HELPERS
 // ============================================================
 
+
+// === From agent-a0587c7f ===
+// ─── Offboarding: Exit Surveys ─────────────────────────────────────
+
+export const demoExitSurveys = [
+  {
+    id: 'exit-survey-1',
+    org_id: 'org-1',
+    process_id: 'ob-proc-1',
+    employee_id: 'emp-12',
+    responses: {
+      overall_satisfaction: 4,
+      management_rating: 4,
+      work_life_balance: 3,
+      career_growth: 2,
+      compensation_satisfaction: 3,
+      team_culture: 5,
+      reason_for_leaving: 'Career advancement opportunity not available internally',
+      what_could_improve: 'More structured career progression paths and internal mobility programs',
+      would_recommend: true,
+      best_part: 'Collaborative team culture and supportive colleagues',
+      additional_comments: 'Great company overall, just needed a new challenge. Would consider returning in the future.',
+    },
+    submitted_at: '2026-01-29T10:30:00Z',
+    is_anonymous: false,
+  },
+]
+
+// === From agent-a0587c7f ===
+export const demoOffboardingChecklistItems = [
+  // ── Standard Offboarding (ob-cl-1) ──
+  { id: 'ob-cli-1', checklist_id: 'ob-cl-1', title: 'Disable Active Directory & SSO access', description: 'Revoke all Single Sign-On and directory accounts', category: 'access_revocation' as const, assignee_role: 'IT', order_index: 1, is_required: true },
+  { id: 'ob-cli-2', checklist_id: 'ob-cl-1', title: 'Revoke VPN and remote access', description: 'Disable VPN credentials and remote desktop access', category: 'access_revocation' as const, assignee_role: 'IT', order_index: 2, is_required: true },
+  { id: 'ob-cli-3', checklist_id: 'ob-cl-1', title: 'Collect laptop and peripherals', description: 'Retrieve company laptop, monitor, keyboard, mouse, and any other hardware', category: 'device_return' as const, assignee_role: 'IT', order_index: 3, is_required: true },
+  { id: 'ob-cli-4', checklist_id: 'ob-cl-1', title: 'Return company mobile phone', description: 'Collect company-issued mobile device and SIM card', category: 'device_return' as const, assignee_role: 'IT', order_index: 4, is_required: false },
+  { id: 'ob-cli-5', checklist_id: 'ob-cl-1', title: 'Document ongoing projects & handover notes', description: 'Create comprehensive handover documentation for all active projects', category: 'knowledge_transfer' as const, assignee_role: 'Manager', order_index: 5, is_required: true },
+  { id: 'ob-cli-6', checklist_id: 'ob-cl-1', title: 'Transfer client relationships', description: 'Introduce replacement staff to key clients and stakeholders', category: 'knowledge_transfer' as const, assignee_role: 'Manager', order_index: 6, is_required: true },
+  { id: 'ob-cli-7', checklist_id: 'ob-cl-1', title: 'Conduct exit interview', description: 'Schedule and conduct formal exit interview', category: 'exit_interview' as const, assignee_role: 'HR', order_index: 7, is_required: true },
+  { id: 'ob-cli-8', checklist_id: 'ob-cl-1', title: 'Process final paycheck & accrued leave', description: 'Calculate and process final salary including accrued leave payout', category: 'final_pay' as const, assignee_role: 'Finance', order_index: 8, is_required: true },
+  { id: 'ob-cli-9', checklist_id: 'ob-cl-1', title: 'Terminate benefits enrollment', description: 'End health, dental, vision, and other benefit plans', category: 'benefits' as const, assignee_role: 'HR', order_index: 9, is_required: true },
+  { id: 'ob-cli-10', checklist_id: 'ob-cl-1', title: 'Generate employment reference letter', description: 'Prepare standard employment verification letter', category: 'documents' as const, assignee_role: 'HR', order_index: 10, is_required: false },
+  // ── Involuntary Separation (ob-cl-2) ──
+  { id: 'ob-cli-11', checklist_id: 'ob-cl-2', title: 'Immediately disable all system access', description: 'Revoke all IT access within 1 hour of notification', category: 'access_revocation' as const, assignee_role: 'IT', order_index: 1, is_required: true },
+  { id: 'ob-cli-12', checklist_id: 'ob-cl-2', title: 'Revoke building access & badges', description: 'Deactivate access cards and building entry permissions', category: 'access_revocation' as const, assignee_role: 'Security', order_index: 2, is_required: true },
+  { id: 'ob-cli-13', checklist_id: 'ob-cl-2', title: 'Revoke email and communication tools', description: 'Disable email, Slack, Teams, and other communication access', category: 'access_revocation' as const, assignee_role: 'IT', order_index: 3, is_required: true },
+  { id: 'ob-cli-14', checklist_id: 'ob-cl-2', title: 'Collect all company equipment on-site', description: 'Retrieve laptop, phone, keys, badges, and all company property during exit meeting', category: 'device_return' as const, assignee_role: 'IT', order_index: 4, is_required: true },
+  { id: 'ob-cli-15', checklist_id: 'ob-cl-2', title: 'Manager documents critical knowledge', description: 'Manager captures essential knowledge and project status from departing employee', category: 'knowledge_transfer' as const, assignee_role: 'Manager', order_index: 5, is_required: true },
+  { id: 'ob-cli-16', checklist_id: 'ob-cl-2', title: 'Reassign active tasks and projects', description: 'Redistribute all active work items to remaining team members', category: 'knowledge_transfer' as const, assignee_role: 'Manager', order_index: 6, is_required: true },
+  { id: 'ob-cli-17', checklist_id: 'ob-cl-2', title: 'Conduct brief exit interview (if appropriate)', description: 'Short exit interview focused on compliance; may be skipped for cause terminations', category: 'exit_interview' as const, assignee_role: 'HR', order_index: 7, is_required: false },
+  { id: 'ob-cli-18', checklist_id: 'ob-cl-2', title: 'Calculate severance package', description: 'Compute severance pay per contract and local labour law', category: 'final_pay' as const, assignee_role: 'Finance', order_index: 8, is_required: true },
+  { id: 'ob-cli-19', checklist_id: 'ob-cl-2', title: 'Process final pay with statutory deductions', description: 'Issue final paycheck including severance and all statutory deductions', category: 'final_pay' as const, assignee_role: 'Finance', order_index: 9, is_required: true },
+  { id: 'ob-cli-20', checklist_id: 'ob-cl-2', title: 'Notify benefits providers of termination', description: 'Inform all benefit providers and process COBRA/continuation where applicable', category: 'benefits' as const, assignee_role: 'HR', order_index: 10, is_required: true },
+  { id: 'ob-cli-21', checklist_id: 'ob-cl-2', title: 'Prepare separation agreement', description: 'Draft and obtain signatures on separation/release agreement', category: 'documents' as const, assignee_role: 'Legal', order_index: 11, is_required: true },
+  { id: 'ob-cli-22', checklist_id: 'ob-cl-2', title: 'File compliance documentation', description: 'Ensure all regulatory paperwork is completed and filed', category: 'documents' as const, assignee_role: 'HR', order_index: 12, is_required: true },
+]
+
+// === From agent-a0587c7f ===
+// ─── Offboarding: Checklists ─────────────────────────────────────
+
+export const demoOffboardingChecklists = [
+  {
+    id: 'ob-cl-1',
+    org_id: 'org-1',
+    name: 'Standard Offboarding',
+    description: 'Default checklist for voluntary departures (resignations, retirements, end of contract)',
+    is_default: true,
+    created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'ob-cl-2',
+    org_id: 'org-1',
+    name: 'Involuntary Separation',
+    description: 'Checklist for terminations and layoffs with additional compliance and security steps',
+    is_default: false,
+    created_at: '2025-06-01T00:00:00Z',
+  },
+]
+
+// === From agent-a0587c7f ===
+// ─── Offboarding: Processes ─────────────────────────────────────
+
+export const demoOffboardingProcesses = [
+  {
+    id: 'ob-proc-1',
+    org_id: 'org-1',
+    employee_id: 'emp-12',
+    initiated_by: 'emp-17',
+    status: 'completed' as const,
+    checklist_id: 'ob-cl-1',
+    last_working_date: '2026-01-31',
+    reason: 'resignation' as const,
+    notes: 'Wanjiku accepted a position at another organization. Smooth transition completed.',
+    started_at: '2026-01-10T09:00:00Z',
+    completed_at: '2026-01-31T17:00:00Z',
+  },
+  {
+    id: 'ob-proc-2',
+    org_id: 'org-1',
+    employee_id: 'emp-7',
+    initiated_by: 'emp-17',
+    status: 'in_progress' as const,
+    checklist_id: 'ob-cl-1',
+    last_working_date: '2026-03-15',
+    reason: 'end_of_contract' as const,
+    notes: 'Marie\'s fixed-term contract ending. Knowledge transfer to replacement hire in progress.',
+    started_at: '2026-02-15T09:00:00Z',
+    completed_at: null,
+  },
+  {
+    id: 'ob-proc-3',
+    org_id: 'org-1',
+    employee_id: 'emp-30',
+    initiated_by: 'emp-27',
+    status: 'pending' as const,
+    checklist_id: 'ob-cl-2',
+    last_working_date: '2026-03-31',
+    reason: 'layoff' as const,
+    notes: 'Position eliminated as part of department restructuring.',
+    started_at: '2026-02-25T09:00:00Z',
+    completed_at: null,
+  },
+]
+
+// === From agent-a0587c7f ===
+// ─── Offboarding: Tasks ─────────────────────────────────────
+
+export const demoOffboardingTasks = [
+  // Process 1 (emp-12, completed resignation) — all tasks completed
+  { id: 'ob-task-1', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-1', assignee_id: 'emp-13', status: 'completed' as const, completed_at: '2026-01-31T09:00:00Z', completed_by: 'emp-13', notes: null },
+  { id: 'ob-task-2', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-2', assignee_id: 'emp-15', status: 'completed' as const, completed_at: '2026-01-31T09:30:00Z', completed_by: 'emp-15', notes: null },
+  { id: 'ob-task-3', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-3', assignee_id: 'emp-13', status: 'completed' as const, completed_at: '2026-01-30T14:00:00Z', completed_by: 'emp-13', notes: 'Laptop returned in good condition' },
+  { id: 'ob-task-4', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-4', assignee_id: 'emp-13', status: 'skipped' as const, completed_at: null, completed_by: null, notes: 'Employee did not have company phone' },
+  { id: 'ob-task-5', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-5', assignee_id: 'emp-9', status: 'completed' as const, completed_at: '2026-01-25T16:00:00Z', completed_by: 'emp-9', notes: 'Comprehensive handover document created' },
+  { id: 'ob-task-6', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-6', assignee_id: 'emp-9', status: 'completed' as const, completed_at: '2026-01-28T11:00:00Z', completed_by: 'emp-9', notes: null },
+  { id: 'ob-task-7', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-7', assignee_id: 'emp-20', status: 'completed' as const, completed_at: '2026-01-29T10:00:00Z', completed_by: 'emp-20', notes: 'Exit interview conducted successfully' },
+  { id: 'ob-task-8', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-8', assignee_id: 'emp-25', status: 'completed' as const, completed_at: '2026-01-31T15:00:00Z', completed_by: 'emp-25', notes: null },
+  { id: 'ob-task-9', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-9', assignee_id: 'emp-20', status: 'completed' as const, completed_at: '2026-01-31T12:00:00Z', completed_by: 'emp-20', notes: null },
+  { id: 'ob-task-10', process_id: 'ob-proc-1', checklist_item_id: 'ob-cli-10', assignee_id: 'emp-18', status: 'completed' as const, completed_at: '2026-01-30T10:00:00Z', completed_by: 'emp-18', notes: 'Reference letter sent to employee' },
+
+  // Process 2 (emp-7, in-progress end of contract) — mixed statuses
+  { id: 'ob-task-11', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-1', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-12', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-2', assignee_id: 'emp-15', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-13', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-3', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-14', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-4', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-15', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-5', assignee_id: 'emp-5', status: 'in_progress' as const, completed_at: null, completed_by: null, notes: 'Documentation started, handover meeting scheduled for next week' },
+  { id: 'ob-task-16', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-6', assignee_id: 'emp-5', status: 'in_progress' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-17', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-7', assignee_id: 'emp-20', status: 'completed' as const, completed_at: '2026-02-20T14:00:00Z', completed_by: 'emp-20', notes: 'Exit interview completed. Employee gave positive feedback.' },
+  { id: 'ob-task-18', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-8', assignee_id: 'emp-25', status: 'completed' as const, completed_at: '2026-02-22T11:00:00Z', completed_by: 'emp-25', notes: 'Final pay calculated including remaining leave balance' },
+  { id: 'ob-task-19', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-9', assignee_id: 'emp-20', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-20', process_id: 'ob-proc-2', checklist_item_id: 'ob-cli-10', assignee_id: 'emp-18', status: 'completed' as const, completed_at: '2026-02-18T09:00:00Z', completed_by: 'emp-18', notes: null },
+
+  // Process 3 (emp-30, pending layoff) — all pending
+  { id: 'ob-task-21', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-11', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-22', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-12', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-23', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-13', assignee_id: 'emp-15', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-24', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-14', assignee_id: 'emp-13', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-25', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-15', assignee_id: 'emp-27', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-26', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-16', assignee_id: 'emp-27', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-27', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-17', assignee_id: 'emp-20', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-28', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-18', assignee_id: 'emp-25', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-29', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-19', assignee_id: 'emp-25', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-30', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-20', assignee_id: 'emp-20', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-31', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-21', assignee_id: 'emp-22', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+  { id: 'ob-task-32', process_id: 'ob-proc-3', checklist_item_id: 'ob-cli-22', assignee_id: 'emp-20', status: 'pending' as const, completed_at: null, completed_by: null, notes: null },
+]
+
+// === From agent-a29facba ===
+// ACA Compliance Tracking
+export const demoAcaTracking = [
+  { id: 'aca-1', org_id: 'org-1', employee_id: 'emp-1', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 42, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'filed' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-2', org_id: 'org-1', employee_id: 'emp-2', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 40, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'filed' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-3', org_id: 'org-1', employee_id: 'emp-5', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 44, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'generated' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-4', org_id: 'org-1', employee_id: 'emp-10', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 38, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'pending' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-5', org_id: 'org-1', employee_id: 'emp-13', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 45, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'filed' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-6', org_id: 'org-1', employee_id: 'emp-14', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 40, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'generated' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-7', org_id: 'org-1', employee_id: 'emp-18', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 42, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: true, form_1095_status: 'pending' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-8', org_id: 'org-1', employee_id: 'emp-24', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 43, is_fte: true, is_eligible: true, offered_coverage: true, enrolled_coverage: false, form_1095_status: 'pending' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-9', org_id: 'org-1', employee_id: 'emp-29', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 25, is_fte: false, is_eligible: false, offered_coverage: false, enrolled_coverage: false, form_1095_status: 'pending' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'aca-10', org_id: 'org-1', employee_id: 'emp-30', measurement_period: 'Jan 2025 - Dec 2025', avg_weekly_hours: 20, is_fte: false, is_eligible: false, offered_coverage: false, enrolled_coverage: false, form_1095_status: 'pending' as const, tax_year: 2025, created_at: '2026-01-15T00:00:00Z' },
+]
+
+// === From agent-a29facba ===
+// COBRA Events
+export const demoCobraEvents = [
+  { id: 'cobra-1', org_id: 'org-1', employee_id: 'emp-12', qualifying_event: 'termination' as const, event_date: '2026-01-15', election_deadline: '2026-03-16', status: 'notified' as const, coverage_plans: [{ plan_id: 'bp-1', name: 'Comprehensive Medical' }], premium_amount: 580, subsidy_percent: 0, coverage_start_date: '2026-02-01', coverage_end_date: '2027-07-15', created_at: '2026-01-16T00:00:00Z' },
+  { id: 'cobra-2', org_id: 'org-1', employee_id: 'emp-7', qualifying_event: 'hours_reduction' as const, event_date: '2025-11-01', election_deadline: '2026-01-01', status: 'elected' as const, coverage_plans: [{ plan_id: 'bp-1', name: 'Comprehensive Medical' }, { plan_id: 'bp-2', name: 'Vision Care' }], premium_amount: 640, subsidy_percent: 0, coverage_start_date: '2025-12-01', coverage_end_date: '2027-05-01', created_at: '2025-11-02T00:00:00Z' },
+  { id: 'cobra-3', org_id: 'org-1', employee_id: 'emp-4', qualifying_event: 'divorce' as const, event_date: '2025-09-15', election_deadline: '2025-11-15', status: 'declined' as const, coverage_plans: [{ plan_id: 'bp-1', name: 'Comprehensive Medical' }], premium_amount: 450, subsidy_percent: 0, coverage_start_date: null, coverage_end_date: null, created_at: '2025-09-16T00:00:00Z' },
+]
+
+// === From agent-a29facba ===
+// Flex Benefit Accounts (HSA/FSA/Commuter)
+export const demoFlexBenefitAccounts = [
+  { id: 'fba-1', org_id: 'org-1', employee_id: 'emp-1', type: 'hsa' as const, plan_year: '2026', employee_contribution: 2400, employer_contribution: 1000, current_balance: 3180, ytd_expenses: 820, max_contribution: 4150, rollover_amount: 600, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fba-2', org_id: 'org-1', employee_id: 'emp-5', type: 'fsa_health' as const, plan_year: '2026', employee_contribution: 2850, employer_contribution: 0, current_balance: 2100, ytd_expenses: 750, max_contribution: 3200, rollover_amount: 0, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fba-3', org_id: 'org-1', employee_id: 'emp-13', type: 'hsa' as const, plan_year: '2026', employee_contribution: 3500, employer_contribution: 1500, current_balance: 4200, ytd_expenses: 1300, max_contribution: 8300, rollover_amount: 500, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fba-4', org_id: 'org-1', employee_id: 'emp-14', type: 'fsa_dependent' as const, plan_year: '2026', employee_contribution: 5000, employer_contribution: 0, current_balance: 3800, ytd_expenses: 1200, max_contribution: 5000, rollover_amount: 0, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fba-5', org_id: 'org-1', employee_id: 'emp-18', type: 'commuter_transit' as const, plan_year: '2026', employee_contribution: 300, employer_contribution: 0, current_balance: 215, ytd_expenses: 385, max_contribution: 3600, rollover_amount: 0, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fba-6', org_id: 'org-1', employee_id: 'emp-24', type: 'commuter_parking' as const, plan_year: '2026', employee_contribution: 200, employer_contribution: 0, current_balance: 150, ytd_expenses: 250, max_contribution: 3600, rollover_amount: 0, status: 'active' as const, created_at: '2026-01-01T00:00:00Z' },
+]
+
+// === From agent-a29facba ===
+// Flex Benefit Transactions
+export const demoFlexBenefitTransactions = [
+  { id: 'fbt-1', account_id: 'fba-1', type: 'contribution' as const, amount: 200, description: 'Monthly payroll contribution', date: '2026-01-15', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-01-15T00:00:00Z' },
+  { id: 'fbt-2', account_id: 'fba-1', type: 'contribution' as const, amount: 200, description: 'Monthly payroll contribution', date: '2026-02-15', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-02-15T00:00:00Z' },
+  { id: 'fbt-3', account_id: 'fba-1', type: 'expense' as const, amount: 320, description: 'Annual eye exam and prescription glasses', date: '2026-01-28', receipt_url: '/receipts/fbt-3.pdf', status: 'approved' as const, category: 'Vision', created_at: '2026-01-28T00:00:00Z' },
+  { id: 'fbt-4', account_id: 'fba-1', type: 'expense' as const, amount: 500, description: 'Dental cleaning and filling', date: '2026-02-10', receipt_url: '/receipts/fbt-4.pdf', status: 'approved' as const, category: 'Dental', created_at: '2026-02-10T00:00:00Z' },
+  { id: 'fbt-5', account_id: 'fba-2', type: 'contribution' as const, amount: 237, description: 'Bi-weekly payroll deduction', date: '2026-01-15', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-01-15T00:00:00Z' },
+  { id: 'fbt-6', account_id: 'fba-2', type: 'expense' as const, amount: 150, description: 'Prescription medication', date: '2026-01-22', receipt_url: '/receipts/fbt-6.pdf', status: 'approved' as const, category: 'Pharmacy', created_at: '2026-01-22T00:00:00Z' },
+  { id: 'fbt-7', account_id: 'fba-2', type: 'expense' as const, amount: 600, description: 'Physical therapy sessions (4x)', date: '2026-02-05', receipt_url: '/receipts/fbt-7.pdf', status: 'pending' as const, category: 'Medical', created_at: '2026-02-05T00:00:00Z' },
+  { id: 'fbt-8', account_id: 'fba-3', type: 'contribution' as const, amount: 291, description: 'Bi-weekly payroll deduction', date: '2026-02-01', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-02-01T00:00:00Z' },
+  { id: 'fbt-9', account_id: 'fba-3', type: 'expense' as const, amount: 800, description: 'Family urgent care visit', date: '2026-02-12', receipt_url: '/receipts/fbt-9.pdf', status: 'approved' as const, category: 'Medical', created_at: '2026-02-12T00:00:00Z' },
+  { id: 'fbt-10', account_id: 'fba-3', type: 'expense' as const, amount: 500, description: 'Child dental checkup and sealants', date: '2026-02-20', receipt_url: '/receipts/fbt-10.pdf', status: 'pending' as const, category: 'Dental', created_at: '2026-02-20T00:00:00Z' },
+  { id: 'fbt-11', account_id: 'fba-4', type: 'contribution' as const, amount: 416, description: 'Monthly payroll deduction', date: '2026-01-31', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-01-31T00:00:00Z' },
+  { id: 'fbt-12', account_id: 'fba-4', type: 'expense' as const, amount: 1200, description: 'Daycare February tuition', date: '2026-02-01', receipt_url: '/receipts/fbt-12.pdf', status: 'approved' as const, category: 'Dependent Care', created_at: '2026-02-01T00:00:00Z' },
+  { id: 'fbt-13', account_id: 'fba-5', type: 'contribution' as const, amount: 150, description: 'Monthly transit benefit', date: '2026-01-01', receipt_url: null, status: 'approved' as const, category: 'contribution', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'fbt-14', account_id: 'fba-5', type: 'expense' as const, amount: 185, description: 'Monthly transit pass', date: '2026-01-05', receipt_url: '/receipts/fbt-14.pdf', status: 'approved' as const, category: 'Transit', created_at: '2026-01-05T00:00:00Z' },
+  { id: 'fbt-15', account_id: 'fba-6', type: 'expense' as const, amount: 250, description: 'Parking garage monthly pass', date: '2026-02-01', receipt_url: '/receipts/fbt-15.pdf', status: 'approved' as const, category: 'Parking', created_at: '2026-02-01T00:00:00Z' },
+]
+
+// === From agent-a29facba ===
+// Open Enrollment Periods
+export const demoOpenEnrollmentPeriods = [
+  { id: 'oep-1', org_id: 'org-1', name: '2026 Annual Open Enrollment', start_date: '2026-02-15', end_date: '2026-03-15', effective_date: '2026-04-01', status: 'active' as const, plan_ids: ['bp-1', 'bp-2', 'bp-3', 'bp-4', 'bp-5', 'bp-6'], reminders_sent: 2, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'oep-2', org_id: 'org-1', name: '2025 Annual Open Enrollment', start_date: '2025-02-01', end_date: '2025-03-01', effective_date: '2025-04-01', status: 'closed' as const, plan_ids: ['bp-1', 'bp-2', 'bp-3', 'bp-4'], reminders_sent: 3, created_at: '2025-01-10T00:00:00Z' },
+]
+
+// === From agent-a2fa17c9 ===
+// Legacy Shifts (old format kept for backward compatibility)
+export const demoLegacyShifts = [
+  { id: 'sh-1', employee_id: 'emp-4', date: '2026-02-24', start_time: '08:00', end_time: '16:00', type: 'regular' as const, hours: 8, status: 'completed' as const },
+  { id: 'sh-2', employee_id: 'emp-4', date: '2026-02-25', start_time: '08:00', end_time: '16:00', type: 'regular' as const, hours: 8, status: 'scheduled' as const },
+  { id: 'sh-3', employee_id: 'emp-10', date: '2026-02-24', start_time: '09:00', end_time: '17:00', type: 'regular' as const, hours: 8, status: 'completed' as const },
+  { id: 'sh-4', employee_id: 'emp-12', date: '2026-02-22', start_time: '09:00', end_time: '21:00', type: 'overtime' as const, hours: 12, status: 'completed' as const },
+  { id: 'sh-5', employee_id: 'emp-15', date: '2026-02-24', start_time: '09:00', end_time: '17:00', type: 'remote' as const, hours: 8, status: 'completed' as const },
+  { id: 'sh-6', employee_id: 'emp-23', date: '2026-02-23', start_time: '18:00', end_time: '06:00', type: 'on_call' as const, hours: 12, status: 'completed' as const },
+  { id: 'sh-7', employee_id: 'emp-26', date: '2026-02-24', start_time: '08:30', end_time: '17:30', type: 'regular' as const, hours: 9, status: 'completed' as const },
+  { id: 'sh-8', employee_id: 'emp-11', date: '2026-02-25', start_time: '08:00', end_time: '16:00', type: 'regular' as const, hours: 8, status: 'scheduled' as const },
+  { id: 'sh-9', employee_id: 'emp-16', date: '2026-02-21', start_time: '09:00', end_time: '17:00', type: 'remote' as const, hours: 8, status: 'completed' as const },
+  { id: 'sh-10', employee_id: 'emp-29', date: '2026-02-24', start_time: '08:00', end_time: '12:00', type: 'regular' as const, hours: 4, status: 'missed' as const },
+]
+
+// === From agent-a2fa17c9 ===
+// Overtime Rules
+export const demoOvertimeRules = [
+  { id: 'otr-1', org_id: 'org-1', name: 'Nigeria Standard Overtime', country: 'Nigeria', daily_threshold_hours: 8, weekly_threshold_hours: 40, multiplier: 1.5, double_overtime_threshold: 12, double_overtime_multiplier: 2.0, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'otr-2', org_id: 'org-1', name: 'Kenya Labour Overtime', country: 'Kenya', daily_threshold_hours: 8, weekly_threshold_hours: 45, multiplier: 1.5, double_overtime_threshold: null, double_overtime_multiplier: null, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'otr-3', org_id: 'org-1', name: 'South Africa BCEA Overtime', country: 'South Africa', daily_threshold_hours: 9, weekly_threshold_hours: 45, multiplier: 1.5, double_overtime_threshold: 10, double_overtime_multiplier: 2.0, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+]
+
+// === From agent-a2fa17c9 ===
+// Time Entries (clock in/out records for the current week)
+export const demoTimeEntries = [
+  // Monday 2026-02-23
+  { id: 'te-1', org_id: 'org-1', employee_id: 'emp-1', date: '2026-02-23', clock_in: '2026-02-23T08:02:00Z', clock_out: '2026-02-23T17:05:00Z', break_minutes: 60, total_hours: 8.05, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-23T08:02:00Z' },
+  { id: 'te-2', org_id: 'org-1', employee_id: 'emp-2', date: '2026-02-23', clock_in: '2026-02-23T08:15:00Z', clock_out: '2026-02-23T17:30:00Z', break_minutes: 45, total_hours: 8.5, overtime_hours: 0.5, status: 'approved' as const, approved_by: 'emp-1', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-23T08:15:00Z' },
+  { id: 'te-3', org_id: 'org-1', employee_id: 'emp-3', date: '2026-02-23', clock_in: '2026-02-23T07:55:00Z', clock_out: '2026-02-23T16:58:00Z', break_minutes: 60, total_hours: 8.05, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-1', location: 'Accra Branch', notes: null, created_at: '2026-02-23T07:55:00Z' },
+  { id: 'te-4', org_id: 'org-1', employee_id: 'emp-5', date: '2026-02-23', clock_in: '2026-02-23T08:30:00Z', clock_out: '2026-02-23T18:45:00Z', break_minutes: 60, total_hours: 9.25, overtime_hours: 1.25, status: 'approved' as const, approved_by: 'emp-17', location: 'Abidjan Office', notes: 'Stayed late for client meeting', created_at: '2026-02-23T08:30:00Z' },
+  { id: 'te-5', org_id: 'org-1', employee_id: 'emp-9', date: '2026-02-23', clock_in: '2026-02-23T07:45:00Z', clock_out: '2026-02-23T16:50:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Accra Branch', notes: null, created_at: '2026-02-23T07:45:00Z' },
+  { id: 'te-6', org_id: 'org-1', employee_id: 'emp-13', date: '2026-02-23', clock_in: '2026-02-23T09:00:00Z', clock_out: '2026-02-23T19:30:00Z', break_minutes: 45, total_hours: 9.75, overtime_hours: 1.75, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 5', notes: 'System deployment', created_at: '2026-02-23T09:00:00Z' },
+  // Tuesday 2026-02-24
+  { id: 'te-7', org_id: 'org-1', employee_id: 'emp-1', date: '2026-02-24', clock_in: '2026-02-24T08:10:00Z', clock_out: '2026-02-24T17:15:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-24T08:10:00Z' },
+  { id: 'te-8', org_id: 'org-1', employee_id: 'emp-2', date: '2026-02-24', clock_in: '2026-02-24T08:00:00Z', clock_out: '2026-02-24T17:00:00Z', break_minutes: 60, total_hours: 8.0, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-1', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-24T08:00:00Z' },
+  { id: 'te-9', org_id: 'org-1', employee_id: 'emp-5', date: '2026-02-24', clock_in: '2026-02-24T08:20:00Z', clock_out: '2026-02-24T17:25:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Abidjan Office', notes: null, created_at: '2026-02-24T08:20:00Z' },
+  { id: 'te-10', org_id: 'org-1', employee_id: 'emp-13', date: '2026-02-24', clock_in: '2026-02-24T08:45:00Z', clock_out: '2026-02-24T20:00:00Z', break_minutes: 60, total_hours: 10.25, overtime_hours: 2.25, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 5', notes: 'Post-deployment monitoring', created_at: '2026-02-24T08:45:00Z' },
+  { id: 'te-11', org_id: 'org-1', employee_id: 'emp-14', date: '2026-02-24', clock_in: '2026-02-24T09:05:00Z', clock_out: '2026-02-24T17:10:00Z', break_minutes: 60, total_hours: 7.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-13', location: 'Accra Branch', notes: null, created_at: '2026-02-24T09:05:00Z' },
+  { id: 'te-12', org_id: 'org-1', employee_id: 'emp-17', date: '2026-02-24', clock_in: '2026-02-24T08:00:00Z', clock_out: '2026-02-24T17:30:00Z', break_minutes: 30, total_hours: 9.0, overtime_hours: 1.0, status: 'approved' as const, approved_by: null, location: 'Abidjan Office', notes: 'HR policy review', created_at: '2026-02-24T08:00:00Z' },
+  // Wednesday 2026-02-25
+  { id: 'te-13', org_id: 'org-1', employee_id: 'emp-1', date: '2026-02-25', clock_in: '2026-02-25T07:50:00Z', clock_out: '2026-02-25T17:00:00Z', break_minutes: 60, total_hours: 8.17, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-25T07:50:00Z' },
+  { id: 'te-14', org_id: 'org-1', employee_id: 'emp-6', date: '2026-02-25', clock_in: '2026-02-25T08:30:00Z', clock_out: '2026-02-25T17:35:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Dakar Branch', notes: null, created_at: '2026-02-25T08:30:00Z' },
+  { id: 'te-15', org_id: 'org-1', employee_id: 'emp-10', date: '2026-02-25', clock_in: '2026-02-25T08:00:00Z', clock_out: '2026-02-25T16:30:00Z', break_minutes: 30, total_hours: 8.0, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-9', location: 'Lagos HQ - Floor 2', notes: null, created_at: '2026-02-25T08:00:00Z' },
+  { id: 'te-16', org_id: 'org-1', employee_id: 'emp-21', date: '2026-02-25', clock_in: '2026-02-25T08:15:00Z', clock_out: '2026-02-25T18:20:00Z', break_minutes: 60, total_hours: 9.08, overtime_hours: 1.08, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 4', notes: 'Compliance audit prep', created_at: '2026-02-25T08:15:00Z' },
+  // Thursday 2026-02-26
+  { id: 'te-17', org_id: 'org-1', employee_id: 'emp-1', date: '2026-02-26', clock_in: '2026-02-26T08:05:00Z', clock_out: '2026-02-26T17:10:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-26T08:05:00Z' },
+  { id: 'te-18', org_id: 'org-1', employee_id: 'emp-2', date: '2026-02-26', clock_in: '2026-02-26T07:45:00Z', clock_out: '2026-02-26T16:50:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 3', notes: null, created_at: '2026-02-26T07:45:00Z' },
+  { id: 'te-19', org_id: 'org-1', employee_id: 'emp-5', date: '2026-02-26', clock_in: '2026-02-26T08:00:00Z', clock_out: '2026-02-26T19:00:00Z', break_minutes: 60, total_hours: 10.0, overtime_hours: 2.0, status: 'pending' as const, approved_by: null, location: 'Abidjan Office', notes: 'Quarter-end corporate review', created_at: '2026-02-26T08:00:00Z' },
+  { id: 'te-20', org_id: 'org-1', employee_id: 'emp-9', date: '2026-02-26', clock_in: '2026-02-26T07:30:00Z', clock_out: '2026-02-26T16:35:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Accra Branch', notes: null, created_at: '2026-02-26T07:30:00Z' },
+  { id: 'te-21', org_id: 'org-1', employee_id: 'emp-24', date: '2026-02-26', clock_in: '2026-02-26T08:10:00Z', clock_out: '2026-02-26T18:15:00Z', break_minutes: 45, total_hours: 9.33, overtime_hours: 1.33, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 4', notes: 'Financial closing', created_at: '2026-02-26T08:10:00Z' },
+  // Friday 2026-02-27
+  { id: 'te-22', org_id: 'org-1', employee_id: 'emp-1', date: '2026-02-27', clock_in: '2026-02-27T08:00:00Z', clock_out: '2026-02-27T16:30:00Z', break_minutes: 60, total_hours: 7.5, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 3', notes: 'Early finish Friday', created_at: '2026-02-27T08:00:00Z' },
+  { id: 'te-23', org_id: 'org-1', employee_id: 'emp-13', date: '2026-02-27', clock_in: '2026-02-27T09:00:00Z', clock_out: '2026-02-27T17:05:00Z', break_minutes: 60, total_hours: 7.08, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 5', notes: null, created_at: '2026-02-27T09:00:00Z' },
+  { id: 'te-24', org_id: 'org-1', employee_id: 'emp-17', date: '2026-02-27', clock_in: '2026-02-27T08:15:00Z', clock_out: '2026-02-27T17:20:00Z', break_minutes: 45, total_hours: 8.33, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Abidjan Office', notes: null, created_at: '2026-02-27T08:15:00Z' },
+  { id: 'te-25', org_id: 'org-1', employee_id: 'emp-27', date: '2026-02-27', clock_in: '2026-02-27T08:30:00Z', clock_out: '2026-02-27T17:45:00Z', break_minutes: 60, total_hours: 8.25, overtime_hours: 0.25, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 2', notes: 'Campaign launch support', created_at: '2026-02-27T08:30:00Z' },
+  // Saturday 2026-02-28 (weekend OT)
+  { id: 'te-26', org_id: 'org-1', employee_id: 'emp-13', date: '2026-02-28', clock_in: '2026-02-28T10:00:00Z', clock_out: '2026-02-28T15:00:00Z', break_minutes: 30, total_hours: 4.5, overtime_hours: 4.5, status: 'pending' as const, approved_by: null, location: 'Remote', notes: 'Emergency patch deployment', created_at: '2026-02-28T10:00:00Z' },
+  { id: 'te-27', org_id: 'org-1', employee_id: 'emp-21', date: '2026-02-27', clock_in: '2026-02-27T08:00:00Z', clock_out: '2026-02-27T17:00:00Z', break_minutes: 60, total_hours: 8.0, overtime_hours: 0, status: 'pending' as const, approved_by: null, location: 'Lagos HQ - Floor 4', notes: null, created_at: '2026-02-27T08:00:00Z' },
+  { id: 'te-28', org_id: 'org-1', employee_id: 'emp-6', date: '2026-02-26', clock_in: '2026-02-26T08:20:00Z', clock_out: '2026-02-26T17:25:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-5', location: 'Dakar Branch', notes: null, created_at: '2026-02-26T08:20:00Z' },
+  { id: 'te-29', org_id: 'org-1', employee_id: 'emp-14', date: '2026-02-25', clock_in: '2026-02-25T08:50:00Z', clock_out: '2026-02-25T17:55:00Z', break_minutes: 60, total_hours: 8.08, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-13', location: 'Accra Branch', notes: null, created_at: '2026-02-25T08:50:00Z' },
+  { id: 'te-30', org_id: 'org-1', employee_id: 'emp-28', date: '2026-02-24', clock_in: '2026-02-24T08:30:00Z', clock_out: '2026-02-24T18:30:00Z', break_minutes: 60, total_hours: 9.0, overtime_hours: 1.0, status: 'approved' as const, approved_by: 'emp-27', location: 'Nairobi Branch', notes: 'Product launch event', created_at: '2026-02-24T08:30:00Z' },
+  { id: 'te-31', org_id: 'org-1', employee_id: 'emp-22', date: '2026-02-25', clock_in: '2026-02-25T07:50:00Z', clock_out: '2026-02-25T17:50:00Z', break_minutes: 60, total_hours: 9.0, overtime_hours: 1.0, status: 'approved' as const, approved_by: 'emp-21', location: 'Lagos HQ - Floor 4', notes: null, created_at: '2026-02-25T07:50:00Z' },
+  { id: 'te-32', org_id: 'org-1', employee_id: 'emp-18', date: '2026-02-26', clock_in: '2026-02-26T08:00:00Z', clock_out: '2026-02-26T17:00:00Z', break_minutes: 60, total_hours: 8.0, overtime_hours: 0, status: 'approved' as const, approved_by: 'emp-17', location: 'Lagos HQ - Floor 2', notes: null, created_at: '2026-02-26T08:00:00Z' },
+]
+
+// === From agent-a2fa17c9 ===
+// Time Off Balances
+export const demoTimeOffBalances = [
+  { id: 'tob-1', org_id: 'org-1', employee_id: 'emp-1', policy_id: 'top-1', balance: 15.0, used: 3, pending: 0, carryover: 2, as_of_date: '2026-02-28' },
+  { id: 'tob-2', org_id: 'org-1', employee_id: 'emp-1', policy_id: 'top-2', balance: 10.0, used: 2, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-3', org_id: 'org-1', employee_id: 'emp-1', policy_id: 'top-3', balance: 4.0, used: 1, pending: 0, carryover: 1, as_of_date: '2026-02-28' },
+  { id: 'tob-4', org_id: 'org-1', employee_id: 'emp-2', policy_id: 'top-1', balance: 12.0, used: 5, pending: 0, carryover: 3, as_of_date: '2026-02-28' },
+  { id: 'tob-5', org_id: 'org-1', employee_id: 'emp-2', policy_id: 'top-2', balance: 8.0, used: 4, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-6', org_id: 'org-1', employee_id: 'emp-3', policy_id: 'top-1', balance: 10.0, used: 5, pending: 5, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-7', org_id: 'org-1', employee_id: 'emp-3', policy_id: 'top-2', balance: 11.0, used: 1, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-8', org_id: 'org-1', employee_id: 'emp-5', policy_id: 'top-1', balance: 18.0, used: 2, pending: 0, carryover: 5, as_of_date: '2026-02-28' },
+  { id: 'tob-9', org_id: 'org-1', employee_id: 'emp-5', policy_id: 'top-2', balance: 12.0, used: 0, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-10', org_id: 'org-1', employee_id: 'emp-9', policy_id: 'top-1', balance: 14.0, used: 4, pending: 0, carryover: 2, as_of_date: '2026-02-28' },
+  { id: 'tob-11', org_id: 'org-1', employee_id: 'emp-9', policy_id: 'top-2', balance: 9.0, used: 3, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-12', org_id: 'org-1', employee_id: 'emp-13', policy_id: 'top-1', balance: 16.0, used: 2, pending: 0, carryover: 4, as_of_date: '2026-02-28' },
+  { id: 'tob-13', org_id: 'org-1', employee_id: 'emp-13', policy_id: 'top-2', balance: 10.0, used: 2, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-14', org_id: 'org-1', employee_id: 'emp-17', policy_id: 'top-1', balance: 17.0, used: 1, pending: 0, carryover: 3, as_of_date: '2026-02-28' },
+  { id: 'tob-15', org_id: 'org-1', employee_id: 'emp-17', policy_id: 'top-2', balance: 11.0, used: 1, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-16', org_id: 'org-1', employee_id: 'emp-21', policy_id: 'top-1', balance: 13.0, used: 5, pending: 8, carryover: 1, as_of_date: '2026-02-28' },
+  { id: 'tob-17', org_id: 'org-1', employee_id: 'emp-24', policy_id: 'top-1', balance: 11.0, used: 7, pending: 0, carryover: 2, as_of_date: '2026-02-28' },
+  { id: 'tob-18', org_id: 'org-1', employee_id: 'emp-27', policy_id: 'top-1', balance: 16.0, used: 2, pending: 0, carryover: 4, as_of_date: '2026-02-28' },
+  { id: 'tob-19', org_id: 'org-1', employee_id: 'emp-7', policy_id: 'top-4', balance: 90.0, used: 0, pending: 66, carryover: 0, as_of_date: '2026-02-28' },
+  { id: 'tob-20', org_id: 'org-1', employee_id: 'emp-10', policy_id: 'top-2', balance: 7.0, used: 5, pending: 0, carryover: 0, as_of_date: '2026-02-28' },
+]
+
+// === From agent-a2fa17c9 ===
+// Time Off Policies
+export const demoTimeOffPolicies = [
+  { id: 'top-1', org_id: 'org-1', name: 'Annual Leave', type: 'annual' as const, accrual_rate: 1.67, accrual_period: 'monthly' as const, max_balance: 20, carryover_limit: 5, waiting_period_days: 90, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'top-2', org_id: 'org-1', name: 'Sick Leave', type: 'sick' as const, accrual_rate: 1.0, accrual_period: 'monthly' as const, max_balance: 12, carryover_limit: 0, waiting_period_days: 0, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'top-3', org_id: 'org-1', name: 'Personal Days', type: 'personal' as const, accrual_rate: 0.5, accrual_period: 'monthly' as const, max_balance: 6, carryover_limit: 2, waiting_period_days: 30, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'top-4', org_id: 'org-1', name: 'Maternity Leave', type: 'maternity' as const, accrual_rate: 0, accrual_period: 'annually' as const, max_balance: 90, carryover_limit: 0, waiting_period_days: 365, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'top-5', org_id: 'org-1', name: 'Paternity Leave', type: 'paternity' as const, accrual_rate: 0, accrual_period: 'annually' as const, max_balance: 14, carryover_limit: 0, waiting_period_days: 365, is_active: true, created_at: '2025-01-01T00:00:00Z' },
+]
+
+// === From agent-a32687a5 ===
+// ─── Compliance Alerts ─────────────────────────────────────
+
+export const demoComplianceAlerts = [
+  { id: 'calert-1', org_id: 'org-1', requirement_id: 'creq-9', type: 'violation' as const, severity: 'critical' as const, message: 'IT Security Penetration Testing is overdue. Last test was Dec 2025. Immediate action required.', is_read: false, due_date: '2026-03-31', created_at: '2026-02-20T08:00:00Z' },
+  { id: 'calert-2', org_id: 'org-1', requirement_id: 'creq-2', type: 'upcoming_deadline' as const, severity: 'high' as const, message: 'Data Protection Impact Assessment due in 60 days. Assessment has not yet started.', is_read: false, due_date: '2026-04-30', created_at: '2026-02-28T09:00:00Z' },
+  { id: 'calert-3', org_id: 'org-1', requirement_id: 'creq-5', type: 'upcoming_deadline' as const, severity: 'high' as const, message: 'UEMOA Banking Regulations Audit due in 90 days. Preparation should begin immediately.', is_read: true, due_date: '2026-05-31', created_at: '2026-02-25T10:00:00Z' },
+  { id: 'calert-4', org_id: 'org-1', requirement_id: 'creq-7', type: 'reminder' as const, severity: 'medium' as const, message: 'Monthly KYC compliance report due in 15 days.', is_read: false, due_date: '2026-03-15', created_at: '2026-03-01T07:00:00Z' },
+  { id: 'calert-5', org_id: 'org-1', requirement_id: null, type: 'expiring_document' as const, severity: 'high' as const, message: 'CBN Banking License Certificate expires on March 15, 2026. Renewal required.', is_read: false, due_date: '2026-03-15', created_at: '2026-02-15T11:00:00Z' },
+  { id: 'calert-6', org_id: 'org-1', requirement_id: 'creq-3', type: 'reminder' as const, severity: 'low' as const, message: 'Quarterly workplace safety inspection due next month. Schedule with facilities team.', is_read: true, due_date: '2026-03-31', created_at: '2026-02-28T14:00:00Z' },
+  { id: 'calert-7', org_id: 'org-1', requirement_id: 'creq-6', type: 'upcoming_deadline' as const, severity: 'medium' as const, message: 'Work permit for James Kamau (emp-8) expires in 6 months. Begin renewal process.', is_read: false, due_date: '2026-08-15', created_at: '2026-02-15T15:00:00Z' },
+  { id: 'calert-8', org_id: 'org-1', requirement_id: 'creq-1', type: 'reminder' as const, severity: 'low' as const, message: 'Annual AML Filing due in 4 months. Begin data collection for the annual report.', is_read: true, due_date: '2026-06-30', created_at: '2026-02-28T16:00:00Z' },
+]
+
+// === From agent-a32687a5 ===
+// ─── Compliance Documents ─────────────────────────────────────
+
+export const demoComplianceDocuments = [
+  { id: 'cdoc-1', requirement_id: 'creq-1', org_id: 'org-1', name: 'AML Compliance Report 2025', file_url: '/documents/aml-report-2025.pdf', uploaded_by: 'emp-21', uploaded_at: '2026-01-15T10:00:00Z', expires_at: '2027-01-15', status: 'valid' as const },
+  { id: 'cdoc-2', requirement_id: 'creq-3', org_id: 'org-1', name: 'Lagos Office Safety Inspection Certificate', file_url: '/documents/safety-cert-lagos-q1.pdf', uploaded_by: 'emp-9', uploaded_at: '2026-01-16T14:30:00Z', expires_at: '2026-04-15', status: 'valid' as const },
+  { id: 'cdoc-3', requirement_id: 'creq-4', org_id: 'org-1', name: 'Ghana Employment Contract Template (Updated)', file_url: '/documents/gh-contract-template-v3.pdf', uploaded_by: 'emp-20', uploaded_at: '2026-01-22T09:00:00Z', expires_at: null, status: 'valid' as const },
+  { id: 'cdoc-4', requirement_id: 'creq-7', org_id: 'org-1', name: 'KYC Monthly Report - February 2026', file_url: '/documents/kyc-report-feb-2026.pdf', uploaded_by: 'emp-21', uploaded_at: '2026-02-15T16:00:00Z', expires_at: '2026-03-15', status: 'valid' as const },
+  { id: 'cdoc-5', requirement_id: 'creq-10', org_id: 'org-1', name: 'CBN Banking License Certificate', file_url: '/documents/cbn-license-2026.pdf', uploaded_by: 'emp-24', uploaded_at: '2025-10-01T08:00:00Z', expires_at: '2026-03-15', status: 'expired' as const },
+]
+
+// === From agent-a32687a5 ===
+// ─── Compliance Requirements ─────────────────────────────────────
+
+export const demoComplianceRequirements = [
+  { id: 'creq-1', org_id: 'org-1', name: 'Annual Anti-Money Laundering (AML) Filing', category: 'financial' as const, country: 'Nigeria', description: 'Submit annual AML compliance report to CBN as required by the Money Laundering Prevention Act', frequency: 'annually' as const, due_date: '2026-06-30', status: 'compliant' as const, assigned_to: 'emp-21', evidence: 'Filed with CBN reference NGN-AML-2025-1847', last_checked: '2026-02-15', next_due: '2026-06-30', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-2', org_id: 'org-1', name: 'Data Protection Impact Assessment', category: 'data_privacy' as const, country: 'Nigeria', description: 'Conduct DPIA as required by Nigeria Data Protection Regulation (NDPR)', frequency: 'annually' as const, due_date: '2026-04-30', status: 'at_risk' as const, assigned_to: 'emp-22', evidence: null, last_checked: '2026-02-10', next_due: '2026-04-30', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-3', org_id: 'org-1', name: 'Workplace Safety Inspection', category: 'safety' as const, country: 'Nigeria', description: 'Quarterly workplace safety inspection across all Lagos offices', frequency: 'quarterly' as const, due_date: '2026-03-31', status: 'compliant' as const, assigned_to: 'emp-9', evidence: 'Inspection completed 2026-01-15, all clear', last_checked: '2026-01-15', next_due: '2026-03-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-4', org_id: 'org-1', name: 'Ghana Labor Act Compliance', category: 'labor_law' as const, country: 'Ghana', description: 'Ensure employment contracts comply with Ghana Labor Act 2003 (Act 651)', frequency: 'annually' as const, due_date: '2026-12-31', status: 'compliant' as const, assigned_to: 'emp-20', evidence: 'All Ghana contracts reviewed and updated', last_checked: '2026-01-20', next_due: '2026-12-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-5', org_id: 'org-1', name: 'UEMOA Banking Regulations Audit', category: 'financial' as const, country: "Cote d'Ivoire", description: 'Annual audit of compliance with UEMOA banking directives and BCEAO regulations', frequency: 'annually' as const, due_date: '2026-05-31', status: 'at_risk' as const, assigned_to: 'emp-22', evidence: null, last_checked: '2026-02-01', next_due: '2026-05-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-6', org_id: 'org-1', name: 'Work Permit Renewals', category: 'immigration' as const, country: 'Kenya', description: 'Track and renew work permits for all non-citizen employees in Kenya', frequency: 'annually' as const, due_date: '2026-08-15', status: 'compliant' as const, assigned_to: 'emp-18', evidence: 'All 3 Kenya work permits current', last_checked: '2026-02-20', next_due: '2026-08-15', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-7', org_id: 'org-1', name: 'CBN Know Your Customer (KYC) Compliance', category: 'financial' as const, country: 'Nigeria', description: 'Monthly KYC compliance reporting to Central Bank of Nigeria', frequency: 'monthly' as const, due_date: '2026-03-15', status: 'compliant' as const, assigned_to: 'emp-21', evidence: 'Feb 2026 KYC report submitted', last_checked: '2026-02-15', next_due: '2026-03-15', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-8', org_id: 'org-1', name: 'Senegal Labor Code Compliance', category: 'labor_law' as const, country: 'Senegal', description: 'Ensure compliance with Senegal Labor Code (Code du Travail) for all Dakar employees', frequency: 'annually' as const, due_date: '2026-12-31', status: 'compliant' as const, assigned_to: 'emp-20', evidence: 'All Senegal contracts compliant as of Q1 review', last_checked: '2026-01-25', next_due: '2026-12-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-9', org_id: 'org-1', name: 'IT Security Penetration Testing', category: 'safety' as const, country: null, description: 'Quarterly penetration testing of all customer-facing banking systems', frequency: 'quarterly' as const, due_date: '2026-03-31', status: 'non_compliant' as const, assigned_to: 'emp-13', evidence: null, last_checked: '2025-12-15', next_due: '2026-03-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-10', org_id: 'org-1', name: 'Professional Banking License Renewals', category: 'licensing' as const, country: 'Nigeria', description: 'Renew all required professional banking licenses with CBN', frequency: 'annually' as const, due_date: '2026-09-30', status: 'compliant' as const, assigned_to: 'emp-24', evidence: 'License renewed through Sept 2027', last_checked: '2026-02-01', next_due: '2026-09-30', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-11', org_id: 'org-1', name: 'GDPR Cross-border Data Transfer Assessment', category: 'data_privacy' as const, country: null, description: 'Assess data transfer mechanisms between African operations and EU partners', frequency: 'annually' as const, due_date: '2026-07-31', status: 'compliant' as const, assigned_to: 'emp-22', evidence: 'Standard contractual clauses in place', last_checked: '2026-01-10', next_due: '2026-07-31', created_at: '2026-01-01T00:00:00Z' },
+  { id: 'creq-12', org_id: 'org-1', name: 'Ghana Data Protection Act Compliance', category: 'data_privacy' as const, country: 'Ghana', description: 'Annual compliance review under Ghana Data Protection Act 2012 (Act 843)', frequency: 'annually' as const, due_date: '2026-11-30', status: 'compliant' as const, assigned_to: 'emp-20', evidence: 'DPA registration current, annual review completed', last_checked: '2026-02-05', next_due: '2026-11-30', created_at: '2026-01-01T00:00:00Z' },
+]
+
+// === From agent-a32687a5 ===
+// ============================================================
+// MULTI-ORG HELPERS
+// ============================================================
+
+// ─── Custom Field Definitions ─────────────────────────────────────
+
+export const demoCustomFieldDefinitions = [
+  { id: 'cfd-1', org_id: 'org-1', name: 'Employee ID Number', field_type: 'text' as const, entity_type: 'employee' as const, description: 'Internal employee identification number', options: null, is_required: true, is_visible: true, group_name: 'Identification', order_index: 0, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-2', org_id: 'org-1', name: 'T-Shirt Size', field_type: 'select' as const, entity_type: 'employee' as const, description: 'For company merchandise', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], is_required: false, is_visible: true, group_name: 'Personal Preferences', order_index: 0, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-3', org_id: 'org-1', name: 'Work Permit Number', field_type: 'text' as const, entity_type: 'employee' as const, description: 'Work authorization permit number', options: null, is_required: false, is_visible: true, group_name: 'Identification', order_index: 1, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-4', org_id: 'org-1', name: 'LinkedIn URL', field_type: 'url' as const, entity_type: 'employee' as const, description: 'LinkedIn profile link', options: null, is_required: false, is_visible: true, group_name: 'Social', order_index: 0, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-5', org_id: 'org-1', name: 'Emergency Blood Type', field_type: 'select' as const, entity_type: 'employee' as const, description: 'Blood type for emergency medical situations', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], is_required: false, is_visible: true, group_name: 'Medical', order_index: 0, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-6', org_id: 'org-1', name: 'Preferred Name', field_type: 'text' as const, entity_type: 'employee' as const, description: 'Name the employee prefers to be called', options: null, is_required: false, is_visible: true, group_name: 'Personal Preferences', order_index: 1, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-7', org_id: 'org-1', name: 'Dietary Restrictions', field_type: 'multi_select' as const, entity_type: 'employee' as const, description: 'For catering at company events', options: ['None', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Gluten-free', 'Nut-free', 'Lactose-free'], is_required: false, is_visible: true, group_name: 'Personal Preferences', order_index: 2, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'cfd-8', org_id: 'org-1', name: 'Parking Spot', field_type: 'text' as const, entity_type: 'employee' as const, description: 'Assigned parking spot number', options: null, is_required: false, is_visible: true, group_name: 'Office', order_index: 0, created_at: '2026-01-01T00:00:00Z' },
+]
+
+// === From agent-a32687a5 ===
+// ─── Custom Field Values ─────────────────────────────────────
+
+export const demoCustomFieldValues = [
+  // Employee ID Numbers (emp-1 through emp-10)
+  { id: 'cfv-1', field_definition_id: 'cfd-1', entity_id: 'emp-1', org_id: 'org-1', value: 'ECB-2019-001', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-2', field_definition_id: 'cfd-1', entity_id: 'emp-2', org_id: 'org-1', value: 'ECB-2020-014', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-3', field_definition_id: 'cfd-1', entity_id: 'emp-3', org_id: 'org-1', value: 'ECB-2021-032', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-4', field_definition_id: 'cfd-1', entity_id: 'emp-4', org_id: 'org-1', value: 'ECB-2025-078', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-5', field_definition_id: 'cfd-1', entity_id: 'emp-5', org_id: 'org-1', value: 'ECB-2018-003', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // T-Shirt Sizes
+  { id: 'cfv-6', field_definition_id: 'cfd-2', entity_id: 'emp-1', org_id: 'org-1', value: 'L', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-7', field_definition_id: 'cfd-2', entity_id: 'emp-2', org_id: 'org-1', value: 'M', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-8', field_definition_id: 'cfd-2', entity_id: 'emp-3', org_id: 'org-1', value: 'XL', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // LinkedIn URLs
+  { id: 'cfv-9', field_definition_id: 'cfd-4', entity_id: 'emp-1', org_id: 'org-1', value: 'https://linkedin.com/in/oluwaseun-adeyemi', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-10', field_definition_id: 'cfd-4', entity_id: 'emp-5', org_id: 'org-1', value: 'https://linkedin.com/in/amadou-diallo', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // Blood Types
+  { id: 'cfv-11', field_definition_id: 'cfd-5', entity_id: 'emp-1', org_id: 'org-1', value: 'O+', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-12', field_definition_id: 'cfd-5', entity_id: 'emp-2', org_id: 'org-1', value: 'A+', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-13', field_definition_id: 'cfd-5', entity_id: 'emp-3', org_id: 'org-1', value: 'B+', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // Preferred Names
+  { id: 'cfv-14', field_definition_id: 'cfd-6', entity_id: 'emp-1', org_id: 'org-1', value: 'Seun', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-15', field_definition_id: 'cfd-6', entity_id: 'emp-13', org_id: 'org-1', value: 'BJ', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // Dietary Restrictions
+  { id: 'cfv-16', field_definition_id: 'cfd-7', entity_id: 'emp-5', org_id: 'org-1', value: 'Halal', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-17', field_definition_id: 'cfd-7', entity_id: 'emp-6', org_id: 'org-1', value: 'Halal', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // Parking Spots
+  { id: 'cfv-18', field_definition_id: 'cfd-8', entity_id: 'emp-1', org_id: 'org-1', value: 'A-12', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-19', field_definition_id: 'cfd-8', entity_id: 'emp-5', org_id: 'org-1', value: 'B-03', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-20', field_definition_id: 'cfd-8', entity_id: 'emp-13', org_id: 'org-1', value: 'A-01', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  // Work Permit Numbers (for non-citizen employees)
+  { id: 'cfv-21', field_definition_id: 'cfd-3', entity_id: 'emp-3', org_id: 'org-1', value: 'GH-WP-2021-4451', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+  { id: 'cfv-22', field_definition_id: 'cfd-3', entity_id: 'emp-8', org_id: 'org-1', value: 'KE-WP-2022-1128', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-01-05T00:00:00Z' },
+]
+
+// === From agent-a32687a5 ===
+// ─── Emergency Contacts ─────────────────────────────────────
+
+export const demoEmergencyContacts = [
+  // emp-1 Oluwaseun Adeyemi
+  { id: 'ec-1', org_id: 'org-1', employee_id: 'emp-1', name: 'Funke Adeyemi', relationship: 'spouse' as const, phone: '+234 801 111 2222', email: 'funke.adeyemi@gmail.com', address: '15 Admiralty Way, Lekki, Lagos', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-2', org_id: 'org-1', employee_id: 'emp-1', name: 'Adewale Adeyemi', relationship: 'parent' as const, phone: '+234 803 333 4444', email: null, address: '22 Ring Road, Ibadan, Oyo', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-2 Ngozi Okafor
+  { id: 'ec-3', org_id: 'org-1', employee_id: 'emp-2', name: 'Chidi Okafor', relationship: 'spouse' as const, phone: '+234 802 555 6666', email: 'chidi.okafor@yahoo.com', address: '8 Ozumba Mbadiwe Ave, Victoria Island, Lagos', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-4', org_id: 'org-1', employee_id: 'emp-2', name: 'Ada Okafor', relationship: 'sibling' as const, phone: '+234 805 777 8888', email: null, address: '45 New Market Road, Onitsha, Anambra', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-3 Kwame Asante
+  { id: 'ec-5', org_id: 'org-1', employee_id: 'emp-3', name: 'Ama Asante', relationship: 'spouse' as const, phone: '+233 20 555 1234', email: 'ama.asante@gmail.com', address: '12 Oxford Street, Osu, Accra', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-6', org_id: 'org-1', employee_id: 'emp-3', name: 'Yaw Asante', relationship: 'parent' as const, phone: '+233 24 666 5678', email: null, address: 'Adum, Kumasi, Ashanti Region', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-4 Chioma Eze
+  { id: 'ec-7', org_id: 'org-1', employee_id: 'emp-4', name: 'Nneka Eze', relationship: 'parent' as const, phone: '+234 803 999 0000', email: 'nneka.eze@gmail.com', address: '7 Aba Road, Port Harcourt, Rivers', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-8', org_id: 'org-1', employee_id: 'emp-4', name: 'Obinna Eze', relationship: 'sibling' as const, phone: '+234 806 111 3333', email: null, address: '7 Aba Road, Port Harcourt, Rivers', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-5 Amadou Diallo
+  { id: 'ec-9', org_id: 'org-1', employee_id: 'emp-5', name: 'Mariama Diallo', relationship: 'spouse' as const, phone: '+225 07 22 33 44', email: 'mariama.diallo@gmail.com', address: 'Cocody, Abidjan', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-10', org_id: 'org-1', employee_id: 'emp-5', name: 'Ibrahima Diallo', relationship: 'parent' as const, phone: '+225 05 44 55 66', email: null, address: 'Plateau, Abidjan', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-6 Fatou Ndiaye
+  { id: 'ec-11', org_id: 'org-1', employee_id: 'emp-6', name: 'Moussa Ndiaye', relationship: 'spouse' as const, phone: '+221 77 888 99 00', email: 'moussa.ndiaye@gmail.com', address: 'Almadies, Dakar', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-12', org_id: 'org-1', employee_id: 'emp-6', name: 'Aissatou Ndiaye', relationship: 'parent' as const, phone: '+221 76 111 22 33', email: null, address: 'Medina, Dakar', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-7 Marie Kouassi
+  { id: 'ec-13', org_id: 'org-1', employee_id: 'emp-7', name: 'Jean Kouassi', relationship: 'parent' as const, phone: '+225 07 55 66 77', email: null, address: 'Treichville, Abidjan', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-14', org_id: 'org-1', employee_id: 'emp-7', name: 'Claire Kouassi', relationship: 'sibling' as const, phone: '+225 05 88 99 00', email: 'claire.k@gmail.com', address: 'Marcory, Abidjan', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-8 James Kamau
+  { id: 'ec-15', org_id: 'org-1', employee_id: 'emp-8', name: 'Lucy Kamau', relationship: 'spouse' as const, phone: '+254 712 000 111', email: 'lucy.kamau@gmail.com', address: 'Westlands, Nairobi', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-16', org_id: 'org-1', employee_id: 'emp-8', name: 'Peter Kamau', relationship: 'parent' as const, phone: '+254 722 222 333', email: null, address: 'Thika Road, Nairobi', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-9 Kofi Mensah
+  { id: 'ec-17', org_id: 'org-1', employee_id: 'emp-9', name: 'Akua Mensah', relationship: 'spouse' as const, phone: '+233 24 444 5555', email: 'akua.mensah@gmail.com', address: 'East Legon, Accra', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-18', org_id: 'org-1', employee_id: 'emp-9', name: 'Kwesi Mensah', relationship: 'sibling' as const, phone: '+233 20 666 7777', email: null, address: 'Spintex Road, Accra', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+  // emp-10 Abena Boateng
+  { id: 'ec-19', org_id: 'org-1', employee_id: 'emp-10', name: 'Kwabena Boateng', relationship: 'parent' as const, phone: '+233 20 888 9999', email: 'k.boateng@gmail.com', address: 'Tema, Greater Accra', is_primary: true, created_at: '2026-01-05T00:00:00Z' },
+  { id: 'ec-20', org_id: 'org-1', employee_id: 'emp-10', name: 'Efua Boateng', relationship: 'sibling' as const, phone: '+233 24 000 1111', email: null, address: 'Tema, Greater Accra', is_primary: false, created_at: '2026-01-05T00:00:00Z' },
+]
+
+// === From agent-a69bff0a ===
+// ─── Performance: Merit Cycles ─────────────────────────────────────
+
+export const demoMeritCycles = [
+  {
+    id: 'merit-1', org_id: 'org-1', name: 'Annual Merit Review 2026', type: 'annual_merit' as const,
+    status: 'manager_allocation' as const, fiscal_year: '2026',
+    total_budget: 850000, currency: 'USD',
+    guidelines_config: {
+      rating_ranges: [
+        { rating: 5, label: 'Exceptional', min_percent: 8, max_percent: 12 },
+        { rating: 4, label: 'Exceeds Expectations', min_percent: 5, max_percent: 8 },
+        { rating: 3, label: 'Meets Expectations', min_percent: 2, max_percent: 4 },
+        { rating: 2, label: 'Needs Improvement', min_percent: 0, max_percent: 2 },
+        { rating: 1, label: 'Unsatisfactory', min_percent: 0, max_percent: 0 },
+      ],
+    },
+    start_date: '2026-02-01', end_date: '2026-04-30',
+    created_by: 'emp-17', created_at: '2026-01-20T09:00:00Z',
+  },
+]
+
+// === From agent-a69bff0a ===
+export const demoMeritRecommendations = [
+  { id: 'mr-1', cycle_id: 'merit-1', employee_id: 'emp-2', org_id: 'org-1', manager_id: 'emp-1', current_salary: 95000, proposed_salary: 103550, increase_percent: 9.0, increase_amount: 8550, rating: 5, justification: 'Exceptional branch performance. Revenue grew 22% year-over-year under her management. Led successful digital adoption initiative.', status: 'manager_approved' as const, approved_by: null, approved_at: null },
+  { id: 'mr-2', cycle_id: 'merit-1', employee_id: 'emp-3', org_id: 'org-1', manager_id: 'emp-1', current_salary: 72000, proposed_salary: 76320, increase_percent: 6.0, increase_amount: 4320, rating: 4, justification: 'Strong client relationship management. Achieved 95% satisfaction score. Contributed to cross-sell targets.', status: 'pending' as const, approved_by: null, approved_at: null },
+  { id: 'mr-3', cycle_id: 'merit-1', employee_id: 'emp-6', org_id: 'org-1', manager_id: 'emp-5', current_salary: 88000, proposed_salary: 94160, increase_percent: 7.0, increase_amount: 6160, rating: 4, justification: 'Outstanding credit analysis work. Identified key portfolio risks that saved the bank significant exposure. Mentor to junior analysts.', status: 'hr_approved' as const, approved_by: 'emp-17', approved_at: '2026-02-25T14:00:00Z' },
+  { id: 'mr-4', cycle_id: 'merit-1', employee_id: 'emp-14', org_id: 'org-1', manager_id: 'emp-13', current_salary: 105000, proposed_salary: 115500, increase_percent: 10.0, increase_amount: 10500, rating: 5, justification: 'Led critical payment gateway migration. Technical excellence and leadership. Upskilled 3 junior developers.', status: 'pending' as const, approved_by: null, approved_at: null },
+  { id: 'mr-5', cycle_id: 'merit-1', employee_id: 'emp-15', org_id: 'org-1', manager_id: 'emp-13', current_salary: 98000, proposed_salary: 103880, increase_percent: 6.0, increase_amount: 5880, rating: 4, justification: 'Excellent infrastructure reliability. 99.9% uptime achievement. Implemented cost-saving cloud optimization.', status: 'pending' as const, approved_by: null, approved_at: null },
+  { id: 'mr-6', cycle_id: 'merit-1', employee_id: 'emp-18', org_id: 'org-1', manager_id: 'emp-17', current_salary: 82000, proposed_salary: 84460, increase_percent: 3.0, increase_amount: 2460, rating: 3, justification: 'Met core recruitment targets. Good stakeholder relationships. Needs to improve time-to-hire metrics.', status: 'manager_approved' as const, approved_by: null, approved_at: null },
+  { id: 'mr-7', cycle_id: 'merit-1', employee_id: 'emp-22', org_id: 'org-1', manager_id: 'emp-21', current_salary: 90000, proposed_salary: 96300, increase_percent: 7.0, increase_amount: 6300, rating: 4, justification: 'Successfully led UEMOA regulatory audit preparation. Zero compliance findings. Proactive risk identification.', status: 'pending' as const, approved_by: null, approved_at: null },
+  { id: 'mr-8', cycle_id: 'merit-1', employee_id: 'emp-28', org_id: 'org-1', manager_id: 'emp-27', current_salary: 85000, proposed_salary: 87550, increase_percent: 3.0, increase_amount: 2550, rating: 3, justification: 'Solid digital marketing execution. Campaign ROI met targets. Room for improvement in innovative campaign development.', status: 'pending' as const, approved_by: null, approved_at: null },
+]
+
+// === From agent-a69bff0a ===
+export const demoPIPCheckIns = [
+  {
+    id: 'pip-ci-1', pip_id: 'pip-1', date: '2026-01-29', conducted_by: 'emp-9',
+    progress: 'behind' as const,
+    notes: 'First check-in. Employee acknowledges gaps and is motivated to improve. Automation module A is 40% complete. Started reviewing documentation.',
+    objectives_status: [
+      { title: 'Complete automation module A', status: 'in_progress' },
+      { title: 'Reduce error rate to below 2%', status: 'not_started' },
+      { title: 'Complete technical skills training', status: 'not_started' },
+    ],
+    next_steps: 'Focus on completing module A by Feb 15 deadline. Begin Python training course this week.',
+  },
+  {
+    id: 'pip-ci-2', pip_id: 'pip-1', date: '2026-02-12', conducted_by: 'emp-9',
+    progress: 'on_track' as const,
+    notes: 'Good progress on module A - now at 85% complete. Error rate analysis started. Python course enrolled.',
+    objectives_status: [
+      { title: 'Complete automation module A', status: 'almost_done' },
+      { title: 'Reduce error rate to below 2%', status: 'in_progress' },
+      { title: 'Complete technical skills training', status: 'in_progress' },
+    ],
+    next_steps: 'Complete module A this week. Begin systematic error rate reduction analysis. Continue Python course modules.',
+  },
+  {
+    id: 'pip-ci-3', pip_id: 'pip-1', date: '2026-02-26', conducted_by: 'emp-9',
+    progress: 'improved' as const,
+    notes: 'Module A completed and deployed successfully! Error rate reduced from 8% to 5.2%. Making good progress overall.',
+    objectives_status: [
+      { title: 'Complete automation module A', status: 'completed' },
+      { title: 'Reduce error rate to below 2%', status: 'in_progress' },
+      { title: 'Complete technical skills training', status: 'in_progress' },
+    ],
+    next_steps: 'Continue error rate reduction efforts. Target 3% by next check-in. Complete at least 2 Python modules.',
+  },
+  {
+    id: 'pip-ci-4', pip_id: 'pip-2', date: '2025-10-15', conducted_by: 'emp-2',
+    progress: 'on_track' as const,
+    notes: 'Employee started shadowing senior teller. No complaints in first two weeks. Enrolled in customer service training.',
+    objectives_status: [
+      { title: 'Zero customer escalations', status: 'on_track' },
+      { title: 'Complete customer service excellence training', status: 'in_progress' },
+      { title: 'Achieve 90%+ customer satisfaction score', status: 'not_started' },
+    ],
+    next_steps: 'Continue shadowing program. Prepare for customer service excellence workshop next week.',
+  },
+  {
+    id: 'pip-ci-5', pip_id: 'pip-3', date: '2025-12-01', conducted_by: 'emp-27',
+    progress: 'behind' as const,
+    notes: 'Only 3 articles published in November vs 8 target. Style guide training completed but application inconsistent. Quality improvement needed.',
+    objectives_status: [
+      { title: 'Produce 8 approved blog posts per month', status: 'behind' },
+      { title: 'Achieve first-draft approval rate of 60%+', status: 'behind' },
+      { title: 'Complete brand voice and style guide training', status: 'completed' },
+    ],
+    next_steps: 'Increase writing cadence. Daily writing sprints recommended. Additional editorial review sessions scheduled.',
+  },
+]
+
+// === From agent-a69bff0a ===
+// ─── Performance: PIPs ─────────────────────────────────────
+
+export const demoPIPs = [
+  {
+    id: 'pip-1', org_id: 'org-1', employee_id: 'emp-11', created_by: 'emp-9',
+    reason: 'Consistent underperformance in reconciliation process automation project. Missed 3 consecutive milestone deadlines and deliverable quality below expectations.',
+    start_date: '2026-01-15', end_date: '2026-04-15',
+    status: 'active' as const,
+    objectives: [
+      { title: 'Complete automation module A', description: 'Deliver the transaction matching module with 95% accuracy', targetDate: '2026-02-15', status: 'completed' as const, measure: 'Module deployed and passing QA tests' },
+      { title: 'Reduce error rate to below 2%', description: 'Current error rate is 8%. Must bring down to under 2% in reconciliation outputs', targetDate: '2026-03-15', status: 'in_progress' as const, measure: 'Error rate measured weekly from production logs' },
+      { title: 'Complete technical skills training', description: 'Finish Python advanced data processing course and SQL optimization certification', targetDate: '2026-03-31', status: 'not_started' as const, measure: 'Course completion certificates submitted' },
+    ],
+    support_provided: 'Weekly mentoring sessions with senior engineer Yaw Frimpong. Access to advanced Python training platform. Reduced workload by 20% to allow focus on improvement areas.',
+    check_in_frequency: 'biweekly' as const,
+    next_check_in: '2026-03-14',
+    outcome: null,
+    notes: 'Employee has shown improvement in first objective. Attitude is positive and receptive to feedback.',
+    created_at: '2026-01-15T09:00:00Z', updated_at: '2026-02-28T10:00:00Z',
+  },
+  {
+    id: 'pip-2', org_id: 'org-1', employee_id: 'emp-4', created_by: 'emp-2',
+    reason: 'Customer complaint rate significantly higher than peers. Three formal customer escalations in Q4 2025. Need to improve service quality and adherence to banking protocols.',
+    start_date: '2025-10-01', end_date: '2026-01-31',
+    status: 'completed_success' as const,
+    objectives: [
+      { title: 'Zero customer escalations', description: 'No formal customer complaints for 90 consecutive days', targetDate: '2025-12-31', status: 'completed' as const, measure: 'Customer complaint tracking system shows zero escalations' },
+      { title: 'Complete customer service excellence training', description: 'Attend and pass the 3-day customer service excellence program', targetDate: '2025-11-15', status: 'completed' as const, measure: 'Training certificate and manager observation report' },
+      { title: 'Achieve 90%+ customer satisfaction score', description: 'Post-interaction survey scores must average 90% or above', targetDate: '2026-01-15', status: 'completed' as const, measure: 'Monthly satisfaction survey results from CRM' },
+    ],
+    support_provided: 'Paired with senior teller for shadowing. Enrolled in customer service excellence program. Weekly coaching sessions with branch manager.',
+    check_in_frequency: 'weekly' as const,
+    next_check_in: null,
+    outcome: 'Successfully completed all objectives. Customer satisfaction improved from 72% to 94%. Recommend removal from PIP with continued monitoring.',
+    notes: 'Excellent turnaround. Employee demonstrated strong commitment to improvement.',
+    created_at: '2025-10-01T09:00:00Z', updated_at: '2026-01-31T15:00:00Z',
+  },
+  {
+    id: 'pip-3', org_id: 'org-1', employee_id: 'emp-30', created_by: 'emp-27',
+    reason: 'Content quality and output volume consistently below expectations. Blog posts require extensive revisions. Missing content calendar deadlines regularly.',
+    start_date: '2025-11-01', end_date: '2026-02-28',
+    status: 'completed_failure' as const,
+    objectives: [
+      { title: 'Produce 8 approved blog posts per month', description: 'Deliver 8 publication-ready articles per month without requiring more than one round of edits', targetDate: '2026-01-31', status: 'not_met' as const, measure: 'Editorial tracking system - published articles count' },
+      { title: 'Achieve first-draft approval rate of 60%+', description: 'At least 60% of submitted drafts should be approved without major revisions', targetDate: '2026-01-31', status: 'not_met' as const, measure: 'Editor feedback log and revision tracking' },
+      { title: 'Complete brand voice and style guide training', description: 'Master the Ecobank brand guidelines and demonstrate consistent application', targetDate: '2025-12-15', status: 'completed' as const, measure: 'Training completion and style consistency audit' },
+    ],
+    support_provided: 'Writing workshops, editorial mentoring from Digital Marketing Lead, style guide training, reduced output target during first month.',
+    check_in_frequency: 'weekly' as const,
+    next_check_in: null,
+    outcome: 'Employee was unable to meet 2 of 3 objectives despite extensive support. Average output remained at 4 posts/month with 30% first-draft approval rate. Recommending role reassignment discussion.',
+    notes: 'Despite genuine effort, the role requirements may not align with the employee\'s strengths. HR to discuss alternative placement options.',
+    created_at: '2025-11-01T09:00:00Z', updated_at: '2026-02-28T12:00:00Z',
+  },
+]
+
+// === From agent-a69bff0a ===
+// ─── Performance: Review Templates ─────────────────────────────────────
+
+export const demoReviewTemplates = [
+  {
+    id: 'rt-1', org_id: 'org-1', name: 'Annual Performance Review', type: 'annual' as const,
+    is_default: true, created_by: 'emp-17', created_at: '2025-11-01T09:00:00Z',
+    sections: [
+      {
+        title: 'Performance Against Goals',
+        description: 'Evaluate the employee\'s achievement of goals set during the review period.',
+        questions: [
+          { text: 'How effectively did the employee achieve their assigned goals?', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Far Below', 'Below', 'Meets', 'Exceeds', 'Exceptional'] } },
+          { text: 'Describe specific achievements and contributions during this period.', type: 'text' as const, required: true },
+          { text: 'Were there any goals that were not met? If so, what were the contributing factors?', type: 'text' as const, required: false },
+        ],
+      },
+      {
+        title: 'Core Competencies',
+        description: 'Rate the employee on key competencies required for their role.',
+        questions: [
+          { text: 'Leadership & Influence', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Foundational', 'Developing', 'Proficient', 'Advanced', 'Mastery'] } },
+          { text: 'Communication & Collaboration', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Foundational', 'Developing', 'Proficient', 'Advanced', 'Mastery'] } },
+          { text: 'Technical/Functional Expertise', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Foundational', 'Developing', 'Proficient', 'Advanced', 'Mastery'] } },
+          { text: 'Problem Solving & Innovation', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Foundational', 'Developing', 'Proficient', 'Advanced', 'Mastery'] } },
+          { text: 'Customer Focus', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Foundational', 'Developing', 'Proficient', 'Advanced', 'Mastery'] } },
+        ],
+      },
+      {
+        title: 'Development & Growth',
+        description: 'Assess the employee\'s growth trajectory and development potential.',
+        questions: [
+          { text: 'What skills or competencies has the employee developed during this period?', type: 'text' as const, required: true },
+          { text: 'What are the top 2-3 development areas for the next review period?', type: 'text' as const, required: true },
+          { text: 'Is this employee ready for promotion?', type: 'multiple_choice' as const, required: true, options: ['Ready now', 'Ready in 6-12 months', 'Ready in 1-2 years', 'Not yet ready'] },
+        ],
+      },
+      {
+        title: 'Overall Assessment',
+        description: 'Provide an overall performance rating and summary.',
+        questions: [
+          { text: 'Overall Performance Rating', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Unsatisfactory', 'Needs Improvement', 'Meets Expectations', 'Exceeds Expectations', 'Exceptional'] } },
+          { text: 'Summary comments and recommendations.', type: 'text' as const, required: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'rt-2', org_id: 'org-1', name: 'Quarterly Check-in', type: 'quarterly' as const,
+    is_default: false, created_by: 'emp-17', created_at: '2025-11-15T09:00:00Z',
+    sections: [
+      {
+        title: 'Goal Progress',
+        description: 'Review progress on current quarterly goals.',
+        questions: [
+          { text: 'What progress has been made on your quarterly goals?', type: 'text' as const, required: true },
+          { text: 'Are there any blockers or challenges preventing goal completion?', type: 'text' as const, required: true },
+          { text: 'Overall goal progress rating', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Behind', 'Slightly Behind', 'On Track', 'Ahead', 'Completed'] } },
+        ],
+      },
+      {
+        title: 'Feedback & Support',
+        description: 'Discuss feedback and support needs.',
+        questions: [
+          { text: 'What support do you need from your manager to succeed?', type: 'text' as const, required: false },
+          { text: 'How would you rate your overall engagement?', type: 'multiple_choice' as const, required: true, options: ['Very engaged', 'Engaged', 'Neutral', 'Somewhat disengaged', 'Disengaged'] },
+          { text: 'Any additional feedback or concerns?', type: 'text' as const, required: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'rt-3', org_id: 'org-1', name: '360 Feedback Review', type: '360' as const,
+    is_default: false, created_by: 'emp-17', created_at: '2025-12-01T09:00:00Z',
+    sections: [
+      {
+        title: 'Working Relationship',
+        description: 'Assess your working relationship with this colleague.',
+        questions: [
+          { text: 'How often do you work with this person?', type: 'multiple_choice' as const, required: true, options: ['Daily', 'Weekly', 'Monthly', 'Occasionally'] },
+          { text: 'What is your relationship to this person?', type: 'multiple_choice' as const, required: true, options: ['Manager', 'Direct report', 'Peer/colleague', 'Cross-functional partner', 'External stakeholder'] },
+        ],
+      },
+      {
+        title: 'Competency Assessment',
+        description: 'Rate this person on the following competencies.',
+        questions: [
+          { text: 'Communication - Clearly conveys ideas and listens actively', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Rarely', 'Sometimes', 'Often', 'Usually', 'Always'] } },
+          { text: 'Collaboration - Works effectively with others across teams', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Rarely', 'Sometimes', 'Often', 'Usually', 'Always'] } },
+          { text: 'Accountability - Takes ownership and follows through on commitments', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Rarely', 'Sometimes', 'Often', 'Usually', 'Always'] } },
+          { text: 'Innovation - Brings new ideas and approaches to solve problems', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Rarely', 'Sometimes', 'Often', 'Usually', 'Always'] } },
+          { text: 'Leadership - Inspires and guides others toward shared goals', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Rarely', 'Sometimes', 'Often', 'Usually', 'Always'] } },
+        ],
+      },
+      {
+        title: 'Open Feedback',
+        description: 'Share specific observations and suggestions.',
+        questions: [
+          { text: 'What does this person do particularly well? Please provide specific examples.', type: 'text' as const, required: true },
+          { text: 'What is one area where this person could improve? Please be constructive and specific.', type: 'text' as const, required: true },
+          { text: 'Any additional comments?', type: 'text' as const, required: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'rt-4', org_id: 'org-1', name: 'Probation Review', type: 'probation' as const,
+    is_default: false, created_by: 'emp-17', created_at: '2025-12-15T09:00:00Z',
+    sections: [
+      {
+        title: 'Role Fit Assessment',
+        description: 'Evaluate how well the employee has adapted to their role during the probation period.',
+        questions: [
+          { text: 'How well has the employee adapted to the role requirements?', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Poor', 'Below Average', 'Satisfactory', 'Good', 'Excellent'] } },
+          { text: 'Has the employee demonstrated the skills outlined in the job description?', type: 'multiple_choice' as const, required: true, options: ['Fully demonstrated', 'Mostly demonstrated', 'Partially demonstrated', 'Not yet demonstrated'] },
+          { text: 'Describe specific examples of role-relevant contributions.', type: 'text' as const, required: true },
+        ],
+      },
+      {
+        title: 'Cultural Integration',
+        description: 'Assess integration with team and organizational culture.',
+        questions: [
+          { text: 'How well has the employee integrated with the team?', type: 'rating' as const, required: true, scale: { min: 1, max: 5, labels: ['Struggling', 'Some challenges', 'Integrating', 'Well integrated', 'Fully integrated'] } },
+          { text: 'Does the employee demonstrate alignment with company values?', type: 'multiple_choice' as const, required: true, options: ['Strong alignment', 'Good alignment', 'Developing alignment', 'Limited alignment'] },
+          { text: 'Comments on cultural fit and team dynamics.', type: 'text' as const, required: false },
+        ],
+      },
+      {
+        title: 'Probation Decision',
+        description: 'Final recommendation for the probation period.',
+        questions: [
+          { text: 'Probation outcome recommendation', type: 'multiple_choice' as const, required: true, options: ['Confirm employment', 'Extend probation (30 days)', 'Extend probation (60 days)', 'Do not confirm - end employment'] },
+          { text: 'Key development areas for the first year if confirmed.', type: 'text' as const, required: true },
+          { text: 'Overall comments and justification for decision.', type: 'text' as const, required: true },
+        ],
+      },
+    ],
+  },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: App Assignments ────────────────────────────────────
+export const demoAppAssignments = [
+  { id: 'aa-1', appId: 'app-1', employeeId: 'emp-1', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-03-15T00:00:00Z', installedAt: '2025-03-15T01:00:00Z' },
+  { id: 'aa-2', appId: 'app-2', employeeId: 'emp-1', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-03-15T00:00:00Z', installedAt: '2025-03-15T01:00:00Z' },
+  { id: 'aa-3', appId: 'app-4', employeeId: 'emp-1', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-03-15T00:00:00Z', installedAt: '2025-03-15T01:30:00Z' },
+  { id: 'aa-4', appId: 'app-7', employeeId: 'emp-1', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-03-15T00:00:00Z', installedAt: '2025-03-15T02:00:00Z' },
+  { id: 'aa-5', appId: 'app-1', employeeId: 'emp-3', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-06-01T00:00:00Z', installedAt: '2025-06-01T01:00:00Z' },
+  { id: 'aa-6', appId: 'app-3', employeeId: 'emp-13', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-09-10T00:00:00Z', installedAt: '2025-09-10T02:00:00Z' },
+  { id: 'aa-7', appId: 'app-10', employeeId: 'emp-13', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-09-10T00:00:00Z', installedAt: '2025-09-10T02:30:00Z' },
+  { id: 'aa-8', appId: 'app-5', employeeId: 'emp-24', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-05-20T00:00:00Z', installedAt: '2025-05-20T01:00:00Z' },
+  { id: 'aa-9', appId: 'app-9', employeeId: 'emp-6', org_id: 'org-1', status: 'pending' as const, assignedAt: '2026-02-27T00:00:00Z', installedAt: null },
+  { id: 'aa-10', appId: 'app-4', employeeId: 'emp-30', org_id: 'org-1', status: 'assigned' as const, assignedAt: '2026-02-25T00:00:00Z', installedAt: null },
+  { id: 'aa-11', appId: 'app-8', employeeId: 'emp-14', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-04-01T00:00:00Z', installedAt: '2025-04-01T00:30:00Z' },
+  { id: 'aa-12', appId: 'app-12', employeeId: 'emp-29', org_id: 'org-1', status: 'installed' as const, assignedAt: '2025-02-15T00:00:00Z', installedAt: '2025-02-16T09:00:00Z' },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: App Catalog ────────────────────────────────────
+export const demoAppCatalog = [
+  { id: 'app-1', org_id: 'org-1', name: 'Slack', vendor: 'Salesforce', category: 'communication' as const, icon: 'MessageSquare', platform: 'cross-platform', version: '4.38.0', licenseType: 'per_seat' as const, licenseCost: 12.50, licenseCount: 200, assignedCount: 178, isRequired: true, autoInstall: true },
+  { id: 'app-2', org_id: 'org-1', name: 'Zoom', vendor: 'Zoom', category: 'communication' as const, icon: 'Video', platform: 'cross-platform', version: '6.2.0', licenseType: 'per_seat' as const, licenseCost: 13.33, licenseCount: 200, assignedCount: 195, isRequired: true, autoInstall: true },
+  { id: 'app-3', org_id: 'org-1', name: 'VS Code', vendor: 'Microsoft', category: 'development' as const, icon: 'Code', platform: 'cross-platform', version: '1.96.0', licenseType: 'free' as const, licenseCost: 0, licenseCount: 999, assignedCount: 42, isRequired: false, autoInstall: false },
+  { id: 'app-4', org_id: 'org-1', name: '1Password', vendor: 'AgileBits', category: 'security' as const, icon: 'KeyRound', platform: 'cross-platform', version: '8.10.28', licenseType: 'per_seat' as const, licenseCost: 7.99, licenseCount: 200, assignedCount: 185, isRequired: true, autoInstall: true },
+  { id: 'app-5', org_id: 'org-1', name: 'Figma', vendor: 'Figma', category: 'design' as const, icon: 'Palette', platform: 'cross-platform', version: '124.0', licenseType: 'per_seat' as const, licenseCost: 15.00, licenseCount: 30, assignedCount: 22, isRequired: false, autoInstall: false },
+  { id: 'app-6', org_id: 'org-1', name: 'Chrome', vendor: 'Google', category: 'productivity' as const, icon: 'Globe', platform: 'cross-platform', version: '122.0', licenseType: 'free' as const, licenseCost: 0, licenseCount: 999, assignedCount: 200, isRequired: true, autoInstall: true },
+  { id: 'app-7', org_id: 'org-1', name: 'Microsoft 365', vendor: 'Microsoft', category: 'productivity' as const, icon: 'FileSpreadsheet', platform: 'cross-platform', version: '16.0', licenseType: 'enterprise' as const, licenseCost: 35.00, licenseCount: 500, assignedCount: 423, isRequired: true, autoInstall: true },
+  { id: 'app-8', org_id: 'org-1', name: 'CrowdStrike Falcon', vendor: 'CrowdStrike', category: 'security' as const, icon: 'ShieldCheck', platform: 'cross-platform', version: '7.10', licenseType: 'enterprise' as const, licenseCost: 8.99, licenseCount: 200, assignedCount: 190, isRequired: true, autoInstall: true },
+  { id: 'app-9', org_id: 'org-1', name: 'Notion', vendor: 'Notion Labs', category: 'productivity' as const, icon: 'BookOpen', platform: 'cross-platform', version: '3.5.0', licenseType: 'per_seat' as const, licenseCost: 10.00, licenseCount: 100, assignedCount: 87, isRequired: false, autoInstall: false },
+  { id: 'app-10', org_id: 'org-1', name: 'GitHub Enterprise', vendor: 'GitHub', category: 'development' as const, icon: 'GitBranch', platform: 'cross-platform', version: '3.12', licenseType: 'per_seat' as const, licenseCost: 21.00, licenseCount: 50, assignedCount: 42, isRequired: false, autoInstall: false },
+  { id: 'app-11', org_id: 'org-1', name: 'Postman', vendor: 'Postman', category: 'development' as const, icon: 'Send', platform: 'cross-platform', version: '11.0', licenseType: 'per_seat' as const, licenseCost: 14.00, licenseCount: 30, assignedCount: 25, isRequired: false, autoInstall: false },
+  { id: 'app-12', org_id: 'org-1', name: 'SAP SuccessFactors', vendor: 'SAP', category: 'hr' as const, icon: 'Users', platform: 'web', version: '2H 2025', licenseType: 'enterprise' as const, licenseCost: 22.00, licenseCount: 300, assignedCount: 280, isRequired: true, autoInstall: false },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: Device Actions ────────────────────────────────────
+export const demoDeviceActions = [
+  { id: 'da-1', deviceId: 'md-13', org_id: 'org-1', actionType: 'lock' as const, status: 'completed' as const, initiatedBy: 'emp-1', notes: 'Device reported lost by field team — locked remotely', createdAt: '2026-01-16T08:00:00Z', completedAt: '2026-01-16T08:02:00Z' },
+  { id: 'da-2', deviceId: 'md-13', org_id: 'org-1', actionType: 'wipe' as const, status: 'completed' as const, initiatedBy: 'emp-1', notes: 'Full device wipe after loss confirmation', createdAt: '2026-01-20T10:00:00Z', completedAt: '2026-01-20T10:15:00Z' },
+  { id: 'da-3', deviceId: 'md-3', org_id: 'org-1', actionType: 'update_os' as const, status: 'pending' as const, initiatedBy: 'emp-14', notes: 'Push Windows 11 23H2 update for compliance', createdAt: '2026-02-27T14:00:00Z', completedAt: null },
+  { id: 'da-4', deviceId: 'md-5', org_id: 'org-1', actionType: 'install_app' as const, status: 'in_progress' as const, initiatedBy: 'emp-14', notes: 'Installing 1Password on dev MacBook', createdAt: '2026-02-28T09:30:00Z', completedAt: null },
+  { id: 'da-5', deviceId: 'md-12', org_id: 'org-1', actionType: 'push_config' as const, status: 'failed' as const, initiatedBy: 'emp-14', notes: 'Encryption policy push failed — device offline', createdAt: '2026-02-25T11:00:00Z', completedAt: '2026-02-25T11:05:00Z' },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: Device Inventory ────────────────────────────────────
+export const demoDeviceInventory = [
+  { id: 'inv-it-1', org_id: 'org-1', name: 'MacBook Pro 16" M3 Max', type: 'laptop', platform: 'macos', serialNumber: 'C02WH2026NEW', status: 'in_warehouse' as const, condition: 'new' as const, purchaseDate: '2026-02-01', purchaseCost: 3499, warrantyExpiry: '2029-02-01', assignedTo: null, warehouseLocation: 'Lagos HQ - IT Store Room A', notes: 'Reserved for incoming VP Engineering' },
+  { id: 'inv-it-2', org_id: 'org-1', name: 'Dell Latitude 5550', type: 'laptop', platform: 'windows', serialNumber: 'DL5550NEW02', status: 'in_warehouse' as const, condition: 'new' as const, purchaseDate: '2026-01-15', purchaseCost: 1299, warrantyExpiry: '2029-01-15', assignedTo: null, warehouseLocation: 'Lagos HQ - IT Store Room A', notes: null },
+  { id: 'inv-it-3', org_id: 'org-1', name: 'MacBook Air M3', type: 'laptop', platform: 'macos', serialNumber: 'C02AIR2026', status: 'in_transit' as const, condition: 'new' as const, purchaseDate: '2026-02-10', purchaseCost: 1299, warrantyExpiry: '2029-02-10', assignedTo: 'emp-30', warehouseLocation: null, notes: 'Shipping to new hire in Accra office' },
+  { id: 'inv-it-4', org_id: 'org-1', name: 'ThinkPad X1 Carbon Gen 11', type: 'laptop', platform: 'windows', serialNumber: 'PF3XRET01', status: 'retired' as const, condition: 'poor' as const, purchaseDate: '2022-06-01', purchaseCost: 1849, warrantyExpiry: '2025-06-01', assignedTo: null, warehouseLocation: 'Lagos HQ - IT Store Room B', notes: 'Battery swelling — retired from fleet' },
+  { id: 'inv-it-5', org_id: 'org-1', name: 'iPad Pro 12.9" M2', type: 'tablet', platform: 'ios', serialNumber: 'DMQWH2025', status: 'assigned' as const, condition: 'good' as const, purchaseDate: '2025-08-20', purchaseCost: 1099, warrantyExpiry: '2027-08-20', assignedTo: 'emp-10', warehouseLocation: null, notes: null },
+  { id: 'inv-it-6', org_id: 'org-1', name: 'Galaxy Tab S9', type: 'tablet', platform: 'android', serialNumber: 'SGT9WH2025', status: 'lost' as const, condition: 'good' as const, purchaseDate: '2025-06-20', purchaseCost: 849, warrantyExpiry: '2027-06-20', assignedTo: null, warehouseLocation: null, notes: 'Reported lost by field operations team' },
+  { id: 'inv-it-7', org_id: 'org-1', name: 'HP EliteBook 840 G11', type: 'laptop', platform: 'windows', serialNumber: 'HP840WH01', status: 'in_warehouse' as const, condition: 'good' as const, purchaseDate: '2025-12-01', purchaseCost: 1449, warrantyExpiry: '2028-12-01', assignedTo: null, warehouseLocation: 'Lagos HQ - IT Store Room A', notes: 'Returned from emp-20, wiped and ready' },
+  { id: 'inv-it-8', org_id: 'org-1', name: 'iPhone 16 Pro', type: 'phone', platform: 'ios', serialNumber: 'F2LNEW2026', status: 'in_warehouse' as const, condition: 'new' as const, purchaseDate: '2026-02-15', purchaseCost: 999, warrantyExpiry: '2028-02-15', assignedTo: null, warehouseLocation: 'Lagos HQ - IT Store Room A', notes: 'For executive team refresh' },
+  { id: 'inv-it-9', org_id: 'org-1', name: 'Samsung Galaxy S24 Ultra', type: 'phone', platform: 'android', serialNumber: 'R58WH2025', status: 'assigned' as const, condition: 'good' as const, purchaseDate: '2025-11-05', purchaseCost: 1199, warrantyExpiry: '2027-11-05', assignedTo: 'emp-11', warehouseLocation: null, notes: null },
+  { id: 'inv-it-10', org_id: 'org-1', name: 'Surface Pro 10', type: 'tablet', platform: 'windows', serialNumber: 'MSSP10WH01', status: 'in_transit' as const, condition: 'new' as const, purchaseDate: '2026-02-20', purchaseCost: 1599, warrantyExpiry: '2029-02-20', assignedTo: 'emp-16', warehouseLocation: null, notes: 'Replacement for cracked screen unit' },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: Managed Devices (MDM) ────────────────────────────────────
+export const demoManagedDevices = [
+  { id: 'md-1', org_id: 'org-1', employee_id: 'emp-1', name: "Kwame's MacBook Pro", type: 'laptop', platform: 'macos' as const, manufacturer: 'Apple', model: 'MacBook Pro 16" M3 Max', serialNumber: 'C02ZN1YFLVDM', osVersion: 'macOS 15.3', lastSeen: '2026-02-28T09:15:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 1024, enrolledAt: '2025-03-15T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-2', org_id: 'org-1', employee_id: 'emp-3', name: "Ama's ThinkPad", type: 'laptop', platform: 'windows' as const, manufacturer: 'Lenovo', model: 'ThinkPad X1 Carbon Gen 12', serialNumber: 'PF4NKWX9', osVersion: 'Windows 11 23H2', lastSeen: '2026-02-28T08:45:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 512, enrolledAt: '2025-06-01T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-3', org_id: 'org-1', employee_id: 'emp-6', name: "Finance Dell", type: 'desktop', platform: 'windows' as const, manufacturer: 'Dell', model: 'OptiPlex 7010', serialNumber: 'DL7010XZ34', osVersion: 'Windows 11 22H2', lastSeen: '2026-02-27T17:30:00Z', status: 'active' as const, isEncrypted: false, isCompliant: false, storageCapacityGb: 256, enrolledAt: '2025-01-10T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-4', org_id: 'org-1', employee_id: 'emp-10', name: "Ops iPad Pro", type: 'tablet', platform: 'ios' as const, manufacturer: 'Apple', model: 'iPad Pro 12.9"', serialNumber: 'DMQVK3XFHG', osVersion: 'iPadOS 18.3', lastSeen: '2026-02-26T12:00:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 256, enrolledAt: '2025-08-20T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-5', org_id: 'org-1', employee_id: 'emp-13', name: "Dev MacBook Air", type: 'laptop', platform: 'macos' as const, manufacturer: 'Apple', model: 'MacBook Air M3', serialNumber: 'C02FM49QLVDL', osVersion: 'macOS 15.2', lastSeen: '2026-02-28T10:30:00Z', status: 'active' as const, isEncrypted: true, isCompliant: false, storageCapacityGb: 512, enrolledAt: '2025-09-10T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-6', org_id: 'org-1', employee_id: 'emp-14', name: "Dev Linux Workstation", type: 'desktop', platform: 'linux' as const, manufacturer: 'System76', model: 'Thelio Major', serialNumber: 'SYS76TH2024', osVersion: 'Ubuntu 24.04 LTS', lastSeen: '2026-02-28T11:00:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 2048, enrolledAt: '2025-04-01T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-7', org_id: 'org-1', employee_id: 'emp-16', name: "QA Surface Pro", type: 'tablet', platform: 'windows' as const, manufacturer: 'Microsoft', model: 'Surface Pro 10', serialNumber: 'MSSP10ABC789', osVersion: 'Windows 11 23H2', lastSeen: '2026-02-27T16:45:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 512, enrolledAt: '2025-07-15T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-8', org_id: 'org-1', employee_id: 'emp-24', name: "Marketing MacBook", type: 'laptop', platform: 'macos' as const, manufacturer: 'Apple', model: 'MacBook Pro 14" M3 Pro', serialNumber: 'C02KP8XYLVDN', osVersion: 'macOS 15.3', lastSeen: '2026-02-28T09:00:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 512, enrolledAt: '2025-05-20T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-9', org_id: 'org-1', employee_id: 'emp-1', name: "Kwame's iPhone", type: 'phone', platform: 'ios' as const, manufacturer: 'Apple', model: 'iPhone 16 Pro', serialNumber: 'F2LXK3VMHG', osVersion: 'iOS 18.3', lastSeen: '2026-02-28T11:30:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 256, enrolledAt: '2025-10-01T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-10', org_id: 'org-1', employee_id: 'emp-11', name: "Ops Android Phone", type: 'phone', platform: 'android' as const, manufacturer: 'Samsung', model: 'Galaxy S24 Ultra', serialNumber: 'R58T50BZKNE', osVersion: 'Android 15', lastSeen: '2026-02-25T14:20:00Z', status: 'active' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 512, enrolledAt: '2025-11-05T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-11', org_id: 'org-1', employee_id: null, name: "Spare Laptop 1", type: 'laptop', platform: 'windows' as const, manufacturer: 'HP', model: 'EliteBook 840 G11', serialNumber: 'HP840G11ZZ01', osVersion: 'Windows 11 23H2', lastSeen: '2026-02-10T08:00:00Z', status: 'inactive' as const, isEncrypted: true, isCompliant: true, storageCapacityGb: 512, enrolledAt: '2025-12-01T00:00:00Z', mdmProfileInstalled: false },
+  { id: 'md-12', org_id: 'org-1', employee_id: 'emp-29', name: "HR Dell Latitude", type: 'laptop', platform: 'windows' as const, manufacturer: 'Dell', model: 'Latitude 5550', serialNumber: 'DL5550YN78', osVersion: 'Windows 11 22H2', lastSeen: '2026-02-20T09:10:00Z', status: 'active' as const, isEncrypted: false, isCompliant: false, storageCapacityGb: 256, enrolledAt: '2025-02-15T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-13', org_id: 'org-1', employee_id: null, name: "Lost Field Tablet", type: 'tablet', platform: 'android' as const, manufacturer: 'Samsung', model: 'Galaxy Tab S9', serialNumber: 'SGT9FIELD01', osVersion: 'Android 14', lastSeen: '2026-01-15T10:00:00Z', status: 'lost' as const, isEncrypted: true, isCompliant: false, storageCapacityGb: 128, enrolledAt: '2025-06-20T00:00:00Z', mdmProfileInstalled: true },
+  { id: 'md-14', org_id: 'org-1', employee_id: null, name: "Retired ThinkPad", type: 'laptop', platform: 'windows' as const, manufacturer: 'Lenovo', model: 'ThinkPad T490', serialNumber: 'PF2JKRX1', osVersion: 'Windows 10 22H2', lastSeen: '2025-12-31T17:00:00Z', status: 'retired' as const, isEncrypted: true, isCompliant: false, storageCapacityGb: 256, enrolledAt: '2022-03-01T00:00:00Z', mdmProfileInstalled: false },
+  { id: 'md-15', org_id: 'org-1', employee_id: 'emp-30', name: "New Hire Setup", type: 'laptop', platform: 'macos' as const, manufacturer: 'Apple', model: 'MacBook Air M3', serialNumber: 'C02NEW2026', osVersion: 'macOS 15.3', lastSeen: null, status: 'pending_setup' as const, isEncrypted: false, isCompliant: false, storageCapacityGb: 512, enrolledAt: '2026-02-25T00:00:00Z', mdmProfileInstalled: false },
+]
+
+// === From agent-a7be8979 ===
+// ─── IT Cloud: Security Policies ────────────────────────────────────
+export const demoSecurityPoliciesIT = [
+  { id: 'sp-1', org_id: 'org-1', name: 'Password Complexity', type: 'password' as const, settings: { minLength: 12, requireUppercase: true, requireNumbers: true, requireSpecial: true, expiryDays: 90, preventReuse: 5 }, isActive: true, appliesTo: 'all' as const, targetValue: null, createdAt: '2025-01-01T00:00:00Z' },
+  { id: 'sp-2', org_id: 'org-1', name: 'Full Disk Encryption', type: 'encryption' as const, settings: { algorithm: 'AES-256', enforceOnEnroll: true, allowUserDecrypt: false }, isActive: true, appliesTo: 'all' as const, targetValue: null, createdAt: '2025-01-01T00:00:00Z' },
+  { id: 'sp-3', org_id: 'org-1', name: 'Automatic OS Updates', type: 'os_update' as const, settings: { maxDeferDays: 7, allowUserDefer: true, criticalImmediate: true, maintenanceWindow: '02:00-05:00' }, isActive: true, appliesTo: 'all' as const, targetValue: null, createdAt: '2025-03-15T00:00:00Z' },
+  { id: 'sp-4', org_id: 'org-1', name: 'Screen Lock Timeout', type: 'screensaver' as const, settings: { lockAfterMinutes: 5, requirePasswordOnWake: true, lockOnLidClose: true }, isActive: true, appliesTo: 'all' as const, targetValue: null, createdAt: '2025-01-01T00:00:00Z' },
+]
+
+// === From agent-abd1acb5 ===
+// Advanced Expense Policies (rules-based)
+export const demoAdvancedExpensePolicies = [
+  { id: 'aep-1', org_id: 'org-1', name: 'Maximum Meal Expense', is_active: true, rules: [{ field: 'amount', operator: '>', value: 75, action: 'block' as const }, { field: 'category', operator: '=', value: 'Meals', action: 'require_approval' as const }], applies_to: 'all' as const, target_values: null, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'aep-2', org_id: 'org-1', name: 'Daily Travel Cap', is_active: true, rules: [{ field: 'amount', operator: '>', value: 500, action: 'require_approval' as const }, { field: 'category', operator: '=', value: 'Travel', action: 'warn' as const }], applies_to: 'all' as const, target_values: null, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'aep-3', org_id: 'org-1', name: 'Receipt Required Over $25', is_active: true, rules: [{ field: 'amount', operator: '>', value: 25, action: 'require_approval' as const }], applies_to: 'all' as const, target_values: null, created_at: '2025-06-01T00:00:00Z' },
+]
+
+// === From agent-abd1acb5 ===
+// Duplicate Detection
+export const demoDuplicateDetections = [
+  { id: 'dd-1', org_id: 'org-1', expense_item_id: 'ei-3', duplicate_of_id: 'ei-1', similarity: 0.85, fields: { amount: false, category: false, vendor: true, date: true, description: false }, status: 'flagged' as const, reviewed_by: null, created_at: '2026-02-11T00:00:00Z', expense_description: 'Client dinner', duplicate_description: 'Flight to Abidjan', expense_amount: 280, duplicate_amount: 450, employee_id: 'emp-5' },
+  { id: 'dd-2', org_id: 'org-1', expense_item_id: 'ei-4', duplicate_of_id: 'ei-5', similarity: 0.72, fields: { amount: false, category: true, vendor: false, date: true, description: false }, status: 'dismissed' as const, reviewed_by: 'emp-17', created_at: '2026-02-19T00:00:00Z', expense_description: 'Booth rental', duplicate_description: 'Printed materials', expense_amount: 500, duplicate_amount: 350, employee_id: 'emp-18' },
+  { id: 'dd-3', org_id: 'org-1', expense_item_id: 'ei-2', duplicate_of_id: 'ei-2', similarity: 0.98, fields: { amount: true, category: true, vendor: true, date: true, description: true }, status: 'confirmed_duplicate' as const, reviewed_by: 'emp-17', created_at: '2026-02-12T00:00:00Z', expense_description: 'Hotel (2 nights)', duplicate_description: 'Hotel (2 nights) - duplicate submission', expense_amount: 520, duplicate_amount: 520, employee_id: 'emp-5' },
+]
+
+// === From agent-abd1acb5 ===
+// Advanced Mileage Entries
+export const demoMileageEntries = [
+  { id: 'me-1', org_id: 'org-1', employee_id: 'emp-5', date: '2026-02-10', start_location: 'Lagos Office, Victoria Island', end_location: 'Ikeja Client Site', distance_miles: 17.4, rate: 0.67, amount: 11.66, purpose: 'Client site visit for Q1 review', vehicle_type: 'personal' as const, trip_type: 'round_trip' as const, status: 'approved' as const, approved_by: 'emp-17', created_at: '2026-02-10T00:00:00Z' },
+  { id: 'me-2', org_id: 'org-1', employee_id: 'emp-18', date: '2026-02-14', start_location: 'Accra HQ', end_location: 'Tema Port Office', distance_miles: 21.7, rate: 0.67, amount: 14.54, purpose: 'Recruitment event setup', vehicle_type: 'personal' as const, trip_type: 'one_way' as const, status: 'approved' as const, approved_by: 'emp-17', created_at: '2026-02-14T00:00:00Z' },
+  { id: 'me-3', org_id: 'org-1', employee_id: 'emp-15', date: '2026-02-18', start_location: 'Nairobi Office, Westlands', end_location: 'Thika Road Industrial Park', distance_miles: 26.1, rate: 0.67, amount: 17.49, purpose: 'Vendor meeting for IT procurement', vehicle_type: 'company' as const, trip_type: 'round_trip' as const, status: 'approved' as const, approved_by: 'emp-13', created_at: '2026-02-18T00:00:00Z' },
+  { id: 'me-4', org_id: 'org-1', employee_id: 'emp-29', date: '2026-02-20', start_location: 'Dakar Office', end_location: 'Rufisque Branch', distance_miles: 15.5, rate: 0.67, amount: 10.39, purpose: 'Branch audit and compliance check', vehicle_type: 'personal' as const, trip_type: 'one_way' as const, status: 'pending' as const, approved_by: null, created_at: '2026-02-20T00:00:00Z' },
+  { id: 'me-5', org_id: 'org-1', employee_id: 'emp-5', date: '2026-02-22', start_location: 'Lagos Office, Victoria Island', end_location: 'Lekki Free Trade Zone', distance_miles: 31.0, rate: 0.67, amount: 20.77, purpose: 'Partner meeting at trade zone offices', vehicle_type: 'personal' as const, trip_type: 'round_trip' as const, status: 'pending' as const, approved_by: null, created_at: '2026-02-22T00:00:00Z' },
+  { id: 'me-6', org_id: 'org-1', employee_id: 'emp-18', date: '2026-02-25', start_location: 'Accra HQ', end_location: 'University of Ghana, Legon', distance_miles: 8.7, rate: 0.67, amount: 5.83, purpose: 'Campus recruiting event', vehicle_type: 'company' as const, trip_type: 'round_trip' as const, status: 'rejected' as const, approved_by: 'emp-17', created_at: '2026-02-25T00:00:00Z' },
+]
+
+// === From agent-abd1acb5 ===
+// Receipt Matching
+export const demoReceiptMatches = [
+  { id: 'rm-1', org_id: 'org-1', expense_item_id: 'ei-1', receipt_url: '/receipts/flight_abidjan.pdf', extracted_amount: 450, extracted_currency: 'USD', extracted_vendor: 'Air Cote d\'Ivoire', extracted_date: '2026-02-08', match_status: 'matched' as const, confidence: 0.97, discrepancy_notes: null, created_at: '2026-02-10T00:00:00Z' },
+  { id: 'rm-2', org_id: 'org-1', expense_item_id: 'ei-2', receipt_url: '/receipts/hotel_invoice.pdf', extracted_amount: 520, extracted_currency: 'USD', extracted_vendor: 'Novotel Abidjan', extracted_date: '2026-02-09', match_status: 'matched' as const, confidence: 0.95, discrepancy_notes: null, created_at: '2026-02-10T00:00:00Z' },
+  { id: 'rm-3', org_id: 'org-1', expense_item_id: 'ei-3', receipt_url: '/receipts/dinner_receipt.jpg', extracted_amount: 280, extracted_currency: 'USD', extracted_vendor: 'Le Plateau Restaurant', extracted_date: '2026-02-10', match_status: 'matched' as const, confidence: 0.92, discrepancy_notes: null, created_at: '2026-02-11T00:00:00Z' },
+  { id: 'rm-4', org_id: 'org-1', expense_item_id: 'ei-4', receipt_url: '/receipts/booth_rental.pdf', extracted_amount: 500, extracted_currency: 'USD', extracted_vendor: 'Lagos Convention Center', extracted_date: '2026-02-16', match_status: 'matched' as const, confidence: 0.99, discrepancy_notes: null, created_at: '2026-02-18T00:00:00Z' },
+  { id: 'rm-5', org_id: 'org-1', expense_item_id: 'ei-5', receipt_url: '/receipts/materials_order.pdf', extracted_amount: 350, extracted_currency: 'USD', extracted_vendor: 'PrintMax Lagos', extracted_date: '2026-02-15', match_status: 'matched' as const, confidence: 0.94, discrepancy_notes: null, created_at: '2026-02-18T00:00:00Z' },
+  { id: 'rm-6', org_id: 'org-1', expense_item_id: 'ei-3', receipt_url: '/receipts/dinner_alt.jpg', extracted_amount: 310, extracted_currency: 'USD', extracted_vendor: 'Le Plateau Restaurant', extracted_date: '2026-02-10', match_status: 'mismatch_amount' as const, confidence: 0.78, discrepancy_notes: 'Receipt shows $310 but expense claims $280. Difference of $30.', created_at: '2026-02-11T00:00:00Z' },
+  { id: 'rm-7', org_id: 'org-1', expense_item_id: 'ei-1', receipt_url: '/receipts/flight_wrong_vendor.pdf', extracted_amount: 450, extracted_currency: 'USD', extracted_vendor: 'Kenya Airways', extracted_date: '2026-02-08', match_status: 'mismatch_vendor' as const, confidence: 0.65, discrepancy_notes: 'Vendor mismatch: receipt from Kenya Airways but expense filed under Air Cote d\'Ivoire', created_at: '2026-02-10T00:00:00Z' },
+  { id: 'rm-8', org_id: 'org-1', expense_item_id: null, receipt_url: '/receipts/taxi_receipt.png', extracted_amount: 45, extracted_currency: 'USD', extracted_vendor: 'Uber Lagos', extracted_date: '2026-02-20', match_status: 'pending' as const, confidence: null, discrepancy_notes: null, created_at: '2026-02-21T00:00:00Z' },
+]
+
+// === From agent-abd1acb5 ===
+// Reimbursement Batches
+export const demoReimbursementBatches = [
+  { id: 'rb-1', org_id: 'org-1', status: 'completed' as const, method: 'payroll' as const, total_amount: 3350, currency: 'USD', employee_count: 2, processed_at: '2026-02-15T00:00:00Z', payroll_run_id: null, created_at: '2026-02-12T00:00:00Z', items: [
+    { id: 'ri-1', batch_id: 'rb-1', expense_report_id: 'exp-4', employee_id: 'emp-15', amount: 2100, currency: 'USD', status: 'processed' as const, notes: 'AfricaTech Conference reimbursement' },
+    { id: 'ri-2', batch_id: 'rb-1', expense_report_id: 'exp-1', employee_id: 'emp-5', amount: 1250, currency: 'USD', status: 'processed' as const, notes: 'Client Meeting Abidjan reimbursement' },
+  ]},
+  { id: 'rb-2', org_id: 'org-1', status: 'pending' as const, method: 'direct_deposit' as const, total_amount: 850, currency: 'USD', employee_count: 1, processed_at: null, payroll_run_id: null, created_at: '2026-02-25T00:00:00Z', items: [
+    { id: 'ri-3', batch_id: 'rb-2', expense_report_id: 'exp-2', employee_id: 'emp-18', amount: 850, currency: 'USD', status: 'pending' as const, notes: 'Recruitment Fair Lagos - awaiting processing' },
+  ]},
+]
+
+// === From agent-ade68ace ===
+export const demoHeadcountBudgetItems = [
+  // hcpos-1: Senior Relationship Manager
+  { id: 'hcbi-1', position_id: 'hcpos-1', category: 'base_salary' as const, amount: 65000, currency: 'USD', notes: 'Mid-range salary for senior role' },
+  { id: 'hcbi-2', position_id: 'hcpos-1', category: 'benefits' as const, amount: 16250, currency: 'USD', notes: '25% of base salary' },
+  { id: 'hcbi-3', position_id: 'hcpos-1', category: 'equipment' as const, amount: 3000, currency: 'USD', notes: 'Laptop and mobile setup' },
+  // hcpos-2: Branch Operations Manager
+  { id: 'hcbi-4', position_id: 'hcpos-2', category: 'base_salary' as const, amount: 56000, currency: 'USD', notes: null },
+  { id: 'hcbi-5', position_id: 'hcpos-2', category: 'benefits' as const, amount: 14000, currency: 'USD', notes: null },
+  { id: 'hcbi-6', position_id: 'hcpos-2', category: 'relocation' as const, amount: 8000, currency: 'USD', notes: 'Relocation from Nigeria to Ghana' },
+  // hcpos-3: Customer Service Representative (filled)
+  { id: 'hcbi-7', position_id: 'hcpos-3', category: 'base_salary' as const, amount: 27000, currency: 'USD', notes: null },
+  { id: 'hcbi-8', position_id: 'hcpos-3', category: 'benefits' as const, amount: 6750, currency: 'USD', notes: null },
+  // hcpos-4: Senior Credit Analyst
+  { id: 'hcbi-9', position_id: 'hcpos-4', category: 'base_salary' as const, amount: 70000, currency: 'USD', notes: null },
+  { id: 'hcbi-10', position_id: 'hcpos-4', category: 'benefits' as const, amount: 17500, currency: 'USD', notes: null },
+  { id: 'hcbi-11', position_id: 'hcpos-4', category: 'signing_bonus' as const, amount: 10000, currency: 'USD', notes: 'Competitive signing bonus for market' },
+  // hcpos-5: Trade Finance Specialist
+  { id: 'hcbi-12', position_id: 'hcpos-5', category: 'base_salary' as const, amount: 53000, currency: 'USD', notes: null },
+  { id: 'hcbi-13', position_id: 'hcpos-5', category: 'benefits' as const, amount: 13250, currency: 'USD', notes: null },
+  // hcpos-6: Process Automation Engineer
+  { id: 'hcbi-14', position_id: 'hcpos-6', category: 'base_salary' as const, amount: 72000, currency: 'USD', notes: null },
+  { id: 'hcbi-15', position_id: 'hcpos-6', category: 'benefits' as const, amount: 18000, currency: 'USD', notes: null },
+  { id: 'hcbi-16', position_id: 'hcpos-6', category: 'equipment' as const, amount: 5000, currency: 'USD', notes: 'High-spec dev workstation' },
+  // hcpos-7: Quality Assurance Analyst (filled)
+  { id: 'hcbi-17', position_id: 'hcpos-7', category: 'base_salary' as const, amount: 42000, currency: 'USD', notes: null },
+  { id: 'hcbi-18', position_id: 'hcpos-7', category: 'benefits' as const, amount: 10500, currency: 'USD', notes: null },
+  // hcpos-8: Staff Software Engineer
+  { id: 'hcbi-19', position_id: 'hcpos-8', category: 'base_salary' as const, amount: 110000, currency: 'USD', notes: null },
+  { id: 'hcbi-20', position_id: 'hcpos-8', category: 'benefits' as const, amount: 27500, currency: 'USD', notes: null },
+  { id: 'hcbi-21', position_id: 'hcpos-8', category: 'equity' as const, amount: 40000, currency: 'USD', notes: '4-year vest RSU grant' },
+  { id: 'hcbi-22', position_id: 'hcpos-8', category: 'signing_bonus' as const, amount: 15000, currency: 'USD', notes: null },
+  { id: 'hcbi-23', position_id: 'hcpos-8', category: 'equipment' as const, amount: 6000, currency: 'USD', notes: 'MacBook Pro + monitor setup' },
+  // hcpos-9: Cloud Infrastructure Engineer
+  { id: 'hcbi-24', position_id: 'hcpos-9', category: 'base_salary' as const, amount: 85000, currency: 'USD', notes: null },
+  { id: 'hcbi-25', position_id: 'hcpos-9', category: 'benefits' as const, amount: 21250, currency: 'USD', notes: null },
+  { id: 'hcbi-26', position_id: 'hcpos-9', category: 'equity' as const, amount: 25000, currency: 'USD', notes: null },
+  // hcpos-10: Mobile Developer
+  { id: 'hcbi-27', position_id: 'hcpos-10', category: 'base_salary' as const, amount: 60000, currency: 'USD', notes: null },
+  { id: 'hcbi-28', position_id: 'hcpos-10', category: 'benefits' as const, amount: 15000, currency: 'USD', notes: null },
+  // hcpos-11: Data Analyst (filled)
+  { id: 'hcbi-29', position_id: 'hcpos-11', category: 'base_salary' as const, amount: 42000, currency: 'USD', notes: null },
+  { id: 'hcbi-30', position_id: 'hcpos-11', category: 'benefits' as const, amount: 10500, currency: 'USD', notes: null },
+  // hcpos-12: Compensation & Benefits Analyst
+  { id: 'hcbi-31', position_id: 'hcpos-12', category: 'base_salary' as const, amount: 50000, currency: 'USD', notes: null },
+  { id: 'hcbi-32', position_id: 'hcpos-12', category: 'benefits' as const, amount: 12500, currency: 'USD', notes: null },
+  // hcpos-13: AML Compliance Officer
+  { id: 'hcbi-33', position_id: 'hcpos-13', category: 'base_salary' as const, amount: 78000, currency: 'USD', notes: null },
+  { id: 'hcbi-34', position_id: 'hcpos-13', category: 'benefits' as const, amount: 19500, currency: 'USD', notes: null },
+  { id: 'hcbi-35', position_id: 'hcpos-13', category: 'relocation' as const, amount: 12000, currency: 'USD', notes: 'International relocation package' },
+  // hcpos-14: Cybersecurity Analyst
+  { id: 'hcbi-36', position_id: 'hcpos-14', category: 'base_salary' as const, amount: 62000, currency: 'USD', notes: null },
+  { id: 'hcbi-37', position_id: 'hcpos-14', category: 'benefits' as const, amount: 15500, currency: 'USD', notes: null },
+  // hcpos-15: Financial Planning Manager
+  { id: 'hcbi-38', position_id: 'hcpos-15', category: 'base_salary' as const, amount: 72000, currency: 'USD', notes: null },
+  { id: 'hcbi-39', position_id: 'hcpos-15', category: 'benefits' as const, amount: 18000, currency: 'USD', notes: null },
+  { id: 'hcbi-40', position_id: 'hcpos-15', category: 'signing_bonus' as const, amount: 8000, currency: 'USD', notes: null },
+  // hcpos-16: Growth Marketing Manager
+  { id: 'hcbi-41', position_id: 'hcpos-16', category: 'base_salary' as const, amount: 58000, currency: 'USD', notes: null },
+  { id: 'hcbi-42', position_id: 'hcpos-16', category: 'benefits' as const, amount: 14500, currency: 'USD', notes: null },
+  // hcpos-17: Social Media Coordinator (cancelled)
+  { id: 'hcbi-43', position_id: 'hcpos-17', category: 'base_salary' as const, amount: 30000, currency: 'USD', notes: 'Cancelled — budget reallocated' },
+  { id: 'hcbi-44', position_id: 'hcpos-17', category: 'benefits' as const, amount: 7500, currency: 'USD', notes: null },
+]
+
+// === From agent-ade68ace ===
+// ─── Headcount Planning ─────────────────────────────────────
+
+export const demoHeadcountPlans = [
+  {
+    id: 'hcp-1', org_id: 'org-1', name: 'FY2026 Headcount Plan', fiscal_year: 'FY2026',
+    status: 'active' as const, total_budget: 2850000, currency: 'USD',
+    created_by: 'emp-17', approved_by: 'emp-24',
+    created_at: '2025-11-15T00:00:00Z', updated_at: '2026-01-10T00:00:00Z',
+  },
+  {
+    id: 'hcp-2', org_id: 'org-1', name: 'FY2025 Headcount Plan', fiscal_year: 'FY2025',
+    status: 'closed' as const, total_budget: 2200000, currency: 'USD',
+    created_by: 'emp-17', approved_by: 'emp-24',
+    created_at: '2024-11-01T00:00:00Z', updated_at: '2025-12-31T00:00:00Z',
+  },
+]
+
+// === From agent-ade68ace ===
+export const demoHeadcountPositions = [
+  // Retail Banking
+  { id: 'hcpos-1', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-1', job_title: 'Senior Relationship Manager', level: 'Senior', type: 'new' as const, status: 'approved' as const, priority: 'high' as const, salary_min: 55000, salary_max: 75000, currency: 'USD', target_start_date: '2026-04-01', filled_by: null, filled_at: null, justification: 'Growing client portfolio requires additional senior coverage in West Africa region', approved_by: 'emp-1', created_at: '2025-12-01T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
+  { id: 'hcpos-2', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-1', job_title: 'Branch Operations Manager', level: 'Manager', type: 'backfill' as const, status: 'open' as const, priority: 'critical' as const, salary_min: 48000, salary_max: 65000, currency: 'USD', target_start_date: '2026-03-15', filled_by: null, filled_at: null, justification: 'Backfill for departing branch manager in Accra office', approved_by: 'emp-1', created_at: '2026-01-05T00:00:00Z', updated_at: '2026-02-01T00:00:00Z' },
+  { id: 'hcpos-3', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-1', job_title: 'Customer Service Representative', level: 'Associate', type: 'new' as const, status: 'filled' as const, priority: 'medium' as const, salary_min: 22000, salary_max: 32000, currency: 'USD', target_start_date: '2026-02-01', filled_by: 'emp-4', filled_at: '2026-02-10T00:00:00Z', justification: 'New branch opening in Lagos requires front-desk staff', approved_by: 'emp-1', created_at: '2025-11-20T00:00:00Z', updated_at: '2026-02-10T00:00:00Z' },
+  // Corporate Banking
+  { id: 'hcpos-4', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-2', job_title: 'Senior Credit Analyst', level: 'Senior', type: 'new' as const, status: 'approved' as const, priority: 'high' as const, salary_min: 58000, salary_max: 80000, currency: 'USD', target_start_date: '2026-05-01', filled_by: null, filled_at: null, justification: 'Expanding corporate lending portfolio requires stronger credit analysis capability', approved_by: 'emp-5', created_at: '2025-12-10T00:00:00Z', updated_at: '2026-01-20T00:00:00Z' },
+  { id: 'hcpos-5', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-2', job_title: 'Trade Finance Specialist', level: 'Mid', type: 'new' as const, status: 'planned' as const, priority: 'medium' as const, salary_min: 45000, salary_max: 62000, currency: 'USD', target_start_date: '2026-07-01', filled_by: null, filled_at: null, justification: 'New trade finance product line launching in Q3', approved_by: null, created_at: '2026-01-15T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
+  // Operations
+  { id: 'hcpos-6', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-3', job_title: 'Process Automation Engineer', level: 'Senior', type: 'new' as const, status: 'open' as const, priority: 'high' as const, salary_min: 60000, salary_max: 85000, currency: 'USD', target_start_date: '2026-04-01', filled_by: null, filled_at: null, justification: 'Critical for digital transformation initiative to automate reconciliation processes', approved_by: 'emp-9', created_at: '2025-12-15T00:00:00Z', updated_at: '2026-02-01T00:00:00Z' },
+  { id: 'hcpos-7', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-3', job_title: 'Quality Assurance Analyst', level: 'Mid', type: 'conversion' as const, status: 'filled' as const, priority: 'low' as const, salary_min: 35000, salary_max: 48000, currency: 'USD', target_start_date: '2026-01-15', filled_by: 'emp-12', filled_at: '2026-01-20T00:00:00Z', justification: 'Converting contractor to full-time position based on performance', approved_by: 'emp-9', created_at: '2025-11-25T00:00:00Z', updated_at: '2026-01-20T00:00:00Z' },
+  // Technology
+  { id: 'hcpos-8', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-4', job_title: 'Staff Software Engineer', level: 'Staff', type: 'new' as const, status: 'open' as const, priority: 'critical' as const, salary_min: 90000, salary_max: 130000, currency: 'USD', target_start_date: '2026-03-01', filled_by: null, filled_at: null, justification: 'Technical leadership for mobile banking platform rebuild', approved_by: 'emp-13', created_at: '2025-11-20T00:00:00Z', updated_at: '2026-02-15T00:00:00Z' },
+  { id: 'hcpos-9', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-4', job_title: 'Cloud Infrastructure Engineer', level: 'Senior', type: 'new' as const, status: 'approved' as const, priority: 'high' as const, salary_min: 70000, salary_max: 100000, currency: 'USD', target_start_date: '2026-05-01', filled_by: null, filled_at: null, justification: 'Cloud migration project requires dedicated infrastructure expertise', approved_by: 'emp-13', created_at: '2025-12-20T00:00:00Z', updated_at: '2026-01-25T00:00:00Z' },
+  { id: 'hcpos-10', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-4', job_title: 'Mobile Developer', level: 'Mid', type: 'new' as const, status: 'planned' as const, priority: 'medium' as const, salary_min: 50000, salary_max: 70000, currency: 'USD', target_start_date: '2026-06-01', filled_by: null, filled_at: null, justification: 'Expanding mobile team for new banking app features', approved_by: null, created_at: '2026-01-10T00:00:00Z', updated_at: '2026-01-10T00:00:00Z' },
+  { id: 'hcpos-11', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-4', job_title: 'Data Analyst', level: 'Junior', type: 'new' as const, status: 'filled' as const, priority: 'medium' as const, salary_min: 35000, salary_max: 50000, currency: 'USD', target_start_date: '2026-02-01', filled_by: 'emp-16', filled_at: '2026-02-05T00:00:00Z', justification: 'Business intelligence team growth to support reporting needs', approved_by: 'emp-13', created_at: '2025-11-18T00:00:00Z', updated_at: '2026-02-05T00:00:00Z' },
+  // Human Resources
+  { id: 'hcpos-12', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-5', job_title: 'Compensation & Benefits Analyst', level: 'Mid', type: 'new' as const, status: 'approved' as const, priority: 'medium' as const, salary_min: 42000, salary_max: 58000, currency: 'USD', target_start_date: '2026-06-01', filled_by: null, filled_at: null, justification: 'Dedicated comp analyst needed as headcount grows across Africa', approved_by: 'emp-17', created_at: '2026-01-08T00:00:00Z', updated_at: '2026-02-01T00:00:00Z' },
+  // Risk & Compliance
+  { id: 'hcpos-13', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-6', job_title: 'AML Compliance Officer', level: 'Senior', type: 'new' as const, status: 'open' as const, priority: 'critical' as const, salary_min: 65000, salary_max: 90000, currency: 'USD', target_start_date: '2026-03-15', filled_by: null, filled_at: null, justification: 'Regulatory requirement for dedicated AML officer in Kenya operations', approved_by: 'emp-21', created_at: '2025-12-05T00:00:00Z', updated_at: '2026-02-10T00:00:00Z' },
+  { id: 'hcpos-14', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-6', job_title: 'Cybersecurity Analyst', level: 'Mid', type: 'new' as const, status: 'planned' as const, priority: 'high' as const, salary_min: 52000, salary_max: 72000, currency: 'USD', target_start_date: '2026-08-01', filled_by: null, filled_at: null, justification: 'Strengthening cybersecurity posture per board mandate', approved_by: null, created_at: '2026-02-01T00:00:00Z', updated_at: '2026-02-01T00:00:00Z' },
+  // Finance
+  { id: 'hcpos-15', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-7', job_title: 'Financial Planning Manager', level: 'Manager', type: 'backfill' as const, status: 'approved' as const, priority: 'high' as const, salary_min: 60000, salary_max: 82000, currency: 'USD', target_start_date: '2026-04-15', filled_by: null, filled_at: null, justification: 'Replacing outgoing FP&A manager; critical for annual planning cycle', approved_by: 'emp-24', created_at: '2026-01-20T00:00:00Z', updated_at: '2026-02-05T00:00:00Z' },
+  // Marketing
+  { id: 'hcpos-16', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-8', job_title: 'Growth Marketing Manager', level: 'Manager', type: 'new' as const, status: 'planned' as const, priority: 'medium' as const, salary_min: 50000, salary_max: 68000, currency: 'USD', target_start_date: '2026-07-01', filled_by: null, filled_at: null, justification: 'New digital acquisition strategy requires dedicated growth lead', approved_by: null, created_at: '2026-02-10T00:00:00Z', updated_at: '2026-02-10T00:00:00Z' },
+  { id: 'hcpos-17', plan_id: 'hcp-1', org_id: 'org-1', department_id: 'dept-8', job_title: 'Social Media Coordinator', level: 'Junior', type: 'new' as const, status: 'cancelled' as const, priority: 'low' as const, salary_min: 25000, salary_max: 35000, currency: 'USD', target_start_date: '2026-05-01', filled_by: null, filled_at: null, justification: 'Budget reallocated to Growth Marketing Manager role', approved_by: null, created_at: '2025-12-01T00:00:00Z', updated_at: '2026-02-10T00:00:00Z' },
+  // FY2025 closed plan positions
+  { id: 'hcpos-18', plan_id: 'hcp-2', org_id: 'org-1', department_id: 'dept-4', job_title: 'Frontend Developer', level: 'Mid', type: 'new' as const, status: 'filled' as const, priority: 'high' as const, salary_min: 50000, salary_max: 70000, currency: 'USD', target_start_date: '2025-06-01', filled_by: 'emp-16', filled_at: '2025-06-15T00:00:00Z', justification: 'UX redesign project staffing', approved_by: 'emp-13', created_at: '2025-03-01T00:00:00Z', updated_at: '2025-06-15T00:00:00Z' },
+  { id: 'hcpos-19', plan_id: 'hcp-2', org_id: 'org-1', department_id: 'dept-1', job_title: 'Teller', level: 'Associate', type: 'backfill' as const, status: 'filled' as const, priority: 'medium' as const, salary_min: 18000, salary_max: 28000, currency: 'USD', target_start_date: '2025-04-01', filled_by: 'emp-4', filled_at: '2025-04-10T00:00:00Z', justification: 'Backfill for Lagos branch', approved_by: 'emp-1', created_at: '2025-02-01T00:00:00Z', updated_at: '2025-04-10T00:00:00Z' },
+]
+
+// === From agent-ae5f43e4 ===
+export const demoAutomationWorkflowRunSteps = [
+  // Run awr-1 (Onboarding - completed)
+  { id: 'awrs-1', runId: 'awr-1', stepId: 'aws-1', status: 'completed' as const, input: { to: 'a.diop@ecobank.com' }, output: { sent: true }, startedAt: '2026-02-10T09:00:00Z', completedAt: '2026-02-10T09:01:00Z' },
+  { id: 'awrs-2', runId: 'awr-1', stepId: 'aws-2', status: 'completed' as const, input: { apps: ['Slack', 'Gmail', 'JIRA', 'Confluence'] }, output: { assigned: 4 }, startedAt: '2026-02-10T09:01:00Z', completedAt: '2026-02-10T09:03:00Z' },
+  { id: 'awrs-3', runId: 'awr-1', stepId: 'aws-3', status: 'completed' as const, input: { deviceType: 'laptop' }, output: { deviceId: 'dev-50', model: 'MacBook Pro 14"' }, startedAt: '2026-02-10T09:03:00Z', completedAt: '2026-02-10T09:05:00Z' },
+  { id: 'awrs-4', runId: 'awr-1', stepId: 'aws-4', status: 'completed' as const, input: { duration: '1 day' }, output: { waited: true }, startedAt: '2026-02-10T09:05:00Z', completedAt: '2026-02-11T09:05:00Z' },
+  { id: 'awrs-5', runId: 'awr-1', stepId: 'aws-5', status: 'completed' as const, input: { reviewType: 'probation' }, output: { reviewId: 'rev-new-1' }, startedAt: '2026-02-10T09:07:00Z', completedAt: '2026-02-10T09:08:00Z' },
+  { id: 'awrs-6', runId: 'awr-1', stepId: 'aws-6', status: 'completed' as const, input: { managerId: 'emp-27' }, output: { notified: true }, startedAt: '2026-02-10T09:08:00Z', completedAt: '2026-02-10T09:09:00Z' },
+  { id: 'awrs-7', runId: 'awr-1', stepId: 'aws-7', status: 'completed' as const, input: { courses: 3 }, output: { enrolled: 3 }, startedAt: '2026-02-10T09:09:00Z', completedAt: '2026-02-10T09:15:00Z' },
+
+  // Run awr-6 (Onboarding - running)
+  { id: 'awrs-8', runId: 'awr-6', stepId: 'aws-1', status: 'completed' as const, input: { to: 'a.traore@ecobank.com' }, output: { sent: true }, startedAt: '2026-02-25T08:00:00Z', completedAt: '2026-02-25T08:01:00Z' },
+  { id: 'awrs-9', runId: 'awr-6', stepId: 'aws-2', status: 'completed' as const, input: { apps: ['Slack', 'Gmail', 'JIRA'] }, output: { assigned: 3 }, startedAt: '2026-02-25T08:01:00Z', completedAt: '2026-02-25T08:03:00Z' },
+  { id: 'awrs-10', runId: 'awr-6', stepId: 'aws-3', status: 'running' as const, input: { deviceType: 'laptop' }, output: null, startedAt: '2026-02-25T08:03:00Z', completedAt: null },
+  { id: 'awrs-11', runId: 'awr-6', stepId: 'aws-4', status: 'pending' as const, input: null, output: null, startedAt: null, completedAt: null },
+  { id: 'awrs-12', runId: 'awr-6', stepId: 'aws-5', status: 'pending' as const, input: null, output: null, startedAt: null, completedAt: null },
+  { id: 'awrs-13', runId: 'awr-6', stepId: 'aws-6', status: 'pending' as const, input: null, output: null, startedAt: null, completedAt: null },
+  { id: 'awrs-14', runId: 'awr-6', stepId: 'aws-7', status: 'pending' as const, input: null, output: null, startedAt: null, completedAt: null },
+
+  // Run awr-8 (Expense routing - failed)
+  { id: 'awrs-15', runId: 'awr-8', stepId: 'aws-24', status: 'completed' as const, input: { amount: 8500 }, output: { result: true, branch: 'true' }, startedAt: '2026-02-20T15:00:00Z', completedAt: '2026-02-20T15:01:00Z' },
+  { id: 'awrs-16', runId: 'awr-8', stepId: 'aws-25', status: 'failed' as const, input: { approver: 'CFO' }, output: { error: 'Approval chain not configured for Marketing department' }, startedAt: '2026-02-20T15:01:00Z', completedAt: '2026-02-20T15:02:00Z' },
+
+  // Run awr-5 (Post-Review - completed with PIP path)
+  { id: 'awrs-17', runId: 'awr-5', stepId: 'aws-20', status: 'completed' as const, input: { rating: 2.5 }, output: { result: true, branch: 'true' }, startedAt: '2026-02-18T09:00:00Z', completedAt: '2026-02-18T09:01:00Z' },
+  { id: 'awrs-18', runId: 'awr-5', stepId: 'aws-21', status: 'completed' as const, input: { employee: 'Chioma Eze' }, output: { taskId: 'task-pip-1' }, startedAt: '2026-02-18T09:01:00Z', completedAt: '2026-02-18T09:05:00Z' },
+]
+
+// === From agent-ae5f43e4 ===
+export const demoAutomationWorkflowRuns = [
+  { id: 'awr-1', workflowId: 'awf-1', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_id: 'emp-30', employee_name: 'Aminata Diop', department: 'Marketing' }, status: 'completed' as const, startedAt: '2026-02-10T09:00:00Z', completedAt: '2026-02-10T09:15:00Z', error: null },
+  { id: 'awr-2', workflowId: 'awf-1', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_id: 'emp-29', employee_name: 'Tunde Bakare', department: 'Marketing' }, status: 'completed' as const, startedAt: '2026-02-08T10:00:00Z', completedAt: '2026-02-08T10:12:00Z', error: null },
+  { id: 'awr-3', workflowId: 'awf-2', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_id: 'emp-99', employee_name: 'John Doe', department: 'Operations' }, status: 'completed' as const, startedAt: '2026-02-12T14:00:00Z', completedAt: '2026-02-12T14:08:00Z', error: null },
+  { id: 'awr-4', workflowId: 'awf-4', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_name: 'Kwame Asante', leave_type: 'annual', start_date: '2026-03-01', end_date: '2026-03-07' }, status: 'completed' as const, startedAt: '2026-02-15T11:00:00Z', completedAt: '2026-02-15T11:03:00Z', error: null },
+  { id: 'awr-5', workflowId: 'awf-5', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_name: 'Chioma Eze', review_rating: 2.5, review_cycle: 'H1 2026' }, status: 'completed' as const, startedAt: '2026-02-18T09:00:00Z', completedAt: '2026-02-18T09:05:00Z', error: null },
+  { id: 'awr-6', workflowId: 'awf-1', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_id: 'emp-31', employee_name: 'Adama Traore', department: 'Technology' }, status: 'running' as const, startedAt: '2026-02-25T08:00:00Z', completedAt: null, error: null },
+  { id: 'awr-7', workflowId: 'awf-3', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_name: 'Fatou Ndiaye', old_role: 'Senior Analyst', new_role: 'Lead Analyst' }, status: 'running' as const, startedAt: '2026-02-26T10:00:00Z', completedAt: null, error: null },
+  { id: 'awr-8', workflowId: 'awf-6', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_name: 'Peter Njoroge', expense_amount: 8500 }, status: 'failed' as const, startedAt: '2026-02-20T15:00:00Z', completedAt: '2026-02-20T15:02:00Z', error: 'Approval chain not configured for Marketing department' },
+  { id: 'awr-9', workflowId: 'awf-4', orgId: 'org-1', triggeredBy: 'system', triggerData: { employee_name: 'Ngozi Okafor', leave_type: 'sick', start_date: '2026-02-22', end_date: '2026-02-23' }, status: 'completed' as const, startedAt: '2026-02-21T09:00:00Z', completedAt: '2026-02-21T09:04:00Z', error: null },
+]
+
+// === From agent-ae5f43e4 ===
+export const demoAutomationWorkflowSteps = [
+  // New Hire Onboarding (awf-1): 7 steps
+  { id: 'aws-1', workflowId: 'awf-1', orderIndex: 0, type: 'action' as const, config: { actionType: 'send_email', to: '{{employee.email}}', subject: 'Welcome to Ecobank!', body: 'Dear {{employee.name}}, welcome aboard! We are excited to have you join our team.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-2', workflowId: 'awf-1', orderIndex: 1, type: 'action' as const, config: { actionType: 'assign_app', apps: ['Slack', 'Gmail', 'JIRA', 'Confluence'] }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-3', workflowId: 'awf-1', orderIndex: 2, type: 'action' as const, config: { actionType: 'assign_device', deviceType: 'laptop', specs: 'Standard workstation' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-4', workflowId: 'awf-1', orderIndex: 3, type: 'delay' as const, config: { duration: 1, unit: 'days' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-5', workflowId: 'awf-1', orderIndex: 4, type: 'action' as const, config: { actionType: 'create_review', reviewType: 'probation', dueInDays: 90 }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-6', workflowId: 'awf-1', orderIndex: 5, type: 'action' as const, config: { actionType: 'notify_manager', message: 'New team member {{employee.name}} has joined your department.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-7', workflowId: 'awf-1', orderIndex: 6, type: 'action' as const, config: { actionType: 'enroll_course', courses: ['Compliance 101', 'Security Awareness', 'Company Culture'] }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Offboarding (awf-2): 5 steps
+  { id: 'aws-8', workflowId: 'awf-2', orderIndex: 0, type: 'action' as const, config: { actionType: 'revoke_app', apps: ['all'] }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-9', workflowId: 'awf-2', orderIndex: 1, type: 'action' as const, config: { actionType: 'create_task', title: 'Schedule device return', assignTo: 'IT Manager' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-10', workflowId: 'awf-2', orderIndex: 2, type: 'action' as const, config: { actionType: 'schedule_meeting', title: 'Exit Interview', with: 'HR Manager', dueInDays: 5 }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-11', workflowId: 'awf-2', orderIndex: 3, type: 'delay' as const, config: { duration: 2, unit: 'days' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-12', workflowId: 'awf-2', orderIndex: 4, type: 'action' as const, config: { actionType: 'create_task', title: 'Process final paycheck', assignTo: 'Payroll Manager' }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Promotion (awf-3): 4 steps
+  { id: 'aws-13', workflowId: 'awf-3', orderIndex: 0, type: 'action' as const, config: { actionType: 'update_field', field: 'comp_band', value: '{{new_role.comp_band}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-14', workflowId: 'awf-3', orderIndex: 1, type: 'action' as const, config: { actionType: 'send_email', to: '{{employee.email}}', subject: 'Congratulations on your promotion!', body: 'Dear {{employee.name}}, congratulations on your new role as {{new_role.title}}!' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-15', workflowId: 'awf-3', orderIndex: 2, type: 'action' as const, config: { actionType: 'send_slack', channel: '#team-updates', message: 'Please congratulate {{employee.name}} on their promotion to {{new_role.title}}!' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-16', workflowId: 'awf-3', orderIndex: 3, type: 'action' as const, config: { actionType: 'assign_app', apps: ['{{new_role.required_apps}}'] }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Leave Approved (awf-4): 3 steps
+  { id: 'aws-17', workflowId: 'awf-4', orderIndex: 0, type: 'action' as const, config: { actionType: 'send_slack', channel: '#{{department.slug}}', message: '{{employee.name}} will be on leave from {{leave.start_date}} to {{leave.end_date}}.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-18', workflowId: 'awf-4', orderIndex: 1, type: 'action' as const, config: { actionType: 'update_field', field: 'shared_calendar', value: 'OOO: {{employee.name}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-19', workflowId: 'awf-4', orderIndex: 2, type: 'action' as const, config: { actionType: 'notify_manager', message: 'Please assign a backup for {{employee.name}} during their leave period.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Post-Review Actions (awf-5): 4 steps with conditions
+  { id: 'aws-20', workflowId: 'awf-5', orderIndex: 0, type: 'condition' as const, config: { field: 'review.overall_rating', operator: 'less_than', value: 3, label: 'Rating < 3?' }, nextStepOnTrue: 'aws-21', nextStepOnFalse: 'aws-22' },
+  { id: 'aws-21', workflowId: 'awf-5', orderIndex: 1, type: 'action' as const, config: { actionType: 'create_task', title: 'Create Performance Improvement Plan for {{employee.name}}', assignTo: '{{employee.manager}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-22', workflowId: 'awf-5', orderIndex: 2, type: 'condition' as const, config: { field: 'review.overall_rating', operator: 'greater_than', value: 4, label: 'Rating > 4?' }, nextStepOnTrue: 'aws-23', nextStepOnFalse: null },
+  { id: 'aws-23', workflowId: 'awf-5', orderIndex: 3, type: 'action' as const, config: { actionType: 'schedule_meeting', title: 'Merit Review Discussion', with: '{{employee.manager}}', dueInDays: 14 }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Expense Auto-Routing (awf-6): 4 steps with approval
+  { id: 'aws-24', workflowId: 'awf-6', orderIndex: 0, type: 'condition' as const, config: { field: 'expense.amount', operator: 'greater_than', value: 5000, label: 'Amount > $5,000?' }, nextStepOnTrue: 'aws-25', nextStepOnFalse: 'aws-26' },
+  { id: 'aws-25', workflowId: 'awf-6', orderIndex: 1, type: 'approval' as const, config: { approver: 'CFO', message: 'High-value expense report requires CFO approval: ${{expense.amount}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-26', workflowId: 'awf-6', orderIndex: 2, type: 'approval' as const, config: { approver: '{{employee.manager}}', message: 'Expense report pending your approval: ${{expense.amount}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-27', workflowId: 'awf-6', orderIndex: 3, type: 'action' as const, config: { actionType: 'send_email', to: '{{employee.email}}', subject: 'Expense Report Approved', body: 'Your expense report for ${{expense.amount}} has been approved.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Department Transfer (awf-7): 4 steps
+  { id: 'aws-28', workflowId: 'awf-7', orderIndex: 0, type: 'action' as const, config: { actionType: 'update_field', field: 'access_groups', value: '{{new_department.access_groups}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-29', workflowId: 'awf-7', orderIndex: 1, type: 'action' as const, config: { actionType: 'notify_manager', message: '{{employee.name}} has transferred to your department from {{old_department.name}}.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-30', workflowId: 'awf-7', orderIndex: 2, type: 'action' as const, config: { actionType: 'add_to_group', group: '{{new_department.slack_channel}}' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-31', workflowId: 'awf-7', orderIndex: 3, type: 'action' as const, config: { actionType: 'send_email', to: '{{employee.email}}', subject: 'Welcome to {{new_department.name}}', body: 'Your transfer has been processed. Your new manager is {{new_manager.name}}.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+
+  // Payroll Completion (awf-8): 3 steps
+  { id: 'aws-32', workflowId: 'awf-8', orderIndex: 0, type: 'action' as const, config: { actionType: 'create_task', title: 'Generate pay stubs for all employees', assignTo: 'Payroll Team' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-33', workflowId: 'awf-8', orderIndex: 1, type: 'action' as const, config: { actionType: 'send_email', to: 'all_employees', subject: 'Payroll Processed', body: 'Your salary for this period has been processed. Please check your pay stub.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+  { id: 'aws-34', workflowId: 'awf-8', orderIndex: 2, type: 'action' as const, config: { actionType: 'notify_manager', message: 'Payroll for your team has been completed for this period.' }, nextStepOnTrue: null, nextStepOnFalse: null },
+]
+
+// === From agent-ae5f43e4 ===
+export const demoAutomationWorkflowTemplates = [
+  { id: 'awt-1', name: 'Standard Onboarding', description: 'Complete new hire onboarding with IT setup, app provisioning, training enrollment, and manager notification.', category: 'onboarding' as const, trigger: 'employee_hired' as const, stepCount: 7, estimatedDuration: '1 day', popularity: 95 },
+  { id: 'awt-2', name: 'Full Offboarding', description: 'Comprehensive offboarding: revoke access, return devices, schedule exit interview, process final pay.', category: 'offboarding' as const, trigger: 'employee_terminated' as const, stepCount: 5, estimatedDuration: '3 days', popularity: 88 },
+  { id: 'awt-3', name: 'Promotion Package', description: 'Automated promotion workflow: update compensation, send congratulations, update access.', category: 'performance' as const, trigger: 'role_changed' as const, stepCount: 4, estimatedDuration: 'Instant', popularity: 72 },
+  { id: 'awt-4', name: 'Leave Management', description: 'Notify team, update calendar, and assign backup when leave is approved.', category: 'it' as const, trigger: 'leave_approved' as const, stepCount: 3, estimatedDuration: 'Instant', popularity: 80 },
+  { id: 'awt-5', name: 'Performance Review Follow-up', description: 'Conditional actions after review: PIP for low ratings, merit review for high performers.', category: 'performance' as const, trigger: 'review_completed' as const, stepCount: 4, estimatedDuration: '1 day', popularity: 65 },
+  { id: 'awt-6', name: 'Expense Approval Chain', description: 'Route expenses to the right approver based on amount thresholds with CFO escalation.', category: 'finance' as const, trigger: 'expense_submitted' as const, stepCount: 4, estimatedDuration: '2 days', popularity: 55 },
+  { id: 'awt-7', name: 'Department Transfer', description: 'Automate access changes, notifications, and org chart updates for department transfers.', category: 'it' as const, trigger: 'department_changed' as const, stepCount: 4, estimatedDuration: 'Instant', popularity: 60 },
+  { id: 'awt-8', name: 'Payroll Notifications', description: 'Generate pay stubs, notify employees and managers after payroll completes.', category: 'finance' as const, trigger: 'payroll_completed' as const, stepCount: 3, estimatedDuration: 'Instant', popularity: 45 },
+]
+
+// === From agent-ae5f43e4 ===
+// ============================================================
+// WORKFLOW AUTOMATION ENGINE
+// ============================================================
+
+export const demoAutomationWorkflows = [
+  { id: 'awf-1', org_id: 'org-1', name: 'New Hire Onboarding', description: 'Complete onboarding automation: send welcome email, assign apps, assign device, create review cycle, notify manager, enroll compliance training.', trigger: 'employee_hired' as const, triggerConfig: { departments: 'all' }, isActive: true, createdBy: 'emp-17', createdAt: '2025-10-15T08:00:00Z', updatedAt: '2026-02-10T10:00:00Z' },
+  { id: 'awf-2', org_id: 'org-1', name: 'Offboarding', description: 'Automated offboarding: revoke apps, schedule device return, schedule exit interview, process final pay.', trigger: 'employee_terminated' as const, triggerConfig: {}, isActive: true, createdBy: 'emp-17', createdAt: '2025-11-01T08:00:00Z', updatedAt: '2026-01-20T14:00:00Z' },
+  { id: 'awf-3', org_id: 'org-1', name: 'Promotion Workflow', description: 'When role changes: update comp band, send notification to team, update access permissions.', trigger: 'role_changed' as const, triggerConfig: { direction: 'promotion' }, isActive: true, createdBy: 'emp-20', createdAt: '2025-12-01T08:00:00Z', updatedAt: '2026-02-05T09:00:00Z' },
+  { id: 'awf-4', org_id: 'org-1', name: 'Leave Approved Notification', description: 'When leave is approved: notify the team, update shared calendar, assign backup person.', trigger: 'leave_approved' as const, triggerConfig: {}, isActive: true, createdBy: 'emp-20', createdAt: '2026-01-05T08:00:00Z', updatedAt: '2026-02-12T11:00:00Z' },
+  { id: 'awf-5', org_id: 'org-1', name: 'Post-Review Actions', description: 'After review completed: if rating < 3 create PIP, if rating > 4 schedule merit review.', trigger: 'review_completed' as const, triggerConfig: {}, isActive: true, createdBy: 'emp-17', createdAt: '2026-01-10T08:00:00Z', updatedAt: '2026-02-15T09:00:00Z' },
+  { id: 'awf-6', org_id: 'org-1', name: 'Expense Auto-Routing', description: 'Route submitted expenses to the appropriate approver based on amount and department.', trigger: 'expense_submitted' as const, triggerConfig: { threshold: 500 }, isActive: false, createdBy: 'emp-24', createdAt: '2026-02-01T08:00:00Z', updatedAt: '2026-02-18T11:00:00Z' },
+  { id: 'awf-7', org_id: 'org-1', name: 'Department Transfer', description: 'Automate access changes, notify new manager, update org chart when department changes.', trigger: 'department_changed' as const, triggerConfig: {}, isActive: true, createdBy: 'emp-17', createdAt: '2026-02-05T08:00:00Z', updatedAt: '2026-02-20T09:00:00Z' },
+  { id: 'awf-8', org_id: 'org-1', name: 'Payroll Completion Tasks', description: 'After payroll completes: generate pay stubs, send notifications, update finance records.', trigger: 'payroll_completed' as const, triggerConfig: {}, isActive: false, createdBy: 'emp-24', createdAt: '2026-02-10T08:00:00Z', updatedAt: '2026-02-22T09:00:00Z' },
+]
+
+// === From agent-aeae028c ===
+// Recruiting - Background Checks
+export const demoBackgroundChecks = [
+  { id: 'bgc-1', org_id: 'org-1', application_id: 'app-2', candidate_name: 'Priscilla Addo', candidate_email: 'p.addo@outlook.com', type: 'criminal' as const, provider: 'checkr' as const, status: 'completed' as const, result: 'clear' as const, report_url: 'https://checkr.com/reports/abc123', requested_by: 'emp-18', requested_at: '2026-02-10T00:00:00Z', completed_at: '2026-02-15T00:00:00Z', notes: 'No records found. Clear to proceed.' },
+  { id: 'bgc-2', org_id: 'org-1', application_id: 'app-2', candidate_name: 'Priscilla Addo', candidate_email: 'p.addo@outlook.com', type: 'employment' as const, provider: 'checkr' as const, status: 'completed' as const, result: 'clear' as const, report_url: 'https://checkr.com/reports/abc124', requested_by: 'emp-18', requested_at: '2026-02-10T00:00:00Z', completed_at: '2026-02-17T00:00:00Z', notes: 'Verified 8 years at Flutterwave. All details confirmed.' },
+  { id: 'bgc-3', org_id: 'org-1', application_id: 'app-1', candidate_name: 'David Okonkwo', candidate_email: 'david.o@gmail.com', type: 'education' as const, provider: 'goodhire' as const, status: 'in_progress' as const, result: null, report_url: null, requested_by: 'emp-18', requested_at: '2026-02-20T00:00:00Z', completed_at: null, notes: 'Verifying MSc Computer Science from University of Lagos' },
+  { id: 'bgc-4', org_id: 'org-1', application_id: 'app-4', candidate_name: 'Efua Owusu', candidate_email: 'efua.owusu@gmail.com', type: 'credit' as const, provider: 'checkr' as const, status: 'flagged' as const, result: 'review_needed' as const, report_url: 'https://checkr.com/reports/def456', requested_by: 'emp-18', requested_at: '2026-02-18T00:00:00Z', completed_at: '2026-02-24T00:00:00Z', notes: 'Minor credit inquiry discrepancy. Needs HR review before proceeding.' },
+  { id: 'bgc-5', org_id: 'org-1', application_id: 'app-5', candidate_name: 'Aisha Ndungu', candidate_email: 'aisha.n@gmail.com', type: 'identity' as const, provider: 'internal' as const, status: 'pending' as const, result: null, report_url: null, requested_by: 'emp-17', requested_at: '2026-02-25T00:00:00Z', completed_at: null, notes: 'Awaiting candidate document submission' },
+]
+
+// === From agent-aeae028c ===
+// Recruiting - Candidate Scheduling
+export const demoCandidateScheduling = [
+  { id: 'cs-1', org_id: 'org-1', application_id: 'app-5', interview_type: 'Phone Screen', available_slots: [
+    { date: '2026-03-03', startTime: '09:00', endTime: '09:30' },
+    { date: '2026-03-03', startTime: '14:00', endTime: '14:30' },
+    { date: '2026-03-04', startTime: '10:00', endTime: '10:30' },
+    { date: '2026-03-05', startTime: '11:00', endTime: '11:30' },
+  ], selected_slot: { date: '2026-03-03', startTime: '14:00', endTime: '14:30' }, interviewer_ids: ['emp-15'], meeting_url: 'https://meet.google.com/abc-defg-hij', status: 'confirmed' as const, expires_at: '2026-03-01T23:59:59Z', created_at: '2026-02-25T00:00:00Z' },
+  { id: 'cs-2', org_id: 'org-1', application_id: 'app-3', interview_type: 'Technical Interview', available_slots: [
+    { date: '2026-03-05', startTime: '09:00', endTime: '10:00' },
+    { date: '2026-03-05', startTime: '14:00', endTime: '15:00' },
+    { date: '2026-03-06', startTime: '10:00', endTime: '11:00' },
+    { date: '2026-03-07', startTime: '09:00', endTime: '10:00' },
+    { date: '2026-03-07', startTime: '15:00', endTime: '16:00' },
+  ], selected_slot: null, interviewer_ids: ['emp-13', 'emp-14'], meeting_url: null, status: 'slots_offered' as const, expires_at: '2026-03-04T23:59:59Z', created_at: '2026-02-26T00:00:00Z' },
+  { id: 'cs-3', org_id: 'org-1', application_id: 'app-4', interview_type: 'Culture & Values', available_slots: [
+    { date: '2026-03-04', startTime: '11:00', endTime: '11:45' },
+    { date: '2026-03-04', startTime: '15:00', endTime: '15:45' },
+    { date: '2026-03-06', startTime: '10:00', endTime: '10:45' },
+  ], selected_slot: { date: '2026-03-04', startTime: '15:00', endTime: '15:45' }, interviewer_ids: ['emp-2'], meeting_url: 'https://meet.google.com/xyz-uvwx-yz', status: 'candidate_selected' as const, expires_at: '2026-03-03T23:59:59Z', created_at: '2026-02-24T00:00:00Z' },
+]
+
+// === From agent-aeae028c ===
+// Recruiting - Knockout Questions
+export const demoKnockoutQuestions = [
+  // Senior Software Engineer (job-1)
+  { id: 'kq-1', job_id: 'job-1', org_id: 'org-1', question: 'Do you have at least 5 years of professional software development experience?', type: 'yes_no' as const, options: null, correct_answer: 'yes', is_required: true, order_index: 0, eliminate_on_wrong: true },
+  { id: 'kq-2', job_id: 'job-1', org_id: 'org-1', question: 'Which programming languages are you proficient in?', type: 'multiple_choice' as const, options: ['JavaScript/TypeScript', 'Python', 'Java', 'Go', 'Rust', 'Other'], correct_answer: 'JavaScript/TypeScript', is_required: true, order_index: 1, eliminate_on_wrong: false },
+  { id: 'kq-3', job_id: 'job-1', org_id: 'org-1', question: 'How many years of experience do you have with React?', type: 'numeric' as const, options: null, correct_answer: '3', is_required: true, order_index: 2, eliminate_on_wrong: true },
+  { id: 'kq-4', job_id: 'job-1', org_id: 'org-1', question: 'Are you authorized to work in Nigeria, Ghana, or Kenya without sponsorship?', type: 'yes_no' as const, options: null, correct_answer: 'yes', is_required: true, order_index: 3, eliminate_on_wrong: true },
+  // Branch Manager (job-2)
+  { id: 'kq-5', job_id: 'job-2', org_id: 'org-1', question: 'Do you have at least 7 years of banking industry experience?', type: 'yes_no' as const, options: null, correct_answer: 'yes', is_required: true, order_index: 0, eliminate_on_wrong: true },
+  { id: 'kq-6', job_id: 'job-2', org_id: 'org-1', question: 'Have you managed a team of 10+ people?', type: 'yes_no' as const, options: null, correct_answer: 'yes', is_required: true, order_index: 1, eliminate_on_wrong: true },
+  { id: 'kq-7', job_id: 'job-2', org_id: 'org-1', question: 'What is your preferred work location?', type: 'multiple_choice' as const, options: ['Accra', 'Lagos', 'Nairobi', 'Abidjan', 'Dakar', 'Other'], correct_answer: 'Accra', is_required: false, order_index: 2, eliminate_on_wrong: false },
+  { id: 'kq-8', job_id: 'job-2', org_id: 'org-1', question: 'Are you willing to relocate to Accra, Ghana?', type: 'yes_no' as const, options: null, correct_answer: 'yes', is_required: true, order_index: 3, eliminate_on_wrong: true },
+]
+
+// === From agent-aeae028c ===
+// Recruiting - Referral Program
+export const demoReferralProgram = {
+  id: 'rp-1', org_id: 'org-1', name: 'Ecobank Employee Referral Program', is_active: true, bonus_amount: 2000, currency: 'USD', bonus_trigger: '90_day_retention' as const, description: 'Earn $2,000 for every successful referral who stays for 90 days. Referrals are key to building our best teams.', created_at: '2025-06-01T00:00:00Z',
+}
+
+// === From agent-aeae028c ===
+// Recruiting - Referrals
+export const demoReferrals = [
+  { id: 'ref-1', org_id: 'org-1', referrer_id: 'emp-14', candidate_name: 'Kweku Mensah', candidate_email: 'kweku.m@outlook.com', job_id: 'job-1', status: 'bonus_paid' as const, bonus_amount: 2000, bonus_paid_at: '2026-01-15T00:00:00Z', submitted_at: '2025-08-10T00:00:00Z', notes: 'Former MTN colleague. Exceptional engineering manager.' },
+  { id: 'ref-2', org_id: 'org-1', referrer_id: 'emp-2', candidate_name: 'Adaora Eze', candidate_email: 'adaora.eze@gmail.com', job_id: 'job-2', status: 'interviewing' as const, bonus_amount: null, bonus_paid_at: null, submitted_at: '2026-02-01T00:00:00Z', notes: 'Strong product manager from Paystack.' },
+  { id: 'ref-3', org_id: 'org-1', referrer_id: 'emp-13', candidate_name: 'Femi Oluwole', candidate_email: 'femi.o@proton.me', job_id: 'job-1', status: 'reviewing' as const, bonus_amount: null, bonus_paid_at: null, submitted_at: '2026-02-12T00:00:00Z', notes: 'Met at AfriConf. Staff engineer at Andela. Impressive open-source work.' },
+  { id: 'ref-4', org_id: 'org-1', referrer_id: 'emp-6', candidate_name: 'Aminata Toure', candidate_email: 'a.toure@gmail.com', job_id: 'job-3', status: 'hired' as const, bonus_amount: 2000, bonus_paid_at: null, submitted_at: '2025-12-05T00:00:00Z', notes: 'Compliance expert from BCEAO. Bonus pending 90-day milestone.' },
+  { id: 'ref-5', org_id: 'org-1', referrer_id: 'emp-14', candidate_name: 'Chidi Nwachukwu', candidate_email: 'chidi.n@yahoo.com', job_id: 'job-4', status: 'submitted' as const, bonus_amount: null, bonus_paid_at: null, submitted_at: '2026-02-20T00:00:00Z', notes: 'Met at Lagos React Meetup. Built Kuda mobile app.' },
+  { id: 'ref-6', org_id: 'org-1', referrer_id: 'emp-28', candidate_name: 'Peter Kioko', candidate_email: 'p.kioko@gmail.com', job_id: 'job-4', status: 'rejected' as const, bonus_amount: null, bonus_paid_at: null, submitted_at: '2026-01-10T00:00:00Z', notes: 'Skills did not match data science requirements.' },
+]
+
+// === From agent-aeb74e56 ===
+export const demoContentLibrary = [
+  { id: 'cl-1', org_id: 'org-1', title: 'Introduction to Python Programming', provider: 'udemy_business' as const, external_id: 'UB-PY101', category: 'Technology', level: 'beginner' as const, duration_minutes: 480, format: 'online', thumbnail_url: null, content_url: 'https://udemy.com/python-intro', rating: 4.7, enrollment_count: 15420, is_featured: true, tags: ['python', 'programming', 'data'], language: 'English', added_at: '2025-09-01T00:00:00Z' },
+  { id: 'cl-2', org_id: 'org-1', title: 'Strategic Leadership in Banking', provider: 'linkedin_learning' as const, external_id: 'LIL-SLB200', category: 'Leadership', level: 'advanced' as const, duration_minutes: 360, format: 'online', thumbnail_url: null, content_url: 'https://linkedin.com/learning/strategic-leadership', rating: 4.5, enrollment_count: 8930, is_featured: true, tags: ['leadership', 'strategy', 'banking'], language: 'English', added_at: '2025-10-15T00:00:00Z' },
+  { id: 'cl-3', org_id: 'org-1', title: 'Financial Risk Management Essentials', provider: 'coursera' as const, external_id: 'CR-FRM100', category: 'Risk', level: 'intermediate' as const, duration_minutes: 720, format: 'online', thumbnail_url: null, content_url: 'https://coursera.org/financial-risk', rating: 4.8, enrollment_count: 22100, is_featured: true, tags: ['risk', 'finance', 'compliance'], language: 'English', added_at: '2025-08-20T00:00:00Z' },
+  { id: 'cl-4', org_id: 'org-1', title: 'Effective Communication Skills', provider: 'go1' as const, external_id: 'GO1-ECS50', category: 'Soft Skills', level: 'beginner' as const, duration_minutes: 180, format: 'online', thumbnail_url: null, content_url: 'https://go1.com/effective-communication', rating: 4.3, enrollment_count: 34500, is_featured: false, tags: ['communication', 'soft-skills', 'workplace'], language: 'English', added_at: '2025-07-10T00:00:00Z' },
+  { id: 'cl-5', org_id: 'org-1', title: 'Cybersecurity for Financial Services', provider: 'go1' as const, external_id: 'GO1-CFS30', category: 'Technology', level: 'intermediate' as const, duration_minutes: 300, format: 'online', thumbnail_url: null, content_url: 'https://go1.com/cybersecurity-finance', rating: 4.6, enrollment_count: 12800, is_featured: false, tags: ['cybersecurity', 'security', 'fintech'], language: 'English', added_at: '2025-11-05T00:00:00Z' },
+  { id: 'cl-6', org_id: 'org-1', title: 'Project Management Professional (PMP) Prep', provider: 'udemy_business' as const, external_id: 'UB-PMP200', category: 'Management', level: 'advanced' as const, duration_minutes: 2400, format: 'online', thumbnail_url: null, content_url: 'https://udemy.com/pmp-prep', rating: 4.9, enrollment_count: 45200, is_featured: true, tags: ['pmp', 'project-management', 'certification'], language: 'English', added_at: '2025-06-01T00:00:00Z' },
+  { id: 'cl-7', org_id: 'org-1', title: 'Data Analytics with Excel & Power BI', provider: 'linkedin_learning' as const, external_id: 'LIL-DAE150', category: 'Technology', level: 'intermediate' as const, duration_minutes: 540, format: 'online', thumbnail_url: null, content_url: 'https://linkedin.com/learning/data-analytics', rating: 4.4, enrollment_count: 19700, is_featured: false, tags: ['data', 'analytics', 'excel', 'power-bi'], language: 'English', added_at: '2025-09-20T00:00:00Z' },
+  { id: 'cl-8', org_id: 'org-1', title: 'Customer Service Excellence in Banking', provider: 'internal' as const, external_id: null, category: 'Service', level: 'beginner' as const, duration_minutes: 240, format: 'blended', thumbnail_url: null, content_url: null, rating: 4.2, enrollment_count: 850, is_featured: false, tags: ['customer-service', 'banking', 'retail'], language: 'English', added_at: '2026-01-05T00:00:00Z' },
+  { id: 'cl-9', org_id: 'org-1', title: 'Blockchain & Digital Currencies', provider: 'coursera' as const, external_id: 'CR-BDC50', category: 'Technology', level: 'intermediate' as const, duration_minutes: 600, format: 'online', thumbnail_url: null, content_url: 'https://coursera.org/blockchain', rating: 4.5, enrollment_count: 16300, is_featured: false, tags: ['blockchain', 'cryptocurrency', 'fintech'], language: 'English', added_at: '2025-10-01T00:00:00Z' },
+  { id: 'cl-10', org_id: 'org-1', title: 'Gestion des Risques Operationnels', provider: 'internal' as const, external_id: null, category: 'Risk', level: 'intermediate' as const, duration_minutes: 300, format: 'classroom', thumbnail_url: null, content_url: null, rating: 4.1, enrollment_count: 320, is_featured: false, tags: ['risk', 'operations', 'francophone'], language: 'French', added_at: '2026-01-20T00:00:00Z' },
+  { id: 'cl-11', org_id: 'org-1', title: 'Diversity, Equity & Inclusion', provider: 'go1' as const, external_id: 'GO1-DEI20', category: 'Soft Skills', level: 'beginner' as const, duration_minutes: 120, format: 'online', thumbnail_url: null, content_url: 'https://go1.com/dei', rating: 4.4, enrollment_count: 28900, is_featured: false, tags: ['dei', 'diversity', 'inclusion'], language: 'English', added_at: '2025-08-15T00:00:00Z' },
+  { id: 'cl-12', org_id: 'org-1', title: 'Machine Learning for Business', provider: 'coursera' as const, external_id: 'CR-MLB80', category: 'Technology', level: 'advanced' as const, duration_minutes: 960, format: 'online', thumbnail_url: null, content_url: 'https://coursera.org/ml-business', rating: 4.7, enrollment_count: 11200, is_featured: false, tags: ['ml', 'ai', 'data-science'], language: 'English', added_at: '2025-11-10T00:00:00Z' },
+  { id: 'cl-13', org_id: 'org-1', title: 'Negotiation Masterclass', provider: 'linkedin_learning' as const, external_id: 'LIL-NM100', category: 'Soft Skills', level: 'intermediate' as const, duration_minutes: 270, format: 'online', thumbnail_url: null, content_url: 'https://linkedin.com/learning/negotiation', rating: 4.6, enrollment_count: 21500, is_featured: false, tags: ['negotiation', 'business', 'communication'], language: 'English', added_at: '2025-07-25T00:00:00Z' },
+  { id: 'cl-14', org_id: 'org-1', title: 'Ecobank Core Banking Platform Training', provider: 'internal' as const, external_id: null, category: 'Technology', level: 'beginner' as const, duration_minutes: 480, format: 'blended', thumbnail_url: null, content_url: null, rating: 4.0, enrollment_count: 1200, is_featured: false, tags: ['core-banking', 'platform', 'internal'], language: 'English', added_at: '2025-12-01T00:00:00Z' },
+  { id: 'cl-15', org_id: 'org-1', title: 'Design Thinking for Innovation', provider: 'udemy_business' as const, external_id: 'UB-DTI75', category: 'Management', level: 'intermediate' as const, duration_minutes: 360, format: 'online', thumbnail_url: null, content_url: 'https://udemy.com/design-thinking', rating: 4.5, enrollment_count: 18600, is_featured: false, tags: ['design-thinking', 'innovation', 'creativity'], language: 'English', added_at: '2025-10-20T00:00:00Z' },
+]
+
+// === From agent-aeb74e56 ===
+// ============================================================
+// LEARNING: Prerequisites, SCORM, Content Library, Gamification
+// ============================================================
+
+export const demoCoursePrerequisites = [
+  { id: 'prereq-1', org_id: 'org-1', course_id: 'course-3', prerequisite_course_id: 'course-4', type: 'required' as const, minimum_score: 70 },
+  { id: 'prereq-2', org_id: 'org-1', course_id: 'course-8', prerequisite_course_id: 'course-1', type: 'required' as const, minimum_score: 80 },
+  { id: 'prereq-3', org_id: 'org-1', course_id: 'course-7', prerequisite_course_id: 'course-4', type: 'recommended' as const, minimum_score: null },
+  { id: 'prereq-4', org_id: 'org-1', course_id: 'course-1', prerequisite_course_id: 'course-5', type: 'recommended' as const, minimum_score: null },
+  { id: 'prereq-5', org_id: 'org-1', course_id: 'course-5', prerequisite_course_id: 'course-2', type: 'required' as const, minimum_score: 60 },
+]
+
+// === From agent-aeb74e56 ===
+export const demoLearnerBadges = [
+  { id: 'badge-1', org_id: 'org-1', employee_id: 'emp-4', badge_type: 'course_complete' as const, badge_name: 'First Course Complete', badge_icon: 'award', description: 'Completed your first course', earned_at: '2026-01-25T00:00:00Z', course_id: 'course-2', metadata: null },
+  { id: 'badge-2', org_id: 'org-1', employee_id: 'emp-3', badge_type: 'course_complete' as const, badge_name: 'Course Champion', badge_icon: 'trophy', description: 'Completed Customer Experience Excellence', earned_at: '2025-12-15T00:00:00Z', course_id: 'course-5', metadata: null },
+  { id: 'badge-3', org_id: 'org-1', employee_id: 'emp-14', badge_type: 'course_complete' as const, badge_name: 'Agile Master', badge_icon: 'zap', description: 'Completed Agile Project Management', earned_at: '2025-10-01T00:00:00Z', course_id: 'course-7', metadata: null },
+  { id: 'badge-4', org_id: 'org-1', employee_id: 'emp-14', badge_type: 'first_quiz_perfect' as const, badge_name: 'Perfect Score', badge_icon: 'star', description: 'Achieved 100% on your first quiz attempt', earned_at: '2025-09-15T00:00:00Z', course_id: 'course-7', metadata: { score: 100 } },
+  { id: 'badge-5', org_id: 'org-1', employee_id: 'emp-26', badge_type: 'compliance_champion' as const, badge_name: 'Compliance Champion', badge_icon: 'shield', description: 'Completed all mandatory compliance courses', earned_at: '2026-01-20T00:00:00Z', course_id: null, metadata: { courses_completed: 2 } },
+  { id: 'badge-6', org_id: 'org-1', employee_id: 'emp-2', badge_type: 'streak_7' as const, badge_name: '7-Day Streak', badge_icon: 'flame', description: 'Maintained a 7-day learning streak', earned_at: '2026-02-10T00:00:00Z', course_id: null, metadata: { streak_days: 7 } },
+  { id: 'badge-7', org_id: 'org-1', employee_id: 'emp-6', badge_type: 'top_learner' as const, badge_name: 'Top Learner', badge_icon: 'crown', description: 'Ranked in top 10% of learners this month', earned_at: '2026-02-01T00:00:00Z', course_id: null, metadata: { rank: 3 } },
+  { id: 'badge-8', org_id: 'org-1', employee_id: 'emp-1', badge_type: 'mentor' as const, badge_name: 'Knowledge Mentor', badge_icon: 'users', description: 'Helped 5 peers with their learning', earned_at: '2026-02-05T00:00:00Z', course_id: null, metadata: { peers_helped: 5 } },
+  { id: 'badge-9', org_id: 'org-1', employee_id: 'emp-3', badge_type: 'streak_30' as const, badge_name: '30-Day Streak', badge_icon: 'flame', description: 'Maintained a 30-day learning streak', earned_at: '2025-11-15T00:00:00Z', course_id: null, metadata: { streak_days: 30 } },
+  { id: 'badge-10', org_id: 'org-1', employee_id: 'emp-11', badge_type: 'path_complete' as const, badge_name: 'Path Completer', badge_icon: 'map', description: 'Completed a full learning path', earned_at: '2026-01-30T00:00:00Z', course_id: null, metadata: { path: 'Technology Fundamentals' } },
+  { id: 'badge-11', org_id: 'org-1', employee_id: 'emp-4', badge_type: 'compliance_champion' as const, badge_name: 'Compliance Champion', badge_icon: 'shield', description: 'Completed all mandatory compliance courses', earned_at: '2026-01-28T00:00:00Z', course_id: null, metadata: { courses_completed: 2 } },
+  { id: 'badge-12', org_id: 'org-1', employee_id: 'emp-22', badge_type: 'top_learner' as const, badge_name: 'Top Learner', badge_icon: 'crown', description: 'Ranked in top 10% of learners this month', earned_at: '2026-02-15T00:00:00Z', course_id: null, metadata: { rank: 5 } },
+]
+
+// === From agent-aeb74e56 ===
+export const demoLearnerPoints = [
+  { id: 'lp-1', org_id: 'org-1', employee_id: 'emp-14', points: 150, source: 'course_complete' as const, description: 'Completed Agile Project Management', earned_at: '2025-10-01T00:00:00Z' },
+  { id: 'lp-2', org_id: 'org-1', employee_id: 'emp-14', points: 100, source: 'quiz_score' as const, description: 'Perfect score on Agile quiz', earned_at: '2025-09-15T00:00:00Z' },
+  { id: 'lp-3', org_id: 'org-1', employee_id: 'emp-14', points: 50, source: 'discussion_post' as const, description: 'Active discussion participant', earned_at: '2025-10-10T00:00:00Z' },
+  { id: 'lp-4', org_id: 'org-1', employee_id: 'emp-4', points: 150, source: 'course_complete' as const, description: 'Completed AML Compliance', earned_at: '2026-01-25T00:00:00Z' },
+  { id: 'lp-5', org_id: 'org-1', employee_id: 'emp-4', points: 75, source: 'quiz_score' as const, description: 'Scored 92% on AML assessment', earned_at: '2026-01-25T00:00:00Z' },
+  { id: 'lp-6', org_id: 'org-1', employee_id: 'emp-3', points: 150, source: 'course_complete' as const, description: 'Completed Customer Experience Excellence', earned_at: '2025-12-15T00:00:00Z' },
+  { id: 'lp-7', org_id: 'org-1', employee_id: 'emp-3', points: 200, source: 'streak_bonus' as const, description: '30-day learning streak bonus', earned_at: '2025-11-15T00:00:00Z' },
+  { id: 'lp-8', org_id: 'org-1', employee_id: 'emp-26', points: 150, source: 'course_complete' as const, description: 'Completed AML Compliance', earned_at: '2026-01-20T00:00:00Z' },
+  { id: 'lp-9', org_id: 'org-1', employee_id: 'emp-26', points: 80, source: 'quiz_score' as const, description: 'Scored 88% on Data Privacy quiz', earned_at: '2026-01-20T00:00:00Z' },
+  { id: 'lp-10', org_id: 'org-1', employee_id: 'emp-6', points: 100, source: 'peer_help' as const, description: 'Helped peers in study group', earned_at: '2026-02-10T00:00:00Z' },
+  { id: 'lp-11', org_id: 'org-1', employee_id: 'emp-6', points: 50, source: 'discussion_post' as const, description: 'Contributed to credit analysis discussion', earned_at: '2026-02-05T00:00:00Z' },
+  { id: 'lp-12', org_id: 'org-1', employee_id: 'emp-2', points: 100, source: 'streak_bonus' as const, description: '7-day learning streak bonus', earned_at: '2026-02-10T00:00:00Z' },
+  { id: 'lp-13', org_id: 'org-1', employee_id: 'emp-2', points: 50, source: 'discussion_post' as const, description: 'Discussion on leadership practices', earned_at: '2026-02-08T00:00:00Z' },
+  { id: 'lp-14', org_id: 'org-1', employee_id: 'emp-1', points: 75, source: 'peer_help' as const, description: 'Mentored 5 team members', earned_at: '2026-02-05T00:00:00Z' },
+  { id: 'lp-15', org_id: 'org-1', employee_id: 'emp-11', points: 150, source: 'course_complete' as const, description: 'Completed Technology Fundamentals path', earned_at: '2026-01-30T00:00:00Z' },
+  { id: 'lp-16', org_id: 'org-1', employee_id: 'emp-11', points: 50, source: 'discussion_post' as const, description: 'Operations process discussion', earned_at: '2026-01-25T00:00:00Z' },
+  { id: 'lp-17', org_id: 'org-1', employee_id: 'emp-22', points: 150, source: 'course_complete' as const, description: 'Completed compliance training suite', earned_at: '2026-02-01T00:00:00Z' },
+  { id: 'lp-18', org_id: 'org-1', employee_id: 'emp-22', points: 100, source: 'quiz_score' as const, description: 'Top scorer on risk assessment', earned_at: '2026-02-15T00:00:00Z' },
+]
+
+// === From agent-aeb74e56 ===
+export const demoScormPackages = [
+  { id: 'scorm-1', org_id: 'org-1', course_id: 'course-2', package_url: '/scorm/aml-compliance-v3.zip', version: 'scorm_2004' as const, entry_point: 'index.html', metadata: { title: 'AML Compliance Interactive', description: 'Interactive AML compliance module with scenario-based learning', duration: '4 hours', mastery_score: 80 }, uploaded_at: '2025-12-15T00:00:00Z', status: 'ready' as const },
+  { id: 'scorm-2', org_id: 'org-1', course_id: 'course-6', package_url: '/scorm/data-privacy-gdpr.zip', version: 'scorm_1_2' as const, entry_point: 'launch.html', metadata: { title: 'Data Privacy & GDPR Module', description: 'Comprehensive data protection training with interactive exercises', duration: '3 hours', mastery_score: 75 }, uploaded_at: '2025-11-20T00:00:00Z', status: 'ready' as const },
+  { id: 'scorm-3', org_id: 'org-1', course_id: 'course-4', package_url: '/scorm/digital-banking-basics.zip', version: 'xapi' as const, entry_point: 'start.html', metadata: { title: 'Digital Banking Fundamentals xAPI', description: 'Modern banking platform training with xAPI tracking', duration: '8 hours', mastery_score: 70 }, uploaded_at: '2026-01-10T00:00:00Z', status: 'ready' as const },
+]
+
+// === From agent-aeb74e56 ===
+export const demoScormTracking = [
+  { id: 'st-1', org_id: 'org-1', package_id: 'scorm-1', enrollment_id: 'enr-2', lesson_status: 'completed' as const, score_raw: 92, score_min: 0, score_max: 100, total_time: '03:45:22', suspend_data: null, last_accessed: '2026-01-25T14:30:00Z' },
+  { id: 'st-2', org_id: 'org-1', package_id: 'scorm-2', enrollment_id: 'enr-8', lesson_status: 'passed' as const, score_raw: 88, score_min: 0, score_max: 100, total_time: '02:52:10', suspend_data: null, last_accessed: '2026-01-20T11:15:00Z' },
+  { id: 'st-3', org_id: 'org-1', package_id: 'scorm-1', enrollment_id: 'enr-3', lesson_status: 'incomplete' as const, score_raw: 45, score_min: 0, score_max: 100, total_time: '01:30:00', suspend_data: 'bookmark=module3;slide=12', last_accessed: '2026-02-15T09:20:00Z' },
+]
+
+// === From agent-af5905e8 ===
+// Open-Ended Responses (with sentiment and themes)
+export const demoOpenEndedResponses = [
+  { id: 'oer-1', survey_response_id: 'sr-1', question_id: 'q-p5', org_id: 'org-1', text: 'The leadership team has done an excellent job communicating our strategy this quarter. I feel aligned with the company direction.', sentiment: 'positive' as const, themes: ['leadership', 'communication', 'strategy'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-28T09:15:00Z', department_id: 'dept-1' },
+  { id: 'oer-2', survey_response_id: 'sr-1', question_id: 'q-p5', org_id: 'org-1', text: 'I wish there were more opportunities for career advancement. The promotion criteria are not transparent enough.', sentiment: 'negative' as const, themes: ['career growth', 'transparency', 'promotion'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-28T10:30:00Z', department_id: 'dept-1' },
+  { id: 'oer-3', survey_response_id: 'sr-2', question_id: 'q-e2', org_id: 'org-1', text: 'Great work-life balance and supportive team culture. My manager genuinely cares about my wellbeing.', sentiment: 'positive' as const, themes: ['work-life balance', 'culture', 'management'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-29T11:00:00Z', department_id: 'dept-2' },
+  { id: 'oer-4', survey_response_id: 'sr-3', question_id: 'q-p5', org_id: 'org-1', text: 'The workload has been overwhelming lately. We need more resources in the operations team.', sentiment: 'negative' as const, themes: ['workload', 'resources', 'staffing'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-28T14:20:00Z', department_id: 'dept-3' },
+  { id: 'oer-5', survey_response_id: 'sr-4', question_id: 'q-e3', org_id: 'org-1', text: 'The technology stack we use is modern and I appreciate the investment in new tools. Makes my job much easier.', sentiment: 'positive' as const, themes: ['technology', 'tools', 'investment'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-30T08:45:00Z', department_id: 'dept-4' },
+  { id: 'oer-6', survey_response_id: 'sr-5', question_id: 'q-p5', org_id: 'org-1', text: 'The company is a decent place to work but nothing extraordinary. Benefits are average compared to competitors.', sentiment: 'neutral' as const, themes: ['benefits', 'compensation', 'competitiveness'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-29T16:00:00Z', department_id: 'dept-5' },
+  { id: 'oer-7', survey_response_id: 'sr-6', question_id: 'q-e2', org_id: 'org-1', text: 'Cross-functional collaboration could be much better. Teams work in silos and information does not flow well.', sentiment: 'negative' as const, themes: ['collaboration', 'silos', 'communication'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-30T13:30:00Z', department_id: 'dept-1' },
+  { id: 'oer-8', survey_response_id: 'sr-7', question_id: 'q-p5', org_id: 'org-1', text: 'I love the mentoring program. Being paired with a senior leader has been transformative for my career development.', sentiment: 'positive' as const, themes: ['mentoring', 'career development', 'leadership'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-28T12:00:00Z', department_id: 'dept-2' },
+  { id: 'oer-9', survey_response_id: 'sr-8', question_id: 'q-e3', org_id: 'org-1', text: 'Training opportunities are limited for junior staff. Would appreciate more structured learning paths.', sentiment: 'neutral' as const, themes: ['training', 'learning', 'development'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-31T09:00:00Z', department_id: 'dept-3' },
+  { id: 'oer-10', survey_response_id: 'sr-9', question_id: 'q-p5', org_id: 'org-1', text: 'The recognition program is wonderful. Being publicly acknowledged during all-hands meetings motivates the entire team.', sentiment: 'positive' as const, themes: ['recognition', 'motivation', 'culture'], analyzed_at: '2026-02-01T10:00:00Z', created_at: '2026-01-29T15:00:00Z', department_id: 'dept-4' },
+]
+
+// === From agent-af5905e8 ===
+// Survey Schedules
+export const demoSurveySchedules = [
+  {
+    id: 'sched-1', survey_id: 'survey-2', org_id: 'org-1', frequency: 'monthly' as const,
+    start_date: '2026-01-01', next_run_date: '2026-03-01', end_date: '2026-12-31',
+    is_active: true, target_audience: { department: null, role: null, country: null },
+    last_run_at: '2026-02-01T08:00:00Z', created_at: '2025-12-15T00:00:00Z',
+    survey_title: 'Monthly Pulse Check',
+  },
+  {
+    id: 'sched-2', survey_id: 'survey-1', org_id: 'org-1', frequency: 'quarterly' as const,
+    start_date: '2026-01-01', next_run_date: '2026-04-01', end_date: null,
+    is_active: true, target_audience: { department: null, role: null, country: null },
+    last_run_at: '2026-01-15T08:00:00Z', created_at: '2025-12-01T00:00:00Z',
+    survey_title: 'Quarterly eNPS',
+  },
+]
+
+// === From agent-af5905e8 ===
+// Survey Templates
+export const demoSurveyTemplates = [
+  {
+    id: 'tpl-pulse', org_id: 'org-1', name: 'Pulse Check', type: 'pulse' as const,
+    description: 'Quick 5-question pulse survey to gauge overall employee sentiment and engagement levels.',
+    questions: [
+      { id: 'q-p1', text: 'How satisfied are you with your current role?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-p2', text: 'Do you feel supported by your direct manager?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-p3', text: 'How would you rate your current workload?', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Too Light', 'Light', 'Just Right', 'Heavy', 'Too Heavy'] } },
+      { id: 'q-p4', text: 'Do you feel recognized for your contributions?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-p5', text: 'Would you recommend this company as a great place to work?', type: 'rating' as const, required: true, options: { scale: 5 }, branchLogic: { condition: { field: 'value', operator: 'lte', value: 2 }, action: 'skip_to', targetQuestionId: 'q-p5-followup' } },
+    ],
+    isDefault: true, usageCount: 12, created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'tpl-enps', org_id: 'org-1', name: 'eNPS Survey', type: 'enps' as const,
+    description: 'Employee Net Promoter Score survey with follow-up questions to understand the score.',
+    questions: [
+      { id: 'q-e1', text: 'On a scale of 0-10, how likely are you to recommend this company as a place to work?', type: 'nps' as const, required: true },
+      { id: 'q-e2', text: 'What is the primary reason for your score?', type: 'text' as const, required: true },
+      { id: 'q-e3', text: 'What one thing could we improve to make this a better workplace?', type: 'text' as const, required: false },
+    ],
+    isDefault: true, usageCount: 8, created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'tpl-onboarding', org_id: 'org-1', name: 'Onboarding 30-Day Check-In', type: 'onboarding' as const,
+    description: 'Comprehensive 30-day onboarding experience survey for new hires.',
+    questions: [
+      { id: 'q-o1', text: 'How would you rate your overall welcome experience?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-o2', text: 'Was your training adequate to perform your role?', type: 'rating' as const, required: true, options: { scale: 5 }, branchLogic: { condition: { field: 'value', operator: 'lte', value: 2 }, action: 'skip_to', targetQuestionId: 'q-o2-followup' } },
+      { id: 'q-o2-followup', text: 'What additional training would help you?', type: 'text' as const, required: false },
+      { id: 'q-o3', text: 'Did you receive the tools and resources needed for your job?', type: 'multiple_choice' as const, required: true, options: { choices: ['Yes, everything', 'Most things', 'Some things were missing', 'No, significant gaps'], multiSelect: false } },
+      { id: 'q-o4', text: 'How well has your team integrated you?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-o5', text: 'Rate your manager on the following:', type: 'matrix' as const, required: true, options: { rows: ['Availability', 'Clarity of expectations', 'Feedback quality', 'Supportiveness'], scale: 5 } },
+      { id: 'q-o6', text: 'How clear are your role expectations and responsibilities?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-o7', text: 'Do you feel you have adequate support to succeed?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-o8', text: 'Please share any additional feedback about your onboarding experience.', type: 'text' as const, required: false },
+    ],
+    isDefault: true, usageCount: 5, created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'tpl-exit', org_id: 'org-1', name: 'Exit Survey', type: 'exit' as const,
+    description: 'Comprehensive exit interview survey to understand reasons for departure and gather improvement feedback.',
+    questions: [
+      { id: 'q-x1', text: 'What is your primary reason for leaving?', type: 'multiple_choice' as const, required: true, options: { choices: ['Better opportunity', 'Compensation', 'Work-life balance', 'Career growth', 'Management', 'Company culture', 'Relocation', 'Personal reasons', 'Other'], multiSelect: false } },
+      { id: 'q-x2', text: 'How satisfied were you with your overall experience?', type: 'rating' as const, required: true, options: { scale: 10 } },
+      { id: 'q-x3', text: 'How would you rate your relationship with your direct manager?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-x4', text: 'Did you feel you had adequate opportunities for career growth?', type: 'rating' as const, required: true, options: { scale: 5 }, branchLogic: { condition: { field: 'value', operator: 'lte', value: 2 }, action: 'skip_to', targetQuestionId: 'q-x4-followup' } },
+      { id: 'q-x4-followup', text: 'What growth opportunities were lacking?', type: 'text' as const, required: false },
+      { id: 'q-x5', text: 'How satisfied were you with your compensation and benefits?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-x6', text: 'How would you describe the company culture?', type: 'text' as const, required: true },
+      { id: 'q-x7', text: 'Would you recommend this company to a friend?', type: 'nps' as const, required: true },
+      { id: 'q-x8', text: 'What could we have done differently to retain you?', type: 'text' as const, required: false },
+      { id: 'q-x9', text: 'What was the best part of working here?', type: 'text' as const, required: false },
+      { id: 'q-x10', text: 'Would you consider returning in the future?', type: 'multiple_choice' as const, required: true, options: { choices: ['Definitely yes', 'Possibly', 'Unlikely', 'Definitely not'], multiSelect: false } },
+    ],
+    isDefault: true, usageCount: 3, created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'tpl-annual', org_id: 'org-1', name: 'Annual Engagement Survey', type: 'annual' as const,
+    description: 'Comprehensive annual engagement survey covering all key dimensions of employee experience.',
+    questions: [
+      { id: 'q-a1', text: 'Rate your overall job satisfaction.', type: 'rating' as const, required: true, options: { scale: 10 } },
+      { id: 'q-a2', text: 'How well does leadership communicate the company vision?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-a3', text: 'Rate the following aspects of your work environment:', type: 'matrix' as const, required: true, options: { rows: ['Physical workspace', 'Team collaboration', 'Work-life balance', 'Tools and technology', 'Learning opportunities'], scale: 5 } },
+      { id: 'q-a4', text: 'Do you feel valued and recognized for your work?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-a5', text: 'How confident are you in the company direction?', type: 'rating' as const, required: true, options: { scale: 5 } },
+      { id: 'q-a6', text: 'What three things should the company focus on improving?', type: 'text' as const, required: true },
+    ],
+    isDefault: true, usageCount: 2, created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'tpl-dei', org_id: 'org-1', name: 'DEI Climate Survey', type: 'dei' as const,
+    description: 'Diversity, Equity, and Inclusion climate survey to measure organizational inclusiveness.',
+    questions: [
+      { id: 'q-d1', text: 'I feel a sense of belonging at this organization.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+      { id: 'q-d2', text: 'Decisions and policies at this company are fair and equitable.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+      { id: 'q-d3', text: 'People from all backgrounds are included and respected.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+      { id: 'q-d4', text: 'Leadership represents the diversity of our workforce.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+      { id: 'q-d5', text: 'I feel comfortable speaking up and sharing my perspective.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] }, branchLogic: { condition: { field: 'value', operator: 'lte', value: 2 }, action: 'skip_to', targetQuestionId: 'q-d5-followup' } },
+      { id: 'q-d5-followup', text: 'What prevents you from speaking up?', type: 'text' as const, required: false },
+      { id: 'q-d6', text: 'All employees are treated with respect regardless of their background.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+      { id: 'q-d7', text: 'Equal opportunities for growth and advancement exist for everyone.', type: 'rating' as const, required: true, options: { scale: 5, labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'] } },
+    ],
+    isDefault: true, usageCount: 1, created_at: '2025-06-01T00:00:00Z',
+  },
+]
+
+// === From agent-af5905e8 ===
+// Survey Triggers
+export const demoSurveyTriggers = [
+  {
+    id: 'trig-1', org_id: 'org-1', template_id: 'tpl-onboarding', trigger_event: 'employee_hired' as const,
+    delay_days: 30, is_active: true, target_audience: { department: null, role: null, country: null },
+    created_at: '2025-10-01T00:00:00Z', template_name: 'Onboarding 30-Day Check-In',
+    recent_firings: [
+      { employee_id: 'emp-4', employee_name: 'Chioma Eze', event: 'Hired', survey_sent_date: '2026-02-10', status: 'completed' },
+      { employee_id: 'emp-10', employee_name: 'Abena Boateng', event: 'Hired', survey_sent_date: '2026-02-03', status: 'pending' },
+    ],
+  },
+  {
+    id: 'trig-2', org_id: 'org-1', template_id: 'tpl-exit', trigger_event: 'employee_terminated' as const,
+    delay_days: 0, is_active: true, target_audience: { department: null, role: null, country: null },
+    created_at: '2025-10-01T00:00:00Z', template_name: 'Exit Survey',
+    recent_firings: [
+      { employee_id: 'emp-30', employee_name: 'Aminata Diop', event: 'Terminated', survey_sent_date: '2026-01-20', status: 'completed' },
+    ],
+  },
+  {
+    id: 'trig-3', org_id: 'org-1', template_id: 'tpl-pulse', trigger_event: 'anniversary' as const,
+    delay_days: 0, is_active: true, target_audience: { department: null, role: null, country: null },
+    created_at: '2025-11-01T00:00:00Z', template_name: 'Pulse Check',
+    recent_firings: [
+      { employee_id: 'emp-14', employee_name: 'Yaw Frimpong', event: '3-Year Anniversary', survey_sent_date: '2026-02-15', status: 'completed' },
+      { employee_id: 'emp-6', employee_name: 'Fatou Ndiaye', event: '2-Year Anniversary', survey_sent_date: '2026-02-08', status: 'pending' },
+    ],
+  },
+]
 export function getDemoDataForOrg(orgId: string) {
   if (orgId === 'org-2') {
     return {
@@ -2283,6 +3714,77 @@ export function getDemoDataForOrg(orgId: string) {
       interviews: [] as typeof demoInterviews,
       talentPools: [] as typeof demoTalentPools,
       scoreCards: [] as typeof demoScoreCards,
+      // Offboarding
+      offboardingProcesses: [] as typeof demoOffboardingProcesses,
+      offboardingChecklists: [] as typeof demoOffboardingChecklists,
+      offboardingChecklistItems: [] as typeof demoOffboardingChecklistItems,
+      offboardingTasks: [] as typeof demoOffboardingTasks,
+      exitSurveys: [] as typeof demoExitSurveys,
+      // Headcount Planning
+      headcountPlans: [] as typeof demoHeadcountPlans,
+      headcountPositions: [] as typeof demoHeadcountPositions,
+      headcountBudgetItems: [] as typeof demoHeadcountBudgetItems,
+      // Time & Attendance
+      timeEntries: [] as typeof demoTimeEntries,
+      timeOffBalances: [] as typeof demoTimeOffBalances,
+      timeOffPolicies: [] as typeof demoTimeOffPolicies,
+      overtimeRules: [] as typeof demoOvertimeRules,
+      // IT Cloud
+      managedDevices: [] as typeof demoManagedDevices,
+      deviceActions: [] as typeof demoDeviceActions,
+      appCatalog: [] as typeof demoAppCatalog,
+      appAssignments: [] as typeof demoAppAssignments,
+      securityPoliciesIT: [] as typeof demoSecurityPoliciesIT,
+      deviceInventory: [] as typeof demoDeviceInventory,
+      // Automation Workflows
+      automationWorkflows: [] as typeof demoAutomationWorkflows,
+      automationWorkflowSteps: [] as typeof demoAutomationWorkflowSteps,
+      automationWorkflowRuns: [] as typeof demoAutomationWorkflowRuns,
+      automationWorkflowRunSteps: [] as typeof demoAutomationWorkflowRunSteps,
+      automationWorkflowTemplates: [] as typeof demoAutomationWorkflowTemplates,
+      // PIPs + Merit + Review Templates
+      pips: [] as typeof demoPIPs,
+      pipCheckIns: [] as typeof demoPIPCheckIns,
+      meritCycles: [] as typeof demoMeritCycles,
+      meritRecommendations: [] as typeof demoMeritRecommendations,
+      reviewTemplates: [] as typeof demoReviewTemplates,
+      // Recruiting Enhancements
+      backgroundChecks: [] as typeof demoBackgroundChecks,
+      referralProgram: demoReferralProgram,
+      referrals: [] as typeof demoReferrals,
+      knockoutQuestions: [] as typeof demoKnockoutQuestions,
+      candidateScheduling: [] as typeof demoCandidateScheduling,
+      // Benefits Enhancements
+      openEnrollmentPeriods: [] as typeof demoOpenEnrollmentPeriods,
+      flexBenefitAccounts: [] as typeof demoFlexBenefitAccounts,
+      flexBenefitTransactions: [] as typeof demoFlexBenefitTransactions,
+      cobraEvents: [] as typeof demoCobraEvents,
+      acaTracking: [] as typeof demoAcaTracking,
+      // Expense Enhancements
+      receiptMatches: [] as typeof demoReceiptMatches,
+      duplicateDetections: [] as typeof demoDuplicateDetections,
+      mileageEntries: [] as typeof demoMileageEntries,
+      advancedExpensePolicies: [] as typeof demoAdvancedExpensePolicies,
+      reimbursementBatches: [] as typeof demoReimbursementBatches,
+      // LMS Enhancements
+      coursePrerequisites: [] as typeof demoCoursePrerequisites,
+      scormPackages: [] as typeof demoScormPackages,
+      scormTracking: [] as typeof demoScormTracking,
+      contentLibrary: [] as typeof demoContentLibrary,
+      learnerBadges: [] as typeof demoLearnerBadges,
+      learnerPoints: [] as typeof demoLearnerPoints,
+      // Survey Enhancements
+      surveyTemplates: [] as typeof demoSurveyTemplates,
+      surveySchedules: [] as typeof demoSurveySchedules,
+      surveyTriggers: [] as typeof demoSurveyTriggers,
+      openEndedResponses: [] as typeof demoOpenEndedResponses,
+      // Custom Fields + Emergency Contacts + Compliance
+      customFieldDefinitions: [] as typeof demoCustomFieldDefinitions,
+      customFieldValues: [] as typeof demoCustomFieldValues,
+      emergencyContacts: [] as typeof demoEmergencyContacts,
+      complianceRequirements: [] as typeof demoComplianceRequirements,
+      complianceDocuments: [] as typeof demoComplianceDocuments,
+      complianceAlerts: [] as typeof demoComplianceAlerts,
     }
   }
   // Default: Ecobank
@@ -2375,6 +3877,77 @@ export function getDemoDataForOrg(orgId: string) {
     surveyQuestions: demoSurveyQuestions,
     shifts: demoShifts,
     timesheetEntries: demoTimesheetEntries,
+    // Offboarding
+    offboardingProcesses: demoOffboardingProcesses,
+    offboardingChecklists: demoOffboardingChecklists,
+    offboardingChecklistItems: demoOffboardingChecklistItems,
+    offboardingTasks: demoOffboardingTasks,
+    exitSurveys: demoExitSurveys,
+    // Headcount Planning
+    headcountPlans: demoHeadcountPlans,
+    headcountPositions: demoHeadcountPositions,
+    headcountBudgetItems: demoHeadcountBudgetItems,
+    // Time & Attendance
+    timeEntries: demoTimeEntries,
+    timeOffBalances: demoTimeOffBalances,
+    timeOffPolicies: demoTimeOffPolicies,
+    overtimeRules: demoOvertimeRules,
+    // IT Cloud
+    managedDevices: demoManagedDevices,
+    deviceActions: demoDeviceActions,
+    appCatalog: demoAppCatalog,
+    appAssignments: demoAppAssignments,
+    securityPoliciesIT: demoSecurityPoliciesIT,
+    deviceInventory: demoDeviceInventory,
+    // Automation Workflows
+    automationWorkflows: demoAutomationWorkflows,
+    automationWorkflowSteps: demoAutomationWorkflowSteps,
+    automationWorkflowRuns: demoAutomationWorkflowRuns,
+    automationWorkflowRunSteps: demoAutomationWorkflowRunSteps,
+    automationWorkflowTemplates: demoAutomationWorkflowTemplates,
+    // PIPs + Merit + Review Templates
+    pips: demoPIPs,
+    pipCheckIns: demoPIPCheckIns,
+    meritCycles: demoMeritCycles,
+    meritRecommendations: demoMeritRecommendations,
+    reviewTemplates: demoReviewTemplates,
+    // Recruiting Enhancements
+    backgroundChecks: demoBackgroundChecks,
+    referralProgram: demoReferralProgram,
+    referrals: demoReferrals,
+    knockoutQuestions: demoKnockoutQuestions,
+    candidateScheduling: demoCandidateScheduling,
+    // Benefits Enhancements
+    openEnrollmentPeriods: demoOpenEnrollmentPeriods,
+    flexBenefitAccounts: demoFlexBenefitAccounts,
+    flexBenefitTransactions: demoFlexBenefitTransactions,
+    cobraEvents: demoCobraEvents,
+    acaTracking: demoAcaTracking,
+    // Expense Enhancements
+    receiptMatches: demoReceiptMatches,
+    duplicateDetections: demoDuplicateDetections,
+    mileageEntries: demoMileageEntries,
+    advancedExpensePolicies: demoAdvancedExpensePolicies,
+    reimbursementBatches: demoReimbursementBatches,
+    // LMS Enhancements
+    coursePrerequisites: demoCoursePrerequisites,
+    scormPackages: demoScormPackages,
+    scormTracking: demoScormTracking,
+    contentLibrary: demoContentLibrary,
+    learnerBadges: demoLearnerBadges,
+    learnerPoints: demoLearnerPoints,
+    // Survey Enhancements
+    surveyTemplates: demoSurveyTemplates,
+    surveySchedules: demoSurveySchedules,
+    surveyTriggers: demoSurveyTriggers,
+    openEndedResponses: demoOpenEndedResponses,
+    // Custom Fields + Emergency Contacts + Compliance
+    customFieldDefinitions: demoCustomFieldDefinitions,
+    customFieldValues: demoCustomFieldValues,
+    emergencyContacts: demoEmergencyContacts,
+    complianceRequirements: demoComplianceRequirements,
+    complianceDocuments: demoComplianceDocuments,
+    complianceAlerts: demoComplianceAlerts,
   }
 }
 

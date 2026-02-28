@@ -1,101 +1,143 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  createCheckoutSession,
-  createPortalSession,
-  getSubscriptionStatus,
-  cancelSubscription,
-  reportUsage,
-  PRICING_PLANS,
-} from '@/lib/billing'
+import Stripe from 'stripe'
+import { db, schema } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
-// GET /api/billing - Get subscription status
-export async function GET(request: NextRequest) {
-  try {
-    const orgId = request.headers.get('x-org-id')
-    if (!orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-01-28.clover' })
+  : null
 
-    const status = await getSubscriptionStatus(orgId)
-    return NextResponse.json({ subscription: status, plans: PRICING_PLANS })
-  } catch (error: any) {
-    // If Stripe isn't configured, return clear demo mode indicator
-    if (error?.message?.includes('STRIPE_SECRET_KEY')) {
-      return NextResponse.json({
-        subscription: null,
-        plans: PRICING_PLANS,
-        demo: true,
-        message: 'Billing is in demo mode. Configure Stripe keys to enable real billing.',
-      })
-    }
-    console.error('[GET /api/billing] Error:', error)
-    return NextResponse.json({ error: 'Failed to fetch billing status' }, { status: 500 })
-  }
+// Stripe Price IDs (set via env vars)
+const PRICE_IDS: Record<string, string> = {
+  starter: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
+  professional: process.env.STRIPE_PROFESSIONAL_PRICE_ID || 'price_professional',
+  enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
 }
 
-// POST /api/billing - Various billing actions
 export async function POST(request: NextRequest) {
   try {
-    const orgId = request.headers.get('x-org-id')
-    const role = request.headers.get('x-employee-role')
-    if (!orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Only owner/admin can manage billing
-    if (role !== 'owner' && role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden: billing requires owner or admin role' }, { status: 403 })
+    if (!stripe) {
+      return NextResponse.json({ error: 'Billing not configured' }, { status: 503 })
     }
 
     const body = await request.json()
     const { action } = body
+    const orgId = request.headers.get('x-org-id')
 
-    switch (action) {
-      case 'checkout': {
-        const { planId, successUrl, cancelUrl } = body
-        if (!planId) {
-          return NextResponse.json({ error: 'planId is required' }, { status: 400 })
-        }
-        const url = await createCheckoutSession(
-          orgId,
-          planId,
-          successUrl || `${process.env.NEXT_PUBLIC_APP_URL || ''}/settings?tab=billing&success=true`,
-          cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL || ''}/settings?tab=billing&canceled=true`,
-        )
-        return NextResponse.json({ url })
+    // ─── Create Checkout Session ──────────────────────────────────
+    if (action === 'create-checkout') {
+      if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const { plan } = body
+      if (!plan || !PRICE_IDS[plan]) {
+        return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
       }
 
-      case 'portal': {
-        const { returnUrl } = body
-        const url = await createPortalSession(
-          orgId,
-          returnUrl || `${process.env.NEXT_PUBLIC_APP_URL || ''}/settings?tab=billing`,
-        )
-        return NextResponse.json({ url })
+      const [org] = await db.select()
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, orgId))
+      if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+
+      // Create or get Stripe customer
+      let customerId = org.stripeCustomerId
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          name: org.name,
+          metadata: { orgId: org.id },
+        })
+        customerId = customer.id
+        await db.update(schema.organizations)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(schema.organizations.id, orgId))
       }
 
-      case 'cancel': {
-        await cancelSubscription(orgId)
-        return NextResponse.json({ success: true })
-      }
+      // Create checkout session
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        line_items: [{ price: PRICE_IDS[plan], quantity: 1 }],
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings?billing=success&plan=${plan}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings?billing=cancelled`,
+        metadata: { orgId, plan },
+        subscription_data: {
+          metadata: { orgId, plan },
+        },
+      })
 
-      case 'sync-usage': {
-        const { employeeCount } = body
-        if (typeof employeeCount !== 'number') {
-          return NextResponse.json({ error: 'employeeCount is required' }, { status: 400 })
-        }
-        await reportUsage(orgId, employeeCount)
-        return NextResponse.json({ success: true })
-      }
-
-      default:
-        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
+      return NextResponse.json({ url: session.url })
     }
-  } catch (error: any) {
-    if (error?.message?.includes('STRIPE_SECRET_KEY')) {
-      return NextResponse.json({ error: 'Stripe is not configured. Set STRIPE_SECRET_KEY in environment variables.', demo: true }, { status: 503 })
+
+    // ─── Create Customer Portal Session ───────────────────────────
+    if (action === 'customer-portal') {
+      if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const [org] = await db.select()
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, orgId))
+      
+      if (!org?.stripeCustomerId) {
+        return NextResponse.json({ error: 'No billing account found' }, { status: 404 })
+      }
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: org.stripeCustomerId,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings`,
+      })
+
+      return NextResponse.json({ url: session.url })
     }
-    console.error('[POST /api/billing] Error:', error)
+
+    // ─── Get Current Subscription ─────────────────────────────────
+    if (action === 'subscription') {
+      if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const [org] = await db.select()
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, orgId))
+      
+      if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+
+      if (!org.stripeCustomerId) {
+        return NextResponse.json({
+          plan: org.plan,
+          status: 'active',
+          isFree: true,
+        })
+      }
+
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: org.stripeCustomerId,
+          limit: 1,
+          status: 'active',
+        })
+
+        const sub = subscriptions.data[0]
+        if (!sub) {
+          return NextResponse.json({
+            plan: org.plan,
+            status: 'no_subscription',
+            isFree: org.plan === 'free',
+          })
+        }
+
+        // Extract period end from first subscription item
+        const periodEnd = sub.items?.data?.[0]?.current_period_end
+        return NextResponse.json({
+          plan: org.plan,
+          status: sub.status,
+          currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          cancelAtPeriodEnd: sub.cancel_at_period_end,
+          isFree: false,
+        })
+      } catch {
+        return NextResponse.json({ plan: org.plan, status: 'unknown', isFree: org.plan === 'free' })
+      }
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  } catch (error) {
+    console.error('[Billing] Error:', error)
     return NextResponse.json({ error: 'Billing operation failed' }, { status: 500 })
   }
 }

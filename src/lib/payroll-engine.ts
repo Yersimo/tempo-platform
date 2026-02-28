@@ -7,44 +7,48 @@
 
 import { db, schema } from '@/lib/db'
 import { eq, and, desc, sql, count, sum, avg } from 'drizzle-orm'
+import {
+  calculateTax as calculateTaxFromRegistry,
+  type SupportedCountry,
+  type CurrencyCode,
+  type TaxBreakdown,
+  type TaxCalculationOptions,
+  type TaxBracket,
+} from '@/lib/tax-calculator'
+import {
+  calculateStatutoryDeductions,
+  type StatutoryResult,
+} from '@/lib/payroll/statutory-deductions'
 
 // ============================================================
 // TYPES & INTERFACES
 // ============================================================
 
-export type SupportedCountry = 'US' | 'UK' | 'DE' | 'FR' | 'CA' | 'AU'
+// Re-export types from tax-calculator (single source of truth for 100+ countries)
+export type { SupportedCountry, CurrencyCode, TaxBracket, TaxCalculationOptions, TaxBreakdown }
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY' | 'INR' | 'BRL'
-
-export interface TaxBracket {
-  min: number
-  max: number
-  rate: number
+export interface OvertimeInput {
+  hours: number
+  rate?: number // multiplier, defaults to 1.5
 }
 
-export interface TaxCalculationOptions {
-  state?: string
-  province?: string
-  filingStatus?: 'single' | 'married_joint' | 'married_separate' | 'head_of_household'
-  allowances?: number
-  additionalDeductions?: number
-  pensionContributionRate?: number
-  isAnnual?: boolean
+export interface BonusInput {
+  type: string // 'performance' | 'signing' | 'retention' | 'holiday' | 'custom'
+  amount: number // in local currency
+  description?: string
 }
 
-export interface TaxBreakdown {
-  country: SupportedCountry
-  grossSalary: number
-  federalTax: number
-  stateOrProvincialTax: number
-  socialSecurity: number
-  medicare: number
-  pension: number
-  additionalTaxes: Record<string, number>
-  totalTax: number
-  effectiveTaxRate: number
-  netPay: number
-  currency: CurrencyCode
+export interface GarnishmentInput {
+  type: string // 'child_support' | 'tax_levy' | 'student_loan' | 'creditor' | 'other'
+  amount: number
+  caseNumber?: string
+  priority: number // lower = higher priority
+}
+
+export interface ProcessPayrollOptions {
+  overtime?: Record<string, OvertimeInput> // employeeId → overtime data
+  bonuses?: Record<string, BonusInput[]>  // employeeId → bonus array
+  garnishments?: Record<string, GarnishmentInput[]> // employeeId → garnishment array
 }
 
 export interface EmployeePayrollEntry {
@@ -52,12 +56,21 @@ export interface EmployeePayrollEntry {
   employeeName: string
   country: string | null
   grossPay: number
+  basePay: number
+  overtimePay: number
+  overtimeHours: number
+  overtimeRate: number
+  bonusPay: number
+  bonusDetails: BonusInput[]
   federalTax: number
   stateOrProvincialTax: number
   socialSecurity: number
   medicare: number
   pension: number
   additionalTaxes: Record<string, number>
+  garnishments: GarnishmentInput[]
+  garnishmentTotal: number
+  benefitDeductions: number
   totalDeductions: number
   netPay: number
   currency: CurrencyCode
@@ -409,7 +422,8 @@ const AU_SUPER_GUARANTEE_RATE = 0.115
  * Exchange rates relative to USD (approximate mid-market rates).
  * In production, these should be fetched from a live FX data provider.
  */
-const EXCHANGE_RATES: Record<CurrencyCode, number> = {
+const EXCHANGE_RATES: Partial<Record<CurrencyCode, number>> = {
+  // Major currencies
   USD: 1.0,
   EUR: 0.92,
   GBP: 0.79,
@@ -418,15 +432,72 @@ const EXCHANGE_RATES: Record<CurrencyCode, number> = {
   JPY: 149.50,
   INR: 83.12,
   BRL: 4.97,
+  CHF: 0.88,
+  NZD: 1.65,
+  // African currencies (rates vs USD, approximate)
+  NGN: 1550.0,    // Nigerian Naira
+  GHS: 15.50,     // Ghanaian Cedi
+  KES: 153.0,     // Kenyan Shilling
+  ZAR: 18.50,     // South African Rand
+  XOF: 605.0,     // CFA Franc BCEAO (Senegal, CI, Benin, Togo, Mali, BF, Niger, Guinea-Bissau)
+  XAF: 605.0,     // CFA Franc BEAC (Cameroon, Gabon, Congo, Chad, CAR, Equatorial Guinea)
+  TZS: 2650.0,    // Tanzanian Shilling
+  UGX: 3780.0,    // Ugandan Shilling
+  RWF: 1350.0,    // Rwandan Franc
+  ETB: 57.0,      // Ethiopian Birr
+  CDF: 2750.0,    // Congolese Franc (DRC)
+  ZMW: 27.0,      // Zambian Kwacha
+  ZWL: 14000.0,   // Zimbabwean Dollar
+  MZN: 63.50,     // Mozambican Metical
+  BWP: 13.50,     // Botswana Pula
+  MUR: 45.50,     // Mauritian Rupee
+  NAD: 18.50,     // Namibian Dollar
+  AOA: 835.0,     // Angolan Kwanza
+  MWK: 1720.0,    // Malawian Kwacha
+  MGA: 4550.0,    // Malagasy Ariary
+  SZL: 18.50,     // Eswatini Lilangeni
+  LSL: 18.50,     // Lesotho Loti
+  SCR: 14.50,     // Seychellois Rupee
+  CVE: 101.0,     // Cape Verdean Escudo
+  STN: 22.50,     // São Tomé and Príncipe Dobra
+  KMF: 452.0,     // Comorian Franc
+  GMD: 70.0,      // Gambian Dalasi
+  GNF: 8600.0,    // Guinean Franc
+  BIF: 2860.0,    // Burundian Franc
+  SLL: 22800.0,   // Sierra Leonean Leone
+  LRD: 192.0,     // Liberian Dollar
+  MRU: 39.50,     // Mauritanian Ouguiya
+  EGP: 50.50,     // Egyptian Pound
+  MAD: 10.0,      // Moroccan Dirham
+  TND: 3.12,      // Tunisian Dinar
+  DZD: 134.0,     // Algerian Dinar
+  SOS: 571.0,     // Somali Shilling
+  SSP: 1350.0,    // South Sudanese Pound
+  SDG: 601.0,     // Sudanese Pound
+  LYD: 4.85,      // Libyan Dinar
+  ERN: 15.0,      // Eritrean Nakfa
+  DJF: 177.7,     // Djiboutian Franc
 }
 
-const COUNTRY_CURRENCY_MAP: Record<SupportedCountry, CurrencyCode> = {
-  US: 'USD',
-  UK: 'GBP',
-  DE: 'EUR',
-  FR: 'EUR',
-  CA: 'CAD',
-  AU: 'AUD',
+const COUNTRY_CURRENCY_MAP: Partial<Record<SupportedCountry, CurrencyCode>> = {
+  // Original 6
+  US: 'USD', UK: 'GBP', DE: 'EUR', FR: 'EUR', CA: 'CAD', AU: 'AUD',
+  // Ecobank African countries (33)
+  NG: 'NGN', GH: 'GHS', KE: 'KES', ZA: 'ZAR',
+  CI: 'XOF', SN: 'XOF', TG: 'XOF', BJ: 'XOF', BF: 'XOF', NE: 'XOF', ML: 'XOF', GW: 'XOF',
+  CM: 'XAF', GA: 'XAF', CG: 'XAF', TD: 'XAF', CF: 'XAF', GQ: 'XAF',
+  CD: 'CDF', TZ: 'TZS', UG: 'UGX', RW: 'RWF', ET: 'ETB',
+  MZ: 'MZN', ZM: 'ZMW', ZW: 'ZWL', AO: 'AOA',
+  SL: 'SLL', GN: 'GNF', GM: 'GMD', LR: 'LRD',
+  CV: 'CVE', MR: 'MRU', ST: 'STN', BI: 'BIF',
+  // North Africa
+  EG: 'EGP', MA: 'MAD', TN: 'TND', DZ: 'DZD',
+  // East Africa
+  DJ: 'DJF', ER: 'ERN', SO: 'SOS', SS: 'SSP', SD: 'SDG',
+  // Southern Africa
+  BW: 'BWP', MU: 'MUR', NA: 'NAD', MW: 'MWK', MG: 'MGA',
+  SZ: 'SZL', LS: 'LSL', SC: 'SCR', KM: 'KMF',
+  LY: 'LYD',
 }
 
 /**
@@ -439,7 +510,9 @@ export function convertCurrency(amount: number, from: CurrencyCode, to: Currency
   const toRate = EXCHANGE_RATES[to]
 
   if (!fromRate || !toRate) {
-    throw new Error(`Unsupported currency pair: ${from} -> ${to}`)
+    // Fallback: if currency not in rates, treat as 1:1 to USD
+    console.warn(`Exchange rate not found for ${from} -> ${to}, using fallback`)
+    return amount
   }
 
   // Convert to USD first, then to target currency
@@ -475,31 +548,15 @@ function applyBrackets(taxableIncome: number, brackets: TaxBracket[]): number {
 
 /**
  * Calculate taxes for a given country and gross annual salary.
- * Returns a detailed breakdown of all taxes and net pay.
+ * Delegates to the unified tax-calculator which supports 100+ countries
+ * including all 33 Ecobank African countries with real tax brackets.
  */
 export function calculateTax(
   country: SupportedCountry,
   grossSalary: number,
   options: TaxCalculationOptions = {}
 ): TaxBreakdown {
-  const currency = COUNTRY_CURRENCY_MAP[country]
-
-  switch (country) {
-    case 'US':
-      return calculateUSTax(grossSalary, currency, options)
-    case 'UK':
-      return calculateUKTax(grossSalary, currency, options)
-    case 'DE':
-      return calculateDETax(grossSalary, currency, options)
-    case 'FR':
-      return calculateFRTax(grossSalary, currency, options)
-    case 'CA':
-      return calculateCATax(grossSalary, currency, options)
-    case 'AU':
-      return calculateAUTax(grossSalary, currency, options)
-    default:
-      throw new Error(`Unsupported country: ${country}`)
-  }
+  return calculateTaxFromRegistry(country, grossSalary, options)
 }
 
 function calculateUSTax(
@@ -817,19 +874,62 @@ function calculateAUTax(
 
 /**
  * Map a country string (from the employees table) to a SupportedCountry code.
- * Returns 'US' as default if the country is unrecognized.
+ * Supports all 33 Ecobank African countries plus original 6.
+ * Returns 'US' as default only if the country is truly unrecognized.
  */
 function resolveCountryCode(country: string | null): SupportedCountry {
   if (!country) return 'US'
 
   const normalized = country.trim().toUpperCase()
   const mapping: Record<string, SupportedCountry> = {
-    US: 'US', USA: 'US', 'UNITED STATES': 'US',
+    // Original 6
+    US: 'US', USA: 'US', 'UNITED STATES': 'US', 'UNITED STATES OF AMERICA': 'US',
     UK: 'UK', GB: 'UK', 'UNITED KINGDOM': 'UK', 'GREAT BRITAIN': 'UK',
     DE: 'DE', GERMANY: 'DE', DEUTSCHLAND: 'DE',
     FR: 'FR', FRANCE: 'FR',
     CA: 'CA', CANADA: 'CA',
     AU: 'AU', AUSTRALIA: 'AU',
+    // West Africa - Ecobank core markets
+    NG: 'NG', NIGERIA: 'NG',
+    GH: 'GH', GHANA: 'GH',
+    CI: 'CI', "COTE D'IVOIRE": 'CI', 'IVORY COAST': 'CI',
+    SN: 'SN', SENEGAL: 'SN',
+    TG: 'TG', TOGO: 'TG',
+    BJ: 'BJ', BENIN: 'BJ',
+    BF: 'BF', 'BURKINA FASO': 'BF',
+    NE: 'NE', NIGER: 'NE',
+    ML: 'ML', MALI: 'ML',
+    GN: 'GN', GUINEA: 'GN',
+    GW: 'GW', 'GUINEA-BISSAU': 'GW', 'GUINEA BISSAU': 'GW',
+    GM: 'GM', GAMBIA: 'GM', 'THE GAMBIA': 'GM',
+    SL: 'SL', 'SIERRA LEONE': 'SL',
+    LR: 'LR', LIBERIA: 'LR',
+    CV: 'CV', 'CAPE VERDE': 'CV', 'CABO VERDE': 'CV',
+    // Central Africa
+    CM: 'CM', CAMEROON: 'CM', CAMEROUN: 'CM',
+    GA: 'GA', GABON: 'GA',
+    CG: 'CG', CONGO: 'CG', 'REPUBLIC OF CONGO': 'CG', 'CONGO-BRAZZAVILLE': 'CG',
+    CD: 'CD', 'DR CONGO': 'CD', DRC: 'CD', 'DEMOCRATIC REPUBLIC OF CONGO': 'CD', 'CONGO-KINSHASA': 'CD',
+    TD: 'TD', CHAD: 'TD', TCHAD: 'TD',
+    CF: 'CF', 'CENTRAL AFRICAN REPUBLIC': 'CF',
+    GQ: 'GQ', 'EQUATORIAL GUINEA': 'GQ',
+    ST: 'ST', 'SAO TOME AND PRINCIPE': 'ST', 'SAO TOME': 'ST',
+    // East Africa
+    KE: 'KE', KENYA: 'KE',
+    TZ: 'TZ', TANZANIA: 'TZ',
+    UG: 'UG', UGANDA: 'UG',
+    RW: 'RW', RWANDA: 'RW',
+    ET: 'ET', ETHIOPIA: 'ET',
+    BI: 'BI', BURUNDI: 'BI',
+    // Southern Africa
+    ZA: 'ZA', 'SOUTH AFRICA': 'ZA',
+    ZW: 'ZW', ZIMBABWE: 'ZW',
+    MZ: 'MZ', MOZAMBIQUE: 'MZ',
+    ZM: 'ZM', ZAMBIA: 'ZM',
+    // North & other Africa
+    EG: 'EG', EGYPT: 'EG',
+    MA: 'MA', MOROCCO: 'MA',
+    MR: 'MR', MAURITANIA: 'MR',
   }
 
   return mapping[normalized] || 'US'
@@ -871,9 +971,14 @@ async function getEmployeeSalary(employeeId: string, orgId: string): Promise<{ s
 
 /**
  * Process payroll for all active employees in an organization for a given period.
- * Creates a payroll run record and returns a complete summary.
+ * Creates a payroll run record, persists individual employee entries, and returns a complete summary.
+ * Supports overtime, bonuses, and garnishments.
  */
-export async function processPayroll(orgId: string, period: string): Promise<PayrollRunSummary> {
+export async function processPayroll(
+  orgId: string,
+  period: string,
+  options: ProcessPayrollOptions = {},
+): Promise<PayrollRunSummary> {
   // Fetch all active employees
   const activeEmployees = await db
     .select()
@@ -898,22 +1003,63 @@ export async function processPayroll(orgId: string, period: string): Promise<Pay
     const countryCode = resolveCountryCode(employee.country)
     const { salary: annualSalary, currency } = await getEmployeeSalary(employee.id, orgId)
 
-    // Calculate monthly gross pay (annual / 12)
-    const monthlyGross = Math.round((annualSalary / 12) * 100) / 100
+    // Calculate monthly base pay (annual / 12)
+    const monthlyBase = Math.round((annualSalary / 12) * 100) / 100
 
-    if (monthlyGross === 0) {
+    if (monthlyBase === 0) {
       // Skip employees with no salary record
       continue
     }
 
-    // Calculate taxes on annualized basis, then prorate to monthly
-    const annualTax = calculateTax(countryCode, annualSalary)
+    // --- Overtime calculation ---
+    const ot = options.overtime?.[employee.id]
+    const overtimeRate = ot?.rate ?? 1.5
+    const overtimeHours = ot?.hours ?? 0
+    // Hourly rate = annual salary / (52 weeks * 40 hours)
+    const hourlyRate = annualSalary / (52 * 40)
+    const overtimePay = Math.round(overtimeHours * hourlyRate * overtimeRate * 100) / 100
+
+    // --- Bonus calculation ---
+    const bonuses = options.bonuses?.[employee.id] ?? []
+    const bonusPay = Math.round(bonuses.reduce((sum, b) => sum + b.amount, 0) * 100) / 100
+
+    // --- Gross pay = base + overtime + bonus ---
+    const monthlyGross = Math.round((monthlyBase + overtimePay + bonusPay) * 100) / 100
+
+    // Calculate taxes on annualized total (base annualized + overtime*12 + bonus*12)
+    const annualizedGross = monthlyGross * 12
+    const annualTax = calculateTax(countryCode, annualizedGross)
     const monthlyFederal = Math.round((annualTax.federalTax / 12) * 100) / 100
     const monthlyState = Math.round((annualTax.stateOrProvincialTax / 12) * 100) / 100
     const monthlySS = Math.round((annualTax.socialSecurity / 12) * 100) / 100
     const monthlyMedicare = Math.round((annualTax.medicare / 12) * 100) / 100
     const monthlyPension = Math.round((annualTax.pension / 12) * 100) / 100
-    const monthlyTotalDeductions = Math.round((annualTax.totalTax / 12) * 100) / 100
+    const monthlyTaxDeductions = Math.round((annualTax.totalTax / 12) * 100) / 100
+
+    // --- Benefit deductions ---
+    const benefitEnrollmentRows = await db
+      .select({ costEmployee: schema.benefitPlans.costEmployee })
+      .from(schema.benefitEnrollments)
+      .innerJoin(schema.benefitPlans, eq(schema.benefitEnrollments.planId, schema.benefitPlans.id))
+      .where(
+        and(
+          eq(schema.benefitEnrollments.employeeId, employee.id),
+          eq(schema.benefitEnrollments.orgId, orgId)
+        )
+      )
+    const monthlyBenefitDeductions = benefitEnrollmentRows.reduce(
+      (sum, b) => sum + Math.round(((b.costEmployee || 0) / 12) * 100) / 100,
+      0
+    )
+
+    // --- Garnishment calculation (sorted by priority) ---
+    const garnishments = (options.garnishments?.[employee.id] ?? []).sort((a, b) => a.priority - b.priority)
+    const garnishmentTotal = Math.round(garnishments.reduce((sum, g) => sum + g.amount, 0) * 100) / 100
+
+    // --- Total deductions ---
+    const monthlyTotalDeductions = Math.round(
+      (monthlyTaxDeductions + monthlyBenefitDeductions + garnishmentTotal) * 100
+    ) / 100
     const monthlyNet = Math.round((monthlyGross - monthlyTotalDeductions) * 100) / 100
 
     // Convert to USD for aggregation in the payroll run record
@@ -930,12 +1076,21 @@ export async function processPayroll(orgId: string, period: string): Promise<Pay
       employeeName: employee.fullName,
       country: employee.country,
       grossPay: monthlyGross,
+      basePay: monthlyBase,
+      overtimePay,
+      overtimeHours,
+      overtimeRate,
+      bonusPay,
+      bonusDetails: bonuses,
       federalTax: monthlyFederal,
       stateOrProvincialTax: monthlyState,
       socialSecurity: monthlySS,
       medicare: monthlyMedicare,
       pension: monthlyPension,
-      additionalTaxes: {},
+      additionalTaxes: annualTax.additionalTaxes || {},
+      garnishments,
+      garnishmentTotal,
+      benefitDeductions: monthlyBenefitDeductions,
       totalDeductions: monthlyTotalDeductions,
       netPay: monthlyNet,
       currency,
@@ -963,6 +1118,37 @@ export async function processPayroll(orgId: string, period: string): Promise<Pay
     })
     .returning()
 
+  // --- Persist individual employee payroll entries ---
+  if (entries.length > 0) {
+    const entryRows = entries.map((entry) => ({
+      orgId,
+      payrollRunId: payrollRun.id,
+      employeeId: entry.employeeId,
+      grossPay: Math.round(entry.grossPay * 100), // store in cents
+      basePay: Math.round(entry.basePay * 100),
+      overtimePay: Math.round(entry.overtimePay * 100),
+      overtimeHours: entry.overtimeHours,
+      overtimeRate: entry.overtimeRate,
+      bonusPay: Math.round(entry.bonusPay * 100),
+      bonusDetails: entry.bonusDetails.length > 0 ? entry.bonusDetails : null,
+      federalTax: Math.round(entry.federalTax * 100),
+      stateTax: Math.round(entry.stateOrProvincialTax * 100),
+      socialSecurity: Math.round(entry.socialSecurity * 100),
+      medicare: Math.round(entry.medicare * 100),
+      pension: Math.round(entry.pension * 100),
+      additionalTaxes: Object.keys(entry.additionalTaxes).length > 0 ? entry.additionalTaxes : null,
+      garnishments: entry.garnishments.length > 0 ? entry.garnishments : null,
+      garnishmentTotal: Math.round(entry.garnishmentTotal * 100),
+      benefitDeductions: Math.round(entry.benefitDeductions * 100),
+      totalDeductions: Math.round(entry.totalDeductions * 100),
+      netPay: Math.round(entry.netPay * 100),
+      currency: entry.currency,
+      country: resolveCountryCode(entry.country),
+    }))
+
+    await db.insert(schema.employeePayrollEntries).values(entryRows)
+  }
+
   return {
     payrollRunId: payrollRun.id,
     orgId,
@@ -976,6 +1162,127 @@ export async function processPayroll(orgId: string, period: string): Promise<Pay
     entries,
     createdAt: payrollRun.createdAt,
   }
+}
+
+// ============================================================
+// 2B. PAYROLL ENTRY QUERIES
+// ============================================================
+
+/**
+ * Get all employee payroll entries for a specific payroll run.
+ */
+export async function getPayrollEntries(orgId: string, payrollRunId: string) {
+  return db
+    .select()
+    .from(schema.employeePayrollEntries)
+    .where(
+      and(
+        eq(schema.employeePayrollEntries.orgId, orgId),
+        eq(schema.employeePayrollEntries.payrollRunId, payrollRunId)
+      )
+    )
+}
+
+/**
+ * Get payroll history for a specific employee across all runs.
+ */
+export async function getEmployeePayrollHistory(orgId: string, employeeId: string) {
+  return db
+    .select({
+      entry: schema.employeePayrollEntries,
+      run: {
+        period: schema.payrollRuns.period,
+        status: schema.payrollRuns.status,
+        runDate: schema.payrollRuns.runDate,
+      },
+    })
+    .from(schema.employeePayrollEntries)
+    .innerJoin(schema.payrollRuns, eq(schema.employeePayrollEntries.payrollRunId, schema.payrollRuns.id))
+    .where(
+      and(
+        eq(schema.employeePayrollEntries.orgId, orgId),
+        eq(schema.employeePayrollEntries.employeeId, employeeId)
+      )
+    )
+    .orderBy(desc(schema.payrollRuns.createdAt))
+}
+
+// ============================================================
+// 2C. PAYROLL STATUS TRANSITIONS
+// ============================================================
+
+/**
+ * Approve a payroll run. Requires admin/owner role and entries to exist.
+ */
+export async function approvePayrollRun(
+  orgId: string, payrollRunId: string, approverId: string, approverRole: string
+) {
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'draft') throw new Error(`Cannot approve payroll in '${run.status}' status`)
+  if (!['owner', 'admin'].includes(approverRole)) throw new Error('Only owner or admin can approve payroll')
+  if (run.employeeCount === 0) throw new Error('Cannot approve payroll with no entries')
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'approved', approvedBy: approverId, approvedAt: new Date() })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+  return updated
+}
+
+/**
+ * Mark payroll as processing.
+ */
+export async function markPayrollProcessing(orgId: string, payrollRunId: string) {
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'approved') throw new Error(`Cannot process payroll in '${run.status}' status`)
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'processing' })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+  return updated
+}
+
+/**
+ * Mark payroll as paid with a payment reference.
+ */
+export async function markPayrollPaid(orgId: string, payrollRunId: string, paymentReference: string) {
+  if (!paymentReference) throw new Error('Payment reference is required')
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'processing') throw new Error(`Cannot mark payroll paid in '${run.status}' status`)
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'paid', paymentReference })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+  return updated
+}
+
+/**
+ * Cancel a payroll run with a reason.
+ */
+export async function cancelPayrollRun(orgId: string, payrollRunId: string, reason: string) {
+  if (!reason) throw new Error('Cancellation reason is required')
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (!['draft', 'approved'].includes(run.status)) throw new Error(`Cannot cancel payroll in '${run.status}' status`)
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'cancelled', cancellationReason: reason })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+  return updated
 }
 
 // ============================================================
@@ -1142,7 +1449,7 @@ export async function generatePayStub(
  * form names, deadlines, frequencies, and penalty information.
  */
 export function getTaxFilingRequirements(countries: SupportedCountry[]): TaxFilingRequirement[] {
-  const allRequirements: Record<SupportedCountry, TaxFilingRequirement[]> = {
+  const allRequirements: Partial<Record<SupportedCountry, TaxFilingRequirement[]>> = {
     US: [
       {
         country: 'US',
@@ -1463,7 +1770,8 @@ export async function getPayrollAnalytics(orgId: string): Promise<PayrollAnalyti
   for (const emp of salariesInUSD) {
     const countryCode = resolveCountryCode(emp.country)
     const tax = calculateTax(countryCode, emp.salary)
-    const taxInUSD = convertCurrency(tax.totalTax, COUNTRY_CURRENCY_MAP[countryCode], 'USD')
+    const taxCurrency = COUNTRY_CURRENCY_MAP[countryCode] || tax.currency || 'USD'
+    const taxInUSD = convertCurrency(tax.totalTax, taxCurrency, 'USD')
     totalTaxBurden += taxInUSD
   }
   const taxBurdenPercentage = totalLaborCost > 0

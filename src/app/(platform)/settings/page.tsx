@@ -15,7 +15,9 @@ import {
   Building, Users, Shield, Bell, Palette, Globe, Search, Clock, Plug,
   ShieldCheck, Mail, Banknote, Building2, MessageSquare, Video,
   CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff,
-  CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle
+  CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle,
+  Download, FileText, BarChart3, Activity, ArrowUpRight, Receipt,
+  TrendingUp, CalendarDays, CircleDot, Minus
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
@@ -79,6 +81,32 @@ interface BillingSubscription {
   currency: string
   cancelAtPeriodEnd: boolean
   trialEnd: string | null
+}
+
+// Mock billing history data
+const MOCK_INVOICES = [
+  { id: 'INV-2026-001', date: '2026-02-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - February 2026' },
+  { id: 'INV-2026-002', date: '2026-01-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - January 2026' },
+  { id: 'INV-2025-012', date: '2025-12-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - December 2025' },
+  { id: 'INV-2025-011', date: '2025-11-01', amount: 1280, status: 'paid' as const, description: 'Professional Plan - November 2025' },
+  { id: 'INV-2025-010', date: '2025-10-01', amount: 1280, status: 'paid' as const, description: 'Professional Plan - October 2025' },
+  { id: 'INV-2025-009', date: '2025-09-01', amount: 960, status: 'paid' as const, description: 'Starter Plan - September 2025' },
+]
+
+// Mock usage metrics
+const MOCK_USAGE = {
+  apiCalls: { used: 12847, limit: 50000 },
+  storage: { used: 2.4, limit: 10, unit: 'GB' },
+  modules: [
+    { name: 'Core HR', active: true },
+    { name: 'Payroll', active: true },
+    { name: 'Performance', active: true },
+    { name: 'Time & Attendance', active: true },
+    { name: 'Recruiting', active: false },
+    { name: 'Learning (LMS)', active: true },
+    { name: 'Expenses', active: true },
+    { name: 'Engagement', active: false },
+  ],
 }
 
 export default function SettingsPage() {
@@ -424,6 +452,27 @@ export default function SettingsPage() {
     setDeptForm({ name: '', parent_id: null, head_id: '' })
   }
 
+  // Billing helpers
+  const currentPlanTier = billingSubscription?.plan?.toLowerCase() || 'free'
+  const employeeCount = billingSubscription?.employeeCount || employees.length
+  const currentPlanData = (billingPlans.length > 0 ? billingPlans : [
+    { id: 'free', name: 'Free', pricePerEmployee: 0, maxEmployees: 10, tier: 'free', features: [] },
+    { id: 'starter', name: 'Starter', pricePerEmployee: 800, maxEmployees: 100, tier: 'starter', features: [] },
+    { id: 'professional', name: 'Professional', pricePerEmployee: 1500, maxEmployees: 5000, tier: 'professional', features: [] },
+    { id: 'enterprise', name: 'Enterprise', pricePerEmployee: 2500, maxEmployees: null, tier: 'enterprise', features: [] },
+  ]).find(p => p.name.toLowerCase() === currentPlanTier || p.tier === currentPlanTier)
+  const planMaxEmployees = currentPlanData?.maxEmployees || 5000
+  const employeeUsagePercent = Math.min(100, Math.round((employeeCount / planMaxEmployees) * 100))
+
+  // Trial calculation
+  const trialDaysRemaining = billingSubscription?.trialEnd
+    ? Math.max(0, Math.ceil((new Date(billingSubscription.trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
+  const trialTotalDays = 14
+  const trialProgressPercent = billingSubscription?.trialEnd
+    ? Math.max(0, Math.min(100, Math.round(((trialTotalDays - trialDaysRemaining) / trialTotalDays) * 100)))
+    : 0
+
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')} />
@@ -576,201 +625,535 @@ export default function SettingsPage() {
               <span className="ml-2 text-sm text-t3">Loading billing information...</span>
             </div>
           ) : (
-            <>
+            <div className="space-y-6">
               {/* Demo Mode Banner */}
               {billingDemo && (
-                <div className="bg-amber-50 border border-amber-200 rounded-[14px] p-4 mb-6 flex items-center gap-3">
-                  <AlertTriangle size={20} className="text-amber-600 flex-shrink-0" />
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-[14px] p-4 flex items-center gap-3">
+                  <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-amber-800">Billing is in demo mode</p>
-                    <p className="text-xs text-amber-600">Connect your Stripe account to enable real billing and subscriptions.</p>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Billing is in demo mode</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Connect your Stripe account to enable real billing and subscriptions.</p>
                   </div>
                 </div>
               )}
-              {/* Current Subscription */}
+
+              {/* Trial Banner */}
+              {billingSubscription?.status === 'trialing' && billingSubscription.trialEnd && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800 rounded-[14px] p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                        <Sparkles size={20} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Free Trial Active</h3>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} remaining in your trial
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="info">{trialDaysRemaining} days left</Badge>
+                  </div>
+                  <div className="w-full bg-blue-100 dark:bg-blue-900/50 rounded-full h-2 mb-2">
+                    <div
+                      className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${trialProgressPercent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[0.65rem] text-blue-500 dark:text-blue-400">
+                    <span>Trial started</span>
+                    <span>
+                      Ends {new Date(billingSubscription.trialEnd).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Current Plan Card */}
               {billingSubscription && (
-                <div className="bg-card rounded-[14px] border border-border p-6 mb-6">
+                <Card>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-tempo-50 dark:bg-tempo-950/30 flex items-center justify-center text-tempo-600">
+                        <CreditCard size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-t1">Current Plan</h3>
+                        <p className="text-xs text-t3">Manage your subscription and billing</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        billingSubscription.status === 'active' ? 'success' :
+                        billingSubscription.status === 'trialing' ? 'info' :
+                        billingSubscription.status === 'past_due' ? 'warning' :
+                        'error'
+                      }>
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                          billingSubscription.status === 'active' ? 'bg-green-500' :
+                          billingSubscription.status === 'trialing' ? 'bg-blue-500' :
+                          billingSubscription.status === 'past_due' ? 'bg-amber-500' :
+                          'bg-red-500'
+                        }`} />
+                        {billingSubscription.status.charAt(0).toUpperCase() + billingSubscription.status.slice(1)}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManageSubscription}
+                        disabled={billingActionLoading === 'portal'}
+                      >
+                        {billingActionLoading === 'portal' ? (
+                          <Loader2 size={14} className="animate-spin mr-1.5" />
+                        ) : (
+                          <ExternalLink size={14} className="mr-1.5" />
+                        )}
+                        Manage in Stripe
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-5">
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Plan</p>
+                      <p className="text-lg font-bold text-t1">{billingSubscription.plan}</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Monthly Cost</p>
+                      <p className="text-lg font-bold text-t1">
+                        ${(billingSubscription.monthlyAmount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Employees</p>
+                      <div className="flex items-baseline gap-1">
+                        <p className="text-lg font-bold text-t1">{employeeCount}</p>
+                        <span className="text-xs text-t3">/ {currentPlanData?.maxEmployees ?? 'Unlimited'}</span>
+                      </div>
+                    </div>
+                    <div className="bg-canvas rounded-lg px-4 py-3">
+                      <p className="text-xs text-t3 mb-1">Renewal Date</p>
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays size={14} className="text-t3" />
+                        <p className="text-sm font-semibold text-t1">
+                          {billingSubscription.currentPeriodEnd
+                            ? new Date(billingSubscription.currentPeriodEnd).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                              })
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Employee Usage Bar */}
+                  {currentPlanData?.maxEmployees && (
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-t2">Employee Usage</span>
+                        <span className="text-xs font-medium text-t1">{employeeUsagePercent}%</span>
+                      </div>
+                      <div className="w-full bg-canvas rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            employeeUsagePercent >= 90 ? 'bg-red-500' :
+                            employeeUsagePercent >= 70 ? 'bg-amber-500' :
+                            'bg-tempo-600'
+                          }`}
+                          style={{ width: `${employeeUsagePercent}%` }}
+                        />
+                      </div>
+                      {employeeUsagePercent >= 90 && (
+                        <p className="text-[0.65rem] text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                          <AlertCircle size={11} />
+                          Approaching plan limit. Consider upgrading for more capacity.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {billingSubscription.cancelAtPeriodEnd && (
+                    <div className="mt-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 rounded-lg px-3 py-2 text-xs">
+                      <AlertCircle size={14} />
+                      <span>Your subscription will cancel at the end of the current billing period.</span>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* Usage Metrics */}
+              <div>
+                <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <BarChart3 size={16} className="text-tempo-600" />
+                  Usage Metrics
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Employees */}
+                  <Card>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                        <Users size={18} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-t3">Active Employees</p>
+                        <p className="text-xl font-bold text-t1 tracking-tight">{employeeCount}</p>
+                      </div>
+                      <div className="flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                        <ArrowUpRight size={14} />
+                        <span className="text-xs font-medium">+3</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-canvas rounded-full h-1.5">
+                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${employeeUsagePercent}%` }} />
+                    </div>
+                    <p className="text-[0.65rem] text-t3 mt-1.5">{employeeCount} of {currentPlanData?.maxEmployees ?? 'unlimited'} seats used</p>
+                  </Card>
+
+                  {/* API Calls */}
+                  <Card>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
+                        <Activity size={18} className="text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-t3">API Calls (this month)</p>
+                        <p className="text-xl font-bold text-t1 tracking-tight">{MOCK_USAGE.apiCalls.used.toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                        <TrendingUp size={14} />
+                        <span className="text-xs font-medium">12%</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-canvas rounded-full h-1.5">
+                      <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${Math.round((MOCK_USAGE.apiCalls.used / MOCK_USAGE.apiCalls.limit) * 100)}%` }} />
+                    </div>
+                    <p className="text-[0.65rem] text-t3 mt-1.5">{MOCK_USAGE.apiCalls.used.toLocaleString()} of {MOCK_USAGE.apiCalls.limit.toLocaleString()} calls used</p>
+                  </Card>
+
+                  {/* Storage */}
+                  <Card>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
+                        <FileText size={18} className="text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-t3">Storage Used</p>
+                        <p className="text-xl font-bold text-t1 tracking-tight">{MOCK_USAGE.storage.used} {MOCK_USAGE.storage.unit}</p>
+                      </div>
+                    </div>
+                    <div className="w-full bg-canvas rounded-full h-1.5">
+                      <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${Math.round((MOCK_USAGE.storage.used / MOCK_USAGE.storage.limit) * 100)}%` }} />
+                    </div>
+                    <p className="text-[0.65rem] text-t3 mt-1.5">{MOCK_USAGE.storage.used} of {MOCK_USAGE.storage.limit} {MOCK_USAGE.storage.unit} used</p>
+                  </Card>
+                </div>
+
+                {/* Module Usage */}
+                <Card className="mt-4">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                    <div className="w-9 h-9 rounded-lg bg-tempo-50 dark:bg-tempo-950/30 flex items-center justify-center text-tempo-600">
+                      <CircleDot size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-t1">Module Activation</h4>
+                      <p className="text-xs text-t3">{MOCK_USAGE.modules.filter(m => m.active).length} of {MOCK_USAGE.modules.length} modules active</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {MOCK_USAGE.modules.map(mod => (
+                      <div key={mod.name} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+                        mod.active
+                          ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400'
+                          : 'bg-canvas text-t3'
+                      }`}>
+                        {mod.active ? <Check size={12} className="shrink-0" /> : <Minus size={12} className="shrink-0" />}
+                        <span className="truncate">{mod.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Plan Comparison Grid */}
+              <div>
+                <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <Crown size={16} className="text-tempo-600" />
+                  Available Plans
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(billingPlans.length > 0 ? billingPlans : [
+                    { id: 'free', name: 'Free', pricePerEmployee: 0, maxEmployees: 10, tier: 'free', features: ['Up to 10 employees', 'Core HR', 'Basic Analytics'] },
+                    { id: 'starter', name: 'Starter', pricePerEmployee: 800, maxEmployees: 100, tier: 'starter', features: ['Up to 100 employees', 'Core HR & People', 'Performance Management', 'Time & Attendance', 'Email Support'] },
+                    { id: 'professional', name: 'Professional', pricePerEmployee: 1500, maxEmployees: 5000, tier: 'professional', features: ['Up to 5,000 employees', 'All Starter features', 'Payroll & Benefits', 'Recruiting & Expense', 'Learning & Engagement', 'API Access', 'Priority Support'] },
+                    { id: 'enterprise', name: 'Enterprise', pricePerEmployee: 2500, maxEmployees: null, tier: 'enterprise', features: ['Unlimited employees', 'All Professional features', 'Multi-country Payroll', 'Advanced Analytics & AI', 'SSO & SCIM', 'Dedicated CSM', 'SLA Guarantee'] },
+                  ]).map((plan) => {
+                    const isCurrentPlan = billingSubscription?.plan?.toLowerCase() === plan.name.toLowerCase()
+                    const priceDisplay = plan.pricePerEmployee === 0
+                      ? '$0'
+                      : plan.tier === 'enterprise'
+                        ? 'Custom'
+                        : `$${(plan.pricePerEmployee / 100).toFixed(0)}`
+
+                    const tierIcons: Record<string, React.ReactNode> = {
+                      free: <Zap size={20} />,
+                      starter: <CreditCard size={20} />,
+                      professional: <Sparkles size={20} />,
+                      enterprise: <Crown size={20} />,
+                    }
+
+                    const tierColors: Record<string, string> = {
+                      free: 'from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30',
+                      starter: 'from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30',
+                      professional: 'from-tempo-50 to-orange-50 dark:from-tempo-950/30 dark:to-orange-950/30',
+                      enterprise: 'from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30',
+                    }
+
+                    // Determine if this is an upgrade or downgrade
+                    const tierOrder = ['free', 'starter', 'professional', 'enterprise']
+                    const currentTierIndex = tierOrder.indexOf(currentPlanTier)
+                    const planTierIndex = tierOrder.indexOf(plan.tier)
+                    const isUpgrade = planTierIndex > currentTierIndex
+                    const isDowngrade = planTierIndex < currentTierIndex
+
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`relative bg-card rounded-[14px] border p-5 flex flex-col ${
+                          isCurrentPlan
+                            ? 'border-tempo-600 ring-2 ring-tempo-600/20'
+                            : 'border-border hover:border-tempo-300 dark:hover:border-tempo-700'
+                        } transition-all duration-200`}
+                      >
+                        {/* Popular badge */}
+                        {plan.tier === 'professional' && !isCurrentPlan && (
+                          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                            <span className="bg-tempo-600 text-white text-[0.6rem] font-semibold px-2.5 py-0.5 rounded-full">
+                              Most Popular
+                            </span>
+                          </div>
+                        )}
+
+                        <div className={`rounded-lg p-3 mb-3 bg-gradient-to-br ${tierColors[plan.tier] || tierColors.free}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              isCurrentPlan
+                                ? 'bg-tempo-600 text-white'
+                                : 'bg-white/80 dark:bg-gray-800/80 text-t1'
+                            }`}>
+                              {tierIcons[plan.tier] || <CreditCard size={20} />}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-t1">{plan.name}</h4>
+                              {isCurrentPlan && (
+                                <span className="text-[0.6rem] font-medium text-tempo-600">Current Plan</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <span className="text-2xl font-bold text-t1">{priceDisplay}</span>
+                          {plan.pricePerEmployee > 0 && plan.tier !== 'enterprise' && (
+                            <span className="text-xs text-t3 ml-1">/employee/mo</span>
+                          )}
+                          {plan.tier === 'enterprise' && (
+                            <span className="text-xs text-t3 ml-1">pricing</span>
+                          )}
+                          {plan.maxEmployees && (
+                            <p className="text-[0.65rem] text-t3 mt-0.5">Up to {plan.maxEmployees.toLocaleString()} employees</p>
+                          )}
+                          {!plan.maxEmployees && plan.tier === 'enterprise' && (
+                            <p className="text-[0.65rem] text-t3 mt-0.5">Unlimited employees</p>
+                          )}
+                        </div>
+
+                        <ul className="space-y-2 mb-5 flex-1">
+                          {plan.features.map((feature) => (
+                            <li key={feature} className="flex items-start gap-2 text-xs text-t2">
+                              <Check size={14} className="text-green-500 mt-0.5 shrink-0" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {isCurrentPlan ? (
+                          <Button variant="outline" size="sm" className="w-full" disabled>
+                            <Check size={14} className="mr-1.5" />
+                            Current Plan
+                          </Button>
+                        ) : plan.tier === 'free' ? (
+                          isDowngrade ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                              onClick={() => handleBillingUpgrade(plan.id)}
+                              disabled={billingActionLoading === plan.id}
+                            >
+                              {billingActionLoading === plan.id ? (
+                                <Loader2 size={14} className="animate-spin mr-1.5" />
+                              ) : null}
+                              Downgrade
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" className="w-full" disabled>
+                              Free Forever
+                            </Button>
+                          )
+                        ) : plan.tier === 'enterprise' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleBillingUpgrade(plan.id)}
+                            disabled={billingActionLoading === plan.id}
+                          >
+                            {billingActionLoading === plan.id ? (
+                              <Loader2 size={14} className="animate-spin mr-1.5" />
+                            ) : null}
+                            Contact Sales
+                          </Button>
+                        ) : isDowngrade ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            onClick={() => handleBillingUpgrade(plan.id)}
+                            disabled={billingActionLoading === plan.id}
+                          >
+                            {billingActionLoading === plan.id ? (
+                              <Loader2 size={14} className="animate-spin mr-1.5" />
+                            ) : null}
+                            Downgrade
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="w-full bg-tempo-600 hover:bg-tempo-700 text-white"
+                            onClick={() => handleBillingUpgrade(plan.id)}
+                            disabled={billingActionLoading === plan.id}
+                          >
+                            {billingActionLoading === plan.id ? (
+                              <Loader2 size={14} className="animate-spin mr-1.5" />
+                            ) : (
+                              <ArrowUpRight size={14} className="mr-1.5" />
+                            )}
+                            Upgrade
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-t1">
                       <CreditCard size={20} />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-t1">Current Subscription</h3>
-                      <p className="text-xs text-t3">Manage your plan and billing details</p>
+                    <div>
+                      <h3 className="text-sm font-semibold text-t1">Payment Method</h3>
+                      <p className="text-xs text-t3">Your card on file for recurring charges</p>
                     </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageSubscription}
+                    disabled={billingActionLoading === 'portal'}
+                  >
+                    {billingActionLoading === 'portal' ? (
+                      <Loader2 size={14} className="animate-spin mr-1.5" />
+                    ) : (
+                      <ExternalLink size={14} className="mr-1.5" />
+                    )}
+                    Manage in Stripe
+                  </Button>
+                </div>
+                <div className="mt-4 flex items-center gap-4 bg-canvas rounded-lg px-4 py-3">
+                  <div className="w-12 h-8 rounded bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+                    <span className="text-[0.55rem] font-bold text-white tracking-wider">VISA</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-t1">Visa ending in 4242</p>
+                    <p className="text-xs text-t3">Expires 12/2027</p>
+                  </div>
+                  <Badge variant="success">Default</Badge>
+                </div>
+              </Card>
+
+              {/* Billing History */}
+              <div>
+                <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <Receipt size={16} className="text-tempo-600" />
+                  Billing History
+                </h3>
+                <Card padding="none">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-divider bg-canvas">
+                          <th className="tempo-th text-left px-6 py-3">Invoice</th>
+                          <th className="tempo-th text-left px-4 py-3">Date</th>
+                          <th className="tempo-th text-left px-4 py-3">Description</th>
+                          <th className="tempo-th text-right px-4 py-3">Amount</th>
+                          <th className="tempo-th text-center px-4 py-3">Status</th>
+                          <th className="tempo-th text-center px-4 py-3">Receipt</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {MOCK_INVOICES.map(invoice => (
+                          <tr key={invoice.id} className="hover:bg-canvas/50 transition-colors">
+                            <td className="px-6 py-3">
+                              <span className="text-xs font-medium text-t1">{invoice.id}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-t2">
+                              {new Date(invoice.date).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                              })}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-t2">{invoice.description}</td>
+                            <td className="px-4 py-3 text-xs font-medium text-t1 text-right">
+                              ${(invoice.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'pending' ? 'warning' : 'error'}>
+                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                className="inline-flex items-center gap-1 text-xs text-tempo-600 hover:text-tempo-700 dark:text-tempo-400 dark:hover:text-tempo-300 font-medium"
+                                onClick={() => addToast(`Downloading receipt for ${invoice.id}...`, 'info')}
+                              >
+                                <Download size={12} />
+                                PDF
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-6 py-3 border-t border-divider bg-canvas flex items-center justify-between">
+                    <p className="text-xs text-t3">Showing {MOCK_INVOICES.length} most recent invoices</p>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleManageSubscription}
                       disabled={billingActionLoading === 'portal'}
                     >
-                      {billingActionLoading === 'portal' ? (
-                        <Loader2 size={14} className="animate-spin mr-1.5" />
-                      ) : (
-                        <ExternalLink size={14} className="mr-1.5" />
-                      )}
-                      Manage Subscription
+                      View All in Stripe
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-canvas rounded-lg px-4 py-3">
-                      <p className="text-xs text-t3 mb-1">Plan</p>
-                      <p className="text-sm font-semibold text-t1">{billingSubscription.plan}</p>
-                    </div>
-                    <div className="bg-canvas rounded-lg px-4 py-3">
-                      <p className="text-xs text-t3 mb-1">Status</p>
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${
-                          billingSubscription.status === 'active' ? 'bg-green-500' :
-                          billingSubscription.status === 'trialing' ? 'bg-blue-500' :
-                          billingSubscription.status === 'past_due' ? 'bg-amber-500' :
-                          'bg-red-500'
-                        }`} />
-                        <p className="text-sm font-semibold text-t1 capitalize">{billingSubscription.status}</p>
-                      </div>
-                    </div>
-                    <div className="bg-canvas rounded-lg px-4 py-3">
-                      <p className="text-xs text-t3 mb-1">Next Billing Date</p>
-                      <p className="text-sm font-semibold text-t1">
-                        {billingSubscription.currentPeriodEnd
-                          ? new Date(billingSubscription.currentPeriodEnd).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })
-                          : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  {billingSubscription.trialEnd && billingSubscription.status === 'trialing' && (
-                    <div className="mt-3 flex items-center gap-2 bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-xs">
-                      <Sparkles size={14} />
-                      <span>
-                        Your trial ends on{' '}
-                        {new Date(billingSubscription.trialEnd).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  )}
-                  {billingSubscription.cancelAtPeriodEnd && (
-                    <div className="mt-3 flex items-center gap-2 bg-amber-50 text-amber-700 rounded-lg px-3 py-2 text-xs">
-                      <AlertCircle size={14} />
-                      <span>Your subscription will cancel at the end of the current billing period.</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Pricing Tier Cards */}
-              <h3 className="text-sm font-semibold text-t1 mb-3">Available Plans</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {(billingPlans.length > 0 ? billingPlans : [
-                  { id: 'free', name: 'Free', pricePerEmployee: 0, maxEmployees: 10, tier: 'free', features: ['Up to 10 employees', 'Core HR', 'Basic Analytics'] },
-                  { id: 'starter', name: 'Starter', pricePerEmployee: 800, maxEmployees: 100, tier: 'starter', features: ['Up to 100 employees', 'Core HR & People', 'Performance Management', 'Time & Attendance', 'Email Support'] },
-                  { id: 'professional', name: 'Professional', pricePerEmployee: 1500, maxEmployees: 5000, tier: 'professional', features: ['Up to 5,000 employees', 'All Starter features', 'Payroll & Benefits', 'Recruiting & Expense', 'Learning & Engagement', 'API Access', 'Priority Support'] },
-                  { id: 'enterprise', name: 'Enterprise', pricePerEmployee: 2500, maxEmployees: null, tier: 'enterprise', features: ['Unlimited employees', 'All Professional features', 'Multi-country Payroll', 'Advanced Analytics & AI', 'SSO & SCIM', 'Dedicated CSM', 'SLA Guarantee'] },
-                ]).map((plan) => {
-                  const isCurrentPlan = billingSubscription?.plan?.toLowerCase() === plan.name.toLowerCase()
-                  const priceDisplay = plan.pricePerEmployee === 0
-                    ? '$0'
-                    : plan.tier === 'enterprise'
-                      ? 'Custom'
-                      : `$${(plan.pricePerEmployee / 100).toFixed(0)}`
-
-                  const tierIcons: Record<string, React.ReactNode> = {
-                    free: <Zap size={20} />,
-                    starter: <CreditCard size={20} />,
-                    professional: <Sparkles size={20} />,
-                    enterprise: <Crown size={20} />,
-                  }
-
-                  return (
-                    <div
-                      key={plan.id}
-                      className={`bg-card rounded-[14px] border p-5 flex flex-col ${
-                        isCurrentPlan
-                          ? 'border-tempo-600 ring-2 ring-tempo-600/20'
-                          : 'border-border'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          isCurrentPlan
-                            ? 'bg-tempo-600 text-white'
-                            : 'bg-canvas text-t1'
-                        }`}>
-                          {tierIcons[plan.tier] || <CreditCard size={20} />}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-t1">{plan.name}</h4>
-                          {isCurrentPlan && (
-                            <span className="text-[0.6rem] font-medium text-tempo-600">Current Plan</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mb-4">
-                        <span className="text-2xl font-bold text-t1">{priceDisplay}</span>
-                        {plan.pricePerEmployee > 0 && plan.tier !== 'enterprise' && (
-                          <span className="text-xs text-t3 ml-1">/user/mo</span>
-                        )}
-                        {plan.tier === 'enterprise' && (
-                          <span className="text-xs text-t3 ml-1">pricing</span>
-                        )}
-                      </div>
-
-                      <ul className="space-y-2 mb-5 flex-1">
-                        {plan.features.map((feature) => (
-                          <li key={feature} className="flex items-start gap-2 text-xs text-t2">
-                            <Check size={14} className="text-green-500 mt-0.5 shrink-0" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      {isCurrentPlan ? (
-                        <Button variant="outline" size="sm" className="w-full" disabled>
-                          <Check size={14} className="mr-1.5" />
-                          Current Plan
-                        </Button>
-                      ) : plan.tier === 'free' ? (
-                        <Button variant="outline" size="sm" className="w-full" disabled>
-                          Free Forever
-                        </Button>
-                      ) : plan.tier === 'enterprise' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleBillingUpgrade(plan.id)}
-                          disabled={billingActionLoading === plan.id}
-                        >
-                          {billingActionLoading === plan.id ? (
-                            <Loader2 size={14} className="animate-spin mr-1.5" />
-                          ) : null}
-                          Contact Sales
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="w-full bg-tempo-600 hover:bg-tempo-700 text-white"
-                          onClick={() => handleBillingUpgrade(plan.id)}
-                          disabled={billingActionLoading === plan.id}
-                        >
-                          {billingActionLoading === plan.id ? (
-                            <Loader2 size={14} className="animate-spin mr-1.5" />
-                          ) : null}
-                          Upgrade
-                        </Button>
-                      )}
-                    </div>
-                  )
-                })}
+                </Card>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

@@ -190,6 +190,79 @@ export function payrollProcessedEmail(data: {
 }
 
 // ============================================================
+// PAYROLL APPROVED - Notify employees their pay run is approved
+// ============================================================
+
+export function payrollApprovedEmail(data: {
+  employeeName: string
+  period: string
+  approverName: string
+  approvedAt: string
+  payDate: string
+}): { subject: string; html: string } {
+  return {
+    subject: `Payroll Approved: ${data.period}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:#f0fdf4;color:#16a34a;display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">APPROVED</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Payroll Run Approved</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.employeeName}, the payroll for <strong>${data.period}</strong> has been approved and is now being processed.
+        </p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Period:</td><td>${data.period}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Approved by:</td><td>${data.approverName}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Approved on:</td><td>${data.approvedAt}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Expected pay date:</td><td>${data.payDate}</td></tr>
+          </table>
+        </div>
+        <a href="${APP_URL}/payroll" style="${btn}">View Payroll Details</a>
+      </div>`),
+  }
+}
+
+// ============================================================
+// PAYROLL PAID - Notify employees payment has been processed
+// ============================================================
+
+export function payrollPaidEmail(data: {
+  employeeName: string
+  period: string
+  netPay: number
+  grossPay: number
+  deductions: number
+  currency: string
+  payDate: string
+  payStubId?: string
+}): { subject: string; html: string } {
+  return {
+    subject: `Payment Processed: ${data.currency} ${data.netPay.toLocaleString()} - ${data.period}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Payment Processed</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.employeeName}, your payment for <strong>${data.period}</strong> has been processed successfully.
+        </p>
+        <div style="background:#f0fdf4;border-radius:8px;padding:20px;text-align:center;margin-bottom:20px">
+          <p style="margin:0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.05em">Net Pay</p>
+          <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:#16a34a">${data.currency} ${data.netPay.toLocaleString()}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#888">Paid on ${data.payDate}</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Gross Pay:</td><td style="font-weight:600;color:#111">${data.currency} ${data.grossPay.toLocaleString()}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Deductions:</td><td style="color:#dc2626">-${data.currency} ${data.deductions.toLocaleString()}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Net Pay:</td><td style="font-weight:700;color:#16a34a">${data.currency} ${data.netPay.toLocaleString()}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Period:</td><td>${data.period}</td></tr>
+          </table>
+        </div>
+        <a href="${APP_URL}/payroll${data.payStubId ? `?stubId=${data.payStubId}` : ''}" style="${btn}">View Pay Stub</a>
+      </div>`),
+  }
+}
+
+// ============================================================
 // ONBOARDING EMAILS
 // ============================================================
 
@@ -219,6 +292,219 @@ export function onboardingStartEmail(data: {
           </ul>
         </div>
         <a href="${APP_URL}/onboarding" style="${btn}">Start Pre-boarding</a>
+      </div>`),
+  }
+}
+
+// ============================================================
+// EXPENSE REJECTED - Include reason and resubmit link
+// ============================================================
+
+export function expenseRejectedEmail(data: {
+  employeeName: string
+  reportTitle: string
+  amount: number
+  currency: string
+  rejectedBy: string
+  reason: string
+  reportId: string
+}): { subject: string; html: string } {
+  return {
+    subject: `Expense Report Rejected: ${data.reportTitle}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:#fef2f2;color:#dc2626;display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">REJECTED</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Expense Report Rejected</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.employeeName}, your expense report has been reviewed and requires changes before it can be approved.
+        </p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Report:</td><td>${data.reportTitle}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Amount:</td><td>${data.currency} ${data.amount.toLocaleString()}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Reviewed by:</td><td>${data.rejectedBy}</td></tr>
+          </table>
+        </div>
+        <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:20px">
+          <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.05em">Reason for Rejection</p>
+          <p style="margin:0;font-size:13px;color:#555;line-height:1.5">${data.reason}</p>
+        </div>
+        <a href="${APP_URL}/expense?reportId=${data.reportId}&action=edit" style="${btn}">Revise &amp; Resubmit</a>
+        <span style="display:inline-block;width:8px"></span>
+        <a href="${APP_URL}/expense?reportId=${data.reportId}" style="${btnSecondary}">View Details</a>
+      </div>`),
+  }
+}
+
+// ============================================================
+// TRAINING OVERDUE - List overdue courses with deadlines
+// ============================================================
+
+export function trainingOverdueEmail(data: {
+  employeeName: string
+  courses: Array<{ name: string; dueDate: string; module?: string }>
+}): { subject: string; html: string } {
+  const courseRows = data.courses.map(c =>
+    `<tr>
+      <td style="padding:6px 8px;font-size:13px;color:#333;border-bottom:1px solid #eee">${c.name}</td>
+      <td style="padding:6px 8px;font-size:13px;color:#dc2626;font-weight:600;border-bottom:1px solid #eee">${c.dueDate}</td>
+      <td style="padding:6px 8px;font-size:13px;color:#888;border-bottom:1px solid #eee">${c.module ?? 'General'}</td>
+    </tr>`
+  ).join('')
+
+  return {
+    subject: `Action Required: ${data.courses.length} Overdue Training Course${data.courses.length > 1 ? 's' : ''}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:#fffbeb;color:#d97706;display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">OVERDUE</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Training Overdue</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.employeeName}, you have <strong>${data.courses.length}</strong> overdue training course${data.courses.length > 1 ? 's' : ''} that require${data.courses.length === 1 ? 's' : ''} your attention.
+        </p>
+        <div style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:20px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f9fafb">
+                <th style="padding:8px;font-size:11px;font-weight:600;color:#666;text-align:left;text-transform:uppercase;letter-spacing:0.05em">Course</th>
+                <th style="padding:8px;font-size:11px;font-weight:600;color:#666;text-align:left;text-transform:uppercase;letter-spacing:0.05em">Due Date</th>
+                <th style="padding:8px;font-size:11px;font-weight:600;color:#666;text-align:left;text-transform:uppercase;letter-spacing:0.05em">Module</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${courseRows}
+            </tbody>
+          </table>
+        </div>
+        <p style="margin:0 0 20px;font-size:13px;color:#888">
+          Please complete these courses as soon as possible to remain compliant.
+        </p>
+        <a href="${APP_URL}/learning" style="${btn}">Resume Training</a>
+      </div>`),
+  }
+}
+
+// ============================================================
+// TRAINING COMPLETED - Congratulations with certificate link
+// ============================================================
+
+export function trainingCompletedEmail(data: {
+  employeeName: string
+  courseName: string
+  completedAt: string
+  score?: number
+  certificateUrl?: string
+  duration?: string
+}): { subject: string; html: string } {
+  return {
+    subject: `Congratulations! Course Completed: ${data.courseName}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:#f0fdf4;color:#16a34a;display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">COMPLETED</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Course Completed!</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Congratulations ${data.employeeName}, you have successfully completed <strong>${data.courseName}</strong>.
+        </p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Course:</td><td>${data.courseName}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Completed:</td><td>${data.completedAt}</td></tr>
+            ${data.score != null ? `<tr><td style="padding:4px 0;font-weight:600">Score:</td><td style="font-weight:700;color:#16a34a">${data.score}%</td></tr>` : ''}
+            ${data.duration ? `<tr><td style="padding:4px 0;font-weight:600">Duration:</td><td>${data.duration}</td></tr>` : ''}
+          </table>
+        </div>
+        ${data.certificateUrl
+          ? `<a href="${data.certificateUrl}" style="${btn}">Download Certificate</a>
+             <span style="display:inline-block;width:8px"></span>
+             <a href="${APP_URL}/learning" style="${btnSecondary}">View All Courses</a>`
+          : `<a href="${APP_URL}/learning" style="${btn}">View All Courses</a>`
+        }
+      </div>`),
+  }
+}
+
+// ============================================================
+// REVIEW ASSIGNED - Notify about new performance review
+// ============================================================
+
+export function reviewAssignedEmail(data: {
+  employeeName: string
+  reviewerName: string
+  cycleName: string
+  reviewType: string
+  dueDate: string
+  revieweeNames?: string[]
+}): { subject: string; html: string } {
+  const revieweeList = data.revieweeNames && data.revieweeNames.length > 0
+    ? `<tr><td style="padding:4px 0;font-weight:600">Review for:</td><td>${data.revieweeNames.join(', ')}</td></tr>`
+    : ''
+
+  return {
+    subject: `New Review Assignment: ${data.cycleName} - Due ${data.dueDate}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:#eff6ff;color:#2563eb;display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">ACTION REQUIRED</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Performance Review Assigned</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.employeeName}, you have been assigned a new performance review to complete as part of the <strong>${data.cycleName}</strong> cycle.
+        </p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Review Cycle:</td><td>${data.cycleName}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Type:</td><td>${data.reviewType}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Due Date:</td><td style="font-weight:600;color:#d97706">${data.dueDate}</td></tr>
+            ${revieweeList}
+          </table>
+        </div>
+        <a href="${APP_URL}/performance" style="${btn}">Start Review</a>
+      </div>`),
+  }
+}
+
+// ============================================================
+// GENERAL APPROVAL NEEDED - Generic approval request
+// ============================================================
+
+export function approvalNeededEmail(data: {
+  approverName: string
+  requesterName: string
+  entityType: string
+  entityTitle: string
+  entityDetails: Array<{ label: string; value: string }>
+  urgency?: 'normal' | 'high' | 'critical'
+  link: string
+}): { subject: string; html: string } {
+  const urgency = data.urgency ?? 'normal'
+  const urgencyConfig = {
+    normal: { bg: '#eff6ff', text: '#2563eb', label: 'PENDING APPROVAL' },
+    high: { bg: '#fffbeb', text: '#d97706', label: 'APPROVAL NEEDED' },
+    critical: { bg: '#fef2f2', text: '#dc2626', label: 'URGENT APPROVAL' },
+  }
+  const u = urgencyConfig[urgency]
+
+  const detailRows = data.entityDetails.map(d =>
+    `<tr><td style="padding:4px 0;font-weight:600">${d.label}:</td><td>${d.value}</td></tr>`
+  ).join('')
+
+  return {
+    subject: `${urgency === 'critical' ? '[URGENT] ' : ''}Approval Required: ${data.entityType} - ${data.entityTitle}`,
+    html: wrapTemplate(`
+      <div style="padding:32px">
+        <div style="background:${u.bg};color:${u.text};display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">${u.label}</div>
+        <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Approval Required</h2>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
+          Hi ${data.approverName}, <strong>${data.requesterName}</strong> has submitted a <strong>${data.entityType.toLowerCase()}</strong> that requires your approval.
+        </p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px">
+          <table style="width:100%;font-size:13px;color:#555">
+            <tr><td style="padding:4px 0;font-weight:600">Type:</td><td>${data.entityType}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Title:</td><td style="font-weight:600;color:#111">${data.entityTitle}</td></tr>
+            <tr><td style="padding:4px 0;font-weight:600">Requested by:</td><td>${data.requesterName}</td></tr>
+            ${detailRows}
+          </table>
+        </div>
+        <a href="${APP_URL}${data.link}" style="${btn}">Review &amp; Approve</a>
+        <span style="display:inline-block;width:8px"></span>
+        <a href="${APP_URL}${data.link}" style="${btnSecondary}">View Details</a>
       </div>`),
   }
 }

@@ -14,7 +14,20 @@ import {
   getLearningMetrics,
   enrollEmployee,
   dropEnrollment,
+  submitQuiz,
+  issueCertificate,
+  getCourseContent,
+  getEmployeeCertificates,
+  trackBlockProgress,
+  getDetailedProgress,
+  getContentAnalytics,
+  getLearnerHeatmap,
+  getCourseCompletionFunnel,
 } from '@/lib/lms-engine'
+import { db, schema } from '@/lib/db'
+import { eq, asc } from 'drizzle-orm'
+import { learningPostBody } from '@/lib/validations/learning'
+import { formatZodError } from '@/lib/validations/common'
 
 // GET /api/learning - Library, paths, compliance, metrics, profile
 export async function GET(request: NextRequest) {
@@ -83,6 +96,93 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ rules: result })
       }
 
+      case 'course-content': {
+        const courseId = url.searchParams.get('courseId')
+        if (!courseId) {
+          return NextResponse.json({ error: 'courseId is required' }, { status: 400 })
+        }
+        const result = await getCourseContent(courseId)
+        return NextResponse.json({ content: result })
+      }
+
+      case 'certificates': {
+        const employeeId = url.searchParams.get('employeeId')
+        if (!employeeId) {
+          return NextResponse.json({ error: 'employeeId is required' }, { status: 400 })
+        }
+        const result = await getEmployeeCertificates(orgId, employeeId)
+        return NextResponse.json({ certificates: result })
+      }
+
+      case 'quiz-questions': {
+        const courseContentId = url.searchParams.get('courseContentId')
+        if (!courseContentId) {
+          return NextResponse.json({ error: 'courseContentId is required' }, { status: 400 })
+        }
+        // Return questions without correct answers for security
+        const questions = await db
+          .select({
+            id: schema.quizQuestions.id,
+            courseContentId: schema.quizQuestions.courseContentId,
+            question: schema.quizQuestions.question,
+            options: schema.quizQuestions.options,
+            points: schema.quizQuestions.points,
+            position: schema.quizQuestions.position,
+          })
+          .from(schema.quizQuestions)
+          .where(eq(schema.quizQuestions.courseContentId, courseContentId))
+          .orderBy(asc(schema.quizQuestions.position))
+        return NextResponse.json({ questions })
+      }
+
+      case 'detailed-progress': {
+        const enrollmentId = url.searchParams.get('enrollmentId')
+        if (!enrollmentId) {
+          return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 })
+        }
+        const result = await getDetailedProgress(orgId, enrollmentId)
+        if (!result) {
+          return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 })
+        }
+        return NextResponse.json(result)
+      }
+
+      case 'content-analytics': {
+        const courseId = url.searchParams.get('courseId')
+        if (!courseId) {
+          return NextResponse.json({ error: 'courseId is required' }, { status: 400 })
+        }
+        const result = await getContentAnalytics(orgId, courseId)
+        if (!result) {
+          return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+        }
+        return NextResponse.json(result)
+      }
+
+      case 'learner-heatmap': {
+        const employeeId = url.searchParams.get('employeeId')
+        if (!employeeId) {
+          return NextResponse.json({ error: 'employeeId is required' }, { status: 400 })
+        }
+        const result = await getLearnerHeatmap(orgId, employeeId)
+        if (!result) {
+          return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+        }
+        return NextResponse.json(result)
+      }
+
+      case 'completion-funnel': {
+        const courseId = url.searchParams.get('courseId')
+        if (!courseId) {
+          return NextResponse.json({ error: 'courseId is required' }, { status: 400 })
+        }
+        const result = await getCourseCompletionFunnel(orgId, courseId)
+        if (!result) {
+          return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+        }
+        return NextResponse.json(result)
+      }
+
       default:
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
     }
@@ -99,42 +199,29 @@ export async function POST(request: NextRequest) {
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { action } = body
+    const parsed = learningPostBody.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
+    }
 
-    switch (action) {
+    switch (parsed.data.action) {
       case 'enroll': {
-        const { employeeId, courseId } = body
-        if (!employeeId || !courseId) {
-          return NextResponse.json({ error: 'employeeId and courseId are required' }, { status: 400 })
-        }
-        const result = await enrollEmployee(orgId, employeeId, courseId)
+        const result = await enrollEmployee(orgId, parsed.data.employeeId, parsed.data.courseId)
         return NextResponse.json(result)
       }
 
       case 'drop': {
-        const { enrollmentId } = body
-        if (!enrollmentId) {
-          return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 })
-        }
-        await dropEnrollment(orgId, enrollmentId)
+        await dropEnrollment(orgId, parsed.data.enrollmentId)
         return NextResponse.json({ success: true })
       }
 
       case 'update-progress': {
-        const { enrollmentId, progress } = body
-        if (!enrollmentId || progress === undefined) {
-          return NextResponse.json({ error: 'enrollmentId and progress are required' }, { status: 400 })
-        }
-        const result = await updateProgress(orgId, enrollmentId, progress)
+        const result = await updateProgress(orgId, parsed.data.enrollmentId, parsed.data.progress)
         return NextResponse.json(result)
       }
 
       case 'create-rule': {
-        const { rule } = body
-        if (!rule) {
-          return NextResponse.json({ error: 'rule is required' }, { status: 400 })
-        }
-        const result = await createAutoEnrollRule(orgId, rule)
+        const result = await createAutoEnrollRule(orgId, parsed.data.rule)
         return NextResponse.json(result)
       }
 
@@ -144,16 +231,48 @@ export async function POST(request: NextRequest) {
       }
 
       case 'create-path': {
-        const { path } = body
-        if (!path) {
-          return NextResponse.json({ error: 'path is required' }, { status: 400 })
+        const result = await createLearningPath(orgId, parsed.data.path)
+        return NextResponse.json(result)
+      }
+
+      case 'submit-quiz': {
+        const result = await submitQuiz(
+          orgId,
+          parsed.data.employeeId,
+          parsed.data.courseContentId,
+          parsed.data.answers
+        )
+        return NextResponse.json(result)
+      }
+
+      case 'issue-certificate': {
+        const result = await issueCertificate(
+          orgId,
+          parsed.data.employeeId,
+          parsed.data.courseId,
+          parsed.data.enrollmentId || ''
+        )
+        if (!result) {
+          return NextResponse.json({ error: 'Failed to issue certificate' }, { status: 500 })
         }
-        const result = await createLearningPath(orgId, path)
+        return NextResponse.json(result)
+      }
+
+      case 'track-block-progress': {
+        const result = await trackBlockProgress(
+          orgId,
+          parsed.data.enrollmentId,
+          parsed.data.blockId,
+          parsed.data.data
+        )
+        if (!result) {
+          return NextResponse.json({ error: 'Failed to track block progress' }, { status: 500 })
+        }
         return NextResponse.json(result)
       }
 
       default:
-        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
+        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
   } catch (error: any) {
     console.error('[POST /api/learning] Error:', error)

@@ -20,7 +20,7 @@ import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('home')
@@ -117,6 +117,35 @@ export default function LearningPage() {
   // Compliance policy upload
   const [compliancePolicyState, setCompliancePolicyState] = useState<'idle' | 'parsing' | 'done'>('idle')
 
+  // Content Library state
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [libraryProvider, setLibraryProvider] = useState('all')
+  const [libraryCategory, setLibraryCategory] = useState('all')
+  const [libraryLevel, setLibraryLevel] = useState('all')
+  const [libraryLanguage, setLibraryLanguage] = useState('all')
+  const [showContentDetailModal, setShowContentDetailModal] = useState(false)
+  const [selectedContentItem, setSelectedContentItem] = useState<typeof contentLibrary[number] | null>(null)
+
+  // Gamification state
+  const [gamificationSubTab, setGamificationSubTab] = useState<'leaderboard' | 'badges' | 'points' | 'challenges'>('leaderboard')
+
+  // Transcript state
+  const [transcriptEmployee, setTranscriptEmployee] = useState('')
+  const [transcriptDateFrom, setTranscriptDateFrom] = useState('')
+  const [transcriptDateTo, setTranscriptDateTo] = useState('')
+  const [transcriptCategory, setTranscriptCategory] = useState('all')
+
+  // Prerequisites state
+  const [showPrereqModal, setShowPrereqModal] = useState(false)
+  const [prereqForm, setPrereqForm] = useState({ course_id: '', prerequisite_course_id: '', type: 'required' as string, minimum_score: '' })
+
+  // SCORM upload state
+  const [showScormUploadModal, setShowScormUploadModal] = useState(false)
+  const [scormUploadCourse, setScormUploadCourse] = useState('')
+  const [scormUploadVersion, setScormUploadVersion] = useState('scorm_2004')
+  const [scormUploadProgress, setScormUploadProgress] = useState(0)
+  const [scormUploadState, setScormUploadState] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle')
+
   const tabs = [
     { id: 'home', label: t('tabHome') },
     { id: 'catalog', label: t('tabCourseCatalog'), count: courses.length },
@@ -132,6 +161,9 @@ export default function LearningPage() {
     { id: 'course-builder', label: t('tabCourseBuilder'), count: courseBlocks.length },
     { id: 'quiz-builder', label: t('tabQuizBuilder'), count: quizQuestions.length },
     { id: 'social', label: t('tabSocialLearning'), count: discussions.length },
+    { id: 'content-library', label: 'Content Library', count: contentLibrary.length },
+    { id: 'gamification', label: 'Gamification', count: learnerBadges.length },
+    { id: 'transcript', label: 'Transcript' },
   ]
 
   const completedCount = enrollments.filter(e => e.status === 'completed').length
@@ -608,6 +640,216 @@ export default function LearningPage() {
     setShowCertificateModal(true)
   }
 
+  // Content Library computed data
+  const filteredContentLibrary = useMemo(() => {
+    return contentLibrary.filter(item => {
+      const matchSearch = !librarySearch || item.title.toLowerCase().includes(librarySearch.toLowerCase()) || (item.category || '').toLowerCase().includes(librarySearch.toLowerCase()) || (item.tags as string[] || []).some(t => t.toLowerCase().includes(librarySearch.toLowerCase()))
+      const matchProvider = libraryProvider === 'all' || item.provider === libraryProvider
+      const matchCategory = libraryCategory === 'all' || item.category === libraryCategory
+      const matchLevel = libraryLevel === 'all' || item.level === libraryLevel
+      const matchLanguage = libraryLanguage === 'all' || item.language === libraryLanguage
+      return matchSearch && matchProvider && matchCategory && matchLevel && matchLanguage
+    })
+  }, [contentLibrary, librarySearch, libraryProvider, libraryCategory, libraryLevel, libraryLanguage])
+
+  const featuredContent = useMemo(() => contentLibrary.filter(c => c.is_featured), [contentLibrary])
+  const libraryCategories = useMemo(() => [...new Set(contentLibrary.map(c => c.category).filter(Boolean))].sort(), [contentLibrary])
+  const libraryProviders = useMemo(() => [...new Set(contentLibrary.map(c => c.provider))].sort(), [contentLibrary])
+  const libraryLanguages = useMemo(() => [...new Set(contentLibrary.map(c => c.language).filter(Boolean))].sort(), [contentLibrary])
+
+  const providerLabel = (p: string) => {
+    switch (p) {
+      case 'go1': return 'Go1'
+      case 'linkedin_learning': return 'LinkedIn Learning'
+      case 'udemy_business': return 'Udemy Business'
+      case 'coursera': return 'Coursera'
+      case 'internal': return 'Internal'
+      case 'custom': return 'Custom'
+      default: return p
+    }
+  }
+
+  const providerColor = (p: string) => {
+    switch (p) {
+      case 'go1': return 'bg-pink-500/10 text-pink-400 border-pink-500/20'
+      case 'linkedin_learning': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+      case 'udemy_business': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      case 'coursera': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+      case 'internal': return 'bg-tempo-500/10 text-tempo-400 border-tempo-500/20'
+      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+    }
+  }
+
+  // Gamification computed data
+  const gamificationLeaderboard = useMemo(() => {
+    const pointsByEmp = new Map<string, number>()
+    learnerPoints.forEach(p => {
+      pointsByEmp.set(p.employee_id, (pointsByEmp.get(p.employee_id) ?? 0) + p.points)
+    })
+    const badgesByEmp = new Map<string, number>()
+    learnerBadges.forEach(b => {
+      badgesByEmp.set(b.employee_id, (badgesByEmp.get(b.employee_id) ?? 0) + 1)
+    })
+    return [...pointsByEmp.entries()].map(([empId, pts]) => ({
+      id: empId,
+      name: getEmployeeName(empId),
+      points: pts,
+      badges: badgesByEmp.get(empId) ?? 0,
+      coursesCompleted: enrollments.filter(e => e.employee_id === empId && e.status === 'completed').length,
+    })).sort((a, b) => b.points - a.points)
+  }, [learnerPoints, learnerBadges, enrollments, getEmployeeName])
+
+  const myPoints = useMemo(() => {
+    return learnerPoints.filter(p => p.employee_id === currentEmployeeId).reduce((a, p) => a + p.points, 0)
+  }, [learnerPoints, currentEmployeeId])
+
+  const myBadges = useMemo(() => {
+    return learnerBadges.filter(b => b.employee_id === currentEmployeeId)
+  }, [learnerBadges, currentEmployeeId])
+
+  const pointBreakdown = useMemo(() => {
+    const breakdown = new Map<string, number>()
+    learnerPoints.filter(p => p.employee_id === currentEmployeeId).forEach(p => {
+      breakdown.set(p.source, (breakdown.get(p.source) ?? 0) + p.points)
+    })
+    return [...breakdown.entries()].map(([source, points]) => ({ source, points })).sort((a, b) => b.points - a.points)
+  }, [learnerPoints, currentEmployeeId])
+
+  const allBadgeTypes = [
+    { type: 'course_complete', name: 'Course Complete', icon: 'award', description: 'Complete any course', color: 'text-green-400' },
+    { type: 'path_complete', name: 'Path Completer', icon: 'map', description: 'Complete a full learning path', color: 'text-blue-400' },
+    { type: 'streak_7', name: '7-Day Streak', icon: 'flame', description: 'Maintain a 7-day learning streak', color: 'text-orange-400' },
+    { type: 'streak_30', name: '30-Day Streak', icon: 'flame', description: 'Maintain a 30-day learning streak', color: 'text-red-400' },
+    { type: 'first_quiz_perfect', name: 'Perfect Score', icon: 'star', description: 'Get 100% on your first quiz attempt', color: 'text-yellow-400' },
+    { type: 'top_learner', name: 'Top Learner', icon: 'crown', description: 'Rank in top 10% of learners', color: 'text-purple-400' },
+    { type: 'compliance_champion', name: 'Compliance Champion', icon: 'shield', description: 'Complete all mandatory compliance courses', color: 'text-emerald-400' },
+    { type: 'mentor', name: 'Knowledge Mentor', icon: 'users', description: 'Help 5 peers with their learning', color: 'text-cyan-400' },
+  ]
+
+  const sourceLabel = (s: string) => {
+    switch (s) {
+      case 'course_complete': return 'Course Completions'
+      case 'quiz_score': return 'Quiz Scores'
+      case 'streak_bonus': return 'Streak Bonuses'
+      case 'discussion_post': return 'Discussion Posts'
+      case 'peer_help': return 'Peer Help'
+      default: return s
+    }
+  }
+
+  // Transcript computed data
+  const transcriptEmployeeId = transcriptEmployee || currentEmployeeId
+  const transcriptData = useMemo(() => {
+    const empEnrollments = enrollments.filter(e => e.employee_id === transcriptEmployeeId && e.status === 'completed')
+    return empEnrollments.map(e => {
+      const course = courses.find(c => c.id === e.course_id)
+      const attempt = assessmentAttempts.find(a => a.course_id === e.course_id && a.employee_id === transcriptEmployeeId && a.status === 'passed')
+      return {
+        enrollmentId: e.id,
+        courseId: e.course_id,
+        courseTitle: course?.title || 'Unknown',
+        category: course?.category || 'General',
+        completedAt: e.completed_at || '',
+        durationHours: course?.duration_hours || 0,
+        score: attempt?.score || null,
+        format: course?.format || 'online',
+        level: course?.level || 'beginner',
+      }
+    }).filter(t => {
+      const matchCategory = transcriptCategory === 'all' || t.category === transcriptCategory
+      const matchDateFrom = !transcriptDateFrom || t.completedAt >= transcriptDateFrom
+      const matchDateTo = !transcriptDateTo || t.completedAt <= transcriptDateTo
+      return matchCategory && matchDateFrom && matchDateTo
+    }).sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+  }, [enrollments, courses, assessmentAttempts, transcriptEmployeeId, transcriptCategory, transcriptDateFrom, transcriptDateTo])
+
+  const transcriptSummary = useMemo(() => ({
+    totalCourses: transcriptData.length,
+    totalHours: transcriptData.reduce((a, t) => a + t.durationHours, 0),
+    avgScore: transcriptData.filter(t => t.score).length > 0 ? Math.round(transcriptData.filter(t => t.score).reduce((a, t) => a + (t.score || 0), 0) / transcriptData.filter(t => t.score).length) : null,
+    certificates: transcriptData.length,
+  }), [transcriptData])
+
+  // SCORM upload simulation
+  function simulateScormUpload() {
+    setScormUploadState('uploading')
+    setScormUploadProgress(0)
+    const stages = [
+      { progress: 20, state: 'uploading' as const },
+      { progress: 50, state: 'uploading' as const },
+      { progress: 70, state: 'processing' as const },
+      { progress: 90, state: 'processing' as const },
+      { progress: 100, state: 'done' as const },
+    ]
+    let i = 0
+    const interval = setInterval(() => {
+      if (i < stages.length) {
+        setScormUploadProgress(stages[i].progress)
+        setScormUploadState(stages[i].state)
+        i++
+      } else {
+        clearInterval(interval)
+        if (scormUploadCourse) {
+          addScormPackage({
+            course_id: scormUploadCourse,
+            package_url: `/scorm/package-${Date.now()}.zip`,
+            version: scormUploadVersion,
+            entry_point: 'index.html',
+            metadata: { title: courses.find(c => c.id === scormUploadCourse)?.title || 'SCORM Package', description: 'Uploaded SCORM package', duration: '2 hours', mastery_score: 70 },
+            status: 'ready',
+          })
+        }
+        setTimeout(() => {
+          setShowScormUploadModal(false)
+          setScormUploadState('idle')
+          setScormUploadProgress(0)
+          setScormUploadCourse('')
+        }, 1000)
+      }
+    }, 600)
+  }
+
+  // Prerequisite helpers
+  function getPrerequisitesForCourse(courseId: string) {
+    return coursePrerequisites.filter(p => p.course_id === courseId).map(p => ({
+      ...p,
+      prerequisiteCourse: courses.find(c => c.id === p.prerequisite_course_id),
+      isCompleted: enrollments.some(e => e.course_id === p.prerequisite_course_id && e.employee_id === currentEmployeeId && e.status === 'completed'),
+    }))
+  }
+
+  function handleAddPrerequisite() {
+    if (!prereqForm.course_id || !prereqForm.prerequisite_course_id) return
+    addCoursePrerequisite({ ...prereqForm, minimum_score: prereqForm.minimum_score ? parseInt(prereqForm.minimum_score) : null })
+    setShowPrereqModal(false)
+    setPrereqForm({ course_id: '', prerequisite_course_id: '', type: 'required', minimum_score: '' })
+  }
+
+  function handleAddToOrgCatalog(item: typeof contentLibrary[number]) {
+    addCourse({
+      title: item.title,
+      description: `Imported from ${providerLabel(item.provider)}`,
+      category: item.category || 'General',
+      duration_hours: Math.ceil((item.duration_minutes || 60) / 60),
+      format: item.format || 'online',
+      level: item.level || 'beginner',
+      is_mandatory: false,
+    })
+    addToast(`Added "${item.title}" to course catalog`)
+  }
+
+  // Transcript PDF export
+  function exportTranscriptPDF() {
+    const empName = getEmployeeName(transcriptEmployeeId)
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      const rows = transcriptData.map(t => `<tr><td style="padding:8px;border-bottom:1px solid #333">${t.courseTitle}</td><td style="padding:8px;border-bottom:1px solid #333">${t.category}</td><td style="padding:8px;border-bottom:1px solid #333">${t.completedAt ? new Date(t.completedAt).toLocaleDateString() : '-'}</td><td style="padding:8px;border-bottom:1px solid #333">${t.score ? t.score + '%' : '-'}</td><td style="padding:8px;border-bottom:1px solid #333">${t.durationHours}h</td></tr>`).join('')
+      printWindow.document.write(`<html><head><title>Learning Transcript - ${empName}</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#fff;background:#0a0a0a}h1{color:#ea580c;font-size:20px}h2{font-size:16px;color:#ccc}table{width:100%;border-collapse:collapse;margin-top:20px}th{text-align:left;padding:8px;border-bottom:2px solid #ea580c;color:#ea580c;font-size:13px}td{font-size:13px;color:#ccc}.summary{display:flex;gap:30px;margin:20px 0}.stat{text-align:center}.stat-val{font-size:24px;font-weight:bold;color:#ea580c}.stat-label{font-size:11px;color:#999}</style></head><body><h1>Learning Transcript</h1><h2>${empName}</h2><div class="summary"><div class="stat"><div class="stat-val">${transcriptSummary.totalCourses}</div><div class="stat-label">Courses</div></div><div class="stat"><div class="stat-val">${transcriptSummary.totalHours}h</div><div class="stat-label">Total Hours</div></div><div class="stat"><div class="stat-val">${transcriptSummary.certificates}</div><div class="stat-label">Certificates</div></div>${transcriptSummary.avgScore ? `<div class="stat"><div class="stat-val">${transcriptSummary.avgScore}%</div><div class="stat-label">Avg Score</div></div>` : ''}</div><table><thead><tr><th>Course</th><th>Category</th><th>Completed</th><th>Score</th><th>Hours</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:30px;font-size:11px;color:#666">Generated by Tempo Platform on ${new Date().toLocaleDateString()}</p></body></html>`)
+      printWindow.document.close()
+      printWindow.print()
+    }
+  }
+
   // Filtered blocks for selected course
   const filteredBlocks = useMemo(() => {
     if (!selectedBuilderCourse) return []
@@ -860,20 +1102,41 @@ export default function LearningPage() {
               const { rating, reviews } = getCourseRating(course.id)
               const enrolled = enrollments.some(e => e.course_id === course.id && e.employee_id === currentEmployeeId)
               const myEnrollment = enrollments.find(e => e.course_id === course.id && e.employee_id === currentEmployeeId)
-              const hasPrerequisites = course.level === 'advanced' || course.level === 'intermediate'
+              const coursePrereqs = getPrerequisitesForCourse(course.id)
+              const requiredPrereqs = coursePrereqs.filter(p => p.type === 'required')
+              const unmetPrereqs = requiredPrereqs.filter(p => !p.isCompleted)
+              const hasUnmetPrereqs = unmetPrereqs.length > 0
+              const hasScorm = scormPackages.some(p => p.course_id === course.id)
               return (
                 <Card key={course.id}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-1.5">
                       <Badge variant={course.is_mandatory ? 'error' : 'default'}>{course.is_mandatory ? t('mandatory') : course.category}</Badge>
-                      {hasPrerequisites && (
-                        <span title={t('prerequisitesRequired')} className="text-amber-500"><Lock size={12} /></span>
+                      {coursePrereqs.length > 0 && (
+                        <span title={hasUnmetPrereqs ? 'Prerequisites not met' : 'All prerequisites met'} className={hasUnmetPrereqs ? 'text-amber-500' : 'text-green-500'}><Lock size={12} /></span>
+                      )}
+                      {hasScorm && (
+                        <span title="SCORM content available" className="text-blue-400"><Layers size={12} /></span>
                       )}
                     </div>
                     <Badge>{course.level}</Badge>
                   </div>
                   <h3 className="text-sm font-semibold text-t1 mb-1">{course.title}</h3>
                   <p className="text-xs text-t3 mb-2 line-clamp-2">{course.description}</p>
+
+                  {/* Prerequisites indicator */}
+                  {coursePrereqs.length > 0 && (
+                    <div className="mb-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                      <p className="text-[0.6rem] font-medium text-t2 mb-1">Prerequisites:</p>
+                      {coursePrereqs.map(p => (
+                        <div key={p.id} className="flex items-center gap-1.5 text-[0.55rem]">
+                          {p.isCompleted ? <CheckCircle size={9} className="text-green-400" /> : <Lock size={9} className="text-amber-400" />}
+                          <span className={p.isCompleted ? 'text-green-400' : 'text-amber-400'}>{p.prerequisiteCourse?.title}</span>
+                          <Badge variant={p.type === 'required' ? 'error' : 'info'} className="text-[0.4rem] py-0 px-1">{p.type}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Ratings */}
                   <div className="flex items-center gap-1.5 mb-3">
@@ -897,6 +1160,8 @@ export default function LearningPage() {
                       </Button>
                     ) : enrolled ? (
                       <Badge variant="success">{tc('enrolled')}</Badge>
+                    ) : hasUnmetPrereqs ? (
+                      <Badge variant="warning" className="text-[0.6rem]"><Lock size={10} /> Locked</Badge>
                     ) : (
                       <Button size="sm" variant="outline" onClick={() => handleEnroll(course.id)}>{t('enroll')}</Button>
                     )}
@@ -904,7 +1169,13 @@ export default function LearningPage() {
 
                   {/* SCORM/xAPI + Adaptive Learning indicators */}
                   <div className="flex items-center gap-3 mt-2 pt-2 border-t border-divider">
-                    {course.format === 'online' && (
+                    {hasScorm && (
+                      <div className="flex items-center gap-1">
+                        <Layers size={10} className="text-blue-400" />
+                        <span className="text-[0.55rem] text-blue-400">SCORM</span>
+                      </div>
+                    )}
+                    {course.format === 'online' && !hasScorm && (
                       <div className="flex items-center gap-1">
                         <Shield size={10} className="text-gray-400" />
                         <span className="text-[0.55rem] text-t3">{t('scormCompatible')}</span>
@@ -1762,6 +2033,123 @@ export default function LearningPage() {
                 {filteredBlocks.length === 0 && (
                   <Card><div className="text-center py-8 text-sm text-t3">{t('selectCourseToEdit')}</div></Card>
                 )}
+
+                {/* SCORM Packages Section */}
+                {selectedBuilderCourse && (
+                  <Card>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-t1 flex items-center gap-2"><Layers size={14} className="text-tempo-400" /> SCORM Packages</h4>
+                      <Button size="sm" variant="outline" onClick={() => { setScormUploadCourse(selectedBuilderCourse); setShowScormUploadModal(true) }}><Upload size={12} /> Upload SCORM</Button>
+                    </div>
+                    {scormPackages.filter(p => p.course_id === selectedBuilderCourse).length > 0 ? (
+                      <div className="space-y-2">
+                        {scormPackages.filter(p => p.course_id === selectedBuilderCourse).map(pkg => {
+                          const tracking = scormTracking.filter(t => t.package_id === pkg.id)
+                          return (
+                            <div key={pkg.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                              <div className="w-9 h-9 rounded-lg bg-tempo-500/10 flex items-center justify-center"><Layers size={16} className="text-tempo-400" /></div>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-t1">{(pkg.metadata as any)?.title || 'SCORM Package'}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <Badge variant="info" className="text-[0.5rem]">{pkg.version === 'scorm_1_2' ? 'SCORM 1.2' : pkg.version === 'scorm_2004' ? 'SCORM 2004' : 'xAPI'}</Badge>
+                                  <span className="text-[0.55rem] text-t3">{(pkg.metadata as any)?.duration || 'N/A'}</span>
+                                  <span className="text-[0.55rem] text-t3">Mastery: {(pkg.metadata as any)?.mastery_score || 'N/A'}%</span>
+                                </div>
+                              </div>
+                              <Badge variant={pkg.status === 'ready' ? 'success' : pkg.status === 'error' ? 'error' : 'default'}>{pkg.status}</Badge>
+                              {tracking.length > 0 && (
+                                <div className="text-right">
+                                  <p className="text-[0.6rem] text-t3">{tracking.length} tracked</p>
+                                  <p className="text-[0.55rem] text-t3">{tracking.filter(t => t.lesson_status === 'completed' || t.lesson_status === 'passed').length} completed</p>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-t3">
+                        <Layers size={24} className="mx-auto mb-2" />
+                        <p className="text-xs">No SCORM packages uploaded for this course</p>
+                        <p className="text-[0.55rem] mt-1">Upload a SCORM 1.2, 2004, or xAPI package</p>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                {/* Prerequisites Section */}
+                {selectedBuilderCourse && (
+                  <Card>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-t1 flex items-center gap-2"><Lock size={14} className="text-amber-400" /> Prerequisites</h4>
+                      <Button size="sm" variant="outline" onClick={() => { setPrereqForm({ ...prereqForm, course_id: selectedBuilderCourse }); setShowPrereqModal(true) }}><Plus size={12} /> Add</Button>
+                    </div>
+                    {(() => {
+                      const prereqs = getPrerequisitesForCourse(selectedBuilderCourse)
+                      if (prereqs.length === 0) return <p className="text-xs text-t3 text-center py-4">No prerequisites configured</p>
+                      return (
+                        <div className="space-y-2">
+                          {/* Prerequisite Chain Visualization */}
+                          <div className="flex items-center gap-2 flex-wrap mb-3 p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                            {prereqs.map((p, i) => (
+                              <div key={p.id} className="flex items-center gap-2">
+                                <div className={cn('px-2 py-1 rounded text-[0.6rem] font-medium border', p.isCompleted ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20')}>
+                                  {p.prerequisiteCourse?.title || 'Unknown'}
+                                </div>
+                                {i < prereqs.length - 1 && <ArrowRight size={12} className="text-t3" />}
+                              </div>
+                            ))}
+                            <ArrowRight size={12} className="text-t3" />
+                            <div className="px-2 py-1 rounded text-[0.6rem] font-medium bg-tempo-500/10 text-tempo-400 border border-tempo-500/20">
+                              {courses.find(c => c.id === selectedBuilderCourse)?.title}
+                            </div>
+                          </div>
+                          {prereqs.map(p => (
+                            <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', p.isCompleted ? 'bg-green-500/10' : 'bg-amber-500/10')}>
+                                {p.isCompleted ? <CheckCircle size={14} className="text-green-400" /> : <Lock size={14} className="text-amber-400" />}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-t1">{p.prerequisiteCourse?.title || 'Unknown Course'}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <Badge variant={p.type === 'required' ? 'error' : 'info'} className="text-[0.5rem]">{p.type}</Badge>
+                                  {p.minimum_score && <span className="text-[0.55rem] text-t3">Min. score: {p.minimum_score}%</span>}
+                                </div>
+                              </div>
+                              <Button size="sm" variant="ghost" onClick={() => deleteCoursePrerequisite(p.id)}>x</Button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </Card>
+                )}
+
+                {/* SCORM Tracking Display (if SCORM packages exist) */}
+                {selectedBuilderCourse && scormTracking.filter(t => scormPackages.some(p => p.course_id === selectedBuilderCourse && p.id === t.package_id)).length > 0 && (
+                  <Card>
+                    <h4 className="text-xs font-semibold text-t1 mb-3 flex items-center gap-2"><BarChart3 size={14} className="text-blue-400" /> SCORM Tracking Data</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead><tr className="border-b border-white/10"><th className="text-left py-2 px-2 text-t3 font-medium">Learner</th><th className="text-left py-2 px-2 text-t3 font-medium">Status</th><th className="text-right py-2 px-2 text-t3 font-medium">Score</th><th className="text-right py-2 px-2 text-t3 font-medium">Time</th><th className="text-right py-2 px-2 text-t3 font-medium">Last Access</th></tr></thead>
+                        <tbody>
+                          {scormTracking.filter(t => scormPackages.some(p => p.course_id === selectedBuilderCourse && p.id === t.package_id)).map(track => {
+                            const enrollment = enrollments.find(e => e.id === track.enrollment_id)
+                            return (
+                              <tr key={track.id} className="border-b border-white/5">
+                                <td className="py-2 px-2">{enrollment ? getEmployeeName(enrollment.employee_id) : 'Unknown'}</td>
+                                <td className="py-2 px-2"><Badge variant={track.lesson_status === 'completed' || track.lesson_status === 'passed' ? 'success' : track.lesson_status === 'failed' ? 'error' : 'default'} className="text-[0.5rem]">{track.lesson_status}</Badge></td>
+                                <td className="py-2 px-2 text-right">{track.score_raw !== null ? `${track.score_raw}/${track.score_max}` : '-'}</td>
+                                <td className="py-2 px-2 text-right text-t3">{track.total_time || '-'}</td>
+                                <td className="py-2 px-2 text-right text-t3">{new Date(track.last_accessed).toLocaleDateString()}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )}
               </div>
             )}
           </div>
@@ -1996,6 +2384,458 @@ export default function LearningPage() {
           )}
         </div>
       )}
+
+      {/* Content Library Tab */}
+      {activeTab === 'content-library' && (
+        <div className="space-y-6">
+          {/* Featured Section */}
+          {featuredContent.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2"><Star size={16} className="text-yellow-500" /> Featured Courses</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {featuredContent.map(item => (
+                  <Card key={item.id} className="cursor-pointer hover:border-tempo-500/30 transition-colors" onClick={() => { setSelectedContentItem(item); setShowContentDetailModal(true) }}>
+                    <div className="aspect-video bg-gradient-to-br from-tempo-500/20 to-purple-500/20 rounded-lg mb-3 flex items-center justify-center">
+                      <Globe size={32} className="text-tempo-400" />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-t1 line-clamp-2">{item.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className={cn('text-[0.6rem] px-1.5 py-0.5 rounded border', providerColor(item.provider))}>{providerLabel(item.provider)}</span>
+                        <Badge variant="info" className="text-[0.6rem]">{item.level}</Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-[0.6rem] text-t3">
+                        <span className="flex items-center gap-1"><Star size={10} className="text-yellow-500 fill-yellow-500" /> {item.rating}</span>
+                        <span className="flex items-center gap-1"><Clock size={10} /> {Math.round((item.duration_minutes || 0) / 60)}h</span>
+                        <span className="flex items-center gap-1"><UsersIcon size={10} /> {(item.enrollment_count || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search & Filters */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <Input placeholder="Search content library..." value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} />
+            </div>
+            <Select value={libraryProvider} onChange={e => setLibraryProvider(e.target.value)} options={[{ value: 'all', label: 'All Providers' }, ...libraryProviders.map(p => ({ value: p, label: providerLabel(p) }))]} />
+            <Select value={libraryCategory} onChange={e => setLibraryCategory(e.target.value)} options={[{ value: 'all', label: 'All Categories' }, ...libraryCategories.map(c => ({ value: c!, label: c! }))]} />
+            <Select value={libraryLevel} onChange={e => setLibraryLevel(e.target.value)} options={[{ value: 'all', label: 'All Levels' }, { value: 'beginner', label: 'Beginner' }, { value: 'intermediate', label: 'Intermediate' }, { value: 'advanced', label: 'Advanced' }]} />
+            <Select value={libraryLanguage} onChange={e => setLibraryLanguage(e.target.value)} options={[{ value: 'all', label: 'All Languages' }, ...libraryLanguages.map(l => ({ value: l!, label: l! }))]} />
+          </div>
+
+          {/* Results */}
+          <div className="text-xs text-t3 mb-2">{filteredContentLibrary.length} items found</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {filteredContentLibrary.map(item => (
+              <Card key={item.id} className="hover:border-white/20 transition-colors">
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 shrink-0 bg-gradient-to-br from-tempo-500/10 to-purple-500/10 rounded-lg flex items-center justify-center">
+                    <BookOpen size={20} className="text-tempo-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-semibold text-t1 line-clamp-2 mb-1">{item.title}</h4>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={cn('text-[0.55rem] px-1 py-0.5 rounded border', providerColor(item.provider))}>{providerLabel(item.provider)}</span>
+                      {item.category && <span className="text-[0.55rem] text-t3">{item.category}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-[0.6rem] text-t3">
+                      {item.rating && <span className="flex items-center gap-0.5"><Star size={9} className="text-yellow-500 fill-yellow-500" /> {item.rating}</span>}
+                      <span className="flex items-center gap-0.5"><Clock size={9} /> {Math.round((item.duration_minutes || 0) / 60)}h</span>
+                      <Badge variant="info" className="text-[0.5rem] py-0">{item.level}</Badge>
+                      {item.language !== 'English' && <Badge variant="info" className="text-[0.5rem] py-0">{item.language}</Badge>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                  <Button size="sm" variant="outline" className="flex-1 text-[0.6rem]" onClick={() => { setSelectedContentItem(item); setShowContentDetailModal(true) }}><Eye size={12} /> Preview</Button>
+                  <Button size="sm" className="flex-1 text-[0.6rem]" onClick={() => handleAddToOrgCatalog(item)}><Plus size={12} /> Add to Catalog</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+          {filteredContentLibrary.length === 0 && (
+            <Card><div className="text-center py-8"><Globe size={32} className="mx-auto text-t3 mb-2" /><p className="text-sm text-t3">No content found matching your filters</p></div></Card>
+          )}
+        </div>
+      )}
+
+      {/* Gamification Tab */}
+      {activeTab === 'gamification' && (
+        <div className="space-y-6">
+          {/* My Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center"><Trophy size={18} className="text-yellow-500" /></div>
+                <div><p className="text-2xl font-bold text-t1">{myPoints}</p><p className="text-[0.6rem] text-t3">My Points</p></div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center"><Medal size={18} className="text-purple-500" /></div>
+                <div><p className="text-2xl font-bold text-t1">{myBadges.length}</p><p className="text-[0.6rem] text-t3">My Badges</p></div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-tempo-500/10 flex items-center justify-center"><TrendingUp size={18} className="text-tempo-500" /></div>
+                <div><p className="text-2xl font-bold text-t1">#{gamificationLeaderboard.findIndex(l => l.id === currentEmployeeId) + 1 || '-'}</p><p className="text-[0.6rem] text-t3">My Rank</p></div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center"><Zap size={18} className="text-green-500" /></div>
+                <div><p className="text-2xl font-bold text-t1">{myCompleted.length}</p><p className="text-[0.6rem] text-t3">Courses Done</p></div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Sub-tabs */}
+          <div className="flex gap-2 border-b border-white/10 pb-2">
+            {(['leaderboard', 'badges', 'points', 'challenges'] as const).map(tab => (
+              <button key={tab} onClick={() => setGamificationSubTab(tab)} className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', gamificationSubTab === tab ? 'bg-tempo-500/20 text-tempo-400' : 'text-t3 hover:text-t1')}>
+                {tab === 'leaderboard' ? 'Leaderboard' : tab === 'badges' ? 'Badge Showcase' : tab === 'points' ? 'Points' : 'Challenges'}
+              </button>
+            ))}
+          </div>
+
+          {/* Leaderboard */}
+          {gamificationSubTab === 'leaderboard' && (
+            <Card>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Trophy size={16} className="text-yellow-500" /> Top Learners Leaderboard</CardTitle></CardHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-white/10"><th className="text-left py-2 px-3 text-t3 font-medium">Rank</th><th className="text-left py-2 px-3 text-t3 font-medium">Learner</th><th className="text-right py-2 px-3 text-t3 font-medium">Points</th><th className="text-right py-2 px-3 text-t3 font-medium">Badges</th><th className="text-right py-2 px-3 text-t3 font-medium">Courses</th></tr></thead>
+                  <tbody>
+                    {gamificationLeaderboard.map((entry, i) => (
+                      <tr key={entry.id} className={cn('border-b border-white/5', entry.id === currentEmployeeId && 'bg-tempo-500/5')}>
+                        <td className="py-2.5 px-3">
+                          {i === 0 ? <span className="text-yellow-500 font-bold text-sm">1</span> : i === 1 ? <span className="text-gray-400 font-bold text-sm">2</span> : i === 2 ? <span className="text-orange-600 font-bold text-sm">3</span> : <span className="text-t3">{i + 1}</span>}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={entry.name} size="sm" />
+                            <span className="font-medium text-t1">{entry.name}</span>
+                            {entry.id === currentEmployeeId && <Badge variant="ai" className="text-[0.5rem]">You</Badge>}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-tempo-400">{entry.points.toLocaleString()}</td>
+                        <td className="py-2.5 px-3 text-right">{entry.badges}</td>
+                        <td className="py-2.5 px-3 text-right">{entry.coursesCompleted}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Badge Showcase */}
+          {gamificationSubTab === 'badges' && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-t1">All Available Badges</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {allBadgeTypes.map(badge => {
+                  const earned = myBadges.find(b => b.badge_type === badge.type)
+                  return (
+                    <Card key={badge.type} className={cn('text-center transition-all', earned ? 'border-tempo-500/30' : 'opacity-50')}>
+                      <div className={cn('w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center', earned ? 'bg-tempo-500/20' : 'bg-white/5')}>
+                        {badge.icon === 'award' ? <Award size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'trophy' ? <Trophy size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'zap' ? <Zap size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'star' ? <Star size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'shield' ? <Shield size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'flame' ? <Activity size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'crown' ? <Trophy size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         badge.icon === 'map' ? <Route size={24} className={earned ? badge.color : 'text-t3'} /> :
+                         <UsersIcon size={24} className={earned ? badge.color : 'text-t3'} />}
+                      </div>
+                      <h4 className="text-xs font-semibold text-t1 mb-1">{badge.name}</h4>
+                      <p className="text-[0.6rem] text-t3 mb-2">{badge.description}</p>
+                      {earned ? (
+                        <Badge variant="success" className="text-[0.55rem]">Earned {new Date(earned.earned_at).toLocaleDateString()}</Badge>
+                      ) : (
+                        <Badge variant="info" className="text-[0.55rem]">Not Earned</Badge>
+                      )}
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {myBadges.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-t1 mt-6 mb-3">My Earned Badges</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {myBadges.map(badge => (
+                      <Card key={badge.id} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-tempo-500/20 flex items-center justify-center shrink-0">
+                          <Award size={18} className="text-tempo-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-semibold text-t1">{badge.badge_name}</h4>
+                          <p className="text-[0.55rem] text-t3">{badge.description}</p>
+                          <p className="text-[0.5rem] text-t3 mt-0.5">{new Date(badge.earned_at).toLocaleDateString()}</p>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Points Breakdown */}
+          {gamificationSubTab === 'points' && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Points Breakdown</CardTitle></CardHeader>
+                <div className="space-y-3">
+                  {pointBreakdown.length > 0 ? pointBreakdown.map(({ source, points }) => (
+                    <div key={source} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-tempo-500/10 flex items-center justify-center">
+                          {source === 'course_complete' ? <CheckCircle size={14} className="text-green-400" /> :
+                           source === 'quiz_score' ? <Brain size={14} className="text-purple-400" /> :
+                           source === 'streak_bonus' ? <Activity size={14} className="text-orange-400" /> :
+                           source === 'discussion_post' ? <MessageSquare size={14} className="text-blue-400" /> :
+                           <Heart size={14} className="text-pink-400" />}
+                        </div>
+                        <span className="text-xs text-t1">{sourceLabel(source)}</span>
+                      </div>
+                      <span className="text-sm font-semibold text-tempo-400">{points} pts</span>
+                    </div>
+                  )) : (
+                    <p className="text-xs text-t3 text-center py-4">No points earned yet. Complete courses to earn points!</p>
+                  )}
+                </div>
+              </Card>
+
+              {/* Recent Points Activity */}
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Recent Activity</CardTitle></CardHeader>
+                <div className="space-y-2">
+                  {learnerPoints.filter(p => p.employee_id === currentEmployeeId).sort((a, b) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime()).slice(0, 10).map(p => (
+                    <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                      <div>
+                        <p className="text-xs text-t1">{p.description}</p>
+                        <p className="text-[0.55rem] text-t3">{new Date(p.earned_at).toLocaleDateString()}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-green-400">+{p.points}</span>
+                    </div>
+                  ))}
+                  {learnerPoints.filter(p => p.employee_id === currentEmployeeId).length === 0 && (
+                    <p className="text-xs text-t3 text-center py-4">No activity yet</p>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Challenges */}
+          {gamificationSubTab === 'challenges' && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target size={16} className="text-tempo-400" /> Monthly Challenges</CardTitle></CardHeader>
+                <div className="space-y-4">
+                  {[
+                    { title: 'Course Completer', description: 'Complete 3 courses this month', target: 3, current: myCompleted.filter(e => e.completed_at && new Date(e.completed_at).getMonth() === new Date().getMonth()).length, reward: 300, icon: <BookOpen size={16} /> },
+                    { title: 'Quiz Master', description: 'Score 90%+ on 2 assessments', target: 2, current: assessmentAttempts.filter(a => a.employee_id === currentEmployeeId && a.score >= 90).length, reward: 200, icon: <Brain size={16} /> },
+                    { title: 'Discussion Leader', description: 'Post in 3 discussions', target: 3, current: discussions.filter(d => d.author_id === currentEmployeeId).length, reward: 150, icon: <MessageSquare size={16} /> },
+                    { title: 'Learning Streak', description: 'Maintain a 14-day streak', target: 14, current: 7, reward: 500, icon: <Activity size={16} /> },
+                  ].map((challenge, i) => {
+                    const pct = Math.min(100, Math.round((challenge.current / challenge.target) * 100))
+                    return (
+                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                        <div className="w-10 h-10 rounded-lg bg-tempo-500/10 flex items-center justify-center shrink-0 text-tempo-400">{challenge.icon}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-xs font-semibold text-t1">{challenge.title}</h4>
+                            <Badge variant={pct >= 100 ? 'success' : 'info'} className="text-[0.55rem]">{pct >= 100 ? 'Completed' : `${challenge.current}/${challenge.target}`}</Badge>
+                          </div>
+                          <p className="text-[0.6rem] text-t3 mb-2">{challenge.description}</p>
+                          <Progress value={pct} className="h-1.5 mb-1" />
+                          <p className="text-[0.55rem] text-yellow-400">Reward: {challenge.reward} points</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transcript Tab */}
+      {activeTab === 'transcript' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">Learning Transcript</h3>
+              <p className="text-[0.6rem] text-t3">Formal record of completed courses and certifications</p>
+            </div>
+            <Button size="sm" onClick={exportTranscriptPDF}><Download size={14} /> Export PDF</Button>
+          </div>
+
+          {/* Employee Selector & Filters */}
+          <div className="flex flex-wrap gap-3">
+            <Select value={transcriptEmployee || currentEmployeeId} onChange={e => setTranscriptEmployee(e.target.value)} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
+            <Select value={transcriptCategory} onChange={e => setTranscriptCategory(e.target.value)} options={[{ value: 'all', label: 'All Categories' }, ...courseCategories.map(c => ({ value: c, label: c }))]} />
+            <Input type="date" value={transcriptDateFrom} onChange={e => setTranscriptDateFrom(e.target.value)} placeholder="From" />
+            <Input type="date" value={transcriptDateTo} onChange={e => setTranscriptDateTo(e.target.value)} placeholder="To" />
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-t1">{transcriptSummary.totalCourses}</p>
+                <p className="text-[0.6rem] text-t3">Courses Completed</p>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-t1">{transcriptSummary.totalHours}h</p>
+                <p className="text-[0.6rem] text-t3">Total Hours</p>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-t1">{transcriptSummary.certificates}</p>
+                <p className="text-[0.6rem] text-t3">Certificates Earned</p>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-t1">{transcriptSummary.avgScore ? `${transcriptSummary.avgScore}%` : '-'}</p>
+                <p className="text-[0.6rem] text-t3">Average Score</p>
+              </div>
+            </Card>
+          </div>
+
+          {/* Transcript Table */}
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-white/10">
+                  <th className="text-left py-2 px-3 text-t3 font-medium">Course</th>
+                  <th className="text-left py-2 px-3 text-t3 font-medium">Category</th>
+                  <th className="text-left py-2 px-3 text-t3 font-medium">Level</th>
+                  <th className="text-left py-2 px-3 text-t3 font-medium">Completed</th>
+                  <th className="text-right py-2 px-3 text-t3 font-medium">Score</th>
+                  <th className="text-right py-2 px-3 text-t3 font-medium">Hours</th>
+                  <th className="text-center py-2 px-3 text-t3 font-medium">Certificate</th>
+                </tr></thead>
+                <tbody>
+                  {transcriptData.map(entry => (
+                    <tr key={entry.enrollmentId} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap size={14} className="text-tempo-400 shrink-0" />
+                          <span className="font-medium text-t1">{entry.courseTitle}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3"><Badge variant="info" className="text-[0.55rem]">{entry.category}</Badge></td>
+                      <td className="py-2.5 px-3"><span className="text-t2 capitalize">{entry.level}</span></td>
+                      <td className="py-2.5 px-3"><span className="text-t2">{entry.completedAt ? new Date(entry.completedAt).toLocaleDateString() : '-'}</span></td>
+                      <td className="py-2.5 px-3 text-right">{entry.score ? <span className={cn('font-medium', entry.score >= 80 ? 'text-green-400' : entry.score >= 60 ? 'text-yellow-400' : 'text-red-400')}>{entry.score}%</span> : <span className="text-t3">-</span>}</td>
+                      <td className="py-2.5 px-3 text-right text-t2">{entry.durationHours}h</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <Button size="sm" variant="ghost" className="text-[0.6rem]" onClick={() => handleViewCertificate(entry.enrollmentId)}>
+                          <Award size={12} className="text-tempo-400" /> View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {transcriptData.length === 0 && (
+                <div className="text-center py-8"><FileText size={32} className="mx-auto text-t3 mb-2" /><p className="text-sm text-t3">No completed courses found</p></div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Content Detail Modal */}
+      <Modal open={showContentDetailModal} onClose={() => setShowContentDetailModal(false)} title="Content Details" size="lg">
+        {selectedContentItem && (
+          <div className="space-y-4">
+            <div className="aspect-video bg-gradient-to-br from-tempo-500/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+              <div className="text-center"><Globe size={40} className="mx-auto text-tempo-400 mb-2" /><p className="text-xs text-t3">Preview not available</p></div>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-t1 mb-1">{selectedContentItem.title}</h3>
+              <div className="flex items-center gap-3 mb-3">
+                <span className={cn('text-xs px-2 py-0.5 rounded border', providerColor(selectedContentItem.provider))}>{providerLabel(selectedContentItem.provider)}</span>
+                <Badge variant="info">{selectedContentItem.level}</Badge>
+                {selectedContentItem.language !== 'English' && <Badge variant="info">{selectedContentItem.language}</Badge>}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="text-center p-2 bg-white/[0.02] rounded-lg"><p className="text-lg font-bold text-t1">{selectedContentItem.rating}</p><p className="text-[0.6rem] text-t3">Rating</p></div>
+              <div className="text-center p-2 bg-white/[0.02] rounded-lg"><p className="text-lg font-bold text-t1">{Math.round((selectedContentItem.duration_minutes || 0) / 60)}h</p><p className="text-[0.6rem] text-t3">Duration</p></div>
+              <div className="text-center p-2 bg-white/[0.02] rounded-lg"><p className="text-lg font-bold text-t1">{(selectedContentItem.enrollment_count || 0).toLocaleString()}</p><p className="text-[0.6rem] text-t3">Enrolled</p></div>
+              <div className="text-center p-2 bg-white/[0.02] rounded-lg"><p className="text-lg font-bold text-t1">{selectedContentItem.format}</p><p className="text-[0.6rem] text-t3">Format</p></div>
+            </div>
+            {selectedContentItem.tags && (selectedContentItem.tags as string[]).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedContentItem.tags as string[]).map(tag => (
+                  <Badge key={tag} variant="info" className="text-[0.55rem]">{tag}</Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setShowContentDetailModal(false)}>Close</Button>
+              <Button onClick={() => { handleAddToOrgCatalog(selectedContentItem); setShowContentDetailModal(false) }}><Plus size={14} /> Add to Course Catalog</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Prerequisite Modal */}
+      <Modal open={showPrereqModal} onClose={() => setShowPrereqModal(false)} title="Add Prerequisite">
+        <div className="space-y-4">
+          <Select label="Course" value={prereqForm.course_id} onChange={e => setPrereqForm({ ...prereqForm, course_id: e.target.value })} options={[{ value: '', label: 'Select course...' }, ...courses.map(c => ({ value: c.id, label: c.title }))]} />
+          <Select label="Prerequisite Course" value={prereqForm.prerequisite_course_id} onChange={e => setPrereqForm({ ...prereqForm, prerequisite_course_id: e.target.value })} options={[{ value: '', label: 'Select prerequisite...' }, ...courses.filter(c => c.id !== prereqForm.course_id).map(c => ({ value: c.id, label: c.title }))]} />
+          <Select label="Type" value={prereqForm.type} onChange={e => setPrereqForm({ ...prereqForm, type: e.target.value })} options={[{ value: 'required', label: 'Required' }, { value: 'recommended', label: 'Recommended' }]} />
+          {prereqForm.type === 'required' && (
+            <Input label="Minimum Score (%)" type="number" value={prereqForm.minimum_score} onChange={e => setPrereqForm({ ...prereqForm, minimum_score: e.target.value })} placeholder="e.g. 70" />
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPrereqModal(false)}>Cancel</Button>
+            <Button onClick={handleAddPrerequisite}>Add Prerequisite</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* SCORM Upload Modal */}
+      <Modal open={showScormUploadModal} onClose={() => setShowScormUploadModal(false)} title="Upload SCORM Package">
+        <div className="space-y-4">
+          <Select label="Course" value={scormUploadCourse} onChange={e => setScormUploadCourse(e.target.value)} options={[{ value: '', label: 'Select course...' }, ...courses.map(c => ({ value: c.id, label: c.title }))]} />
+          <Select label="SCORM Version" value={scormUploadVersion} onChange={e => setScormUploadVersion(e.target.value)} options={[{ value: 'scorm_1_2', label: 'SCORM 1.2' }, { value: 'scorm_2004', label: 'SCORM 2004' }, { value: 'xapi', label: 'xAPI (Tin Can)' }]} />
+          {scormUploadState === 'idle' && (
+            <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-tempo-500/30 transition-colors" onClick={() => scormUploadCourse && simulateScormUpload()}>
+              <Upload size={32} className="mx-auto text-t3 mb-2" />
+              <p className="text-xs text-t1 font-medium mb-1">Drop SCORM package here or click to upload</p>
+              <p className="text-[0.6rem] text-t3">Supports .zip files up to 500MB</p>
+            </div>
+          )}
+          {scormUploadState !== 'idle' && (
+            <div className="space-y-3">
+              <Progress value={scormUploadProgress} className="h-2" />
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-t2">{scormUploadState === 'uploading' ? 'Uploading...' : scormUploadState === 'processing' ? 'Processing SCORM manifest...' : 'Complete!'}</span>
+                <span className="text-tempo-400">{scormUploadProgress}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* New Course Modal */}
       <Modal open={showCourseModal} onClose={() => setShowCourseModal(false)} title={t('createCourseModal')}>

@@ -19,6 +19,7 @@ import {
   Search, Plus, Download, Upload, Users, Building2, BarChart3,
   FileText, Clock, Layers, UserPlus, Award, ArrowRightLeft, DollarSign,
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
+  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
@@ -34,6 +35,7 @@ export default function PeoplePage() {
     getDepartmentName, getEmployeeName,
     employeeDocuments, addEmployeeDocument, updateEmployeeDocument,
     employeeTimeline,
+    customFieldDefinitions, addCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition,
   } = useTempo()
 
   // ---- Tab State ----
@@ -45,6 +47,7 @@ export default function PeoplePage() {
     { id: 'documents', label: t('documents'), count: employeeDocuments.length },
     { id: 'timeline', label: t('timeline') },
     { id: 'bulk-actions', label: t('bulkActions') },
+    { id: 'custom-fields', label: 'Custom Fields', count: customFieldDefinitions.length },
   ]
 
   // ---- Directory State ----
@@ -86,6 +89,14 @@ export default function PeoplePage() {
   const [importProgress, setImportProgress] = useState(0)
   const [generateCredentials, setGenerateCredentials] = useState(true)
   const [showImportModal, setShowImportModal] = useState(false)
+
+  // ---- Custom Fields State ----
+  const [showCFModal, setShowCFModal] = useState(false)
+  const [editingCF, setEditingCF] = useState<string | null>(null)
+  const [cfForm, setCfForm] = useState({
+    name: '', field_type: 'text' as string, entity_type: 'employee' as string,
+    description: '', options: '' as string, is_required: false, is_visible: true, group_name: '',
+  })
 
   // ---- Computed: Countries & Levels ----
   const countries = useMemo(() => [...new Set(employees.map(e => e.country))].sort(), [employees])
@@ -893,8 +904,209 @@ export default function PeoplePage() {
       )}
 
       {/* ============================================================ */}
+      {/* TAB 7: CUSTOM FIELDS */}
+      {/* ============================================================ */}
+      {activeTab === 'custom-fields' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">Custom Field Definitions</h3>
+              <p className="text-xs text-t3 mt-1">Define custom fields that appear on employee profiles across your organization</p>
+            </div>
+            <Button size="sm" onClick={() => {
+              setEditingCF(null)
+              setCfForm({ name: '', field_type: 'text', entity_type: 'employee', description: '', options: '', is_required: false, is_visible: true, group_name: '' })
+              setShowCFModal(true)
+            }}>
+              <Plus size={14} /> Add Field
+            </Button>
+          </div>
+
+          <Card padding="none">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-divider text-t3 font-medium">
+                    <th className="text-left px-4 py-3">Field Name</th>
+                    <th className="text-left px-4 py-3">Type</th>
+                    <th className="text-left px-4 py-3">Entity</th>
+                    <th className="text-left px-4 py-3">Group</th>
+                    <th className="text-left px-4 py-3">Required</th>
+                    <th className="text-left px-4 py-3">Visible</th>
+                    <th className="text-left px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider">
+                  {customFieldDefinitions.map(def => (
+                    <tr key={def.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3">
+                        <div>
+                          <span className="text-t1 font-medium">{def.name}</span>
+                          {def.description && <p className="text-[0.6rem] text-t3 mt-0.5">{def.description}</p>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="default">{def.field_type.replace(/_/g, ' ')}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-t2 capitalize">{def.entity_type}</td>
+                      <td className="px-4 py-3 text-t2">{def.group_name || '-'}</td>
+                      <td className="px-4 py-3">
+                        {def.is_required ? (
+                          <span className="text-red-400 text-xs">Required</span>
+                        ) : (
+                          <span className="text-t3 text-xs">Optional</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {def.is_visible ? (
+                          <Eye size={14} className="text-green-400" />
+                        ) : (
+                          <EyeOff size={14} className="text-t3" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingCF(def.id)
+                              setCfForm({
+                                name: def.name,
+                                field_type: def.field_type,
+                                entity_type: def.entity_type,
+                                description: def.description || '',
+                                options: def.options ? (def.options as string[]).join(', ') : '',
+                                is_required: def.is_required,
+                                is_visible: def.is_visible,
+                                group_name: def.group_name || '',
+                              })
+                              setShowCFModal(true)
+                            }}
+                            className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => deleteCustomFieldDefinition(def.id)}
+                            className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {customFieldDefinitions.length === 0 && (
+              <div className="px-6 py-8 text-center">
+                <Settings size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-xs text-t3">No custom fields defined yet</p>
+                <p className="text-[0.65rem] text-t3 mt-1">Create custom fields to capture additional employee data</p>
+              </div>
+            )}
+          </Card>
+
+          {/* Field Type Legend */}
+          <Card>
+            <h4 className="text-xs font-semibold text-t3 uppercase mb-3">Supported Field Types</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {[
+                { type: 'text', desc: 'Free text input' },
+                { type: 'number', desc: 'Numeric values' },
+                { type: 'date', desc: 'Date picker' },
+                { type: 'boolean', desc: 'Yes/No toggle' },
+                { type: 'select', desc: 'Single choice dropdown' },
+                { type: 'multi_select', desc: 'Multiple choice tags' },
+                { type: 'url', desc: 'Web link' },
+                { type: 'email', desc: 'Email address' },
+                { type: 'phone', desc: 'Phone number' },
+              ].map(ft => (
+                <div key={ft.type} className="flex items-center gap-2 text-xs">
+                  <Badge variant="default">{ft.type.replace(/_/g, ' ')}</Badge>
+                  <span className="text-t3">{ft.desc}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================ */}
       {/* MODALS */}
       {/* ============================================================ */}
+
+      {/* Custom Field Definition Modal */}
+      <Modal open={showCFModal} onClose={() => setShowCFModal(false)} title={editingCF ? 'Edit Custom Field' : 'Add Custom Field'} size="lg">
+        <div className="space-y-4">
+          <Input label="Field Name" value={cfForm.name} onChange={(e) => setCfForm({ ...cfForm, name: e.target.value })} required placeholder="e.g., Employee ID, T-Shirt Size" />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Field Type" value={cfForm.field_type} onChange={(e) => setCfForm({ ...cfForm, field_type: e.target.value })} options={[
+              { value: 'text', label: 'Text' },
+              { value: 'number', label: 'Number' },
+              { value: 'date', label: 'Date' },
+              { value: 'boolean', label: 'Boolean (Yes/No)' },
+              { value: 'select', label: 'Single Select' },
+              { value: 'multi_select', label: 'Multi Select' },
+              { value: 'url', label: 'URL' },
+              { value: 'email', label: 'Email' },
+              { value: 'phone', label: 'Phone' },
+            ]} />
+            <Select label="Entity Type" value={cfForm.entity_type} onChange={(e) => setCfForm({ ...cfForm, entity_type: e.target.value })} options={[
+              { value: 'employee', label: 'Employee' },
+              { value: 'department', label: 'Department' },
+              { value: 'job_posting', label: 'Job Posting' },
+              { value: 'application', label: 'Application' },
+            ]} />
+          </div>
+          {(cfForm.field_type === 'select' || cfForm.field_type === 'multi_select') && (
+            <Input
+              label="Options (comma-separated)"
+              value={cfForm.options}
+              onChange={(e) => setCfForm({ ...cfForm, options: e.target.value })}
+              placeholder="Option 1, Option 2, Option 3"
+            />
+          )}
+          <Input label="Group Name" value={cfForm.group_name} onChange={(e) => setCfForm({ ...cfForm, group_name: e.target.value })} placeholder="e.g., Identification, Personal Preferences" />
+          <Input label="Description" value={cfForm.description} onChange={(e) => setCfForm({ ...cfForm, description: e.target.value })} placeholder="Short description of this field" />
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={cfForm.is_required} onChange={(e) => setCfForm({ ...cfForm, is_required: e.target.checked })} className="w-4 h-4 rounded border-white/10 bg-white/5 text-tempo-500" />
+              <span className="text-sm text-t2">Required field</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={cfForm.is_visible} onChange={(e) => setCfForm({ ...cfForm, is_visible: e.target.checked })} className="w-4 h-4 rounded border-white/10 bg-white/5 text-tempo-500" />
+              <span className="text-sm text-t2">Visible on profile</span>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCFModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              const payload = {
+                name: cfForm.name,
+                field_type: cfForm.field_type,
+                entity_type: cfForm.entity_type,
+                description: cfForm.description || null,
+                options: (cfForm.field_type === 'select' || cfForm.field_type === 'multi_select') && cfForm.options
+                  ? cfForm.options.split(',').map(o => o.trim()).filter(Boolean)
+                  : null,
+                is_required: cfForm.is_required,
+                is_visible: cfForm.is_visible,
+                group_name: cfForm.group_name || null,
+                order_index: customFieldDefinitions.length,
+              }
+              if (editingCF) {
+                updateCustomFieldDefinition(editingCF, payload)
+              } else {
+                addCustomFieldDefinition(payload)
+              }
+              setShowCFModal(false)
+            }} disabled={!cfForm.name}>
+              {editingCF ? 'Update Field' : 'Add Field'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Employee Modal */}
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addEmployeeModal')} size="lg">

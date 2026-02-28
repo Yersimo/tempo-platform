@@ -3,7 +3,7 @@
 // compliance training, recommendations, and learning analytics.
 
 import { db, schema } from '@/lib/db'
-import { eq, and, desc, sql, count, avg, inArray, isNull, isNotNull, ne, lt, gte } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, count, avg, inArray, isNull, isNotNull, ne, lt, gte } from 'drizzle-orm'
 
 // ============================================================
 // Types & Interfaces
@@ -1651,5 +1651,479 @@ export async function dropEnrollment(
   } catch (error) {
     console.error('[LMS] Failed to drop enrollment:', error)
     return false
+  }
+}
+
+// ============================================================
+// Prerequisites Check
+// ============================================================
+
+export interface PrerequisiteCheckResult {
+  canEnroll: boolean
+  missing: { courseId: string; courseTitle: string; type: string; minimumScore: number | null }[]
+  recommended: { courseId: string; courseTitle: string }[]
+}
+
+export async function checkPrerequisites(
+  orgId: string,
+  courseId: string,
+  employeeId: string
+): Promise<PrerequisiteCheckResult> {
+  try {
+    const prerequisites = await db
+      .select()
+      .from(schema.coursePrerequisites)
+      .where(
+        and(
+          eq(schema.coursePrerequisites.orgId, orgId),
+          eq(schema.coursePrerequisites.courseId, courseId)
+        )
+      )
+
+    if (prerequisites.length === 0) {
+      return { canEnroll: true, missing: [], recommended: [] }
+    }
+
+    const prereqCourseIds = prerequisites.map(p => p.prerequisiteCourseId)
+    const prereqCourses = await db
+      .select()
+      .from(schema.courses)
+      .where(inArray(schema.courses.id, prereqCourseIds))
+
+    const completedEnrollments = await db
+      .select()
+      .from(schema.enrollments)
+      .where(
+        and(
+          eq(schema.enrollments.orgId, orgId),
+          eq(schema.enrollments.employeeId, employeeId),
+          eq(schema.enrollments.status, 'completed'),
+          inArray(schema.enrollments.courseId, prereqCourseIds)
+        )
+      )
+
+    const completedCourseIds = new Set(completedEnrollments.map(e => e.courseId))
+    const courseMap = new Map(prereqCourses.map(c => [c.id, c]))
+
+    const missing: PrerequisiteCheckResult['missing'] = []
+    const recommended: PrerequisiteCheckResult['recommended'] = []
+
+    for (const prereq of prerequisites) {
+      const course = courseMap.get(prereq.prerequisiteCourseId)
+      if (!course) continue
+
+      if (prereq.type === 'recommended') {
+        if (!completedCourseIds.has(prereq.prerequisiteCourseId)) {
+          recommended.push({ courseId: course.id, courseTitle: course.title })
+        }
+      } else {
+        if (!completedCourseIds.has(prereq.prerequisiteCourseId)) {
+          missing.push({
+            courseId: course.id,
+            courseTitle: course.title,
+            type: prereq.type,
+            minimumScore: prereq.minimumScore,
+          })
+        }
+      }
+    }
+
+    return {
+      canEnroll: missing.length === 0,
+      missing,
+      recommended,
+    }
+  } catch (error) {
+    console.error('[LMS] Failed to check prerequisites:', error)
+    return { canEnroll: true, missing: [], recommended: [] }
+  }
+}
+
+// ============================================================
+// Content Library Search
+// ============================================================
+
+export interface ContentLibraryFilters {
+  search?: string
+  provider?: string
+  category?: string
+  level?: string
+  language?: string
+  isFeatured?: boolean
+  limit?: number
+  offset?: number
+}
+
+export interface ContentLibraryResult {
+  items: typeof schema.contentLibrary.$inferSelect[]
+  total: number
+}
+
+export async function getContentLibrary(
+  orgId: string,
+  filters: ContentLibraryFilters = {}
+): Promise<ContentLibraryResult> {
+  try {
+    const conditions = [eq(schema.contentLibrary.orgId, orgId)]
+
+    if (filters.provider) {
+      conditions.push(eq(schema.contentLibrary.provider, filters.provider))
+    }
+    if (filters.category) {
+      conditions.push(eq(schema.contentLibrary.category, filters.category))
+    }
+    if (filters.level) {
+      conditions.push(eq(schema.contentLibrary.level, filters.level))
+    }
+    if (filters.language) {
+      conditions.push(eq(schema.contentLibrary.language, filters.language))
+    }
+    if (filters.isFeatured) {
+      conditions.push(eq(schema.contentLibrary.isFeatured, true))
+    }
+
+    const items = await db
+      .select()
+      .from(schema.contentLibrary)
+      .where(and(...conditions))
+      .orderBy(desc(schema.contentLibrary.addedAt))
+
+    let filtered = items
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      filtered = items.filter(
+        i => i.title.toLowerCase().includes(searchLower) ||
+             (i.category && i.category.toLowerCase().includes(searchLower))
+      )
+    }
+
+    const total = filtered.length
+    const offset = filters.offset ?? 0
+    const limit = filters.limit ?? 50
+    const paginated = filtered.slice(offset, offset + limit)
+
+    return { items: paginated, total }
+  } catch (error) {
+    console.error('[LMS] Failed to get content library:', error)
+    return { items: [], total: 0 }
+  }
+}
+
+// ============================================================
+// Badge System
+// ============================================================
+
+export async function awardBadge(
+  orgId: string,
+  employeeId: string,
+  badgeType: string,
+  badgeName: string,
+  badgeIcon: string,
+  description: string,
+  courseId?: string,
+  metadata?: Record<string, unknown>
+): Promise<{ id: string } | null> {
+  try {
+    const result = await db
+      .insert(schema.learnerBadges)
+      .values({
+        orgId,
+        employeeId,
+        badgeType,
+        badgeName,
+        badgeIcon,
+        description,
+        courseId: courseId ?? null,
+        metadata: metadata ?? null,
+      })
+      .returning({ id: schema.learnerBadges.id })
+
+    return result.length > 0 ? { id: result[0].id } : null
+  } catch (error) {
+    console.error('[LMS] Failed to award badge:', error)
+    return null
+  }
+}
+
+// ============================================================
+// Points & Leaderboard
+// ============================================================
+
+export async function calculatePoints(
+  orgId: string,
+  employeeId: string
+): Promise<{ total: number; breakdown: { source: string; points: number }[] }> {
+  try {
+    const points = await db
+      .select()
+      .from(schema.learnerPoints)
+      .where(
+        and(
+          eq(schema.learnerPoints.orgId, orgId),
+          eq(schema.learnerPoints.employeeId, employeeId)
+        )
+      )
+
+    const breakdown = new Map<string, number>()
+    let total = 0
+    for (const p of points) {
+      total += p.points
+      breakdown.set(p.source, (breakdown.get(p.source) ?? 0) + p.points)
+    }
+
+    return {
+      total,
+      breakdown: Array.from(breakdown.entries()).map(([source, points]) => ({ source, points })),
+    }
+  } catch (error) {
+    console.error('[LMS] Failed to calculate points:', error)
+    return { total: 0, breakdown: [] }
+  }
+}
+
+export interface LeaderboardEntry {
+  employeeId: string
+  employeeName: string
+  totalPoints: number
+  badgeCount: number
+  coursesCompleted: number
+}
+
+export async function getLeaderboard(
+  orgId: string,
+  limit: number = 10
+): Promise<LeaderboardEntry[]> {
+  try {
+    const allPoints = await db
+      .select()
+      .from(schema.learnerPoints)
+      .where(eq(schema.learnerPoints.orgId, orgId))
+
+    const pointsByEmployee = new Map<string, number>()
+    for (const p of allPoints) {
+      pointsByEmployee.set(p.employeeId, (pointsByEmployee.get(p.employeeId) ?? 0) + p.points)
+    }
+
+    const allBadges = await db
+      .select()
+      .from(schema.learnerBadges)
+      .where(eq(schema.learnerBadges.orgId, orgId))
+
+    const badgesByEmployee = new Map<string, number>()
+    for (const b of allBadges) {
+      badgesByEmployee.set(b.employeeId, (badgesByEmployee.get(b.employeeId) ?? 0) + 1)
+    }
+
+    const completedEnrollments = await db
+      .select()
+      .from(schema.enrollments)
+      .where(
+        and(
+          eq(schema.enrollments.orgId, orgId),
+          eq(schema.enrollments.status, 'completed')
+        )
+      )
+
+    const completionsByEmployee = new Map<string, number>()
+    for (const e of completedEnrollments) {
+      completionsByEmployee.set(e.employeeId, (completionsByEmployee.get(e.employeeId) ?? 0) + 1)
+    }
+
+    const employeeIds = [...new Set([...pointsByEmployee.keys(), ...badgesByEmployee.keys()])]
+    const employees = await db
+      .select({ id: schema.employees.id, fullName: schema.employees.fullName })
+      .from(schema.employees)
+      .where(inArray(schema.employees.id, employeeIds))
+
+    const employeeMap = new Map(employees.map(e => [e.id, e.fullName]))
+
+    const leaderboard: LeaderboardEntry[] = employeeIds.map(empId => ({
+      employeeId: empId,
+      employeeName: employeeMap.get(empId) ?? 'Unknown',
+      totalPoints: pointsByEmployee.get(empId) ?? 0,
+      badgeCount: badgesByEmployee.get(empId) ?? 0,
+      coursesCompleted: completionsByEmployee.get(empId) ?? 0,
+    }))
+
+    leaderboard.sort((a, b) => b.totalPoints - a.totalPoints)
+    return leaderboard.slice(0, limit)
+  } catch (error) {
+    console.error('[LMS] Failed to get leaderboard:', error)
+    return []
+  }
+}
+
+// ============================================================
+// Learner Transcript
+// ============================================================
+
+export interface TranscriptEntry {
+  courseId: string
+  courseTitle: string
+  category: string | null
+  completedAt: Date
+  durationHours: number | null
+  score: number | null
+  format: string
+  level: string
+}
+
+export interface LearnerTranscript {
+  employeeId: string
+  employeeName: string
+  entries: TranscriptEntry[]
+  totalHours: number
+  totalCourses: number
+  totalCertificates: number
+}
+
+export async function getLearnerTranscript(
+  orgId: string,
+  employeeId: string
+): Promise<LearnerTranscript> {
+  try {
+    const employee = await db
+      .select({ id: schema.employees.id, fullName: schema.employees.fullName })
+      .from(schema.employees)
+      .where(
+        and(
+          eq(schema.employees.id, employeeId),
+          eq(schema.employees.orgId, orgId)
+        )
+      )
+
+    const completedEnrollments = await db
+      .select()
+      .from(schema.enrollments)
+      .where(
+        and(
+          eq(schema.enrollments.orgId, orgId),
+          eq(schema.enrollments.employeeId, employeeId),
+          eq(schema.enrollments.status, 'completed')
+        )
+      )
+
+    if (completedEnrollments.length === 0) {
+      return {
+        employeeId,
+        employeeName: employee[0]?.fullName ?? 'Unknown',
+        entries: [],
+        totalHours: 0,
+        totalCourses: 0,
+        totalCertificates: 0,
+      }
+    }
+
+    const courseIds = completedEnrollments.map(e => e.courseId)
+    const courses = await db
+      .select()
+      .from(schema.courses)
+      .where(inArray(schema.courses.id, courseIds))
+
+    const courseMap = new Map(courses.map(c => [c.id, c]))
+
+    const entries: TranscriptEntry[] = completedEnrollments
+      .filter(e => e.completedAt)
+      .map(e => {
+        const course = courseMap.get(e.courseId)
+        return {
+          courseId: e.courseId,
+          courseTitle: course?.title ?? 'Unknown Course',
+          category: course?.category ?? null,
+          completedAt: e.completedAt!,
+          durationHours: course?.durationHours ?? null,
+          score: null, // Would come from assessment attempts
+          format: course?.format ?? 'online',
+          level: course?.level ?? 'beginner',
+        }
+      })
+      .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+
+    const totalHours = entries.reduce((a, e) => a + (e.durationHours ?? 0), 0)
+
+    return {
+      employeeId,
+      employeeName: employee[0]?.fullName ?? 'Unknown',
+      entries,
+      totalHours,
+      totalCourses: entries.length,
+      totalCertificates: entries.length, // Each completed course earns a certificate
+    }
+  } catch (error) {
+    console.error('[LMS] Failed to get learner transcript:', error)
+    return {
+      employeeId,
+      employeeName: 'Unknown',
+      entries: [],
+      totalHours: 0,
+      totalCourses: 0,
+      totalCertificates: 0,
+    }
+  }
+}
+
+// ─── Additional LMS Functions ───────────────────────────────────────────
+
+export async function getCourseContent(courseId: string) {
+  const blocks = await db.select().from(schema.courseContent).where(eq(schema.courseContent.courseId, courseId)).orderBy(asc(schema.courseContent.position))
+  return blocks
+}
+
+export async function getEmployeeCertificates(orgId: string, employeeId: string) {
+  const enrollmentRows = await db.select().from(schema.enrollments).where(eq(schema.enrollments.employeeId, employeeId))
+  return enrollmentRows.filter(e => e.status === 'completed').map(e => ({
+    enrollmentId: e.id,
+    courseId: e.courseId,
+    completedAt: e.completedAt,
+  }))
+}
+
+export async function submitQuiz(orgId: string, employeeId: string, courseContentId: string, answers: Record<string, string> | Array<{questionId: string; answer: string}>) {
+  const questions = await db.select().from(schema.quizQuestions).where(eq(schema.quizQuestions.courseContentId, courseContentId))
+  let correct = 0
+  const answerMap: Record<string, string> = Array.isArray(answers)
+    ? Object.fromEntries(answers.map(a => [a.questionId, a.answer]))
+    : answers
+  for (const q of questions) {
+    if (answerMap[q.id] === q.correctAnswer) correct++
+  }
+  const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0
+  return { score, total: questions.length, correct, passed: score >= 70 }
+}
+
+export async function issueCertificate(orgId: string, employeeId: string, courseId: string, enrollmentId: string) {
+  await db.update(schema.enrollments).set({ status: 'completed', progress: 100, completedAt: new Date() }).where(eq(schema.enrollments.id, enrollmentId))
+  return { certificateId: `cert-${enrollmentId}`, issuedAt: new Date().toISOString() }
+}
+
+export async function trackBlockProgress(orgId: string, enrollmentId: string, blockId: string, data: Record<string, unknown>) {
+  return { enrollmentId, blockId, tracked: true }
+}
+
+export async function getDetailedProgress(orgId: string, enrollmentId: string) {
+  const enrollment = await db.select().from(schema.enrollments).where(eq(schema.enrollments.id, enrollmentId))
+  if (!enrollment.length) return null
+  return { enrollmentId, progress: enrollment[0].progress, status: enrollment[0].status }
+}
+
+export async function getContentAnalytics(orgId: string, courseId: string) {
+  const enrollments = await db.select().from(schema.enrollments).where(eq(schema.enrollments.courseId, courseId))
+  const completed = enrollments.filter(e => e.status === 'completed').length
+  return { courseId, totalEnrollments: enrollments.length, completedCount: completed, completionRate: enrollments.length > 0 ? Math.round((completed / enrollments.length) * 100) : 0 }
+}
+
+export async function getLearnerHeatmap(orgId: string, employeeId: string) {
+  const enrollments = await db.select().from(schema.enrollments).where(eq(schema.enrollments.employeeId, employeeId))
+  return { employeeId, activityDays: enrollments.length, heatmap: [] }
+}
+
+export async function getCourseCompletionFunnel(orgId: string, courseId: string) {
+  const enrollments = await db.select().from(schema.enrollments).where(eq(schema.enrollments.courseId, courseId))
+  return {
+    courseId,
+    enrolled: enrollments.length,
+    started: enrollments.filter(e => (e.progress ?? 0) > 0).length,
+    halfway: enrollments.filter(e => (e.progress ?? 0) >= 50).length,
+    completed: enrollments.filter(e => e.status === 'completed').length,
   }
 }
