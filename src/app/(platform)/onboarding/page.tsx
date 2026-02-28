@@ -135,6 +135,18 @@ export default function OnboardingPage() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
   const [taskForm, setTaskForm] = useState({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
 
+  // ─── Bulk Preboarding Tasks State ────────────────────────────────
+  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false)
+  const [bulkTaskStep, setBulkTaskStep] = useState<1 | 2>(1)
+  const [bulkTaskMode, setBulkTaskMode] = useState<'individual' | 'department' | 'all'>('individual')
+  const [bulkTaskSearch, setBulkTaskSearch] = useState('')
+  const [bulkTaskSelectedEmpIds, setBulkTaskSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkTaskSelectedDepts, setBulkTaskSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkTaskTemplate, setBulkTaskTemplate] = useState<string[]>([])
+  const [bulkTaskCategory, setBulkTaskCategory] = useState('documents')
+  const [bulkTaskPriority, setBulkTaskPriority] = useState('medium')
+  const [bulkTaskDueDate, setBulkTaskDueDate] = useState('')
+
   // ─── Onboarding Plan State ─────────────────────────────────────────
   const [planRole, setPlanRole] = useState('')
   const [planDepartment, setPlanDepartment] = useState('')
@@ -153,6 +165,70 @@ export default function OnboardingPage() {
     if (preboardCategoryFilter === 'all') return preboardingTasks
     return preboardingTasks.filter(t => t.category === preboardCategoryFilter)
   }, [preboardingTasks, preboardCategoryFilter])
+
+  // ─── Bulk Task Computed Data ──────────────────────────────────────
+  const taskTemplates: Record<string, string[]> = {
+    documents: ['Sign employment contract', 'Submit ID documents', 'Complete tax forms', 'Sign NDA agreement'],
+    benefits: ['Review benefits options', 'Enroll in health plan', 'Set up retirement account'],
+    payroll: ['Submit bank details', 'Review compensation package', 'Complete payroll onboarding form'],
+    equipment: ['Collect laptop', 'Set up workstation', 'Receive access badge'],
+    training: ['Complete compliance training', 'Watch orientation video', 'Take safety training'],
+    accounts: ['Set up email account', 'Get Slack access', 'Configure VPN'],
+  }
+
+  const bulkTaskTargetEmployees = useMemo(() => {
+    switch (bulkTaskMode) {
+      case 'individual':
+        return employees.filter(emp => {
+          if (!bulkTaskSearch) return true
+          const q = bulkTaskSearch.toLowerCase()
+          const name = emp.profile?.full_name?.toLowerCase() || ''
+          return name.includes(q)
+        })
+      case 'department':
+        return bulkTaskSelectedDepts.size > 0 ? employees.filter(e => bulkTaskSelectedDepts.has(e.department_id)) : []
+      case 'all':
+        return employees
+      default: return []
+    }
+  }, [employees, bulkTaskMode, bulkTaskSearch, bulkTaskSelectedDepts])
+
+  const bulkTaskSelectedEmployees = useMemo(() => {
+    if (bulkTaskMode === 'individual') return employees.filter(e => bulkTaskSelectedEmpIds.has(e.id))
+    return bulkTaskTargetEmployees
+  }, [bulkTaskMode, employees, bulkTaskSelectedEmpIds, bulkTaskTargetEmployees])
+
+  function toggleBulkSet<T>(set: Set<T>, setter: React.Dispatch<React.SetStateAction<Set<T>>>, item: T) {
+    setter(prev => { const next = new Set(prev); if (next.has(item)) next.delete(item); else next.add(item); return next })
+  }
+
+  function toggleBulkTemplate(task: string) {
+    setBulkTaskTemplate(prev => prev.includes(task) ? prev.filter(t => t !== task) : [...prev, task])
+  }
+
+  function resetBulkTask() {
+    setShowBulkTaskModal(false); setBulkTaskStep(1); setBulkTaskMode('individual')
+    setBulkTaskSearch(''); setBulkTaskSelectedEmpIds(new Set()); setBulkTaskSelectedDepts(new Set())
+    setBulkTaskTemplate([]); setBulkTaskCategory('documents'); setBulkTaskPriority('medium'); setBulkTaskDueDate('')
+  }
+
+  function submitBulkTasks() {
+    if (bulkTaskSelectedEmployees.length === 0 || bulkTaskTemplate.length === 0) return
+    let count = 0
+    bulkTaskSelectedEmployees.forEach(emp => {
+      bulkTaskTemplate.forEach(title => {
+        addPreboardingTask({
+          employee_id: emp.id, title, category: bulkTaskCategory,
+          status: 'pending', priority: bulkTaskPriority,
+          due_date: bulkTaskDueDate || new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
+          completed_date: null,
+        })
+        count++
+      })
+    })
+    addToast(`Successfully created ${count} preboarding tasks for ${bulkTaskSelectedEmployees.length} employees`)
+    resetBulkTask()
+  }
 
   // AI suggestions
   const buddySuggestions = useMemo(() => {
@@ -568,9 +644,14 @@ export default function OnboardingPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={
-          <Button variant="ghost" onClick={() => setShowSetupWizard(true)}>
-            <Rocket size={14} /> Platform Setup
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setShowBulkTaskModal(true)}>
+              <CheckSquare size={14} /> Bulk Tasks
+            </Button>
+            <Button variant="ghost" onClick={() => setShowSetupWizard(true)}>
+              <Rocket size={14} /> Platform Setup
+            </Button>
+          </div>
         }
       />
 
@@ -1189,6 +1270,172 @@ export default function OnboardingPage() {
           )}
         </div>
       )}
+      {/* Bulk Preboarding Tasks Modal */}
+      <Modal open={showBulkTaskModal} onClose={resetBulkTask} title="Bulk Preboarding Tasks" size="xl">
+        <p className="text-xs text-t3 mb-4">Assign preboarding tasks to multiple new hires at once</p>
+        {/* Step indicator */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkTaskStep === 1 ? 'bg-tempo-500 text-white' : 'bg-success/20 text-success'}`}>
+              {bulkTaskStep > 1 ? '✓' : '1'}
+            </div>
+            <span className={`text-xs font-medium ${bulkTaskStep === 1 ? 'text-t1' : 'text-success'}`}>Select Employees</span>
+          </div>
+          <div className="flex-1 h-px bg-divider" />
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkTaskStep === 2 ? 'bg-tempo-500 text-white' : 'bg-canvas text-t3'}`}>2</div>
+            <span className={`text-xs font-medium ${bulkTaskStep === 2 ? 'text-t1' : 'text-t3'}`}>Select Tasks</span>
+          </div>
+        </div>
+
+        {bulkTaskStep === 1 && (
+          <>
+            <div className="flex gap-2 mb-4">
+              {(['individual', 'department', 'all'] as const).map(mode => (
+                <button key={mode} onClick={() => setBulkTaskMode(mode)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkTaskMode === mode ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                  {mode === 'individual' && <><Users size={12} className="inline mr-1" />Individual</>}
+                  {mode === 'department' && <><Building size={12} className="inline mr-1" />Department</>}
+                  {mode === 'all' && <><CheckCircle size={12} className="inline mr-1" />Entire Company</>}
+                </button>
+              ))}
+            </div>
+
+            {bulkTaskMode === 'individual' && (
+              <>
+                <input type="text" placeholder="Search employees..." value={bulkTaskSearch} onChange={e => setBulkTaskSearch(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none mb-2" />
+                <div className="max-h-[220px] overflow-y-auto divide-y divide-divider">
+                  {bulkTaskTargetEmployees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-3 px-2 py-2 hover:bg-canvas cursor-pointer">
+                      <input type="checkbox" className="rounded border-border"
+                        checked={bulkTaskSelectedEmpIds.has(emp.id)}
+                        onChange={() => toggleBulkSet(bulkTaskSelectedEmpIds, setBulkTaskSelectedEmpIds, emp.id)} />
+                      <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{emp.job_title} · {getDepartmentName(emp.department_id)}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {bulkTaskMode === 'department' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {departments.map(dept => {
+                  const count = employees.filter(e => e.department_id === dept.id).length
+                  return (
+                    <button key={dept.id} onClick={() => toggleBulkSet(bulkTaskSelectedDepts, setBulkTaskSelectedDepts, dept.id)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkTaskSelectedDepts.has(dept.id) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {dept.name} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {bulkTaskMode === 'all' && (
+              <div className="border border-border rounded-lg p-6 text-center">
+                <Users size={32} className="mx-auto mb-2 text-tempo-500" />
+                <h3 className="text-sm font-semibold text-t1">Entire Company Selected</h3>
+                <p className="text-xs text-t3 mt-1">All {employees.length} employees will receive the selected tasks</p>
+              </div>
+            )}
+
+            {(bulkTaskMode !== 'individual' && bulkTaskSelectedEmployees.length > 0) && (
+              <div className="max-h-[100px] overflow-y-auto divide-y divide-divider border border-border rounded-lg mt-2">
+                {bulkTaskSelectedEmployees.slice(0, 5).map(emp => (
+                  <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
+                    <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                    <span className="text-xs text-t1">{emp.profile?.full_name}</span>
+                    <span className="text-[0.65rem] text-t3 ml-auto">{getDepartmentName(emp.department_id)}</span>
+                  </div>
+                ))}
+                {bulkTaskSelectedEmployees.length > 5 && <p className="px-3 py-1.5 text-xs text-t3">+{bulkTaskSelectedEmployees.length - 5} more</p>}
+              </div>
+            )}
+          </>
+        )}
+
+        {bulkTaskStep === 2 && (
+          <>
+            {/* Category selector */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {Object.keys(taskTemplates).map(cat => (
+                <button key={cat} onClick={() => { setBulkTaskCategory(cat); setBulkTaskTemplate([]) }}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all flex items-center gap-1 ${bulkTaskCategory === cat ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                  {categoryIcons[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Task checkboxes */}
+            <div className="space-y-2 mb-4">
+              <p className="text-xs font-medium text-t1 mb-2">Select tasks to assign:</p>
+              {taskTemplates[bulkTaskCategory]?.map(task => (
+                <label key={task} className="flex items-center gap-3 px-3 py-2 border border-border rounded-lg hover:bg-canvas cursor-pointer">
+                  <input type="checkbox" className="rounded border-border"
+                    checked={bulkTaskTemplate.includes(task)}
+                    onChange={() => toggleBulkTemplate(task)} />
+                  <span className="text-xs text-t1">{task}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Priority & Due Date */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <Select label="Priority" value={bulkTaskPriority} onChange={e => setBulkTaskPriority(e.target.value)} options={[
+                { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' },
+              ]} />
+              <div>
+                <label className="text-xs font-medium text-t1 block mb-1">Due Date</label>
+                <input type="date" value={bulkTaskDueDate} onChange={e => setBulkTaskDueDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none" />
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="border border-border rounded-lg p-4">
+              <h4 className="text-xs font-semibold text-t1 mb-2">Summary</h4>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-lg font-bold text-t1">{bulkTaskSelectedEmployees.length}</p>
+                  <p className="text-[0.65rem] text-t3">Employees</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-tempo-500">{bulkTaskTemplate.length}</p>
+                  <p className="text-[0.65rem] text-t3">Tasks Each</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-success">{bulkTaskSelectedEmployees.length * bulkTaskTemplate.length}</p>
+                  <p className="text-[0.65rem] text-t3">Total Tasks</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-divider">
+          <p className="text-xs text-t3">{bulkTaskSelectedEmployees.length} employee(s) selected</p>
+          <div className="flex gap-2">
+            {bulkTaskStep === 2 && <Button variant="secondary" size="sm" onClick={() => setBulkTaskStep(1)}>{tc('back')}</Button>}
+            <Button variant="secondary" size="sm" onClick={resetBulkTask}>{tc('cancel')}</Button>
+            {bulkTaskStep === 1 && (
+              <Button size="sm" disabled={bulkTaskSelectedEmployees.length === 0} onClick={() => setBulkTaskStep(2)}>
+                Next: Select Tasks →
+              </Button>
+            )}
+            {bulkTaskStep === 2 && (
+              <Button size="sm" disabled={bulkTaskTemplate.length === 0 || bulkTaskSelectedEmployees.length === 0} onClick={submitBulkTasks}>
+                Create {bulkTaskSelectedEmployees.length * bulkTaskTemplate.length} Tasks
+              </Button>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

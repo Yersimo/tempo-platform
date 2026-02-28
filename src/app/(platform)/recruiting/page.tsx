@@ -10,8 +10,9 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye } from 'lucide-react'
+import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
 import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards, generateInterviewQuestions, analyzeDiversityPipeline, scoreInterviewPanel, generateOfferPackage } from '@/lib/ai-engine'
 import { Progress } from '@/components/ui/progress'
@@ -32,6 +33,7 @@ export default function RecruitingPage() {
     addTalentPool, updateTalentPool,
     addScoreCard, updateScoreCard,
     offers, addOffer, updateOffer,
+    addToast,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('postings')
@@ -110,6 +112,18 @@ export default function RecruitingPage() {
   const [questionsRole, setQuestionsRole] = useState('')
   const [questionsLevel, setQuestionsLevel] = useState('Mid')
 
+  // Bulk pipeline movement state
+  const [showBulkPipelineModal, setShowBulkPipelineModal] = useState(false)
+  const [bulkPipeStep, setBulkPipeStep] = useState<1 | 2>(1)
+  const [bulkPipeSelectMode, setBulkPipeSelectMode] = useState<'individual' | 'job' | 'stage' | 'rating'>('individual')
+  const [bulkPipeSearch, setBulkPipeSearch] = useState('')
+  const [bulkPipeSelectedAppIds, setBulkPipeSelectedAppIds] = useState<Set<string>>(new Set())
+  const [bulkPipeSelectedJobIds, setBulkPipeSelectedJobIds] = useState<Set<string>>(new Set())
+  const [bulkPipeSelectedStages, setBulkPipeSelectedStages] = useState<Set<string>>(new Set())
+  const [bulkPipeMinRating, setBulkPipeMinRating] = useState(0)
+  const [bulkPipeTargetStage, setBulkPipeTargetStage] = useState('')
+  const [bulkPipeNotes, setBulkPipeNotes] = useState('')
+
   // Scorecard view
   const [selectedCandidateForSC, setSelectedCandidateForSC] = useState<string | null>(null)
 
@@ -153,6 +167,47 @@ export default function RecruitingPage() {
     })
     return grouped
   }, [scoreCards])
+
+  // ---- Bulk Pipeline computed values ----
+  const bulkPipeStages = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired']
+
+  const bulkPipeTargetApps = useMemo(() => {
+    if (bulkPipeSelectMode === 'individual') {
+      if (!bulkPipeSearch.trim()) return applications
+      const q = bulkPipeSearch.toLowerCase()
+      return applications.filter(a => a.candidate_name.toLowerCase().includes(q))
+    }
+    if (bulkPipeSelectMode === 'job') {
+      if (bulkPipeSelectedJobIds.size === 0) return []
+      return applications.filter(a => bulkPipeSelectedJobIds.has(a.job_id))
+    }
+    if (bulkPipeSelectMode === 'stage') {
+      if (bulkPipeSelectedStages.size === 0) return []
+      return applications.filter(a => bulkPipeSelectedStages.has(a.stage || a.status || 'applied'))
+    }
+    if (bulkPipeSelectMode === 'rating') {
+      if (bulkPipeMinRating <= 0) return []
+      return applications.filter(a => (a.rating || 0) >= bulkPipeMinRating)
+    }
+    return []
+  }, [applications, bulkPipeSelectMode, bulkPipeSearch, bulkPipeSelectedJobIds, bulkPipeSelectedStages, bulkPipeMinRating])
+
+  const bulkPipeSelectedApps = useMemo(() => {
+    if (bulkPipeSelectMode === 'individual') {
+      return applications.filter(a => bulkPipeSelectedAppIds.has(a.id))
+    }
+    return bulkPipeTargetApps
+  }, [applications, bulkPipeSelectMode, bulkPipeSelectedAppIds, bulkPipeTargetApps])
+
+  const bulkPipeAlreadyAtStage = useMemo(() => {
+    if (!bulkPipeTargetStage) return []
+    return bulkPipeSelectedApps.filter(a => (a.stage || a.status || 'applied') === bulkPipeTargetStage)
+  }, [bulkPipeSelectedApps, bulkPipeTargetStage])
+
+  const bulkPipeMovableApps = useMemo(() => {
+    if (!bulkPipeTargetStage) return bulkPipeSelectedApps
+    return bulkPipeSelectedApps.filter(a => (a.stage || a.status || 'applied') !== bulkPipeTargetStage)
+  }, [bulkPipeSelectedApps, bulkPipeTargetStage])
 
   // ---- Job Posting CRUD ----
   function openNewJob() {
@@ -390,6 +445,40 @@ export default function RecruitingPage() {
     return generateInterviewQuestions(questionsRole, questionsLevel)
   }, [showQuestionsModal, questionsRole, questionsLevel])
 
+  // ---- Bulk Pipeline Movement ----
+  function toggleBulkPipeSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkPipeline() {
+    setShowBulkPipelineModal(false)
+    setBulkPipeStep(1)
+    setBulkPipeSelectMode('individual')
+    setBulkPipeSearch('')
+    setBulkPipeSelectedAppIds(new Set())
+    setBulkPipeSelectedJobIds(new Set())
+    setBulkPipeSelectedStages(new Set())
+    setBulkPipeMinRating(0)
+    setBulkPipeTargetStage('')
+    setBulkPipeNotes('')
+  }
+
+  function submitBulkPipeline() {
+    if (!bulkPipeTargetStage || bulkPipeMovableApps.length === 0) return
+    bulkPipeMovableApps.forEach(app => {
+      updateApplication(app.id, {
+        stage: bulkPipeTargetStage,
+        status: bulkPipeTargetStage,
+        notes: bulkPipeNotes || undefined,
+      })
+    })
+    addToast(`${bulkPipeMovableApps.length} candidate${bulkPipeMovableApps.length !== 1 ? 's' : ''} moved to ${bulkPipeTargetStage}`)
+    resetBulkPipeline()
+  }
+
   return (
     <>
       <Header
@@ -403,9 +492,14 @@ export default function RecruitingPage() {
               </Button>
             )}
             {activeTab === 'pipeline' && (
-              <Button size="sm" onClick={openNewApplication}>
-                <Plus size={14} /> {t('addCandidate')}
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowBulkPipelineModal(true)}>
+                  <Users size={14} /> Bulk Move
+                </Button>
+                <Button size="sm" onClick={openNewApplication}>
+                  <Plus size={14} /> {t('addCandidate')}
+                </Button>
+              </div>
             )}
             {activeTab === 'career_site' && (
               <Button size="sm" variant="outline" onClick={() => setShowPreviewModal(true)}>
@@ -1554,6 +1648,306 @@ export default function RecruitingPage() {
           </div>
           <div className="flex justify-end pt-2">
             <Button variant="secondary" onClick={() => setShowQuestionsModal(false)}>{tc('close')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Pipeline Movement Modal */}
+      <Modal open={showBulkPipelineModal} onClose={resetBulkPipeline} title="Bulk Pipeline Movement" size="xl">
+        <div className="space-y-4">
+          {/* Step indicator */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bulkPipeStep === 1 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>
+              <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[0.6rem] font-bold">1</span>
+              Select Candidates
+            </div>
+            <ArrowRight size={14} className="text-t3" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bulkPipeStep === 2 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>
+              <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[0.6rem] font-bold">2</span>
+              Choose Target Stage
+            </div>
+          </div>
+
+          {/* Step 1: Select candidates */}
+          {bulkPipeStep === 1 && (
+            <>
+              {/* Mode tabs */}
+              <div className="flex gap-1 bg-canvas rounded-lg p-1">
+                {([
+                  { key: 'individual' as const, label: 'Individual' },
+                  { key: 'job' as const, label: 'By Job Posting' },
+                  { key: 'stage' as const, label: 'By Current Stage' },
+                  { key: 'rating' as const, label: 'By Min Rating' },
+                ] as const).map(mode => (
+                  <button
+                    key={mode.key}
+                    onClick={() => {
+                      setBulkPipeSelectMode(mode.key)
+                      setBulkPipeSelectedAppIds(new Set())
+                      setBulkPipeSelectedJobIds(new Set())
+                      setBulkPipeSelectedStages(new Set())
+                      setBulkPipeMinRating(0)
+                    }}
+                    className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                      bulkPipeSelectMode === mode.key
+                        ? 'bg-surface shadow-sm text-t1'
+                        : 'text-t3 hover:text-t2'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Individual search mode */}
+              {bulkPipeSelectMode === 'individual' && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                    <input
+                      type="text"
+                      placeholder="Search candidates by name..."
+                      value={bulkPipeSearch}
+                      onChange={(e) => setBulkPipeSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-canvas border border-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-tempo-500 text-t1 placeholder:text-t3"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {bulkPipeTargetApps.length === 0 && (
+                      <p className="text-xs text-t3 text-center py-6">No candidates found</p>
+                    )}
+                    {bulkPipeTargetApps.map(app => {
+                      const job = jobPostings.find(j => j.id === app.job_id)
+                      const stage = app.stage || app.status || 'applied'
+                      const selected = bulkPipeSelectedAppIds.has(app.id)
+                      return (
+                        <label
+                          key={app.id}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
+                            selected ? 'bg-tempo-50 border border-tempo-200' : 'hover:bg-canvas'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleBulkPipeSet(bulkPipeSelectedAppIds, app.id, setBulkPipeSelectedAppIds)}
+                            className="rounded border-divider"
+                          />
+                          <Avatar name={app.candidate_name} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-t1 truncate">{app.candidate_name}</p>
+                            <p className="text-[0.6rem] text-t3 truncate">{job?.title || 'Unknown position'}</p>
+                          </div>
+                          <Badge variant={
+                            stage === 'offer' || stage === 'hired' ? 'success' :
+                            stage === 'interview' || stage === 'assessment' ? 'info' :
+                            stage === 'screening' ? 'warning' :
+                            stage === 'rejected' ? 'error' : 'default'
+                          }>
+                            {stage}
+                          </Badge>
+                          {app.rating ? (
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <Star key={s} size={10} className={s <= (app.rating || 0) ? 'fill-tempo-600 text-tempo-600' : 'text-t3'} />
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[0.6rem] text-t3">No rating</span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {bulkPipeSelectedAppIds.size > 0 && (
+                    <p className="text-xs text-tempo-600 font-medium">{bulkPipeSelectedAppIds.size} candidate{bulkPipeSelectedAppIds.size !== 1 ? 's' : ''} selected</p>
+                  )}
+                </div>
+              )}
+
+              {/* By Job Posting mode */}
+              {bulkPipeSelectMode === 'job' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-t3">Select job postings to include all their applicants:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {jobPostings.map(job => {
+                      const appCount = applications.filter(a => a.job_id === job.id).length
+                      const selected = bulkPipeSelectedJobIds.has(job.id)
+                      return (
+                        <button
+                          key={job.id}
+                          onClick={() => toggleBulkPipeSet(bulkPipeSelectedJobIds, job.id, setBulkPipeSelectedJobIds)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors border ${
+                            selected
+                              ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                              : 'bg-canvas border-divider text-t2 hover:border-tempo-200'
+                          }`}
+                        >
+                          <Briefcase size={12} />
+                          <span className="font-medium">{job.title}</span>
+                          <Badge variant={selected ? 'info' : 'default'}>{appCount}</Badge>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkPipeTargetApps.length > 0 && (
+                    <p className="text-xs text-tempo-600 font-medium">{bulkPipeTargetApps.length} candidate{bulkPipeTargetApps.length !== 1 ? 's' : ''} selected from {bulkPipeSelectedJobIds.size} job{bulkPipeSelectedJobIds.size !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              )}
+
+              {/* By Current Stage mode */}
+              {bulkPipeSelectMode === 'stage' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-t3">Select stages to include all candidates at those stages:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {bulkPipeStages.map(stage => {
+                      const count = applications.filter(a => (a.stage || a.status || 'applied') === stage).length
+                      const selected = bulkPipeSelectedStages.has(stage)
+                      return (
+                        <button
+                          key={stage}
+                          onClick={() => toggleBulkPipeSet(bulkPipeSelectedStages, stage, setBulkPipeSelectedStages)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors border ${
+                            selected
+                              ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                              : 'bg-canvas border-divider text-t2 hover:border-tempo-200'
+                          }`}
+                        >
+                          <span className="capitalize font-medium">{stage}</span>
+                          <Badge variant={selected ? 'info' : 'default'}>{count}</Badge>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkPipeTargetApps.length > 0 && (
+                    <p className="text-xs text-tempo-600 font-medium">{bulkPipeTargetApps.length} candidate{bulkPipeTargetApps.length !== 1 ? 's' : ''} selected from {bulkPipeSelectedStages.size} stage{bulkPipeSelectedStages.size !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              )}
+
+              {/* By Min Rating mode */}
+              {bulkPipeSelectMode === 'rating' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-t3">Select minimum rating to include candidates rated at or above:</p>
+                  <div className="flex gap-2">
+                    {[4, 3, 2].map(r => {
+                      const count = applications.filter(a => (a.rating || 0) >= r).length
+                      const selected = bulkPipeMinRating === r
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => setBulkPipeMinRating(selected ? 0 : r)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs transition-colors border ${
+                            selected
+                              ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                              : 'bg-canvas border-divider text-t2 hover:border-tempo-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} size={12} className={s <= r ? 'fill-tempo-600 text-tempo-600' : 'text-t3'} />
+                            ))}
+                          </div>
+                          <span className="font-medium">{r}+ stars</span>
+                          <Badge variant={selected ? 'info' : 'default'}>{count}</Badge>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkPipeTargetApps.length > 0 && (
+                    <p className="text-xs text-tempo-600 font-medium">{bulkPipeTargetApps.length} candidate{bulkPipeTargetApps.length !== 1 ? 's' : ''} match</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Step 2: Select target stage */}
+          {bulkPipeStep === 2 && (
+            <div className="space-y-4">
+              {/* Target stage selection */}
+              <div>
+                <label className="text-xs font-medium text-t1 mb-2 block">Move to Stage</label>
+                <div className="space-y-1">
+                  {bulkPipeStages.map(stage => (
+                    <label
+                      key={stage}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        bulkPipeTargetStage === stage ? 'bg-tempo-50 border border-tempo-200' : 'hover:bg-canvas'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="bulkPipeTargetStage"
+                        checked={bulkPipeTargetStage === stage}
+                        onChange={() => setBulkPipeTargetStage(stage)}
+                        className="accent-tempo-600"
+                      />
+                      <span className="text-sm font-medium text-t1 capitalize">{stage}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Optional notes */}
+              <Textarea
+                label="Notes (optional)"
+                placeholder="Add notes for this bulk move..."
+                rows={2}
+                value={bulkPipeNotes}
+                onChange={(e) => setBulkPipeNotes(e.target.value)}
+              />
+
+              {/* Summary */}
+              <div className="p-3 bg-canvas rounded-lg space-y-2">
+                <p className="text-xs font-medium text-t1">Summary</p>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-t3">Total selected</span>
+                  <span className="font-medium text-t1">{bulkPipeSelectedApps.length} candidate{bulkPipeSelectedApps.length !== 1 ? 's' : ''}</span>
+                </div>
+                {bulkPipeTargetStage && bulkPipeAlreadyAtStage.length > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-t3 flex items-center gap-1"><AlertCircle size={12} className="text-yellow-500" /> Already at {bulkPipeTargetStage}</span>
+                    <span className="font-medium text-yellow-600">{bulkPipeAlreadyAtStage.length} candidate{bulkPipeAlreadyAtStage.length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {bulkPipeTargetStage && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-t3">Will be moved</span>
+                    <span className="font-medium text-tempo-600">{bulkPipeMovableApps.length} candidate{bulkPipeMovableApps.length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-between pt-2 border-t border-divider">
+            <div>
+              {bulkPipeStep === 2 && (
+                <Button variant="secondary" onClick={() => setBulkPipeStep(1)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={resetBulkPipeline}>Cancel</Button>
+              {bulkPipeStep === 1 && (
+                <Button
+                  onClick={() => setBulkPipeStep(2)}
+                  disabled={bulkPipeSelectedApps.length === 0}
+                >
+                  Next
+                </Button>
+              )}
+              {bulkPipeStep === 2 && (
+                <Button
+                  onClick={submitBulkPipeline}
+                  disabled={!bulkPipeTargetStage || bulkPipeMovableApps.length === 0}
+                >
+                  <ArrowRight size={14} /> Move {bulkPipeMovableApps.length} Candidate{bulkPipeMovableApps.length !== 1 ? 's' : ''}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

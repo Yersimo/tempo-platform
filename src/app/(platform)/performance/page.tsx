@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
-import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings } from 'lucide-react'
+import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
@@ -20,13 +20,13 @@ import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOn
 
 export default function PerformancePage() {
   const {
-    goals, employees, reviewCycles, reviews, feedback,
+    goals, employees, departments, reviewCycles, reviews, feedback,
     oneOnOnes, recognitions, competencyFramework, competencyRatings,
     addGoal, updateGoal, deleteGoal,
     addReviewCycle, addReview, updateReview,
     addFeedback, getEmployeeName, currentEmployeeId,
     addOneOnOne, updateOneOnOne, addRecognition, addCompetencyRating, updateCompetencyRating,
-    careerTracks,
+    careerTracks, getDepartmentName, addToast,
   } = useTempo()
 
   const t = useTranslations('performance')
@@ -69,6 +69,18 @@ export default function PerformancePage() {
 
   // Competency filter
   const [compEmployeeFilter, setCompEmployeeFilter] = useState('')
+
+  // Bulk review assignment state
+  const [showBulkReviewModal, setShowBulkReviewModal] = useState(false)
+  const [bulkRevStep, setBulkRevStep] = useState<1 | 2>(1)
+  const [bulkRevMode, setBulkRevMode] = useState<'individual' | 'department' | 'country' | 'level' | 'all'>('individual')
+  const [bulkRevSearch, setBulkRevSearch] = useState('')
+  const [bulkRevSelectedEmpIds, setBulkRevSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkRevSelectedDepts, setBulkRevSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkRevSelectedCountries, setBulkRevSelectedCountries] = useState<Set<string>>(new Set())
+  const [bulkRevSelectedLevels, setBulkRevSelectedLevels] = useState<Set<string>>(new Set())
+  const [bulkRevCycleId, setBulkRevCycleId] = useState('')
+  const [bulkRevType, setBulkRevType] = useState('annual')
 
   // Career path state
   const [selectedCareerTrack, setSelectedCareerTrack] = useState('')
@@ -144,6 +156,34 @@ export default function PerformancePage() {
     const avgRating = competencyRatings.length > 0 ? competencyRatings.reduce((a, r) => a + r.rating, 0) / competencyRatings.length : 0
     return { assessedEmployees, gaps, strengths, avgRating }
   }, [competencyRatings])
+
+  // Bulk review computed data
+  const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country).filter(Boolean))].sort(), [employees])
+  const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level).filter(Boolean))].sort(), [employees])
+
+  const bulkRevTargetEmployees = useMemo(() => {
+    if (bulkRevMode === 'all') return employees
+    if (bulkRevMode === 'department') return employees.filter(e => bulkRevSelectedDepts.has(e.department_id))
+    if (bulkRevMode === 'country') return employees.filter(e => bulkRevSelectedCountries.has(e.country))
+    if (bulkRevMode === 'level') return employees.filter(e => bulkRevSelectedLevels.has(e.level))
+    // individual
+    const q = bulkRevSearch.toLowerCase()
+    return q ? employees.filter(e => (e.profile?.full_name || '').toLowerCase().includes(q) || e.job_title.toLowerCase().includes(q)) : employees
+  }, [bulkRevMode, employees, bulkRevSelectedDepts, bulkRevSelectedCountries, bulkRevSelectedLevels, bulkRevSearch])
+
+  const bulkRevSelectedEmployees = useMemo(() => {
+    if (bulkRevMode === 'all') return employees
+    if (bulkRevMode === 'individual') return employees.filter(e => bulkRevSelectedEmpIds.has(e.id))
+    return bulkRevTargetEmployees
+  }, [bulkRevMode, employees, bulkRevSelectedEmpIds, bulkRevTargetEmployees])
+
+  const bulkRevAlreadyAssignedIds = useMemo(() => {
+    if (!bulkRevCycleId) return new Set<string>()
+    return new Set(reviews.filter(r => r.cycle_id === bulkRevCycleId).map(r => r.employee_id))
+  }, [bulkRevCycleId, reviews])
+
+  const bulkRevNewAssignees = useMemo(() => bulkRevSelectedEmployees.filter(e => !bulkRevAlreadyAssignedIds.has(e.id)), [bulkRevSelectedEmployees, bulkRevAlreadyAssignedIds])
+  const bulkRevSkipped = useMemo(() => bulkRevSelectedEmployees.filter(e => bulkRevAlreadyAssignedIds.has(e.id)), [bulkRevSelectedEmployees, bulkRevAlreadyAssignedIds])
 
   // ---- Goal CRUD ----
   function openNewGoal() {
@@ -292,6 +332,43 @@ export default function PerformancePage() {
     setCompRatingForm({ employee_id: '', competency_id: '', rating: 3, target: 3 })
   }
 
+  // ---- Bulk Review Assignment ----
+  function toggleBulkRevSet<T>(set: Set<T>, setFn: (s: Set<T>) => void, value: T) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value); else next.add(value)
+    setFn(next)
+  }
+
+  function resetBulkReview() {
+    setShowBulkReviewModal(false)
+    setBulkRevStep(1)
+    setBulkRevMode('individual')
+    setBulkRevSearch('')
+    setBulkRevSelectedEmpIds(new Set())
+    setBulkRevSelectedDepts(new Set())
+    setBulkRevSelectedCountries(new Set())
+    setBulkRevSelectedLevels(new Set())
+    setBulkRevCycleId('')
+    setBulkRevType('annual')
+  }
+
+  function submitBulkReview() {
+    if (!bulkRevCycleId || bulkRevNewAssignees.length === 0) return
+    bulkRevNewAssignees.forEach(emp => {
+      addReview({
+        employee_id: emp.id,
+        cycle_id: bulkRevCycleId,
+        reviewer_id: currentEmployeeId,
+        type: bulkRevType,
+        rating: 0,
+        status: 'pending',
+        comments: '',
+      })
+    })
+    addToast(`${bulkRevNewAssignees.length} reviews assigned successfully`)
+    resetBulkReview()
+  }
+
   const valueColors: Record<string, string> = {
     'Innovation': 'info',
     'Teamwork': 'success',
@@ -310,6 +387,7 @@ export default function PerformancePage() {
             {activeTab === 'goals' && <Button size="sm" onClick={openNewGoal}><Plus size={14} /> {t('newGoal')}</Button>}
             {activeTab === 'reviews' && (
               <>
+                <Button size="sm" variant="secondary" onClick={() => { resetBulkReview(); setShowBulkReviewModal(true) }}><Users size={14} /> Bulk Assign Reviews</Button>
                 <Button size="sm" variant="secondary" onClick={() => setShowCycleModal(true)}><Plus size={14} /> {t('newCycle')}</Button>
                 <Button size="sm" onClick={() => { setReviewForm({ employee_id: '', cycle_id: reviewCycles[0]?.id || '', overall_rating: 0, comments: '' }); setShowReviewModal(true) }}><Plus size={14} /> {t('newReview')}</Button>
               </>
@@ -1248,6 +1326,260 @@ export default function PerformancePage() {
             <Button onClick={submitCompRating}>{t('submitRating')}</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Bulk Assign Reviews */}
+      <Modal open={showBulkReviewModal} onClose={resetBulkReview} title="Bulk Assign Reviews" size="xl">
+        {bulkRevStep === 1 && (
+          <div className="space-y-4">
+            <p className="text-sm text-t2">Select the employees to include in this review assignment.</p>
+
+            {/* Mode tabs */}
+            <div className="flex gap-1 p-1 bg-canvas rounded-lg">
+              {([
+                { key: 'individual' as const, label: 'Individual', icon: <Search size={14} /> },
+                { key: 'department' as const, label: 'Department', icon: <Building2 size={14} /> },
+                { key: 'country' as const, label: 'Country', icon: <Globe size={14} /> },
+                { key: 'level' as const, label: 'Level', icon: <BarChart3 size={14} /> },
+                { key: 'all' as const, label: 'Entire Company', icon: <Users size={14} /> },
+              ]).map(m => (
+                <button
+                  key={m.key}
+                  onClick={() => setBulkRevMode(m.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${bulkRevMode === m.key ? 'bg-white shadow text-t1' : 'text-t3 hover:text-t1'}`}
+                >
+                  {m.icon} {m.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Individual mode */}
+            {bulkRevMode === 'individual' && (
+              <div className="space-y-3">
+                <Input
+                  placeholder="Search employees by name or title..."
+                  value={bulkRevSearch}
+                  onChange={(e) => setBulkRevSearch(e.target.value)}
+                />
+                <div className="border border-divider rounded-lg max-h-64 overflow-y-auto divide-y divide-divider">
+                  {bulkRevTargetEmployees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bulkRevSelectedEmpIds.has(emp.id)}
+                        onChange={() => toggleBulkRevSet(bulkRevSelectedEmpIds, setBulkRevSelectedEmpIds, emp.id)}
+                        className="rounded border-divider"
+                      />
+                      <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                        <p className="text-xs text-t3">{emp.job_title} &middot; {emp.country}</p>
+                      </div>
+                    </label>
+                  ))}
+                  {bulkRevTargetEmployees.length === 0 && (
+                    <p className="px-4 py-8 text-center text-sm text-t3">No employees found.</p>
+                  )}
+                </div>
+                <p className="text-xs text-t3">{bulkRevSelectedEmpIds.size} employee{bulkRevSelectedEmpIds.size !== 1 ? 's' : ''} selected</p>
+              </div>
+            )}
+
+            {/* Department mode */}
+            {bulkRevMode === 'department' && (
+              <div className="space-y-3">
+                <p className="text-sm text-t2">Select one or more departments:</p>
+                <div className="border border-divider rounded-lg max-h-64 overflow-y-auto divide-y divide-divider">
+                  {departments.map(dept => {
+                    const count = employees.filter(e => e.department_id === dept.id).length
+                    return (
+                      <label key={dept.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkRevSelectedDepts.has(dept.id)}
+                          onChange={() => toggleBulkRevSet(bulkRevSelectedDepts, setBulkRevSelectedDepts, dept.id)}
+                          className="rounded border-divider"
+                        />
+                        <Building2 size={16} className="text-t3" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{dept.name}</p>
+                          <p className="text-xs text-t3">{count} employee{count !== 1 ? 's' : ''}</p>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkRevTargetEmployees.length} employee{bulkRevTargetEmployees.length !== 1 ? 's' : ''} in selected departments</p>
+              </div>
+            )}
+
+            {/* Country mode */}
+            {bulkRevMode === 'country' && (
+              <div className="space-y-3">
+                <p className="text-sm text-t2">Select one or more countries:</p>
+                <div className="border border-divider rounded-lg max-h-64 overflow-y-auto divide-y divide-divider">
+                  {uniqueCountries.map(country => {
+                    const count = employees.filter(e => e.country === country).length
+                    return (
+                      <label key={country} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkRevSelectedCountries.has(country)}
+                          onChange={() => toggleBulkRevSet(bulkRevSelectedCountries, setBulkRevSelectedCountries, country)}
+                          className="rounded border-divider"
+                        />
+                        <Globe size={16} className="text-t3" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{country}</p>
+                          <p className="text-xs text-t3">{count} employee{count !== 1 ? 's' : ''}</p>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkRevTargetEmployees.length} employee{bulkRevTargetEmployees.length !== 1 ? 's' : ''} in selected countries</p>
+              </div>
+            )}
+
+            {/* Level mode */}
+            {bulkRevMode === 'level' && (
+              <div className="space-y-3">
+                <p className="text-sm text-t2">Select one or more levels:</p>
+                <div className="border border-divider rounded-lg max-h-64 overflow-y-auto divide-y divide-divider">
+                  {uniqueLevels.map(level => {
+                    const count = employees.filter(e => e.level === level).length
+                    return (
+                      <label key={level} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkRevSelectedLevels.has(level)}
+                          onChange={() => toggleBulkRevSet(bulkRevSelectedLevels, setBulkRevSelectedLevels, level)}
+                          className="rounded border-divider"
+                        />
+                        <BarChart3 size={16} className="text-t3" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-t1">{level}</p>
+                          <p className="text-xs text-t3">{count} employee{count !== 1 ? 's' : ''}</p>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkRevTargetEmployees.length} employee{bulkRevTargetEmployees.length !== 1 ? 's' : ''} at selected levels</p>
+              </div>
+            )}
+
+            {/* All mode */}
+            {bulkRevMode === 'all' && (
+              <div className="p-6 rounded-lg bg-canvas text-center">
+                <Users size={32} className="mx-auto mb-2 text-t3" />
+                <p className="text-sm font-medium text-t1">All {employees.length} employees will be included</p>
+                <p className="text-xs text-t3 mt-1">Reviews will be created for every employee in the organization.</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-divider">
+              <Button variant="secondary" onClick={resetBulkReview}>Cancel</Button>
+              <Button
+                onClick={() => setBulkRevStep(2)}
+                disabled={bulkRevMode === 'individual' ? bulkRevSelectedEmpIds.size === 0 : bulkRevMode === 'department' ? bulkRevSelectedDepts.size === 0 : bulkRevMode === 'country' ? bulkRevSelectedCountries.size === 0 : bulkRevMode === 'level' ? bulkRevSelectedLevels.size === 0 : false}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {bulkRevStep === 2 && (
+          <div className="space-y-4">
+            <p className="text-sm text-t2">Configure the review cycle and type for the selected employees.</p>
+
+            {/* Review cycle selection */}
+            <div>
+              <label className="block text-sm font-medium text-t1 mb-2">Review Cycle</label>
+              {reviewCycles.length === 0 && (
+                <p className="text-sm text-t3">No review cycles available. Create one first.</p>
+              )}
+              <div className="space-y-2">
+                {reviewCycles.map(cycle => (
+                  <label key={cycle.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${bulkRevCycleId === cycle.id ? 'border-tempo-500 bg-tempo-50' : 'border-divider hover:bg-canvas/50'}`}>
+                    <input
+                      type="radio"
+                      name="bulkRevCycle"
+                      checked={bulkRevCycleId === cycle.id}
+                      onChange={() => setBulkRevCycleId(cycle.id)}
+                      className="text-tempo-500"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-t1">{cycle.title}</p>
+                      <p className="text-xs text-t3">{cycle.start_date} to {cycle.end_date} &middot; <Badge variant={cycle.status === 'active' ? 'success' : 'orange'}>{cycle.status}</Badge></p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Review type selection */}
+            <div>
+              <label className="block text-sm font-medium text-t1 mb-2">Review Type</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'annual', label: 'Annual' },
+                  { value: 'mid-year', label: 'Mid-Year' },
+                  { value: 'probation', label: 'Probation' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setBulkRevType(opt.value)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${bulkRevType === opt.value ? 'border-tempo-500 bg-tempo-50 text-tempo-700' : 'border-divider text-t2 hover:bg-canvas/50'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="p-4 rounded-lg bg-canvas border border-divider space-y-2">
+              <h4 className="text-sm font-semibold text-t1">Assignment Summary</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-t3">Total selected:</span>
+                  <span className="ml-2 font-medium text-t1">{bulkRevSelectedEmployees.length}</span>
+                </div>
+                <div>
+                  <span className="text-t3">New assignments:</span>
+                  <span className="ml-2 font-medium text-green-600">{bulkRevNewAssignees.length}</span>
+                </div>
+                <div>
+                  <span className="text-t3">Already assigned:</span>
+                  <span className="ml-2 font-medium text-yellow-600">{bulkRevSkipped.length}</span>
+                </div>
+                <div>
+                  <span className="text-t3">Review type:</span>
+                  <span className="ml-2 font-medium text-t1">{bulkRevType}</span>
+                </div>
+              </div>
+              {bulkRevSkipped.length > 0 && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  {bulkRevSkipped.length} employee{bulkRevSkipped.length !== 1 ? 's' : ''} already have a review in this cycle and will be skipped.
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-between gap-2 pt-2 border-t border-divider">
+              <Button variant="secondary" onClick={() => setBulkRevStep(1)}>Back</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={resetBulkReview}>Cancel</Button>
+                <Button onClick={submitBulkReview} disabled={!bulkRevCycleId || bulkRevNewAssignees.length === 0}>
+                  Assign {bulkRevNewAssignees.length} Review{bulkRevNewAssignees.length !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   )

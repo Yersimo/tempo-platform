@@ -14,8 +14,8 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import {
-  Clock, Calendar, Plus, CheckCircle, LogIn, BarChart3, CalendarDays,
-  Sun, Filter, ChevronLeft, ChevronRight, Send, AlertTriangle, Users,
+  Clock, Calendar, Plus, CheckCircle, XCircle, LogIn, BarChart3, CalendarDays,
+  Sun, Filter, ChevronLeft, ChevronRight, Send, AlertTriangle, Users, Search,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIAlertBanner, AIInsightCard, AIRecommendationList } from '@/components/ai'
@@ -133,6 +133,7 @@ export default function TimeAttendancePage() {
     leaveRequests, employees, departments,
     addLeaveRequest, updateLeaveRequest,
     getEmployeeName, getDepartmentName, currentEmployeeId,
+    addToast,
   } = useTempo()
 
   // ---- AI Insights ----
@@ -186,6 +187,14 @@ export default function TimeAttendancePage() {
   const [customHolidays, setCustomHolidays] = useState<typeof PUBLIC_HOLIDAYS>([])
   const [holidayCountryFilter, setHolidayCountryFilter] = useState<string>('all')
 
+  // ---- Bulk leave approval state ----
+  const [showBulkLeaveModal, setShowBulkLeaveModal] = useState(false)
+  const [bulkLeaveSelectMode, setBulkLeaveSelectMode] = useState<'all_pending' | 'department' | 'type' | 'individual'>('all_pending')
+  const [bulkLeaveSelectedIds, setBulkLeaveSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkLeaveSelectedDepts, setBulkLeaveSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkLeaveSelectedTypes, setBulkLeaveSelectedTypes] = useState<Set<string>>(new Set())
+  const [bulkLeaveAction, setBulkLeaveAction] = useState<'approve' | 'deny'>('approve')
+
   // ---- Clock state ----
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInTime, setClockInTime] = useState<string | null>(null)
@@ -227,6 +236,34 @@ export default function TimeAttendancePage() {
 
     return { avgHours, overtimeRate, absenteeismRate, deptHours, overtimeTrend, burnoutRisks, totalOvertime }
   }, [timesheets, shifts, employees, leaveRequests, getDepartmentName])
+
+  // ---- Bulk leave approval computed ----
+  const pendingLeaveRequests = useMemo(
+    () => leaveRequests.filter(lr => lr.status === 'pending'),
+    [leaveRequests],
+  )
+
+  const leaveTypes = useMemo(
+    () => Array.from(new Set(pendingLeaveRequests.map(lr => lr.type))).sort(),
+    [pendingLeaveRequests],
+  )
+
+  const bulkLeaveTargetRequests = useMemo(() => {
+    if (bulkLeaveSelectMode === 'all_pending') return pendingLeaveRequests
+    if (bulkLeaveSelectMode === 'department') {
+      return pendingLeaveRequests.filter(lr => {
+        const emp = employees.find(e => e.id === lr.employee_id)
+        return emp && bulkLeaveSelectedDepts.has(emp.department_id)
+      })
+    }
+    if (bulkLeaveSelectMode === 'type') {
+      return pendingLeaveRequests.filter(lr => bulkLeaveSelectedTypes.has(lr.type))
+    }
+    // individual
+    return pendingLeaveRequests.filter(lr => bulkLeaveSelectedIds.has(lr.id))
+  }, [bulkLeaveSelectMode, pendingLeaveRequests, employees, bulkLeaveSelectedDepts, bulkLeaveSelectedTypes, bulkLeaveSelectedIds])
+
+  const bulkLeaveSelectedRequests = bulkLeaveTargetRequests
 
   // ---- Handlers ----
   function openNewLeaveRequest() {
@@ -297,6 +334,35 @@ export default function TimeAttendancePage() {
     }])
     setShowHolidayModal(false)
     setHolidayForm({ date: '', name: '', countries: '' })
+  }
+
+  // ---- Bulk leave handlers ----
+  function toggleBulkLeaveSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkLeave() {
+    setShowBulkLeaveModal(false)
+    setBulkLeaveSelectMode('all_pending')
+    setBulkLeaveSelectedIds(new Set())
+    setBulkLeaveSelectedDepts(new Set())
+    setBulkLeaveSelectedTypes(new Set())
+    setBulkLeaveAction('approve')
+  }
+
+  function submitBulkLeave() {
+    const status = bulkLeaveAction === 'approve' ? 'approved' : 'rejected'
+    const now = new Date().toISOString()
+    bulkLeaveSelectedRequests.forEach(lr => {
+      updateLeaveRequest(lr.id, { status, approved_by: currentEmployeeId, approved_at: now })
+    })
+    const count = bulkLeaveSelectedRequests.length
+    const actionLabel = bulkLeaveAction === 'approve' ? 'approved' : 'denied'
+    addToast(`${count} leave request${count !== 1 ? 's' : ''} ${actionLabel}`)
+    resetBulkLeave()
   }
 
   // ---- Calendar helpers ----
@@ -416,6 +482,11 @@ export default function TimeAttendancePage() {
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
+                {pendingLeaveRequests.length > 0 && (
+                  <Button size="sm" variant="secondary" onClick={() => setShowBulkLeaveModal(true)}>
+                    <CheckCircle size={14} /> Bulk Approve
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -1056,6 +1127,221 @@ export default function TimeAttendancePage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowHolidayModal(false)}>{tc('cancel')}</Button>
             <Button onClick={addCustomHoliday}>Add Holiday</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Leave Approval Modal */}
+      <Modal open={showBulkLeaveModal} onClose={resetBulkLeave} title="Bulk Leave Approval" size="xl">
+        <div className="space-y-6">
+          {/* Mode selection */}
+          <div>
+            <label className="block text-xs font-medium text-t2 mb-2">Selection Mode</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {([
+                { value: 'all_pending' as const, label: 'All Pending', icon: Users },
+                { value: 'department' as const, label: 'By Department', icon: Users },
+                { value: 'type' as const, label: 'By Leave Type', icon: Calendar },
+                { value: 'individual' as const, label: 'Individual', icon: Search },
+              ]).map(mode => (
+                <button
+                  key={mode.value}
+                  onClick={() => setBulkLeaveSelectMode(mode.value)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                    bulkLeaveSelectMode === mode.value
+                      ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
+                      : 'border-border bg-surface text-t2 hover:bg-canvas'
+                  }`}
+                >
+                  <mode.icon size={14} />
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Department filter chips */}
+          {bulkLeaveSelectMode === 'department' && (
+            <div>
+              <label className="block text-xs font-medium text-t2 mb-2">Select Departments</label>
+              <div className="flex flex-wrap gap-2">
+                {departments.map(dept => {
+                  const hasPending = pendingLeaveRequests.some(lr => {
+                    const emp = employees.find(e => e.id === lr.employee_id)
+                    return emp?.department_id === dept.id
+                  })
+                  if (!hasPending) return null
+                  const selected = bulkLeaveSelectedDepts.has(dept.id)
+                  return (
+                    <button
+                      key={dept.id}
+                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedDepts, dept.id, setBulkLeaveSelectedDepts)}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                        selected
+                          ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
+                          : 'border-border bg-surface text-t2 hover:bg-canvas'
+                      }`}
+                    >
+                      {dept.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Leave type filter chips */}
+          {bulkLeaveSelectMode === 'type' && (
+            <div>
+              <label className="block text-xs font-medium text-t2 mb-2">Select Leave Types</label>
+              <div className="flex flex-wrap gap-2">
+                {leaveTypes.map(lt => {
+                  const selected = bulkLeaveSelectedTypes.has(lt)
+                  return (
+                    <button
+                      key={lt}
+                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedTypes, lt, setBulkLeaveSelectedTypes)}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-medium capitalize transition-colors ${
+                        selected
+                          ? 'border-tempo-400 bg-tempo-50 text-tempo-700'
+                          : 'border-border bg-surface text-t2 hover:bg-canvas'
+                      }`}
+                    >
+                      {lt}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Individual selection */}
+          {bulkLeaveSelectMode === 'individual' && (
+            <div>
+              <label className="block text-xs font-medium text-t2 mb-2">Select Requests</label>
+              <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                {pendingLeaveRequests.map(lr => {
+                  const selected = bulkLeaveSelectedIds.has(lr.id)
+                  return (
+                    <button
+                      key={lr.id}
+                      onClick={() => toggleBulkLeaveSet(bulkLeaveSelectedIds, lr.id, setBulkLeaveSelectedIds)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                        selected ? 'bg-tempo-50' : 'hover:bg-canvas'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        selected ? 'border-tempo-500 bg-tempo-500 text-white' : 'border-border'
+                      }`}>
+                        {selected && <CheckCircle size={10} />}
+                      </div>
+                      <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
+                        <p className="text-xs text-t3">{lr.type} &middot; {lr.start_date} to {lr.end_date}</p>
+                      </div>
+                      <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
+                      <span className="text-xs text-t2 font-medium">{lr.days}d</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Matching requests list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-t2">
+                Matching Requests ({bulkLeaveSelectedRequests.length})
+              </label>
+            </div>
+            {bulkLeaveSelectedRequests.length === 0 ? (
+              <div className="text-center py-6 text-xs text-t3 bg-canvas rounded-lg border border-border">
+                {bulkLeaveSelectMode === 'all_pending'
+                  ? 'No pending leave requests'
+                  : 'Select a filter above to see matching requests'}
+              </div>
+            ) : (
+              <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                {bulkLeaveSelectedRequests.map(lr => {
+                  const emp = employees.find(e => e.id === lr.employee_id)
+                  return (
+                    <div key={lr.id} className="flex items-center gap-3 px-3 py-2">
+                      <Avatar name={getEmployeeName(lr.employee_id)} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1">{getEmployeeName(lr.employee_id)}</p>
+                        <p className="text-xs text-t3">
+                          {emp?.job_title} &middot; {getDepartmentName(emp?.department_id || '')}
+                        </p>
+                      </div>
+                      <Badge variant={LEAVE_TYPE_VARIANT[lr.type] || 'default'}>{lr.type}</Badge>
+                      <span className="text-xs text-t2">{lr.start_date} to {lr.end_date}</span>
+                      <span className="text-xs text-t1 font-medium">{lr.days}d</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Action toggle */}
+          <div>
+            <label className="block text-xs font-medium text-t2 mb-2">Action</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBulkLeaveAction('approve')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  bulkLeaveAction === 'approve'
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                    : 'border-border bg-surface text-t2 hover:bg-canvas'
+                }`}
+              >
+                <CheckCircle size={16} />
+                Approve All
+              </button>
+              <button
+                onClick={() => setBulkLeaveAction('deny')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  bulkLeaveAction === 'deny'
+                    ? 'border-red-400 bg-red-50 text-red-700'
+                    : 'border-border bg-surface text-t2 hover:bg-canvas'
+                }`}
+              >
+                <XCircle size={16} />
+                Deny All
+              </button>
+            </div>
+          </div>
+
+          {/* Summary */}
+          {bulkLeaveSelectedRequests.length > 0 && (
+            <div className="bg-canvas rounded-lg border border-border px-4 py-3">
+              <p className="text-sm text-t1">
+                <span className="font-semibold">{bulkLeaveSelectedRequests.length}</span>
+                {' '}request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''} will be{' '}
+                <span className={`font-semibold ${bulkLeaveAction === 'approve' ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {bulkLeaveAction === 'approve' ? 'approved' : 'denied'}
+                </span>
+                {' '}({bulkLeaveSelectedRequests.reduce((s, lr) => s + lr.days, 0)} total days)
+              </p>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="secondary" onClick={resetBulkLeave}>Cancel</Button>
+            <Button
+              onClick={submitBulkLeave}
+              disabled={bulkLeaveSelectedRequests.length === 0}
+              variant={bulkLeaveAction === 'deny' ? 'secondary' : 'primary'}
+            >
+              {bulkLeaveAction === 'approve' ? (
+                <><CheckCircle size={14} /> Approve {bulkLeaveSelectedRequests.length} Request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''}</>
+              ) : (
+                <><XCircle size={14} /> Deny {bulkLeaveSelectedRequests.length} Request{bulkLeaveSelectedRequests.length !== 1 ? 's' : ''}</>
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

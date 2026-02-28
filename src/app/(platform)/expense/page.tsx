@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
-import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle2, Car, Globe, Calculator, Sparkles } from 'lucide-react'
+import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
@@ -71,6 +71,14 @@ export default function ExpensePage() {
   const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null)
   const [showMileageModal, setShowMileageModal] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  // Bulk expense approval state
+  const [showBulkExpenseModal, setShowBulkExpenseModal] = useState(false)
+  const [bulkExpSelectMode, setBulkExpSelectMode] = useState<'all_pending' | 'department' | 'amount' | 'individual'>('all_pending')
+  const [bulkExpSelectedIds, setBulkExpSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkExpSelectedDepts, setBulkExpSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkExpMaxAmount, setBulkExpMaxAmount] = useState(5000)
+  const [bulkExpAction, setBulkExpAction] = useState<'approve' | 'reject'>('approve')
 
   // ---- Expand / Search ----
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
@@ -179,6 +187,36 @@ export default function ExpensePage() {
     const pending = demoReceipts.filter(r => r.status === 'pending').length
     return { total: demoReceipts.length, matched, unmatched, pending, matchRate: demoReceipts.length > 0 ? Math.round((matched / demoReceipts.length) * 100) : 0 }
   }, [])
+
+  // ---- Bulk Expense Approval Memos ----
+  const pendingExpenseReports = useMemo(() => {
+    return expenseReports.filter(r => r.status === 'pending' || r.status === 'submitted' || r.status === 'pending_approval')
+  }, [expenseReports])
+
+  const bulkExpTargetReports = useMemo(() => {
+    switch (bulkExpSelectMode) {
+      case 'all_pending':
+        return pendingExpenseReports
+      case 'department': {
+        if (bulkExpSelectedDepts.size === 0) return []
+        return pendingExpenseReports.filter(r => {
+          const emp = employees.find(e => e.id === r.employee_id)
+          return emp && bulkExpSelectedDepts.has((emp as any).department_id)
+        })
+      }
+      case 'amount':
+        return pendingExpenseReports.filter(r => r.total_amount <= bulkExpMaxAmount)
+      case 'individual':
+        return pendingExpenseReports.filter(r => bulkExpSelectedIds.has(r.id))
+      default:
+        return pendingExpenseReports
+    }
+  }, [bulkExpSelectMode, pendingExpenseReports, bulkExpSelectedDepts, bulkExpMaxAmount, bulkExpSelectedIds, employees])
+
+  const bulkExpSelectedReports = bulkExpTargetReports
+  const bulkExpTotalAmount = useMemo(() => {
+    return bulkExpSelectedReports.reduce((sum, r) => sum + r.total_amount, 0)
+  }, [bulkExpSelectedReports])
 
   // ---- Report CRUD ----
   function openNewReport() {
@@ -321,6 +359,37 @@ export default function ExpensePage() {
     setMileageForm({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
   }
 
+  // ---- Bulk Expense Approval Handlers ----
+  function toggleBulkExpSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkExpense() {
+    setShowBulkExpenseModal(false)
+    setBulkExpSelectMode('all_pending')
+    setBulkExpSelectedIds(new Set())
+    setBulkExpSelectedDepts(new Set())
+    setBulkExpMaxAmount(5000)
+    setBulkExpAction('approve')
+  }
+
+  function submitBulkExpense() {
+    if (bulkExpSelectedReports.length === 0) return
+    const now = new Date().toISOString()
+    bulkExpSelectedReports.forEach(report => {
+      if (bulkExpAction === 'approve') {
+        updateExpenseReport(report.id, { status: 'approved', approved_by: currentEmployeeId, approved_at: now })
+      } else {
+        updateExpenseReport(report.id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: now })
+      }
+    })
+    addToast(`${bulkExpSelectedReports.length} expense report${bulkExpSelectedReports.length !== 1 ? 's' : ''} ${bulkExpAction === 'approve' ? 'approved' : 'rejected'} successfully`)
+    resetBulkExpense()
+  }
+
   const forecastInsight = useMemo(() => ({
     id: 'ai-expense-forecast', category: 'prediction' as const, severity: 'info' as const,
     title: t('spendingForecast'),
@@ -333,7 +402,7 @@ export default function ExpensePage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button>}
+        actions={<div className="flex gap-2">{pendingExpenseReports.length > 0 && <Button size="sm" variant="secondary" onClick={() => setShowBulkExpenseModal(true)}><CheckCircle size={14} /> Bulk Approve</Button>}<Button size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button></div>}
       />
 
       {/* Tabs */}
@@ -1200,6 +1269,203 @@ export default function ExpensePage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMileageModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitMileage}>{t('addMileageEntry')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Expense Approval Modal */}
+      <Modal open={showBulkExpenseModal} onClose={resetBulkExpense} title="Bulk Expense Approval" size="xl">
+        <div className="space-y-5">
+          {/* Selection Mode */}
+          <div>
+            <label className="block text-xs font-medium text-t1 mb-2">Selection Mode</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {([
+                { value: 'all_pending', label: 'All Pending', icon: CheckCircle },
+                { value: 'department', label: 'By Department', icon: Users },
+                { value: 'amount', label: 'Under Amount', icon: DollarSign },
+                { value: 'individual', label: 'Individual', icon: FileText },
+              ] as const).map(mode => (
+                <button
+                  key={mode.value}
+                  onClick={() => setBulkExpSelectMode(mode.value)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors',
+                    bulkExpSelectMode === mode.value
+                      ? 'border-tempo-500 bg-tempo-50 text-tempo-700'
+                      : 'border-border bg-surface text-t2 hover:bg-canvas'
+                  )}
+                >
+                  <mode.icon size={14} />
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Department Filter */}
+          {bulkExpSelectMode === 'department' && (
+            <div>
+              <label className="block text-xs font-medium text-t1 mb-2">Select Departments</label>
+              <div className="flex flex-wrap gap-2">
+                {departments.map(dept => (
+                  <button
+                    key={dept.id}
+                    onClick={() => toggleBulkExpSet(bulkExpSelectedDepts, dept.id, setBulkExpSelectedDepts)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                      bulkExpSelectedDepts.has(dept.id)
+                        ? 'border-tempo-500 bg-tempo-50 text-tempo-700'
+                        : 'border-border bg-surface text-t2 hover:bg-canvas'
+                    )}
+                  >
+                    {dept.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Amount Threshold */}
+          {bulkExpSelectMode === 'amount' && (
+            <div>
+              <label className="block text-xs font-medium text-t1 mb-2">Maximum Amount Threshold</label>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-t2">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={bulkExpMaxAmount}
+                  onChange={e => setBulkExpMaxAmount(Number(e.target.value))}
+                  className="w-40 px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
+                />
+                <span className="text-xs text-t3">Reports at or below this amount</span>
+              </div>
+            </div>
+          )}
+
+          {/* Report List */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-t1">
+                {bulkExpSelectMode === 'individual' ? 'Select Reports' : 'Matching Reports'} ({bulkExpSelectMode === 'individual' ? bulkExpSelectedIds.size : bulkExpTargetReports.length})
+              </label>
+              {bulkExpSelectMode === 'individual' && pendingExpenseReports.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (bulkExpSelectedIds.size === pendingExpenseReports.length) {
+                      setBulkExpSelectedIds(new Set())
+                    } else {
+                      setBulkExpSelectedIds(new Set(pendingExpenseReports.map(r => r.id)))
+                    }
+                  }}
+                  className="text-xs text-tempo-600 hover:text-tempo-700 font-medium"
+                >
+                  {bulkExpSelectedIds.size === pendingExpenseReports.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
+            </div>
+            <div className="max-h-[280px] overflow-y-auto border border-border rounded-lg divide-y divide-divider">
+              {(bulkExpSelectMode === 'individual' ? pendingExpenseReports : bulkExpTargetReports).length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-t3">No matching pending reports</div>
+              ) : (
+                (bulkExpSelectMode === 'individual' ? pendingExpenseReports : bulkExpTargetReports).map(report => {
+                  const isSelected = bulkExpSelectMode === 'individual' ? bulkExpSelectedIds.has(report.id) : true
+                  return (
+                    <div
+                      key={report.id}
+                      onClick={() => {
+                        if (bulkExpSelectMode === 'individual') {
+                          toggleBulkExpSet(bulkExpSelectedIds, report.id, setBulkExpSelectedIds)
+                        }
+                      }}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 transition-colors',
+                        bulkExpSelectMode === 'individual' ? 'cursor-pointer hover:bg-canvas' : '',
+                        isSelected && bulkExpSelectMode === 'individual' ? 'bg-tempo-50/50' : ''
+                      )}
+                    >
+                      {bulkExpSelectMode === 'individual' && (
+                        <div className={cn(
+                          'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                          isSelected ? 'bg-tempo-600 border-tempo-600' : 'border-border'
+                        )}>
+                          {isSelected && <CheckCircle size={12} className="text-white" />}
+                        </div>
+                      )}
+                      <Avatar name={getEmployeeName(report.employee_id)} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-t1 truncate">{report.title}</p>
+                        <p className="text-xs text-t3">
+                          {getEmployeeName(report.employee_id)} &middot; {new Date(report.submitted_at).toLocaleDateString()} &middot; {report.items?.length || 0} item{(report.items?.length || 0) !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-t1 shrink-0">${report.total_amount.toLocaleString()}</p>
+                      <Badge variant="warning">{report.status.replace(/_/g, ' ')}</Badge>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Action Toggle */}
+          <div>
+            <label className="block text-xs font-medium text-t1 mb-2">Action</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBulkExpAction('approve')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
+                  bulkExpAction === 'approve'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-border bg-surface text-t2 hover:bg-canvas'
+                )}
+              >
+                <CheckCircle size={14} />
+                Approve
+              </button>
+              <button
+                onClick={() => setBulkExpAction('reject')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
+                  bulkExpAction === 'reject'
+                    ? 'border-red-500 bg-red-50 text-red-700'
+                    : 'border-border bg-surface text-t2 hover:bg-canvas'
+                )}
+              >
+                <AlertTriangle size={14} />
+                Reject
+              </button>
+            </div>
+          </div>
+
+          {/* Summary */}
+          {bulkExpSelectedReports.length > 0 && (
+            <div className={cn(
+              'rounded-lg p-4 border',
+              bulkExpAction === 'approve' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
+            )}>
+              <p className={cn('text-sm font-medium', bulkExpAction === 'approve' ? 'text-emerald-800' : 'text-red-800')}>
+                {bulkExpSelectedReports.length} report{bulkExpSelectedReports.length !== 1 ? 's' : ''} will be {bulkExpAction === 'approve' ? 'approved' : 'rejected'}
+              </p>
+              <p className={cn('text-xs mt-1', bulkExpAction === 'approve' ? 'text-emerald-700' : 'text-red-700')}>
+                Total amount: ${bulkExpTotalAmount.toLocaleString()}
+              </p>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="secondary" onClick={resetBulkExpense}>Cancel</Button>
+            <Button
+              variant={bulkExpAction === 'approve' ? 'primary' : 'danger'}
+              onClick={submitBulkExpense}
+              disabled={bulkExpSelectedReports.length === 0}
+            >
+              <CheckCircle size={14} />
+              {bulkExpAction === 'approve' ? 'Approve' : 'Reject'} {bulkExpSelectedReports.length} Report{bulkExpSelectedReports.length !== 1 ? 's' : ''}
+            </Button>
           </div>
         </div>
       </Modal>

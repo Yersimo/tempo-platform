@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoDonutChart, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
-import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown } from 'lucide-react'
+import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown, Building2, Search, Users } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightPanel, AIAlertBanner } from '@/components/ai'
@@ -20,9 +20,9 @@ import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact, generateTo
 
 export default function CompensationPage() {
   const {
-    compBands, salaryReviews, employees, benefitPlans,
+    compBands, salaryReviews, employees, benefitPlans, departments,
     addCompBand, deleteCompBand, addSalaryReview, updateSalaryReview, currentEmployeeId,
-    getEmployeeName, getDepartmentName,
+    getEmployeeName, getDepartmentName, addToast,
     equityGrants, addEquityGrant, updateEquityGrant,
     compPlanningCycles, addCompPlanningCycle, updateCompPlanningCycle,
     marketBenchmarks,
@@ -48,6 +48,19 @@ export default function CompensationPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showGrantModal, setShowGrantModal] = useState(false)
   const [showCycleModal, setShowCycleModal] = useState(false)
+
+  // Bulk salary review state
+  const [showBulkSalaryModal, setShowBulkSalaryModal] = useState(false)
+  const [bulkSalStep, setBulkSalStep] = useState<1 | 2>(1)
+  const [bulkSalMode, setBulkSalMode] = useState<'individual' | 'department' | 'country' | 'level' | 'all'>('individual')
+  const [bulkSalSearch, setBulkSalSearch] = useState('')
+  const [bulkSalSelectedEmpIds, setBulkSalSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkSalSelectedDepts, setBulkSalSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkSalSelectedCountries, setBulkSalSelectedCountries] = useState<Set<string>>(new Set())
+  const [bulkSalSelectedLevels, setBulkSalSelectedLevels] = useState<Set<string>>(new Set())
+  const [bulkSalAdjustType, setBulkSalAdjustType] = useState<'percentage' | 'fixed'>('percentage')
+  const [bulkSalAdjustValue, setBulkSalAdjustValue] = useState(5)
+  const [bulkSalJustification, setBulkSalJustification] = useState('Annual merit increase')
 
   // ---- Forms ----
   const [bandForm, setBandForm] = useState({ role_title: '', level: 'Mid', country: '', min_salary: 0, mid_salary: 0, max_salary: 0, currency: 'USD', p25: 0, p50: 0, p75: 0, effective_date: `${new Date().getFullYear()}-01-01` })
@@ -107,6 +120,50 @@ export default function CompensationPage() {
     return Object.values(deptMap).sort((a, b) => b.cost - a.cost)
   }, [employees, getDepartmentName])
 
+  // ---- Bulk Salary Review Computed ----
+  const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country).filter(Boolean))].sort(), [employees])
+  const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level).filter(Boolean))].sort(), [employees])
+
+  const bulkSalTargetEmployees = useMemo(() => {
+    if (bulkSalMode === 'all') return employees
+    if (bulkSalMode === 'department') return employees.filter(e => bulkSalSelectedDepts.has(e.department_id))
+    if (bulkSalMode === 'country') return employees.filter(e => bulkSalSelectedCountries.has(e.country))
+    if (bulkSalMode === 'level') return employees.filter(e => bulkSalSelectedLevels.has(e.level))
+    return employees.filter(e => bulkSalSelectedEmpIds.has(e.id))
+  }, [employees, bulkSalMode, bulkSalSelectedEmpIds, bulkSalSelectedDepts, bulkSalSelectedCountries, bulkSalSelectedLevels])
+
+  const bulkSalSelectedEmployees = useMemo(() => {
+    if (bulkSalMode === 'individual') {
+      const q = bulkSalSearch.toLowerCase()
+      if (!q) return bulkSalTargetEmployees
+      return employees.filter(e => bulkSalSelectedEmpIds.has(e.id) || (e.profile?.full_name || '').toLowerCase().includes(q) || (e.job_title || '').toLowerCase().includes(q))
+    }
+    return bulkSalTargetEmployees
+  }, [bulkSalTargetEmployees, bulkSalMode, bulkSalSearch, employees, bulkSalSelectedEmpIds])
+
+  const bulkSalAlreadyReviewedIds = useMemo(() => {
+    const pendingIds = new Set(salaryReviews.filter(r => r.status === 'pending_approval').map(r => r.employee_id))
+    return new Set(bulkSalTargetEmployees.filter(e => pendingIds.has(e.id)).map(e => e.id))
+  }, [bulkSalTargetEmployees, salaryReviews])
+
+  const bulkSalNewReviewees = useMemo(() => bulkSalTargetEmployees.filter(e => !bulkSalAlreadyReviewedIds.has(e.id)), [bulkSalTargetEmployees, bulkSalAlreadyReviewedIds])
+  const bulkSalSkipped = useMemo(() => bulkSalTargetEmployees.filter(e => bulkSalAlreadyReviewedIds.has(e.id)), [bulkSalTargetEmployees, bulkSalAlreadyReviewedIds])
+
+  const bulkSalTotalImpact = useMemo(() => {
+    let totalCurrent = 0
+    let totalNew = 0
+    bulkSalNewReviewees.forEach(emp => {
+      const band = compBands.find(b => b.level === emp.level)
+      const currentSalary = (emp as any).salary || (emp as any).base_salary || band?.mid_salary || 72000
+      const proposed = bulkSalAdjustType === 'percentage'
+        ? Math.round(currentSalary * (1 + bulkSalAdjustValue / 100))
+        : currentSalary + bulkSalAdjustValue
+      totalCurrent += currentSalary
+      totalNew += proposed
+    })
+    return { totalCurrent, totalNew, delta: totalNew - totalCurrent }
+  }, [bulkSalNewReviewees, compBands, bulkSalAdjustType, bulkSalAdjustValue])
+
   // ---- Handlers ----
   function submitBand() {
     if (!bandForm.role_title) return
@@ -136,12 +193,59 @@ export default function CompensationPage() {
     setCycleForm({ name: '', budget_percent: 4.0, start_date: '', end_date: '' })
   }
 
+  function toggleBulkSalSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkSalary() {
+    setShowBulkSalaryModal(false)
+    setBulkSalStep(1)
+    setBulkSalMode('individual')
+    setBulkSalSearch('')
+    setBulkSalSelectedEmpIds(new Set())
+    setBulkSalSelectedDepts(new Set())
+    setBulkSalSelectedCountries(new Set())
+    setBulkSalSelectedLevels(new Set())
+    setBulkSalAdjustType('percentage')
+    setBulkSalAdjustValue(5)
+    setBulkSalJustification('Annual merit increase')
+  }
+
+  function submitBulkSalary() {
+    let created = 0
+    bulkSalNewReviewees.forEach(emp => {
+      const band = compBands.find(b => b.level === emp.level)
+      const currentSalary = (emp as any).salary || (emp as any).base_salary || band?.mid_salary || 72000
+      const proposedSalary = bulkSalAdjustType === 'percentage'
+        ? Math.round(currentSalary * (1 + bulkSalAdjustValue / 100))
+        : currentSalary + bulkSalAdjustValue
+      addSalaryReview({
+        employee_id: emp.id,
+        current_salary: currentSalary,
+        proposed_salary: proposedSalary,
+        justification: bulkSalJustification,
+        status: 'pending_approval',
+        cycle: 'annual',
+        proposed_by: currentEmployeeId,
+        approved_by: null,
+        currency: 'USD',
+      })
+      created++
+    })
+    addToast(`Created ${created} salary review${created !== 1 ? 's' : ''} successfully`)
+    resetBulkSalary()
+  }
+
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBandModal(true)}><Plus size={14} /> {t('addBand')}</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowBulkSalaryModal(true)}><Users size={14} /> Bulk Review</Button>
             <Button size="sm" onClick={() => setShowReviewModal(true)}><Plus size={14} /> {t('proposeReview')}</Button>
           </div>
         }
@@ -1011,6 +1115,308 @@ export default function CompensationPage() {
             <Button onClick={submitCycle}>{t('createCycle')}</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Bulk Salary Review Modal */}
+      <Modal open={showBulkSalaryModal} onClose={resetBulkSalary} title="Bulk Salary Review" size="xl">
+        {bulkSalStep === 1 ? (
+          <div className="space-y-4">
+            {/* Mode selector */}
+            <div>
+              <label className="text-xs font-medium text-t2 mb-2 block">Select employees by</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { value: 'individual' as const, label: 'Individual', icon: <Users size={14} /> },
+                  { value: 'department' as const, label: 'Department', icon: <Building2 size={14} /> },
+                  { value: 'country' as const, label: 'Country', icon: <Globe size={14} /> },
+                  { value: 'level' as const, label: 'Level', icon: <Layers size={14} /> },
+                  { value: 'all' as const, label: 'All Employees', icon: <Users size={14} /> },
+                ] as const).map(mode => (
+                  <button
+                    key={mode.value}
+                    onClick={() => setBulkSalMode(mode.value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      bulkSalMode === mode.value
+                        ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                        : 'bg-canvas border-border text-t2 hover:border-tempo-200'
+                    }`}
+                  >
+                    {mode.icon} {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Individual mode: search + employee list */}
+            {bulkSalMode === 'individual' && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                  <input
+                    type="text"
+                    placeholder="Search employees by name or title..."
+                    value={bulkSalSearch}
+                    onChange={e => setBulkSalSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-400"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                  {bulkSalSelectedEmployees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-3 px-3 py-2 hover:bg-canvas cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bulkSalSelectedEmpIds.has(emp.id)}
+                        onChange={() => toggleBulkSalSet(bulkSalSelectedEmpIds, emp.id, setBulkSalSelectedEmpIds)}
+                        className="accent-tempo-600"
+                      />
+                      <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                        <p className="text-xs text-t3 truncate">{emp.job_title} &middot; {emp.level} &middot; {emp.country}</p>
+                      </div>
+                      {bulkSalAlreadyReviewedIds.has(emp.id) && (
+                        <Badge variant="warning">Pending review</Badge>
+                      )}
+                    </label>
+                  ))}
+                  {bulkSalSelectedEmployees.length === 0 && (
+                    <p className="px-3 py-6 text-center text-xs text-t3">No employees found</p>
+                  )}
+                </div>
+                <p className="text-xs text-t3">{bulkSalSelectedEmpIds.size} employee{bulkSalSelectedEmpIds.size !== 1 ? 's' : ''} selected</p>
+              </div>
+            )}
+
+            {/* Department mode */}
+            {bulkSalMode === 'department' && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-t2">Select departments</label>
+                <div className="max-h-60 overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                  {departments.map(dept => {
+                    const count = employees.filter(e => e.department_id === dept.id).length
+                    return (
+                      <label key={dept.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-canvas cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkSalSelectedDepts.has(dept.id)}
+                          onChange={() => toggleBulkSalSet(bulkSalSelectedDepts, dept.id, setBulkSalSelectedDepts)}
+                          className="accent-tempo-600"
+                        />
+                        <Building2 size={14} className="text-t3" />
+                        <span className="text-sm font-medium text-t1 flex-1">{dept.name}</span>
+                        <Badge variant="default">{count} employees</Badge>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkSalSelectedDepts.size} department{bulkSalSelectedDepts.size !== 1 ? 's' : ''} selected ({bulkSalTargetEmployees.length} employees)</p>
+              </div>
+            )}
+
+            {/* Country mode */}
+            {bulkSalMode === 'country' && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-t2">Select countries</label>
+                <div className="max-h-60 overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                  {uniqueCountries.map(country => {
+                    const count = employees.filter(e => e.country === country).length
+                    return (
+                      <label key={country} className="flex items-center gap-3 px-3 py-2.5 hover:bg-canvas cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkSalSelectedCountries.has(country)}
+                          onChange={() => toggleBulkSalSet(bulkSalSelectedCountries, country, setBulkSalSelectedCountries)}
+                          className="accent-tempo-600"
+                        />
+                        <Globe size={14} className="text-t3" />
+                        <span className="text-sm font-medium text-t1 flex-1">{country}</span>
+                        <Badge variant="default">{count} employees</Badge>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkSalSelectedCountries.size} countr{bulkSalSelectedCountries.size !== 1 ? 'ies' : 'y'} selected ({bulkSalTargetEmployees.length} employees)</p>
+              </div>
+            )}
+
+            {/* Level mode */}
+            {bulkSalMode === 'level' && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-t2">Select levels</label>
+                <div className="max-h-60 overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                  {uniqueLevels.map(level => {
+                    const count = employees.filter(e => e.level === level).length
+                    return (
+                      <label key={level} className="flex items-center gap-3 px-3 py-2.5 hover:bg-canvas cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkSalSelectedLevels.has(level)}
+                          onChange={() => toggleBulkSalSet(bulkSalSelectedLevels, level, setBulkSalSelectedLevels)}
+                          className="accent-tempo-600"
+                        />
+                        <Layers size={14} className="text-t3" />
+                        <span className="text-sm font-medium text-t1 flex-1">{level}</span>
+                        <Badge variant="default">{count} employees</Badge>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-t3">{bulkSalSelectedLevels.size} level{bulkSalSelectedLevels.size !== 1 ? 's' : ''} selected ({bulkSalTargetEmployees.length} employees)</p>
+              </div>
+            )}
+
+            {/* All mode */}
+            {bulkSalMode === 'all' && (
+              <div className="bg-canvas rounded-lg p-4 border border-border">
+                <div className="flex items-center gap-2 text-sm text-t1">
+                  <Users size={16} className="text-tempo-500" />
+                  <span className="font-medium">All {employees.length} employees</span> will be included in this review.
+                </div>
+                {bulkSalAlreadyReviewedIds.size > 0 && (
+                  <p className="text-xs text-warning mt-2">{bulkSalAlreadyReviewedIds.size} employee{bulkSalAlreadyReviewedIds.size !== 1 ? 's' : ''} already have a pending review and will be skipped.</p>
+                )}
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-divider">
+              <Button variant="secondary" onClick={resetBulkSalary}>Cancel</Button>
+              <Button
+                disabled={
+                  (bulkSalMode === 'individual' && bulkSalSelectedEmpIds.size === 0) ||
+                  (bulkSalMode === 'department' && bulkSalSelectedDepts.size === 0) ||
+                  (bulkSalMode === 'country' && bulkSalSelectedCountries.size === 0) ||
+                  (bulkSalMode === 'level' && bulkSalSelectedLevels.size === 0)
+                }
+                onClick={() => setBulkSalStep(2)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Adjustment configuration */}
+            <div>
+              <label className="text-xs font-medium text-t2 mb-2 block">Adjustment type</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBulkSalAdjustType('percentage')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    bulkSalAdjustType === 'percentage'
+                      ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                      : 'bg-canvas border-border text-t2 hover:border-tempo-200'
+                  }`}
+                >
+                  Percentage increase
+                </button>
+                <button
+                  onClick={() => setBulkSalAdjustType('fixed')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    bulkSalAdjustType === 'fixed'
+                      ? 'bg-tempo-50 border-tempo-300 text-tempo-700'
+                      : 'bg-canvas border-border text-t2 hover:border-tempo-200'
+                  }`}
+                >
+                  Fixed amount
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label={bulkSalAdjustType === 'percentage' ? 'Increase (%)' : 'Increase amount ($)'}
+                type="number"
+                step={bulkSalAdjustType === 'percentage' ? '0.5' : '1000'}
+                value={bulkSalAdjustValue}
+                onChange={e => setBulkSalAdjustValue(Number(e.target.value))}
+              />
+              <Input
+                label="Justification"
+                value={bulkSalJustification}
+                onChange={e => setBulkSalJustification(e.target.value)}
+                placeholder="e.g. Annual merit increase"
+              />
+            </div>
+
+            {/* Preview */}
+            <div className="bg-canvas rounded-xl p-4 border border-border space-y-3">
+              <h4 className="text-xs font-semibold text-t3 uppercase tracking-wider">Review Summary</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-t3">Total employees</p>
+                  <p className="text-lg font-semibold text-t1">{bulkSalTargetEmployees.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-t3">New reviews</p>
+                  <p className="text-lg font-semibold text-success">{bulkSalNewReviewees.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-t3">Already reviewed (skipped)</p>
+                  <p className="text-lg font-semibold text-warning">{bulkSalSkipped.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-t3">Budget impact</p>
+                  <p className="text-lg font-semibold text-tempo-600">+${bulkSalTotalImpact.delta.toLocaleString()}</p>
+                </div>
+              </div>
+              {bulkSalNewReviewees.length > 0 && (
+                <div className="text-xs text-t3 pt-2 border-t border-divider">
+                  <p>Current total: ${bulkSalTotalImpact.totalCurrent.toLocaleString()} &rarr; New total: ${bulkSalTotalImpact.totalNew.toLocaleString()}</p>
+                  <p className="mt-0.5">
+                    Adjustment: {bulkSalAdjustType === 'percentage' ? `+${bulkSalAdjustValue}%` : `+$${bulkSalAdjustValue.toLocaleString()}`} per employee
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Employee preview list */}
+            {bulkSalNewReviewees.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-t2 mb-2 block">Employees to be reviewed ({bulkSalNewReviewees.length})</label>
+                <div className="max-h-48 overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                  {bulkSalNewReviewees.slice(0, 50).map(emp => {
+                    const band = compBands.find(b => b.level === emp.level)
+                    const currentSalary = (emp as any).salary || (emp as any).base_salary || band?.mid_salary || 72000
+                    const proposed = bulkSalAdjustType === 'percentage'
+                      ? Math.round(currentSalary * (1 + bulkSalAdjustValue / 100))
+                      : currentSalary + bulkSalAdjustValue
+                    return (
+                      <div key={emp.id} className="flex items-center gap-3 px-3 py-2">
+                        <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                          <p className="text-xs text-t3">{emp.job_title} &middot; {emp.level}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-t3">${currentSalary.toLocaleString()} &rarr; ${proposed.toLocaleString()}</p>
+                          <p className="text-xs font-medium text-success">+{bulkSalAdjustType === 'percentage' ? `${bulkSalAdjustValue}%` : `$${bulkSalAdjustValue.toLocaleString()}`}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {bulkSalNewReviewees.length > 50 && (
+                    <p className="px-3 py-2 text-xs text-t3 text-center">...and {bulkSalNewReviewees.length - 50} more</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex justify-between gap-2 pt-2 border-t border-divider">
+              <Button variant="secondary" onClick={() => setBulkSalStep(1)}>Back</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={resetBulkSalary}>Cancel</Button>
+                <Button
+                  disabled={bulkSalNewReviewees.length === 0}
+                  onClick={submitBulkSalary}
+                >
+                  Submit {bulkSalNewReviewees.length} Review{bulkSalNewReviewees.length !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   )

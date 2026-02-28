@@ -14,7 +14,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import {
   Plus, FolderKanban, ListChecks, Target, AlertTriangle,
-  Calendar, Pencil, Trash2, ChevronRight, Clock, Users,
+  Calendar, Pencil, Trash2, ChevronRight, Clock, Users, Search,
   Zap, Play, Pause, CheckCircle2, XCircle, ArrowRight, Lightbulb
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
@@ -31,6 +31,7 @@ export default function ProjectsPage() {
     addMilestone, addTask, updateTask, deleteTask,
     addAutomationRule, updateAutomationRule, toggleAutomationRule,
     getEmployeeName, currentEmployeeId,
+    addToast, departments, getDepartmentName,
   } = useTempo()
 
   const t = useTranslations('projects')
@@ -62,6 +63,20 @@ export default function ProjectsPage() {
 
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
+
+  // Bulk task assignment state
+  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false)
+  const [bulkTaskStep, setBulkTaskStep] = useState<1 | 2>(1)
+  const [bulkTaskSelectMode, setBulkTaskSelectMode] = useState<'project' | 'assignee' | 'status' | 'priority'>('project')
+  const [bulkTaskSelectedIds, setBulkTaskSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkTaskSelectedProjects, setBulkTaskSelectedProjects] = useState<Set<string>>(new Set())
+  const [bulkTaskSelectedStatuses, setBulkTaskSelectedStatuses] = useState<Set<string>>(new Set())
+  const [bulkTaskSelectedPriorities, setBulkTaskSelectedPriorities] = useState<Set<string>>(new Set())
+  const [bulkTaskFromAssignee, setBulkTaskFromAssignee] = useState('')
+  const [bulkTaskAction, setBulkTaskAction] = useState<'reassign' | 'status' | 'priority'>('reassign')
+  const [bulkTaskNewAssignee, setBulkTaskNewAssignee] = useState('')
+  const [bulkTaskNewStatus, setBulkTaskNewStatus] = useState('todo')
+  const [bulkTaskNewPriority, setBulkTaskNewPriority] = useState('medium')
 
   // Automation rule modal
   const [showRuleModal, setShowRuleModal] = useState(false)
@@ -117,6 +132,33 @@ export default function ProjectsPage() {
     suggestAutomationRules(tasks, automationLog),
     [tasks, automationLog]
   )
+
+  // Bulk task target tasks - filtered by selection mode
+  const bulkTaskTargetTasks = useMemo(() => {
+    if (bulkTaskSelectMode === 'project') {
+      if (bulkTaskSelectedProjects.size === 0) return []
+      return tasks.filter(t => bulkTaskSelectedProjects.has(t.project_id))
+    }
+    if (bulkTaskSelectMode === 'assignee') {
+      if (!bulkTaskFromAssignee) return []
+      return tasks.filter(t => t.assignee_id === bulkTaskFromAssignee)
+    }
+    if (bulkTaskSelectMode === 'status') {
+      if (bulkTaskSelectedStatuses.size === 0) return []
+      return tasks.filter(t => bulkTaskSelectedStatuses.has(t.status))
+    }
+    if (bulkTaskSelectMode === 'priority') {
+      if (bulkTaskSelectedPriorities.size === 0) return []
+      return tasks.filter(t => bulkTaskSelectedPriorities.has(t.priority))
+    }
+    return []
+  }, [tasks, bulkTaskSelectMode, bulkTaskSelectedProjects, bulkTaskFromAssignee, bulkTaskSelectedStatuses, bulkTaskSelectedPriorities])
+
+  // Bulk task final selection
+  const bulkTaskSelectedTasks = useMemo(() => {
+    if (bulkTaskSelectedIds.size === 0) return bulkTaskTargetTasks
+    return bulkTaskTargetTasks.filter(t => bulkTaskSelectedIds.has(t.id))
+  }, [bulkTaskTargetTasks, bulkTaskSelectedIds])
 
   // Claude AI enhancement
   const { result: enhancedBottlenecks, isLoading: bottlenecksLoading } = useAI({
@@ -250,6 +292,50 @@ export default function ProjectsPage() {
     setShowRuleModal(true)
   }
 
+  // Bulk task helpers
+  function toggleBulkTaskSet(set: Set<string>, value: string): Set<string> {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    return next
+  }
+
+  function resetBulkTask() {
+    setShowBulkTaskModal(false)
+    setBulkTaskStep(1)
+    setBulkTaskSelectMode('project')
+    setBulkTaskSelectedIds(new Set())
+    setBulkTaskSelectedProjects(new Set())
+    setBulkTaskSelectedStatuses(new Set())
+    setBulkTaskSelectedPriorities(new Set())
+    setBulkTaskFromAssignee('')
+    setBulkTaskAction('reassign')
+    setBulkTaskNewAssignee('')
+    setBulkTaskNewStatus('todo')
+    setBulkTaskNewPriority('medium')
+  }
+
+  function submitBulkTask() {
+    const targetTasks = bulkTaskSelectedTasks
+    if (targetTasks.length === 0) return
+    let count = 0
+    for (const task of targetTasks) {
+      if (bulkTaskAction === 'reassign' && bulkTaskNewAssignee) {
+        updateTask(task.id, { assignee_id: bulkTaskNewAssignee })
+        count++
+      } else if (bulkTaskAction === 'status' && bulkTaskNewStatus) {
+        updateTask(task.id, { status: bulkTaskNewStatus })
+        count++
+      } else if (bulkTaskAction === 'priority' && bulkTaskNewPriority) {
+        updateTask(task.id, { priority: bulkTaskNewPriority })
+        count++
+      }
+    }
+    const actionLabel = bulkTaskAction === 'reassign' ? 'reassigned' : bulkTaskAction === 'status' ? 'status updated' : 'priority updated'
+    addToast(`${count} task${count !== 1 ? 's' : ''} ${actionLabel} successfully`)
+    resetBulkTask()
+  }
+
   const ruleTemplates = [
     { name: 'Auto-assign QA on review', description: 'Assign QA reviewer when task moves to review', triggerType: 'status_change', triggerValue: 'review', actionType: 'assign_to', actionValue: '', actionLabel: '' },
     { name: 'Notify on overdue', description: 'Send notification when task passes due date', triggerType: 'due_date_passed', triggerValue: '', actionType: 'send_notification', actionValue: '', actionLabel: '' },
@@ -279,6 +365,7 @@ export default function ProjectsPage() {
         subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setShowBulkTaskModal(true)}><Users size={14} /> Bulk Update</Button>
             <Button size="sm" variant="secondary" onClick={openNewTask}><Plus size={14} /> {t('newTask')}</Button>
             <Button size="sm" onClick={openNewProject}><Plus size={14} /> {t('newProject')}</Button>
           </div>
@@ -890,6 +977,291 @@ export default function ProjectsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMilestoneModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitMilestone}>{t('addMilestone')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Task Update Modal */}
+      <Modal open={showBulkTaskModal} onClose={resetBulkTask} title="Bulk Task Update" size="xl">
+        <div className="space-y-4">
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${bulkTaskStep === 1 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>1</div>
+            <div className="flex-1 h-px bg-border" />
+            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${bulkTaskStep === 2 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>2</div>
+          </div>
+
+          {bulkTaskStep === 1 && (
+            <>
+              <p className="text-sm text-t2">Select tasks to update by choosing a filter mode below.</p>
+
+              {/* Mode tabs */}
+              <div className="flex gap-1 p-1 bg-canvas rounded-lg">
+                {([['project', 'By Project'], ['assignee', 'By Assignee'], ['status', 'By Status'], ['priority', 'By Priority']] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => {
+                      setBulkTaskSelectMode(mode)
+                      setBulkTaskSelectedIds(new Set())
+                    }}
+                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${bulkTaskSelectMode === mode ? 'bg-white dark:bg-gray-800 text-t1 shadow-sm' : 'text-t3 hover:text-t1'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* By Project */}
+              {bulkTaskSelectMode === 'project' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select projects to include tasks from:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {projects.map(p => {
+                      const taskCount = tasks.filter(t => t.project_id === p.id).length
+                      const selected = bulkTaskSelectedProjects.has(p.id)
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setBulkTaskSelectedProjects(toggleBulkTaskSet(bulkTaskSelectedProjects, p.id))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${selected ? 'bg-tempo-50 border-tempo-300 text-tempo-700 dark:bg-tempo-900/30 dark:border-tempo-600 dark:text-tempo-300' : 'bg-canvas border-border text-t2 hover:border-tempo-200'}`}
+                        >
+                          {p.title} ({taskCount})
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {projects.length === 0 && <p className="text-xs text-t3 py-4 text-center">No projects available</p>}
+                </div>
+              )}
+
+              {/* By Assignee */}
+              {bulkTaskSelectMode === 'assignee' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select current assignee:</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {employees.map(emp => {
+                      const empTaskCount = tasks.filter(t => t.assignee_id === emp.id).length
+                      return (
+                        <button
+                          key={emp.id}
+                          onClick={() => setBulkTaskFromAssignee(emp.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${bulkTaskFromAssignee === emp.id ? 'bg-tempo-50 border border-tempo-300 dark:bg-tempo-900/30 dark:border-tempo-600' : 'hover:bg-canvas border border-transparent'}`}
+                        >
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1 flex-1">{emp.profile?.full_name || 'Unknown'}</span>
+                          <Badge>{empTaskCount} tasks</Badge>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* By Status */}
+              {bulkTaskSelectMode === 'status' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select task statuses:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['todo', 'in_progress', 'review', 'done'] as const).map(status => {
+                      const count = tasks.filter(t => t.status === status).length
+                      const selected = bulkTaskSelectedStatuses.has(status)
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => setBulkTaskSelectedStatuses(toggleBulkTaskSet(bulkTaskSelectedStatuses, status))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${selected ? 'bg-tempo-50 border-tempo-300 text-tempo-700 dark:bg-tempo-900/30 dark:border-tempo-600 dark:text-tempo-300' : 'bg-canvas border-border text-t2 hover:border-tempo-200'}`}
+                        >
+                          {status.replace(/_/g, ' ')} ({count})
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* By Priority */}
+              {bulkTaskSelectMode === 'priority' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select task priorities:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['low', 'medium', 'high', 'critical'] as const).map(priority => {
+                      const count = tasks.filter(t => t.priority === priority).length
+                      const selected = bulkTaskSelectedPriorities.has(priority)
+                      return (
+                        <button
+                          key={priority}
+                          onClick={() => setBulkTaskSelectedPriorities(toggleBulkTaskSet(bulkTaskSelectedPriorities, priority))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${selected ? 'bg-tempo-50 border-tempo-300 text-tempo-700 dark:bg-tempo-900/30 dark:border-tempo-600 dark:text-tempo-300' : 'bg-canvas border-border text-t2 hover:border-tempo-200'}`}
+                        >
+                          {priority} ({count})
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview of matched tasks */}
+              {bulkTaskTargetTasks.length > 0 && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-canvas border-b border-border flex items-center justify-between">
+                    <span className="text-xs font-medium text-t1">{bulkTaskTargetTasks.length} task{bulkTaskTargetTasks.length !== 1 ? 's' : ''} matched</span>
+                    {bulkTaskSelectedIds.size > 0 && (
+                      <button onClick={() => setBulkTaskSelectedIds(new Set())} className="text-xs text-tempo-600 hover:underline">Clear selection</button>
+                    )}
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-divider">
+                    {bulkTaskTargetTasks.map(task => {
+                      const isSelected = bulkTaskSelectedIds.size === 0 || bulkTaskSelectedIds.has(task.id)
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => {
+                            if (bulkTaskSelectedIds.size === 0) {
+                              // First click: select only this one (deselect all others)
+                              const allIds = new Set(bulkTaskTargetTasks.map(t => t.id))
+                              setBulkTaskSelectedIds(new Set([task.id]))
+                            } else {
+                              setBulkTaskSelectedIds(toggleBulkTaskSet(bulkTaskSelectedIds, task.id))
+                            }
+                          }}
+                          className={`px-3 py-2 flex items-center gap-3 cursor-pointer transition-colors ${isSelected ? 'bg-white dark:bg-gray-900' : 'bg-canvas/50 opacity-60'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="rounded border-border text-tempo-600"
+                          />
+                          <span className="text-xs font-medium text-t1 flex-1 truncate">{task.title}</span>
+                          <Badge variant={priorityColor(task.priority)}>{task.priority}</Badge>
+                          <Badge variant={taskStatusColor(task.status)}>{task.status.replace(/_/g, ' ')}</Badge>
+                          <span className="text-[0.65rem] text-t3 truncate max-w-[100px]">{getEmployeeName(task.assignee_id)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {bulkTaskStep === 2 && (
+            <>
+              <p className="text-sm text-t2">Choose what action to apply to the {bulkTaskSelectedTasks.length} selected task{bulkTaskSelectedTasks.length !== 1 ? 's' : ''}.</p>
+
+              {/* Action selector */}
+              <div className="flex gap-1 p-1 bg-canvas rounded-lg">
+                {([['reassign', 'Reassign To'], ['status', 'Change Status'], ['priority', 'Change Priority']] as const).map(([action, label]) => (
+                  <button
+                    key={action}
+                    onClick={() => setBulkTaskAction(action)}
+                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${bulkTaskAction === action ? 'bg-white dark:bg-gray-800 text-t1 shadow-sm' : 'text-t3 hover:text-t1'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Action config */}
+              {bulkTaskAction === 'reassign' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select new assignee:</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {employees.map(emp => (
+                      <button
+                        key={emp.id}
+                        onClick={() => setBulkTaskNewAssignee(emp.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${bulkTaskNewAssignee === emp.id ? 'bg-tempo-50 border border-tempo-300 dark:bg-tempo-900/30 dark:border-tempo-600' : 'hover:bg-canvas border border-transparent'}`}
+                      >
+                        <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                        <span className="text-xs font-medium text-t1">{emp.profile?.full_name || 'Unknown'}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bulkTaskAction === 'status' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select new status:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['todo', 'in_progress', 'review', 'done'] as const).map(status => (
+                      <button
+                        key={status}
+                        onClick={() => setBulkTaskNewStatus(status)}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium border transition-colors ${bulkTaskNewStatus === status ? 'bg-tempo-50 border-tempo-300 text-tempo-700 dark:bg-tempo-900/30 dark:border-tempo-600 dark:text-tempo-300' : 'bg-canvas border-border text-t2 hover:border-tempo-200'}`}
+                      >
+                        {status.replace(/_/g, ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bulkTaskAction === 'priority' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Select new priority:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['low', 'medium', 'high', 'critical'] as const).map(priority => (
+                      <button
+                        key={priority}
+                        onClick={() => setBulkTaskNewPriority(priority)}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium border transition-colors ${bulkTaskNewPriority === priority ? 'bg-tempo-50 border-tempo-300 text-tempo-700 dark:bg-tempo-900/30 dark:border-tempo-600 dark:text-tempo-300' : 'bg-canvas border-border text-t2 hover:border-tempo-200'}`}
+                      >
+                        {priority}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              <div className="p-3 bg-canvas rounded-lg border border-border">
+                <h4 className="text-xs font-semibold text-t1 mb-2">Summary</h4>
+                <div className="space-y-1 text-xs text-t2">
+                  <p><span className="font-medium text-t1">{bulkTaskSelectedTasks.length}</span> task{bulkTaskSelectedTasks.length !== 1 ? 's' : ''} selected</p>
+                  <p>
+                    Action: <span className="font-medium text-t1">
+                      {bulkTaskAction === 'reassign' ? `Reassign to ${bulkTaskNewAssignee ? getEmployeeName(bulkTaskNewAssignee) : '(none selected)'}` :
+                       bulkTaskAction === 'status' ? `Change status to ${bulkTaskNewStatus.replace(/_/g, ' ')}` :
+                       `Change priority to ${bulkTaskNewPriority}`}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-between pt-2 border-t border-divider">
+            <div>
+              {bulkTaskStep === 2 && (
+                <Button variant="secondary" onClick={() => setBulkTaskStep(1)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={resetBulkTask}>Cancel</Button>
+              {bulkTaskStep === 1 && (
+                <Button
+                  onClick={() => setBulkTaskStep(2)}
+                  disabled={bulkTaskTargetTasks.length === 0}
+                >
+                  Next
+                </Button>
+              )}
+              {bulkTaskStep === 2 && (
+                <Button
+                  onClick={submitBulkTask}
+                  disabled={
+                    bulkTaskSelectedTasks.length === 0 ||
+                    (bulkTaskAction === 'reassign' && !bulkTaskNewAssignee)
+                  }
+                >
+                  Apply to {bulkTaskSelectedTasks.length} Task{bulkTaskSelectedTasks.length !== 1 ? 's' : ''}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

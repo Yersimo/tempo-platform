@@ -10,7 +10,8 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2 } from 'lucide-react'
+import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
@@ -19,7 +20,7 @@ import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, getEmployeeName, currentEmployeeId, addToast } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('home')
@@ -45,10 +46,18 @@ export default function LearningPage() {
     level: 'beginner' as string,
     is_mandatory: false,
   })
-  const [enrollForm, setEnrollForm] = useState({
-    employee_id: '',
-    course_id: '',
-  })
+  // Mass enrollment modal state
+  const [enrollStep, setEnrollStep] = useState<1 | 2>(1)
+  const [enrollMode, setEnrollMode] = useState<'individual' | 'department' | 'country' | 'level' | 'all'>('individual')
+  const [enrollSearch, setEnrollSearch] = useState('')
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set())
+  const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set())
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set())
+  const [selectedLevels, setSelectedLevels] = useState<Set<string>>(new Set())
+  const [enrollCourseSearch, setEnrollCourseSearch] = useState('')
+  const [enrollCourseCategory, setEnrollCourseCategory] = useState('all')
+  const [enrollCourseLevel, setEnrollCourseLevel] = useState('all')
+  const [selectedCourseId, setSelectedCourseId] = useState('')
 
   // AI Builder state
   const [showBuilderModal, setShowBuilderModal] = useState(false)
@@ -151,11 +160,27 @@ export default function LearningPage() {
     setCourseForm({ title: '', description: '', category: 'Leadership', duration_hours: 8, format: 'online', level: 'beginner', is_mandatory: false })
   }
 
-  function submitEnrollment() {
-    if (!enrollForm.employee_id || !enrollForm.course_id) return
-    addEnrollment({ employee_id: enrollForm.employee_id, course_id: enrollForm.course_id, status: 'enrolled', progress: 0 })
-    setShowEnrollModal(false)
-    setEnrollForm({ employee_id: '', course_id: '' })
+  // Mass enrollment helpers
+  function toggleSetItem<T>(set: Set<T>, setter: React.Dispatch<React.SetStateAction<Set<T>>>, item: T) {
+    setter(prev => { const next = new Set(prev); if (next.has(item)) next.delete(item); else next.add(item); return next })
+  }
+  function toggleEmployeeSelection(empId: string) {
+    setSelectedEmployeeIds(prev => { const next = new Set(prev); if (next.has(empId)) next.delete(empId); else next.add(empId); return next })
+  }
+  function resetEnrollModal() {
+    setShowEnrollModal(false); setEnrollStep(1); setEnrollMode('individual')
+    setEnrollSearch(''); setSelectedEmployeeIds(new Set()); setSelectedDepartments(new Set())
+    setSelectedCountries(new Set()); setSelectedLevels(new Set())
+    setEnrollCourseSearch(''); setEnrollCourseCategory('all'); setEnrollCourseLevel('all'); setSelectedCourseId('')
+  }
+  function submitMassEnrollment() {
+    if (!selectedCourseId || newEnrollees.length === 0) return
+    newEnrollees.forEach(emp => {
+      addEnrollment({ employee_id: emp.id, course_id: selectedCourseId, status: 'enrolled', progress: 0 })
+    })
+    const courseName = courses.find(c => c.id === selectedCourseId)?.title || ''
+    addToast(t('massEnrollSuccess', { count: newEnrollees.length, course: courseName }))
+    resetEnrollModal()
   }
 
   function handleEnroll(courseId: string) {
@@ -353,6 +378,53 @@ export default function LearningPage() {
       return { course: c, questionCount: questions.length, attempts: myAttempts.length, maxAttempts: 3, bestScore, passed: myAttempts.some(a => a.status === 'passed') }
     })
   }, [courses, quizQuestions, assessmentAttempts, currentEmployeeId])
+
+  // Mass enrollment computed data
+  const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country))].sort(), [employees])
+  const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level))], [employees])
+  const enrollTargetEmployees = useMemo(() => {
+    switch (enrollMode) {
+      case 'individual':
+        return employees.filter(emp => {
+          if (!enrollSearch) return true
+          const q = enrollSearch.toLowerCase()
+          return emp.profile?.full_name.toLowerCase().includes(q) || emp.profile?.email.toLowerCase().includes(q) || emp.job_title.toLowerCase().includes(q)
+        })
+      case 'department':
+        return selectedDepartments.size > 0 ? employees.filter(emp => selectedDepartments.has(emp.department_id)) : []
+      case 'country':
+        return selectedCountries.size > 0 ? employees.filter(emp => selectedCountries.has(emp.country)) : []
+      case 'level':
+        return selectedLevels.size > 0 ? employees.filter(emp => selectedLevels.has(emp.level)) : []
+      case 'all':
+        return employees
+      default: return []
+    }
+  }, [employees, enrollMode, enrollSearch, selectedDepartments, selectedCountries, selectedLevels])
+
+  const enrollSelectedEmployees = useMemo(() => {
+    if (enrollMode === 'individual') return employees.filter(e => selectedEmployeeIds.has(e.id))
+    return enrollTargetEmployees
+  }, [enrollMode, employees, selectedEmployeeIds, enrollTargetEmployees])
+
+  const alreadyEnrolledIds = useMemo(() => {
+    if (!selectedCourseId) return new Set<string>()
+    return new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.employee_id))
+  }, [enrollments, selectedCourseId])
+
+  const newEnrollees = useMemo(() => enrollSelectedEmployees.filter(e => !alreadyEnrolledIds.has(e.id)), [enrollSelectedEmployees, alreadyEnrolledIds])
+  const skippedEnrollees = useMemo(() => enrollSelectedEmployees.filter(e => alreadyEnrolledIds.has(e.id)), [enrollSelectedEmployees, alreadyEnrolledIds])
+
+  const filteredEnrollCourses = useMemo(() => {
+    return courses.filter(c => {
+      const matchSearch = !enrollCourseSearch || c.title.toLowerCase().includes(enrollCourseSearch.toLowerCase()) || c.description.toLowerCase().includes(enrollCourseSearch.toLowerCase())
+      const matchCategory = enrollCourseCategory === 'all' || c.category === enrollCourseCategory
+      const matchLevel = enrollCourseLevel === 'all' || c.level === enrollCourseLevel
+      return matchSearch && matchCategory && matchLevel
+    })
+  }, [courses, enrollCourseSearch, enrollCourseCategory, enrollCourseLevel])
+
+  const courseCategories = useMemo(() => [...new Set(courses.map(c => c.category))], [courses])
 
   // Analytics data
   const analyticsData = useMemo(() => {
@@ -1964,21 +2036,281 @@ export default function LearningPage() {
         </div>
       </Modal>
 
-      {/* Enroll Employee Modal */}
-      <Modal open={showEnrollModal} onClose={() => setShowEnrollModal(false)} title={t('enrollModal')}>
+      {/* Mass Enroll Employee Modal */}
+      <Modal open={showEnrollModal} onClose={resetEnrollModal} title={t('massEnrollTitle')} description={t('massEnrollDesc')} size="xl">
         <div className="space-y-4">
-          <Select label={tc('employee')} value={enrollForm.employee_id} onChange={(e) => setEnrollForm({ ...enrollForm, employee_id: e.target.value })} options={[
-            { value: '', label: t('selectEmployeePlaceholder') },
-            ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' })),
-          ]} />
-          <Select label={t('courseTitle')} value={enrollForm.course_id} onChange={(e) => setEnrollForm({ ...enrollForm, course_id: e.target.value })} options={[
-            { value: '', label: t('selectCoursePlaceholder') },
-            ...courses.map(c => ({ value: c.id, label: c.title })),
-          ]} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEnrollModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitEnrollment}>{t('enrollButton')}</Button>
+          {/* Step Indicator */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-2">
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold', enrollStep >= 1 ? 'bg-tempo-600 text-white' : 'bg-gray-200 text-t3')}>
+                {enrollStep > 1 ? <CheckCircle size={14} /> : '1'}
+              </div>
+              <span className={cn('text-xs font-medium', enrollStep >= 1 ? 'text-t1' : 'text-t3')}>{t('stepEmployees')}</span>
+            </div>
+            <div className="flex-1 h-px bg-divider" />
+            <div className="flex items-center gap-2">
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold', enrollStep >= 2 ? 'bg-tempo-600 text-white' : 'bg-gray-200 text-t3')}>2</div>
+              <span className={cn('text-xs font-medium', enrollStep >= 2 ? 'text-t1' : 'text-t3')}>{t('stepCourse')}</span>
+            </div>
           </div>
+
+          {enrollStep === 1 && (
+            <>
+              {/* Mode Toggle Pills */}
+              <div className="flex gap-1 bg-canvas rounded-lg p-1">
+                {([
+                  { id: 'individual' as const, label: t('enrollModeIndividual'), icon: UserCheck },
+                  { id: 'department' as const, label: t('enrollModeDepartment'), icon: Building2 },
+                  { id: 'country' as const, label: t('enrollModeCountry'), icon: Globe },
+                  { id: 'level' as const, label: t('enrollModeLevel'), icon: Layers },
+                  { id: 'all' as const, label: t('enrollModeAll'), icon: UsersIcon },
+                ]).map(mode => (
+                  <button key={mode.id} onClick={() => { setEnrollMode(mode.id); setEnrollSearch(''); setSelectedEmployeeIds(new Set()); setSelectedDepartments(new Set()); setSelectedCountries(new Set()); setSelectedLevels(new Set()) }}
+                    className={cn('flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex-1 justify-center',
+                      enrollMode === mode.id ? 'bg-white text-tempo-700 shadow-sm' : 'text-t3 hover:text-t1')}>
+                    <mode.icon size={13} />
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Individual Mode: Search + Checkbox List */}
+              {enrollMode === 'individual' && (
+                <>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                    <input type="text" placeholder={t('searchEmployeesPlaceholder')} value={enrollSearch} onChange={(e) => setEnrollSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600" />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                    <label className="flex items-center gap-3 px-4 py-2.5 bg-canvas cursor-pointer sticky top-0 z-10 border-b border-divider">
+                      <input type="checkbox" className="rounded border-border accent-[var(--color-tempo-600)]"
+                        checked={enrollTargetEmployees.length > 0 && enrollTargetEmployees.every(e => selectedEmployeeIds.has(e.id))}
+                        onChange={(e) => { if (e.target.checked) setSelectedEmployeeIds(new Set(enrollTargetEmployees.map(emp => emp.id))); else setSelectedEmployeeIds(new Set()) }} />
+                      <span className="text-xs font-medium text-t2">{t('selectAll')} ({enrollTargetEmployees.length})</span>
+                    </label>
+                    {enrollTargetEmployees.map(emp => (
+                      <label key={emp.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                        <input type="checkbox" className="rounded border-border accent-[var(--color-tempo-600)]" checked={selectedEmployeeIds.has(emp.id)} onChange={() => toggleEmployeeSelection(emp.id)} />
+                        <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                          <p className="text-[0.65rem] text-t3 truncate">{emp.profile?.email}</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-t2">{emp.job_title}</p>
+                          <p className="text-[0.65rem] text-t3">{getDepartmentName(emp.department_id)} · {emp.country}</p>
+                        </div>
+                      </label>
+                    ))}
+                    {enrollTargetEmployees.length === 0 && (
+                      <div className="px-4 py-8 text-center text-xs text-t3">{t('noEmployeesMatch')}</div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Department Mode: Toggle Chips + Preview List */}
+              {enrollMode === 'department' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {departments.map(dept => {
+                      const count = employees.filter(e => e.department_id === dept.id).length
+                      return (
+                        <button key={dept.id} onClick={() => toggleSetItem(selectedDepartments, setSelectedDepartments, dept.id)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            selectedDepartments.has(dept.id) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {dept.name} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {enrollTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {enrollTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{emp.job_title} · {emp.country}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Country Mode: Toggle Chips + Preview List */}
+              {enrollMode === 'country' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueCountries.map(country => {
+                      const count = employees.filter(e => e.country === country).length
+                      return (
+                        <button key={country} onClick={() => toggleSetItem(selectedCountries, setSelectedCountries, country)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            selectedCountries.has(country) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {country} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {enrollTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {enrollTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} · {emp.level}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Level Mode: Toggle Chips + Preview List */}
+              {enrollMode === 'level' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueLevels.map(level => {
+                      const count = employees.filter(e => e.level === level).length
+                      return (
+                        <button key={level} onClick={() => toggleSetItem(selectedLevels, setSelectedLevels, level)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            selectedLevels.has(level) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {level} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {enrollTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {enrollTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} · {emp.country}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Entire Company Mode */}
+              {enrollMode === 'all' && (
+                <div className="bg-canvas rounded-lg p-6 text-center">
+                  <UsersIcon size={32} className="mx-auto text-tempo-600 mb-2" />
+                  <p className="text-sm font-semibold text-t1">{t('entireCompanySelected')}</p>
+                  <p className="text-xs text-t3 mt-1">{t('allEmployeesWillBeEnrolled', { count: employees.length })}</p>
+                </div>
+              )}
+
+              {/* Footer Step 1 */}
+              <div className="flex items-center justify-between pt-2 border-t border-divider">
+                <p className="text-xs text-t2 font-medium">
+                  {enrollSelectedEmployees.length > 0 ? t('employeesSelected', { count: enrollSelectedEmployees.length }) : t('noEmployeesSelected')}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={resetEnrollModal}>{tc('cancel')}</Button>
+                  <Button onClick={() => setEnrollStep(2)} disabled={enrollSelectedEmployees.length === 0}>
+                    {t('nextSelectCourse')} <ArrowRight size={14} className="ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {enrollStep === 2 && (
+            <>
+              {/* Course Search + Filters */}
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                  <input type="text" placeholder={t('searchCoursesPlaceholder')} value={enrollCourseSearch} onChange={(e) => setEnrollCourseSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600" />
+                </div>
+                <select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+                  value={enrollCourseCategory} onChange={(e) => setEnrollCourseCategory(e.target.value)}>
+                  <option value="all">{t('allCategories')}</option>
+                  {courseCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+                  value={enrollCourseLevel} onChange={(e) => setEnrollCourseLevel(e.target.value)}>
+                  <option value="all">{t('allLevels')}</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+
+              {/* Course Radio List */}
+              <div className="max-h-56 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                {filteredEnrollCourses.map(course => (
+                  <label key={course.id} className={cn('flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors',
+                    selectedCourseId === course.id ? 'bg-tempo-50' : 'hover:bg-canvas/50')}>
+                    <input type="radio" name="enroll-course" className="accent-[var(--color-tempo-600)]" checked={selectedCourseId === course.id} onChange={() => setSelectedCourseId(course.id)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-t1">{course.title}</p>
+                        {course.is_mandatory && <Badge variant="warning">Mandatory</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Badge>{course.category}</Badge>
+                        <Badge>{course.format}</Badge>
+                        <Badge>{course.level}</Badge>
+                        <span className="text-[0.6rem] text-t3">{course.duration_hours}h</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {/* Enrollment Summary */}
+              {selectedCourseId && (
+                <div className="space-y-3">
+                  <h4 className="text-[0.65rem] font-semibold text-t2 uppercase tracking-wider">{t('enrollmentSummary')}</h4>
+                  <div className="bg-canvas rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-t1">{courses.find(c => c.id === selectedCourseId)?.title}</span>
+                      <Badge variant="info">{courses.find(c => c.id === selectedCourseId)?.duration_hours}h · {courses.find(c => c.id === selectedCourseId)?.format}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-divider">
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-t1">{enrollSelectedEmployees.length}</p>
+                        <p className="text-[0.6rem] text-t3">{t('totalSelected')}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-green-600">{newEnrollees.length}</p>
+                        <p className="text-[0.6rem] text-t3">{t('newEnrollments')}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-amber-500">{skippedEnrollees.length}</p>
+                        <p className="text-[0.6rem] text-t3">{t('alreadyEnrolledSkipped')}</p>
+                      </div>
+                    </div>
+                    {skippedEnrollees.length > 0 && (
+                      <div className="pt-3 mt-3 border-t border-divider">
+                        <p className="text-[0.6rem] text-t3 mb-1.5">{t('alreadyEnrolledList')}:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {skippedEnrollees.map(emp => <Badge key={emp.id} variant="warning">{emp.profile?.full_name}</Badge>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer Step 2 */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-divider">
+                <Button variant="secondary" onClick={() => setEnrollStep(1)}>{tc('back')}</Button>
+                <Button variant="secondary" onClick={resetEnrollModal}>{tc('cancel')}</Button>
+                <Button onClick={submitMassEnrollment} disabled={!selectedCourseId || newEnrollees.length === 0}>
+                  {t('enrollCount', { count: newEnrollees.length })}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 

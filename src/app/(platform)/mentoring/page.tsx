@@ -13,7 +13,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { UserCheck, Users, Plus, Sparkles, BookOpen, Target, BarChart3, Video, Phone, MapPin, Star, Calendar, Clock } from 'lucide-react'
+import { UserCheck, Users, Plus, Sparkles, BookOpen, Target, BarChart3, Video, Phone, MapPin, Star, Calendar, Clock, Search, Building2 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { calculateMentorMatch, analyzeMentoringEffectiveness, suggestSessionTopics, predictPairSuccess } from '@/lib/ai-engine'
@@ -22,7 +22,7 @@ export default function MentoringPage() {
   const t = useTranslations('mentoring')
   const tc = useTranslations('common')
   const {
-    mentoringPrograms, mentoringPairs, employees,
+    mentoringPrograms, mentoringPairs, employees, departments,
     addMentoringProgram, addMentoringPair, updateMentoringPair,
     getEmployeeName, getDepartmentName,
     mentoringSessions, addMentoringSession, updateMentoringSession,
@@ -46,6 +46,14 @@ export default function MentoringPage() {
   const [showPairModal, setShowPairModal] = useState(false)
   const [showSessionModal, setShowSessionModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
+
+  // Bulk pair matching state
+  const [showBulkMatchModal, setShowBulkMatchModal] = useState(false)
+  const [bulkMatchStep, setBulkMatchStep] = useState<1 | 2>(1)
+  const [bulkMatchMode, setBulkMatchMode] = useState<'department' | 'level' | 'all'>('department')
+  const [bulkMatchSelectedDepts, setBulkMatchSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkMatchSelectedLevels, setBulkMatchSelectedLevels] = useState<Set<string>>(new Set())
+  const [bulkMatchProgramId, setBulkMatchProgramId] = useState('')
 
   // ---- Forms ----
   const [programForm, setProgramForm] = useState({ title: '', type: 'one_on_one' as string, status: 'active' as string, duration_months: 6, start_date: '' })
@@ -103,6 +111,53 @@ export default function MentoringPage() {
     return s.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }, [mentoringSessions, sessionFilterPair])
 
+  // ---- Bulk Match Computed ----
+  const seniorEmployees = useMemo(() =>
+    employees.filter(e => ['Director', 'Executive', 'Senior Manager'].includes(e.level || '')),
+    [employees]
+  )
+
+  const juniorEmployees = useMemo(() =>
+    employees.filter(e => ['Associate', 'Junior', 'Mid'].includes(e.level || '')),
+    [employees]
+  )
+
+  const bulkMatchMentees = useMemo(() => {
+    if (bulkMatchMode === 'all') return juniorEmployees
+    if (bulkMatchMode === 'department') {
+      if (bulkMatchSelectedDepts.size === 0) return []
+      return juniorEmployees.filter(e => bulkMatchSelectedDepts.has(e.department_id))
+    }
+    if (bulkMatchMode === 'level') {
+      if (bulkMatchSelectedLevels.size === 0) return []
+      return juniorEmployees.filter(e => bulkMatchSelectedLevels.has(e.level || ''))
+    }
+    return []
+  }, [juniorEmployees, bulkMatchMode, bulkMatchSelectedDepts, bulkMatchSelectedLevels])
+
+  const existingPairMenteeIds = useMemo(() =>
+    new Set(mentoringPairs.filter(p => p.status === 'active').map(p => p.mentee_id)),
+    [mentoringPairs]
+  )
+
+  const bulkMatchNewMentees = useMemo(() =>
+    bulkMatchMentees.filter(m => !existingPairMenteeIds.has(m.id)),
+    [bulkMatchMentees, existingPairMenteeIds]
+  )
+
+  const bulkMatchSuggestedPairs = useMemo(() => {
+    if (seniorEmployees.length === 0 || bulkMatchNewMentees.length === 0) return []
+    const pairs: Array<{ mentor: typeof employees[0]; mentee: typeof employees[0]; score: number }> = []
+    bulkMatchNewMentees.forEach((mentee, idx) => {
+      // Prefer same-department mentor, fallback to round-robin
+      const sameDeptMentor = seniorEmployees.find(s => s.department_id === mentee.department_id)
+      const mentor = sameDeptMentor || seniorEmployees[idx % seniorEmployees.length]
+      const matchResult = calculateMentorMatch(mentor, mentee, employees)
+      pairs.push({ mentor, mentee, score: matchResult.value })
+    })
+    return pairs
+  }, [seniorEmployees, bulkMatchNewMentees, employees])
+
   // ---- Helpers ----
   function getPairLabel(pairId: string) {
     const pair = mentoringPairs.find(p => p.id === pairId)
@@ -150,11 +205,43 @@ export default function MentoringPage() {
     addMentoringPair({ program_id: program.id, mentor_id: mentor.id, mentee_id: mentee.id, status: 'active', match_score: score })
   }
 
+  function toggleBulkMatchSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkMatch() {
+    setShowBulkMatchModal(false)
+    setBulkMatchStep(1)
+    setBulkMatchMode('department')
+    setBulkMatchSelectedDepts(new Set())
+    setBulkMatchSelectedLevels(new Set())
+    setBulkMatchProgramId('')
+  }
+
+  function submitBulkMatch() {
+    if (!bulkMatchProgramId || bulkMatchSuggestedPairs.length === 0) return
+    bulkMatchSuggestedPairs.forEach(({ mentor, mentee, score }) => {
+      addMentoringPair({
+        program_id: bulkMatchProgramId,
+        mentor_id: mentor.id,
+        mentee_id: mentee.id,
+        status: 'active',
+        match_score: score,
+      })
+    })
+    addToast(`${bulkMatchSuggestedPairs.length} mentoring pairs created successfully`)
+    resetBulkMatch()
+  }
+
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowBulkMatchModal(true)}><Users size={14} /> Bulk Match</Button>
             <Button size="sm" variant="outline" onClick={() => setShowPairModal(true)}><Plus size={14} /> {t('matchPair')}</Button>
             <Button size="sm" onClick={() => setShowProgramModal(true)}><Plus size={14} /> {t('newProgram')}</Button>
           </div>
@@ -739,6 +826,204 @@ export default function MentoringPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowGoalModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitGoal}>{t('createGoal')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Mentor Matching Modal */}
+      <Modal open={showBulkMatchModal} onClose={resetBulkMatch} title="Bulk Mentor Matching" size="xl">
+        <div className="space-y-6">
+          {/* Step Indicator */}
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bulkMatchStep === 1 ? 'bg-tempo-100 text-tempo-700' : 'bg-green-100 text-green-700'}`}>
+              <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-xs font-semibold">{bulkMatchStep > 1 ? '\u2713' : '1'}</span>
+              Select Mentee Pool
+            </div>
+            <div className="h-px flex-1 bg-divider" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bulkMatchStep === 2 ? 'bg-tempo-100 text-tempo-700' : 'bg-canvas text-t3'}`}>
+              <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-xs font-semibold border border-divider">2</span>
+              Review & Create Pairs
+            </div>
+          </div>
+
+          {/* Step 1: Select Mentee Pool */}
+          {bulkMatchStep === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm text-t2">Choose how to select mentees for bulk matching. Senior employees (Director, Executive, Senior Manager) will be automatically assigned as mentors.</p>
+
+              {/* Mode Selection */}
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setBulkMatchMode('department')}
+                  className={`p-4 rounded-xl border text-left transition-all ${bulkMatchMode === 'department' ? 'border-tempo-500 bg-tempo-50 ring-1 ring-tempo-500' : 'border-border hover:border-tempo-300'}`}
+                >
+                  <Building2 size={20} className={bulkMatchMode === 'department' ? 'text-tempo-600' : 'text-t3'} />
+                  <p className="text-sm font-medium text-t1 mt-2">By Department</p>
+                  <p className="text-xs text-t3 mt-0.5">Select specific departments</p>
+                </button>
+                <button
+                  onClick={() => setBulkMatchMode('level')}
+                  className={`p-4 rounded-xl border text-left transition-all ${bulkMatchMode === 'level' ? 'border-tempo-500 bg-tempo-50 ring-1 ring-tempo-500' : 'border-border hover:border-tempo-300'}`}
+                >
+                  <BarChart3 size={20} className={bulkMatchMode === 'level' ? 'text-tempo-600' : 'text-t3'} />
+                  <p className="text-sm font-medium text-t1 mt-2">By Level</p>
+                  <p className="text-xs text-t3 mt-0.5">Select specific levels</p>
+                </button>
+                <button
+                  onClick={() => setBulkMatchMode('all')}
+                  className={`p-4 rounded-xl border text-left transition-all ${bulkMatchMode === 'all' ? 'border-tempo-500 bg-tempo-50 ring-1 ring-tempo-500' : 'border-border hover:border-tempo-300'}`}
+                >
+                  <Users size={20} className={bulkMatchMode === 'all' ? 'text-tempo-600' : 'text-t3'} />
+                  <p className="text-sm font-medium text-t1 mt-2">Entire Company</p>
+                  <p className="text-xs text-t3 mt-0.5">All eligible employees</p>
+                </button>
+              </div>
+
+              {/* Department Selection */}
+              {bulkMatchMode === 'department' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-t2">Select Departments</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {departments.map(dept => (
+                      <label key={dept.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-canvas cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={bulkMatchSelectedDepts.has(dept.id)}
+                          onChange={() => toggleBulkMatchSet(bulkMatchSelectedDepts, dept.id, setBulkMatchSelectedDepts)}
+                          className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                        />
+                        <span className="text-sm text-t1">{dept.name}</span>
+                        <span className="text-xs text-t3 ml-auto">{juniorEmployees.filter(e => e.department_id === dept.id).length} mentees</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Level Selection */}
+              {bulkMatchMode === 'level' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-t2">Select Levels</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Associate', 'Junior', 'Mid'].map(level => (
+                      <label key={level} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-canvas cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={bulkMatchSelectedLevels.has(level)}
+                          onChange={() => toggleBulkMatchSet(bulkMatchSelectedLevels, level, setBulkMatchSelectedLevels)}
+                          className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                        />
+                        <span className="text-sm text-t1">{level}</span>
+                        <span className="text-xs text-t3 ml-auto">{juniorEmployees.filter(e => e.level === level).length}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview */}
+              <div className="bg-canvas rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search size={14} className="text-t3" />
+                  <span className="text-xs font-medium text-t2">Preview</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-t1">{seniorEmployees.length}</p>
+                    <p className="text-xs text-t3">Available Mentors</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-t1">{bulkMatchMentees.length}</p>
+                    <p className="text-xs text-t3">Eligible Mentees</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-tempo-600">{bulkMatchNewMentees.length}</p>
+                    <p className="text-xs text-t3">New Mentees (Unmatched)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Review & Create Pairs */}
+          {bulkMatchStep === 2 && (
+            <div className="space-y-4">
+              <Select
+                label="Assign to Program"
+                value={bulkMatchProgramId}
+                onChange={(e) => setBulkMatchProgramId(e.target.value)}
+                options={[
+                  { value: '', label: 'Select a program' },
+                  ...mentoringPrograms.map(p => ({ value: p.id, label: p.title })),
+                ]}
+              />
+
+              {/* Summary */}
+              <div className="bg-canvas rounded-xl p-4 flex items-center gap-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-tempo-600">{bulkMatchSuggestedPairs.length}</p>
+                  <p className="text-xs text-t3">New Pairs</p>
+                </div>
+                <div className="h-8 w-px bg-divider" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t3">{bulkMatchMentees.length - bulkMatchNewMentees.length}</p>
+                  <p className="text-xs text-t3">Already Paired</p>
+                </div>
+                <div className="h-8 w-px bg-divider" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t1">{bulkMatchSuggestedPairs.length > 0 ? Math.round(bulkMatchSuggestedPairs.reduce((a, p) => a + p.score, 0) / bulkMatchSuggestedPairs.length) : 0}%</p>
+                  <p className="text-xs text-t3">Avg Match Score</p>
+                </div>
+              </div>
+
+              {/* Suggested Pairs List */}
+              <div className="space-y-2 max-h-[340px] overflow-y-auto">
+                {bulkMatchSuggestedPairs.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-t3">No new pairs to create. All eligible mentees are already matched.</div>
+                ) : bulkMatchSuggestedPairs.map(({ mentor, mentee, score }, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-canvas rounded-lg">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Avatar name={mentor.profile?.full_name || 'Mentor'} size="sm" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-t1 truncate">{mentor.profile?.full_name}</p>
+                        <p className="text-xs text-t3 truncate">{mentor.job_title}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-t3 flex-shrink-0">&#8594;</span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Avatar name={mentee.profile?.full_name || 'Mentee'} size="sm" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-t1 truncate">{mentee.profile?.full_name}</p>
+                        <p className="text-xs text-t3 truncate">{mentee.job_title}</p>
+                      </div>
+                    </div>
+                    <Badge variant={score >= 80 ? 'success' : score >= 60 ? 'warning' : 'default'}>{score}%</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-between pt-2 border-t border-divider">
+            <div>
+              {bulkMatchStep === 2 && (
+                <Button variant="outline" onClick={() => setBulkMatchStep(1)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={resetBulkMatch}>Cancel</Button>
+              {bulkMatchStep === 1 && (
+                <Button onClick={() => setBulkMatchStep(2)} disabled={bulkMatchNewMentees.length === 0}>
+                  Next
+                </Button>
+              )}
+              {bulkMatchStep === 2 && (
+                <Button onClick={submitBulkMatch} disabled={!bulkMatchProgramId || bulkMatchSuggestedPairs.length === 0}>
+                  Create {bulkMatchSuggestedPairs.length} Pairs
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

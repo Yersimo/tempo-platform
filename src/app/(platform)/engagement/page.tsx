@@ -12,8 +12,9 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, ChartLegend, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
+import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2, Search, Users, Building2, Globe, Send } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard, AIAlertBanner, AIRecommendationList } from '@/components/ai'
 import { identifyEngagementDrivers, analyzeSurveyResponses, suggestActionPlans, predictEngagementTrend } from '@/lib/ai-engine'
 
@@ -23,12 +24,24 @@ export default function EngagementPage() {
   const {
     surveys, engagementScores, addSurvey, updateSurvey, getDepartmentName,
     surveyResponses, actionPlans, addActionPlan, updateActionPlan, employees,
+    departments, addToast, getEmployeeName,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('surveys')
   const [showSurveyModal, setShowSurveyModal] = useState(false)
   const [showActionPlanModal, setShowActionPlanModal] = useState(false)
   const [viewResultsSurveyId, setViewResultsSurveyId] = useState<string | null>(null)
+
+  // Bulk survey distribution state
+  const [showBulkSurveyModal, setShowBulkSurveyModal] = useState(false)
+  const [bulkSurveyStep, setBulkSurveyStep] = useState<1 | 2>(1)
+  const [bulkSurveyMode, setBulkSurveyMode] = useState<'individual' | 'department' | 'country' | 'level' | 'all'>('all')
+  const [bulkSurveySearch, setBulkSurveySearch] = useState('')
+  const [bulkSurveySelectedEmpIds, setBulkSurveySelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkSurveySelectedDepts, setBulkSurveySelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkSurveySelectedCountries, setBulkSurveySelectedCountries] = useState<Set<string>>(new Set())
+  const [bulkSurveySelectedLevels, setBulkSurveySelectedLevels] = useState<Set<string>>(new Set())
+  const [bulkSurveySurveyId, setBulkSurveySurveyId] = useState('')
 
   const [surveyForm, setSurveyForm] = useState({
     title: '', type: 'pulse' as 'pulse' | 'enps' | 'annual',
@@ -55,6 +68,37 @@ export default function EngagementPage() {
   const avgENPS = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.enps_score, 0) / engagementScores.length) : 0
   const avgResponse = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.response_rate, 0) / engagementScores.length) : 0
   const activeSurveys = surveys.filter(s => s.status === 'active').length
+
+  // ---- Bulk Survey Distribution Memos ----
+  const uniqueCountries = useMemo(() => [...new Set(employees.map((e: any) => e.country))].filter(Boolean).sort(), [employees])
+  const uniqueLevels = useMemo(() => [...new Set(employees.map((e: any) => e.level))].filter(Boolean).sort(), [employees])
+
+  const bulkSurveyTargetEmployees = useMemo(() => {
+    switch (bulkSurveyMode) {
+      case 'individual':
+        return employees.filter((e: any) => {
+          if (!bulkSurveySearch) return true
+          const q = bulkSurveySearch.toLowerCase()
+          return (e.profile?.full_name?.toLowerCase().includes(q) || e.job_title?.toLowerCase().includes(q))
+        })
+      case 'department':
+        return bulkSurveySelectedDepts.size > 0 ? employees.filter((e: any) => bulkSurveySelectedDepts.has(e.department_id)) : []
+      case 'country':
+        return bulkSurveySelectedCountries.size > 0 ? employees.filter((e: any) => bulkSurveySelectedCountries.has(e.country)) : []
+      case 'level':
+        return bulkSurveySelectedLevels.size > 0 ? employees.filter((e: any) => bulkSurveySelectedLevels.has(e.level)) : []
+      case 'all':
+        return employees
+      default: return []
+    }
+  }, [employees, bulkSurveyMode, bulkSurveySearch, bulkSurveySelectedDepts, bulkSurveySelectedCountries, bulkSurveySelectedLevels])
+
+  const bulkSurveySelectedEmployees = useMemo(() => {
+    if (bulkSurveyMode === 'individual') return employees.filter((e: any) => bulkSurveySelectedEmpIds.has(e.id))
+    return bulkSurveyTargetEmployees
+  }, [bulkSurveyMode, employees, bulkSurveySelectedEmpIds, bulkSurveyTargetEmployees])
+
+  const activeSurveysForBulk = useMemo(() => surveys.filter(s => s.status === 'active'), [surveys])
 
   // ---- AI-Powered Insights ----
   const driverInsights = useMemo(() => identifyEngagementDrivers(engagementScores), [engagementScores])
@@ -166,10 +210,30 @@ export default function EngagementPage() {
     updateActionPlan(id, { status: next })
   }
 
+  function toggleBulkSurveySet<T>(set: Set<T>, setter: React.Dispatch<React.SetStateAction<Set<T>>>, item: T) {
+    setter(prev => { const next = new Set(prev); if (next.has(item)) next.delete(item); else next.add(item); return next })
+  }
+
+  function resetBulkSurvey() {
+    setShowBulkSurveyModal(false); setBulkSurveyStep(1); setBulkSurveyMode('all')
+    setBulkSurveySearch(''); setBulkSurveySelectedEmpIds(new Set()); setBulkSurveySelectedDepts(new Set())
+    setBulkSurveySelectedCountries(new Set()); setBulkSurveySelectedLevels(new Set()); setBulkSurveySurveyId('')
+  }
+
+  function submitBulkSurvey() {
+    const count = bulkSurveySelectedEmployees.length
+    const surveyTitle = surveys.find(s => s.id === bulkSurveySurveyId)?.title || 'Survey'
+    addToast(`Survey "${surveyTitle}" distributed to ${count} employee${count !== 1 ? 's' : ''} successfully`)
+    resetBulkSurvey()
+  }
+
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> {t('newSurvey')}</Button>}
+        actions={<div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowBulkSurveyModal(true)}><Send size={14} /> Distribute Survey</Button>
+          <Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> {t('newSurvey')}</Button>
+        </div>}
       />
 
       {/* KPI Stats */}
@@ -784,6 +848,209 @@ export default function EngagementPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowActionPlanModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitActionPlan}>{t('createActionPlan')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Survey Distribution Modal */}
+      <Modal open={showBulkSurveyModal} onClose={resetBulkSurvey} title="Distribute Survey" size="xl">
+        <p className="text-xs text-t3 mb-4">Send a survey to employees by selecting recipients and choosing a survey to distribute.</p>
+        {/* Step indicator */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkSurveyStep === 1 ? 'bg-tempo-500 text-white' : 'bg-success/20 text-success'}`}>
+              {bulkSurveyStep > 1 ? '\u2713' : '1'}
+            </div>
+            <span className={`text-xs font-medium ${bulkSurveyStep === 1 ? 'text-t1' : 'text-success'}`}>Select Recipients</span>
+          </div>
+          <div className="flex-1 h-px bg-divider" />
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkSurveyStep === 2 ? 'bg-tempo-500 text-white' : 'bg-canvas text-t3'}`}>2</div>
+            <span className={`text-xs font-medium ${bulkSurveyStep === 2 ? 'text-t1' : 'text-t3'}`}>Select Survey</span>
+          </div>
+        </div>
+
+        {bulkSurveyStep === 1 && (
+          <>
+            {/* Mode toggle */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(['individual', 'department', 'country', 'level', 'all'] as const).map(mode => (
+                <button key={mode} onClick={() => setBulkSurveyMode(mode)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkSurveyMode === mode ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                  {mode === 'individual' && <><Search size={12} className="inline mr-1" />Individual</>}
+                  {mode === 'department' && <><Building2 size={12} className="inline mr-1" />Department</>}
+                  {mode === 'country' && <><Globe size={12} className="inline mr-1" />Country</>}
+                  {mode === 'level' && <><Users size={12} className="inline mr-1" />Level</>}
+                  {mode === 'all' && <><Users size={12} className="inline mr-1" />Entire Company</>}
+                </button>
+              ))}
+            </div>
+
+            {bulkSurveyMode === 'individual' && (
+              <>
+                <Input placeholder="Search employees by name or title..." value={bulkSurveySearch} onChange={e => setBulkSurveySearch(e.target.value)} />
+                <div className="mt-2 flex items-center gap-2 px-2 py-1.5 border-b border-divider">
+                  <input type="checkbox" className="rounded border-border"
+                    checked={bulkSurveyTargetEmployees.length > 0 && bulkSurveyTargetEmployees.every((e: any) => bulkSurveySelectedEmpIds.has(e.id))}
+                    onChange={() => {
+                      if (bulkSurveyTargetEmployees.every((e: any) => bulkSurveySelectedEmpIds.has(e.id))) setBulkSurveySelectedEmpIds(new Set())
+                      else setBulkSurveySelectedEmpIds(new Set(bulkSurveyTargetEmployees.map((e: any) => e.id)))
+                    }} />
+                  <span className="text-xs text-t2 font-medium">Select All ({bulkSurveyTargetEmployees.length})</span>
+                </div>
+                <div className="max-h-[240px] overflow-y-auto divide-y divide-divider">
+                  {bulkSurveyTargetEmployees.map((emp: any) => (
+                    <label key={emp.id} className="flex items-center gap-3 px-2 py-2.5 hover:bg-canvas cursor-pointer">
+                      <input type="checkbox" className="rounded border-border"
+                        checked={bulkSurveySelectedEmpIds.has(emp.id)}
+                        onChange={() => toggleBulkSurveySet(bulkSurveySelectedEmpIds, setBulkSurveySelectedEmpIds, emp.id)} />
+                      <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{emp.job_title}</p>
+                      </div>
+                      <span className="text-[0.65rem] text-t3">{emp.country}</span>
+                    </label>
+                  ))}
+                  {bulkSurveyTargetEmployees.length === 0 && <p className="p-4 text-xs text-t3 text-center">No employees match your search.</p>}
+                </div>
+              </>
+            )}
+
+            {bulkSurveyMode === 'department' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {departments.map((dept: any) => {
+                  const count = employees.filter((e: any) => e.department_id === dept.id).length
+                  return (
+                    <button key={dept.id} onClick={() => toggleBulkSurveySet(bulkSurveySelectedDepts, setBulkSurveySelectedDepts, dept.id)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkSurveySelectedDepts.has(dept.id) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {dept.name} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {bulkSurveyMode === 'country' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {uniqueCountries.map((country: string) => {
+                  const count = employees.filter((e: any) => e.country === country).length
+                  return (
+                    <button key={country} onClick={() => toggleBulkSurveySet(bulkSurveySelectedCountries, setBulkSurveySelectedCountries, country)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkSurveySelectedCountries.has(country) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {country} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {bulkSurveyMode === 'level' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {uniqueLevels.map((level: string) => {
+                  const count = employees.filter((e: any) => e.level === level).length
+                  return (
+                    <button key={level} onClick={() => toggleBulkSurveySet(bulkSurveySelectedLevels, setBulkSurveySelectedLevels, level)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${bulkSurveySelectedLevels.has(level) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {level} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {bulkSurveyMode === 'all' && (
+              <div className="border border-border rounded-lg p-6 text-center">
+                <Users size={32} className="mx-auto mb-2 text-tempo-500" />
+                <h3 className="text-sm font-semibold text-t1">Entire Company Selected</h3>
+                <p className="text-xs text-t3 mt-1">All {employees.length} employees will receive the survey.</p>
+              </div>
+            )}
+
+            {/* Preview of selected employees for non-individual modes (except all) */}
+            {(bulkSurveyMode !== 'individual' && bulkSurveyMode !== 'all' && bulkSurveySelectedEmployees.length > 0) && (
+              <div className="max-h-[120px] overflow-y-auto divide-y divide-divider border border-border rounded-lg mt-2">
+                {bulkSurveySelectedEmployees.slice(0, 6).map((emp: any) => (
+                  <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
+                    <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                    <span className="text-xs text-t1">{emp.profile?.full_name}</span>
+                    <span className="text-[0.65rem] text-t3 ml-auto">{getDepartmentName(emp.department_id)}</span>
+                  </div>
+                ))}
+                {bulkSurveySelectedEmployees.length > 6 && <p className="px-3 py-1.5 text-xs text-t3">+{bulkSurveySelectedEmployees.length - 6} more</p>}
+              </div>
+            )}
+          </>
+        )}
+
+        {bulkSurveyStep === 2 && (
+          <>
+            {/* Survey selection */}
+            <h4 className="text-xs font-semibold text-t1 mb-3">Select a Survey to Distribute</h4>
+            {activeSurveysForBulk.length === 0 ? (
+              <div className="border border-border rounded-lg p-6 text-center">
+                <p className="text-sm text-t3">No active surveys available. Create a new survey first.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {activeSurveysForBulk.map(survey => (
+                  <label key={survey.id} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${bulkSurveySurveyId === survey.id ? 'border-tempo-500 bg-tempo-50' : 'border-border hover:border-tempo-300'}`}>
+                    <input type="radio" name="bulkSurvey" className="text-tempo-500"
+                      checked={bulkSurveySurveyId === survey.id}
+                      onChange={() => setBulkSurveySurveyId(survey.id)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{survey.title}</p>
+                      <p className="text-xs text-t3">{survey.type.toUpperCase()} &middot; {survey.start_date} to {survey.end_date}</p>
+                    </div>
+                    <Badge variant={survey.type === 'enps' ? 'info' : survey.type === 'pulse' ? 'orange' : 'default'}>
+                      {survey.type.toUpperCase()}
+                    </Badge>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* Distribution Summary */}
+            <div className="border border-border rounded-lg p-4 mt-4">
+              <h4 className="text-xs font-semibold text-t1 mb-3">Distribution Summary</h4>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-lg font-bold text-t1">{bulkSurveySelectedEmployees.length}</p>
+                  <p className="text-[0.65rem] text-t3">Recipients</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-tempo-600">{bulkSurveySurveyId ? '1' : '0'}</p>
+                  <p className="text-[0.65rem] text-t3">Survey Selected</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-emerald-600">{avgResponse > 0 ? `~${avgResponse}%` : 'N/A'}</p>
+                  <p className="text-[0.65rem] text-t3">Expected Response Rate</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-divider">
+          <p className="text-xs text-t3">
+            {bulkSurveyStep === 1
+              ? `${bulkSurveySelectedEmployees.length} recipient${bulkSurveySelectedEmployees.length !== 1 ? 's' : ''} selected`
+              : `Ready to distribute to ${bulkSurveySelectedEmployees.length} employee${bulkSurveySelectedEmployees.length !== 1 ? 's' : ''}`}
+          </p>
+          <div className="flex gap-2">
+            {bulkSurveyStep === 2 && <Button variant="secondary" size="sm" onClick={() => setBulkSurveyStep(1)}>Back</Button>}
+            <Button variant="secondary" size="sm" onClick={resetBulkSurvey}>Cancel</Button>
+            {bulkSurveyStep === 1 && (
+              <Button size="sm" disabled={bulkSurveySelectedEmployees.length === 0} onClick={() => setBulkSurveyStep(2)}>
+                Next: Select Survey &rarr;
+              </Button>
+            )}
+            {bulkSurveyStep === 2 && (
+              <Button size="sm" disabled={!bulkSurveySurveyId || bulkSurveySelectedEmployees.length === 0} onClick={submitBulkSurvey}>
+                <Send size={14} /> Send Survey
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

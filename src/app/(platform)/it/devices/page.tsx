@@ -10,7 +10,8 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight } from 'lucide-react'
+import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe } from 'lucide-react'
+import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
 import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
@@ -20,7 +21,7 @@ import { demoComplianceFrameworks, demoSecurityPosture, demoProvisioningEvents }
 export default function DevicesPage() {
   const t = useTranslations('devices')
   const tc = useTranslations('common')
-  const { devices, employees, addDevice, updateDevice, getEmployeeName } = useTempo()
+  const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast } = useTempo()
 
   const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
   const securityScore = useMemo(() => scoreSecurityPosture(devices), [devices])
@@ -44,6 +45,107 @@ export default function DevicesPage() {
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [assignDeviceId, setAssignDeviceId] = useState<string | null>(null)
   const [assignEmployeeId, setAssignEmployeeId] = useState('')
+
+  // Bulk Assign modal state
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false)
+  const [bulkStep, setBulkStep] = useState<1 | 2>(1)
+  const [deviceSelectMode, setDeviceSelectMode] = useState<'individual' | 'type' | 'all'>('individual')
+  const [deviceSearch, setDeviceSearch] = useState('')
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
+  const [selectedDeviceTypes, setSelectedDeviceTypes] = useState<Set<string>>(new Set())
+  const [empAssignMode, setEmpAssignMode] = useState<'individual' | 'department' | 'country'>('individual')
+  const [empSearch, setEmpSearch] = useState('')
+  const [selectedEmpIds, setSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [selectedDepts, setSelectedDepts] = useState<Set<string>>(new Set())
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set())
+
+  const availableDevices = useMemo(() => devices.filter(d => d.status === 'available'), [devices])
+  const deviceTypes = useMemo(() => [...new Set(devices.map(d => d.type))].sort(), [devices])
+  const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country))].filter(Boolean).sort(), [employees])
+
+  const bulkTargetDevices = useMemo(() => {
+    switch (deviceSelectMode) {
+      case 'individual':
+        return availableDevices.filter(d => {
+          if (!deviceSearch) return true
+          const q = deviceSearch.toLowerCase()
+          return (d.brand?.toLowerCase().includes(q) || d.model?.toLowerCase().includes(q) || d.serial_number?.toLowerCase().includes(q))
+        })
+      case 'type':
+        return selectedDeviceTypes.size > 0 ? availableDevices.filter(d => selectedDeviceTypes.has(d.type)) : []
+      case 'all':
+        return availableDevices
+      default: return []
+    }
+  }, [availableDevices, deviceSelectMode, deviceSearch, selectedDeviceTypes])
+
+  const bulkSelectedDevices = useMemo(() => {
+    if (deviceSelectMode === 'individual') return availableDevices.filter(d => selectedDeviceIds.has(d.id))
+    return bulkTargetDevices
+  }, [deviceSelectMode, availableDevices, selectedDeviceIds, bulkTargetDevices])
+
+  const bulkTargetEmployees = useMemo(() => {
+    switch (empAssignMode) {
+      case 'individual':
+        return employees.filter(emp => {
+          if (!empSearch) return true
+          const q = empSearch.toLowerCase()
+          const name = emp.profile?.full_name?.toLowerCase() || ''
+          const email = emp.profile?.email?.toLowerCase() || ''
+          const title = emp.job_title?.toLowerCase() || ''
+          return name.includes(q) || email.includes(q) || title.includes(q)
+        })
+      case 'department':
+        return selectedDepts.size > 0 ? employees.filter(e => selectedDepts.has(e.department_id)) : []
+      case 'country':
+        return selectedCountries.size > 0 ? employees.filter(e => selectedCountries.has(e.country)) : []
+      default: return []
+    }
+  }, [employees, empAssignMode, empSearch, selectedDepts, selectedCountries])
+
+  const bulkSelectedEmployees = useMemo(() => {
+    if (empAssignMode === 'individual') return employees.filter(e => selectedEmpIds.has(e.id))
+    return bulkTargetEmployees
+  }, [empAssignMode, employees, selectedEmpIds, bulkTargetEmployees])
+
+  // Detect employees who already have an assigned device of the same type(s) as selected
+  const selectedDeviceTypeSet = useMemo(() => new Set(bulkSelectedDevices.map(d => d.type)), [bulkSelectedDevices])
+  const alreadyHaveDeviceIds = useMemo(() => {
+    const assigned = devices.filter(d => d.status === 'assigned' && d.assigned_to)
+    return new Set(bulkSelectedEmployees.filter(emp =>
+      assigned.some(d => d.assigned_to === emp.id && selectedDeviceTypeSet.has(d.type))
+    ).map(e => e.id))
+  }, [devices, bulkSelectedEmployees, selectedDeviceTypeSet])
+
+  const assignableCount = Math.min(
+    bulkSelectedDevices.length,
+    bulkSelectedEmployees.filter(e => !alreadyHaveDeviceIds.has(e.id)).length
+  )
+
+  function toggleSet<T>(set: Set<T>, setter: React.Dispatch<React.SetStateAction<Set<T>>>, item: T) {
+    setter(prev => { const next = new Set(prev); if (next.has(item)) next.delete(item); else next.add(item); return next })
+  }
+
+  function resetBulkAssign() {
+    setShowBulkAssignModal(false); setBulkStep(1); setDeviceSelectMode('individual')
+    setDeviceSearch(''); setSelectedDeviceIds(new Set()); setSelectedDeviceTypes(new Set())
+    setEmpAssignMode('individual'); setEmpSearch(''); setSelectedEmpIds(new Set())
+    setSelectedDepts(new Set()); setSelectedCountries(new Set())
+  }
+
+  function submitBulkAssign() {
+    const eligibleEmps = bulkSelectedEmployees.filter(e => !alreadyHaveDeviceIds.has(e.id))
+    const devicesToAssign = bulkSelectedDevices.slice(0, eligibleEmps.length)
+    let assigned = 0
+    devicesToAssign.forEach((device, i) => {
+      if (eligibleEmps[i]) {
+        updateDevice(device.id, { assigned_to: eligibleEmps[i].id, status: 'assigned' })
+        assigned++
+      }
+    })
+    addToast(t('bulkAssignSuccess', { count: assigned }))
+    resetBulkAssign()
+  }
 
   const iconMap: Record<string, React.ReactNode> = {
     laptop: <Laptop size={16} />,
@@ -101,7 +203,7 @@ export default function DevicesPage() {
       <Header
         title={t('title')}
         subtitle={t('subtitle')}
-        actions={<Button size="sm" onClick={openAddDevice}><Plus size={14} /> {t('addDevice')}</Button>}
+        actions={<div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => setShowBulkAssignModal(true)}><Users size={14} /> {t('bulkAssign')}</Button><Button size="sm" onClick={openAddDevice}><Plus size={14} /> {t('addDevice')}</Button></div>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -499,6 +601,239 @@ export default function DevicesPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAssignModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitAssign}>{tc('assign')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Assign Modal */}
+      <Modal open={showBulkAssignModal} onClose={resetBulkAssign} title={t('bulkAssignTitle')} size="xl">
+        <p className="text-xs text-t3 mb-4">{t('bulkAssignDesc')}</p>
+        {/* Step indicator */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkStep === 1 ? 'bg-tempo-500 text-white' : 'bg-success/20 text-success'}`}>
+              {bulkStep > 1 ? '✓' : '1'}
+            </div>
+            <span className={`text-xs font-medium ${bulkStep === 1 ? 'text-t1' : 'text-success'}`}>{t('stepDevices')}</span>
+          </div>
+          <div className="flex-1 h-px bg-divider" />
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${bulkStep === 2 ? 'bg-tempo-500 text-white' : 'bg-canvas text-t3'}`}>2</div>
+            <span className={`text-xs font-medium ${bulkStep === 2 ? 'text-t1' : 'text-t3'}`}>{t('stepEmployees')}</span>
+          </div>
+        </div>
+
+        {bulkStep === 1 && (
+          <>
+            {/* Mode toggle */}
+            <div className="flex gap-2 mb-4">
+              {(['individual', 'type', 'all'] as const).map(mode => (
+                <button key={mode} onClick={() => setDeviceSelectMode(mode)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${deviceSelectMode === mode ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                  {mode === 'individual' && <><Search size={12} className="inline mr-1" />{t('selectModeIndividual')}</>}
+                  {mode === 'type' && <><Laptop size={12} className="inline mr-1" />{t('selectModeType')}</>}
+                  {mode === 'all' && <><CheckCircle size={12} className="inline mr-1" />{t('selectModeStatus')}</>}
+                </button>
+              ))}
+            </div>
+
+            {deviceSelectMode === 'individual' && (
+              <>
+                <Input placeholder={t('searchDevicesPlaceholder')} value={deviceSearch} onChange={e => setDeviceSearch(e.target.value)} />
+                <div className="mt-2 flex items-center gap-2 px-2 py-1.5 border-b border-divider">
+                  <input type="checkbox" className="rounded border-border"
+                    checked={bulkTargetDevices.length > 0 && bulkTargetDevices.every(d => selectedDeviceIds.has(d.id))}
+                    onChange={() => {
+                      if (bulkTargetDevices.every(d => selectedDeviceIds.has(d.id))) setSelectedDeviceIds(new Set())
+                      else setSelectedDeviceIds(new Set(bulkTargetDevices.map(d => d.id)))
+                    }} />
+                  <span className="text-xs text-t2 font-medium">{t('selectAllDevices')} ({bulkTargetDevices.length})</span>
+                </div>
+                <div className="max-h-[240px] overflow-y-auto divide-y divide-divider">
+                  {bulkTargetDevices.map(device => (
+                    <label key={device.id} className="flex items-center gap-3 px-2 py-2.5 hover:bg-canvas cursor-pointer">
+                      <input type="checkbox" className="rounded border-border"
+                        checked={selectedDeviceIds.has(device.id)}
+                        onChange={() => toggleSet(selectedDeviceIds, setSelectedDeviceIds, device.id)} />
+                      <div className="w-7 h-7 rounded bg-canvas flex items-center justify-center text-t3">
+                        {iconMap[device.type] || <Laptop size={14} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1">{device.brand} {device.model}</p>
+                        <p className="text-[0.65rem] text-t3 font-mono">{device.serial_number}</p>
+                      </div>
+                      <Badge>{device.type}</Badge>
+                    </label>
+                  ))}
+                  {bulkTargetDevices.length === 0 && <p className="p-4 text-xs text-t3 text-center">{t('noDevicesMatch')}</p>}
+                </div>
+              </>
+            )}
+
+            {deviceSelectMode === 'type' && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {deviceTypes.map(type => {
+                    const count = availableDevices.filter(d => d.type === type).length
+                    return (
+                      <button key={type} onClick={() => toggleSet(selectedDeviceTypes, setSelectedDeviceTypes, type)}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-all ${selectedDeviceTypes.has(type) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                        {iconMap[type] && <span className="inline mr-1">{iconMap[type]}</span>}
+                        {type} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedDeviceTypes.size > 0 && (
+                  <div className="max-h-[200px] overflow-y-auto divide-y divide-divider border border-border rounded-lg">
+                    {bulkTargetDevices.slice(0, 8).map(device => (
+                      <div key={device.id} className="flex items-center gap-3 px-3 py-2">
+                        <div className="w-6 h-6 rounded bg-canvas flex items-center justify-center text-t3">{iconMap[device.type] || <Laptop size={12} />}</div>
+                        <span className="text-xs text-t1 font-medium">{device.brand} {device.model}</span>
+                        <span className="text-[0.65rem] text-t3 ml-auto font-mono">{device.serial_number}</span>
+                      </div>
+                    ))}
+                    {bulkTargetDevices.length > 8 && <p className="px-3 py-2 text-xs text-t3">+{bulkTargetDevices.length - 8} more</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {deviceSelectMode === 'all' && (
+              <div className="border border-border rounded-lg p-6 text-center">
+                <Laptop size={32} className="mx-auto mb-2 text-tempo-500" />
+                <h3 className="text-sm font-semibold text-t1">{t('allAvailableSelected')}</h3>
+                <p className="text-xs text-t3 mt-1">{t('allAvailableDesc', { count: availableDevices.length })}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {bulkStep === 2 && (
+          <>
+            {/* Employee selection modes */}
+            <div className="flex gap-2 mb-4">
+              {(['individual', 'department', 'country'] as const).map(mode => (
+                <button key={mode} onClick={() => setEmpAssignMode(mode)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${empAssignMode === mode ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                  {mode === 'individual' && <><Users size={12} className="inline mr-1" />{t('assignModeIndividual')}</>}
+                  {mode === 'department' && <><Building2 size={12} className="inline mr-1" />{t('assignModeDepartment')}</>}
+                  {mode === 'country' && <><Globe size={12} className="inline mr-1" />{t('assignModeCountry')}</>}
+                </button>
+              ))}
+            </div>
+
+            {empAssignMode === 'individual' && (
+              <>
+                <Input placeholder={t('searchEmployeesPlaceholder')} value={empSearch} onChange={e => setEmpSearch(e.target.value)} />
+                <div className="mt-2 max-h-[180px] overflow-y-auto divide-y divide-divider">
+                  {bulkTargetEmployees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-3 px-2 py-2 hover:bg-canvas cursor-pointer">
+                      <input type="checkbox" className="rounded border-border"
+                        checked={selectedEmpIds.has(emp.id)}
+                        onChange={() => toggleSet(selectedEmpIds, setSelectedEmpIds, emp.id)} />
+                      <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
+                        <p className="text-[0.65rem] text-t3">{emp.job_title}</p>
+                      </div>
+                      <span className="text-[0.65rem] text-t3">{emp.country}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {empAssignMode === 'department' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {departments.map(dept => {
+                  const count = employees.filter(e => e.department_id === dept.id).length
+                  return (
+                    <button key={dept.id} onClick={() => toggleSet(selectedDepts, setSelectedDepts, dept.id)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${selectedDepts.has(dept.id) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {dept.name} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {empAssignMode === 'country' && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {uniqueCountries.map(country => {
+                  const count = employees.filter(e => e.country === country).length
+                  return (
+                    <button key={country} onClick={() => toggleSet(selectedCountries, setSelectedCountries, country)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${selectedCountries.has(country) ? 'bg-tempo-500 text-white border-tempo-500' : 'border-border text-t2 hover:border-tempo-300'}`}>
+                      {country} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {(empAssignMode !== 'individual' && bulkSelectedEmployees.length > 0) && (
+              <div className="max-h-[120px] overflow-y-auto divide-y divide-divider border border-border rounded-lg mt-2">
+                {bulkSelectedEmployees.slice(0, 6).map(emp => (
+                  <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5">
+                    <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                    <span className="text-xs text-t1">{emp.profile?.full_name}</span>
+                    <span className="text-[0.65rem] text-t3 ml-auto">{getDepartmentName(emp.department_id)}</span>
+                  </div>
+                ))}
+                {bulkSelectedEmployees.length > 6 && <p className="px-3 py-1.5 text-xs text-t3">+{bulkSelectedEmployees.length - 6} more</p>}
+              </div>
+            )}
+
+            {/* Assignment Summary */}
+            {bulkSelectedEmployees.length > 0 && (
+              <div className="mt-4 border border-border rounded-lg p-4">
+                <h4 className="text-xs font-semibold text-t1 mb-3">{t('assignmentSummary')}</h4>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-lg font-bold text-t1">{bulkSelectedDevices.length}</p>
+                    <p className="text-[0.65rem] text-t3">{t('devicesToAssign')}</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-success">{assignableCount}</p>
+                    <p className="text-[0.65rem] text-t3">{t('employeesToReceive')}</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-warning">{alreadyHaveDeviceIds.size}</p>
+                    <p className="text-[0.65rem] text-t3">{t('alreadyHaveDevice')}</p>
+                  </div>
+                </div>
+                {alreadyHaveDeviceIds.size > 0 && (
+                  <div className="mt-3 p-2 bg-warning/5 rounded-lg">
+                    <p className="text-[0.65rem] text-warning mb-1">{t('willBeSkippedDevice')}</p>
+                    {bulkSelectedEmployees.filter(e => alreadyHaveDeviceIds.has(e.id)).map(emp => (
+                      <span key={emp.id} className="inline-block text-xs text-warning font-medium mr-2">{emp.profile?.full_name}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-divider">
+          <p className="text-xs text-t3">
+            {bulkStep === 1 ? t('devicesSelected', { count: bulkSelectedDevices.length }) : t('selectEmployeesFirst')}
+          </p>
+          <div className="flex gap-2">
+            {bulkStep === 2 && <Button variant="secondary" size="sm" onClick={() => setBulkStep(1)}>{tc('back')}</Button>}
+            <Button variant="secondary" size="sm" onClick={resetBulkAssign}>{tc('cancel')}</Button>
+            {bulkStep === 1 && (
+              <Button size="sm" disabled={bulkSelectedDevices.length === 0} onClick={() => setBulkStep(2)}>
+                {t('nextSelectEmployees')} →
+              </Button>
+            )}
+            {bulkStep === 2 && (
+              <Button size="sm" disabled={assignableCount === 0} onClick={submitBulkAssign}>
+                {t('assignDevicesCount', { count: assignableCount })}
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

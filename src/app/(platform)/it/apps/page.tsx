@@ -10,7 +10,8 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign } from 'lucide-react'
+import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign, Search, Users, Building2, Globe } from 'lucide-react'
+import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
 import { AIRecommendationList, AIInsightCard } from '@/components/ai'
 import { optimizeLicenses, detectShadowIT } from '@/lib/ai-engine'
@@ -18,10 +19,10 @@ import { demoShadowITDetections } from '@/lib/demo-data'
 
 export default function AppsPage() {
   const {
-    softwareLicenses, itRequests, employees,
+    softwareLicenses, itRequests, employees, departments,
     addSoftwareLicense, updateSoftwareLicense,
     addITRequest, updateITRequest,
-    getEmployeeName,
+    getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
 
   const t = useTranslations('apps')
@@ -61,6 +62,86 @@ export default function AppsPage() {
     description: '',
     priority: 'medium',
   })
+
+  // Bulk license provisioning state
+  const [showBulkLicenseModal, setShowBulkLicenseModal] = useState(false)
+  const [bulkLicStep, setBulkLicStep] = useState<1 | 2>(1)
+  const [bulkLicMode, setBulkLicMode] = useState<'individual' | 'department' | 'country' | 'all'>('department')
+  const [bulkLicSearch, setBulkLicSearch] = useState('')
+  const [bulkLicSelectedEmpIds, setBulkLicSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkLicSelectedDepts, setBulkLicSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkLicSelectedCountries, setBulkLicSelectedCountries] = useState<Set<string>>(new Set())
+  const [bulkLicSelectedLicenseIds, setBulkLicSelectedLicenseIds] = useState<Set<string>>(new Set())
+
+  // Bulk license computed memos
+  const uniqueCountries = useMemo(() => {
+    const countries = new Set<string>()
+    employees.forEach(e => { if (e.country) countries.add(e.country) })
+    return Array.from(countries).sort()
+  }, [employees])
+
+  const bulkLicTargetEmployees = useMemo(() => {
+    if (bulkLicMode === 'all') return employees
+    if (bulkLicMode === 'department') {
+      return employees.filter(e => bulkLicSelectedDepts.has(e.department_id || ''))
+    }
+    if (bulkLicMode === 'country') {
+      return employees.filter(e => bulkLicSelectedCountries.has(e.country || ''))
+    }
+    // individual mode - show all, filter by search
+    const q = bulkLicSearch.toLowerCase()
+    if (!q) return employees
+    return employees.filter(e =>
+      (e.profile?.full_name || '').toLowerCase().includes(q) ||
+      (e.profile?.email || '').toLowerCase().includes(q) ||
+      (e.job_title || '').toLowerCase().includes(q)
+    )
+  }, [employees, bulkLicMode, bulkLicSelectedDepts, bulkLicSelectedCountries, bulkLicSearch])
+
+  const bulkLicSelectedEmployees = useMemo(() => {
+    if (bulkLicMode === 'all') return employees
+    if (bulkLicMode === 'department') {
+      return employees.filter(e => bulkLicSelectedDepts.has(e.department_id || ''))
+    }
+    if (bulkLicMode === 'country') {
+      return employees.filter(e => bulkLicSelectedCountries.has(e.country || ''))
+    }
+    return employees.filter(e => bulkLicSelectedEmpIds.has(e.id))
+  }, [employees, bulkLicMode, bulkLicSelectedDepts, bulkLicSelectedCountries, bulkLicSelectedEmpIds])
+
+  const bulkLicSelectedLicenses = useMemo(() => {
+    return softwareLicenses.filter(l => bulkLicSelectedLicenseIds.has(l.id))
+  }, [softwareLicenses, bulkLicSelectedLicenseIds])
+
+  const bulkLicTotalMonthlyCost = useMemo(() => {
+    return bulkLicSelectedLicenses.reduce((sum, l) => sum + l.cost_per_license, 0) * bulkLicSelectedEmployees.length
+  }, [bulkLicSelectedLicenses, bulkLicSelectedEmployees])
+
+  // Bulk license helpers
+  function toggleBulkLicSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
+
+  function resetBulkLicense() {
+    setBulkLicStep(1)
+    setBulkLicMode('department')
+    setBulkLicSearch('')
+    setBulkLicSelectedEmpIds(new Set())
+    setBulkLicSelectedDepts(new Set())
+    setBulkLicSelectedCountries(new Set())
+    setBulkLicSelectedLicenseIds(new Set())
+    setShowBulkLicenseModal(false)
+  }
+
+  function submitBulkLicense() {
+    const empCount = bulkLicSelectedEmployees.length
+    const licCount = bulkLicSelectedLicenses.length
+    addToast(`Successfully provisioned ${licCount} license${licCount !== 1 ? 's' : ''} for ${empCount} employee${empCount !== 1 ? 's' : ''}`)
+    resetBulkLicense()
+  }
 
   function openAddLicense() {
     setLicenseForm({ name: '', vendor: '', total_licenses: '', used_licenses: '', cost_per_license: '', renewal_date: '', currency: 'USD' })
@@ -121,6 +202,7 @@ export default function AppsPage() {
         subtitle={t('subtitle')}
         actions={
           <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setShowBulkLicenseModal(true)}><Users size={14} /> Bulk Provision</Button>
             <Button size="sm" variant="secondary" onClick={openAddRequest}><Plus size={14} /> {t('itRequest')}</Button>
             <Button size="sm" onClick={openAddLicense}><Plus size={14} /> {t('addLicense')}</Button>
           </div>
@@ -395,6 +477,254 @@ export default function AppsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowRequestModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitRequest}>{t('submitRequest')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk License Provisioning Modal */}
+      <Modal open={showBulkLicenseModal} onClose={resetBulkLicense} title="Bulk License Provisioning" size="xl">
+        <div>
+          {/* Step indicator */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className={`flex items-center gap-2 text-xs font-medium ${bulkLicStep === 1 ? 'text-tempo-600' : 'text-t3'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bulkLicStep === 1 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>1</div>
+              Select Employees
+            </div>
+            <div className="flex-1 h-px bg-divider" />
+            <div className={`flex items-center gap-2 text-xs font-medium ${bulkLicStep === 2 ? 'text-tempo-600' : 'text-t3'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bulkLicStep === 2 ? 'bg-tempo-600 text-white' : 'bg-canvas text-t3'}`}>2</div>
+              Select Licenses
+            </div>
+          </div>
+
+          {/* Step 1: Select Employees */}
+          {bulkLicStep === 1 && (
+            <div>
+              {/* Mode tabs */}
+              <div className="flex gap-1 p-1 bg-canvas rounded-lg mb-4">
+                {([
+                  { key: 'individual' as const, label: 'Individual', icon: <Search size={14} /> },
+                  { key: 'department' as const, label: 'Department', icon: <Building2 size={14} /> },
+                  { key: 'country' as const, label: 'Country', icon: <Globe size={14} /> },
+                  { key: 'all' as const, label: 'Entire Company', icon: <Users size={14} /> },
+                ]).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setBulkLicMode(tab.key)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                      bulkLicMode === tab.key ? 'bg-card text-t1 shadow-sm' : 'text-t3 hover:text-t2'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Individual mode */}
+              {bulkLicMode === 'individual' && (
+                <div>
+                  <div className="relative mb-3">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                    <input
+                      type="text"
+                      placeholder="Search employees by name, email, or title..."
+                      value={bulkLicSearch}
+                      onChange={(e) => setBulkLicSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-canvas border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-tempo-500 text-t1 placeholder:text-t3"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto border border-border rounded-lg divide-y divide-divider">
+                    {bulkLicTargetEmployees.map(emp => {
+                      const selected = bulkLicSelectedEmpIds.has(emp.id)
+                      return (
+                        <label key={emp.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-canvas/50 ${selected ? 'bg-tempo-50' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleBulkLicSet(bulkLicSelectedEmpIds, emp.id, setBulkLicSelectedEmpIds)}
+                            className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                          />
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                            <p className="text-[0.65rem] text-t3 truncate">{emp.job_title} {emp.department_id ? `- ${getDepartmentName(emp.department_id)}` : ''}</p>
+                          </div>
+                          <span className="text-[0.65rem] text-t3">{emp.country}</span>
+                        </label>
+                      )
+                    })}
+                    {bulkLicTargetEmployees.length === 0 && (
+                      <div className="px-4 py-8 text-center text-sm text-t3">No employees match your search.</div>
+                    )}
+                  </div>
+                  <p className="text-xs text-t3 mt-2">{bulkLicSelectedEmpIds.size} employee{bulkLicSelectedEmpIds.size !== 1 ? 's' : ''} selected</p>
+                </div>
+              )}
+
+              {/* Department mode */}
+              {bulkLicMode === 'department' && (
+                <div>
+                  <div className="border border-border rounded-lg divide-y divide-divider">
+                    {departments.map(dept => {
+                      const deptEmployees = employees.filter(e => e.department_id === dept.id)
+                      const selected = bulkLicSelectedDepts.has(dept.id)
+                      return (
+                        <label key={dept.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-canvas/50 ${selected ? 'bg-tempo-50' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleBulkLicSet(bulkLicSelectedDepts, dept.id, setBulkLicSelectedDepts)}
+                            className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                          />
+                          <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center">
+                            <Building2 size={16} className="text-t2" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-t1">{dept.name}</p>
+                            <p className="text-xs text-t3">{deptEmployees.length} employee{deptEmployees.length !== 1 ? 's' : ''}</p>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-t3 mt-2">
+                    {bulkLicSelectedDepts.size} department{bulkLicSelectedDepts.size !== 1 ? 's' : ''} selected
+                    ({bulkLicSelectedEmployees.length} employee{bulkLicSelectedEmployees.length !== 1 ? 's' : ''})
+                  </p>
+                </div>
+              )}
+
+              {/* Country mode */}
+              {bulkLicMode === 'country' && (
+                <div>
+                  <div className="border border-border rounded-lg divide-y divide-divider">
+                    {uniqueCountries.map(country => {
+                      const countryEmployees = employees.filter(e => e.country === country)
+                      const selected = bulkLicSelectedCountries.has(country)
+                      return (
+                        <label key={country} className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-canvas/50 ${selected ? 'bg-tempo-50' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleBulkLicSet(bulkLicSelectedCountries, country, setBulkLicSelectedCountries)}
+                            className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                          />
+                          <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center">
+                            <Globe size={16} className="text-t2" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-t1">{country}</p>
+                            <p className="text-xs text-t3">{countryEmployees.length} employee{countryEmployees.length !== 1 ? 's' : ''}</p>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-t3 mt-2">
+                    {bulkLicSelectedCountries.size} countr{bulkLicSelectedCountries.size !== 1 ? 'ies' : 'y'} selected
+                    ({bulkLicSelectedEmployees.length} employee{bulkLicSelectedEmployees.length !== 1 ? 's' : ''})
+                  </p>
+                </div>
+              )}
+
+              {/* Entire company mode */}
+              {bulkLicMode === 'all' && (
+                <div className="border border-border rounded-lg p-6 text-center">
+                  <Users size={32} className="mx-auto mb-3 text-tempo-600" />
+                  <p className="text-sm font-medium text-t1 mb-1">Entire Company</p>
+                  <p className="text-xs text-t3">All {employees.length} employees will receive the selected licenses.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Select Licenses */}
+          {bulkLicStep === 2 && (
+            <div>
+              <p className="text-xs text-t3 mb-3">
+                Provisioning for {bulkLicSelectedEmployees.length} employee{bulkLicSelectedEmployees.length !== 1 ? 's' : ''}. Select the licenses to assign:
+              </p>
+              <div className="max-h-64 overflow-y-auto border border-border rounded-lg divide-y divide-divider">
+                {softwareLicenses.map(license => {
+                  const available = license.total_licenses - license.used_licenses
+                  const selected = bulkLicSelectedLicenseIds.has(license.id)
+                  return (
+                    <label key={license.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-canvas/50 ${selected ? 'bg-tempo-50' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleBulkLicSet(bulkLicSelectedLicenseIds, license.id, setBulkLicSelectedLicenseIds)}
+                        className="rounded border-border text-tempo-600 focus:ring-tempo-500"
+                      />
+                      <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center">
+                        <AppWindow size={16} className="text-t2" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-t1">{license.name}</p>
+                        <p className="text-xs text-t3">{license.vendor}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-t1">${license.cost_per_license}/mo</p>
+                        <p className="text-xs text-t3">{available} seat{available !== 1 ? 's' : ''} available</p>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {/* Cost summary */}
+              {bulkLicSelectedLicenseIds.size > 0 && (
+                <div className="mt-4 p-4 bg-canvas rounded-lg border border-border">
+                  <h4 className="text-xs font-semibold text-t1 mb-2">Cost Summary</h4>
+                  <div className="space-y-1">
+                    {bulkLicSelectedLicenses.map(l => (
+                      <div key={l.id} className="flex justify-between text-xs">
+                        <span className="text-t2">{l.name} x {bulkLicSelectedEmployees.length}</span>
+                        <span className="text-t1 font-medium">${(l.cost_per_license * bulkLicSelectedEmployees.length).toLocaleString()}/mo</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between text-sm font-semibold pt-2 border-t border-divider mt-2">
+                      <span className="text-t1">Total Monthly Cost</span>
+                      <span className="text-tempo-600">${bulkLicTotalMonthlyCost.toLocaleString()}/mo</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-t3">
+                      <span>Annual Estimate</span>
+                      <span>${(bulkLicTotalMonthlyCost * 12).toLocaleString()}/yr</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex justify-between items-center mt-6 pt-4 border-t border-divider">
+            <div>
+              {bulkLicStep === 2 && (
+                <Button variant="secondary" size="sm" onClick={() => setBulkLicStep(1)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={resetBulkLicense}>Cancel</Button>
+              {bulkLicStep === 1 && (
+                <Button
+                  size="sm"
+                  disabled={bulkLicSelectedEmployees.length === 0}
+                  onClick={() => setBulkLicStep(2)}
+                >
+                  Next
+                </Button>
+              )}
+              {bulkLicStep === 2 && (
+                <Button
+                  size="sm"
+                  disabled={bulkLicSelectedLicenseIds.size === 0}
+                  onClick={submitBulkLicense}
+                >
+                  <Key size={14} /> Provision {bulkLicSelectedLicenseIds.size} License{bulkLicSelectedLicenseIds.size !== 1 ? 's' : ''}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

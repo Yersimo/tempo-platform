@@ -15,9 +15,11 @@ import { TempoBarChart, TempoDonutChart, CHART_COLORS, CHART_SERIES } from '@/co
 import {
   Shield, Heart, Eye, Wallet, Plus, Pencil, Users, Baby, Calendar,
   BarChart3, Calculator, ArrowRightLeft, Clock, CheckCircle2, AlertTriangle,
-  UserPlus, HeartHandshake, Scale,
+  UserPlus, HeartHandshake, Scale, Globe, Building2, Search, Layers, UserCheck, ArrowRight, CheckCircle,
 } from 'lucide-react'
+import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
+import { cn } from '@/lib/utils/cn'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import {
   recommendBenefitPlan, optimizeBenefitsCost,
@@ -58,7 +60,7 @@ export default function BenefitsPage() {
     benefitEnrollments, addBenefitEnrollment, updateBenefitEnrollment,
     benefitDependents, addBenefitDependent, updateBenefitDependent,
     lifeEvents, addLifeEvent, updateLifeEvent,
-    getEmployeeName, getDepartmentName,
+    getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
 
   const coverageLevelLabels: Record<string, string> = {
@@ -106,6 +108,19 @@ export default function BenefitsPage() {
     event_date: '', notes: '',
   })
 
+  // Bulk enrollment state
+  const [showBulkEnrollModal, setShowBulkEnrollModal] = useState(false)
+  const [bulkEnrollStep, setBulkEnrollStep] = useState<1 | 2>(1)
+  const [bulkEnrollMode, setBulkEnrollMode] = useState<'individual' | 'department' | 'country' | 'level' | 'all'>('individual')
+  const [bulkEnrollSearch, setBulkEnrollSearch] = useState('')
+  const [bulkSelectedEmpIds, setBulkSelectedEmpIds] = useState<Set<string>>(new Set())
+  const [bulkSelectedDepts, setBulkSelectedDepts] = useState<Set<string>>(new Set())
+  const [bulkSelectedCountries, setBulkSelectedCountries] = useState<Set<string>>(new Set())
+  const [bulkSelectedLevels, setBulkSelectedLevels] = useState<Set<string>>(new Set())
+  const [bulkPlanId, setBulkPlanId] = useState('')
+  const [bulkCoverage, setBulkCoverage] = useState('employee_only')
+  const [bulkPlanSearch, setBulkPlanSearch] = useState('')
+
   // ---- Cost Calculator State ----
   const [calcPlanId, setCalcPlanId] = useState('')
   const [calcCoverage, setCalcCoverage] = useState('employee_only')
@@ -119,6 +134,59 @@ export default function BenefitsPage() {
   const enrolledEmployeeIds = [...new Set(activeEnrollments.map(e => (e as any).employee_id))]
   const enrollmentRate = employees.length > 0 ? Math.round((enrolledEmployeeIds.length / employees.length) * 100) : 0
   const pendingLifeEvents = lifeEvents.filter(e => (e as any).status === 'pending')
+
+  const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country))].filter(Boolean).sort(), [employees])
+  const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level))].filter(Boolean), [employees])
+
+  const bulkTargetEmployees = useMemo(() => {
+    switch (bulkEnrollMode) {
+      case 'individual':
+        return employees.filter(emp => {
+          if (!bulkEnrollSearch) return true
+          const q = bulkEnrollSearch.toLowerCase()
+          const name = emp.profile?.full_name?.toLowerCase() || ''
+          const email = emp.profile?.email?.toLowerCase() || ''
+          return name.includes(q) || email.includes(q)
+        })
+      case 'department':
+        return bulkSelectedDepts.size > 0 ? employees.filter(e => bulkSelectedDepts.has(e.department_id)) : []
+      case 'country':
+        return bulkSelectedCountries.size > 0 ? employees.filter(e => bulkSelectedCountries.has(e.country)) : []
+      case 'level':
+        return bulkSelectedLevels.size > 0 ? employees.filter(e => bulkSelectedLevels.has(e.level)) : []
+      case 'all':
+        return employees
+      default: return []
+    }
+  }, [employees, bulkEnrollMode, bulkEnrollSearch, bulkSelectedDepts, bulkSelectedCountries, bulkSelectedLevels])
+
+  const bulkSelectedEmployees = useMemo(() => {
+    if (bulkEnrollMode === 'individual') return employees.filter(e => bulkSelectedEmpIds.has(e.id))
+    return bulkTargetEmployees
+  }, [bulkEnrollMode, employees, bulkSelectedEmpIds, bulkTargetEmployees])
+
+  const bulkAlreadyEnrolledIds = useMemo(() => {
+    if (!bulkPlanId) return new Set<string>()
+    return new Set(benefitEnrollments.filter(e => (e as any).plan_id === bulkPlanId && (e as any).status === 'active').map(e => (e as any).employee_id))
+  }, [benefitEnrollments, bulkPlanId])
+
+  const bulkNewEnrollees = useMemo(() => bulkSelectedEmployees.filter(e => !bulkAlreadyEnrolledIds.has(e.id)), [bulkSelectedEmployees, bulkAlreadyEnrolledIds])
+  const bulkSkippedEnrollees = useMemo(() => bulkSelectedEmployees.filter(e => bulkAlreadyEnrolledIds.has(e.id)), [bulkSelectedEmployees, bulkAlreadyEnrolledIds])
+
+  const filteredBulkPlans = useMemo(() => {
+    if (!bulkPlanSearch) return activePlans
+    const q = bulkPlanSearch.toLowerCase()
+    return activePlans.filter(p => p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q))
+  }, [activePlans, bulkPlanSearch])
+
+  const bulkCostImpact = useMemo(() => {
+    if (!bulkPlanId) return null
+    const plan = benefitPlans.find(p => p.id === bulkPlanId)
+    if (!plan) return null
+    const multiplier = coverageLevelMultiplier[bulkCoverage] || 1
+    const monthlyPerEmp = Math.round(plan.cost_employer * multiplier)
+    return { monthlyPerEmp, totalMonthly: monthlyPerEmp * bulkNewEnrollees.length, totalAnnual: monthlyPerEmp * bulkNewEnrollees.length * 12 }
+  }, [bulkPlanId, benefitPlans, bulkCoverage, bulkNewEnrollees])
 
   // ---- AI ----
   const benefitRecs = useMemo(() => recommendBenefitPlan(benefitPlans, employees), [benefitPlans, employees])
@@ -204,6 +272,33 @@ export default function BenefitsPage() {
     setLifeEventForm({ employee_id: '', type: 'marriage', event_date: '', notes: '' })
   }
 
+  // ---- Bulk Enrollment ----
+  function toggleBulkSet<T>(set: Set<T>, setter: React.Dispatch<React.SetStateAction<Set<T>>>, item: T) {
+    setter(prev => { const next = new Set(prev); if (next.has(item)) next.delete(item); else next.add(item); return next })
+  }
+
+  function resetBulkEnroll() {
+    setShowBulkEnrollModal(false); setBulkEnrollStep(1); setBulkEnrollMode('individual')
+    setBulkEnrollSearch(''); setBulkSelectedEmpIds(new Set()); setBulkSelectedDepts(new Set())
+    setBulkSelectedCountries(new Set()); setBulkSelectedLevels(new Set())
+    setBulkPlanId(''); setBulkCoverage('employee_only'); setBulkPlanSearch('')
+  }
+
+  function submitBulkEnroll() {
+    if (!bulkPlanId || bulkNewEnrollees.length === 0) return
+    bulkNewEnrollees.forEach(emp => {
+      addBenefitEnrollment({
+        employee_id: emp.id, plan_id: bulkPlanId,
+        coverage_level: bulkCoverage, status: 'active',
+        enrolled_date: new Date().toISOString().split('T')[0],
+        effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      })
+    })
+    const planName = benefitPlans.find(p => p.id === bulkPlanId)?.name || ''
+    addToast(`Successfully enrolled ${bulkNewEnrollees.length} employees in ${planName}`)
+    resetBulkEnroll()
+  }
+
   // ---- Cost Calculator ----
   const calcPlan = benefitPlans.find(p => p.id === calcPlanId)
   const calcResult = useMemo(() => {
@@ -234,9 +329,14 @@ export default function BenefitsPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={
-          <Button size="sm" onClick={openNewPlan}>
-            <Plus size={14} /> {t('addPlan')}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setShowBulkEnrollModal(true)}>
+              <Users size={14} /> Bulk Enroll
+            </Button>
+            <Button size="sm" onClick={openNewPlan}>
+              <Plus size={14} /> {t('addPlan')}
+            </Button>
+          </div>
         }
       />
 
@@ -1207,6 +1307,304 @@ export default function BenefitsPage() {
             <Button variant="secondary" onClick={() => setShowLifeEventModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitLifeEvent}>{t('submitLifeEvent')}</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Benefits Enrollment Modal */}
+      <Modal open={showBulkEnrollModal} onClose={resetBulkEnroll} title="Bulk Benefits Enrollment" description="Enroll employees in a benefit plan" size="xl">
+        <div className="space-y-4">
+          {/* Step Indicator */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-2">
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold', bulkEnrollStep >= 1 ? 'bg-tempo-600 text-white' : 'bg-gray-200 text-t3')}>
+                {bulkEnrollStep > 1 ? <CheckCircle size={14} /> : '1'}
+              </div>
+              <span className={cn('text-xs font-medium', bulkEnrollStep >= 1 ? 'text-t1' : 'text-t3')}>Select Employees</span>
+            </div>
+            <div className="flex-1 h-px bg-divider" />
+            <div className="flex items-center gap-2">
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold', bulkEnrollStep >= 2 ? 'bg-tempo-600 text-white' : 'bg-gray-200 text-t3')}>2</div>
+              <span className={cn('text-xs font-medium', bulkEnrollStep >= 2 ? 'text-t1' : 'text-t3')}>Select Plan &amp; Confirm</span>
+            </div>
+          </div>
+
+          {bulkEnrollStep === 1 && (
+            <>
+              {/* Mode Toggle Pills */}
+              <div className="flex gap-1 bg-canvas rounded-lg p-1">
+                {([
+                  { id: 'individual' as const, label: 'Individual', icon: UserCheck },
+                  { id: 'department' as const, label: 'Department', icon: Building2 },
+                  { id: 'country' as const, label: 'Country', icon: Globe },
+                  { id: 'level' as const, label: 'Level', icon: Layers },
+                  { id: 'all' as const, label: 'Entire Company', icon: Users },
+                ]).map(mode => (
+                  <button key={mode.id} onClick={() => { setBulkEnrollMode(mode.id); setBulkEnrollSearch(''); setBulkSelectedEmpIds(new Set()); setBulkSelectedDepts(new Set()); setBulkSelectedCountries(new Set()); setBulkSelectedLevels(new Set()) }}
+                    className={cn('flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex-1 justify-center',
+                      bulkEnrollMode === mode.id ? 'bg-white text-tempo-700 shadow-sm' : 'text-t3 hover:text-t1')}>
+                    <mode.icon size={13} />
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Individual Mode: Search + Checkbox List */}
+              {bulkEnrollMode === 'individual' && (
+                <>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                    <input type="text" placeholder="Search employees..." value={bulkEnrollSearch} onChange={(e) => setBulkEnrollSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600" />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                    <label className="flex items-center gap-3 px-4 py-2.5 bg-canvas cursor-pointer sticky top-0 z-10 border-b border-divider">
+                      <input type="checkbox" className="rounded border-border accent-[var(--color-tempo-600)]"
+                        checked={bulkTargetEmployees.length > 0 && bulkTargetEmployees.every(e => bulkSelectedEmpIds.has(e.id))}
+                        onChange={(e) => { if (e.target.checked) setBulkSelectedEmpIds(new Set(bulkTargetEmployees.map(emp => emp.id))); else setBulkSelectedEmpIds(new Set()) }} />
+                      <span className="text-xs font-medium text-t2">Select All ({bulkTargetEmployees.length})</span>
+                    </label>
+                    {bulkTargetEmployees.map(emp => (
+                      <label key={emp.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-canvas/50 cursor-pointer">
+                        <input type="checkbox" className="rounded border-border accent-[var(--color-tempo-600)]" checked={bulkSelectedEmpIds.has(emp.id)} onChange={() => toggleBulkSet(bulkSelectedEmpIds, setBulkSelectedEmpIds, emp.id)} />
+                        <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1 truncate">{emp.profile?.full_name}</p>
+                          <p className="text-[0.65rem] text-t3 truncate">{emp.profile?.email}</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-t2">{emp.job_title}</p>
+                          <p className="text-[0.65rem] text-t3">{getDepartmentName(emp.department_id)} &middot; {emp.country}</p>
+                        </div>
+                      </label>
+                    ))}
+                    {bulkTargetEmployees.length === 0 && (
+                      <div className="px-4 py-8 text-center text-xs text-t3">No employees match your search</div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Department Mode: Toggle Chips + Preview List */}
+              {bulkEnrollMode === 'department' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {departments.map(dept => {
+                      const count = employees.filter(e => e.department_id === dept.id).length
+                      return (
+                        <button key={dept.id} onClick={() => toggleBulkSet(bulkSelectedDepts, setBulkSelectedDepts, dept.id)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            bulkSelectedDepts.has(dept.id) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {dept.name} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {bulkTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{emp.job_title} &middot; {emp.country}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Country Mode: Toggle Chips + Preview List */}
+              {bulkEnrollMode === 'country' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueCountries.map(country => {
+                      const count = employees.filter(e => e.country === country).length
+                      return (
+                        <button key={country} onClick={() => toggleBulkSet(bulkSelectedCountries, setBulkSelectedCountries, country)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            bulkSelectedCountries.has(country) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {country} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {bulkTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} &middot; {emp.level}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Level Mode: Toggle Chips + Preview List */}
+              {bulkEnrollMode === 'level' && (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueLevels.map(level => {
+                      const count = employees.filter(e => e.level === level).length
+                      return (
+                        <button key={level} onClick={() => toggleBulkSet(bulkSelectedLevels, setBulkSelectedLevels, level)}
+                          className={cn('px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                            bulkSelectedLevels.has(level) ? 'bg-tempo-100 border-tempo-300 text-tempo-700 font-medium' : 'border-divider text-t3 hover:text-t1 hover:border-gray-300')}>
+                          {level} <span className="text-[0.6rem] ml-1">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {bulkTargetEmployees.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                      {bulkTargetEmployees.map(emp => (
+                        <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
+                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
+                          <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} &middot; {emp.country}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Entire Company Mode */}
+              {bulkEnrollMode === 'all' && (
+                <div className="bg-canvas rounded-lg p-6 text-center">
+                  <Users size={32} className="mx-auto text-tempo-600 mb-2" />
+                  <p className="text-sm font-semibold text-t1">Entire Company Selected</p>
+                  <p className="text-xs text-t3 mt-1">All {employees.length} employees will be enrolled</p>
+                </div>
+              )}
+
+              {/* Footer Step 1 */}
+              <div className="flex items-center justify-between pt-2 border-t border-divider">
+                <p className="text-xs text-t2 font-medium">
+                  {bulkSelectedEmployees.length > 0 ? `${bulkSelectedEmployees.length} employee(s) selected` : 'No employees selected'}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={resetBulkEnroll}>{tc('cancel')}</Button>
+                  <Button onClick={() => setBulkEnrollStep(2)} disabled={bulkSelectedEmployees.length === 0}>
+                    {'Next: Select Plan \u2192'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {bulkEnrollStep === 2 && (
+            <>
+              {/* Plan Search */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                <input type="text" placeholder="Search plans..." value={bulkPlanSearch} onChange={(e) => setBulkPlanSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600" />
+              </div>
+
+              {/* Plan Radio List */}
+              <div className="max-h-56 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
+                {filteredBulkPlans.map(plan => (
+                  <label key={plan.id} className={cn('flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors',
+                    bulkPlanId === plan.id ? 'bg-tempo-50' : 'hover:bg-canvas/50')}>
+                    <input type="radio" name="bulk-plan" className="accent-[var(--color-tempo-600)]" checked={bulkPlanId === plan.id} onChange={() => setBulkPlanId(plan.id)} />
+                    <div className="w-8 h-8 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
+                      {iconMap[plan.type] || <Shield size={16} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{plan.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Badge>{plan.type}</Badge>
+                        <span className="text-[0.6rem] text-t3">${plan.cost_employee}/mo employee &middot; ${plan.cost_employer}/mo employer</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+                {filteredBulkPlans.length === 0 && (
+                  <div className="px-4 py-8 text-center text-xs text-t3">No plans match your search</div>
+                )}
+              </div>
+
+              {/* Coverage Level Selector */}
+              <div>
+                <label className="block text-xs font-medium text-t2 mb-1.5">Coverage Level</label>
+                <select className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  value={bulkCoverage} onChange={(e) => setBulkCoverage(e.target.value)}>
+                  <option value="employee_only">Employee Only</option>
+                  <option value="employee_spouse">Employee + Spouse</option>
+                  <option value="employee_child">Employee + Child</option>
+                  <option value="family">Family</option>
+                </select>
+              </div>
+
+              {/* Enrollment Summary */}
+              {bulkPlanId && (
+                <div className="space-y-3">
+                  <h4 className="text-[0.65rem] font-semibold text-t2 uppercase tracking-wider">Enrollment Summary</h4>
+                  <div className="bg-canvas rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-t1">{benefitPlans.find(p => p.id === bulkPlanId)?.name}</span>
+                      <Badge variant="info">{benefitPlans.find(p => p.id === bulkPlanId)?.type}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-divider">
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-t1">{bulkSelectedEmployees.length}</p>
+                        <p className="text-[0.6rem] text-t3">Total Selected</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-green-600">{bulkNewEnrollees.length}</p>
+                        <p className="text-[0.6rem] text-t3">New Enrollments</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-amber-500">{bulkSkippedEnrollees.length}</p>
+                        <p className="text-[0.6rem] text-t3">Already Enrolled</p>
+                      </div>
+                    </div>
+                    {bulkSkippedEnrollees.length > 0 && (
+                      <div className="pt-3 mt-3 border-t border-divider">
+                        <p className="text-[0.6rem] text-t3 mb-1.5">Already enrolled (will be skipped):</p>
+                        <div className="flex flex-wrap gap-1">
+                          {bulkSkippedEnrollees.map(emp => <Badge key={emp.id} variant="warning">{emp.profile?.full_name}</Badge>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cost Impact */}
+                  {bulkCostImpact && bulkNewEnrollees.length > 0 && (
+                    <div className="bg-canvas rounded-lg p-4">
+                      <h4 className="text-[0.65rem] font-semibold text-t2 uppercase tracking-wider mb-3">Cost Impact</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-t1">${bulkCostImpact.monthlyPerEmp.toLocaleString()}</p>
+                          <p className="text-[0.6rem] text-t3">Monthly / Employee</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-tempo-600">${bulkCostImpact.totalMonthly.toLocaleString()}</p>
+                          <p className="text-[0.6rem] text-t3">Total Monthly</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-tempo-700">${bulkCostImpact.totalAnnual.toLocaleString()}</p>
+                          <p className="text-[0.6rem] text-t3">Total Annual</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Footer Step 2 */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-divider">
+                <Button variant="secondary" onClick={() => setBulkEnrollStep(1)}>{tc('back')}</Button>
+                <Button variant="secondary" onClick={resetBulkEnroll}>{tc('cancel')}</Button>
+                <Button onClick={submitBulkEnroll} disabled={!bulkPlanId || bulkNewEnrollees.length === 0}>
+                  Enroll {bulkNewEnrollees.length} People
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </>
