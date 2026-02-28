@@ -3,7 +3,9 @@
   "short_name": "Tempo",
   "description": "Performance, compensation, learning, engagement, mentoring, analytics. One platform, zero silos.",
   "start_url": "/dashboard",
+  "id": "/dashboard",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0f1117",
   "theme_color": "#ea580c",
   "orientation": "any",
@@ -16,20 +18,93 @@
       "purpose": "any"
     },
     {
-      "src": "/favicons/icon-192.png",
+      "src": "/app-icons/brand-64.png",
       "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
+      "sizes": "64x64",
+      "purpose": "any"
     },
     {
-      "src": "/favicons/icon-512.png",
+      "src": "/app-icons/brand-128.png",
+      "type": "image/png",
+      "sizes": "128x128",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icons/brand-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icons/brand-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icons/brand-1024.png",
+      "type": "image/png",
+      "sizes": "1024x1024",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icons/dark-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/app-icons/dark-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "View your personal dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/app-icons/brand-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "People Directory",
+      "short_name": "People",
+      "description": "Browse the employee directory",
+      "url": "/people",
+      "icons": [{ "src": "/app-icons/brand-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Learning",
+      "short_name": "Learning",
+      "description": "Access courses and training",
+      "url": "/learning",
+      "icons": [{ "src": "/app-icons/brand-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Time & Attendance",
+      "short_name": "Time",
+      "description": "Request leave and view timesheets",
+      "url": "/time-attendance",
+      "icons": [{ "src": "/app-icons/brand-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/favicons/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Tempo Dashboard - Unified Workforce Platform"
     }
   ],
   "categories": ["business", "productivity"],
   "lang": "en",
   "dir": "ltr",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }

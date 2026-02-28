@@ -26,12 +26,12 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
   return (
     <div className="mb-6">
       {!hideBreadcrumb && <Breadcrumb />}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-shrink-0">
           <h1 className="text-xl font-semibold text-t1 tracking-tight">{title}</h1>
           {subtitle && <p className="text-xs text-t3 mt-0.5">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {actions}
           <NotificationBell />
           <button

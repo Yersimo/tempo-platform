@@ -106,6 +106,28 @@ body {
   background: rgba(0, 0, 0, 0.2);
 }
 
+/* ─── PWA Standalone Mode ─── */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* PWA Install Prompt Animation */
+@keyframes slide-in-from-bottom-4 {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-from-top-2 {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation-duration: 500ms; animation-fill-mode: both; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+.slide-in-from-bottom-4 { animation-name: slide-in-from-bottom-4; }
+.slide-in-from-top-2 { animation-name: slide-in-from-top-2; }
+
 /* AI Pulse animation */
 @keyframes ai-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
