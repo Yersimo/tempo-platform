@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -389,7 +389,7 @@ export default function EngagementPage() {
     anniversary: 'Work Anniversary', promotion: 'Promotion', transfer: 'Transfer', return_from_leave: 'Return from Leave',
   }
 
-  const questionTypeIcons: Record<string, JSX.Element> = {
+  const questionTypeIcons: Record<string, ReactNode> = {
     rating: <Star size={14} />, text: <FileText size={14} />, multiple_choice: <ListChecks size={14} />,
     nps: <Hash size={14} />, matrix: <LayoutGrid size={14} />,
   }
