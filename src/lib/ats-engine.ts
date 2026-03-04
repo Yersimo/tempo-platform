@@ -318,6 +318,155 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 // ============================================================
+// 12-Stage Pipeline Constants
+// ============================================================
+
+/**
+ * Complete ordered list of all pipeline stages including terminal states.
+ * Matches the application_status enum in the database schema.
+ */
+export const STAGE_ORDER = [
+  'new', 'screening', 'phone_screen', 'technical', 'onsite',
+  'panel', 'assessment', 'reference_check', 'hiring_manager_review',
+  'offer', 'hired', 'rejected', 'withdrawn',
+] as const
+
+export type PipelineStage12 = typeof STAGE_ORDER[number]
+
+/**
+ * Active (non-terminal) stages used for conversion rate calculations.
+ */
+export const ACTIVE_STAGES = [
+  'new', 'screening', 'phone_screen', 'technical', 'onsite',
+  'panel', 'assessment', 'reference_check', 'hiring_manager_review',
+  'offer', 'hired',
+] as const
+
+/**
+ * Terminal stages where candidates leave the pipeline.
+ */
+export const TERMINAL_STAGES = ['hired', 'rejected', 'withdrawn'] as const
+
+/**
+ * Human-readable stage names for display in the UI.
+ */
+export const STAGE_DISPLAY_NAMES: Record<string, string> = {
+  new: 'New Application',
+  screening: 'Resume Screening',
+  phone_screen: 'Phone Screen',
+  technical: 'Technical Interview',
+  onsite: 'On-Site Interview',
+  panel: 'Panel Interview',
+  assessment: 'Assessment',
+  reference_check: 'Reference Check',
+  hiring_manager_review: 'Hiring Manager Review',
+  offer: 'Offer Extended',
+  hired: 'Hired',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+}
+
+/**
+ * Valid forward transitions for each stage.
+ * Candidates can always be rejected or withdrawn from any active stage.
+ * Moving backward is not allowed.
+ */
+export const VALID_TRANSITIONS: Record<string, string[]> = {
+  new: ['screening', 'phone_screen', 'rejected', 'withdrawn'],
+  screening: ['phone_screen', 'technical', 'rejected', 'withdrawn'],
+  phone_screen: ['technical', 'onsite', 'rejected', 'withdrawn'],
+  technical: ['onsite', 'panel', 'assessment', 'rejected', 'withdrawn'],
+  onsite: ['panel', 'assessment', 'reference_check', 'rejected', 'withdrawn'],
+  panel: ['assessment', 'reference_check', 'hiring_manager_review', 'rejected', 'withdrawn'],
+  assessment: ['reference_check', 'hiring_manager_review', 'rejected', 'withdrawn'],
+  reference_check: ['hiring_manager_review', 'offer', 'rejected', 'withdrawn'],
+  hiring_manager_review: ['offer', 'rejected', 'withdrawn'],
+  offer: ['hired', 'rejected', 'withdrawn'],
+  hired: [],      // terminal
+  rejected: [],   // terminal
+  withdrawn: [],  // terminal
+}
+
+/**
+ * Stage-specific prerequisites that must be satisfied before advancing.
+ * Keys are target stages; values describe what must exist to enter them.
+ */
+export const STAGE_PREREQUISITES: Record<string, {
+  description: string
+  validate: (application: { status: string; stage: string | null; notes: string | null; rating: number | null }) => boolean
+}> = {
+  offer: {
+    description: 'Reference check or hiring manager review must be completed before extending an offer',
+    validate: (app) => {
+      // The candidate must have passed through reference_check or hiring_manager_review
+      const advancedStages = ['reference_check', 'hiring_manager_review']
+      return advancedStages.includes(app.status)
+    },
+  },
+  hired: {
+    description: 'Candidate must be in offer stage before being marked as hired',
+    validate: (app) => app.status === 'offer',
+  },
+}
+
+/**
+ * Stage transition hook type for notifications and side-effects.
+ */
+export type StageTransitionHook = (context: {
+  orgId: string
+  applicationId: string
+  candidateName: string
+  candidateEmail: string
+  previousStage: string
+  newStage: string
+  notes?: string
+}) => Promise<void>
+
+/**
+ * Registry of stage transition hooks for notifications and automation.
+ * In production, these would trigger email notifications, Slack messages,
+ * calendar invites, background checks, etc.
+ */
+const stageTransitionHooks: StageTransitionHook[] = []
+
+/**
+ * Register a hook to be called on every stage transition.
+ */
+export function registerStageTransitionHook(hook: StageTransitionHook): void {
+  stageTransitionHooks.push(hook)
+}
+
+/**
+ * Execute all registered stage transition hooks.
+ * Errors in individual hooks are logged but do not prevent the transition.
+ */
+async function executeTransitionHooks(context: {
+  orgId: string
+  applicationId: string
+  candidateName: string
+  candidateEmail: string
+  previousStage: string
+  newStage: string
+  notes?: string
+}): Promise<{ executed: number; errors: string[] }> {
+  const errors: string[] = []
+  let executed = 0
+
+  for (const hook of stageTransitionHooks) {
+    try {
+      await hook(context)
+      executed++
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown hook error'
+      errors.push(message)
+      console.error(`[ATS] Stage transition hook error (${context.previousStage} -> ${context.newStage}):`, message)
+    }
+  }
+
+  return { executed, errors }
+}
+
+// ============================================================
 // 1. Job Board Distribution
 // ============================================================
 
@@ -542,7 +691,13 @@ function estimateExperience(
   const ratingSignal = application.rating ? application.rating * 1.2 : 3
   const stageSignal = (() => {
     switch (application.status) {
-      case 'interview': return 4
+      case 'phone_screen': return 3
+      case 'technical': return 4
+      case 'onsite': return 5
+      case 'panel': return 5
+      case 'assessment': return 5
+      case 'reference_check': return 6
+      case 'hiring_manager_review': return 6
       case 'offer': return 6
       case 'hired': return 5
       case 'screening': return 3
@@ -717,21 +872,31 @@ export async function scheduleInterview(
     throw new Error(`Interviewer(s) not found in organization: ${missingIds.join(', ')}`)
   }
 
-  // Update the application status to 'interview' if it's at an earlier stage
-  const stageProgression = ['new', 'screening', 'interview', 'offer', 'hired']
-  const currentStageIndex = stageProgression.indexOf(application.status)
-  const interviewStageIndex = stageProgression.indexOf('interview')
+  // Update the application status based on interview type using the 12-stage pipeline
+  const interviewTypeToStatus: Record<InterviewType, string> = {
+    phone_screen: 'phone_screen',
+    technical: 'technical',
+    behavioral: 'technical', // behavioral interviews happen during the technical stage
+    panel: 'panel',
+    final: 'hiring_manager_review',
+  }
+  const targetStatus = (interviewTypeToStatus[type] || 'phone_screen') as typeof STAGE_ORDER[number]
 
-  if (currentStageIndex >= 0 && currentStageIndex < interviewStageIndex) {
+  // Only advance forward in the pipeline, never move backwards
+  const stageProgression = STAGE_ORDER
+  const currentStageIndex = stageProgression.indexOf(application.status)
+  const targetStageIndex = stageProgression.indexOf(targetStatus)
+
+  if (currentStageIndex >= 0 && targetStageIndex > currentStageIndex) {
     await db
       .update(schema.applications)
       .set({
-        status: 'interview',
+        status: targetStatus,
         stage: mapInterviewTypeToStage(type),
       })
       .where(eq(schema.applications.id, applicationId))
   } else {
-    // Update stage to reflect the interview type
+    // Update stage label to reflect the interview type without changing status
     await db
       .update(schema.applications)
       .set({ stage: mapInterviewTypeToStage(type) })
@@ -808,7 +973,7 @@ export async function getCandidatePipeline(
     .orderBy(desc(schema.applications.appliedAt))
 
   const now = new Date()
-  const stageOrder = ['new', 'screening', 'interview', 'offer', 'hired', 'rejected', 'withdrawn']
+  const stageOrder = STAGE_ORDER
 
   // Group candidates by status
   const stageGroups: Record<string, PipelineCandidate[]> = {}
@@ -854,20 +1019,20 @@ export async function getCandidatePipeline(
       }
     })
 
-  // Calculate conversion rates between active stages
-  const activeStages = ['new', 'screening', 'interview', 'offer', 'hired']
+  // Calculate conversion rates between active stages (non-terminal)
+  const activeStages = ACTIVE_STAGES
   const conversionRates: Record<string, number> = {}
 
   for (let i = 0; i < activeStages.length - 1; i++) {
     const from = activeStages[i]
     const to = activeStages[i + 1]
-    const fromCount = countAtOrBeyondStage(applications, from, activeStages)
-    const toCount = countAtOrBeyondStage(applications, to, activeStages)
+    const fromCount = countAtOrBeyondStage(applications, from, activeStages as unknown as string[])
+    const toCount = countAtOrBeyondStage(applications, to, activeStages as unknown as string[])
     conversionRates[`${from}_to_${to}`] = fromCount > 0 ? pct(toCount, fromCount) : 0
   }
 
   // Detect bottleneck: stage with highest average time (excluding terminal stages)
-  const nonTerminalStages = stages.filter(s => !['hired', 'rejected', 'withdrawn'].includes(s.stage))
+  const nonTerminalStages = stages.filter(s => !(TERMINAL_STAGES as readonly string[]).includes(s.stage))
   const bottleneckStage = nonTerminalStages.length > 0
     ? nonTerminalStages.reduce((max, s) => s.averageTimeInStage > max.averageTimeInStage ? s : max).stage
     : null
@@ -1054,39 +1219,68 @@ export async function getRecruitingMetrics(orgId: string): Promise<RecruitingMet
     return daysBetween(applied, now)
   })
 
-  const screeningApps = applications.filter(a =>
-    a.status === 'screening' || ['interview', 'offer', 'hired'].includes(a.status)
-  )
+  // Use the 12-stage pipeline for metrics calculation
+  const atOrBeyondStage = (stage: string) => {
+    const stageIdx = ACTIVE_STAGES.indexOf(stage as typeof ACTIVE_STAGES[number])
+    if (stageIdx < 0) return 0
+    return applications.filter(a => {
+      const appIdx = ACTIVE_STAGES.indexOf(a.status as typeof ACTIVE_STAGES[number])
+      return appIdx >= stageIdx
+    }).length
+  }
+
+  const screeningApps = applications.filter(a => {
+    const idx = ACTIVE_STAGES.indexOf(a.status as typeof ACTIVE_STAGES[number])
+    return idx >= 1 // screening or beyond
+  })
   const timeInScreening = screeningApps.map(a => {
     const applied = a.appliedAt ? new Date(a.appliedAt) : now
-    // Estimate screening takes ~30% of total process time
-    return daysBetween(applied, now) * 0.3
+    return daysBetween(applied, now) * 0.15
   })
 
-  const interviewApps = applications.filter(a =>
-    a.status === 'interview' || ['offer', 'hired'].includes(a.status)
-  )
+  const interviewStages = ['phone_screen', 'technical', 'onsite', 'panel']
+  const interviewApps = applications.filter(a => {
+    const idx = ACTIVE_STAGES.indexOf(a.status as typeof ACTIVE_STAGES[number])
+    return idx >= 2 // phone_screen or beyond
+  })
   const timeInInterview = interviewApps.map(a => {
     const applied = a.appliedAt ? new Date(a.appliedAt) : now
-    // Estimate interview takes ~40% of total process time
     return daysBetween(applied, now) * 0.4
   })
 
-  // --- Pipeline Metrics ---
-  const screeningCount = applications.filter(a => ['screening', 'interview', 'offer', 'hired'].includes(a.status)).length
-  const interviewCount = applications.filter(a => ['interview', 'offer', 'hired'].includes(a.status)).length
-  const offerCount = applications.filter(a => ['offer', 'hired'].includes(a.status)).length
+  // --- Pipeline Metrics (12-stage) ---
+  const screeningCount = atOrBeyondStage('screening')
+  const phoneScreenCount = atOrBeyondStage('phone_screen')
+  const technicalCount = atOrBeyondStage('technical')
+  const onsiteCount = atOrBeyondStage('onsite')
+  const panelCount = atOrBeyondStage('panel')
+  const assessmentCount = atOrBeyondStage('assessment')
+  const refCheckCount = atOrBeyondStage('reference_check')
+  const hmReviewCount = atOrBeyondStage('hiring_manager_review')
+  const offerCount = atOrBeyondStage('offer')
   const hiredCount = hiredApps.length
 
-  const screeningToInterviewRate = screeningCount > 0 ? pct(interviewCount, screeningCount) : 0
-  const interviewToOfferRate = interviewCount > 0 ? pct(offerCount, interviewCount) : 0
+  // Key conversion rates across the full funnel
+  const screeningToPhoneScreenRate = screeningCount > 0 ? pct(phoneScreenCount, screeningCount) : 0
+  const phoneScreenToTechnicalRate = phoneScreenCount > 0 ? pct(technicalCount, phoneScreenCount) : 0
+  const technicalToOnsiteRate = technicalCount > 0 ? pct(onsiteCount, technicalCount) : 0
+  const referenceToOfferRate = refCheckCount > 0 ? pct(offerCount, refCheckCount) : 0
   const offerAcceptanceRate = offerCount > 0 ? pct(hiredCount, offerCount) : 0
   const overallConversionRate = totalApplications > 0 ? pct(hiredCount, totalApplications) : 0
 
+  // Legacy-compatible rates
+  const screeningToInterviewRate = screeningCount > 0 ? pct(phoneScreenCount, screeningCount) : 0
+  const interviewToOfferRate = phoneScreenCount > 0 ? pct(offerCount, phoneScreenCount) : 0
+
   const dropOffByStage: Record<string, number> = {
     new_to_screening: totalApplications > 0 ? pct(totalApplications - screeningCount, totalApplications) : 0,
-    screening_to_interview: screeningCount > 0 ? pct(screeningCount - interviewCount, screeningCount) : 0,
-    interview_to_offer: interviewCount > 0 ? pct(interviewCount - offerCount, interviewCount) : 0,
+    screening_to_phone_screen: screeningCount > 0 ? pct(screeningCount - phoneScreenCount, screeningCount) : 0,
+    phone_screen_to_technical: phoneScreenCount > 0 ? pct(phoneScreenCount - technicalCount, phoneScreenCount) : 0,
+    technical_to_onsite: technicalCount > 0 ? pct(technicalCount - onsiteCount, technicalCount) : 0,
+    onsite_to_panel: onsiteCount > 0 ? pct(onsiteCount - panelCount, onsiteCount) : 0,
+    panel_to_assessment: panelCount > 0 ? pct(panelCount - assessmentCount, panelCount) : 0,
+    assessment_to_reference_check: assessmentCount > 0 ? pct(assessmentCount - refCheckCount, assessmentCount) : 0,
+    reference_check_to_offer: refCheckCount > 0 ? pct(refCheckCount - offerCount, refCheckCount) : 0,
     offer_to_hired: offerCount > 0 ? pct(offerCount - hiredCount, offerCount) : 0,
   }
 
@@ -1107,7 +1301,11 @@ export async function getRecruitingMetrics(orgId: string): Promise<RecruitingMet
     : 0
   const topRatedCandidates = ratedApplications.filter(a => (a.rating ?? 0) >= 4).length
 
-  // Estimate interviews per hire (industry average: 4-6)
+  // Estimate interviews per hire based on how many passed screening stages
+  const interviewCount = applications.filter(a => {
+    const idx = STAGE_ORDER.indexOf(a.status as typeof STAGE_ORDER[number])
+    return idx >= 2 // phone_screen or beyond
+  }).length
   const averageInterviewsPerHire = hiredCount > 0
     ? Math.round((interviewCount / Math.max(hiredCount, 1)) * 10) / 10
     : 0
@@ -1408,8 +1606,10 @@ function generateCandidateTags(
     tags.push('previously-hired')
   } else if (result.application.status === 'offer') {
     tags.push('reached-offer-stage')
-  } else if (result.application.status === 'interview') {
+  } else if (['phone_screen', 'technical', 'onsite', 'panel'].includes(result.application.status)) {
     tags.push('reached-interview')
+  } else if (['reference_check', 'hiring_manager_review'].includes(result.application.status)) {
+    tags.push('advanced-candidate')
   }
 
   // Location tag
@@ -1459,14 +1659,28 @@ export async function batchScreenApplications(
 
 /**
  * Advance a candidate to the next pipeline stage.
- * Validates the transition is valid and updates the application.
+ * Supports all 12 stages with validation, prerequisites, and transition hooks.
+ *
+ * Stage progression:
+ *   new -> screening -> phone_screen -> technical -> onsite -> panel ->
+ *   assessment -> reference_check -> hiring_manager_review -> offer -> hired
+ *
+ * Candidates can be rejected or withdrawn from any active stage.
+ * Backward transitions are not allowed.
  */
 export async function advanceCandidateStage(
   orgId: string,
   applicationId: string,
-  targetStatus: 'screening' | 'interview' | 'offer' | 'hired' | 'rejected',
+  targetStatus: PipelineStage12,
   notes?: string
-): Promise<{ success: boolean; previousStatus: string; newStatus: string }> {
+): Promise<{
+  success: boolean
+  previousStatus: string
+  newStatus: string
+  stageName: string
+  hooksExecuted: number
+  hookErrors: string[]
+}> {
   const [application] = await db
     .select()
     .from(schema.applications)
@@ -1477,47 +1691,59 @@ export async function advanceCandidateStage(
     throw new Error(`Application ${applicationId} not found for organization ${orgId}`)
   }
 
-  const validTransitions: Record<string, string[]> = {
-    new: ['screening', 'rejected'],
-    screening: ['interview', 'rejected'],
-    interview: ['offer', 'rejected'],
-    offer: ['hired', 'rejected'],
-  }
-
   const currentStatus = application.status
-  const allowed = validTransitions[currentStatus] ?? []
 
-  if (!allowed.includes(targetStatus)) {
+  // Cannot transition from terminal states
+  if (TERMINAL_STAGES.includes(currentStatus as typeof TERMINAL_STAGES[number])) {
     throw new Error(
-      `Invalid stage transition: ${currentStatus} -> ${targetStatus}. ` +
-      `Valid transitions from ${currentStatus}: ${allowed.join(', ')}`
+      `Cannot transition from terminal stage '${currentStatus}'. ` +
+      `Candidate has already been ${currentStatus}.`
     )
   }
 
+  // Validate the transition is allowed
+  const allowed = VALID_TRANSITIONS[currentStatus] ?? []
+  if (!allowed.includes(targetStatus)) {
+    throw new Error(
+      `Invalid stage transition: ${currentStatus} -> ${targetStatus}. ` +
+      `Valid transitions from '${STAGE_DISPLAY_NAMES[currentStatus] || currentStatus}': ` +
+      `${allowed.map(s => STAGE_DISPLAY_NAMES[s] || s).join(', ')}`
+    )
+  }
+
+  // Check stage-specific prerequisites
+  const prerequisite = STAGE_PREREQUISITES[targetStatus]
+  if (prerequisite) {
+    const isValid = prerequisite.validate({
+      status: currentStatus,
+      stage: application.stage,
+      notes: application.notes,
+      rating: application.rating,
+    })
+    if (!isValid) {
+      throw new Error(
+        `Prerequisite not met for '${STAGE_DISPLAY_NAMES[targetStatus]}': ${prerequisite.description}`
+      )
+    }
+  }
+
+  // Build update data
   const updateData: Record<string, unknown> = { status: targetStatus }
   if (notes) {
     updateData.notes = application.notes
-      ? `${application.notes}\n---\n${new Date().toISOString()}: ${notes}`
-      : `${new Date().toISOString()}: ${notes}`
+      ? `${application.notes}\n---\n${new Date().toISOString()} [${currentStatus} -> ${targetStatus}]: ${notes}`
+      : `${new Date().toISOString()} [${currentStatus} -> ${targetStatus}]: ${notes}`
   }
 
-  // Map status to a human-readable stage name
-  const stageNames: Record<string, string> = {
-    screening: 'Resume Screening',
-    interview: 'Interview',
-    offer: 'Offer Extended',
-    hired: 'Hired',
-    rejected: 'Rejected',
-  }
-  updateData.stage = stageNames[targetStatus] ?? targetStatus
+  // Set human-readable stage name
+  updateData.stage = STAGE_DISPLAY_NAMES[targetStatus] ?? targetStatus
 
   await db
     .update(schema.applications)
     .set(updateData)
     .where(eq(schema.applications.id, applicationId))
 
-  // If hired, increment the job posting's application count isn't needed since it tracks applications,
-  // but we should close the posting if this was the target hire
+  // If hired, close the job posting
   if (targetStatus === 'hired') {
     const [job] = await db
       .select()
@@ -1526,7 +1752,6 @@ export async function advanceCandidateStage(
       .limit(1)
 
     if (job) {
-      // Check if all positions are filled (for simplicity, one hire = filled)
       await db
         .update(schema.jobPostings)
         .set({ status: 'filled' })
@@ -1534,10 +1759,24 @@ export async function advanceCandidateStage(
     }
   }
 
+  // Execute stage transition hooks (notifications, automation, etc.)
+  const hookResult = await executeTransitionHooks({
+    orgId,
+    applicationId,
+    candidateName: application.candidateName,
+    candidateEmail: application.candidateEmail,
+    previousStage: currentStatus,
+    newStage: targetStatus,
+    notes,
+  })
+
   return {
     success: true,
     previousStatus: currentStatus,
     newStatus: targetStatus,
+    stageName: STAGE_DISPLAY_NAMES[targetStatus] ?? targetStatus,
+    hooksExecuted: hookResult.executed,
+    hookErrors: hookResult.errors,
   }
 }
 
@@ -1607,6 +1846,34 @@ export async function getRecruitingOverview(orgId: string): Promise<{
   })
   if (stalledScreening.length > 0) {
     urgentActions.push(`${stalledScreening.length} candidates stalled in screening for 14+ days`)
+  }
+
+  // Check for stalled candidates in interview stages
+  const interviewStages = ['phone_screen', 'technical', 'onsite', 'panel']
+  const stalledInterview = applications.filter(a => {
+    if (!interviewStages.includes(a.application.status)) return false
+    const applied = a.application.appliedAt ? new Date(a.application.appliedAt) : new Date()
+    return daysBetween(applied, new Date()) > 21
+  })
+  if (stalledInterview.length > 0) {
+    urgentActions.push(`${stalledInterview.length} candidates stalled in interview stages for 21+ days`)
+  }
+
+  // Check for stalled assessments and reference checks
+  const assessmentStages = ['assessment', 'reference_check']
+  const stalledAssessment = applications.filter(a => {
+    if (!assessmentStages.includes(a.application.status)) return false
+    const applied = a.application.appliedAt ? new Date(a.application.appliedAt) : new Date()
+    return daysBetween(applied, new Date()) > 10
+  })
+  if (stalledAssessment.length > 0) {
+    urgentActions.push(`${stalledAssessment.length} candidates awaiting assessment/reference check for 10+ days`)
+  }
+
+  // Hiring manager review bottleneck
+  const hmReviewApps = applications.filter(a => a.application.status === 'hiring_manager_review')
+  if (hmReviewApps.length > 0) {
+    urgentActions.push(`${hmReviewApps.length} candidates pending hiring manager review`)
   }
 
   const longOpenJobs = jobs.filter(j => {

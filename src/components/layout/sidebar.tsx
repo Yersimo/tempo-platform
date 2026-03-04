@@ -12,6 +12,8 @@ import {
   UserCheck, UserMinus, UserPlus, Wallet, Clock, Shield, ShieldCheck, Receipt, Briefcase, Laptop, AppWindow, Cloud,
   FileText, PieChart, BarChart3, Settings, ChevronLeft, Menu,
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
+  CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
+  KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
 } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -44,7 +46,7 @@ export function Sidebar() {
   const EMPLOYEE_ALLOWED_HREFS = new Set([
     '/dashboard', '/people', '/performance', '/learning',
     '/engagement', '/payroll', '/time-attendance', '/benefits',
-    '/expense', '/mentoring',
+    '/expense', '/mentoring', '/chat', '/documents', '/travel',
   ])
 
   const allNavGroups: NavGroup[] = [
@@ -54,6 +56,7 @@ export function Sidebar() {
         { label: t('dashboard'), href: '/dashboard', icon: <LayoutDashboard size={18} /> },
         { label: t('peopleLabel'), href: '/people', icon: <Users size={18} /> },
         { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
+        { label: 'Chat', href: '/chat', icon: <MessageSquare size={18} /> },
       ],
     },
     {
@@ -74,6 +77,9 @@ export function Sidebar() {
         { label: t('timeAttendance'), href: '/time-attendance', icon: <Clock size={18} />, badge: 2 },
         { label: t('benefits'), href: '/benefits', icon: <Shield size={18} /> },
         { label: t('expense'), href: '/expense', icon: <Receipt size={18} />, badge: 3 },
+        { label: 'Travel', href: '/travel', icon: <Plane size={18} /> },
+        { label: 'Global Workforce', href: '/global-workforce', icon: <Globe size={18} /> },
+        { label: "Workers' Comp", href: '/workers-comp', icon: <ShieldCheck size={18} /> },
       ],
     },
     {
@@ -82,9 +88,14 @@ export function Sidebar() {
         { label: 'IT Cloud', href: '/it-cloud', icon: <Cloud size={18} /> },
         { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
         { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
+        { label: 'Identity', href: '/identity', icon: <KeyRound size={18} /> },
+        { label: 'Passwords', href: '/password-manager', icon: <Lock size={18} /> },
         { label: 'Marketplace', href: '/marketplace', icon: <Store size={18} /> },
         { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} /> },
         { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} /> },
+        { label: 'Corporate Cards', href: '/finance/cards', icon: <CreditCard size={18} /> },
+        { label: 'Bill Pay', href: '/finance/bill-pay', icon: <CircleDollarSign size={18} /> },
+        { label: 'Global Spend', href: '/finance/global-spend', icon: <Globe size={18} /> },
       ],
     },
     {
@@ -97,6 +108,10 @@ export function Sidebar() {
         { label: 'Automation', href: '/workflows', icon: <Zap size={18} /> },
         { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
         { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
+        { label: 'Documents', href: '/documents', icon: <FileSignature size={18} /> },
+        { label: 'App Studio', href: '/app-studio', icon: <Blocks size={18} /> },
+        { label: 'Sandbox', href: '/sandbox', icon: <FlaskConical size={18} /> },
+        { label: 'Groups', href: '/groups', icon: <Network size={18} /> },
         { label: 'Developer', href: '/developer', icon: <Code size={18} /> },
       ],
     },

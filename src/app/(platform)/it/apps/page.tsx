@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,12 +10,12 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign, Search, Users, Building2, Globe } from 'lucide-react'
+import { Tabs } from '@/components/ui/tabs'
+import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign, Search, Users, Building2, Globe, ShieldCheck, ShieldX } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
 import { AIRecommendationList, AIInsightCard } from '@/components/ai'
 import { optimizeLicenses, detectShadowIT } from '@/lib/ai-engine'
-import { demoShadowITDetections } from '@/lib/demo-data'
 
 export default function AppsPage() {
   const {
@@ -23,7 +23,13 @@ export default function AppsPage() {
     addSoftwareLicense, updateSoftwareLicense,
     addITRequest, updateITRequest,
     getEmployeeName, getDepartmentName, addToast,
+    ensureModulesLoaded,
+    shadowITDetections, updateShadowITDetection: storeUpdateShadowIT,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['devices', 'softwareLicenses'])
+  }, [ensureModulesLoaded])
 
   const t = useTranslations('apps')
   const tc = useTranslations('common')
@@ -143,6 +149,28 @@ export default function AppsPage() {
     resetBulkLicense()
   }
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState('apps')
+
+  // Shadow IT detections from store
+  const shadowITList = shadowITDetections as Array<{
+    id: string
+    app_name: string
+    detected_users: number
+    risk_level: 'high' | 'medium' | 'low'
+    category: string
+    detected_date: string
+    recommended_alternative: string
+    data_risk: string
+    status: 'flagged' | 'under_review' | 'accepted' | 'approved' | 'blocked'
+  }>
+
+  function handleShadowITAction(id: string, status: 'approved' | 'blocked') {
+    storeUpdateShadowIT(id, { status })
+    const detection = shadowITList.find(d => d.id === id)
+    addToast(`${detection?.app_name || 'App'} has been ${status}`)
+  }
+
   function openAddLicense() {
     setLicenseForm({ name: '', vendor: '', total_licenses: '', used_licenses: '', cost_per_license: '', renewal_date: '', currency: 'USD' })
     setShowLicenseModal(true)
@@ -209,6 +237,17 @@ export default function AppsPage() {
         }
       />
 
+      <Tabs
+        tabs={[
+          { id: 'apps', label: 'Apps & Licenses', count: softwareLicenses.length },
+          { id: 'shadow-it', label: 'Shadow IT', count: shadowITList.filter(d => d.status === 'flagged' || d.status === 'under_review').length },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+        className="mb-6"
+      />
+
+      {activeTab === 'apps' && (<>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalLicenses')} value={totalLicenses} icon={<Key size={20} />} />
         <StatCard label={t('utilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={t('inUse', { count: usedLicenses })} changeType="neutral" />
@@ -392,7 +431,7 @@ export default function AppsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {demoShadowITDetections.map(detection => (
+                {shadowITList.map(detection => (
                   <tr key={detection.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <div>
@@ -428,6 +467,107 @@ export default function AppsPage() {
           </div>
         </Card>
       </div>
+      </>)}
+
+      {activeTab === 'shadow-it' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Detected Shadow Apps" value={shadowITList.length} icon={<ShieldAlert size={20} />} />
+            <StatCard label="High Risk" value={shadowITList.filter(d => d.risk_level === 'high').length} icon={<AlertTriangle size={20} />} changeType="negative" />
+            <StatCard label="Pending Review" value={shadowITList.filter(d => d.status === 'flagged' || d.status === 'under_review').length} icon={<Search size={20} />} />
+            <StatCard label="Total Exposed Users" value={shadowITList.reduce((a, d) => a + d.detected_users, 0)} icon={<Users size={20} />} />
+          </div>
+
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Shadow IT Detections</CardTitle>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">App Name</th>
+                    <th className="tempo-th text-left px-4 py-3">Category</th>
+                    <th className="tempo-th text-center px-4 py-3">Risk Level</th>
+                    <th className="tempo-th text-left px-4 py-3">First Detected</th>
+                    <th className="tempo-th text-center px-4 py-3">Users</th>
+                    <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                    <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {shadowITList.map(detection => (
+                    <tr key={detection.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3">
+                        <p className="text-xs font-medium text-t1">{detection.app_name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2">{detection.category}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={
+                          detection.risk_level === 'high' ? 'error' :
+                          detection.risk_level === 'medium' ? 'warning' : 'default'
+                        }>
+                          {detection.risk_level === 'high' ? t('highRisk') :
+                           detection.risk_level === 'medium' ? t('mediumRisk') : t('lowRisk')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2">{detection.detected_date}</td>
+                      <td className="px-4 py-3 text-center text-xs font-medium text-t1">{detection.detected_users}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={
+                          detection.status === 'flagged' ? 'error' :
+                          detection.status === 'under_review' ? 'warning' :
+                          detection.status === 'approved' || detection.status === 'accepted' ? 'success' :
+                          detection.status === 'blocked' ? 'error' : 'default'
+                        }>
+                          {detection.status === 'under_review' ? 'Under Review' :
+                           detection.status === 'flagged' ? 'Flagged' :
+                           detection.status === 'approved' || detection.status === 'accepted' ? 'Approved' :
+                           detection.status === 'blocked' ? 'Blocked' : detection.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(detection.status === 'flagged' || detection.status === 'under_review') && (
+                          <div className="flex items-center justify-center gap-1">
+                            <Button size="sm" variant="secondary" onClick={() => handleShadowITAction(detection.id, 'approved')}>
+                              <ShieldCheck size={12} /> Approve
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={() => handleShadowITAction(detection.id, 'blocked')}>
+                              <ShieldX size={12} /> Block
+                            </Button>
+                          </div>
+                        )}
+                        {(detection.status === 'approved' || detection.status === 'accepted') && (
+                          <span className="text-xs text-green-600 font-medium">Approved</span>
+                        )}
+                        {detection.status === 'blocked' && (
+                          <span className="text-xs text-red-600 font-medium">Blocked</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* AI Shadow IT Insights */}
+          {shadowITInsights.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                <ShieldAlert size={16} /> Shadow IT Risk Analysis
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {shadowITInsights.map(insight => (
+                  <AIInsightCard key={insight.id} insight={insight} compact />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Add License Modal */}
       <Modal open={showLicenseModal} onClose={() => setShowLicenseModal(false)} title={t('addLicenseModal')}>

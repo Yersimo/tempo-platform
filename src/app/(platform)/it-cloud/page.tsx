@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,13 +10,14 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Tabs } from '@/components/ui/tabs'
 import { TempoDonutChart, TempoBarChart, CHART_COLORS } from '@/components/ui/charts'
 import {
   Monitor, Laptop, Smartphone, Tablet, Shield, ShieldCheck, AppWindow,
   Lock, Trash2, RotateCcw, Download, Plus, Search, Settings,
   CheckCircle, XCircle, Clock, AlertTriangle, Package, Warehouse, Truck,
   KeyRound, Users, Globe, ToggleLeft, ToggleRight,
-  HardDrive, Server, Cpu, Box,
+  HardDrive, Server, Cpu, Box, Zap, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
@@ -65,7 +66,61 @@ export default function ITCloudPage() {
     addSecurityPolicyIT, updateSecurityPolicyIT, deleteSecurityPolicyIT,
     addDeviceInventoryItem, updateDeviceInventoryItem,
     getEmployeeName, addToast,
+    ensureModulesLoaded,
+    provisioningRules: rawProvisioningRules,
+    addProvisioningRule,
+    updateProvisioningRule,
+    deleteProvisioningRule: storeDeleteProvisioningRule,
+    encryptionPolicies: rawEncryptionPolicies,
+    addEncryptionPolicy,
+    updateEncryptionPolicy,
+    deleteEncryptionPolicy: storeDeleteEncryptionPolicy,
   } = useTempo()
+
+  // ---- Lazy-load IT modules on mount ----
+  useEffect(() => {
+    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests'])
+  }, [ensureModulesLoaded])
+
+  // ---- Provisioning Rules Type ----
+  type ProvisioningRule = {
+    id: string
+    name: string
+    trigger: 'on_hire' | 'department_change' | 'role_change' | 'on_offboard'
+    department: string | null
+    role: string | null
+    apps: string[]
+    isActive: boolean
+    createdAt: string
+  }
+  const provisioningRules = rawProvisioningRules as ProvisioningRule[]
+
+  // ---- Encryption Policy Type ----
+  type EncryptionPolicy = {
+    id: string
+    name: string
+    platform: 'macos' | 'windows' | 'linux' | 'all'
+    encryptionType: 'FileVault' | 'BitLocker' | 'LUKS' | 'Platform Default'
+    enforced: boolean
+    recoveryKeyEscrowed: boolean
+    gracePeriodHours: number
+    appliesTo: string
+    compliantCount: number
+    totalCount: number
+    createdAt: string
+    lastUpdated: string
+  }
+  const encryptionPolicies = rawEncryptionPolicies as EncryptionPolicy[]
+
+  // ---- Provisioning Rules State ----
+  const [showProvRuleModal, setShowProvRuleModal] = useState(false)
+  const [editProvRuleId, setEditProvRuleId] = useState<string | null>(null)
+  const [provRuleForm, setProvRuleForm] = useState<{ name: string; trigger: string; department: string; role: string; apps: string; isActive: boolean }>({ name: '', trigger: 'on_hire', department: '', role: '', apps: '', isActive: true })
+
+  // ---- Encryption Policy State ----
+  const [showEncryptionModal, setShowEncryptionModal] = useState(false)
+  const [editEncryptionId, setEditEncryptionId] = useState<string | null>(null)
+  const [encryptionForm, setEncryptionForm] = useState<{ name: string; platform: string; encryptionType: string; enforced: boolean; recoveryKeyEscrowed: boolean; gracePeriodHours: number; appliesTo: string }>({ name: '', platform: 'all', encryptionType: 'Platform Default', enforced: true, recoveryKeyEscrowed: true, gracePeriodHours: 24, appliesTo: 'All Devices' })
 
   // ---- Tab State ----
   const tabs = [
@@ -74,6 +129,8 @@ export default function ITCloudPage() {
     { id: 'apps', label: 'App Management', icon: AppWindow },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'inventory', label: 'Inventory', icon: Package },
+    { id: 'provisioning', label: 'Provisioning Rules', icon: Zap },
+    { id: 'encryption', label: 'Encryption', icon: Lock },
     { id: 'identity', label: 'Identity & Access', icon: KeyRound },
   ]
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -262,6 +319,88 @@ export default function ITCloudPage() {
     setInvForm({ name: '', type: 'laptop', platform: 'windows', serialNumber: '', status: 'in_warehouse', condition: 'new', purchaseDate: '', purchaseCost: 0, warrantyExpiry: '', warehouseLocation: '', notes: '' })
   }
 
+  // ---- Provisioning Rule CRUD ----
+  function openProvRuleCreate() {
+    setEditProvRuleId(null)
+    setProvRuleForm({ name: '', trigger: 'on_hire', department: '', role: '', apps: '', isActive: true })
+    setShowProvRuleModal(true)
+  }
+  function openProvRuleEdit(rule: ProvisioningRule) {
+    setEditProvRuleId(rule.id)
+    setProvRuleForm({ name: rule.name, trigger: rule.trigger, department: rule.department || '', role: rule.role || '', apps: rule.apps.join(', '), isActive: rule.isActive })
+    setShowProvRuleModal(true)
+  }
+  function submitProvRule() {
+    if (!provRuleForm.name) return
+    const appsArr = provRuleForm.apps.split(',').map(s => s.trim()).filter(Boolean)
+    if (editProvRuleId) {
+      updateProvisioningRule(editProvRuleId, { name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive })
+      addToast('Provisioning rule updated')
+    } else {
+      addProvisioningRule({ name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive, createdAt: new Date().toISOString().slice(0, 10) })
+      addToast('Provisioning rule created')
+    }
+    setShowProvRuleModal(false)
+  }
+  function deleteProvRule(id: string) {
+    storeDeleteProvisioningRule(id)
+    addToast('Provisioning rule deleted')
+  }
+  function toggleProvRule(id: string) {
+    const rule = provisioningRules.find(r => r.id === id)
+    if (rule) updateProvisioningRule(id, { isActive: !rule.isActive })
+  }
+
+  // ---- Encryption Policy CRUD ----
+  function openEncryptionCreate() {
+    setEditEncryptionId(null)
+    setEncryptionForm({ name: '', platform: 'all', encryptionType: 'Platform Default', enforced: true, recoveryKeyEscrowed: true, gracePeriodHours: 24, appliesTo: 'All Devices' })
+    setShowEncryptionModal(true)
+  }
+  function openEncryptionEdit(policy: EncryptionPolicy) {
+    setEditEncryptionId(policy.id)
+    setEncryptionForm({ name: policy.name, platform: policy.platform, encryptionType: policy.encryptionType, enforced: policy.enforced, recoveryKeyEscrowed: policy.recoveryKeyEscrowed, gracePeriodHours: policy.gracePeriodHours, appliesTo: policy.appliesTo })
+    setShowEncryptionModal(true)
+  }
+  function submitEncryptionPolicy() {
+    if (!encryptionForm.name) return
+    if (editEncryptionId) {
+      updateEncryptionPolicy(editEncryptionId, { name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, lastUpdated: new Date().toISOString().slice(0, 10) })
+      addToast('Encryption policy updated')
+    } else {
+      const now = new Date().toISOString().slice(0, 10)
+      addEncryptionPolicy({ name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, compliantCount: 0, totalCount: 0, createdAt: now, lastUpdated: now })
+      addToast('Encryption policy created')
+    }
+    setShowEncryptionModal(false)
+  }
+  function deleteEncryptionPolicyHandler(id: string) {
+    storeDeleteEncryptionPolicy(id)
+    addToast('Encryption policy deleted')
+  }
+  function toggleEncryptionEnforced(id: string) {
+    const policy = encryptionPolicies.find(p => p.id === id)
+    if (policy) updateEncryptionPolicy(id, { enforced: !policy.enforced, lastUpdated: new Date().toISOString().slice(0, 10) })
+  }
+
+  // ---- Provisioning Stats ----
+  const provRuleStats = useMemo(() => {
+    const active = provisioningRules.filter(r => r.isActive).length
+    const byTrigger: Record<string, number> = {}
+    provisioningRules.forEach(r => { byTrigger[r.trigger] = (byTrigger[r.trigger] || 0) + 1 })
+    const totalAppsManaged = provisioningRules.filter(r => r.isActive).reduce((a, r) => a + r.apps.length, 0)
+    return { active, total: provisioningRules.length, byTrigger, totalAppsManaged }
+  }, [provisioningRules])
+
+  // ---- Encryption Stats ----
+  const encryptionStats = useMemo(() => {
+    const enforced = encryptionPolicies.filter(p => p.enforced).length
+    const totalCompliant = encryptionPolicies.reduce((a, p) => a + p.compliantCount, 0)
+    const totalDevices = encryptionPolicies.reduce((a, p) => a + p.totalCount, 0)
+    const overallPct = totalDevices > 0 ? Math.round((totalCompliant / totalDevices) * 100) : 0
+    return { enforced, total: encryptionPolicies.length, totalCompliant, totalDevices, overallPct }
+  }, [encryptionPolicies])
+
   // Selected device for detail
   const selectedDevice = managedDevices.find(d => d.id === showDeviceDetail)
   const selectedDeviceActions = deviceActions.filter(a => a.deviceId === showDeviceDetail)
@@ -284,34 +423,10 @@ export default function ITCloudPage() {
   // ────────────────────────────── RENDER ──────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <>
       <Header title="IT Cloud" subtitle="Device management, application catalog, security policies and asset inventory" />
 
-      {/* Tabs */}
-      <div className="border-b border-white/10 px-6">
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map(tab => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setSearchQuery('') }}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                  activeTab === tab.id
-                    ? 'border-white text-white'
-                    : 'border-transparent text-gray-400 hover:text-gray-200'
-                )}
-              >
-                <Icon size={16} />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="p-6 space-y-6">
+      <Tabs tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setSearchQuery('') }} className="mb-6" />
 
         {/* ──────────────── DASHBOARD TAB ──────────────── */}
         {activeTab === 'dashboard' && (
@@ -879,6 +994,224 @@ export default function ITCloudPage() {
           </>
         )}
 
+        {/* ──────────────── PROVISIONING RULES TAB ──────────────── */}
+        {activeTab === 'provisioning' && (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-medium">Provisioning Rules</h3>
+                <p className="text-sm text-gray-500">Auto-assign apps when employees join, change departments, or get promoted</p>
+              </div>
+              <Button onClick={openProvRuleCreate}><Plus size={16} className="mr-1" /> New Rule</Button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <StatCard label="Active Rules" value={provRuleStats.active} icon={<Zap size={20} />} change={`${provRuleStats.total} total`} changeType="neutral" />
+              <StatCard label="On-Hire Rules" value={provRuleStats.byTrigger['on_hire'] || 0} icon={<Plus size={20} />} change="New employee triggers" changeType="neutral" />
+              <StatCard label="Role-Based Rules" value={(provRuleStats.byTrigger['role_change'] || 0) + (provRuleStats.byTrigger['department_change'] || 0)} icon={<Users size={20} />} change="Dept or role change" changeType="neutral" />
+              <StatCard label="Apps Auto-Managed" value={provRuleStats.totalAppsManaged} icon={<AppWindow size={20} />} change="Across active rules" changeType="neutral" />
+            </div>
+
+            {/* Rules List */}
+            <div className="space-y-3">
+              {provisioningRules.map(rule => {
+                const triggerLabel = { on_hire: 'On Hire', department_change: 'Department Change', role_change: 'Role Change', on_offboard: 'On Offboard' }[rule.trigger] || rule.trigger
+                const triggerColor = { on_hire: 'text-green-400 bg-green-500/10', department_change: 'text-blue-400 bg-blue-500/10', role_change: 'text-purple-400 bg-purple-500/10', on_offboard: 'text-red-400 bg-red-500/10' }[rule.trigger] || 'text-gray-400 bg-gray-500/10'
+                return (
+                  <Card key={rule.id} className="bg-[#111] border-white/10 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', triggerColor.split(' ').slice(1).join(' '))}>
+                          <Zap size={20} className={triggerColor.split(' ')[0]} />
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{rule.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="default" className="text-[10px]">{triggerLabel}</Badge>
+                            {rule.department && <Badge variant="info" className="text-[10px]">Dept: {rule.department}</Badge>}
+                            {rule.role && <Badge variant="info" className="text-[10px]">Role: {rule.role}</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleProvRule(rule.id)}
+                          className="p-1 rounded hover:bg-white/10"
+                          title={rule.isActive ? 'Disable' : 'Enable'}
+                        >
+                          {rule.isActive
+                            ? <ToggleRight size={24} className="text-green-400" />
+                            : <ToggleLeft size={24} className="text-gray-500" />
+                          }
+                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => openProvRuleEdit(rule)}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteProvRule(rule.id)}>
+                          <Trash2 size={14} className="text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Apps list */}
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500 mb-1.5">Apps auto-assigned:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {rule.apps.map((app, i) => (
+                          <Badge key={i} variant="default" className="text-[10px]">{app}</Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                      <p className="text-xs text-gray-500">Created {rule.createdAt}</p>
+                      <Badge variant={rule.isActive ? 'success' : 'error'} className="text-xs">{rule.isActive ? 'Active' : 'Disabled'}</Badge>
+                    </div>
+                  </Card>
+                )
+              })}
+              {provisioningRules.length === 0 && (
+                <Card className="bg-[#111] border-white/10 p-8 text-center">
+                  <Zap size={32} className="mx-auto text-gray-600 mb-3" />
+                  <p className="text-gray-400">No provisioning rules yet</p>
+                  <p className="text-sm text-gray-500 mt-1">Create rules to auto-assign apps based on department, role, or employee lifecycle events.</p>
+                  <Button className="mt-4" onClick={openProvRuleCreate}><Plus size={16} className="mr-1" /> Create First Rule</Button>
+                </Card>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ──────────────── ENCRYPTION TAB ──────────────── */}
+        {activeTab === 'encryption' && (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-medium">Encryption Enforcement</h3>
+                <p className="text-sm text-gray-500">Manage device encryption policies across platforms</p>
+              </div>
+              <Button onClick={openEncryptionCreate}><Plus size={16} className="mr-1" /> New Policy</Button>
+            </div>
+
+            {/* Encryption Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <StatCard label="Policies Enforced" value={encryptionStats.enforced} icon={<Lock size={20} />} change={`${encryptionStats.total} total`} changeType="neutral" />
+              <StatCard label="Compliant Devices" value={encryptionStats.totalCompliant} icon={<ShieldCheck size={20} />} change={`of ${encryptionStats.totalDevices} total`} changeType={encryptionStats.overallPct >= 90 ? 'positive' : 'negative'} />
+              <StatCard label="Compliance Rate" value={`${encryptionStats.overallPct}%`} icon={<Shield size={20} />} change={encryptionStats.overallPct >= 90 ? 'On target' : 'Needs attention'} changeType={encryptionStats.overallPct >= 90 ? 'positive' : 'negative'} />
+              <StatCard label="Non-Encrypted" value={encryptionStats.totalDevices - encryptionStats.totalCompliant} icon={<AlertTriangle size={20} />} change="Require remediation" changeType={encryptionStats.totalDevices - encryptionStats.totalCompliant === 0 ? 'positive' : 'negative'} />
+            </div>
+
+            {/* Overall Compliance Bar */}
+            <Card className="bg-[#111] border-white/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-gray-500">Overall Encryption Compliance</p>
+                  <p className="text-3xl font-bold text-white">{encryptionStats.overallPct}%</p>
+                </div>
+                <div className="w-16 h-16 rounded-full border-4 flex items-center justify-center" style={{ borderColor: encryptionStats.overallPct >= 90 ? '#22c55e' : encryptionStats.overallPct >= 70 ? '#eab308' : '#ef4444' }}>
+                  <Lock size={24} style={{ color: encryptionStats.overallPct >= 90 ? '#22c55e' : encryptionStats.overallPct >= 70 ? '#eab308' : '#ef4444' }} />
+                </div>
+              </div>
+              <Progress value={encryptionStats.overallPct} className="h-2" />
+              <div className="flex justify-between mt-2 text-xs text-gray-500">
+                <span>{encryptionStats.totalCompliant} encrypted</span>
+                <span>{encryptionStats.totalDevices - encryptionStats.totalCompliant} unencrypted</span>
+              </div>
+            </Card>
+
+            {/* Policies */}
+            <div className="space-y-3">
+              {encryptionPolicies.map(policy => {
+                const compPct = policy.totalCount > 0 ? Math.round((policy.compliantCount / policy.totalCount) * 100) : 0
+                const platformLabel = { macos: 'macOS', windows: 'Windows', linux: 'Linux', all: 'All Platforms' }[policy.platform]
+                const platformBg = { macos: 'bg-gray-500/10', windows: 'bg-blue-500/10', linux: 'bg-orange-500/10', all: 'bg-purple-500/10' }[policy.platform]
+                return (
+                  <Card key={policy.id} className="bg-[#111] border-white/10 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', platformBg)}>
+                          {policy.platform === 'macos' ? <Laptop size={20} className="text-gray-400" /> :
+                           policy.platform === 'windows' ? <Monitor size={20} className="text-blue-400" /> :
+                           policy.platform === 'linux' ? <Server size={20} className="text-orange-400" /> :
+                           <Globe size={20} className="text-purple-400" />}
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{policy.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="default" className="text-[10px]">{platformLabel}</Badge>
+                            <Badge variant="default" className="text-[10px]">{policy.encryptionType}</Badge>
+                            {policy.recoveryKeyEscrowed && <Badge variant="info" className="text-[10px]">Key Escrowed</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleEncryptionEnforced(policy.id)}
+                          className="p-1 rounded hover:bg-white/10"
+                          title={policy.enforced ? 'Stop Enforcing' : 'Start Enforcing'}
+                        >
+                          {policy.enforced
+                            ? <ToggleRight size={24} className="text-green-400" />
+                            : <ToggleLeft size={24} className="text-gray-500" />
+                          }
+                        </button>
+                        <Button variant="ghost" size="sm" onClick={() => openEncryptionEdit(policy)}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteEncryptionPolicyHandler(policy.id)}>
+                          <Trash2 size={14} className="text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Compliance progress */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Compliance</span>
+                        <span className={compPct >= 90 ? 'text-green-400' : compPct >= 70 ? 'text-yellow-400' : 'text-red-400'}>
+                          {compPct}% ({policy.compliantCount}/{policy.totalCount} devices)
+                        </span>
+                      </div>
+                      <Progress value={compPct} className="h-1.5" />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-white/5">
+                      <div>
+                        <p className="text-xs text-gray-500">Grace Period</p>
+                        <p className="text-sm text-white">{policy.gracePeriodHours}h</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Applies To</p>
+                        <p className="text-sm text-white">{policy.appliesTo}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Last Updated</p>
+                        <p className="text-sm text-white">{policy.lastUpdated}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                      <Badge variant={policy.enforced ? 'success' : 'error'} className="text-xs">{policy.enforced ? 'Enforced' : 'Not Enforced'}</Badge>
+                      {!policy.enforced && (
+                        <p className="text-xs text-yellow-400">Encryption recommended but not required</p>
+                      )}
+                    </div>
+                  </Card>
+                )
+              })}
+              {encryptionPolicies.length === 0 && (
+                <Card className="bg-[#111] border-white/10 p-8 text-center">
+                  <Lock size={32} className="mx-auto text-gray-600 mb-3" />
+                  <p className="text-gray-400">No encryption policies configured</p>
+                  <p className="text-sm text-gray-500 mt-1">Create policies to enforce disk encryption across your device fleet.</p>
+                  <Button className="mt-4" onClick={openEncryptionCreate}><Plus size={16} className="mr-1" /> Create First Policy</Button>
+                </Card>
+              )}
+            </div>
+          </>
+        )}
+
         {/* ──────────────── IDENTITY & ACCESS TAB ──────────────── */}
         {activeTab === 'identity' && (
           <>
@@ -976,7 +1309,6 @@ export default function ITCloudPage() {
             </Card>
           </>
         )}
-      </div>
 
       {/* ──────────────── MODALS ──────────────── */}
 
@@ -1141,6 +1473,74 @@ export default function ITCloudPage() {
           </div>
         </div>
       </Modal>
-    </div>
+
+      {/* Provisioning Rule Modal */}
+      <Modal open={showProvRuleModal} onClose={() => setShowProvRuleModal(false)} title={editProvRuleId ? 'Edit Provisioning Rule' : 'Create Provisioning Rule'}>
+        <div className="space-y-4">
+          <Input label="Rule Name" value={provRuleForm.name} onChange={e => setProvRuleForm({ ...provRuleForm, name: e.target.value })} placeholder="e.g. Engineering — Dev Tools" />
+          <Select label="Trigger" value={provRuleForm.trigger} onChange={e => setProvRuleForm({ ...provRuleForm, trigger: e.target.value })} options={[
+            { value: 'on_hire', label: 'On Hire (new employee)' },
+            { value: 'department_change', label: 'Department Change' },
+            { value: 'role_change', label: 'Role Change / Promotion' },
+            { value: 'on_offboard', label: 'On Offboard (termination)' },
+          ]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Department (optional)" value={provRuleForm.department} onChange={e => setProvRuleForm({ ...provRuleForm, department: e.target.value })} placeholder="e.g. Engineering" />
+            <Input label="Role (optional)" value={provRuleForm.role} onChange={e => setProvRuleForm({ ...provRuleForm, role: e.target.value })} placeholder="e.g. Manager" />
+          </div>
+          <Textarea label="Apps (comma-separated)" value={provRuleForm.apps} onChange={e => setProvRuleForm({ ...provRuleForm, apps: e.target.value })} placeholder="e.g. Slack, Zoom, GitHub Enterprise" rows={3} />
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" checked={provRuleForm.isActive} onChange={e => setProvRuleForm({ ...provRuleForm, isActive: e.target.checked })} className="rounded" />
+            Rule Active
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowProvRuleModal(false)}>Cancel</Button>
+            <Button onClick={submitProvRule}>{editProvRuleId ? 'Update' : 'Create'} Rule</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Encryption Policy Modal */}
+      <Modal open={showEncryptionModal} onClose={() => setShowEncryptionModal(false)} title={editEncryptionId ? 'Edit Encryption Policy' : 'Create Encryption Policy'}>
+        <div className="space-y-4">
+          <Input label="Policy Name" value={encryptionForm.name} onChange={e => setEncryptionForm({ ...encryptionForm, name: e.target.value })} placeholder="e.g. macOS FileVault Enforcement" />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Platform" value={encryptionForm.platform} onChange={e => setEncryptionForm({ ...encryptionForm, platform: e.target.value })} options={[
+              { value: 'all', label: 'All Platforms' },
+              { value: 'macos', label: 'macOS' },
+              { value: 'windows', label: 'Windows' },
+              { value: 'linux', label: 'Linux' },
+            ]} />
+            <Select label="Encryption Type" value={encryptionForm.encryptionType} onChange={e => setEncryptionForm({ ...encryptionForm, encryptionType: e.target.value })} options={[
+              { value: 'Platform Default', label: 'Platform Default' },
+              { value: 'FileVault', label: 'FileVault (macOS)' },
+              { value: 'BitLocker', label: 'BitLocker (Windows)' },
+              { value: 'LUKS', label: 'LUKS (Linux)' },
+            ]} />
+          </div>
+          <Input label="Applies To" value={encryptionForm.appliesTo} onChange={e => setEncryptionForm({ ...encryptionForm, appliesTo: e.target.value })} placeholder="e.g. All macOS Devices" />
+          <Input label="Grace Period (hours)" type="number" value={String(encryptionForm.gracePeriodHours)} onChange={e => setEncryptionForm({ ...encryptionForm, gracePeriodHours: Number(e.target.value) })} />
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={encryptionForm.enforced} onChange={e => setEncryptionForm({ ...encryptionForm, enforced: e.target.checked })} className="rounded" />
+              Enforce Encryption
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={encryptionForm.recoveryKeyEscrowed} onChange={e => setEncryptionForm({ ...encryptionForm, recoveryKeyEscrowed: e.target.checked })} className="rounded" />
+              Escrow Recovery Key
+            </label>
+          </div>
+          {encryptionForm.enforced && (
+            <div className="p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+              <p className="text-sm text-yellow-400">Enforced policies will require all matching devices to enable encryption within the grace period. Non-compliant devices will be flagged.</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowEncryptionModal(false)}>Cancel</Button>
+            <Button onClick={submitEncryptionPolicy}>{editEncryptionId ? 'Update' : 'Create'} Policy</Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   )
 }

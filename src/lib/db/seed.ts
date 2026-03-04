@@ -19,6 +19,17 @@ import {
   demoDevices, demoSoftwareLicenses, demoITRequests,
   demoInvoices, demoBudgets, demoVendors,
   demoCredentials,
+  // Gap-closure modules
+  demoCorporateCards, demoCardTransactions,
+  demoBillPayments, demoBillPaySchedules,
+  demoTravelRequests, demoTravelBookings, demoTravelPolicies,
+  demoSignatureDocuments, demoSignatureTemplates,
+  demoIdpConfigurations, demoSamlApps, demoMfaPolicies,
+  demoCurrencyAccounts, demoFxTransactions,
+  demoWorkersCompPolicies, demoWorkersCompClaims, demoWorkersCompClassCodes, demoWorkersCompAudits,
+  demoPasswordVaults, demoVaultItems,
+  demoChatChannels, demoChatParticipants, demoChatMessages,
+  demoGroups,
 } from '../demo-data'
 import { randomUUID } from 'crypto'
 
@@ -92,6 +103,32 @@ function pregenIds() {
   demoBudgets.forEach(b => mapId(b.id))
   // Vendors
   demoVendors.forEach(v => mapId(v.id))
+  // Gap-closure modules
+  demoCorporateCards.forEach(c => mapId(c.id))
+  demoCardTransactions.forEach(t => mapId(t.id))
+  demoBillPayments.forEach(bp => mapId(bp.id))
+  demoBillPaySchedules.forEach(bs => mapId(bs.id))
+  demoTravelPolicies.forEach(tp => mapId(tp.id))
+  demoTravelRequests.forEach(tr => mapId(tr.id))
+  demoTravelBookings.forEach(tb => mapId(tb.id))
+  demoSignatureDocuments.forEach(sd => mapId(sd.id))
+  demoSignatureTemplates.forEach(st => mapId(st.id))
+  demoIdpConfigurations.forEach(idp => mapId(idp.id))
+  demoSamlApps.forEach(sa => mapId(sa.id))
+  demoMfaPolicies.forEach(mp => mapId(mp.id))
+  demoCurrencyAccounts.forEach(ca => mapId(ca.id))
+  demoFxTransactions.forEach(fx => mapId(fx.id))
+  demoWorkersCompPolicies.forEach(wc => mapId(wc.id))
+  demoWorkersCompClaims.forEach(wc => mapId(wc.id))
+  demoWorkersCompClassCodes.forEach(wc => mapId(wc.id))
+  demoWorkersCompAudits.forEach(wc => mapId(wc.id))
+  demoPasswordVaults.forEach(pv => mapId(pv.id))
+  demoVaultItems.forEach(vi => mapId(vi.id))
+  demoChatChannels.forEach(ch => mapId(ch.id))
+  demoChatParticipants.forEach(cp => mapId(cp.id))
+  demoChatMessages.forEach(cm => mapId(cm.id))
+  // Note: channel IDs are chan-*, message IDs are cmsg-*, participant IDs are cp-*
+  demoGroups.forEach(g => mapId(g.id))
 }
 
 async function seed() {
@@ -607,7 +644,7 @@ async function seed() {
         jobId: mapId(a.job_id),
         candidateName: a.candidate_name,
         candidateEmail: a.candidate_email,
-        status: a.status,
+        status: (a.status === 'interview' ? 'phone_screen' : a.status) as any,
         stage: a.stage,
         rating: a.rating,
         notes: a.notes,
@@ -671,10 +708,438 @@ async function seed() {
     )
 
     // ============================================================
+    // 28. Corporate Cards
+    // ============================================================
+    console.log('Seeding corporate cards...')
+    await db.insert(schema.corporateCards).values(
+      demoCorporateCards.map(c => ({
+        id: mapId(c.id),
+        orgId,
+        employeeId: mapId(c.employee_id),
+        cardType: c.card_type as any,
+        last4: c.last_four,
+        cardName: `${c.card_type} Card •${c.last_four}`,
+        status: c.status as any,
+        spendLimit: c.spend_limit,
+        currentBalance: c.spent_this_month,
+        currency: c.currency,
+        allowedCategories: c.merchant_categories,
+        issuedAt: new Date(c.issued_at),
+      }))
+    )
+
+    // ============================================================
+    // 29. Card Transactions
+    // ============================================================
+    console.log('Seeding card transactions...')
+    await db.insert(schema.cardTransactions).values(
+      demoCardTransactions.map(t => ({
+        id: mapId(t.id),
+        orgId,
+        cardId: mapId(t.card_id),
+        amount: t.amount,
+        currency: t.currency,
+        merchantName: t.merchant,
+        merchantCategory: t.category,
+        status: t.status as any,
+        receiptUrl: t.receipt_url || null,
+        transactedAt: new Date(t.transaction_date),
+      }))
+    )
+
+    // ============================================================
+    // 30. Bill Payments
+    // ============================================================
+    console.log('Seeding bill payments...')
+    await db.insert(schema.billPayments).values(
+      demoBillPayments.map(bp => ({
+        id: mapId(bp.id),
+        orgId,
+        vendorId: mapId(bp.vendor_id),
+        amount: bp.amount,
+        currency: bp.currency,
+        method: bp.method as any,
+        status: bp.status as any,
+        scheduledDate: bp.scheduled_date || null,
+        paidDate: bp.paid_date || null,
+        referenceNumber: bp.reference_number || null,
+        memo: bp.memo || null,
+        createdBy: mapId(bp.created_by),
+      }))
+    )
+
+    // ============================================================
+    // 31. Bill Pay Schedules
+    // ============================================================
+    console.log('Seeding bill pay schedules...')
+    await db.insert(schema.billPaySchedules).values(
+      demoBillPaySchedules.map(bs => ({
+        id: mapId(bs.id),
+        orgId,
+        vendorId: mapId(bs.vendor_id),
+        amount: bs.amount,
+        currency: bs.currency,
+        method: bs.method as any,
+        frequency: bs.frequency,
+        nextPaymentDate: bs.next_payment_date || null,
+        endDate: bs.end_date || null,
+        isActive: bs.is_active,
+      }))
+    )
+
+    // ============================================================
+    // 32. Travel Policies
+    // ============================================================
+    console.log('Seeding travel policies...')
+    await db.insert(schema.travelPolicies).values(
+      demoTravelPolicies.map(tp => ({
+        id: mapId(tp.id),
+        orgId,
+        name: tp.name,
+        maxFlightClass: tp.rules?.max_flight_class || 'economy',
+        maxHotelRate: tp.rules?.max_hotel_rate || null,
+        maxDailyMeals: tp.rules?.meal_per_diem || null,
+        advanceBookingDays: tp.rules?.advance_booking_days || 14,
+        approvalThreshold: tp.rules?.requires_approval_above || null,
+        isActive: tp.is_active,
+      }))
+    )
+
+    // ============================================================
+    // 33. Travel Requests
+    // ============================================================
+    console.log('Seeding travel requests...')
+    await db.insert(schema.travelRequests).values(
+      demoTravelRequests.map(tr => ({
+        id: mapId(tr.id),
+        orgId,
+        employeeId: mapId(tr.employee_id),
+        purpose: tr.purpose,
+        destination: tr.destination,
+        departureDate: tr.travel_dates?.start || '2026-03-15',
+        returnDate: tr.travel_dates?.end || '2026-03-18',
+        estimatedCost: tr.estimated_cost,
+        currency: 'USD',
+        status: tr.status as any,
+        approvedBy: mapIdOrNull(tr.approved_by),
+      }))
+    )
+
+    // ============================================================
+    // 34. Travel Bookings
+    // ============================================================
+    console.log('Seeding travel bookings...')
+    await db.insert(schema.travelBookings).values(
+      demoTravelBookings.map(tb => ({
+        id: mapId(tb.id),
+        orgId,
+        travelRequestId: mapId(tb.travel_request_id),
+        type: tb.type as any,
+        status: tb.status as any,
+        provider: tb.provider || null,
+        confirmationNumber: tb.confirmation_number || null,
+        amount: tb.cost,
+        currency: tb.currency,
+        details: tb.details || null,
+        startDate: (tb.details as any)?.date || '2026-03-15',
+        bookedAt: tb.booked_at ? new Date(tb.booked_at) : null,
+      }))
+    )
+
+    // ============================================================
+    // 35. Signature Templates
+    // ============================================================
+    console.log('Seeding signature templates...')
+    await db.insert(schema.signatureTemplates).values(
+      demoSignatureTemplates.map(st => ({
+        id: mapId(st.id),
+        orgId,
+        name: st.name,
+        description: st.description || null,
+        documentUrl: st.document_url || null,
+        signingFlow: st.signing_flow as any,
+        signerRoles: st.signer_roles || null,
+        usageCount: st.usage_count || 0,
+      }))
+    )
+
+    // ============================================================
+    // 36. Signature Documents
+    // ============================================================
+    console.log('Seeding signature documents...')
+    await db.insert(schema.signatureDocuments).values(
+      demoSignatureDocuments.map(sd => ({
+        id: mapId(sd.id),
+        orgId,
+        title: sd.title,
+        documentUrl: sd.document_url || null,
+        status: sd.status as any,
+        signingFlow: sd.signing_flow as any,
+        createdBy: mapId(sd.created_by),
+        completedAt: sd.completed_at ? new Date(sd.completed_at) : null,
+      }))
+    )
+
+    // ============================================================
+    // 37. Identity Provider Configurations
+    // ============================================================
+    console.log('Seeding IDP configurations...')
+    await db.insert(schema.idpConfigurations).values(
+      demoIdpConfigurations.map(idp => ({
+        id: mapId(idp.id),
+        orgId,
+        isEnabled: idp.status === 'active',
+        defaultProtocol: idp.protocol as any,
+        entityId: idp.entity_id,
+        ssoUrl: idp.sso_url,
+        certificate: 'DEMO_CERTIFICATE_PLACEHOLDER',
+      }))
+    )
+
+    // ============================================================
+    // 38. SAML Apps
+    // ============================================================
+    console.log('Seeding SAML apps...')
+    await db.insert(schema.samlApps).values(
+      demoSamlApps.map(sa => ({
+        id: mapId(sa.id),
+        orgId,
+        idpConfigId: mapId(sa.idp_id),
+        name: sa.name,
+        logo: sa.logo_url || null,
+        acsUrl: sa.sso_url || null,
+        status: sa.status as any,
+        loginCount: sa.user_count || 0,
+        lastLoginAt: sa.last_login_at ? new Date(sa.last_login_at) : null,
+      }))
+    )
+
+    // ============================================================
+    // 39. MFA Policies
+    // ============================================================
+    console.log('Seeding MFA policies...')
+    await db.insert(schema.mfaPolicies).values(
+      demoMfaPolicies.map(mp => ({
+        id: mapId(mp.id),
+        orgId,
+        name: mp.name,
+        isActive: mp.is_active,
+        allowedMethods: mp.methods || ['totp'],
+        gracePeriodhours: (mp.grace_period_days || 0) * 24,
+        appliesTo: mp.applies_to as any,
+      }))
+    )
+
+    // ============================================================
+    // 40. Currency Accounts
+    // ============================================================
+    console.log('Seeding currency accounts...')
+    await db.insert(schema.currencyAccounts).values(
+      demoCurrencyAccounts.map(ca => ({
+        id: mapId(ca.id),
+        orgId,
+        currency: ca.currency,
+        balance: ca.balance,
+        bankName: ca.bank_name || null,
+        bankAccountNumber: ca.account_number || null,
+        isDefault: ca.is_primary || false,
+      }))
+    )
+
+    // ============================================================
+    // 41. FX Transactions
+    // ============================================================
+    console.log('Seeding FX transactions...')
+    await db.insert(schema.fxTransactions).values(
+      demoFxTransactions.map(fx => ({
+        id: mapId(fx.id),
+        orgId,
+        fromCurrency: fx.from_currency,
+        toCurrency: fx.to_currency,
+        fromAmount: fx.from_amount,
+        toAmount: fx.to_amount,
+        exchangeRate: fx.exchange_rate,
+        fee: fx.fee || null,
+        executedAt: new Date(fx.executed_at),
+      }))
+    )
+
+    // ============================================================
+    // 42. Workers' Comp Policies
+    // ============================================================
+    console.log('Seeding workers comp policies...')
+    await db.insert(schema.workersCompPolicies).values(
+      demoWorkersCompPolicies.map(wc => ({
+        id: mapId(wc.id),
+        orgId,
+        name: wc.name,
+        carrier: wc.carrier || null,
+        policyNumber: wc.policy_number || null,
+        status: wc.status,
+        effectiveDate: wc.effective_date || null,
+        expiryDate: wc.expiry_date || null,
+        premium: wc.premium || null,
+        coveredEmployees: wc.covered_employees || null,
+        classCodes: wc.class_codes || null,
+      }))
+    )
+
+    // ============================================================
+    // 43. Workers' Comp Claims
+    // ============================================================
+    console.log('Seeding workers comp claims...')
+    await db.insert(schema.workersCompClaims).values(
+      demoWorkersCompClaims.map(wc => ({
+        id: mapId(wc.id),
+        orgId,
+        policyId: mapIdOrNull(wc.policy_id),
+        employeeName: wc.employee_name || null,
+        incidentDate: wc.incident_date || null,
+        description: wc.description || null,
+        injuryType: wc.injury_type || null,
+        bodyPart: wc.body_part || null,
+        status: wc.status,
+        reserveAmount: wc.reserve_amount || null,
+        paidAmount: wc.paid_amount || 0,
+        filedDate: wc.filed_date || null,
+      }))
+    )
+
+    // ============================================================
+    // 44. Workers' Comp Class Codes
+    // ============================================================
+    console.log('Seeding workers comp class codes...')
+    await db.insert(schema.workersCompClassCodes).values(
+      demoWorkersCompClassCodes.map(wc => ({
+        id: mapId(wc.id),
+        orgId,
+        code: wc.code,
+        description: wc.description || null,
+        rate: wc.rate || null,
+        employeeCount: wc.employee_count || null,
+      }))
+    )
+
+    // ============================================================
+    // 45. Workers' Comp Audits
+    // ============================================================
+    console.log('Seeding workers comp audits...')
+    await db.insert(schema.workersCompAudits).values(
+      demoWorkersCompAudits.map(wc => ({
+        id: mapId(wc.id),
+        orgId,
+        auditDate: wc.audit_date || null,
+        period: wc.period || null,
+        auditor: wc.auditor || null,
+        status: wc.status,
+        findings: wc.findings || null,
+        adjustmentAmount: wc.adjustment_amount || null,
+      }))
+    )
+
+    // ============================================================
+    // 46. Password Vaults
+    // ============================================================
+    console.log('Seeding password vaults...')
+    await db.insert(schema.passwordVaults).values(
+      demoPasswordVaults.map(pv => ({
+        id: mapId(pv.id),
+        orgId,
+        name: pv.name,
+        ownerId: mapId(pv.owner_id),
+        itemCount: pv.item_count || 0,
+      }))
+    )
+
+    // ============================================================
+    // 47. Vault Items
+    // ============================================================
+    console.log('Seeding vault items...')
+    await db.insert(schema.vaultItems).values(
+      demoVaultItems.map(vi => ({
+        id: mapId(vi.id),
+        vaultId: mapId(vi.vault_id),
+        orgId,
+        type: vi.type as any,
+        name: vi.name,
+        url: vi.url || null,
+        username: vi.username || null,
+        passwordStrength: vi.strength || null,
+        lastUsedAt: vi.last_used_at ? new Date(vi.last_used_at) : null,
+      }))
+    )
+
+    // ============================================================
+    // 48. Chat Channels
+    // ============================================================
+    console.log('Seeding chat channels...')
+    await db.insert(schema.chatChannels).values(
+      demoChatChannels.map(ch => ({
+        id: mapId(ch.id),
+        orgId,
+        name: ch.name,
+        type: ch.type as any,
+        description: ch.description || null,
+        createdBy: mapId(ch.created_by),
+        isArchived: ch.is_archived || false,
+        lastMessageAt: ch.last_message_at ? new Date(ch.last_message_at) : null,
+      }))
+    )
+
+    // ============================================================
+    // 49. Chat Participants
+    // ============================================================
+    console.log('Seeding chat participants...')
+    await db.insert(schema.chatParticipants).values(
+      demoChatParticipants.map(cp => ({
+        id: mapId(cp.id),
+        channelId: mapId(cp.channel_id),
+        employeeId: mapId(cp.employee_id),
+        role: cp.role,
+        joinedAt: cp.joined_at ? new Date(cp.joined_at) : new Date(),
+      }))
+    )
+
+    // ============================================================
+    // 50. Chat Messages
+    // ============================================================
+    console.log('Seeding chat messages...')
+    await db.insert(schema.chatMessages).values(
+      demoChatMessages.map(cm => ({
+        id: mapId(cm.id),
+        channelId: mapId(cm.channel_id),
+        orgId,
+        senderId: mapId(cm.sender_id),
+        type: cm.type as any,
+        content: cm.content,
+        isPinned: (cm as any).is_pinned || false,
+      }))
+    )
+
+    // ============================================================
+    // 51. Dynamic Groups
+    // ============================================================
+    console.log('Seeding dynamic groups...')
+    await db.insert(schema.dynamicGroups).values(
+      demoGroups.map(g => ({
+        id: mapId(g.id),
+        orgId,
+        name: g.name,
+        description: g.description || null,
+        type: g.type,
+        rule: g.rule || null,
+        memberCount: g.member_count || 0,
+        createdBy: mapIdOrNull(g.created_by),
+        lastSyncedAt: g.last_synced_at ? new Date(g.last_synced_at) : null,
+        modules: g.modules || null,
+      }))
+    )
+
+    // ============================================================
     // Done!
     // ============================================================
     console.log('')
-    console.log('Seed complete! All 27 entity types seeded.')
+    console.log('Seed complete! All 51 entity types seeded.')
     console.log(`Organization: ${demoOrg.name} (${orgId})`)
     console.log(`Employees: ${demoEmployees.length}`)
     console.log(`Goals: ${demoGoals.length}`)
@@ -682,6 +1147,10 @@ async function seed() {
     console.log(`Courses: ${demoCourses.length}`)
     console.log(`Expense Reports: ${demoExpenseReports.length}`)
     console.log(`Job Postings: ${demoJobPostings.length}`)
+    console.log(`Corporate Cards: ${demoCorporateCards.length}`)
+    console.log(`Travel Requests: ${demoTravelRequests.length}`)
+    console.log(`Chat Channels: ${demoChatChannels.length}`)
+    console.log(`Groups: ${demoGroups.length}`)
     console.log('')
 
     // Print the ID mapping for the demo credentials so we can update .env or config

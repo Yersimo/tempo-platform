@@ -88,6 +88,7 @@ export default function BenefitsPage() {
   const t = useTranslations('benefits')
   const tc = useTranslations('common')
   const {
+    org,
     benefitPlans, employees, departments,
     addBenefitPlan, updateBenefitPlan,
     benefitEnrollments, addBenefitEnrollment, updateBenefitEnrollment,
@@ -100,6 +101,26 @@ export default function BenefitsPage() {
     flexBenefitTransactions, addFlexBenefitTransaction, updateFlexBenefitTransaction,
     getEmployeeName, getDepartmentName, addToast,
   } = useTempo()
+
+  async function carrierAPI(action: string, data: Record<string, any> = {}) {
+    const res = await fetch('/api/carrier-integrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-org-id': org.id },
+      body: JSON.stringify({ action, ...data }),
+    })
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Request failed') }
+    return res.json()
+  }
+
+  async function benefitsAPI(action: string, data: Record<string, any> = {}) {
+    const res = await fetch('/api/benefits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-org-id': org.id },
+      body: JSON.stringify({ action, ...data }),
+    })
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Request failed') }
+    return res.json()
+  }
 
   const coverageLevelLabels: Record<string, string> = {
     employee_only: t('coverageEmployeeOnly'),
@@ -134,6 +155,7 @@ export default function BenefitsPage() {
   const [showCobraModal, setShowCobraModal] = useState(false)
   const [showFlexAccountModal, setShowFlexAccountModal] = useState(false)
   const [showFlexExpenseModal, setShowFlexExpenseModal] = useState(false)
+  const [acaTaxYearFilter, setAcaTaxYearFilter] = useState<number | 'all'>('all')
 
   // ---- Forms ----
   const [planForm, setPlanForm] = useState({
@@ -276,18 +298,24 @@ export default function BenefitsPage() {
     setShowPlanModal(true)
   }
 
-  function submitPlan() {
+  async function submitPlan() {
     if (!planForm.name || !planForm.provider) return
     const data = {
       name: planForm.name, type: planForm.type, provider: planForm.provider,
       cost_employee: Number(planForm.cost_employee) || 0, cost_employer: Number(planForm.cost_employer) || 0,
       description: planForm.description, is_active: planForm.is_active, currency: planForm.currency,
     }
+    try {
+      await benefitsAPI(editingPlan ? 'update-plan' : 'create-plan', editingPlan ? { id: editingPlan, ...data } : data)
+    } catch { /* fallback to store-only */ }
     if (editingPlan) { updateBenefitPlan(editingPlan, data) } else { addBenefitPlan(data) }
     setShowPlanModal(false)
   }
 
-  function togglePlanStatus(id: string, currentStatus: boolean) {
+  async function togglePlanStatus(id: string, currentStatus: boolean) {
+    try {
+      await benefitsAPI('update-plan', { id, is_active: !currentStatus })
+    } catch { /* fallback to store-only */ }
     updateBenefitPlan(id, { is_active: !currentStatus })
   }
 
@@ -300,43 +328,54 @@ export default function BenefitsPage() {
   }
 
   // ---- Enrollment CRUD ----
-  function submitEnrollment() {
+  async function submitEnrollment() {
     if (!enrollForm.employee_id || !enrollForm.plan_id) return
-    addBenefitEnrollment({
+    const data = {
       employee_id: enrollForm.employee_id, plan_id: enrollForm.plan_id,
       coverage_level: enrollForm.coverage_level, status: 'active',
       enrolled_date: new Date().toISOString().split('T')[0],
       effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-    })
+    }
+    try {
+      await carrierAPI('enroll', data)
+    } catch { /* fallback to store-only */ }
+    addBenefitEnrollment(data)
     setShowEnrollmentModal(false)
     setEnrollForm({ employee_id: '', plan_id: '', coverage_level: 'employee_only' })
   }
 
   // ---- Dependent CRUD ----
-  function submitDependent() {
+  async function submitDependent() {
     if (!depForm.employee_id || !depForm.first_name || !depForm.last_name) return
+    try {
+      await benefitsAPI('add-dependent', { ...depForm })
+    } catch { /* fallback to store-only */ }
     addBenefitDependent({ ...depForm })
     setShowDependentModal(false)
     setDepForm({ employee_id: '', first_name: '', last_name: '', relationship: 'spouse', date_of_birth: '', gender: 'male', plan_ids: [] })
   }
 
   // ---- Life Event CRUD ----
-  function submitLifeEvent() {
+  async function submitLifeEvent() {
     if (!lifeEventForm.employee_id || !lifeEventForm.event_date) return
     const deadline = new Date(new Date(lifeEventForm.event_date).getTime() + 30 * 86400000).toISOString().split('T')[0]
-    addLifeEvent({
+    const data = {
       employee_id: lifeEventForm.employee_id, type: lifeEventForm.type,
       event_date: lifeEventForm.event_date, reported_date: new Date().toISOString().split('T')[0],
       deadline, status: 'pending', notes: lifeEventForm.notes, benefit_changes: [],
-    })
+    }
+    try {
+      await benefitsAPI('add-life-event', data)
+    } catch { /* fallback to store-only */ }
+    addLifeEvent(data)
     setShowLifeEventModal(false)
     setLifeEventForm({ employee_id: '', type: 'marriage', event_date: '', notes: '' })
   }
 
   // ---- Open Enrollment CRUD ----
-  function submitOEP() {
+  async function submitOEP() {
     if (!oepForm.name || !oepForm.start_date || !oepForm.end_date) return
-    addOpenEnrollmentPeriod({
+    const data = {
       name: oepForm.name,
       start_date: oepForm.start_date,
       end_date: oepForm.end_date,
@@ -344,18 +383,22 @@ export default function BenefitsPage() {
       eligible_plan_ids: oepForm.plan_ids,
       enrolled_count: 0,
       eligible_count: employees.length,
-    })
+    }
+    try {
+      await benefitsAPI('create-open-enrollment', data)
+    } catch { /* fallback to store-only */ }
+    addOpenEnrollmentPeriod(data)
     setShowOEPModal(false)
     setOepForm({ name: '', start_date: '', end_date: '', plan_ids: [] })
   }
 
   // ---- COBRA CRUD ----
-  function submitCobra() {
+  async function submitCobra() {
     if (!cobraForm.employee_id || !cobraForm.event_date) return
     const notifDeadline = new Date(new Date(cobraForm.event_date).getTime() + 14 * 86400000).toISOString().split('T')[0]
     const electionDeadline = new Date(new Date(cobraForm.event_date).getTime() + 60 * 86400000).toISOString().split('T')[0]
     const coverageEnd = cobraForm.coverage_end_date || new Date(new Date(cobraForm.event_date).getTime() + 547 * 86400000).toISOString().split('T')[0]
-    addCobraEvent({
+    const data = {
       employee_id: cobraForm.employee_id,
       qualifying_event: cobraForm.qualifying_event,
       event_date: cobraForm.event_date,
@@ -365,16 +408,20 @@ export default function BenefitsPage() {
       coverage_end_date: coverageEnd,
       monthly_premium: Number(cobraForm.monthly_premium) || 0,
       status: 'pending_notification',
-    })
+    }
+    try {
+      await carrierAPI('cobra-notify', data)
+    } catch { /* fallback to store-only */ }
+    addCobraEvent(data)
     setShowCobraModal(false)
     setCobraForm({ employee_id: '', qualifying_event: 'termination', event_date: '', notification_date: '', coverage_end_date: '', monthly_premium: 0 })
   }
 
   // ---- Flex Account CRUD ----
-  function submitFlexAccount() {
+  async function submitFlexAccount() {
     if (!flexAccountForm.employee_id || !flexAccountForm.account_type) return
     const limit = irsLimits2026[flexAccountForm.account_type] || 3300
-    addFlexBenefitAccount({
+    const data = {
       employee_id: flexAccountForm.employee_id,
       account_type: flexAccountForm.account_type,
       annual_election: Math.min(Number(flexAccountForm.annual_election) || 0, limit),
@@ -382,22 +429,30 @@ export default function BenefitsPage() {
       ytd_contributions: 0,
       ytd_expenses: 0,
       status: 'active',
-    })
+    }
+    try {
+      await benefitsAPI('create-flex-account', data)
+    } catch { /* fallback to store-only */ }
+    addFlexBenefitAccount(data)
     setShowFlexAccountModal(false)
     setFlexAccountForm({ employee_id: '', account_type: 'hsa', annual_election: 0 })
   }
 
   // ---- Flex Expense CRUD ----
-  function submitFlexExpense() {
+  async function submitFlexExpense() {
     if (!flexExpenseForm.account_id || !flexExpenseForm.amount) return
-    addFlexBenefitTransaction({
+    const data = {
       account_id: flexExpenseForm.account_id,
       type: 'expense',
       amount: Number(flexExpenseForm.amount) || 0,
       description: flexExpenseForm.description,
       transaction_date: flexExpenseForm.receipt_date || new Date().toISOString().split('T')[0],
       status: 'pending',
-    })
+    }
+    try {
+      await benefitsAPI('submit-flex-expense', data)
+    } catch { /* fallback to store-only */ }
+    addFlexBenefitTransaction(data)
     setShowFlexExpenseModal(false)
     setFlexExpenseForm({ account_id: '', amount: 0, description: '', receipt_date: '' })
   }
@@ -414,16 +469,18 @@ export default function BenefitsPage() {
     setBulkPlanId(''); setBulkCoverage('employee_only'); setBulkPlanSearch('')
   }
 
-  function submitBulkEnroll() {
+  async function submitBulkEnroll() {
     if (!bulkPlanId || bulkNewEnrollees.length === 0) return
-    bulkNewEnrollees.forEach(emp => {
-      addBenefitEnrollment({
-        employee_id: emp.id, plan_id: bulkPlanId,
-        coverage_level: bulkCoverage, status: 'active',
-        enrolled_date: new Date().toISOString().split('T')[0],
-        effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-      })
-    })
+    const enrollments = bulkNewEnrollees.map(emp => ({
+      employee_id: emp.id, plan_id: bulkPlanId,
+      coverage_level: bulkCoverage, status: 'active',
+      enrolled_date: new Date().toISOString().split('T')[0],
+      effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+    }))
+    try {
+      await carrierAPI('bulk-enroll', { enrollments })
+    } catch { /* fallback to store-only */ }
+    enrollments.forEach(data => addBenefitEnrollment(data))
     const planName = benefitPlans.find(p => p.id === bulkPlanId)?.name || ''
     addToast(`Successfully enrolled ${bulkNewEnrollees.length} employees in ${planName}`)
     resetBulkEnroll()
@@ -1604,6 +1661,73 @@ export default function BenefitsPage() {
             />
           </div>
 
+          {/* Election Deadline Alerts */}
+          {(() => {
+            const now = new Date()
+            const urgentEvents = cobraEvents.filter(e => {
+              const ev = e as any
+              if (ev.status !== 'notified' && ev.status !== 'pending_notification') return false
+              const deadline = new Date(ev.election_deadline)
+              const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / 86400000)
+              return daysUntil <= 7
+            })
+            if (urgentEvents.length === 0) return null
+            const overdueCount = urgentEvents.filter(e => new Date((e as any).election_deadline) < now).length
+            const soonCount = urgentEvents.length - overdueCount
+            return (
+              <div className={cn('border rounded-lg p-4 mb-6', overdueCount > 0 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200')}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} className={overdueCount > 0 ? 'text-red-600' : 'text-amber-600'} />
+                    <h3 className={cn('text-sm font-semibold', overdueCount > 0 ? 'text-red-800' : 'text-amber-800')}>
+                      Election Deadline Alerts ({urgentEvents.length})
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {overdueCount > 0 && <Badge variant="error">{overdueCount} Overdue</Badge>}
+                    {soonCount > 0 && <Badge variant="warning">{soonCount} Due Soon</Badge>}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {urgentEvents.map(e => {
+                    const ev = e as any
+                    const deadline = new Date(ev.election_deadline)
+                    const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / 86400000)
+                    const isOverdue = daysUntil < 0
+                    return (
+                      <div key={ev.id} className={cn('flex items-center justify-between text-xs rounded-lg px-3 py-2', isOverdue ? 'bg-red-100' : 'bg-amber-100')}>
+                        <span className={cn('font-medium', isOverdue ? 'text-red-800' : 'text-amber-800')}>{getEmployeeName(ev.employee_id)}</span>
+                        <span className={isOverdue ? 'text-red-700' : 'text-amber-700'}>
+                          {isOverdue ? `Overdue by ${Math.abs(daysUntil)} days` : `${daysUntil} day${daysUntil !== 1 ? 's' : ''} remaining`} ({ev.election_deadline})
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Bulk Notification Button */}
+          {(() => {
+            const pendingNotif = cobraEvents.filter(e => (e as any).status === 'pending_notification')
+            if (pendingNotif.length === 0) return null
+            return (
+              <div className="flex items-center justify-between bg-surface border border-divider rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <Send size={16} className="text-t2" />
+                  <span className="text-sm text-t1 font-medium">{pendingNotif.length} event{pendingNotif.length !== 1 ? 's' : ''} awaiting notification</span>
+                </div>
+                <Button size="sm" onClick={() => {
+                  pendingNotif.forEach(e => updateCobraEvent((e as any).id, { status: 'notified', notification_date: new Date().toISOString().split('T')[0] }))
+                  addToast(`Sent notifications for ${pendingNotif.length} COBRA event${pendingNotif.length !== 1 ? 's' : ''}`)
+                }}>
+                  <Send size={14} /> Send All Pending Notifications
+                </Button>
+              </div>
+            )
+          })()}
+
           {/* Expiring COBRA Alerts */}
           {(() => {
             const expiringEvents = cobraEvents.filter(e => {
@@ -1684,7 +1808,14 @@ export default function BenefitsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-xs text-t2 text-center">{ev.coverage_end_date}</td>
-                        <td className="px-4 py-3 text-xs text-t1 font-medium text-right">${(ev.monthly_premium || 0).toLocaleString()}/mo</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs text-t1 font-medium">${(ev.monthly_premium || 0).toLocaleString()}/mo</span>
+                          {ev.subsidy_percent > 0 && (
+                            <div className="mt-1">
+                              <Badge variant="success">{ev.subsidy_percent}% Subsidy</Badge>
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={
                             ev.status === 'elected' ? 'success' :
@@ -1694,6 +1825,13 @@ export default function BenefitsPage() {
                           }>
                             {(ev.status || '').replace(/_/g, ' ')}
                           </Badge>
+                          {ev.coverage_plans && Array.isArray(ev.coverage_plans) && ev.coverage_plans.length > 0 && (
+                            <div className="flex flex-wrap gap-1 justify-center mt-1">
+                              {ev.coverage_plans.map((plan: any, idx: number) => (
+                                <Badge key={idx} variant="info" className="text-[0.6rem]">{plan.name || plan.plan_id}</Badge>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center gap-1 justify-center">
@@ -1773,32 +1911,135 @@ export default function BenefitsPage() {
       {/* ============================================================ */}
       {activeTab === 'aca-compliance' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Tracked Employees" value={acaTracking.length} icon={<Users size={20} />} />
-            <StatCard
-              label="Full-Time Eligible"
-              value={acaTracking.filter(a => (a as any).aca_status === 'full_time').length}
-              icon={<UserCheck size={20} />}
-            />
-            <StatCard
-              label="1095-C Pending"
-              value={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length}
-              icon={<FileText size={20} />}
-              change={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length > 0 ? 'Action needed' : 'All filed'}
-              changeType={acaTracking.filter(a => (a as any).form_1095_status === 'pending').length > 0 ? 'negative' : 'positive'}
-            />
-            <StatCard
-              label="Offer Rate"
-              value={`${acaTracking.length > 0 ? Math.round((acaTracking.filter(a => (a as any).offered_coverage).length / acaTracking.length) * 100) : 0}%`}
-              icon={<Shield size={20} />}
-              change={acaTracking.filter(a => (a as any).offered_coverage).length > 0 ? 'Compliant' : 'Review needed'}
-              changeType={acaTracking.filter(a => !(a as any).offered_coverage && (a as any).aca_status === 'full_time').length === 0 ? 'positive' : 'negative'}
-            />
-          </div>
+          {/* Tax Year Selector */}
+          {(() => {
+            const availableYears = [...new Set(acaTracking.map(a => (a as any).tax_year).filter(Boolean))].sort((a, b) => b - a)
+            return (
+              <div className="flex items-center gap-3 mb-6">
+                <label className="text-sm font-medium text-t2">Tax Year</label>
+                <select
+                  className="border border-divider rounded-lg px-3 py-1.5 text-sm bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600"
+                  value={acaTaxYearFilter === 'all' ? 'all' : String(acaTaxYearFilter)}
+                  onChange={e => setAcaTaxYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                >
+                  <option value="all">All Years</option>
+                  {availableYears.map(year => (
+                    <option key={year} value={String(year)}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            )
+          })()}
+
+          {/* Filtered ACA data used below */}
+          {(() => {
+            const filteredAca = acaTaxYearFilter === 'all'
+              ? acaTracking
+              : acaTracking.filter(a => (a as any).tax_year === acaTaxYearFilter)
+
+            const totalTracked = filteredAca.length
+            const fullTimeCount = filteredAca.filter(a => (a as any).aca_status === 'full_time').length
+            const offeredCount = filteredAca.filter(a => (a as any).offered_coverage).length
+            const offerRate = totalTracked > 0 ? Math.round((offeredCount / totalTracked) * 100) : 0
+            const pendingCount = filteredAca.filter(a => (a as any).form_1095_status === 'pending').length
+            const generatedCount = filteredAca.filter(a => (a as any).form_1095_status === 'generated').length
+            const filedCount = filteredAca.filter(a => (a as any).form_1095_status === 'filed').length
+            const correctedCount = filteredAca.filter(a => (a as any).form_1095_status === 'corrected').length
+            const allFteOffered = fullTimeCount > 0 && filteredAca.filter(a => (a as any).aca_status === 'full_time' && !(a as any).offered_coverage).length === 0
+
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <StatCard label="Tracked Employees" value={totalTracked} icon={<Users size={20} />} />
+                  <StatCard label="Full-Time Eligible" value={fullTimeCount} icon={<UserCheck size={20} />} />
+                  <StatCard
+                    label="1095-C Pending"
+                    value={pendingCount}
+                    icon={<FileText size={20} />}
+                    change={pendingCount > 0 ? 'Action needed' : 'All filed'}
+                    changeType={pendingCount > 0 ? 'negative' : 'positive'}
+                  />
+                  <StatCard
+                    label="Offer Rate"
+                    value={`${offerRate}%`}
+                    icon={<Shield size={20} />}
+                    change={offeredCount > 0 ? 'Compliant' : 'Review needed'}
+                    changeType={filteredAca.filter(a => !(a as any).offered_coverage && (a as any).aca_status === 'full_time').length === 0 ? 'positive' : 'negative'}
+                  />
+                </div>
+
+                {/* 1094-C Summary Card */}
+                <Card className="mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileText size={18} className="text-tempo-600" />
+                    <h3 className="text-sm font-semibold text-t1">1094-C Transmittal Summary</h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-canvas rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-t1">{totalTracked}</p>
+                      <p className="text-xs text-t3">Total Employees</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-t1">{fullTimeCount}</p>
+                      <p className="text-xs text-t3">Full-Time Count</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-tempo-600">{offerRate}%</p>
+                      <p className="text-xs text-t3">Coverage Offer Rate</p>
+                    </div>
+                    <div className="bg-canvas rounded-lg p-3">
+                      <p className="text-xs font-medium text-t1 mb-1">Filing Summary</p>
+                      <div className="space-y-1">
+                        {pendingCount > 0 && <div className="flex items-center justify-between text-xs"><span className="text-t3">Pending</span><Badge variant="default">{pendingCount}</Badge></div>}
+                        {generatedCount > 0 && <div className="flex items-center justify-between text-xs"><span className="text-t3">Generated</span><Badge variant="info">{generatedCount}</Badge></div>}
+                        {filedCount > 0 && <div className="flex items-center justify-between text-xs"><span className="text-t3">Filed</span><Badge variant="success">{filedCount}</Badge></div>}
+                        {correctedCount > 0 && <div className="flex items-center justify-between text-xs"><span className="text-t3">Corrected</span><Badge variant="warning">{correctedCount}</Badge></div>}
+                        {totalTracked === 0 && <p className="text-xs text-t3">No records</p>}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Safe Harbor Compliance */}
+                <Card className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Scale size={18} className="text-tempo-600" />
+                      <h3 className="text-sm font-semibold text-t1">Affordability Safe Harbor</h3>
+                    </div>
+                    <Badge variant={allFteOffered ? 'success' : 'error'}>{allFteOffered ? 'Compliant' : 'Non-Compliant'}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="border border-divider rounded-lg p-3">
+                      <p className="text-xs text-t3 mb-1">Safe Harbor Method</p>
+                      <p className="text-sm font-medium text-t1">Federal Poverty Line (FPL) 2025</p>
+                    </div>
+                    <div className="border border-divider rounded-lg p-3">
+                      <p className="text-xs text-t3 mb-1">Affordability Threshold</p>
+                      <p className="text-sm font-medium text-t1">9.12% of FPL</p>
+                    </div>
+                    <div className="border border-divider rounded-lg p-3">
+                      <p className="text-xs text-t3 mb-1">FTE Coverage Status</p>
+                      {allFteOffered ? (
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 size={14} className="text-green-600" />
+                          <span className="text-sm font-medium text-green-700">All FTE offered coverage</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <AlertTriangle size={14} className="text-red-500" />
+                          <span className="text-sm font-medium text-red-700">
+                            {filteredAca.filter(a => (a as any).aca_status === 'full_time' && !(a as any).offered_coverage).length} FTE missing coverage offer
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
 
           {/* ACA Dashboard Summary */}
           {(() => {
-            const nonCompliant = acaTracking.filter(a => {
+            const nonCompliant = filteredAca.filter(a => {
               const t = a as any
               return t.aca_status === 'full_time' && !t.offered_coverage
             })
@@ -1842,7 +2083,7 @@ export default function BenefitsPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>Employee Eligibility Tracking</CardTitle>
                 <Button size="sm" variant="secondary" onClick={() => {
-                  const pending = acaTracking.filter(a => (a as any).form_1095_status === 'pending')
+                  const pending = filteredAca.filter(a => (a as any).form_1095_status === 'pending')
                   pending.forEach(a => updateAcaTracking((a as any).id, { form_1095_status: 'generated' }))
                   if (pending.length > 0) addToast(`Generated ${pending.length} 1095-C forms`)
                   else addToast('No pending forms to generate')
@@ -1866,9 +2107,9 @@ export default function BenefitsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {acaTracking.length === 0 ? (
+                  {filteredAca.length === 0 ? (
                     <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">No ACA tracking records</td></tr>
-                  ) : acaTracking.map(record => {
+                  ) : filteredAca.map(record => {
                     const r = record as any
                     const isNonCompliant = r.aca_status === 'full_time' && !r.offered_coverage
                     return (
@@ -1925,6 +2166,14 @@ export default function BenefitsPage() {
                                 File
                               </Button>
                             )}
+                            {r.form_1095_status === 'filed' && (
+                              <Button size="sm" variant="ghost" onClick={() => {
+                                updateAcaTracking(r.id, { form_1095_status: 'corrected' })
+                                addToast(`Filed correction for ${getEmployeeName(r.employee_id)}`)
+                              }}>
+                                <Pencil size={14} /> Correct
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1941,7 +2190,7 @@ export default function BenefitsPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">Workforce ACA Status</h3>
               {(() => {
                 const statusMap: Record<string, number> = {}
-                acaTracking.forEach(a => {
+                filteredAca.forEach(a => {
                   const status = (a as any).aca_status || 'unknown'
                   statusMap[status] = (statusMap[status] || 0) + 1
                 })
@@ -1959,7 +2208,7 @@ export default function BenefitsPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">1095-C Filing Status</h3>
               {(() => {
                 const formMap: Record<string, number> = {}
-                acaTracking.forEach(a => {
+                filteredAca.forEach(a => {
                   const status = (a as any).form_1095_status || 'pending'
                   formMap[status] = (formMap[status] || 0) + 1
                 })
@@ -1974,6 +2223,9 @@ export default function BenefitsPage() {
               })()}
             </Card>
           </div>
+              </>
+            )
+          })()}
         </>
       )}
 

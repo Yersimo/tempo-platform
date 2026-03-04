@@ -173,14 +173,21 @@ export async function middleware(request: NextRequest) {
   // ─── Rate Limiting (Redis-backed in production, in-memory in dev) ───
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 
-  // Rate limit login attempts
+  // Rate limit login attempts only (not session checks, logout, etc.)
   if (pathname === '/api/auth' && request.method === 'POST') {
-    const { limited } = await checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000, loginRateLimiter)
-    if (limited) {
-      return NextResponse.json(
-        { error: 'Too many attempts. Please try again later.' },
-        { status: 429 }
-      )
+    try {
+      const clonedBody = await request.clone().json()
+      if (clonedBody?.action === 'login' || clonedBody?.action === 'signup') {
+        const { limited } = await checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000, loginRateLimiter)
+        if (limited) {
+          return NextResponse.json(
+            { error: 'Too many login attempts. Please try again later.' },
+            { status: 429 }
+          )
+        }
+      }
+    } catch {
+      // If body parsing fails, skip rate limiting (don't block valid requests)
     }
   }
 

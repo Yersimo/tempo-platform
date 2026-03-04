@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
@@ -27,7 +27,12 @@ export default function PayrollPage() {
     addContractorPayment, updateContractorPayment, addPayrollSchedule, updatePayrollSchedule,
     addTaxConfig, updateTaxConfig, resolveComplianceIssue, updateTaxFiling, addEmployeePayrollEntry,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['payrollRuns', 'leaveRequests'])
+  }, [ensureModulesLoaded])
 
   // ---- Tab State ----
   const tabs = [
@@ -159,6 +164,38 @@ export default function PayrollPage() {
             <StatCard label={tc('employees')} value={lastRun?.employee_count || employees.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} href="/people" />
             <StatCard label={t('deductions')} value={`$${(totalDeductions / 1000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
           </div>
+
+          {/* Currency Breakdown */}
+          {payrollRuns.length > 0 && (() => {
+            const currencyMap: Record<string, { count: number; totalNet: number }> = {}
+            payrollRuns.forEach(run => {
+              const cur = (run as any).currency || 'USD'
+              if (!currencyMap[cur]) currencyMap[cur] = { count: 0, totalNet: 0 }
+              currencyMap[cur].count += 1
+              currencyMap[cur].totalNet += run.total_net
+            })
+            const currencies = Object.entries(currencyMap)
+            return currencies.length > 0 ? (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Globe size={16} className="text-tempo-600" />
+                  <h3 className="text-sm font-semibold text-t1">Currency Breakdown</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {currencies.map(([currency, data]) => (
+                    <Card key={currency} className="!p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-tempo-600">{currency}</span>
+                        <Badge variant="default">{data.count} {data.count === 1 ? 'run' : 'runs'}</Badge>
+                      </div>
+                      <p className="text-lg font-bold text-t1">${data.totalNet.toLocaleString()}</p>
+                      <p className="text-xs text-t3">Total net pay</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : null
+          })()}
 
           {payrollInsights.length > 0 && <AIAlertBanner insights={payrollInsights} className="mb-4" />}
           {payrollRuns.length > 0 && <div className="mb-6"><AIInsightCard insight={forecastInsight} compact /></div>}
@@ -502,6 +539,81 @@ export default function PayrollPage() {
             </div>
           </Card>
 
+          {/* Filing Calendar */}
+          <Card className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-tempo-600" />
+                <h3 className="text-sm font-semibold text-t1">Filing Calendar</h3>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => addToast('W-2 generation initiated for all employees')}>
+                  <FileText size={14} /> Generate W-2s
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => addToast('1099 generation initiated for all contractors')}>
+                  <FileText size={14} /> Generate 1099s
+                </Button>
+              </div>
+            </div>
+            {(() => {
+              const filingsByMonth: Record<string, typeof taxFilings> = {}
+              taxFilings.forEach(f => {
+                const tf = f as any
+                const deadline = new Date(tf.deadline)
+                const monthKey = deadline.toLocaleString('default', { month: 'long', year: 'numeric' })
+                if (!filingsByMonth[monthKey]) filingsByMonth[monthKey] = []
+                filingsByMonth[monthKey].push(f)
+              })
+              const sortedMonths = Object.keys(filingsByMonth).sort((a, b) => {
+                const da = new Date(filingsByMonth[a][0] && (filingsByMonth[a][0] as any).deadline)
+                const db = new Date(filingsByMonth[b][0] && (filingsByMonth[b][0] as any).deadline)
+                return da.getTime() - db.getTime()
+              })
+              return (
+                <div className="space-y-4">
+                  {sortedMonths.map(month => (
+                    <div key={month}>
+                      <h4 className="text-xs font-semibold text-t2 uppercase tracking-wider mb-2">{month}</h4>
+                      <div className="space-y-2">
+                        {filingsByMonth[month].map(f => {
+                          const tf = f as any
+                          const isOverdue = tf.status === 'overdue'
+                          const deadlineDate = new Date(tf.deadline)
+                          const today = new Date()
+                          const daysUntil = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                          return (
+                            <div key={tf.id} className={`flex items-center justify-between p-3 rounded-lg border ${isOverdue ? 'border-red-300 bg-red-50' : 'border-divider bg-canvas'}`}>
+                              <div className="flex items-center gap-3">
+                                {isOverdue && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+                                {!isOverdue && tf.status === 'filed' && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                                {!isOverdue && tf.status !== 'filed' && <div className="w-2 h-2 rounded-full bg-amber-400" />}
+                                <div>
+                                  <p className="text-sm font-medium text-t1">{tf.form_name}</p>
+                                  <p className="text-xs text-t3">{tf.country} &middot; {tf.filing_period}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <p className="text-xs text-t2">{tf.deadline}</p>
+                                  <p className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : daysUntil <= 14 ? 'text-amber-600' : 'text-t3'}`}>
+                                    {isOverdue ? 'Overdue' : tf.status === 'filed' ? 'Filed' : `${daysUntil} days left`}
+                                  </p>
+                                </div>
+                                <Badge variant={tf.status === 'filed' ? 'success' : tf.status === 'overdue' ? 'error' : 'warning'}>
+                                  {tf.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </Card>
+
           {/* Tax Filings */}
           <Card padding="none" className="mb-6">
             <CardHeader><CardTitle>{t('taxFilings')}</CardTitle></CardHeader>
@@ -621,11 +733,25 @@ export default function PayrollPage() {
                         <td className="px-4 py-3 text-xs text-t2 font-mono">{cp.invoice_number}</td>
                         <td className="px-4 py-3 text-xs text-t1 text-right font-medium">${cp.amount?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-xs text-t2 text-center">{cp.due_date}</td>
-                        <td className="px-4 py-3 text-center"><Badge variant="default">{cp.tax_form}</Badge></td>
+                        <td className="px-4 py-3 text-center">
+                          {cp.tax_form === 'W-9' && <Badge variant="info">W-9</Badge>}
+                          {cp.tax_form === 'W-8BEN' && <Badge variant="warning">W-8BEN</Badge>}
+                          {cp.tax_form === 'invoice' && <Badge variant="default">invoice</Badge>}
+                          {!cp.tax_form && <Badge variant="error"><AlertTriangle size={10} className="inline mr-1" />Missing</Badge>}
+                        </td>
                         <td className="px-4 py-3 text-center"><Badge variant={cp.status === 'paid' ? 'success' : cp.status === 'approved' ? 'info' : 'warning'}>{cp.status}</Badge></td>
                         <td className="px-4 py-3 text-center">
-                          {cp.status === 'pending' && <Button size="sm" variant="ghost" onClick={() => updateContractorPayment(cp.id, { status: 'approved' })}>{t('approvePayment')}</Button>}
-                          {cp.status === 'approved' && <Button size="sm" variant="ghost" onClick={() => updateContractorPayment(cp.id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] })}>{t('markPaid')}</Button>}
+                          <div className="flex gap-1 justify-center">
+                            {cp.status === 'pending' && <Button size="sm" variant="ghost" onClick={() => updateContractorPayment(cp.id, { status: 'approved' })}>{t('approvePayment')}</Button>}
+                            {cp.status === 'approved' && (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => updateContractorPayment(cp.id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] })}>{t('markPaid')}</Button>
+                                <Button size="sm" variant="primary" onClick={() => { updateContractorPayment(cp.id, { status: 'paid', paid_date: new Date().toISOString() }); addToast('Instant payment processed for ' + cp.contractor_name) }}>
+                                  <Zap size={12} /> Pay Now
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )

@@ -627,10 +627,10 @@ export const demoBudgets = [
 ]
 
 export const demoVendors = [
-  { id: 'vnd-1', org_id: 'org-1', name: 'Microsoft Corporation', contact_email: 'enterprise@microsoft.com', category: 'Software', status: 'active' as const, created_at: '2024-01-01T00:00:00Z' },
-  { id: 'vnd-2', org_id: 'org-1', name: 'Amazon Web Services', contact_email: 'support@aws.amazon.com', category: 'Cloud Infrastructure', status: 'active' as const, created_at: '2024-01-01T00:00:00Z' },
-  { id: 'vnd-3', org_id: 'org-1', name: 'Deloitte Africa', contact_email: 'africa@deloitte.com', category: 'Consulting', status: 'active' as const, created_at: '2024-06-01T00:00:00Z' },
-  { id: 'vnd-4', org_id: 'org-1', name: 'Ecobank Academy', contact_email: 'academy@ecobank.com', category: 'Training', status: 'active' as const, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'vnd-1', org_id: 'org-1', name: 'Microsoft Corporation', contact_email: 'enterprise@microsoft.com', contact_phone: '+1 (425) 882-8080', category: 'Software', status: 'active' as const, payment_terms: 'Net 30', tax_id: '91-1144442', risk_level: 'low' as const, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'vnd-2', org_id: 'org-1', name: 'Amazon Web Services', contact_email: 'support@aws.amazon.com', contact_phone: '+1 (206) 266-1000', category: 'Cloud Infrastructure', status: 'active' as const, payment_terms: 'Net 30', tax_id: '91-1646860', risk_level: 'medium' as const, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'vnd-3', org_id: 'org-1', name: 'Deloitte Africa', contact_email: 'africa@deloitte.com', contact_phone: '+27 11 806 5000', category: 'Consulting', status: 'active' as const, payment_terms: 'Net 45', tax_id: '', risk_level: 'medium' as const, created_at: '2024-06-01T00:00:00Z' },
+  { id: 'vnd-4', org_id: 'org-1', name: 'Ecobank Academy', contact_email: 'academy@ecobank.com', contact_phone: '+228 22 21 03 03', category: 'Training', status: 'active' as const, payment_terms: 'Net 60', tax_id: '', risk_level: 'low' as const, created_at: '2024-01-01T00:00:00Z' },
 ]
 
 // Vendor Contracts (linked to vendors)
@@ -3630,6 +3630,362 @@ export const demoSurveyTriggers = [
     ],
   },
 ]
+// ============================================================
+// GAP CLOSURE: Demo Data for New Features
+// ============================================================
+
+// ─── E-Signatures ───
+export const demoSignatureDocuments = [
+  { id: 'sig-doc-1', org_id: 'org-1', title: 'Employment Agreement - Q1 2026', status: 'completed', signing_flow: 'sequential', created_by: 'emp-1', document_url: '/docs/employment-agreement-q1.pdf', created_at: '2026-01-15T10:00:00Z', completed_at: '2026-01-17T14:30:00Z', signers: [{ name: 'Adaeze Okafor', email: 'adaeze@ecobank.com', status: 'signed' }, { name: 'HR Director', email: 'hr@ecobank.com', status: 'signed' }] },
+  { id: 'sig-doc-2', org_id: 'org-1', title: 'NDA - Vendor Partnership', status: 'in_progress', signing_flow: 'parallel', created_by: 'emp-3', document_url: '/docs/nda-vendor.pdf', created_at: '2026-02-20T09:00:00Z', completed_at: null, signers: [{ name: 'Vendor Rep', email: 'rep@vendor.com', status: 'pending' }, { name: 'Chidi Eze', email: 'chidi@ecobank.com', status: 'signed' }] },
+  { id: 'sig-doc-3', org_id: 'org-1', title: 'Benefits Election Form 2026', status: 'pending', signing_flow: 'sequential', created_by: 'emp-17', document_url: '/docs/benefits-election.pdf', created_at: '2026-02-25T11:00:00Z', completed_at: null, signers: [{ name: 'Ngozi Adeyemi', email: 'ngozi@ecobank.com', status: 'pending' }] },
+]
+export const demoSignatureTemplates = [
+  { id: 'sig-tpl-1', org_id: 'org-1', name: 'Standard Employment Agreement', description: 'Standard employment agreement for full-time employees', document_url: '/templates/employment-agreement.pdf', signing_flow: 'sequential', signer_roles: [{ role: 'employee', order: 1 }, { role: 'hr_manager', order: 2 }], usage_count: 47, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'sig-tpl-2', org_id: 'org-1', name: 'Non-Disclosure Agreement', description: 'Standard NDA for contractors and vendors', document_url: '/templates/nda.pdf', signing_flow: 'parallel', signer_roles: [{ role: 'signer', order: 1 }, { role: 'company_rep', order: 1 }], usage_count: 23, created_at: '2025-08-15T00:00:00Z' },
+]
+
+// ─── E-Verify / I-9 ───
+export const demoI9Forms = [
+  { id: 'i9-1', org_id: 'org-1', employee_id: 'emp-4', status: 'completed', section1_completed_at: '2026-02-10T10:00:00Z', section2_completed_at: '2026-02-11T09:00:00Z', section3_completed_at: null, verifier_id: 'emp-17', documents: [{ type: 'passport', list: 'A', number: 'P****123', expiry: '2030-05-15' }], created_at: '2026-02-10T10:00:00Z' },
+  { id: 'i9-2', org_id: 'org-1', employee_id: 'emp-10', status: 'pending_section2', section1_completed_at: '2026-02-03T11:00:00Z', section2_completed_at: null, section3_completed_at: null, verifier_id: null, documents: [], created_at: '2026-02-03T11:00:00Z' },
+]
+export const demoEverifyCases = [
+  { id: 'ev-1', org_id: 'org-1', employee_id: 'emp-4', i9_form_id: 'i9-1', case_number: 'EV-2026-001234', status: 'employment_authorized', submitted_at: '2026-02-11T10:00:00Z', resolved_at: '2026-02-12T08:00:00Z', created_at: '2026-02-11T10:00:00Z' },
+  { id: 'ev-2', org_id: 'org-1', employee_id: 'emp-30', i9_form_id: null, case_number: 'EV-2026-001567', status: 'pending_referral', submitted_at: '2026-02-20T14:00:00Z', resolved_at: null, created_at: '2026-02-20T14:00:00Z' },
+]
+
+// ─── PEO ───
+export const demoPeoConfigurations = [
+  { id: 'peo-1', org_id: 'org-1', provider_name: 'AfriPEO Solutions', status: 'active', countries: ['Nigeria', 'Ghana', 'Kenya'], employee_count: 45, monthly_fee_per_employee: 15000, contract_start: '2025-01-01', contract_end: '2026-12-31', services: ['payroll', 'benefits', 'compliance', 'risk_management'], created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoCoEmploymentRecords = [
+  { id: 'coemp-1', org_id: 'org-1', peo_config_id: 'peo-1', employee_id: 'emp-4', status: 'active', co_employer: 'AfriPEO Solutions', start_date: '2026-02-10', services: ['payroll', 'benefits'] },
+]
+
+// ─── Sandbox ───
+export const demoSandboxEnvironments = [
+  { id: 'sandbox-1', org_id: 'org-1', name: 'Staging - Q1 Config Test', status: 'active', type: 'full_clone', source_org_id: 'org-1', created_by: 'emp-1', data_masking: true, expires_at: '2026-04-01T00:00:00Z', created_at: '2026-02-01T00:00:00Z', last_refreshed_at: '2026-02-25T06:00:00Z' },
+  { id: 'sandbox-2', org_id: 'org-1', name: 'Benefits Config Preview', status: 'active', type: 'partial_clone', source_org_id: 'org-1', created_by: 'emp-17', data_masking: true, expires_at: '2026-03-15T00:00:00Z', created_at: '2026-02-15T00:00:00Z', last_refreshed_at: '2026-02-20T06:00:00Z' },
+]
+
+// ─── Chat ───
+export const demoChatChannels = [
+  { id: 'chan-1', org_id: 'org-1', name: 'general', type: 'public', description: 'Company-wide announcements and general discussion', member_count: 50, created_by: 'emp-1', is_archived: false, last_message_at: '2026-02-28T16:30:00Z', created_at: '2025-01-01T00:00:00Z' },
+  { id: 'chan-2', org_id: 'org-1', name: 'engineering', type: 'group', description: 'Engineering team discussions', member_count: 15, created_by: 'emp-3', is_archived: false, last_message_at: '2026-02-28T15:45:00Z', created_at: '2025-01-01T00:00:00Z' },
+  { id: 'chan-3', org_id: 'org-1', name: 'hr-announcements', type: 'announcement', description: 'HR policy updates and announcements', member_count: 50, created_by: 'emp-17', is_archived: false, last_message_at: '2026-02-25T09:00:00Z', created_at: '2025-01-01T00:00:00Z' },
+  { id: 'chan-4', org_id: 'org-1', name: 'product', type: 'group', description: 'Product team updates and planning', member_count: 10, created_by: 'emp-5', is_archived: false, last_message_at: '2026-02-27T18:00:00Z', created_at: '2025-02-01T00:00:00Z' },
+  { id: 'chan-5', org_id: 'org-1', name: 'random', type: 'public', description: 'Non-work banter and fun', member_count: 45, created_by: 'emp-1', is_archived: false, last_message_at: '2026-02-28T12:00:00Z', created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoChatMessages = [
+  { id: 'cmsg-1', channel_id: 'chan-1', org_id: 'org-1', sender_id: 'emp-1', type: 'text', content: 'Welcome to Q1 2026! Excited about the roadmap ahead.', is_pinned: true, sent_at: '2026-01-06T09:00:00Z', created_at: '2026-01-06T09:00:00Z', reactions: [{ emoji: '🎉', users: ['emp-3', 'emp-5'] }] },
+  { id: 'cmsg-2', channel_id: 'chan-2', org_id: 'org-1', sender_id: 'emp-3', type: 'text', content: 'Sprint planning is at 10am today in the main conference room.', sent_at: '2026-02-24T08:30:00Z', created_at: '2026-02-24T08:30:00Z', reactions: [{ emoji: '👍', users: ['emp-6', 'emp-7'] }] },
+  { id: 'cmsg-3', channel_id: 'chan-1', org_id: 'org-1', sender_id: 'emp-1', type: 'text', content: 'Reminder: Q1 OKR reviews are due by end of this week. Please update your goals in the platform.', sent_at: '2026-02-28T09:00:00Z', created_at: '2026-02-28T09:00:00Z' },
+  { id: 'cmsg-4', channel_id: 'chan-2', org_id: 'org-1', sender_id: 'emp-5', type: 'text', content: 'I\'ve pushed the API gateway changes to staging. Can someone review the PR?', sent_at: '2026-02-28T11:30:00Z', created_at: '2026-02-28T11:30:00Z' },
+  { id: 'cmsg-5', channel_id: 'chan-3', org_id: 'org-1', sender_id: 'emp-17', type: 'announcement', content: 'Benefits open enrollment closes March 15. We still have 12 employees who haven\'t made selections.', is_pinned: true, sent_at: '2026-02-28T10:00:00Z', created_at: '2026-02-28T10:00:00Z' },
+  { id: 'cmsg-6', channel_id: 'chan-4', org_id: 'org-1', sender_id: 'emp-5', type: 'text', content: 'Product roadmap for Q2 is finalized. Key focus areas: mobile-first UX, compliance automation, and AI-powered analytics.', sent_at: '2026-02-27T18:00:00Z', created_at: '2026-02-27T18:00:00Z' },
+  { id: 'cmsg-7', channel_id: 'chan-5', org_id: 'org-1', sender_id: 'emp-3', type: 'text', content: 'Has anyone tried the new jollof rice place near the Accra office? Highly recommend!', sent_at: '2026-02-28T12:00:00Z', created_at: '2026-02-28T12:00:00Z' },
+  { id: 'cmsg-8', channel_id: 'chan-1', org_id: 'org-1', sender_id: 'emp-17', type: 'text', content: 'New compliance training module is now available in the Learning hub. All employees must complete it by March 31.', sent_at: '2026-02-28T16:30:00Z', created_at: '2026-02-28T16:30:00Z' },
+]
+export const demoChatParticipants = [
+  { id: 'cp-1', channel_id: 'chan-1', employee_id: 'emp-1', role: 'owner', joined_at: '2025-01-01T00:00:00Z' },
+  { id: 'cp-2', channel_id: 'chan-1', employee_id: 'emp-3', role: 'member', joined_at: '2025-01-01T00:00:00Z' },
+  { id: 'cp-3', channel_id: 'chan-1', employee_id: 'emp-5', role: 'member', joined_at: '2025-01-01T00:00:00Z' },
+  { id: 'cp-4', channel_id: 'chan-1', employee_id: 'emp-17', role: 'member', joined_at: '2025-01-01T00:00:00Z' },
+  { id: 'cp-5', channel_id: 'chan-2', employee_id: 'emp-3', role: 'owner', joined_at: '2025-01-15T00:00:00Z' },
+  { id: 'cp-6', channel_id: 'chan-2', employee_id: 'emp-5', role: 'member', joined_at: '2025-01-15T00:00:00Z' },
+  { id: 'cp-7', channel_id: 'chan-3', employee_id: 'emp-17', role: 'owner', joined_at: '2025-01-15T00:00:00Z' },
+  { id: 'cp-8', channel_id: 'chan-3', employee_id: 'emp-1', role: 'member', joined_at: '2025-01-15T00:00:00Z' },
+  { id: 'cp-9', channel_id: 'chan-4', employee_id: 'emp-5', role: 'owner', joined_at: '2025-02-01T00:00:00Z' },
+  { id: 'cp-10', channel_id: 'chan-5', employee_id: 'emp-1', role: 'owner', joined_at: '2025-01-01T00:00:00Z' },
+  { id: 'cp-11', channel_id: 'chan-5', employee_id: 'emp-3', role: 'member', joined_at: '2025-01-01T00:00:00Z' },
+]
+
+// ─── IT Cloud: Provisioning Rules ───
+export const demoProvisioningRules = [
+  { id: 'pr-1', org_id: 'org-1', name: 'All New Hires — Core Apps', trigger: 'on_hire', department: null, role: null, apps: ['Slack', 'Zoom', '1Password', 'Chrome', 'Microsoft 365', 'CrowdStrike'], is_active: true, created_at: '2025-09-01' },
+  { id: 'pr-2', org_id: 'org-1', name: 'Engineering — Dev Tools', trigger: 'department_change', department: 'Engineering', role: null, apps: ['GitHub', 'VS Code', 'Docker', 'Jira', 'Datadog', 'Terraform'], is_active: true, created_at: '2025-09-01' },
+  { id: 'pr-3', org_id: 'org-1', name: 'HR — People Tools', trigger: 'department_change', department: 'Human Resources', role: null, apps: ['BambooHR', 'Greenhouse', 'DocuSign'], is_active: true, created_at: '2025-09-15' },
+  { id: 'pr-4', org_id: 'org-1', name: 'Finance — Financial Apps', trigger: 'department_change', department: 'Finance', role: null, apps: ['QuickBooks', 'Expensify', 'Stripe Dashboard'], is_active: true, created_at: '2025-09-15' },
+  { id: 'pr-5', org_id: 'org-1', name: 'Manager — Management Suite', trigger: 'role_change', department: null, role: 'manager', apps: ['15Five', 'Lattice', 'Culture Amp'], is_active: true, created_at: '2025-10-01' },
+  { id: 'pr-6', org_id: 'org-1', name: 'Offboarding — Revoke All', trigger: 'on_offboard', department: null, role: null, apps: ['ALL_APPS'], is_active: true, created_at: '2025-10-01' },
+  { id: 'pr-7', org_id: 'org-1', name: 'Sales — CRM Stack', trigger: 'department_change', department: 'Sales', role: null, apps: ['Salesforce', 'Gong', 'HubSpot', 'LinkedIn Sales Nav'], is_active: false, created_at: '2025-11-01' },
+]
+
+// ─── IT Cloud: Encryption Policies ───
+export const demoEncryptionPolicies = [
+  { id: 'ep-1', org_id: 'org-1', name: 'macOS FileVault Enforcement', platform: 'macos', encryption_type: 'FileVault', enforced: true, recovery_key_escrowed: true, grace_period_hours: 24, applies_to: 'All macOS Devices', compliant_count: 28, total_count: 32, created_at: '2025-06-01', last_updated: '2025-12-10' },
+  { id: 'ep-2', org_id: 'org-1', name: 'Windows BitLocker Enforcement', platform: 'windows', encryption_type: 'BitLocker', enforced: true, recovery_key_escrowed: true, grace_period_hours: 48, applies_to: 'All Windows Devices', compliant_count: 15, total_count: 18, created_at: '2025-06-01', last_updated: '2025-11-20' },
+  { id: 'ep-3', org_id: 'org-1', name: 'Linux LUKS Policy', platform: 'linux', encryption_type: 'LUKS', enforced: false, recovery_key_escrowed: false, grace_period_hours: 72, applies_to: 'Developer Linux Machines', compliant_count: 3, total_count: 5, created_at: '2025-08-01', last_updated: '2026-01-15' },
+  { id: 'ep-4', org_id: 'org-1', name: 'Universal Encryption Standard', platform: 'all', encryption_type: 'Platform Default', enforced: true, recovery_key_escrowed: true, grace_period_hours: 24, applies_to: 'All Company Devices', compliant_count: 46, total_count: 55, created_at: '2025-09-01', last_updated: '2026-02-01' },
+]
+
+// ─── Identity: SCIM Providers ───
+export const demoScimProviders = [
+  { id: 'scim-1', org_id: 'org-1', name: 'Azure AD SCIM', status: 'active', endpoint: 'https://scim.ecobank.com/v2/azure', last_sync: '2026-02-28T06:00:00Z', synced_users: 48, synced_groups: 6, auto_provision: true, auto_deprovision: true, sync_interval: 15 },
+  { id: 'scim-2', org_id: 'org-1', name: 'Okta SCIM', status: 'inactive', endpoint: 'https://scim.ecobank.com/v2/okta', last_sync: '2026-01-15T12:00:00Z', synced_users: 0, synced_groups: 0, auto_provision: false, auto_deprovision: false, sync_interval: 30 },
+]
+
+// ─── Compliance: Auto-Detection Scans ───
+export const demoAutoDetectionScans = [
+  { id: 'ad-1', org_id: 'org-1', scan_date: '2026-02-28', module: 'Payroll', rule_violated: 'Overtime limit exceeded (>48h/week)', severity: 'high', employee: 'Adaeze Okonkwo', status: 'pending_review' },
+  { id: 'ad-2', org_id: 'org-1', scan_date: '2026-02-28', module: 'Leave', rule_violated: 'Negative PTO balance', severity: 'medium', employee: 'Kofi Mensah', status: 'auto_resolved' },
+  { id: 'ad-3', org_id: 'org-1', scan_date: '2026-02-27', module: 'Data Privacy', rule_violated: 'GDPR consent expired for 3 records', severity: 'critical', employee: null, status: 'escalated' },
+  { id: 'ad-4', org_id: 'org-1', scan_date: '2026-02-27', module: 'Benefits', rule_violated: 'Dependent age-out not processed', severity: 'medium', employee: 'Fatoumata Diallo', status: 'pending_review' },
+  { id: 'ad-5', org_id: 'org-1', scan_date: '2026-02-26', module: 'Time Tracking', rule_violated: 'Missing clock-out for 5 consecutive days', severity: 'high', employee: 'Emeka Nwosu', status: 'pending_review' },
+  { id: 'ad-6', org_id: 'org-1', scan_date: '2026-02-26', module: 'Expenses', rule_violated: 'Duplicate receipt detected (>95% match)', severity: 'medium', employee: 'Ama Serwaa', status: 'dismissed' },
+  { id: 'ad-7', org_id: 'org-1', scan_date: '2026-02-25', module: 'Onboarding', rule_violated: 'I-9 verification overdue (>3 business days)', severity: 'critical', employee: 'New Hire — James Obi', status: 'pending_review' },
+  { id: 'ad-8', org_id: 'org-1', scan_date: '2026-02-25', module: 'Safety', rule_violated: 'Workplace injury report not filed within 24h', severity: 'high', employee: 'Kwesi Asante', status: 'auto_resolved' },
+  { id: 'ad-9', org_id: 'org-1', scan_date: '2026-02-24', module: 'Payroll', rule_violated: 'Tax withholding mismatch (W-4 vs actual)', severity: 'medium', employee: 'Nana Agyeman', status: 'pending_review' },
+  { id: 'ad-10', org_id: 'org-1', scan_date: '2026-02-24', module: 'Immigration', rule_violated: 'Work permit expiring within 30 days', severity: 'high', employee: 'Pierre Dubois', status: 'pending_review' },
+]
+
+// ─── Interview Recording ───
+export const demoInterviewRecordings = [
+  { id: 'rec-1', org_id: 'org-1', application_id: 'app-1', interview_type: 'technical', interviewer_ids: ['emp-3', 'emp-6'], status: 'completed', recording_url: '/recordings/rec-1.webm', duration: 2700, scheduled_at: '2026-02-15T14:00:00Z', recorded_at: '2026-02-15T14:00:00Z', metadata: { platform: 'tempo_meet', resolution: '1080p', format: 'webm' }, created_at: '2026-02-15T10:00:00Z' },
+  { id: 'rec-2', org_id: 'org-1', application_id: 'app-2', interview_type: 'behavioral', interviewer_ids: ['emp-17'], status: 'processing', recording_url: '/recordings/rec-2.webm', duration: 1800, scheduled_at: '2026-02-20T10:00:00Z', recorded_at: '2026-02-20T10:00:00Z', metadata: { platform: 'tempo_meet', resolution: '1080p', format: 'webm' }, created_at: '2026-02-20T08:00:00Z' },
+]
+export const demoInterviewTranscriptions = [
+  { id: 'trans-1', org_id: 'org-1', recording_id: 'rec-1', full_text: 'Interviewer: Tell me about your experience with distributed systems...', summary: 'Strong technical candidate with deep distributed systems knowledge. Demonstrated clear problem-solving approach.', key_topics: ['distributed systems', 'microservices', 'scalability', 'CAP theorem'], sentiment: { overall: 0.82, per_speaker: {} }, ai_scorecard: { overall: 85, technical_skills: { score: 90, weight: 0.35 }, communication: { score: 80, weight: 0.25 }, problem_solving: { score: 88, weight: 0.25 }, culture_fit: { score: 78, weight: 0.15 }, recommendation: 'hire', confidence: 0.87 }, language: 'en', processed_at: '2026-02-15T16:00:00Z', created_at: '2026-02-15T15:00:00Z' },
+]
+
+// ─── Video Screens ───
+export const demoVideoScreenTemplates = [
+  { id: 'vst-1', org_id: 'org-1', title: 'Software Engineer Screen', description: 'Standard one-way video screen for engineering roles', questions: [{ text: 'Walk us through a challenging technical problem you solved recently.', time_limit: 180, order: 1 }, { text: 'How do you approach code reviews?', time_limit: 120, order: 2 }, { text: 'Describe your experience with CI/CD pipelines.', time_limit: 120, order: 3 }], time_limit_total: 600, created_by: 'emp-3', created_at: '2026-01-10T00:00:00Z' },
+]
+export const demoVideoScreenInvites: any[] = []
+export const demoVideoScreenResponses: any[] = []
+
+// ─── Corporate Cards ───
+export const demoCorporateCards = [
+  { id: 'card-1', org_id: 'org-1', employee_id: 'emp-1', card_type: 'virtual', last_four: '4821', status: 'active', spend_limit: 500000, spent_this_month: 125000, currency: 'USD', issued_at: '2025-06-01T00:00:00Z', merchant_categories: ['travel', 'software', 'office_supplies'] },
+  { id: 'card-2', org_id: 'org-1', employee_id: 'emp-3', card_type: 'physical', last_four: '7392', status: 'active', spend_limit: 300000, spent_this_month: 89500, currency: 'USD', issued_at: '2025-08-15T00:00:00Z', merchant_categories: ['software', 'cloud_services', 'books'] },
+  { id: 'card-3', org_id: 'org-1', employee_id: 'emp-17', card_type: 'virtual', last_four: '1056', status: 'active', spend_limit: 200000, spent_this_month: 34200, currency: 'USD', issued_at: '2026-01-10T00:00:00Z', merchant_categories: ['office_supplies', 'recruiting'] },
+]
+export const demoCardTransactions = [
+  { id: 'txn-1', org_id: 'org-1', card_id: 'card-1', amount: 45000, currency: 'USD', merchant: 'AWS Cloud Services', category: 'cloud_services', status: 'settled', transaction_date: '2026-02-20T15:30:00Z', receipt_url: '/receipts/txn-1.pdf' },
+  { id: 'txn-2', org_id: 'org-1', card_id: 'card-2', amount: 12500, currency: 'USD', merchant: 'GitHub Enterprise', category: 'software', status: 'settled', transaction_date: '2026-02-18T10:00:00Z', receipt_url: '/receipts/txn-2.pdf' },
+  { id: 'txn-3', org_id: 'org-1', card_id: 'card-1', amount: 28000, currency: 'USD', merchant: 'Hilton Hotels', category: 'travel', status: 'pending', transaction_date: '2026-02-25T08:00:00Z', receipt_url: null },
+]
+
+// ─── Bill Pay ───
+export const demoBillPayments = [
+  { id: 'bp-1', org_id: 'org-1', vendor_id: 'vendor-1', amount: 1250000, currency: 'USD', method: 'ach', status: 'paid', scheduled_date: '2026-02-01', paid_date: '2026-02-01', reference_number: 'BP-001234', memo: 'Monthly cloud infrastructure', created_by: 'emp-1', created_at: '2026-01-28T10:00:00Z' },
+  { id: 'bp-2', org_id: 'org-1', vendor_id: 'vendor-2', amount: 450000, currency: 'USD', method: 'wire', status: 'scheduled', scheduled_date: '2026-03-01', paid_date: null, reference_number: 'BP-001567', memo: 'Q1 consulting fees', created_by: 'emp-1', created_at: '2026-02-20T14:00:00Z' },
+]
+export const demoBillPaySchedules = [
+  { id: 'bps-1', org_id: 'org-1', vendor_id: 'vendor-1', amount: 1250000, currency: 'USD', method: 'ach', frequency: 'monthly', next_payment_date: '2026-03-01', end_date: null, is_active: true, created_at: '2025-06-01T00:00:00Z' },
+]
+
+// ─── Travel Management ───
+export const demoTravelRequests = [
+  { id: 'travel-1', org_id: 'org-1', employee_id: 'emp-3', destination: 'Lagos, Nigeria', purpose: 'Client onsite meeting', travel_dates: { start: '2026-03-15', end: '2026-03-18' }, estimated_cost: 350000, status: 'approved', approved_by: 'emp-1', submitted_at: '2026-02-20T10:00:00Z' },
+  { id: 'travel-2', org_id: 'org-1', employee_id: 'emp-6', destination: 'Nairobi, Kenya', purpose: 'Engineering conference', travel_dates: { start: '2026-04-10', end: '2026-04-14' }, estimated_cost: 480000, status: 'pending', approved_by: null, submitted_at: '2026-02-25T14:00:00Z' },
+]
+export const demoTravelBookings = [
+  { id: 'booking-1', org_id: 'org-1', travel_request_id: 'travel-1', type: 'flight', provider: 'Ethiopian Airlines', details: { departure: 'ACC', arrival: 'LOS', date: '2026-03-15', class: 'business' }, cost: 185000, currency: 'USD', confirmation_number: 'ET-789456', status: 'confirmed', booked_at: '2026-02-22T10:00:00Z' },
+  { id: 'booking-2', org_id: 'org-1', travel_request_id: 'travel-1', type: 'hotel', provider: 'Marriott Lagos', details: { check_in: '2026-03-15', check_out: '2026-03-18', room_type: 'standard' }, cost: 120000, currency: 'USD', confirmation_number: 'MAR-123456', status: 'confirmed', booked_at: '2026-02-22T10:30:00Z' },
+]
+export const demoTravelPolicies = [
+  { id: 'tpol-1', org_id: 'org-1', name: 'Standard Travel Policy', description: 'Default travel policy for all employees', is_active: true, rules: { max_flight_class: 'economy', max_hotel_rate: 25000, meal_per_diem: 7500, advance_booking_days: 14, requires_approval_above: 200000 }, applicable_departments: null },
+]
+
+// ─── Procurement ───
+export const demoPurchaseOrders = [
+  { id: 'po-1', org_id: 'org-1', vendor_id: 'vendor-1', po_number: 'PO-2026-001', status: 'approved', total_amount: 2500000, currency: 'USD', items: [{ description: 'Annual AWS Enterprise Support', qty: 1, unit_price: 2500000 }], approved_by: 'emp-1', created_by: 'emp-3', created_at: '2026-01-10T10:00:00Z' },
+  { id: 'po-2', org_id: 'org-1', vendor_id: 'vendor-3', po_number: 'PO-2026-002', status: 'pending', total_amount: 850000, currency: 'USD', items: [{ description: 'Office furniture - Standing desks', qty: 25, unit_price: 34000 }], approved_by: null, created_by: 'emp-17', created_at: '2026-02-15T14:00:00Z' },
+]
+export const demoPurchaseOrderItems: any[] = []
+export const demoProcurementRequests = [
+  { id: 'preq-1', org_id: 'org-1', title: 'New development laptops', description: 'MacBook Pro M4 for engineering team expansion', requested_by: 'emp-3', department_id: 'dept-1', estimated_budget: 750000, currency: 'USD', urgency: 'medium', status: 'approved', approved_by: 'emp-1', submitted_at: '2026-02-10T10:00:00Z' },
+]
+
+// ─── Multi-currency ───
+export const demoCurrencyAccounts = [
+  { id: 'fxacct-1', org_id: 'org-1', currency: 'NGN', balance: 150000000, bank_name: 'Ecobank Nigeria', account_number: '****4521', is_primary: true },
+  { id: 'fxacct-2', org_id: 'org-1', currency: 'USD', balance: 5000000, bank_name: 'Ecobank Group', account_number: '****7890', is_primary: false },
+  { id: 'fxacct-3', org_id: 'org-1', currency: 'GHS', balance: 2500000, bank_name: 'Ecobank Ghana', account_number: '****3456', is_primary: false },
+  { id: 'fxacct-4', org_id: 'org-1', currency: 'KES', balance: 8000000, bank_name: 'Ecobank Kenya', account_number: '****6789', is_primary: false },
+]
+export const demoFxTransactions = [
+  { id: 'fx-1', org_id: 'org-1', from_currency: 'USD', to_currency: 'NGN', from_amount: 100000, to_amount: 156000000, exchange_rate: 1560.0, fee: 500, status: 'completed', executed_at: '2026-02-15T10:00:00Z' },
+  { id: 'fx-2', org_id: 'org-1', from_currency: 'USD', to_currency: 'GHS', from_amount: 50000, to_amount: 775000, exchange_rate: 15.5, fee: 250, status: 'completed', executed_at: '2026-02-20T14:00:00Z' },
+]
+
+// ─── 401(k) / Retirement ───
+export const demoRetirementPlans = [
+  { id: 'rplan-1', org_id: 'org-1', name: 'Ecobank 401(k) Plan', type: 'traditional_401k', status: 'active', employer_match_percent: 100, employer_match_cap: 6, vesting_schedule: [{ years: 0, percent: 0 }, { years: 1, percent: 20 }, { years: 2, percent: 40 }, { years: 3, percent: 60 }, { years: 4, percent: 80 }, { years: 5, percent: 100 }], auto_enrollment: true, auto_escalation: true, default_contribution_percent: 3, created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoRetirementEnrollments = [
+  { id: 'renr-1', org_id: 'org-1', plan_id: 'rplan-1', employee_id: 'emp-1', contribution_percent: 10, enrolled_at: '2025-01-15', investment_elections: [{ fund: 'S&P 500 Index', ticker: 'VFIAX', percent: 60 }, { fund: 'Bond Index', ticker: 'VBTLX', percent: 30 }, { fund: 'International', ticker: 'VTIAX', percent: 10 }], beneficiaries: [{ name: 'Spouse Okafor', relationship: 'spouse', percent: 100, is_primary: true }] },
+  { id: 'renr-2', org_id: 'org-1', plan_id: 'rplan-1', employee_id: 'emp-3', contribution_percent: 6, enrolled_at: '2025-03-01', investment_elections: [{ fund: 'Target Date 2055', ticker: 'VFFVX', percent: 100 }], beneficiaries: [] },
+]
+export const demoRetirementContributions = [
+  { id: 'rcon-1', org_id: 'org-1', plan_id: 'rplan-1', employee_id: 'emp-1', period: '2026-02', employee_amount: 83333, employer_amount: 50000, created_at: '2026-02-28T00:00:00Z' },
+  { id: 'rcon-2', org_id: 'org-1', plan_id: 'rplan-1', employee_id: 'emp-3', period: '2026-02', employee_amount: 45000, employer_amount: 45000, created_at: '2026-02-28T00:00:00Z' },
+]
+
+// ─── Carrier Integration ───
+export const demoCarrierIntegrations = [
+  { id: 'carrier-1', org_id: 'org-1', carrier_name: 'Blue Cross Blue Shield', carrier_code: 'BCBS', integration_type: 'edi_834', status: 'active', last_sync_at: '2026-02-28T06:00:00Z', sync_frequency: 'daily', error_count: 0, enrolled_lives: 42, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'carrier-2', org_id: 'org-1', carrier_name: 'Delta Dental', carrier_code: 'DELTA', integration_type: 'api', status: 'active', last_sync_at: '2026-02-28T06:00:00Z', sync_frequency: 'weekly', error_count: 0, enrolled_lives: 38, created_at: '2025-06-01T00:00:00Z' },
+]
+export const demoEnrollmentFeeds = [
+  { id: 'feed-1', org_id: 'org-1', carrier_id: 'carrier-1', feed_type: 'full_file', status: 'delivered', record_count: 42, error_count: 0, generated_at: '2026-02-28T06:00:00Z', delivered_at: '2026-02-28T06:05:00Z' },
+]
+
+// ─── Geofencing ───
+export const demoGeofenceZones = [
+  { id: 'zone-1', org_id: 'org-1', name: 'Ecobank HQ - Accra', type: 'circle', latitude: 5.6037, longitude: -0.1870, radius: 200, address: '2 Adjuma Crescent, Accra, Ghana', is_active: true, auto_clock: true, notification_enabled: true, assigned_employees: ['emp-1', 'emp-3', 'emp-5', 'emp-6'], assigned_departments: ['dept-1', 'dept-2'] },
+  { id: 'zone-2', org_id: 'org-1', name: 'Lagos Office', type: 'circle', latitude: 6.4541, longitude: 3.3947, radius: 150, address: '21 Ademola Adetokunbo St, Victoria Island, Lagos', is_active: true, auto_clock: true, notification_enabled: true, assigned_employees: [], assigned_departments: ['dept-3'] },
+]
+export const demoGeofenceEvents = [
+  { id: 'gfev-1', org_id: 'org-1', zone_id: 'zone-1', employee_id: 'emp-3', event_type: 'entry', latitude: 5.6038, longitude: -0.1869, is_within_zone: true, distance_from_center: 15, timestamp: '2026-02-28T08:02:00Z' },
+  { id: 'gfev-2', org_id: 'org-1', zone_id: 'zone-1', employee_id: 'emp-3', event_type: 'exit', latitude: 5.6055, longitude: -0.1890, is_within_zone: false, distance_from_center: 250, timestamp: '2026-02-28T17:35:00Z' },
+]
+
+// ─── Identity Provider ───
+export const demoIdpConfigurations = [
+  { id: 'idp-1', org_id: 'org-1', name: 'Ecobank SSO', protocol: 'saml', status: 'active', entity_id: 'https://sso.ecobank.com', sso_url: 'https://sso.ecobank.com/saml2/sso', certificate_expires_at: '2027-06-15', user_count: 50, created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoSamlApps = [
+  { id: 'saml-1', org_id: 'org-1', idp_id: 'idp-1', name: 'Slack', logo_url: '/logos/slack.png', sso_url: 'https://ecobank.slack.com/sso', status: 'active', user_count: 48, last_login_at: '2026-02-28T10:00:00Z', created_at: '2025-03-01T00:00:00Z' },
+  { id: 'saml-2', org_id: 'org-1', idp_id: 'idp-1', name: 'GitHub Enterprise', logo_url: '/logos/github.png', sso_url: 'https://github.com/enterprises/ecobank/sso', status: 'active', user_count: 15, last_login_at: '2026-02-28T09:00:00Z', created_at: '2025-03-01T00:00:00Z' },
+  { id: 'saml-3', org_id: 'org-1', idp_id: 'idp-1', name: 'Jira', logo_url: '/logos/jira.png', sso_url: 'https://ecobank.atlassian.net/sso', status: 'active', user_count: 35, last_login_at: '2026-02-28T11:00:00Z', created_at: '2025-04-01T00:00:00Z' },
+]
+export const demoMfaPolicies = [
+  { id: 'mfa-1', org_id: 'org-1', name: 'Company-wide MFA', is_active: true, methods: ['authenticator', 'sms', 'hardware_key'], grace_period_days: 7, applies_to: 'all', enrollment_rate: 96, created_at: '2025-01-01T00:00:00Z' },
+]
+
+// ─── Zero-touch Deployment ───
+export const demoDeploymentProfiles = [
+  { id: 'deploy-1', org_id: 'org-1', name: 'Standard Engineering Mac', platform: 'macos', os_version: '15.2', apps: ['Chrome', 'VS Code', 'Slack', 'Docker', 'iTerm2'], policies: ['disk_encryption', 'firewall', 'auto_update'], wifi_config: { ssid: 'EcoNet-Secure', security: 'WPA3' }, device_count: 15, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'deploy-2', org_id: 'org-1', name: 'Standard Windows Workstation', platform: 'windows', os_version: '11', apps: ['Chrome', 'Microsoft 365', 'Slack', 'Teams'], policies: ['bitlocker', 'windows_firewall', 'auto_update'], wifi_config: { ssid: 'EcoNet-Secure', security: 'WPA3' }, device_count: 30, created_at: '2025-06-01T00:00:00Z' },
+]
+export const demoEnrollmentTokens = [
+  { id: 'token-1', org_id: 'org-1', profile_id: 'deploy-1', token: 'ECO-MAC-****-ABCD', status: 'active', used_count: 12, max_uses: 50, expires_at: '2026-12-31T00:00:00Z', created_at: '2026-01-01T00:00:00Z' },
+]
+
+// ─── Password Manager ───
+export const demoPasswordVaults = [
+  { id: 'vault-1', org_id: 'org-1', name: 'Engineering Team', owner_id: 'emp-3', member_count: 15, item_count: 45, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'vault-2', org_id: 'org-1', name: 'HR & Admin', owner_id: 'emp-17', member_count: 8, item_count: 28, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'vault-3', org_id: 'org-1', name: 'Company Shared', owner_id: 'emp-1', member_count: 50, item_count: 15, created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoVaultItems = [
+  { id: 'vi-1', vault_id: 'vault-1', name: 'AWS Root Account', type: 'login', url: 'https://aws.amazon.com', username: 'admin@ecobank.com', strength: 'strong', last_used_at: '2026-02-28T10:00:00Z', created_at: '2025-06-01T00:00:00Z' },
+  { id: 'vi-2', vault_id: 'vault-1', name: 'GitHub Org Token', type: 'api_key', url: 'https://github.com', strength: 'strong', last_used_at: '2026-02-27T14:00:00Z', expires_at: '2026-06-01T00:00:00Z', created_at: '2025-09-01T00:00:00Z' },
+  { id: 'vi-3', vault_id: 'vault-3', name: 'Building WiFi', type: 'wifi', strength: 'strong', last_used_at: null, created_at: '2025-01-01T00:00:00Z' },
+]
+
+// ─── Device Store / Buyback ───
+export const demoDeviceStoreCatalog = [
+  { id: 'dsc-1', org_id: 'org-1', name: 'MacBook Pro 16" M4 Pro', category: 'laptop', brand: 'Apple', price: 249900, currency: 'USD', specs: { processor: 'M4 Pro', ram: '36GB', storage: '512GB SSD', display: '16.2" Liquid Retina XDR' }, in_stock: 8, image_url: '/devices/mbp16.png' },
+  { id: 'dsc-2', org_id: 'org-1', name: 'Dell UltraSharp 27" 4K Monitor', category: 'monitor', brand: 'Dell', price: 44999, currency: 'USD', specs: { resolution: '3840x2160', panel: 'IPS', refresh_rate: '60Hz', ports: ['USB-C', 'HDMI', 'DisplayPort'] }, in_stock: 15, image_url: '/devices/dell27.png' },
+  { id: 'dsc-3', org_id: 'org-1', name: 'iPhone 16 Pro', category: 'phone', brand: 'Apple', price: 99900, currency: 'USD', specs: { storage: '256GB', color: 'Natural Titanium', carrier: 'Unlocked' }, in_stock: 5, image_url: '/devices/iphone16.png' },
+]
+export const demoDeviceOrders = [
+  { id: 'dord-1', org_id: 'org-1', employee_id: 'emp-10', catalog_item_id: 'dsc-1', status: 'delivered', ordered_at: '2026-02-01T10:00:00Z', shipped_at: '2026-02-03T14:00:00Z', delivered_at: '2026-02-05T09:00:00Z', tracking_number: 'FDX-123456789' },
+  { id: 'dord-2', org_id: 'org-1', employee_id: 'emp-30', catalog_item_id: 'dsc-1', status: 'processing', ordered_at: '2026-02-25T11:00:00Z', shipped_at: null, delivered_at: null, tracking_number: null },
+]
+export const demoBuybackRequests = [
+  { id: 'bb-1', org_id: 'org-1', employee_id: 'emp-7', device_name: 'MacBook Pro 14" M2 Pro', condition: 'good', estimated_value: 85000, status: 'approved', submitted_at: '2026-02-15T10:00:00Z', approved_at: '2026-02-18T14:00:00Z' },
+]
+
+// ─── App Builder ───
+export const demoCustomApps = [
+  { id: 'app-builder-1', org_id: 'org-1', name: 'Equipment Tracker', description: 'Track office equipment assignments and maintenance', slug: 'equipment-tracker', status: 'published', version: 3, icon: 'monitor', created_by: 'emp-3', published_by: 'emp-1', published_at: '2026-02-01T00:00:00Z', access_roles: null, created_at: '2026-01-15T00:00:00Z' },
+  { id: 'app-builder-2', org_id: 'org-1', name: 'Visitor Management', description: 'Front desk visitor check-in and badge printing', slug: 'visitor-mgmt', status: 'draft', version: 1, icon: 'users', created_by: 'emp-17', published_by: null, published_at: null, access_roles: ['hr', 'admin'], created_at: '2026-02-20T00:00:00Z' },
+]
+export const demoAppPages: any[] = [
+  { id: 'page-1', app_id: 'app-builder-1', name: 'Dashboard', slug: 'dashboard', is_home_page: true, order_index: 0, icon: 'layout' },
+  { id: 'page-2', app_id: 'app-builder-1', name: 'Equipment List', slug: 'equipment', is_home_page: false, order_index: 1, icon: 'list' },
+]
+export const demoAppComponents: any[] = []
+export const demoAppDataSources: any[] = []
+
+// ─── RQL ───
+export const demoSavedQueries = [
+  { id: 'query-1', org_id: 'org-1', name: 'Headcount by Department', description: 'Active employee count grouped by department', query: 'SELECT department, COUNT(*) as headcount FROM employees WHERE is_active = true GROUP BY department', status: 'active', is_public: true, created_by: 'emp-1', run_count: 156, avg_execution_ms: 45, last_run_at: '2026-02-28T10:00:00Z', created_at: '2025-06-01T00:00:00Z' },
+  { id: 'query-2', org_id: 'org-1', name: 'Monthly Expense Trends', description: 'Expense report totals by month for the past 12 months', query: 'SELECT DATE_TRUNC(month, submitted_at) as month, SUM(total_amount) as total FROM expense_reports WHERE submitted_at > NOW() - INTERVAL 12 MONTH GROUP BY month', status: 'active', is_public: true, created_by: 'emp-3', run_count: 89, avg_execution_ms: 120, last_run_at: '2026-02-27T14:00:00Z', created_at: '2025-09-01T00:00:00Z' },
+]
+export const demoQuerySchedules = [
+  { id: 'qsched-1', org_id: 'org-1', query_id: 'query-1', frequency: 'weekly', recipients: [{ email: 'ceo@ecobank.com', channel: 'email' }], format: 'pdf', next_run_at: '2026-03-03T08:00:00Z', last_run_at: '2026-02-24T08:00:00Z', is_active: true, created_at: '2025-09-01T00:00:00Z' },
+]
+
+// ─── EOR ───
+export const demoEorEntities = [
+  { id: 'eor-1', org_id: 'org-1', country: 'United Kingdom', country_code: 'GB', legal_entity_name: 'Ecobank UK Ltd (via EOR)', partner_name: 'Remote.com', status: 'active', currency: 'GBP', monthly_fee: 59900, employee_count: 3, contract_start_date: '2025-06-01', benefits: { health: 'NHS + Private', retirement: 'Workplace Pension', leave: '28 days annual' }, created_at: '2025-06-01T00:00:00Z' },
+  { id: 'eor-2', org_id: 'org-1', country: 'Germany', country_code: 'DE', legal_entity_name: 'Ecobank GmbH (via EOR)', partner_name: 'Deel', status: 'active', currency: 'EUR', monthly_fee: 69900, employee_count: 2, contract_start_date: '2025-09-01', benefits: { health: 'Statutory + Supplemental', retirement: 'Riester', leave: '30 days annual' }, created_at: '2025-09-01T00:00:00Z' },
+]
+export const demoEorEmployees = [
+  { id: 'eoremp-1', org_id: 'org-1', eor_entity_id: 'eor-1', full_name: 'James Wilson', email: 'james.wilson@ecobank.com', job_title: 'Senior Backend Engineer', status: 'active', salary: 8500000, currency: 'GBP', start_date: '2025-07-01', contract_type: 'full_time', created_at: '2025-06-15T00:00:00Z' },
+  { id: 'eoremp-2', org_id: 'org-1', eor_entity_id: 'eor-2', full_name: 'Anna Schmidt', email: 'anna.schmidt@ecobank.com', job_title: 'Product Manager', status: 'active', salary: 7500000, currency: 'EUR', start_date: '2025-10-01', contract_type: 'full_time', created_at: '2025-09-15T00:00:00Z' },
+]
+export const demoEorContracts = [
+  { id: 'eorc-1', org_id: 'org-1', eor_employee_id: 'eoremp-1', contract_type: 'employment_agreement', status: 'active', effective_date: '2025-07-01', terms: { probation_period: '6 months', notice_period: '3 months' }, signed_at: '2025-06-20T00:00:00Z', created_at: '2025-06-15T00:00:00Z' },
+]
+
+// ─── Contractor of Record ───
+export const demoCorContractors = [
+  { id: 'cor-1', org_id: 'org-1', full_name: 'Carlos Mendez', email: 'carlos@freelance.dev', country: 'Colombia', status: 'active', job_title: 'Mobile Developer', rate: 7500, rate_type: 'hourly', currency: 'USD', payment_frequency: 'biweekly', start_date: '2025-11-01', compliance_status: 'compliant', tax_classification: 'independent_contractor', misclassification_risk: 'low', created_at: '2025-10-15T00:00:00Z' },
+  { id: 'cor-2', org_id: 'org-1', full_name: 'Priya Sharma', email: 'priya@design.studio', country: 'India', status: 'active', job_title: 'UX Design Lead', rate: 500000, rate_type: 'monthly', currency: 'USD', payment_frequency: 'monthly', start_date: '2026-01-01', compliance_status: 'compliant', tax_classification: 'sole_proprietor', misclassification_risk: 'low', created_at: '2025-12-15T00:00:00Z' },
+]
+export const demoCorContracts = [
+  { id: 'corc-1', org_id: 'org-1', contractor_id: 'cor-1', contract_type: 'sow', title: 'Mobile App Development - Phase 2', status: 'active', scope_of_work: 'Build and deliver mobile app features per sprint backlog', total_value: 4800000, currency: 'USD', start_date: '2025-11-01', end_date: '2026-04-30', signed_at: '2025-10-28T00:00:00Z', created_at: '2025-10-15T00:00:00Z' },
+]
+export const demoCorPayments = [
+  { id: 'corp-1', org_id: 'org-1', contractor_id: 'cor-1', contract_id: 'corc-1', amount: 120000, currency: 'USD', status: 'paid', period_start: '2026-02-01', period_end: '2026-02-15', hours_worked: 80, payment_method: 'bank_transfer', paid_at: '2026-02-20T00:00:00Z', created_at: '2026-02-16T00:00:00Z' },
+  { id: 'corp-2', org_id: 'org-1', contractor_id: 'cor-2', amount: 500000, currency: 'USD', status: 'pending', period_start: '2026-02-01', period_end: '2026-02-28', hours_worked: null, payment_method: 'wise', paid_at: null, created_at: '2026-03-01T00:00:00Z' },
+]
+
+// ─── Global Benefits ───
+export const demoGlobalBenefitPlans = [
+  { id: 'gbp-1', org_id: 'org-1', name: 'UK Private Health Insurance', category: 'health', country: 'United Kingdom', country_code: 'GB', provider: 'Bupa', is_statutory: false, cost_employee: 0, cost_employer: 15000, currency: 'GBP', is_active: true, effective_date: '2025-07-01', created_at: '2025-06-01T00:00:00Z' },
+  { id: 'gbp-2', org_id: 'org-1', name: 'German Statutory Health', category: 'health', country: 'Germany', country_code: 'DE', provider: 'TK (Techniker Krankenkasse)', is_statutory: true, statutory_reference: 'SGB V', cost_employee: 0, cost_employer: 0, currency: 'EUR', is_active: true, effective_date: '2025-10-01', created_at: '2025-09-01T00:00:00Z' },
+  { id: 'gbp-3', org_id: 'org-1', name: 'Nigeria NHIS', category: 'health', country: 'Nigeria', country_code: 'NG', provider: 'NHIS', is_statutory: true, statutory_reference: 'NHIS Act 1999', cost_employee: 0, cost_employer: 1000, currency: 'NGN', is_active: true, effective_date: '2025-01-01', created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoCountryBenefitConfigs = [
+  { id: 'cbc-1', org_id: 'org-1', country: 'United Kingdom', country_code: 'GB', mandatory_benefits: [{ name: 'Workplace Pension', category: 'retirement', employer_cost: 3 }, { name: 'NHS', category: 'health', employer_cost: 0 }], supplementary_benefits: [{ name: 'Private Health', category: 'health', employer_cost: 15000 }], updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'cbc-2', org_id: 'org-1', country: 'Germany', country_code: 'DE', mandatory_benefits: [{ name: 'Statutory Health', category: 'health', employer_cost: 7.3 }, { name: 'Pension Insurance', category: 'retirement', employer_cost: 9.3 }], supplementary_benefits: [], updated_at: '2026-01-01T00:00:00Z' },
+]
+export const demoGlobalBenefitEnrollments = [
+  { id: 'gbe-1', org_id: 'org-1', plan_id: 'gbp-1', employee_id: 'eoremp-1', country: 'United Kingdom', coverage_level: 'employee_plus_family', dependent_count: 2, employee_contribution: 0, employer_contribution: 15000, currency: 'GBP', enrolled_at: '2025-07-01' },
+  { id: 'gbe-2', org_id: 'org-1', plan_id: 'gbp-2', employee_id: 'eoremp-2', country: 'Germany', coverage_level: 'employee_only', dependent_count: 0, employee_contribution: 0, employer_contribution: 0, currency: 'EUR', enrolled_at: '2025-10-01' },
+]
+
+// ─── Workers' Compensation ───
+export const demoWorkersCompPolicies = [
+  { id: 'wc-pol-1', org_id: 'org-1', name: 'General Liability', carrier: 'AIG', policy_number: 'WC-2026-001', status: 'active', effective_date: '2026-01-01', expiry_date: '2026-12-31', premium: 4500000, covered_employees: 50, class_codes: ['8810', '8742'], created_at: '2025-12-01T00:00:00Z' },
+  { id: 'wc-pol-2', org_id: 'org-1', name: 'Warehouse Operations', carrier: 'Liberty Mutual', policy_number: 'WC-2026-002', status: 'active', effective_date: '2026-03-01', expiry_date: '2027-02-28', premium: 7200000, covered_employees: 25, class_codes: ['7380', '3681'], created_at: '2026-01-15T00:00:00Z' },
+  { id: 'wc-pol-3', org_id: 'org-1', name: 'Field Services', carrier: 'Hartford', policy_number: 'WC-2025-009', status: 'expired', effective_date: '2025-01-01', expiry_date: '2025-12-31', premium: 3100000, covered_employees: 15, class_codes: ['8742'], created_at: '2024-11-20T00:00:00Z' },
+]
+export const demoWorkersCompClaims = [
+  { id: 'wc-claim-1', org_id: 'org-1', policy_id: 'wc-pol-1', employee_name: 'Kofi Mensah', incident_date: '2026-02-10', description: 'Slipped on wet floor in cafeteria', injury_type: 'Sprain/Strain', body_part: 'Lower back', status: 'open', reserve_amount: 150000, paid_amount: 45000, filed_date: '2026-02-11', created_at: '2026-02-11T00:00:00Z' },
+  { id: 'wc-claim-2', org_id: 'org-1', policy_id: 'wc-pol-1', employee_name: 'Adaeze Okafor', incident_date: '2026-01-15', description: 'Repetitive strain injury from typing', injury_type: 'RSI', body_part: 'Wrist', status: 'closed', reserve_amount: 80000, paid_amount: 65000, filed_date: '2026-01-18', closed_date: '2026-02-20', created_at: '2026-01-18T00:00:00Z' },
+  { id: 'wc-claim-3', org_id: 'org-1', policy_id: 'wc-pol-2', employee_name: 'Kwame Asante', incident_date: '2026-02-25', description: 'Lifted heavy box, felt sharp pain in shoulder', injury_type: 'Sprain/Strain', body_part: 'Right shoulder', status: 'open', reserve_amount: 220000, paid_amount: 0, filed_date: '2026-02-26', created_at: '2026-02-26T00:00:00Z' },
+  { id: 'wc-claim-4', org_id: 'org-1', policy_id: 'wc-pol-1', employee_name: 'Fatima Diallo', incident_date: '2025-11-02', description: 'Cut hand on broken glass in break room', injury_type: 'Laceration', body_part: 'Left hand', status: 'closed', reserve_amount: 35000, paid_amount: 28000, filed_date: '2025-11-03', closed_date: '2025-12-15', created_at: '2025-11-03T00:00:00Z' },
+]
+export const demoWorkersCompClassCodes = [
+  { id: 'wccc-1', org_id: 'org-1', code: '8810', description: 'Clerical Office Employees', rate: 0.25, employee_count: 35, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'wccc-2', org_id: 'org-1', code: '8742', description: 'Sales Personnel - Outside', rate: 0.85, employee_count: 10, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'wccc-3', org_id: 'org-1', code: '3681', description: 'Printing/Photocopying', rate: 1.50, employee_count: 3, created_at: '2025-01-01T00:00:00Z' },
+  { id: 'wccc-4', org_id: 'org-1', code: '7380', description: 'Drivers, Chauffeurs', rate: 3.20, employee_count: 2, created_at: '2025-01-01T00:00:00Z' },
+]
+export const demoWorkersCompAudits = [
+  { id: 'wcaud-1', org_id: 'org-1', audit_date: '2025-12-15', period: '2025-01-01 to 2025-12-31', auditor: 'BDO Advisory', status: 'completed', findings: 'Payroll reported within 3% of actual. Minor misclassification in code 8742.', adjustment_amount: -125000, created_at: '2025-12-15T00:00:00Z' },
+  { id: 'wcaud-2', org_id: 'org-1', audit_date: '2024-12-20', period: '2024-01-01 to 2024-12-31', auditor: 'BDO Advisory', status: 'completed', findings: 'No material discrepancies found. All class codes properly assigned.', adjustment_amount: 0, created_at: '2024-12-20T00:00:00Z' },
+  { id: 'wcaud-3', org_id: 'org-1', audit_date: '2026-12-01', period: '2026-01-01 to 2026-12-31', auditor: 'TBD', status: 'scheduled', findings: '', adjustment_amount: 0, created_at: '2026-01-10T00:00:00Z' },
+]
+
+// ─── Groups ───
+export const demoGroups = [
+  { id: 'grp-1', org_id: 'org-1', name: 'All Engineering', description: 'All employees in engineering departments', type: 'dynamic', rule: { field: 'department', operator: 'equals', value: 'Engineering' }, member_count: 15, created_by: 'emp-1', created_at: '2025-06-01T00:00:00Z', last_synced_at: '2026-02-28T06:00:00Z', modules: ['access', 'benefits', 'payroll'] },
+  { id: 'grp-2', org_id: 'org-1', name: 'Senior Leadership', description: 'VP and above', type: 'dynamic', rule: { field: 'job_level', operator: 'gte', value: 'VP' }, member_count: 5, created_by: 'emp-1', created_at: '2025-06-01T00:00:00Z', last_synced_at: '2026-02-28T06:00:00Z', modules: ['access', 'compensation', 'equity'] },
+  { id: 'grp-3', org_id: 'org-1', name: 'West Africa Team', description: 'Employees in Ghana, Nigeria, Senegal', type: 'dynamic', rule: { field: 'country', operator: 'in', value: ['Ghana', 'Nigeria', 'Senegal'] }, member_count: 22, created_by: 'emp-17', created_at: '2025-09-01T00:00:00Z', last_synced_at: '2026-02-28T06:00:00Z', modules: ['benefits', 'compliance'] },
+  { id: 'grp-4', org_id: 'org-1', name: 'New Hires Q1 2026', description: 'Employees hired in Q1 2026', type: 'static', rule: null, member_count: 8, created_by: 'emp-17', created_at: '2026-01-01T00:00:00Z', last_synced_at: null, modules: ['onboarding', 'learning'] },
+]
+
 export function getDemoDataForOrg(orgId: string) {
   if (orgId === 'org-2') {
     return {
@@ -3785,6 +4141,100 @@ export function getDemoDataForOrg(orgId: string) {
       complianceRequirements: [] as typeof demoComplianceRequirements,
       complianceDocuments: [] as typeof demoComplianceDocuments,
       complianceAlerts: [] as typeof demoComplianceAlerts,
+      // E-Signatures
+      signatureDocuments: [] as typeof demoSignatureDocuments,
+      signatureTemplates: [] as typeof demoSignatureTemplates,
+      // E-Verify / I-9
+      i9Forms: [] as typeof demoI9Forms,
+      everifyCases: [] as typeof demoEverifyCases,
+      // PEO
+      peoConfigurations: [] as typeof demoPeoConfigurations,
+      coEmploymentRecords: [] as typeof demoCoEmploymentRecords,
+      // Sandbox
+      sandboxEnvironments: [] as typeof demoSandboxEnvironments,
+      provisioningRules: [] as typeof demoProvisioningRules,
+      encryptionPolicies: [] as typeof demoEncryptionPolicies,
+      scimProviders: [] as typeof demoScimProviders,
+      autoDetectionScans: [] as typeof demoAutoDetectionScans,
+      // Chat
+      chatChannels: [] as typeof demoChatChannels,
+      chatMessages: [] as typeof demoChatMessages,
+      chatParticipants: [] as typeof demoChatParticipants,
+      // Interview Recording
+      interviewRecordings: [] as typeof demoInterviewRecordings,
+      interviewTranscriptions: [] as typeof demoInterviewTranscriptions,
+      // Video Screens
+      videoScreenTemplates: [] as typeof demoVideoScreenTemplates,
+      videoScreenInvites: [] as typeof demoVideoScreenInvites,
+      videoScreenResponses: [] as typeof demoVideoScreenResponses,
+      // Corporate Cards
+      corporateCards: [] as typeof demoCorporateCards,
+      cardTransactions: [] as typeof demoCardTransactions,
+      // Bill Pay
+      billPayments: [] as typeof demoBillPayments,
+      billPaySchedules: [] as typeof demoBillPaySchedules,
+      // Travel Management
+      travelRequests: [] as typeof demoTravelRequests,
+      travelBookings: [] as typeof demoTravelBookings,
+      travelPolicies: [] as typeof demoTravelPolicies,
+      // Procurement
+      purchaseOrders: [] as typeof demoPurchaseOrders,
+      purchaseOrderItems: [] as typeof demoPurchaseOrderItems,
+      procurementRequests: [] as typeof demoProcurementRequests,
+      // Multi-currency
+      currencyAccounts: [] as typeof demoCurrencyAccounts,
+      fxTransactions: [] as typeof demoFxTransactions,
+      // 401(k) Administration
+      retirementPlans: [] as typeof demoRetirementPlans,
+      retirementEnrollments: [] as typeof demoRetirementEnrollments,
+      retirementContributions: [] as typeof demoRetirementContributions,
+      // Carrier Integration
+      carrierIntegrations: [] as typeof demoCarrierIntegrations,
+      enrollmentFeeds: [] as typeof demoEnrollmentFeeds,
+      // Geofencing
+      geofenceZones: [] as typeof demoGeofenceZones,
+      geofenceEvents: [] as typeof demoGeofenceEvents,
+      // Identity Provider
+      idpConfigurations: [] as typeof demoIdpConfigurations,
+      samlApps: [] as typeof demoSamlApps,
+      mfaPolicies: [] as typeof demoMfaPolicies,
+      // Zero-touch Deployment
+      deploymentProfiles: [] as typeof demoDeploymentProfiles,
+      enrollmentTokens: [] as typeof demoEnrollmentTokens,
+      // Password Manager
+      passwordVaults: [] as typeof demoPasswordVaults,
+      vaultItems: [] as typeof demoVaultItems,
+      // Device Store
+      deviceStoreCatalog: [] as typeof demoDeviceStoreCatalog,
+      deviceOrders: [] as typeof demoDeviceOrders,
+      buybackRequests: [] as typeof demoBuybackRequests,
+      // App Builder
+      customApps: [] as typeof demoCustomApps,
+      appPages: [] as typeof demoAppPages,
+      appComponents: [] as typeof demoAppComponents,
+      appDataSources: [] as typeof demoAppDataSources,
+      // RQL
+      savedQueries: [] as typeof demoSavedQueries,
+      querySchedules: [] as typeof demoQuerySchedules,
+      // EOR
+      eorEntities: [] as typeof demoEorEntities,
+      eorEmployees: [] as typeof demoEorEmployees,
+      eorContracts: [] as typeof demoEorContracts,
+      // Contractor of Record
+      corContractors: [] as typeof demoCorContractors,
+      corContracts: [] as typeof demoCorContracts,
+      corPayments: [] as typeof demoCorPayments,
+      // Global Benefits
+      globalBenefitPlans: [] as typeof demoGlobalBenefitPlans,
+      countryBenefitConfigs: [] as typeof demoCountryBenefitConfigs,
+      globalBenefitEnrollments: [] as typeof demoGlobalBenefitEnrollments,
+      // Workers' Compensation
+      workersCompPolicies: [] as typeof demoWorkersCompPolicies,
+      workersCompClaims: [] as typeof demoWorkersCompClaims,
+      workersCompClassCodes: [] as typeof demoWorkersCompClassCodes,
+      workersCompAudits: [] as typeof demoWorkersCompAudits,
+      groups: [] as typeof demoGroups,
+      shadowITDetections: [] as typeof demoShadowITDetections,
     }
   }
   // Default: Ecobank
@@ -3948,6 +4398,99 @@ export function getDemoDataForOrg(orgId: string) {
     complianceRequirements: demoComplianceRequirements,
     complianceDocuments: demoComplianceDocuments,
     complianceAlerts: demoComplianceAlerts,
+    // E-Signatures
+    signatureDocuments: demoSignatureDocuments,
+    signatureTemplates: demoSignatureTemplates,
+    // E-Verify / I-9
+    i9Forms: demoI9Forms,
+    everifyCases: demoEverifyCases,
+    // PEO
+    peoConfigurations: demoPeoConfigurations,
+    coEmploymentRecords: demoCoEmploymentRecords,
+    // Sandbox
+    sandboxEnvironments: demoSandboxEnvironments,
+    provisioningRules: demoProvisioningRules,
+    encryptionPolicies: demoEncryptionPolicies,
+    scimProviders: demoScimProviders,
+    autoDetectionScans: demoAutoDetectionScans,
+    // Chat
+    chatChannels: demoChatChannels,
+    chatMessages: demoChatMessages,
+    chatParticipants: demoChatParticipants,
+    // Interview Recording
+    interviewRecordings: demoInterviewRecordings,
+    interviewTranscriptions: demoInterviewTranscriptions,
+    // Video Screens
+    videoScreenTemplates: demoVideoScreenTemplates,
+    videoScreenInvites: demoVideoScreenInvites,
+    videoScreenResponses: demoVideoScreenResponses,
+    // Corporate Cards
+    corporateCards: demoCorporateCards,
+    cardTransactions: demoCardTransactions,
+    // Bill Pay
+    billPayments: demoBillPayments,
+    billPaySchedules: demoBillPaySchedules,
+    // Travel Management
+    travelRequests: demoTravelRequests,
+    travelBookings: demoTravelBookings,
+    travelPolicies: demoTravelPolicies,
+    // Procurement
+    purchaseOrders: demoPurchaseOrders,
+    purchaseOrderItems: demoPurchaseOrderItems,
+    procurementRequests: demoProcurementRequests,
+    // Multi-currency
+    currencyAccounts: demoCurrencyAccounts,
+    fxTransactions: demoFxTransactions,
+    // 401(k) Administration
+    retirementPlans: demoRetirementPlans,
+    retirementEnrollments: demoRetirementEnrollments,
+    retirementContributions: demoRetirementContributions,
+    // Carrier Integration
+    carrierIntegrations: demoCarrierIntegrations,
+    enrollmentFeeds: demoEnrollmentFeeds,
+    // Geofencing
+    geofenceZones: demoGeofenceZones,
+    geofenceEvents: demoGeofenceEvents,
+    // Identity Provider
+    idpConfigurations: demoIdpConfigurations,
+    samlApps: demoSamlApps,
+    mfaPolicies: demoMfaPolicies,
+    // Zero-touch Deployment
+    deploymentProfiles: demoDeploymentProfiles,
+    enrollmentTokens: demoEnrollmentTokens,
+    // Password Manager
+    passwordVaults: demoPasswordVaults,
+    vaultItems: demoVaultItems,
+    // Device Store
+    deviceStoreCatalog: demoDeviceStoreCatalog,
+    deviceOrders: demoDeviceOrders,
+    buybackRequests: demoBuybackRequests,
+    // App Builder
+    customApps: demoCustomApps,
+    appPages: demoAppPages,
+    appComponents: demoAppComponents,
+    appDataSources: demoAppDataSources,
+    // RQL
+    savedQueries: demoSavedQueries,
+    querySchedules: demoQuerySchedules,
+    // EOR
+    eorEntities: demoEorEntities,
+    eorEmployees: demoEorEmployees,
+    eorContracts: demoEorContracts,
+    // Contractor of Record
+    corContractors: demoCorContractors,
+    corContracts: demoCorContracts,
+    corPayments: demoCorPayments,
+    // Global Benefits
+    globalBenefitPlans: demoGlobalBenefitPlans,
+    countryBenefitConfigs: demoCountryBenefitConfigs,
+    globalBenefitEnrollments: demoGlobalBenefitEnrollments,
+    // Workers' Compensation
+    workersCompPolicies: demoWorkersCompPolicies,
+    workersCompClaims: demoWorkersCompClaims,
+    workersCompClassCodes: demoWorkersCompClassCodes,
+    workersCompAudits: demoWorkersCompAudits,
+    groups: demoGroups,
   }
 }
 

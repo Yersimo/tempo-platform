@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe } from 'lucide-react'
+import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe, Store, Truck, RotateCcw, Trash2, Package, ShieldCheck, Leaf, FileWarning } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
 import { exportToCSV } from '@/lib/export-import'
@@ -21,7 +21,7 @@ import { demoComplianceFrameworks, demoSecurityPosture, demoProvisioningEvents }
 export default function DevicesPage() {
   const t = useTranslations('devices')
   const tc = useTranslations('common')
-  const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast } = useTempo()
+  const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests } = useTempo()
 
   const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
   const securityScore = useMemo(() => scoreSecurityPosture(devices), [devices])
@@ -147,6 +147,16 @@ export default function DevicesPage() {
     resetBulkAssign()
   }
 
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Laptop },
+    { id: 'store', label: 'Store', icon: Store },
+    { id: 'orders', label: 'Orders', icon: Truck },
+    { id: 'buyback', label: 'Buyback', icon: RotateCcw },
+    { id: 'disposal', label: 'Disposal', icon: Trash2 },
+  ]
+
   const iconMap: Record<string, React.ReactNode> = {
     laptop: <Laptop size={16} />,
     phone: <Smartphone size={16} />,
@@ -222,6 +232,28 @@ export default function DevicesPage() {
         </div>
       )}
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-divider">
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-t3 hover:text-t1'
+              }`}
+            >
+              <Icon size={14} />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {activeTab === 'overview' && (<>
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -558,6 +590,286 @@ export default function DevicesPage() {
           </div>
         </Card>
       </div>
+      </>)}
+
+      {/* ── Store Tab ── */}
+      {activeTab === 'store' && (
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {deviceStoreCatalog.map((item: any) => (
+              <Card key={item.id}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{item.name}</h3>
+                    <p className="text-xs text-t3">{item.brand}</p>
+                  </div>
+                  <Badge>{item.category}</Badge>
+                </div>
+                <div className="text-2xl font-bold text-t1 mb-3">
+                  ${(item.price / 100).toFixed(2)}
+                  <span className="text-xs font-normal text-t3 ml-1">{item.currency}</span>
+                </div>
+                {item.specs && (
+                  <div className="space-y-1.5 mb-4">
+                    {Object.entries(item.specs).map(([key, value]: [string, any]) => (
+                      <div key={key} className="flex items-center justify-between text-xs">
+                        <span className="text-t3 capitalize">{key.replace(/_/g, ' ')}</span>
+                        <span className="text-t1 font-medium">{Array.isArray(value) ? value.join(', ') : String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-3 border-t border-divider">
+                  <div className="flex items-center gap-1.5">
+                    <Package size={14} className="text-t3" />
+                    <span className="text-xs text-t2">{item.in_stock} in stock</span>
+                  </div>
+                  <Button size="sm" disabled={item.in_stock === 0}>
+                    <Store size={12} /> Order
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+          {deviceStoreCatalog.length === 0 && (
+            <Card>
+              <div className="text-center py-8">
+                <Store size={32} className="mx-auto mb-2 text-t3" />
+                <p className="text-sm text-t3">No items in the device store catalog.</p>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ── Orders Tab ── */}
+      {activeTab === 'orders' && (
+        <Card padding="none">
+          <CardHeader>
+            <CardTitle>Device Orders</CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-divider bg-canvas">
+                  <th className="tempo-th text-left px-6 py-3">Employee</th>
+                  <th className="tempo-th text-left px-4 py-3">Device</th>
+                  <th className="tempo-th text-center px-4 py-3">Status</th>
+                  <th className="tempo-th text-left px-4 py-3">Ordered</th>
+                  <th className="tempo-th text-left px-4 py-3">Shipped</th>
+                  <th className="tempo-th text-left px-4 py-3">Delivered</th>
+                  <th className="tempo-th text-left px-4 py-3">Tracking #</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {deviceOrders.map((order: any) => {
+                  const catalogItem = deviceStoreCatalog.find((c: any) => c.id === order.catalog_item_id)
+                  return (
+                    <tr key={order.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-xs text-t1 font-medium">{getEmployeeName(order.employee_id)}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{catalogItem?.name || order.catalog_item_id}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={
+                          order.status === 'delivered' ? 'success' :
+                          order.status === 'shipped' ? 'info' : 'default'
+                        }>
+                          {order.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t3">{order.ordered_at ? new Date(order.ordered_at).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-3 text-xs text-t3">{order.shipped_at ? new Date(order.shipped_at).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-3 text-xs text-t3">{order.delivered_at ? new Date(order.delivered_at).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-3 text-xs text-t3 font-mono">{order.tracking_number || '-'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {deviceOrders.length === 0 && (
+              <div className="text-center py-8">
+                <Truck size={32} className="mx-auto mb-2 text-t3" />
+                <p className="text-sm text-t3">No device orders yet.</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Buyback Tab ── */}
+      {activeTab === 'buyback' && (
+        <Card padding="none">
+          <CardHeader>
+            <CardTitle>Buyback Requests</CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-divider bg-canvas">
+                  <th className="tempo-th text-left px-6 py-3">Employee</th>
+                  <th className="tempo-th text-left px-4 py-3">Device Name</th>
+                  <th className="tempo-th text-center px-4 py-3">Condition</th>
+                  <th className="tempo-th text-right px-4 py-3">Estimated Value</th>
+                  <th className="tempo-th text-center px-4 py-3">Status</th>
+                  <th className="tempo-th text-left px-4 py-3">Submitted</th>
+                  <th className="tempo-th text-left px-4 py-3">Approved</th>
+                  <th className="tempo-th text-center px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {buybackRequests.map((req: any) => (
+                  <tr key={req.id} className="hover:bg-canvas/50">
+                    <td className="px-6 py-3 text-xs text-t1 font-medium">{getEmployeeName(req.employee_id)}</td>
+                    <td className="px-4 py-3 text-xs text-t2">{req.device_name}</td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant={
+                        req.condition === 'good' ? 'success' :
+                        req.condition === 'fair' ? 'warning' : 'error'
+                      }>
+                        {req.condition}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-t1 font-medium text-right">${(req.estimated_value / 100).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant={
+                        req.status === 'approved' ? 'success' :
+                        req.status === 'pending' ? 'warning' : 'error'
+                      }>
+                        {req.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-t3">{req.submitted_at ? new Date(req.submitted_at).toLocaleDateString() : '-'}</td>
+                    <td className="px-4 py-3 text-xs text-t3">{req.approved_at ? new Date(req.approved_at).toLocaleDateString() : '-'}</td>
+                    <td className="px-4 py-3">
+                      {req.status === 'pending' ? (
+                        <div className="flex gap-1 justify-center">
+                          <Button size="sm" variant="primary" onClick={() => addToast('Buyback request approved')}>
+                            <CheckCircle size={12} /> Approve
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => addToast('Buyback request rejected')}>
+                            <XCircle size={12} /> Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-t3 flex justify-center">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {buybackRequests.length === 0 && (
+              <div className="text-center py-8">
+                <RotateCcw size={32} className="mx-auto mb-2 text-t3" />
+                <p className="text-sm text-t3">No buyback requests yet.</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Disposal Tab ── */}
+      {activeTab === 'disposal' && (
+        <div className="space-y-6">
+          {/* ITAD Compliance Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <ShieldCheck size={20} className="text-success" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">Certified Data Wiping</h3>
+                  <p className="text-xs text-t3">NIST 800-88 compliant</p>
+                </div>
+              </div>
+              <p className="text-xs text-t2">All devices undergo certified data sanitization using DoD 5220.22-M standard before disposal. Verification reports are generated for each device.</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Badge variant="success">Active</Badge>
+                <span className="text-xs text-t3">Last audit: Jan 2026</span>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
+                  <FileWarning size={20} className="text-info" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">Certificate of Destruction</h3>
+                  <p className="text-xs text-t3">R2 / e-Stewards certified</p>
+                </div>
+              </div>
+              <p className="text-xs text-t2">Physical destruction certificates issued for all storage media. Chain of custody documentation maintained throughout the disposal process.</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Badge variant="success">Active</Badge>
+                <span className="text-xs text-t3">Partner: SecureDisposal Inc.</span>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Leaf size={20} className="text-warning" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">Environmental Compliance</h3>
+                  <p className="text-xs text-t3">EPA / WEEE directive</p>
+                </div>
+              </div>
+              <p className="text-xs text-t2">All e-waste processed through EPA-approved facilities. Zero-landfill policy with 95%+ material recovery rate for recycled components.</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Badge variant="success">Compliant</Badge>
+                <span className="text-xs text-t3">Recovery rate: 97%</span>
+              </div>
+            </Card>
+          </div>
+
+          {/* Disposed Devices Table */}
+          <Card padding="none">
+            <CardHeader>
+              <CardTitle>Disposed Devices</CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Device</th>
+                    <th className="tempo-th text-left px-4 py-3">Serial Number</th>
+                    <th className="tempo-th text-center px-4 py-3">Method</th>
+                    <th className="tempo-th text-left px-4 py-3">Disposed Date</th>
+                    <th className="tempo-th text-left px-4 py-3">Certificate #</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {[
+                    { id: 'disp-1', device: 'Dell Latitude 5520', serial: 'DL-2021-4892', method: 'Data Wipe + Recycle', date: '2026-01-15', certificate: 'COD-2026-0042', status: 'completed' },
+                    { id: 'disp-2', device: 'iPhone 12 Pro', serial: 'AP-2020-7731', method: 'Physical Destruction', date: '2026-01-22', certificate: 'COD-2026-0051', status: 'completed' },
+                    { id: 'disp-3', device: 'ThinkPad X1 Carbon Gen 9', serial: 'LN-2021-3345', method: 'Data Wipe + Donate', date: '2026-02-05', certificate: 'COD-2026-0063', status: 'completed' },
+                    { id: 'disp-4', device: 'Samsung Galaxy S21', serial: 'SM-2021-9012', method: 'Physical Destruction', date: '2026-02-18', certificate: 'COD-2026-0078', status: 'completed' },
+                    { id: 'disp-5', device: 'HP EliteBook 840 G7', serial: 'HP-2020-5567', method: 'Data Wipe + Recycle', date: '2026-02-25', certificate: 'pending', status: 'in_progress' },
+                  ].map(item => (
+                    <tr key={item.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-xs text-t1 font-medium">{item.device}</td>
+                      <td className="px-4 py-3 text-xs text-t3 font-mono">{item.serial}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="default">{item.method}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t3">{item.date}</td>
+                      <td className="px-4 py-3 text-xs text-t3 font-mono">{item.certificate === 'pending' ? '-' : item.certificate}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={item.status === 'completed' ? 'success' : 'warning'}>
+                          {item.status === 'completed' ? 'Completed' : 'In Progress'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Add Device Modal */}
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addDeviceModal')}>

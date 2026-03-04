@@ -838,6 +838,281 @@ interface TempoState {
   // Helper
   getEmployeeName: (id: string) => string
   getDepartmentName: (id: string) => string
+
+  // ============================================================
+  // GAP CLOSURE: New Features State & CRUD
+  // ============================================================
+
+  // E-Signatures
+  signatureDocuments: AnyRecord[]
+  signatureTemplates: AnyRecord[]
+  addSignatureDocument: (data: AnyRecord) => void
+  updateSignatureDocument: (id: string, data: AnyRecord) => void
+  deleteSignatureDocument: (id: string) => void
+  addSignatureTemplate: (data: AnyRecord) => void
+  updateSignatureTemplate: (id: string, data: AnyRecord) => void
+
+  // E-Verify / I-9
+  i9Forms: AnyRecord[]
+  everifyCases: AnyRecord[]
+  addI9Form: (data: AnyRecord) => void
+  updateI9Form: (id: string, data: AnyRecord) => void
+  addEVerifyCase: (data: AnyRecord) => void
+  updateEVerifyCase: (id: string, data: AnyRecord) => void
+
+  // PEO / Co-employment
+  peoConfigurations: AnyRecord[]
+  coEmploymentRecords: AnyRecord[]
+  addPeoConfiguration: (data: AnyRecord) => void
+  updatePeoConfiguration: (id: string, data: AnyRecord) => void
+  addCoEmploymentRecord: (data: AnyRecord) => void
+  updateCoEmploymentRecord: (id: string, data: AnyRecord) => void
+
+  // Sandbox Environment
+  sandboxEnvironments: AnyRecord[]
+  addSandboxEnvironment: (data: AnyRecord) => void
+  updateSandboxEnvironment: (id: string, data: AnyRecord) => void
+  deleteSandboxEnvironment: (id: string) => void
+
+  // Built-in Chat
+  chatChannels: AnyRecord[]
+  chatMessages: AnyRecord[]
+  chatParticipants: AnyRecord[]
+  addChatChannel: (data: AnyRecord) => void
+  updateChatChannel: (id: string, data: AnyRecord) => void
+  addChatMessage: (data: AnyRecord) => void
+  updateChatMessage: (id: string, data: AnyRecord) => void
+  deleteChatMessage: (id: string) => void
+
+  // AI Interview Recording
+  interviewRecordings: AnyRecord[]
+  interviewTranscriptions: AnyRecord[]
+  addInterviewRecording: (data: AnyRecord) => void
+  updateInterviewRecording: (id: string, data: AnyRecord) => void
+
+  // AI Video Screens
+  videoScreenTemplates: AnyRecord[]
+  videoScreenInvites: AnyRecord[]
+  videoScreenResponses: AnyRecord[]
+  addVideoScreenTemplate: (data: AnyRecord) => void
+  updateVideoScreenTemplate: (id: string, data: AnyRecord) => void
+  addVideoScreenInvite: (data: AnyRecord) => void
+  updateVideoScreenInvite: (id: string, data: AnyRecord) => void
+  addVideoScreenResponse: (data: AnyRecord) => void
+  updateVideoScreenResponse: (id: string, data: AnyRecord) => void
+
+  // Corporate Cards
+  corporateCards: AnyRecord[]
+  cardTransactions: AnyRecord[]
+  addCorporateCard: (data: AnyRecord) => void
+  updateCorporateCard: (id: string, data: AnyRecord) => void
+  addCardTransaction: (data: AnyRecord) => void
+  updateCardTransaction: (id: string, data: AnyRecord) => void
+
+  // Bill Pay
+  billPayments: AnyRecord[]
+  billPaySchedules: AnyRecord[]
+  addBillPayment: (data: AnyRecord) => void
+  updateBillPayment: (id: string, data: AnyRecord) => void
+  addBillPaySchedule: (data: AnyRecord) => void
+  updateBillPaySchedule: (id: string, data: AnyRecord) => void
+
+  // Travel Management
+  travelRequests: AnyRecord[]
+  travelBookings: AnyRecord[]
+  travelPolicies: AnyRecord[]
+  addTravelRequest: (data: AnyRecord) => void
+  updateTravelRequest: (id: string, data: AnyRecord) => void
+  addTravelBooking: (data: AnyRecord) => void
+  updateTravelBooking: (id: string, data: AnyRecord) => void
+  addTravelPolicy: (data: AnyRecord) => void
+  updateTravelPolicy: (id: string, data: AnyRecord) => void
+
+  // Procurement / Purchase Orders
+  purchaseOrders: AnyRecord[]
+  purchaseOrderItems: AnyRecord[]
+  procurementRequests: AnyRecord[]
+  addPurchaseOrder: (data: AnyRecord) => void
+  updatePurchaseOrder: (id: string, data: AnyRecord) => void
+  addProcurementRequest: (data: AnyRecord) => void
+  updateProcurementRequest: (id: string, data: AnyRecord) => void
+
+  // Multi-currency
+  currencyAccounts: AnyRecord[]
+  fxTransactions: AnyRecord[]
+  addCurrencyAccount: (data: AnyRecord) => void
+  updateCurrencyAccount: (id: string, data: AnyRecord) => void
+  addFxTransaction: (data: AnyRecord) => void
+
+  // 401(k) Administration
+  retirementPlans: AnyRecord[]
+  retirementEnrollments: AnyRecord[]
+  retirementContributions: AnyRecord[]
+  addRetirementPlan: (data: AnyRecord) => void
+  updateRetirementPlan: (id: string, data: AnyRecord) => void
+  addRetirementEnrollment: (data: AnyRecord) => void
+  updateRetirementEnrollment: (id: string, data: AnyRecord) => void
+  addRetirementContribution: (data: AnyRecord) => void
+
+  // Carrier Integration
+  carrierIntegrations: AnyRecord[]
+  enrollmentFeeds: AnyRecord[]
+  addCarrierIntegration: (data: AnyRecord) => void
+  updateCarrierIntegration: (id: string, data: AnyRecord) => void
+  addEnrollmentFeed: (data: AnyRecord) => void
+
+  // Geofencing
+  geofenceZones: AnyRecord[]
+  geofenceEvents: AnyRecord[]
+  addGeofenceZone: (data: AnyRecord) => void
+  updateGeofenceZone: (id: string, data: AnyRecord) => void
+  deleteGeofenceZone: (id: string) => void
+  addGeofenceEvent: (data: AnyRecord) => void
+
+  // Identity Provider
+  idpConfigurations: AnyRecord[]
+  samlApps: AnyRecord[]
+  mfaPolicies: AnyRecord[]
+  addIdpConfiguration: (data: AnyRecord) => void
+  updateIdpConfiguration: (id: string, data: AnyRecord) => void
+  addSamlApp: (data: AnyRecord) => void
+  updateSamlApp: (id: string, data: AnyRecord) => void
+  addMfaPolicy: (data: AnyRecord) => void
+  updateMfaPolicy: (id: string, data: AnyRecord) => void
+
+  // Zero-touch Deployment
+  deploymentProfiles: AnyRecord[]
+  enrollmentTokens: AnyRecord[]
+  addDeploymentProfile: (data: AnyRecord) => void
+  updateDeploymentProfile: (id: string, data: AnyRecord) => void
+  addEnrollmentToken: (data: AnyRecord) => void
+  updateEnrollmentToken: (id: string, data: AnyRecord) => void
+
+  // Password Manager
+  passwordVaults: AnyRecord[]
+  vaultItems: AnyRecord[]
+  addPasswordVault: (data: AnyRecord) => void
+  updatePasswordVault: (id: string, data: AnyRecord) => void
+  addVaultItem: (data: AnyRecord) => void
+  updateVaultItem: (id: string, data: AnyRecord) => void
+  deleteVaultItem: (id: string) => void
+
+  // Device Store / Buyback
+  deviceStoreCatalog: AnyRecord[]
+  deviceOrders: AnyRecord[]
+  buybackRequests: AnyRecord[]
+  addDeviceStoreCatalogItem: (data: AnyRecord) => void
+  updateDeviceStoreCatalogItem: (id: string, data: AnyRecord) => void
+  addDeviceOrder: (data: AnyRecord) => void
+  updateDeviceOrder: (id: string, data: AnyRecord) => void
+  addBuybackRequest: (data: AnyRecord) => void
+  updateBuybackRequest: (id: string, data: AnyRecord) => void
+
+  // No-code App Builder
+  customApps: AnyRecord[]
+  appPages: AnyRecord[]
+  appComponents: AnyRecord[]
+  appDataSources: AnyRecord[]
+  addCustomApp: (data: AnyRecord) => void
+  updateCustomApp: (id: string, data: AnyRecord) => void
+  deleteCustomApp: (id: string) => void
+  addAppPage: (data: AnyRecord) => void
+  updateAppPage: (id: string, data: AnyRecord) => void
+  addAppComponent: (data: AnyRecord) => void
+  updateAppComponent: (id: string, data: AnyRecord) => void
+  addAppDataSource: (data: AnyRecord) => void
+  updateAppDataSource: (id: string, data: AnyRecord) => void
+
+  // RQL / Custom Query Language
+  savedQueries: AnyRecord[]
+  querySchedules: AnyRecord[]
+  addSavedQuery: (data: AnyRecord) => void
+  updateSavedQuery: (id: string, data: AnyRecord) => void
+  deleteSavedQuery: (id: string) => void
+  addQuerySchedule: (data: AnyRecord) => void
+  updateQuerySchedule: (id: string, data: AnyRecord) => void
+
+  // EOR (Employer of Record)
+  eorEntities: AnyRecord[]
+  eorEmployees: AnyRecord[]
+  eorContracts: AnyRecord[]
+  addEorEntity: (data: AnyRecord) => void
+  updateEorEntity: (id: string, data: AnyRecord) => void
+  addEorEmployee: (data: AnyRecord) => void
+  updateEorEmployee: (id: string, data: AnyRecord) => void
+  addEorContract: (data: AnyRecord) => void
+  updateEorContract: (id: string, data: AnyRecord) => void
+
+  // Contractor of Record
+  corContractors: AnyRecord[]
+  corContracts: AnyRecord[]
+  corPayments: AnyRecord[]
+  addCorContractor: (data: AnyRecord) => void
+  updateCorContractor: (id: string, data: AnyRecord) => void
+  addCorContract: (data: AnyRecord) => void
+  updateCorContract: (id: string, data: AnyRecord) => void
+  addCorPayment: (data: AnyRecord) => void
+  updateCorPayment: (id: string, data: AnyRecord) => void
+
+  // Global Benefits
+  globalBenefitPlans: AnyRecord[]
+  countryBenefitConfigs: AnyRecord[]
+  globalBenefitEnrollments: AnyRecord[]
+  addGlobalBenefitPlan: (data: AnyRecord) => void
+  updateGlobalBenefitPlan: (id: string, data: AnyRecord) => void
+  addCountryBenefitConfig: (data: AnyRecord) => void
+  updateCountryBenefitConfig: (id: string, data: AnyRecord) => void
+  addGlobalBenefitEnrollment: (data: AnyRecord) => void
+  updateGlobalBenefitEnrollment: (id: string, data: AnyRecord) => void
+
+  // Workers' Compensation
+  workersCompPolicies: AnyRecord[]
+  workersCompClaims: AnyRecord[]
+  workersCompClassCodes: AnyRecord[]
+  workersCompAudits: AnyRecord[]
+  addWorkersCompPolicy: (data: AnyRecord) => void
+  updateWorkersCompPolicy: (id: string, data: AnyRecord) => void
+  addWorkersCompClaim: (data: AnyRecord) => void
+  updateWorkersCompClaim: (id: string, data: AnyRecord) => void
+  addWorkersCompClassCode: (data: AnyRecord) => void
+  updateWorkersCompClassCode: (id: string, data: AnyRecord) => void
+  addWorkersCompAudit: (data: AnyRecord) => void
+  updateWorkersCompAudit: (id: string, data: AnyRecord) => void
+  // Groups
+  groups: AnyRecord[]
+  addGroup: (data: AnyRecord) => void
+  updateGroup: (id: string, data: AnyRecord) => void
+  deleteGroup: (id: string) => void
+
+  // Provisioning Rules
+  provisioningRules: AnyRecord[]
+  addProvisioningRule: (data: AnyRecord) => void
+  updateProvisioningRule: (id: string, data: AnyRecord) => void
+  deleteProvisioningRule: (id: string) => void
+
+  // Encryption Policies
+  encryptionPolicies: AnyRecord[]
+  addEncryptionPolicy: (data: AnyRecord) => void
+  updateEncryptionPolicy: (id: string, data: AnyRecord) => void
+  deleteEncryptionPolicy: (id: string) => void
+
+  // SCIM Providers
+  scimProviders: AnyRecord[]
+  addScimProvider: (data: AnyRecord) => void
+  updateScimProvider: (id: string, data: AnyRecord) => void
+  deleteScimProvider: (id: string) => void
+
+  // Auto Detection Scans
+  autoDetectionScans: AnyRecord[]
+  addAutoDetectionScan: (data: AnyRecord) => void
+  updateAutoDetectionScan: (id: string, data: AnyRecord) => void
+  deleteAutoDetectionScan: (id: string) => void
+
+  // Shadow IT Detections
+  shadowITDetections: AnyRecord[]
+  addShadowITDetection: (data: AnyRecord) => void
+  updateShadowITDetection: (id: string, data: AnyRecord) => void
+  deleteShadowITDetection: (id: string) => void
 }
 
 const TempoContext = createContext<TempoState | null>(null)
@@ -937,7 +1212,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [feedback, setFeedback] = useState<any[]>([])
   const [oneOnOnes, setOneOnOnes] = useState<any[]>([])
   const [recognitions, setRecognitions] = useState<any[]>([])
-  const [competencyFramework] = useState<any>({})
+  const [competencyFramework, setCompetencyFramework] = useState<any[]>([])
   const [competencyRatings, setCompetencyRatings] = useState<any[]>([])
   const [pips, setPIPs] = useState<any[]>([])
   const [pipCheckIns, setPIPCheckIns] = useState<any[]>([])
@@ -1123,6 +1398,79 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  // ============================================================
+  // GAP CLOSURE: New Feature State
+  // ============================================================
+  const [signatureDocuments, setSignatureDocuments] = useState<any[]>([])
+  const [signatureTemplates, setSignatureTemplates] = useState<any[]>([])
+  const [i9Forms, setI9Forms] = useState<any[]>([])
+  const [everifyCases, setEverifyCases] = useState<any[]>([])
+  const [peoConfigurations, setPeoConfigurations] = useState<any[]>([])
+  const [coEmploymentRecords, setCoEmploymentRecords] = useState<any[]>([])
+  const [sandboxEnvironments, setSandboxEnvironments] = useState<any[]>([])
+  const [chatChannels, setChatChannels] = useState<any[]>([])
+  const [chatMessages, setChatMessages] = useState<any[]>([])
+  const [chatParticipants, setChatParticipants] = useState<any[]>([])
+  const [interviewRecordings, setInterviewRecordings] = useState<any[]>([])
+  const [interviewTranscriptions, setInterviewTranscriptions] = useState<any[]>([])
+  const [videoScreenTemplates, setVideoScreenTemplates] = useState<any[]>([])
+  const [videoScreenInvites, setVideoScreenInvites] = useState<any[]>([])
+  const [videoScreenResponses, setVideoScreenResponses] = useState<any[]>([])
+  const [corporateCards, setCorporateCards] = useState<any[]>([])
+  const [cardTransactions, setCardTransactions] = useState<any[]>([])
+  const [billPayments, setBillPayments] = useState<any[]>([])
+  const [billPaySchedules, setBillPaySchedules] = useState<any[]>([])
+  const [travelRequests, setTravelRequests] = useState<any[]>([])
+  const [travelBookings, setTravelBookings] = useState<any[]>([])
+  const [travelPolicies, setTravelPolicies] = useState<any[]>([])
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
+  const [purchaseOrderItems, setPurchaseOrderItems] = useState<any[]>([])
+  const [procurementRequests, setProcurementRequests] = useState<any[]>([])
+  const [currencyAccounts, setCurrencyAccounts] = useState<any[]>([])
+  const [fxTransactions, setFxTransactions] = useState<any[]>([])
+  const [retirementPlans, setRetirementPlans] = useState<any[]>([])
+  const [retirementEnrollments, setRetirementEnrollments] = useState<any[]>([])
+  const [retirementContributions, setRetirementContributions] = useState<any[]>([])
+  const [carrierIntegrations, setCarrierIntegrations] = useState<any[]>([])
+  const [enrollmentFeeds, setEnrollmentFeeds] = useState<any[]>([])
+  const [geofenceZones, setGeofenceZones] = useState<any[]>([])
+  const [geofenceEvents, setGeofenceEvents] = useState<any[]>([])
+  const [idpConfigurations, setIdpConfigurations] = useState<any[]>([])
+  const [samlApps, setSamlApps] = useState<any[]>([])
+  const [mfaPolicies, setMfaPolicies] = useState<any[]>([])
+  const [deploymentProfiles, setDeploymentProfiles] = useState<any[]>([])
+  const [enrollmentTokens, setEnrollmentTokens] = useState<any[]>([])
+  const [passwordVaults, setPasswordVaults] = useState<any[]>([])
+  const [vaultItems, setVaultItems] = useState<any[]>([])
+  const [deviceStoreCatalog, setDeviceStoreCatalog] = useState<any[]>([])
+  const [deviceOrders, setDeviceOrders] = useState<any[]>([])
+  const [buybackRequests, setBuybackRequests] = useState<any[]>([])
+  const [customApps, setCustomApps] = useState<any[]>([])
+  const [appPages, setAppPages] = useState<any[]>([])
+  const [appComponents, setAppComponents] = useState<any[]>([])
+  const [appDataSources, setAppDataSources] = useState<any[]>([])
+  const [savedQueries, setSavedQueries] = useState<any[]>([])
+  const [querySchedules, setQuerySchedules] = useState<any[]>([])
+  const [eorEntities, setEorEntities] = useState<any[]>([])
+  const [eorEmployees, setEorEmployees] = useState<any[]>([])
+  const [eorContracts, setEorContracts] = useState<any[]>([])
+  const [corContractors, setCorContractors] = useState<any[]>([])
+  const [corContracts, setCorContracts] = useState<any[]>([])
+  const [corPayments, setCorPayments] = useState<any[]>([])
+  const [globalBenefitPlans, setGlobalBenefitPlans] = useState<any[]>([])
+  const [countryBenefitConfigs, setCountryBenefitConfigs] = useState<any[]>([])
+  const [globalBenefitEnrollments, setGlobalBenefitEnrollments] = useState<any[]>([])
+  const [workersCompPolicies, setWorkersCompPolicies] = useState<any[]>([])
+  const [workersCompClaims, setWorkersCompClaims] = useState<any[]>([])
+  const [workersCompClassCodes, setWorkersCompClassCodes] = useState<any[]>([])
+  const [workersCompAudits, setWorkersCompAudits] = useState<any[]>([])
+  const [groups, setGroups] = useState<any[]>([])
+  const [provisioningRules, setProvisioningRules] = useState<any[]>([])
+  const [encryptionPolicies, setEncryptionPolicies] = useState<any[]>([])
+  const [scimProviders, setScimProviders] = useState<any[]>([])
+  const [autoDetectionScans, setAutoDetectionScans] = useState<any[]>([])
+  const [shadowITDetections, setShadowITDetections] = useState<any[]>([])
+
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const hasFetched = useRef(false)
   const isDemoUserRef = useRef(false)
@@ -1135,8 +1483,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Uses dynamic import so demo-data.ts (~323KB) is code-split into a separate chunk
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const loadDemoData = useCallback(async (orgId: string) => {
-    const { getDemoDataForOrg } = await loadDemoModule()
-    const data = getDemoDataForOrg(orgId)
+    const mod = await loadDemoModule()
+    const data = mod.getDemoDataForOrg(orgId)
+    // Load top-level demo arrays that aren't org-specific
+    if (mod.demoOneOnOnes) setOneOnOnes(mod.demoOneOnOnes as any)
+    if (mod.demoRecognitions) setRecognitions(mod.demoRecognitions as any)
+    if (mod.demoCompetencyFramework) setCompetencyFramework(mod.demoCompetencyFramework as any)
+    if (mod.demoCompetencyRatings) setCompetencyRatings(mod.demoCompetencyRatings as any)
     // Use type assertions to handle narrowed literal type differences between orgs
     /* eslint-disable @typescript-eslint/no-explicit-any */
     setOrg(data.org as any)
@@ -1285,6 +1638,76 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).complianceRequirements) setComplianceRequirements((data as any).complianceRequirements)
     if ((data as any).complianceDocuments) setComplianceDocuments((data as any).complianceDocuments)
     if ((data as any).complianceAlerts) setComplianceAlerts((data as any).complianceAlerts)
+    // GAP CLOSURE: Hydrate new feature state
+    if ((data as any).signatureDocuments) setSignatureDocuments((data as any).signatureDocuments)
+    if ((data as any).signatureTemplates) setSignatureTemplates((data as any).signatureTemplates)
+    if ((data as any).i9Forms) setI9Forms((data as any).i9Forms)
+    if ((data as any).everifyCases) setEverifyCases((data as any).everifyCases)
+    if ((data as any).peoConfigurations) setPeoConfigurations((data as any).peoConfigurations)
+    if ((data as any).coEmploymentRecords) setCoEmploymentRecords((data as any).coEmploymentRecords)
+    if ((data as any).sandboxEnvironments) setSandboxEnvironments((data as any).sandboxEnvironments)
+    if ((data as any).chatChannels) setChatChannels((data as any).chatChannels)
+    if ((data as any).chatMessages) setChatMessages((data as any).chatMessages)
+    if ((data as any).chatParticipants) setChatParticipants((data as any).chatParticipants)
+    if ((data as any).interviewRecordings) setInterviewRecordings((data as any).interviewRecordings)
+    if ((data as any).interviewTranscriptions) setInterviewTranscriptions((data as any).interviewTranscriptions)
+    if ((data as any).videoScreenTemplates) setVideoScreenTemplates((data as any).videoScreenTemplates)
+    if ((data as any).videoScreenInvites) setVideoScreenInvites((data as any).videoScreenInvites)
+    if ((data as any).videoScreenResponses) setVideoScreenResponses((data as any).videoScreenResponses)
+    if ((data as any).corporateCards) setCorporateCards((data as any).corporateCards)
+    if ((data as any).cardTransactions) setCardTransactions((data as any).cardTransactions)
+    if ((data as any).billPayments) setBillPayments((data as any).billPayments)
+    if ((data as any).billPaySchedules) setBillPaySchedules((data as any).billPaySchedules)
+    if ((data as any).travelRequests) setTravelRequests((data as any).travelRequests)
+    if ((data as any).travelBookings) setTravelBookings((data as any).travelBookings)
+    if ((data as any).travelPolicies) setTravelPolicies((data as any).travelPolicies)
+    if ((data as any).purchaseOrders) setPurchaseOrders((data as any).purchaseOrders)
+    if ((data as any).purchaseOrderItems) setPurchaseOrderItems((data as any).purchaseOrderItems)
+    if ((data as any).procurementRequests) setProcurementRequests((data as any).procurementRequests)
+    if ((data as any).currencyAccounts) setCurrencyAccounts((data as any).currencyAccounts)
+    if ((data as any).fxTransactions) setFxTransactions((data as any).fxTransactions)
+    if ((data as any).retirementPlans) setRetirementPlans((data as any).retirementPlans)
+    if ((data as any).retirementEnrollments) setRetirementEnrollments((data as any).retirementEnrollments)
+    if ((data as any).retirementContributions) setRetirementContributions((data as any).retirementContributions)
+    if ((data as any).carrierIntegrations) setCarrierIntegrations((data as any).carrierIntegrations)
+    if ((data as any).enrollmentFeeds) setEnrollmentFeeds((data as any).enrollmentFeeds)
+    if ((data as any).geofenceZones) setGeofenceZones((data as any).geofenceZones)
+    if ((data as any).geofenceEvents) setGeofenceEvents((data as any).geofenceEvents)
+    if ((data as any).idpConfigurations) setIdpConfigurations((data as any).idpConfigurations)
+    if ((data as any).samlApps) setSamlApps((data as any).samlApps)
+    if ((data as any).mfaPolicies) setMfaPolicies((data as any).mfaPolicies)
+    if ((data as any).deploymentProfiles) setDeploymentProfiles((data as any).deploymentProfiles)
+    if ((data as any).enrollmentTokens) setEnrollmentTokens((data as any).enrollmentTokens)
+    if ((data as any).passwordVaults) setPasswordVaults((data as any).passwordVaults)
+    if ((data as any).vaultItems) setVaultItems((data as any).vaultItems)
+    if ((data as any).deviceStoreCatalog) setDeviceStoreCatalog((data as any).deviceStoreCatalog)
+    if ((data as any).deviceOrders) setDeviceOrders((data as any).deviceOrders)
+    if ((data as any).buybackRequests) setBuybackRequests((data as any).buybackRequests)
+    if ((data as any).customApps) setCustomApps((data as any).customApps)
+    if ((data as any).appPages) setAppPages((data as any).appPages)
+    if ((data as any).appComponents) setAppComponents((data as any).appComponents)
+    if ((data as any).appDataSources) setAppDataSources((data as any).appDataSources)
+    if ((data as any).savedQueries) setSavedQueries((data as any).savedQueries)
+    if ((data as any).querySchedules) setQuerySchedules((data as any).querySchedules)
+    if ((data as any).eorEntities) setEorEntities((data as any).eorEntities)
+    if ((data as any).eorEmployees) setEorEmployees((data as any).eorEmployees)
+    if ((data as any).eorContracts) setEorContracts((data as any).eorContracts)
+    if ((data as any).corContractors) setCorContractors((data as any).corContractors)
+    if ((data as any).corContracts) setCorContracts((data as any).corContracts)
+    if ((data as any).corPayments) setCorPayments((data as any).corPayments)
+    if ((data as any).globalBenefitPlans) setGlobalBenefitPlans((data as any).globalBenefitPlans)
+    if ((data as any).countryBenefitConfigs) setCountryBenefitConfigs((data as any).countryBenefitConfigs)
+    if ((data as any).globalBenefitEnrollments) setGlobalBenefitEnrollments((data as any).globalBenefitEnrollments)
+    if ((data as any).workersCompPolicies) setWorkersCompPolicies((data as any).workersCompPolicies)
+    if ((data as any).workersCompClaims) setWorkersCompClaims((data as any).workersCompClaims)
+    if ((data as any).workersCompClassCodes) setWorkersCompClassCodes((data as any).workersCompClassCodes)
+    if ((data as any).workersCompAudits) setWorkersCompAudits((data as any).workersCompAudits)
+    if ((data as any).groups) setGroups((data as any).groups)
+    if ((data as any).provisioningRules) setProvisioningRules((data as any).provisioningRules)
+    if ((data as any).encryptionPolicies) setEncryptionPolicies((data as any).encryptionPolicies)
+    if ((data as any).scimProviders) setScimProviders((data as any).scimProviders)
+    if ((data as any).autoDetectionScans) setAutoDetectionScans((data as any).autoDetectionScans)
+    if ((data as any).shadowITDetections) setShadowITDetections((data as any).shadowITDetections)
     /* eslint-enable @typescript-eslint/no-explicit-any */
     setAuditLog([])
     try { localStorage.setItem('tempo_current_org', orgId) } catch { /* ignore */ }
@@ -1335,6 +1758,25 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       workflows: (d) => setWorkflows(d),
       workflowTemplates: (d) => setWorkflowTemplates(d),
       auditLog: (d) => setAuditLog(d),
+      // Identity & Access
+      idpConfigurations: (d) => setIdpConfigurations(d),
+      samlApps: (d) => setSamlApps(d),
+      mfaPolicies: (d) => setMfaPolicies(d),
+      // Chat
+      chatChannels: (d) => setChatChannels(d),
+      chatMessages: (d) => setChatMessages(d),
+      // Finance
+      corporateCards: (d) => setCorporateCards(d),
+      cardTransactions: (d) => setCardTransactions(d),
+      billPayments: (d) => setBillPayments(d),
+      currencyAccounts: (d) => setCurrencyAccounts(d),
+      fxTransactions: (d) => setFxTransactions(d),
+      // Travel
+      travelRequests: (d) => setTravelRequests(d),
+      travelBookings: (d) => setTravelBookings(d),
+      // Documents
+      signatureDocuments: (d) => setSignatureDocuments(d),
+      signatureTemplates: (d) => setSignatureTemplates(d),
     }
   }
 
@@ -3473,6 +3915,827 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('organizations', 'update', data, org.id)
   }, [logAudit, addToast, org.id])
 
+  // ============================================================
+  // GAP CLOSURE: CRUD Callbacks for New Features
+  // ============================================================
+
+  // ---- E-Signatures ----
+  const addSignatureDocument = useCallback((data: AnyRecord) => {
+    const id = genId('sig-doc')
+    setSignatureDocuments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'signature_document', id, `Created signature document: ${data.title || 'Untitled'}`)
+    addToast('Signature document created')
+  }, [logAudit, addToast])
+  const updateSignatureDocument = useCallback((id: string, data: AnyRecord) => {
+    setSignatureDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
+    logAudit('update', 'signature_document', id, 'Updated signature document')
+    addToast('Signature document updated')
+  }, [logAudit, addToast])
+  const deleteSignatureDocument = useCallback((id: string) => {
+    setSignatureDocuments(prev => prev.filter(d => d.id !== id))
+    logAudit('delete', 'signature_document', id, 'Deleted signature document')
+    addToast('Signature document removed')
+  }, [logAudit, addToast])
+  const addSignatureTemplate = useCallback((data: AnyRecord) => {
+    const id = genId('sig-tpl')
+    setSignatureTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'signature_template', id, `Created signature template: ${data.name || 'Untitled'}`)
+    addToast('Signature template created')
+  }, [logAudit, addToast])
+  const updateSignatureTemplate = useCallback((id: string, data: AnyRecord) => {
+    setSignatureTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+    logAudit('update', 'signature_template', id, 'Updated signature template')
+    addToast('Signature template updated')
+  }, [logAudit, addToast])
+
+  // ---- E-Verify / I-9 ----
+  const addI9Form = useCallback((data: AnyRecord) => {
+    const id = genId('i9')
+    setI9Forms(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'i9_form', id, `Created I-9 form for employee ${data.employee_id}`)
+    addToast('I-9 form created')
+  }, [logAudit, addToast])
+  const updateI9Form = useCallback((id: string, data: AnyRecord) => {
+    setI9Forms(prev => prev.map(f => f.id === id ? { ...f, ...data } : f))
+    logAudit('update', 'i9_form', id, 'Updated I-9 form')
+    addToast('I-9 form updated')
+  }, [logAudit, addToast])
+  const addEVerifyCase = useCallback((data: AnyRecord) => {
+    const id = genId('everify')
+    setEverifyCases(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'everify_case', id, `Created E-Verify case for ${data.employee_id}`)
+    addToast('E-Verify case created')
+  }, [logAudit, addToast])
+  const updateEVerifyCase = useCallback((id: string, data: AnyRecord) => {
+    setEverifyCases(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'everify_case', id, 'Updated E-Verify case')
+    addToast('E-Verify case updated')
+  }, [logAudit, addToast])
+
+  // ---- PEO / Co-employment ----
+  const addPeoConfiguration = useCallback((data: AnyRecord) => {
+    const id = genId('peo')
+    setPeoConfigurations(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'peo_configuration', id, `Created PEO config: ${data.provider_name || 'PEO'}`)
+    addToast('PEO configuration created')
+  }, [logAudit, addToast])
+  const updatePeoConfiguration = useCallback((id: string, data: AnyRecord) => {
+    setPeoConfigurations(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'peo_configuration', id, 'Updated PEO configuration')
+    addToast('PEO configuration updated')
+  }, [logAudit, addToast])
+  const addCoEmploymentRecord = useCallback((data: AnyRecord) => {
+    const id = genId('coemp')
+    setCoEmploymentRecords(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
+    logAudit('create', 'co_employment_record', id, `Created co-employment record`)
+    addToast('Co-employment record created')
+  }, [logAudit, addToast])
+  const updateCoEmploymentRecord = useCallback((id: string, data: AnyRecord) => {
+    setCoEmploymentRecords(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'co_employment_record', id, 'Updated co-employment record')
+    addToast('Co-employment record updated')
+  }, [logAudit, addToast])
+
+  // ---- Sandbox Environment ----
+  const addSandboxEnvironment = useCallback((data: AnyRecord) => {
+    const id = genId('sandbox')
+    setSandboxEnvironments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'provisioning', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'sandbox', id, `Created sandbox: ${data.name || 'Sandbox'}`)
+    addToast('Sandbox environment created')
+  }, [logAudit, addToast])
+  const updateSandboxEnvironment = useCallback((id: string, data: AnyRecord) => {
+    setSandboxEnvironments(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
+    logAudit('update', 'sandbox', id, 'Updated sandbox environment')
+    addToast('Sandbox environment updated')
+  }, [logAudit, addToast])
+  const deleteSandboxEnvironment = useCallback((id: string) => {
+    setSandboxEnvironments(prev => prev.filter(s => s.id !== id))
+    logAudit('delete', 'sandbox', id, 'Deleted sandbox environment')
+    addToast('Sandbox environment removed')
+  }, [logAudit, addToast])
+
+  // ---- Built-in Chat ----
+  const addChatChannel = useCallback((data: AnyRecord) => {
+    const id = genId('chan')
+    setChatChannels(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'chat_channel', id, `Created channel: ${data.name || '#general'}`)
+    addToast('Chat channel created')
+  }, [logAudit, addToast])
+  const updateChatChannel = useCallback((id: string, data: AnyRecord) => {
+    setChatChannels(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'chat_channel', id, 'Updated chat channel')
+    addToast('Chat channel updated')
+  }, [logAudit, addToast])
+  const addChatMessage = useCallback((data: AnyRecord) => {
+    const id = genId('msg')
+    setChatMessages(prev => [...prev, { id, sent_at: new Date().toISOString(), ...data }])
+  }, [])
+  const updateChatMessage = useCallback((id: string, data: AnyRecord) => {
+    setChatMessages(prev => prev.map(m => m.id === id ? { ...m, ...data, edited_at: new Date().toISOString() } : m))
+  }, [])
+  const deleteChatMessage = useCallback((id: string) => {
+    setChatMessages(prev => prev.filter(m => m.id !== id))
+  }, [])
+
+  // ---- AI Interview Recording ----
+  const addInterviewRecording = useCallback((data: AnyRecord) => {
+    const id = genId('rec')
+    setInterviewRecordings(prev => [...prev, { id, org_id: orgIdRef.current, status: 'scheduled', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'interview_recording', id, 'Scheduled interview recording')
+    addToast('Interview recording scheduled')
+  }, [logAudit, addToast])
+  const updateInterviewRecording = useCallback((id: string, data: AnyRecord) => {
+    setInterviewRecordings(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'interview_recording', id, 'Updated interview recording')
+    addToast('Interview recording updated')
+  }, [logAudit, addToast])
+
+  // ---- AI Video Screens ----
+  const addVideoScreenTemplate = useCallback((data: AnyRecord) => {
+    const id = genId('vst')
+    setVideoScreenTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'video_screen_template', id, `Created video screen template: ${data.title || 'Untitled'}`)
+    addToast('Video screen template created')
+  }, [logAudit, addToast])
+  const updateVideoScreenTemplate = useCallback((id: string, data: AnyRecord) => {
+    setVideoScreenTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+    logAudit('update', 'video_screen_template', id, 'Updated video screen template')
+    addToast('Video screen template updated')
+  }, [logAudit, addToast])
+  const addVideoScreenInvite = useCallback((data: AnyRecord) => {
+    const id = genId('vsi')
+    setVideoScreenInvites(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', sent_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'video_screen_invite', id, `Sent video screen invite to ${data.candidate_email}`)
+    addToast('Video screen invite sent')
+  }, [logAudit, addToast])
+  const updateVideoScreenInvite = useCallback((id: string, data: AnyRecord) => {
+    setVideoScreenInvites(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
+    logAudit('update', 'video_screen_invite', id, 'Updated video screen invite')
+    addToast('Video screen invite updated')
+  }, [logAudit, addToast])
+  const addVideoScreenResponse = useCallback((data: AnyRecord) => {
+    const id = genId('vsr')
+    setVideoScreenResponses(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'video_screen_response', id, 'Video screen response submitted')
+    addToast('Video screen response recorded')
+  }, [logAudit, addToast])
+  const updateVideoScreenResponse = useCallback((id: string, data: AnyRecord) => {
+    setVideoScreenResponses(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'video_screen_response', id, 'Updated video screen response')
+    addToast('Video screen response updated')
+  }, [logAudit, addToast])
+
+  // ---- Corporate Cards ----
+  const addCorporateCard = useCallback((data: AnyRecord) => {
+    const id = genId('card')
+    setCorporateCards(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', issued_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'corporate_card', id, `Issued corporate card ending ${data.last_four || '****'}`)
+    addToast('Corporate card issued')
+  }, [logAudit, addToast])
+  const updateCorporateCard = useCallback((id: string, data: AnyRecord) => {
+    setCorporateCards(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'corporate_card', id, 'Updated corporate card')
+    addToast('Corporate card updated')
+  }, [logAudit, addToast])
+  const addCardTransaction = useCallback((data: AnyRecord) => {
+    const id = genId('txn')
+    setCardTransactions(prev => [...prev, { id, org_id: orgIdRef.current, transaction_date: new Date().toISOString(), ...data }])
+    logAudit('create', 'card_transaction', id, `Card transaction: ${data.merchant || 'Unknown'}`)
+    addToast('Card transaction recorded')
+  }, [logAudit, addToast])
+  const updateCardTransaction = useCallback((id: string, data: AnyRecord) => {
+    setCardTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+    logAudit('update', 'card_transaction', id, 'Updated card transaction')
+    addToast('Card transaction updated')
+  }, [logAudit, addToast])
+
+  // ---- Bill Pay ----
+  const addBillPayment = useCallback((data: AnyRecord) => {
+    const id = genId('bp')
+    setBillPayments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'bill_payment', id, `Created bill payment: $${((data.amount || 0) / 100).toFixed(2)}`)
+    addToast('Bill payment created')
+  }, [logAudit, addToast])
+  const updateBillPayment = useCallback((id: string, data: AnyRecord) => {
+    setBillPayments(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'bill_payment', id, 'Updated bill payment')
+    addToast('Bill payment updated')
+  }, [logAudit, addToast])
+  const addBillPaySchedule = useCallback((data: AnyRecord) => {
+    const id = genId('bps')
+    setBillPaySchedules(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
+    logAudit('create', 'bill_pay_schedule', id, 'Created recurring payment schedule')
+    addToast('Payment schedule created')
+  }, [logAudit, addToast])
+  const updateBillPaySchedule = useCallback((id: string, data: AnyRecord) => {
+    setBillPaySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
+    logAudit('update', 'bill_pay_schedule', id, 'Updated payment schedule')
+    addToast('Payment schedule updated')
+  }, [logAudit, addToast])
+
+  // ---- Travel Management ----
+  const addTravelRequest = useCallback((data: AnyRecord) => {
+    const id = genId('travel')
+    setTravelRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', submitted_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'travel_request', id, `Created travel request: ${data.destination || 'Trip'}`)
+    addToast('Travel request submitted')
+  }, [logAudit, addToast])
+  const updateTravelRequest = useCallback((id: string, data: AnyRecord) => {
+    setTravelRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'travel_request', id, 'Updated travel request')
+    addToast('Travel request updated')
+  }, [logAudit, addToast])
+  const addTravelBooking = useCallback((data: AnyRecord) => {
+    const id = genId('booking')
+    setTravelBookings(prev => [...prev, { id, org_id: orgIdRef.current, booked_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'travel_booking', id, `Booked: ${data.type || 'travel'}`)
+    addToast('Travel booking confirmed')
+  }, [logAudit, addToast])
+  const updateTravelBooking = useCallback((id: string, data: AnyRecord) => {
+    setTravelBookings(prev => prev.map(b => b.id === id ? { ...b, ...data } : b))
+    logAudit('update', 'travel_booking', id, 'Updated travel booking')
+    addToast('Travel booking updated')
+  }, [logAudit, addToast])
+  const addTravelPolicy = useCallback((data: AnyRecord) => {
+    const id = genId('tpol')
+    setTravelPolicies(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
+    logAudit('create', 'travel_policy', id, `Created travel policy: ${data.name || 'Policy'}`)
+    addToast('Travel policy created')
+  }, [logAudit, addToast])
+  const updateTravelPolicy = useCallback((id: string, data: AnyRecord) => {
+    setTravelPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'travel_policy', id, 'Updated travel policy')
+    addToast('Travel policy updated')
+  }, [logAudit, addToast])
+
+  // ---- Procurement / Purchase Orders ----
+  const addPurchaseOrder = useCallback((data: AnyRecord) => {
+    const id = genId('po')
+    setPurchaseOrders(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'purchase_order', id, `Created PO: ${data.po_number || id}`)
+    addToast('Purchase order created')
+  }, [logAudit, addToast])
+  const updatePurchaseOrder = useCallback((id: string, data: AnyRecord) => {
+    setPurchaseOrders(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'purchase_order', id, 'Updated purchase order')
+    addToast('Purchase order updated')
+  }, [logAudit, addToast])
+  const addProcurementRequest = useCallback((data: AnyRecord) => {
+    const id = genId('preq')
+    setProcurementRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', submitted_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'procurement_request', id, `Created procurement request: ${data.title || 'Request'}`)
+    addToast('Procurement request submitted')
+  }, [logAudit, addToast])
+  const updateProcurementRequest = useCallback((id: string, data: AnyRecord) => {
+    setProcurementRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'procurement_request', id, 'Updated procurement request')
+    addToast('Procurement request updated')
+  }, [logAudit, addToast])
+
+  // ---- Multi-currency ----
+  const addCurrencyAccount = useCallback((data: AnyRecord) => {
+    const id = genId('fxacct')
+    setCurrencyAccounts(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
+    logAudit('create', 'currency_account', id, `Created ${data.currency || 'FX'} account`)
+    addToast('Currency account created')
+  }, [logAudit, addToast])
+  const updateCurrencyAccount = useCallback((id: string, data: AnyRecord) => {
+    setCurrencyAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
+    logAudit('update', 'currency_account', id, 'Updated currency account')
+    addToast('Currency account updated')
+  }, [logAudit, addToast])
+  const addFxTransaction = useCallback((data: AnyRecord) => {
+    const id = genId('fx')
+    setFxTransactions(prev => [...prev, { id, org_id: orgIdRef.current, executed_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'fx_transaction', id, `FX: ${data.from_currency}→${data.to_currency}`)
+    addToast('FX transaction executed')
+  }, [logAudit, addToast])
+
+  // ---- 401(k) Administration ----
+  const addRetirementPlan = useCallback((data: AnyRecord) => {
+    const id = genId('rplan')
+    setRetirementPlans(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'retirement_plan', id, `Created retirement plan: ${data.name || 'Plan'}`)
+    addToast('Retirement plan created')
+  }, [logAudit, addToast])
+  const updateRetirementPlan = useCallback((id: string, data: AnyRecord) => {
+    setRetirementPlans(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'retirement_plan', id, 'Updated retirement plan')
+    addToast('Retirement plan updated')
+  }, [logAudit, addToast])
+  const addRetirementEnrollment = useCallback((data: AnyRecord) => {
+    const id = genId('renr')
+    setRetirementEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, enrolled_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'retirement_enrollment', id, 'Employee enrolled in retirement plan')
+    addToast('Retirement enrollment created')
+  }, [logAudit, addToast])
+  const updateRetirementEnrollment = useCallback((id: string, data: AnyRecord) => {
+    setRetirementEnrollments(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
+    logAudit('update', 'retirement_enrollment', id, 'Updated retirement enrollment')
+    addToast('Retirement enrollment updated')
+  }, [logAudit, addToast])
+  const addRetirementContribution = useCallback((data: AnyRecord) => {
+    const id = genId('rcon')
+    setRetirementContributions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'retirement_contribution', id, 'Retirement contribution recorded')
+    addToast('Contribution recorded')
+  }, [logAudit, addToast])
+
+  // ---- Carrier Integration ----
+  const addCarrierIntegration = useCallback((data: AnyRecord) => {
+    const id = genId('carrier')
+    setCarrierIntegrations(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'carrier_integration', id, `Added carrier: ${data.carrier_name || 'Carrier'}`)
+    addToast('Carrier integration added')
+  }, [logAudit, addToast])
+  const updateCarrierIntegration = useCallback((id: string, data: AnyRecord) => {
+    setCarrierIntegrations(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'carrier_integration', id, 'Updated carrier integration')
+    addToast('Carrier integration updated')
+  }, [logAudit, addToast])
+  const addEnrollmentFeed = useCallback((data: AnyRecord) => {
+    const id = genId('feed')
+    setEnrollmentFeeds(prev => [...prev, { id, org_id: orgIdRef.current, generated_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'enrollment_feed', id, 'Enrollment feed generated')
+    addToast('Enrollment feed generated')
+  }, [logAudit, addToast])
+
+  // ---- Geofencing ----
+  const addGeofenceZone = useCallback((data: AnyRecord) => {
+    const id = genId('zone')
+    setGeofenceZones(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
+    logAudit('create', 'geofence_zone', id, `Created geofence zone: ${data.name || 'Zone'}`)
+    addToast('Geofence zone created')
+  }, [logAudit, addToast])
+  const updateGeofenceZone = useCallback((id: string, data: AnyRecord) => {
+    setGeofenceZones(prev => prev.map(z => z.id === id ? { ...z, ...data } : z))
+    logAudit('update', 'geofence_zone', id, 'Updated geofence zone')
+    addToast('Geofence zone updated')
+  }, [logAudit, addToast])
+  const deleteGeofenceZone = useCallback((id: string) => {
+    setGeofenceZones(prev => prev.filter(z => z.id !== id))
+    logAudit('delete', 'geofence_zone', id, 'Deleted geofence zone')
+    addToast('Geofence zone removed')
+  }, [logAudit, addToast])
+  const addGeofenceEvent = useCallback((data: AnyRecord) => {
+    const id = genId('gfev')
+    setGeofenceEvents(prev => [...prev, { id, org_id: orgIdRef.current, timestamp: new Date().toISOString(), ...data }])
+  }, [])
+
+  // ---- Identity Provider ----
+  const addIdpConfiguration = useCallback((data: AnyRecord) => {
+    const id = genId('idp')
+    setIdpConfigurations(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'idp_configuration', id, `Created IdP: ${data.name || 'Provider'}`)
+    addToast('Identity provider configured')
+  }, [logAudit, addToast])
+  const updateIdpConfiguration = useCallback((id: string, data: AnyRecord) => {
+    setIdpConfigurations(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'idp_configuration', id, 'Updated IdP configuration')
+    addToast('Identity provider updated')
+  }, [logAudit, addToast])
+  const addSamlApp = useCallback((data: AnyRecord) => {
+    const id = genId('saml')
+    setSamlApps(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'saml_app', id, `Added SAML app: ${data.name || 'App'}`)
+    addToast('SAML app added')
+  }, [logAudit, addToast])
+  const updateSamlApp = useCallback((id: string, data: AnyRecord) => {
+    setSamlApps(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
+    logAudit('update', 'saml_app', id, 'Updated SAML app')
+    addToast('SAML app updated')
+  }, [logAudit, addToast])
+  const addMfaPolicy = useCallback((data: AnyRecord) => {
+    const id = genId('mfa')
+    setMfaPolicies(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
+    logAudit('create', 'mfa_policy', id, `Created MFA policy: ${data.name || 'Policy'}`)
+    addToast('MFA policy created')
+  }, [logAudit, addToast])
+  const updateMfaPolicy = useCallback((id: string, data: AnyRecord) => {
+    setMfaPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'mfa_policy', id, 'Updated MFA policy')
+    addToast('MFA policy updated')
+  }, [logAudit, addToast])
+
+  // ---- Zero-touch Deployment ----
+  const addDeploymentProfile = useCallback((data: AnyRecord) => {
+    const id = genId('deploy')
+    setDeploymentProfiles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'deployment_profile', id, `Created deployment profile: ${data.name || 'Profile'}`)
+    addToast('Deployment profile created')
+  }, [logAudit, addToast])
+  const updateDeploymentProfile = useCallback((id: string, data: AnyRecord) => {
+    setDeploymentProfiles(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'deployment_profile', id, 'Updated deployment profile')
+    addToast('Deployment profile updated')
+  }, [logAudit, addToast])
+  const addEnrollmentToken = useCallback((data: AnyRecord) => {
+    const id = genId('token')
+    setEnrollmentTokens(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'enrollment_token', id, 'Generated device enrollment token')
+    addToast('Enrollment token generated')
+  }, [logAudit, addToast])
+  const updateEnrollmentToken = useCallback((id: string, data: AnyRecord) => {
+    setEnrollmentTokens(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+    logAudit('update', 'enrollment_token', id, 'Updated enrollment token')
+    addToast('Enrollment token updated')
+  }, [logAudit, addToast])
+
+  // ---- Password Manager ----
+  const addPasswordVault = useCallback((data: AnyRecord) => {
+    const id = genId('vault')
+    setPasswordVaults(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'password_vault', id, `Created vault: ${data.name || 'Vault'}`)
+    addToast('Password vault created')
+  }, [logAudit, addToast])
+  const updatePasswordVault = useCallback((id: string, data: AnyRecord) => {
+    setPasswordVaults(prev => prev.map(v => v.id === id ? { ...v, ...data } : v))
+    logAudit('update', 'password_vault', id, 'Updated password vault')
+    addToast('Password vault updated')
+  }, [logAudit, addToast])
+  const addVaultItem = useCallback((data: AnyRecord) => {
+    const id = genId('vi')
+    setVaultItems(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'vault_item', id, `Added credential: ${data.name || 'Item'}`)
+    addToast('Vault item added')
+  }, [logAudit, addToast])
+  const updateVaultItem = useCallback((id: string, data: AnyRecord) => {
+    setVaultItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
+    logAudit('update', 'vault_item', id, 'Updated vault item')
+    addToast('Vault item updated')
+  }, [logAudit, addToast])
+  const deleteVaultItem = useCallback((id: string) => {
+    setVaultItems(prev => prev.filter(i => i.id !== id))
+    logAudit('delete', 'vault_item', id, 'Deleted vault item')
+    addToast('Vault item removed')
+  }, [logAudit, addToast])
+
+  // ---- Device Store / Buyback ----
+  const addDeviceStoreCatalogItem = useCallback((data: AnyRecord) => {
+    const id = genId('dsc')
+    setDeviceStoreCatalog(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
+    logAudit('create', 'device_catalog', id, `Added device: ${data.name || 'Device'}`)
+    addToast('Device added to catalog')
+  }, [logAudit, addToast])
+  const updateDeviceStoreCatalogItem = useCallback((id: string, data: AnyRecord) => {
+    setDeviceStoreCatalog(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
+    logAudit('update', 'device_catalog', id, 'Updated catalog item')
+    addToast('Catalog item updated')
+  }, [logAudit, addToast])
+  const addDeviceOrder = useCallback((data: AnyRecord) => {
+    const id = genId('dord')
+    setDeviceOrders(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', ordered_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'device_order', id, 'Device order placed')
+    addToast('Device order placed')
+  }, [logAudit, addToast])
+  const updateDeviceOrder = useCallback((id: string, data: AnyRecord) => {
+    setDeviceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o))
+    logAudit('update', 'device_order', id, 'Updated device order')
+    addToast('Device order updated')
+  }, [logAudit, addToast])
+  const addBuybackRequest = useCallback((data: AnyRecord) => {
+    const id = genId('bb')
+    setBuybackRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'submitted', submitted_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'buyback_request', id, 'Buyback request submitted')
+    addToast('Buyback request submitted')
+  }, [logAudit, addToast])
+  const updateBuybackRequest = useCallback((id: string, data: AnyRecord) => {
+    setBuybackRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'buyback_request', id, 'Updated buyback request')
+    addToast('Buyback request updated')
+  }, [logAudit, addToast])
+
+  // ---- No-code App Builder ----
+  const addCustomApp = useCallback((data: AnyRecord) => {
+    const id = genId('app')
+    setCustomApps(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', version: 1, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'custom_app', id, `Created app: ${data.name || 'App'}`)
+    addToast('Custom app created')
+  }, [logAudit, addToast])
+  const updateCustomApp = useCallback((id: string, data: AnyRecord) => {
+    setCustomApps(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
+    logAudit('update', 'custom_app', id, 'Updated custom app')
+    addToast('Custom app updated')
+  }, [logAudit, addToast])
+  const deleteCustomApp = useCallback((id: string) => {
+    setCustomApps(prev => prev.filter(a => a.id !== id))
+    setAppPages(prev => prev.filter(p => p.app_id !== id))
+    logAudit('delete', 'custom_app', id, 'Deleted custom app')
+    addToast('Custom app removed')
+  }, [logAudit, addToast])
+  const addAppPage = useCallback((data: AnyRecord) => {
+    const id = genId('page')
+    setAppPages(prev => [...prev, { id, ...data }])
+    logAudit('create', 'app_page', id, `Added page: ${data.name || 'Page'}`)
+    addToast('App page added')
+  }, [logAudit, addToast])
+  const updateAppPage = useCallback((id: string, data: AnyRecord) => {
+    setAppPages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+  }, [])
+  const addAppComponent = useCallback((data: AnyRecord) => {
+    const id = genId('comp')
+    setAppComponents(prev => [...prev, { id, ...data }])
+  }, [])
+  const updateAppComponent = useCallback((id: string, data: AnyRecord) => {
+    setAppComponents(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+  }, [])
+  const addAppDataSource = useCallback((data: AnyRecord) => {
+    const id = genId('ds')
+    setAppDataSources(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'app_data_source', id, `Added data source: ${data.name || 'Source'}`)
+    addToast('Data source added')
+  }, [logAudit, addToast])
+  const updateAppDataSource = useCallback((id: string, data: AnyRecord) => {
+    setAppDataSources(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
+  }, [])
+
+  // ---- RQL / Custom Query Language ----
+  const addSavedQuery = useCallback((data: AnyRecord) => {
+    const id = genId('query')
+    setSavedQueries(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', run_count: 0, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'saved_query', id, `Created query: ${data.name || 'Query'}`)
+    addToast('Query saved')
+  }, [logAudit, addToast])
+  const updateSavedQuery = useCallback((id: string, data: AnyRecord) => {
+    setSavedQueries(prev => prev.map(q => q.id === id ? { ...q, ...data } : q))
+    logAudit('update', 'saved_query', id, 'Updated saved query')
+    addToast('Query updated')
+  }, [logAudit, addToast])
+  const deleteSavedQuery = useCallback((id: string) => {
+    setSavedQueries(prev => prev.filter(q => q.id !== id))
+    setQuerySchedules(prev => prev.filter(s => s.query_id !== id))
+    logAudit('delete', 'saved_query', id, 'Deleted saved query')
+    addToast('Query removed')
+  }, [logAudit, addToast])
+  const addQuerySchedule = useCallback((data: AnyRecord) => {
+    const id = genId('qsched')
+    setQuerySchedules(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
+    logAudit('create', 'query_schedule', id, 'Created query schedule')
+    addToast('Query schedule created')
+  }, [logAudit, addToast])
+  const updateQuerySchedule = useCallback((id: string, data: AnyRecord) => {
+    setQuerySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
+    logAudit('update', 'query_schedule', id, 'Updated query schedule')
+    addToast('Query schedule updated')
+  }, [logAudit, addToast])
+
+  // ---- EOR (Employer of Record) ----
+  const addEorEntity = useCallback((data: AnyRecord) => {
+    const id = genId('eor')
+    setEorEntities(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending_setup', employee_count: 0, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'eor_entity', id, `Created EOR entity in ${data.country || 'Unknown'}`)
+    addToast('EOR entity created')
+  }, [logAudit, addToast])
+  const updateEorEntity = useCallback((id: string, data: AnyRecord) => {
+    setEorEntities(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
+    logAudit('update', 'eor_entity', id, 'Updated EOR entity')
+    addToast('EOR entity updated')
+  }, [logAudit, addToast])
+  const addEorEmployee = useCallback((data: AnyRecord) => {
+    const id = genId('eoremp')
+    setEorEmployees(prev => [...prev, { id, org_id: orgIdRef.current, status: 'onboarding', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'eor_employee', id, `Added EOR employee: ${data.full_name}`)
+    addToast('EOR employee added')
+  }, [logAudit, addToast])
+  const updateEorEmployee = useCallback((id: string, data: AnyRecord) => {
+    setEorEmployees(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
+    logAudit('update', 'eor_employee', id, 'Updated EOR employee')
+    addToast('EOR employee updated')
+  }, [logAudit, addToast])
+  const addEorContract = useCallback((data: AnyRecord) => {
+    const id = genId('eorc')
+    setEorContracts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'eor_contract', id, 'Created EOR contract')
+    addToast('EOR contract created')
+  }, [logAudit, addToast])
+  const updateEorContract = useCallback((id: string, data: AnyRecord) => {
+    setEorContracts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'eor_contract', id, 'Updated EOR contract')
+    addToast('EOR contract updated')
+  }, [logAudit, addToast])
+
+  // ---- Contractor of Record ----
+  const addCorContractor = useCallback((data: AnyRecord) => {
+    const id = genId('cor')
+    setCorContractors(prev => [...prev, { id, org_id: orgIdRef.current, status: 'onboarding', compliance_status: 'pending', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'cor_contractor', id, `Added contractor: ${data.full_name}`)
+    addToast('Contractor added')
+  }, [logAudit, addToast])
+  const updateCorContractor = useCallback((id: string, data: AnyRecord) => {
+    setCorContractors(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'cor_contractor', id, 'Updated contractor')
+    addToast('Contractor updated')
+  }, [logAudit, addToast])
+  const addCorContract = useCallback((data: AnyRecord) => {
+    const id = genId('corc')
+    setCorContracts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'cor_contract', id, `Created contractor agreement: ${data.title || 'Contract'}`)
+    addToast('Contractor agreement created')
+  }, [logAudit, addToast])
+  const updateCorContract = useCallback((id: string, data: AnyRecord) => {
+    setCorContracts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'cor_contract', id, 'Updated contractor agreement')
+    addToast('Contractor agreement updated')
+  }, [logAudit, addToast])
+  const addCorPayment = useCallback((data: AnyRecord) => {
+    const id = genId('corp')
+    setCorPayments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'cor_payment', id, 'Contractor payment created')
+    addToast('Contractor payment created')
+  }, [logAudit, addToast])
+  const updateCorPayment = useCallback((id: string, data: AnyRecord) => {
+    setCorPayments(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'cor_payment', id, 'Updated contractor payment')
+    addToast('Contractor payment updated')
+  }, [logAudit, addToast])
+
+  // ---- Global Benefits ----
+  const addGlobalBenefitPlan = useCallback((data: AnyRecord) => {
+    const id = genId('gbp')
+    setGlobalBenefitPlans(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'global_benefit_plan', id, `Created global benefit: ${data.name || 'Plan'} (${data.country})`)
+    addToast('Global benefit plan created')
+  }, [logAudit, addToast])
+  const updateGlobalBenefitPlan = useCallback((id: string, data: AnyRecord) => {
+    setGlobalBenefitPlans(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'global_benefit_plan', id, 'Updated global benefit plan')
+    addToast('Global benefit plan updated')
+  }, [logAudit, addToast])
+  const addCountryBenefitConfig = useCallback((data: AnyRecord) => {
+    const id = genId('cbc')
+    setCountryBenefitConfigs(prev => [...prev, { id, org_id: orgIdRef.current, updated_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'country_benefit_config', id, `Configured benefits for ${data.country || 'country'}`)
+    addToast('Country benefits configured')
+  }, [logAudit, addToast])
+  const updateCountryBenefitConfig = useCallback((id: string, data: AnyRecord) => {
+    setCountryBenefitConfigs(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'country_benefit_config', id, 'Updated country benefit config')
+    addToast('Country benefit config updated')
+  }, [logAudit, addToast])
+  const addGlobalBenefitEnrollment = useCallback((data: AnyRecord) => {
+    const id = genId('gbe')
+    setGlobalBenefitEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, enrolled_at: new Date().toISOString().split('T')[0], ...data }])
+    logAudit('create', 'global_benefit_enrollment', id, 'Employee enrolled in global benefit')
+    addToast('Global benefit enrollment created')
+  }, [logAudit, addToast])
+  const updateGlobalBenefitEnrollment = useCallback((id: string, data: AnyRecord) => {
+    setGlobalBenefitEnrollments(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
+    logAudit('update', 'global_benefit_enrollment', id, 'Updated global benefit enrollment')
+    addToast('Global benefit enrollment updated')
+  }, [logAudit, addToast])
+
+  // ---- Workers' Compensation ----
+  const addWorkersCompPolicy = useCallback((data: AnyRecord) => {
+    const id = genId('wcpol')
+    setWorkersCompPolicies(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'workers_comp_policy', id, `Created workers comp policy: ${data.name || 'Policy'}`)
+    addToast('Workers comp policy created')
+  }, [logAudit, addToast])
+  const updateWorkersCompPolicy = useCallback((id: string, data: AnyRecord) => {
+    setWorkersCompPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'workers_comp_policy', id, 'Updated workers comp policy')
+    addToast('Workers comp policy updated')
+  }, [logAudit, addToast])
+  const addWorkersCompClaim = useCallback((data: AnyRecord) => {
+    const id = genId('wccl')
+    setWorkersCompClaims(prev => [...prev, { id, org_id: orgIdRef.current, status: 'open', filed_date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'workers_comp_claim', id, `Filed workers comp claim for ${data.employee_name || 'Unknown'}`)
+    addToast('Workers comp claim filed')
+  }, [logAudit, addToast])
+  const updateWorkersCompClaim = useCallback((id: string, data: AnyRecord) => {
+    setWorkersCompClaims(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'workers_comp_claim', id, 'Updated workers comp claim')
+    addToast('Workers comp claim updated')
+  }, [logAudit, addToast])
+  const addWorkersCompClassCode = useCallback((data: AnyRecord) => {
+    const id = genId('wccc')
+    setWorkersCompClassCodes(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'workers_comp_class_code', id, `Added class code: ${data.code || 'Unknown'}`)
+    addToast('Class code added')
+  }, [logAudit, addToast])
+  const updateWorkersCompClassCode = useCallback((id: string, data: AnyRecord) => {
+    setWorkersCompClassCodes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'workers_comp_class_code', id, 'Updated class code')
+    addToast('Class code updated')
+  }, [logAudit, addToast])
+  const addWorkersCompAudit = useCallback((data: AnyRecord) => {
+    const id = genId('wcaud')
+    setWorkersCompAudits(prev => [...prev, { id, org_id: orgIdRef.current, status: 'scheduled', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'workers_comp_audit', id, 'Scheduled workers comp audit')
+    addToast('Workers comp audit scheduled')
+  }, [logAudit, addToast])
+  const updateWorkersCompAudit = useCallback((id: string, data: AnyRecord) => {
+    setWorkersCompAudits(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
+    logAudit('update', 'workers_comp_audit', id, 'Updated workers comp audit')
+    addToast('Workers comp audit updated')
+  }, [logAudit, addToast])
+
+  // ---- Groups ----
+  const addGroup = useCallback((data: AnyRecord) => {
+    const id = genId('grp')
+    setGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'group', id, `Created group ${data.name || ''}`)
+    addToast('Group created')
+  }, [logAudit, addToast])
+  const updateGroup = useCallback((id: string, data: AnyRecord) => {
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g))
+    logAudit('update', 'group', id, 'Updated group')
+    addToast('Group updated')
+  }, [logAudit, addToast])
+  const deleteGroup = useCallback((id: string) => {
+    setGroups(prev => prev.filter(g => g.id !== id))
+    logAudit('delete', 'group', id, 'Deleted group')
+    addToast('Group deleted')
+  }, [logAudit, addToast])
+
+  // ---- Provisioning Rules ----
+  const addProvisioningRule = useCallback((data: AnyRecord) => {
+    const id = genId('pr')
+    setProvisioningRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'provisioning_rule', id, `Created provisioning rule ${data.name || ''}`)
+    addToast('Provisioning rule created')
+  }, [logAudit, addToast])
+  const updateProvisioningRule = useCallback((id: string, data: AnyRecord) => {
+    setProvisioningRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'provisioning_rule', id, 'Updated provisioning rule')
+    addToast('Provisioning rule updated')
+  }, [logAudit, addToast])
+  const deleteProvisioningRule = useCallback((id: string) => {
+    setProvisioningRules(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'provisioning_rule', id, 'Deleted provisioning rule')
+    addToast('Provisioning rule deleted')
+  }, [logAudit, addToast])
+
+  // ---- Encryption Policies ----
+  const addEncryptionPolicy = useCallback((data: AnyRecord) => {
+    const id = genId('ep')
+    setEncryptionPolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'encryption_policy', id, `Created encryption policy ${data.name || ''}`)
+    addToast('Encryption policy created')
+  }, [logAudit, addToast])
+  const updateEncryptionPolicy = useCallback((id: string, data: AnyRecord) => {
+    setEncryptionPolicies(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'encryption_policy', id, 'Updated encryption policy')
+    addToast('Encryption policy updated')
+  }, [logAudit, addToast])
+  const deleteEncryptionPolicy = useCallback((id: string) => {
+    setEncryptionPolicies(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'encryption_policy', id, 'Deleted encryption policy')
+    addToast('Encryption policy deleted')
+  }, [logAudit, addToast])
+
+  // ---- SCIM Providers ----
+  const addScimProvider = useCallback((data: AnyRecord) => {
+    const id = genId('scim')
+    setScimProviders(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'scim_provider', id, `Created SCIM provider ${data.name || ''}`)
+    addToast('SCIM provider created')
+  }, [logAudit, addToast])
+  const updateScimProvider = useCallback((id: string, data: AnyRecord) => {
+    setScimProviders(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'scim_provider', id, 'Updated SCIM provider')
+    addToast('SCIM provider updated')
+  }, [logAudit, addToast])
+  const deleteScimProvider = useCallback((id: string) => {
+    setScimProviders(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'scim_provider', id, 'Deleted SCIM provider')
+    addToast('SCIM provider deleted')
+  }, [logAudit, addToast])
+
+  // ---- Auto Detection Scans ----
+  const addAutoDetectionScan = useCallback((data: AnyRecord) => {
+    const id = genId('ad')
+    setAutoDetectionScans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'auto_detection_scan', id, `Created auto detection scan ${data.name || ''}`)
+    addToast('Auto detection scan created')
+  }, [logAudit, addToast])
+  const updateAutoDetectionScan = useCallback((id: string, data: AnyRecord) => {
+    setAutoDetectionScans(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'auto_detection_scan', id, 'Updated auto detection scan')
+    addToast('Auto detection scan updated')
+  }, [logAudit, addToast])
+  const deleteAutoDetectionScan = useCallback((id: string) => {
+    setAutoDetectionScans(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'auto_detection_scan', id, 'Deleted auto detection scan')
+    addToast('Auto detection scan deleted')
+  }, [logAudit, addToast])
+  const addShadowITDetection = useCallback((data: AnyRecord) => {
+    const id = genId('sit')
+    setShadowITDetections(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'shadow_it_detection', id, `Detected shadow IT: ${data.app_name || ''}`)
+    addToast('Shadow IT detection added')
+  }, [logAudit, addToast])
+  const updateShadowITDetection = useCallback((id: string, data: AnyRecord) => {
+    setShadowITDetections(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'shadow_it_detection', id, 'Updated shadow IT detection')
+    addToast('Shadow IT detection updated')
+  }, [logAudit, addToast])
+  const deleteShadowITDetection = useCallback((id: string) => {
+    setShadowITDetections(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'shadow_it_detection', id, 'Deleted shadow IT detection')
+    addToast('Shadow IT detection deleted')
+  }, [logAudit, addToast])
+
   // ---- Auth ----
   const login = useCallback(async (email: string, password: string): Promise<boolean | { requiresMFA: true; mfaToken: string }> => {
     // API auth with httpOnly cookie session
@@ -3752,6 +5015,66 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addComplianceAlert, updateComplianceAlert, dismissComplianceAlert,
     markNotificationRead, markAllNotificationsRead,
     updateOrg,
+    // GAP CLOSURE: New feature state & CRUD
+    signatureDocuments, signatureTemplates,
+    addSignatureDocument, updateSignatureDocument, deleteSignatureDocument,
+    addSignatureTemplate, updateSignatureTemplate,
+    i9Forms, everifyCases,
+    addI9Form, updateI9Form, addEVerifyCase, updateEVerifyCase,
+    peoConfigurations, coEmploymentRecords,
+    addPeoConfiguration, updatePeoConfiguration, addCoEmploymentRecord, updateCoEmploymentRecord,
+    sandboxEnvironments, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment,
+    chatChannels, chatMessages, chatParticipants,
+    addChatChannel, updateChatChannel, addChatMessage, updateChatMessage, deleteChatMessage,
+    interviewRecordings, interviewTranscriptions,
+    addInterviewRecording, updateInterviewRecording,
+    videoScreenTemplates, videoScreenInvites, videoScreenResponses,
+    addVideoScreenTemplate, updateVideoScreenTemplate,
+    addVideoScreenInvite, updateVideoScreenInvite,
+    addVideoScreenResponse, updateVideoScreenResponse,
+    corporateCards, cardTransactions,
+    addCorporateCard, updateCorporateCard, addCardTransaction, updateCardTransaction,
+    billPayments, billPaySchedules,
+    addBillPayment, updateBillPayment, addBillPaySchedule, updateBillPaySchedule,
+    travelRequests, travelBookings, travelPolicies,
+    addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy,
+    purchaseOrders, purchaseOrderItems, procurementRequests,
+    addPurchaseOrder, updatePurchaseOrder, addProcurementRequest, updateProcurementRequest,
+    currencyAccounts, fxTransactions,
+    addCurrencyAccount, updateCurrencyAccount, addFxTransaction,
+    retirementPlans, retirementEnrollments, retirementContributions,
+    addRetirementPlan, updateRetirementPlan, addRetirementEnrollment, updateRetirementEnrollment, addRetirementContribution,
+    carrierIntegrations, enrollmentFeeds,
+    addCarrierIntegration, updateCarrierIntegration, addEnrollmentFeed,
+    geofenceZones, geofenceEvents,
+    addGeofenceZone, updateGeofenceZone, deleteGeofenceZone, addGeofenceEvent,
+    idpConfigurations, samlApps, mfaPolicies,
+    addIdpConfiguration, updateIdpConfiguration, addSamlApp, updateSamlApp, addMfaPolicy, updateMfaPolicy,
+    deploymentProfiles, enrollmentTokens,
+    addDeploymentProfile, updateDeploymentProfile, addEnrollmentToken, updateEnrollmentToken,
+    passwordVaults, vaultItems,
+    addPasswordVault, updatePasswordVault, addVaultItem, updateVaultItem, deleteVaultItem,
+    deviceStoreCatalog, deviceOrders, buybackRequests,
+    addDeviceStoreCatalogItem, updateDeviceStoreCatalogItem, addDeviceOrder, updateDeviceOrder, addBuybackRequest, updateBuybackRequest,
+    customApps, appPages, appComponents, appDataSources,
+    addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage, addAppComponent, updateAppComponent, addAppDataSource, updateAppDataSource,
+    savedQueries, querySchedules,
+    addSavedQuery, updateSavedQuery, deleteSavedQuery, addQuerySchedule, updateQuerySchedule,
+    eorEntities, eorEmployees, eorContracts,
+    addEorEntity, updateEorEntity, addEorEmployee, updateEorEmployee, addEorContract, updateEorContract,
+    corContractors, corContracts, corPayments,
+    addCorContractor, updateCorContractor, addCorContract, updateCorContract, addCorPayment, updateCorPayment,
+    globalBenefitPlans, countryBenefitConfigs, globalBenefitEnrollments,
+    addGlobalBenefitPlan, updateGlobalBenefitPlan, addCountryBenefitConfig, updateCountryBenefitConfig, addGlobalBenefitEnrollment, updateGlobalBenefitEnrollment,
+    workersCompPolicies, workersCompClaims, workersCompClassCodes, workersCompAudits,
+    addWorkersCompPolicy, updateWorkersCompPolicy, addWorkersCompClaim, updateWorkersCompClaim,
+    addWorkersCompClassCode, updateWorkersCompClassCode, addWorkersCompAudit, updateWorkersCompAudit,
+    groups, addGroup, updateGroup, deleteGroup,
+    provisioningRules, addProvisioningRule, updateProvisioningRule, deleteProvisioningRule,
+    encryptionPolicies, addEncryptionPolicy, updateEncryptionPolicy, deleteEncryptionPolicy,
+    scimProviders, addScimProvider, updateScimProvider, deleteScimProvider,
+    autoDetectionScans, addAutoDetectionScan, updateAutoDetectionScan, deleteAutoDetectionScan,
+    shadowITDetections, addShadowITDetection, updateShadowITDetection, deleteShadowITDetection,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }

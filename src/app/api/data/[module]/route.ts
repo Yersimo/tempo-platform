@@ -52,6 +52,39 @@ const MODULE_CONFIG: Record<string, {
   workflows:          { table: schema.workflows, hasOrgId: true, defaultLimit: 20 },
   'workflow-templates':{ table: schema.workflowTemplates, hasOrgId: true, defaultLimit: 20 },
   'audit-log':        { table: schema.auditLog, hasOrgId: true, defaultLimit: 100 },
+  // Identity & Access
+  'idp-configurations': { table: schema.idpConfigurations, hasOrgId: true, defaultLimit: 20 },
+  'saml-apps':        { table: schema.samlApps, hasOrgId: true, defaultLimit: 50 },
+  'mfa-policies':     { table: schema.mfaPolicies, hasOrgId: true, defaultLimit: 20 },
+  // Chat
+  'chat-channels':    { table: schema.chatChannels, hasOrgId: true, defaultLimit: 50 },
+  'chat-messages':    { table: schema.chatMessages, hasOrgId: true, defaultLimit: 100 },
+  // Finance
+  'corporate-cards':  { table: schema.corporateCards, hasOrgId: true, defaultLimit: 50 },
+  'card-transactions':{ table: schema.cardTransactions, hasOrgId: true, defaultLimit: 100 },
+  'bill-payments':    { table: schema.billPayments, hasOrgId: true, defaultLimit: 50 },
+  'currency-accounts':{ table: schema.currencyAccounts, hasOrgId: true, defaultLimit: 20 },
+  'fx-transactions':  { table: schema.fxTransactions, hasOrgId: true, defaultLimit: 50 },
+  // Travel
+  'travel-requests':  { table: schema.travelRequests, hasOrgId: true, defaultLimit: 50 },
+  'travel-bookings':  { table: schema.travelBookings, hasOrgId: true, defaultLimit: 50 },
+  // Documents / E-Signature
+  'signature-documents': { table: schema.signatureDocuments, hasOrgId: true, defaultLimit: 50 },
+  'signature-templates': { table: schema.signatureTemplates, hasOrgId: true, defaultLimit: 20 },
+  // Workers' Compensation
+  'workers-comp-policies': { table: schema.workersCompPolicies, hasOrgId: true, defaultLimit: 20 },
+  'workers-comp-claims':   { table: schema.workersCompClaims, hasOrgId: true, defaultLimit: 50 },
+  'workers-comp-class-codes': { table: schema.workersCompClassCodes, hasOrgId: true, defaultLimit: 50 },
+  'workers-comp-audits':   { table: schema.workersCompAudits, hasOrgId: true, defaultLimit: 20 },
+  // Groups
+  'dynamic-groups':        { table: schema.dynamicGroups, hasOrgId: true, defaultLimit: 50 },
+  // Password Manager
+  'password-vaults':       { table: schema.passwordVaults, hasOrgId: true, defaultLimit: 20 },
+  'vault-items':           { table: schema.vaultItems, hasOrgId: true, defaultLimit: 100 },
+  // Bill Pay Schedules
+  'bill-pay-schedules':    { table: schema.billPaySchedules, hasOrgId: true, defaultLimit: 20 },
+  // Travel Policies
+  'travel-policies':       { table: schema.travelPolicies, hasOrgId: true, defaultLimit: 10 },
 }
 
 export async function GET(

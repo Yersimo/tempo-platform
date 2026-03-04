@@ -45,6 +45,38 @@ export const MODULE_SLUGS: Record<string, string> = {
   workflows: 'workflows',
   workflowTemplates: 'workflow-templates',
   auditLog: 'audit-log',
+  // Identity & Access
+  idpConfigurations: 'idp-configurations',
+  samlApps: 'saml-apps',
+  mfaPolicies: 'mfa-policies',
+  // Chat
+  chatChannels: 'chat-channels',
+  chatMessages: 'chat-messages',
+  // Finance
+  corporateCards: 'corporate-cards',
+  cardTransactions: 'card-transactions',
+  billPayments: 'bill-payments',
+  currencyAccounts: 'currency-accounts',
+  fxTransactions: 'fx-transactions',
+  // Travel
+  travelRequests: 'travel-requests',
+  travelBookings: 'travel-bookings',
+  // Documents
+  signatureDocuments: 'signature-documents',
+  signatureTemplates: 'signature-templates',
+  // Workers' Compensation
+  workersCompPolicies: 'workers-comp-policies',
+  workersCompClaims: 'workers-comp-claims',
+  workersCompClassCodes: 'workers-comp-class-codes',
+  workersCompAudits: 'workers-comp-audits',
+  // Groups
+  groups: 'dynamic-groups',
+  // Password Manager
+  passwordVaults: 'password-vaults',
+  vaultItems: 'vault-items',
+  // Bill Pay Schedules & Travel Policies
+  billPaySchedules: 'bill-pay-schedules',
+  travelPolicies: 'travel-policies',
 }
 
 // ---------------------------------------------------------------------------

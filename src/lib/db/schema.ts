@@ -33,7 +33,7 @@ export const benefitTypeEnum = pgEnum('benefit_type', ['medical', 'dental', 'vis
 export const expenseStatusEnum = pgEnum('expense_status', ['draft', 'submitted', 'pending_approval', 'approved', 'rejected', 'reimbursed'])
 export const jobTypeEnum = pgEnum('job_type', ['full_time', 'part_time', 'contract', 'internship'])
 export const jobStatusEnum = pgEnum('job_status', ['draft', 'open', 'closed', 'filled'])
-export const applicationStatusEnum = pgEnum('application_status', ['new', 'screening', 'interview', 'offer', 'hired', 'rejected', 'withdrawn'])
+export const applicationStatusEnum = pgEnum('application_status', ['new', 'screening', 'phone_screen', 'technical', 'onsite', 'panel', 'assessment', 'reference_check', 'hiring_manager_review', 'offer', 'hired', 'rejected', 'withdrawn'])
 export const deviceTypeEnum = pgEnum('device_type', ['laptop', 'desktop', 'phone', 'tablet', 'monitor', 'peripheral', 'other'])
 export const deviceStatusEnum = pgEnum('device_status', ['available', 'assigned', 'maintenance', 'retired'])
 export const itRequestTypeEnum = pgEnum('it_request_type', ['hardware', 'software', 'access', 'support', 'other'])
@@ -79,6 +79,8 @@ export const employees = pgTable('employees', {
   orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
   departmentId: uuid('department_id').references(() => departments.id),
   fullName: varchar('full_name', { length: 255 }).notNull(),
+  firstName: varchar('first_name', { length: 128 }),
+  lastName: varchar('last_name', { length: 128 }),
   email: varchar('email', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 50 }),
   avatarUrl: text('avatar_url'),
@@ -956,9 +958,11 @@ export const mfaMethodEnum = pgEnum('mfa_method', ['totp', 'sms', 'email'])
 export const mfaEnrollments = pgTable('mfa_enrollments', {
   id: uuid('id').defaultRandom().primaryKey(),
   employeeId: uuid('employee_id').notNull().references(() => employees.id),
+  userId: uuid('user_id').references(() => employees.id),
   method: mfaMethodEnum('method').notNull().default('totp'),
   secret: varchar('secret', { length: 255 }).notNull(),
   isVerified: boolean('is_verified').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
   backupCodes: jsonb('backup_codes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at'),
@@ -1775,7 +1779,7 @@ export const workflowStepTypeEnum = pgEnum('workflow_step_type', ['action', 'con
 export const workflowActionTypeEnum = pgEnum('workflow_action_type', [
   'send_email', 'send_slack', 'create_task', 'assign_app', 'revoke_app',
   'assign_device', 'update_field', 'notify_manager', 'add_to_group',
-  'schedule_meeting', 'create_review', 'enroll_course',
+  'schedule_meeting', 'create_review', 'enroll_course', 'trigger_webhook',
 ])
 
 export const workflowRunStatusEnum = pgEnum('workflow_run_status', ['running', 'completed', 'failed', 'cancelled'])
@@ -2057,4 +2061,1445 @@ export const openEndedResponses = pgTable('open_ended_responses', {
   sentiment: sentimentEnum('sentiment'),
   analyzedAt: timestamp('analyzed_at'),
 
+})
+
+// ============================================================
+// E-SIGNATURES
+// ============================================================
+
+export const signatureRequestStatusEnum = pgEnum('signature_request_status', ['draft', 'pending', 'partially_signed', 'completed', 'declined', 'expired', 'cancelled'])
+export const signatureStatusEnum = pgEnum('signature_status', ['draft', 'pending', 'in_progress', 'completed', 'declined', 'expired', 'voided'])
+export const signingFlowEnum = pgEnum('signing_flow', ['sequential', 'parallel'])
+export const signatureAuditActionEnum = pgEnum('signature_audit_action', ['created', 'sent', 'viewed', 'signed', 'declined', 'voided', 'reminded', 'expired', 'downloaded'])
+export const signerStatusEnum = pgEnum('signer_status', ['pending', 'sent', 'viewed', 'signed', 'declined'])
+
+export const signatureDocuments = pgTable('signature_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  documentUrl: text('document_url'),
+  status: signatureStatusEnum('status').default('draft').notNull(),
+  signingFlow: signingFlowEnum('signing_flow').default('sequential').notNull(),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  templateId: uuid('template_id'),
+  expiresAt: timestamp('expires_at'),
+  completedAt: timestamp('completed_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const signatureSigners = pgTable('signature_signers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').references(() => signatureDocuments.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id),
+  email: varchar('email', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }),
+  externalEmail: varchar('external_email', { length: 255 }),
+  externalName: varchar('external_name', { length: 255 }),
+  role: varchar('role', { length: 50 }).default('signer').notNull(),
+  signingOrder: integer('signing_order').default(0).notNull(),
+  orderIndex: integer('order_index').default(0).notNull(),
+  status: signerStatusEnum('status').default('pending').notNull(),
+  signedAt: timestamp('signed_at'),
+  signatureDataUrl: text('signature_data_url'),
+  ipAddress: varchar('ip_address', { length: 50 }),
+  userAgent: text('user_agent'),
+  signatureImageUrl: text('signature_image_url'),
+  accessToken: varchar('access_token', { length: 255 }),
+  declineReason: text('decline_reason'),
+  declinedAt: timestamp('declined_at'),
+  viewedAt: timestamp('viewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const signatureTemplates = pgTable('signature_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  documentUrl: text('document_url'),
+  signingFlow: signingFlowEnum('signing_flow').default('sequential').notNull(),
+  signerRoles: jsonb('signer_roles'),
+  fieldPlacements: jsonb('field_placements'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdBy: uuid('created_by').references(() => employees.id),
+  usageCount: integer('usage_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const signatureAuditTrail = pgTable('signature_audit_trail', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').references(() => signatureDocuments.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  actorId: uuid('actor_id').references(() => employees.id),
+  actorEmail: varchar('actor_email', { length: 255 }),
+  actorName: varchar('actor_name', { length: 255 }),
+  ipAddress: varchar('ip_address', { length: 50 }),
+  userAgent: text('user_agent'),
+  details: text('details'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+})
+
+// ============================================================
+// E-VERIFY / I-9
+// ============================================================
+
+export const i9StatusEnum = pgEnum('i9_status', ['not_started', 'section1_pending', 'section1_complete', 'section2_pending', 'section2_complete', 'everify_pending', 'everify_submitted', 'verified', 'tnc_issued', 'tnc_contested', 'final_nonconfirmation', 'closed', 'reverification_needed', 'complete', 'expired'])
+export const everifyStatusEnum = pgEnum('everify_status', ['not_submitted', 'pending', 'initial_case_created', 'employment_authorized', 'tentative_non_confirmation', 'case_closed', 'final_non_confirmation'])
+export const i9DocumentCategoryEnum = pgEnum('i9_document_category', ['list_a', 'list_b', 'list_c'])
+export const everifyCaseStatusEnum = pgEnum('everify_case_status', ['open', 'initial_verification', 'employment_authorized', 'tentative_nonconfirmation', 'case_in_continuance', 'close_case_authorized', 'close_case_unauthorized', 'final_nonconfirmation'])
+
+export const i9Forms = pgTable('i9_forms', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  status: i9StatusEnum('status').default('not_started').notNull(),
+  hireDate: date('hire_date').notNull(),
+  startDate: date('start_date'),
+  section1CompletedAt: timestamp('section1_completed_at'),
+  section2CompletedAt: timestamp('section2_completed_at'),
+  section1Data: jsonb('section1_data'),
+  section2Data: jsonb('section2_data'),
+  verifiedBy: uuid('verified_by').references(() => employees.id),
+  reverificationDate: date('reverification_date'),
+  reverificationDocType: varchar('reverification_doc_type', { length: 255 }),
+  reverificationDocNumber: varchar('reverification_doc_number', { length: 255 }),
+  reverificationExpirationDate: date('reverification_expiration_date'),
+  completedAt: timestamp('completed_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const everifyCases = pgTable('everify_cases', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  i9FormId: uuid('i9_form_id').references(() => i9Forms.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  caseNumber: varchar('case_number', { length: 100 }),
+  status: everifyCaseStatusEnum('status').default('open').notNull(),
+  submittedAt: timestamp('submitted_at'),
+  submittedBy: uuid('submitted_by').references(() => employees.id),
+  resolvedAt: timestamp('resolved_at'),
+  verificationResult: varchar('verification_result', { length: 100 }),
+  tncIssueDate: date('tnc_issue_date'),
+  tncReferralDate: date('tnc_referral_date'),
+  tncContestDeadline: date('tnc_contest_deadline'),
+  employeeContesting: boolean('employee_contesting').default(false).notNull(),
+  closedAt: timestamp('closed_at'),
+  closureReason: text('closure_reason'),
+  photoMatchResult: varchar('photo_match_result', { length: 50 }),
+  responseDetails: jsonb('response_details'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// PEO / CO-EMPLOYMENT
+// ============================================================
+
+export const peoStatusEnum = pgEnum('peo_status', ['active', 'inactive', 'pending', 'pending_setup', 'suspended', 'terminated'])
+export const peoServiceEnum = pgEnum('peo_service', ['payroll', 'benefits', 'workers_comp', 'hr_compliance', 'tax_filing', 'risk_management'])
+export const peoServiceTypeEnum = pgEnum('peo_service_type', ['full_peo', 'aso', 'payroll_only', 'benefits_only', 'compliance_only'])
+export const coEmploymentStatusEnum = pgEnum('co_employment_status', ['pending', 'active', 'terminated', 'transferred'])
+
+export const peoConfigurations = pgTable('peo_configurations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  peoProviderName: varchar('peo_provider_name', { length: 255 }).notNull(),
+  status: peoStatusEnum('status').default('pending').notNull(),
+  serviceType: peoServiceTypeEnum('service_type').default('full_peo').notNull(),
+  contractStartDate: date('contract_start_date').notNull(),
+  contractEndDate: date('contract_end_date'),
+  fein: varchar('fein', { length: 20 }),
+  stateRegistrations: jsonb('state_registrations'),
+  services: jsonb('services'),
+  adminFeeStructure: jsonb('admin_fee_structure'),
+  workersCompPolicy: jsonb('workers_comp_policy'),
+  payrollSchedule: varchar('payroll_schedule', { length: 50 }),
+  primaryContactName: varchar('primary_contact_name', { length: 255 }),
+  primaryContactEmail: varchar('primary_contact_email', { length: 255 }),
+  primaryContactPhone: varchar('primary_contact_phone', { length: 50 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const coEmploymentRecords = pgTable('co_employment_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  peoConfigId: uuid('peo_config_id').references(() => peoConfigurations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  enrolledAt: date('enrolled_at').notNull(),
+  terminatedAt: date('terminated_at'),
+  status: varchar('status', { length: 50 }).default('active').notNull(),
+  workersCompCode: varchar('workers_comp_code', { length: 50 }),
+  stateUnemploymentId: varchar('state_unemployment_id', { length: 100 }),
+  notes: text('notes'),
+})
+
+// ============================================================
+// SANDBOX ENVIRONMENT
+// ============================================================
+
+export const sandboxStatusEnum = pgEnum('sandbox_status', ['provisioning', 'active', 'paused', 'expired', 'deleted'])
+export const sandboxSnapshotStatusEnum = pgEnum('sandbox_snapshot_status', ['creating', 'ready', 'restoring', 'failed'])
+
+export const sandboxEnvironments = pgTable('sandbox_environments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  status: sandboxStatusEnum('status').default('provisioning').notNull(),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  sourceType: varchar('source_type', { length: 50 }).default('empty').notNull(),
+  sourceSnapshotId: uuid('source_snapshot_id'),
+  modules: jsonb('modules'),
+  dataMaskingConfig: jsonb('data_masking_config'),
+  connectionString: text('connection_string'),
+  databaseName: varchar('database_name', { length: 255 }),
+  expiresAt: timestamp('expires_at'),
+  pausedAt: timestamp('paused_at'),
+  lastAccessedAt: timestamp('last_accessed_at'),
+  storageUsedMb: integer('storage_used_mb').default(0).notNull(),
+  maxStorageMb: integer('max_storage_mb').default(1024).notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const sandboxSnapshots = pgTable('sandbox_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  sandboxId: uuid('sandbox_id').references(() => sandboxEnvironments.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  status: sandboxSnapshotStatusEnum('status').default('creating').notNull(),
+  sizeBytes: integer('size_bytes').default(0).notNull(),
+  snapshotData: jsonb('snapshot_data'),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// BUILT-IN CHAT / MESSAGING
+// ============================================================
+
+export const chatChannelTypeEnum = pgEnum('chat_channel_type', ['direct', 'group', 'department', 'announcement', 'project', 'public'])
+export const messageStatusEnum = pgEnum('message_status', ['sent', 'delivered', 'read'])
+export const chatMessageTypeEnum = pgEnum('chat_message_type', ['text', 'file', 'system', 'announcement'])
+
+export const chatChannels = pgTable('chat_channels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }),
+  type: chatChannelTypeEnum('type').default('group').notNull(),
+  description: text('description'),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  isArchived: boolean('is_archived').default(false).notNull(),
+  lastMessageAt: timestamp('last_message_at'),
+  departmentId: uuid('department_id').references(() => departments.id),
+  pinnedMessageIds: jsonb('pinned_message_ids'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const chatParticipants = pgTable('chat_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channelId: uuid('channel_id').references(() => chatChannels.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  role: varchar('role', { length: 20 }).default('member').notNull(), // owner | admin | member
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  mutedUntil: timestamp('muted_until'),
+  lastReadAt: timestamp('last_read_at'),
+})
+
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channelId: uuid('channel_id').references(() => chatChannels.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  senderId: uuid('sender_id').references(() => employees.id).notNull(),
+  type: chatMessageTypeEnum('type').default('text').notNull(),
+  content: text('content').notNull(),
+  threadId: uuid('thread_id'),
+  parentMessageId: uuid('parent_message_id'),
+  isEdited: boolean('is_edited').default(false).notNull(),
+  editedAt: timestamp('edited_at'),
+  isDeleted: boolean('is_deleted').default(false).notNull(),
+  deletedAt: timestamp('deleted_at'),
+  isPinned: boolean('is_pinned').default(false).notNull(),
+  pinnedAt: timestamp('pinned_at'),
+  pinnedBy: uuid('pinned_by').references(() => employees.id),
+  fileUrl: text('file_url'),
+  fileName: varchar('file_name', { length: 255 }),
+  fileSize: integer('file_size'),
+  fileMimeType: varchar('file_mime_type', { length: 100 }),
+  mentions: jsonb('mentions'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// AI INTERVIEW RECORDING & TRANSCRIPTION
+// ============================================================
+
+export const interviewRecordingStatusEnum = pgEnum('interview_recording_status', ['scheduled', 'recording', 'processing', 'completed', 'failed'])
+
+export const interviewRecordings = pgTable('interview_recordings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'cascade' }).notNull(),
+  interviewType: varchar('interview_type', { length: 100 }).notNull(),
+  interviewerIds: jsonb('interviewer_ids').notNull(), // string[]
+  status: interviewRecordingStatusEnum('status').default('scheduled').notNull(),
+  recordingUrl: text('recording_url'),
+  duration: integer('duration'), // seconds
+  scheduledAt: timestamp('scheduled_at'),
+  recordedAt: timestamp('recorded_at'),
+  metadata: jsonb('metadata'), // { platform, meetingId, resolution, fileSize }
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const interviewTranscriptions = pgTable('interview_transcriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  recordingId: uuid('recording_id').references(() => interviewRecordings.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  fullText: text('full_text'),
+  segments: jsonb('segments'), // Array<{ speaker, startTime, endTime, text, confidence }>
+  summary: text('summary'),
+  keyTopics: jsonb('key_topics'), // string[]
+  sentiment: jsonb('sentiment'), // { overall, perSpeaker: Record<string, score> }
+  aiScorecard: jsonb('ai_scorecard'), // { technicalSkills, communication, problemSolving, cultureFit, overall, strengths, concerns }
+  language: varchar('language', { length: 20 }).default('en').notNull(),
+  processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// AI VIDEO SCREENS (ONE-WAY)
+// ============================================================
+
+export const videoScreenStatusEnum = pgEnum('video_screen_status', ['draft', 'sent', 'in_progress', 'completed', 'expired', 'reviewed'])
+
+export const videoScreenTemplates = pgTable('video_screen_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  questions: jsonb('questions').notNull(), // Array<{ text, thinkTime, responseTime, maxRetakes }>
+  introVideoUrl: text('intro_video_url'),
+  brandingConfig: jsonb('branding_config'), // { logoUrl, primaryColor, welcomeMessage }
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const videoScreenInvites = pgTable('video_screen_invites', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'cascade' }).notNull(),
+  templateId: uuid('template_id').references(() => videoScreenTemplates.id).notNull(),
+  status: videoScreenStatusEnum('status').default('draft').notNull(),
+  accessToken: varchar('access_token', { length: 255 }).notNull(),
+  sentAt: timestamp('sent_at'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const videoScreenResponses = pgTable('video_screen_responses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  inviteId: uuid('invite_id').references(() => videoScreenInvites.id, { onDelete: 'cascade' }).notNull(),
+  questionIndex: integer('question_index').notNull(),
+  videoUrl: text('video_url'),
+  thumbnailUrl: text('thumbnail_url'),
+  duration: integer('duration'), // seconds
+  transcription: text('transcription'),
+  aiAnalysis: jsonb('ai_analysis'), // { relevance, clarity, confidence, sentiment, keywords, score }
+  reviewerNotes: text('reviewer_notes'),
+  reviewerRating: integer('reviewer_rating'), // 1-5
+  reviewedBy: uuid('reviewed_by').references(() => employees.id),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// CORPORATE CARDS
+// ============================================================
+
+export const cardStatusEnum = pgEnum('card_status', ['active', 'frozen', 'cancelled', 'pending_activation', 'expired'])
+export const cardTypeEnum = pgEnum('card_type', ['physical', 'virtual'])
+export const cardTransactionStatusEnum = pgEnum('card_transaction_status', ['pending', 'posted', 'declined', 'refunded', 'disputed'])
+
+export const corporateCards = pgTable('corporate_cards', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  cardType: cardTypeEnum('card_type').default('virtual').notNull(),
+  last4: varchar('last_4', { length: 4 }).notNull(),
+  cardName: varchar('card_name', { length: 255 }).notNull(),
+  status: cardStatusEnum('status').default('pending_activation').notNull(),
+  spendLimit: integer('spend_limit').notNull(), // cents
+  monthlyLimit: integer('monthly_limit'), // cents
+  currentBalance: integer('current_balance').default(0).notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  allowedCategories: jsonb('allowed_categories'), // string[] or null for all
+  expiryMonth: integer('expiry_month'),
+  expiryYear: integer('expiry_year'),
+  cashbackRate: real('cashback_rate').default(1.75), // percent
+  totalCashback: integer('total_cashback').default(0).notNull(),
+  issuedAt: timestamp('issued_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const cardTransactions = pgTable('card_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  cardId: uuid('card_id').references(() => corporateCards.id, { onDelete: 'cascade' }).notNull(),
+  amount: integer('amount').notNull(), // cents
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  merchantName: varchar('merchant_name', { length: 255 }).notNull(),
+  merchantCategory: varchar('merchant_category', { length: 100 }),
+  mcc: varchar('mcc', { length: 10 }), // Merchant Category Code
+  status: cardTransactionStatusEnum('status').default('pending').notNull(),
+  receiptUrl: text('receipt_url'),
+  receiptMatched: boolean('receipt_matched').default(false).notNull(),
+  expenseReportId: uuid('expense_report_id').references(() => expenseReports.id),
+  cashbackAmount: integer('cashback_amount').default(0),
+  transactedAt: timestamp('transacted_at').notNull(),
+  postedAt: timestamp('posted_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const cardSpendLimits = pgTable('card_spend_limits', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  cardId: uuid('card_id').references(() => corporateCards.id, { onDelete: 'cascade' }).notNull(),
+  category: varchar('category', { length: 100 }),
+  dailyLimit: integer('daily_limit'),
+  weeklyLimit: integer('weekly_limit'),
+  monthlyLimit: integer('monthly_limit'),
+  perTransactionLimit: integer('per_transaction_limit'),
+  isActive: boolean('is_active').default(true).notNull(),
+})
+
+// ============================================================
+// BILL PAY
+// ============================================================
+
+export const billPayStatusEnum = pgEnum('bill_pay_status', ['draft', 'scheduled', 'processing', 'paid', 'failed', 'cancelled'])
+export const billPayMethodEnum = pgEnum('bill_pay_method', ['ach', 'wire', 'check', 'virtual_card'])
+
+export const billPayments = pgTable('bill_payments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  vendorId: uuid('vendor_id').references(() => vendors.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => invoices.id),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  method: billPayMethodEnum('method').default('ach').notNull(),
+  status: billPayStatusEnum('status').default('draft').notNull(),
+  scheduledDate: date('scheduled_date'),
+  paidDate: date('paid_date'),
+  referenceNumber: varchar('reference_number', { length: 255 }),
+  bankAccountLast4: varchar('bank_account_last4', { length: 4 }),
+  routingNumber: varchar('routing_number', { length: 20 }),
+  checkNumber: varchar('check_number', { length: 50 }),
+  memo: text('memo'),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  approvedAt: timestamp('approved_at'),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const billPaySchedules = pgTable('bill_pay_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  vendorId: uuid('vendor_id').references(() => vendors.id).notNull(),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  method: billPayMethodEnum('method').default('ach').notNull(),
+  frequency: varchar('frequency', { length: 50 }).notNull(), // weekly | biweekly | monthly | quarterly
+  nextPaymentDate: date('next_payment_date'),
+  endDate: date('end_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// TRAVEL MANAGEMENT
+// ============================================================
+
+export const travelRequestStatusEnum = pgEnum('travel_request_status', ['draft', 'pending_approval', 'approved', 'booked', 'in_progress', 'completed', 'cancelled'])
+export const travelBookingTypeEnum = pgEnum('travel_booking_type', ['flight', 'hotel', 'car_rental', 'train', 'other'])
+export const travelBookingStatusEnum = pgEnum('travel_booking_status', ['pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'refunded'])
+
+export const travelPolicies = pgTable('travel_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  maxFlightClass: varchar('max_flight_class', { length: 50 }).default('economy').notNull(), // economy | premium_economy | business | first
+  maxHotelRate: integer('max_hotel_rate'), // per night, cents
+  maxCarClass: varchar('max_car_class', { length: 50 }),
+  maxDailyMeals: integer('max_daily_meals'), // cents
+  advanceBookingDays: integer('advance_booking_days').default(14),
+  requiresApproval: boolean('requires_approval').default(true).notNull(),
+  approvalThreshold: integer('approval_threshold'), // auto-approve below this amount
+  preferredAirlines: jsonb('preferred_airlines'), // string[]
+  preferredHotels: jsonb('preferred_hotels'), // string[]
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const travelRequests = pgTable('travel_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  purpose: text('purpose').notNull(),
+  destination: varchar('destination', { length: 255 }).notNull(),
+  departureDate: date('departure_date').notNull(),
+  returnDate: date('return_date').notNull(),
+  estimatedCost: integer('estimated_cost'), // cents
+  actualCost: integer('actual_cost'),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  status: travelRequestStatusEnum('status').default('draft').notNull(),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  approvedAt: timestamp('approved_at'),
+  policyId: uuid('policy_id').references(() => travelPolicies.id),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const travelBookings = pgTable('travel_bookings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  travelRequestId: uuid('travel_request_id').references(() => travelRequests.id, { onDelete: 'cascade' }).notNull(),
+  type: travelBookingTypeEnum('type').notNull(),
+  status: travelBookingStatusEnum('status').default('pending').notNull(),
+  provider: varchar('provider', { length: 255 }),
+  confirmationNumber: varchar('confirmation_number', { length: 255 }),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  details: jsonb('details'), // { airline, flightNumber, departure, arrival, class } | { hotel, roomType, checkIn, checkOut } | { company, vehicleClass, pickup, dropoff }
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date'),
+  cancellationPolicy: text('cancellation_policy'),
+  bookedAt: timestamp('booked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// PROCUREMENT / PURCHASE ORDERS
+// ============================================================
+
+export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', ['draft', 'pending_approval', 'approved', 'sent_to_vendor', 'partially_received', 'received', 'closed', 'cancelled'])
+export const procurementRequestStatusEnum = pgEnum('procurement_request_status', ['submitted', 'under_review', 'approved', 'rejected', 'fulfilled'])
+export const procurementPriorityEnum = pgEnum('procurement_priority', ['low', 'medium', 'high', 'urgent'])
+
+export const purchaseOrders = pgTable('purchase_orders', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  poNumber: varchar('po_number', { length: 50 }).notNull(),
+  vendorId: uuid('vendor_id').references(() => vendors.id).notNull(),
+  status: purchaseOrderStatusEnum('status').default('draft').notNull(),
+  totalAmount: integer('total_amount').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  shippingAddress: text('shipping_address'),
+  billingAddress: text('billing_address'),
+  terms: text('terms'),
+  deliveryDate: date('delivery_date'),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  approvedAt: timestamp('approved_at'),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const purchaseOrderItems = pgTable('purchase_order_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  poId: uuid('po_id').references(() => purchaseOrders.id, { onDelete: 'cascade' }).notNull(),
+  description: varchar('description', { length: 500 }).notNull(),
+  sku: varchar('sku', { length: 100 }),
+  quantity: integer('quantity').notNull(),
+  unitPrice: integer('unit_price').notNull(), // cents
+  totalPrice: integer('total_price').notNull(),
+  receivedQuantity: integer('received_quantity').default(0).notNull(),
+  category: varchar('category', { length: 100 }),
+})
+
+export const procurementRequests = pgTable('procurement_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  requesterId: uuid('requester_id').references(() => employees.id).notNull(),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  estimatedAmount: integer('estimated_amount'),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  priority: procurementPriorityEnum('priority').default('medium').notNull(),
+  status: procurementRequestStatusEnum('status').default('submitted').notNull(),
+  departmentId: uuid('department_id').references(() => departments.id),
+  purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id),
+  neededBy: date('needed_by'),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// MULTI-CURRENCY SPEND (ENHANCED)
+// ============================================================
+
+export const currencyAccounts = pgTable('currency_accounts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  balance: integer('balance').default(0).notNull(), // in minor units (cents, pence, etc.)
+  accountName: varchar('account_name', { length: 255 }),
+  bankName: varchar('bank_name', { length: 255 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  iban: varchar('iban', { length: 50 }),
+  swiftCode: varchar('swift_code', { length: 20 }),
+  isDefault: boolean('is_default').default(false).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const fxTransactions = pgTable('fx_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  fromCurrency: varchar('from_currency', { length: 10 }).notNull(),
+  toCurrency: varchar('to_currency', { length: 10 }).notNull(),
+  fromAmount: integer('from_amount').notNull(),
+  toAmount: integer('to_amount').notNull(),
+  exchangeRate: real('exchange_rate').notNull(),
+  fee: integer('fee').default(0),
+  purpose: varchar('purpose', { length: 255 }),
+  reference: varchar('reference', { length: 255 }),
+  executedAt: timestamp('executed_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// 401(K) ADMINISTRATION
+// ============================================================
+
+export const retirementPlanTypeEnum = pgEnum('retirement_plan_type', ['traditional_401k', 'roth_401k', 'safe_harbor_401k', '403b', '457b', 'simple_ira', 'sep_ira'])
+export const retirementPlanStatusEnum = pgEnum('retirement_plan_status', ['active', 'frozen', 'terminated'])
+export const vestingScheduleTypeEnum = pgEnum('vesting_schedule_type', ['immediate', 'cliff', 'graded', 'custom'])
+
+export const retirementPlans = pgTable('retirement_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: retirementPlanTypeEnum('type').notNull(),
+  status: retirementPlanStatusEnum('status').default('active').notNull(),
+  provider: varchar('provider', { length: 255 }).notNull(),
+  planNumber: varchar('plan_number', { length: 100 }),
+  employeeContributionLimit: integer('employee_contribution_limit').notNull(), // annual max, cents
+  catchUpContributionLimit: integer('catch_up_contribution_limit'), // for 50+ employees
+  employerMatchPercent: real('employer_match_percent').default(0), // e.g. 100 = 100% match
+  employerMatchCap: real('employer_match_cap').default(0), // max % of salary matched
+  vestingType: vestingScheduleTypeEnum('vesting_type').default('graded').notNull(),
+  vestingSchedule: jsonb('vesting_schedule'), // Array<{ year, percent }> e.g. [{1, 20}, {2, 40}, {3, 60}, {4, 80}, {5, 100}]
+  autoEnroll: boolean('auto_enroll').default(false).notNull(),
+  autoEnrollPercent: real('auto_enroll_percent'),
+  autoEscalate: boolean('auto_escalate').default(false).notNull(),
+  escalationPercent: real('escalation_percent'),
+  escalationCap: real('escalation_cap'),
+  effectiveDate: date('effective_date'),
+  terminationDate: date('termination_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const retirementContributions = pgTable('retirement_contributions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  planId: uuid('plan_id').references(() => retirementPlans.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  payrollRunId: uuid('payroll_run_id').references(() => payrollRuns.id),
+  employeeAmount: integer('employee_amount').notNull(),
+  employerAmount: integer('employer_amount').notNull(),
+  employeePercent: real('employee_percent').notNull(),
+  isPreTax: boolean('is_pre_tax').default(true).notNull(),
+  ytdEmployeeTotal: integer('ytd_employee_total').default(0).notNull(),
+  ytdEmployerTotal: integer('ytd_employer_total').default(0).notNull(),
+  vestingPercent: real('vesting_percent').default(0).notNull(),
+  period: varchar('period', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const retirementEnrollments = pgTable('retirement_enrollments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  planId: uuid('plan_id').references(() => retirementPlans.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  contributionPercent: real('contribution_percent').notNull(),
+  isRoth: boolean('is_roth').default(false).notNull(),
+  enrolledAt: date('enrolled_at').notNull(),
+  terminatedAt: date('terminated_at'),
+  beneficiaries: jsonb('beneficiaries'), // Array<{ name, relationship, percent }>
+  investmentElections: jsonb('investment_elections'), // Array<{ fundId, fundName, percent }>
+})
+
+// ============================================================
+// CARRIER INTEGRATION TRACKING
+// ============================================================
+
+export const carrierSyncStatusEnum = pgEnum('carrier_sync_status', ['connected', 'syncing', 'error', 'disconnected'])
+export const enrollmentFeedStatusEnum = pgEnum('enrollment_feed_status', ['pending', 'sent', 'acknowledged', 'error', 'rejected'])
+
+export const carrierIntegrations = pgTable('carrier_integrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  carrierName: varchar('carrier_name', { length: 255 }).notNull(),
+  carrierId: varchar('carrier_id', { length: 100 }),
+  planIds: jsonb('plan_ids'), // benefit plan IDs linked to this carrier
+  connectionType: varchar('connection_type', { length: 50 }).notNull(), // edi_834 | api | sftp | manual
+  syncStatus: carrierSyncStatusEnum('sync_status').default('disconnected').notNull(),
+  lastSyncAt: timestamp('last_sync_at'),
+  lastSyncStatus: varchar('last_sync_status', { length: 50 }),
+  config: jsonb('config'), // { endpoint, credentials, format, schedule }
+  contactEmail: varchar('contact_email', { length: 255 }),
+  contactPhone: varchar('contact_phone', { length: 50 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const enrollmentFeeds = pgTable('enrollment_feeds', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  carrierId: uuid('carrier_id').references(() => carrierIntegrations.id, { onDelete: 'cascade' }).notNull(),
+  feedType: varchar('feed_type', { length: 50 }).notNull(), // full | changes_only
+  status: enrollmentFeedStatusEnum('status').default('pending').notNull(),
+  recordCount: integer('record_count').default(0).notNull(),
+  errorCount: integer('error_count').default(0),
+  errors: jsonb('errors'), // Array<{ employeeId, field, message }>
+  fileUrl: text('file_url'),
+  sentAt: timestamp('sent_at'),
+  acknowledgedAt: timestamp('acknowledged_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// GEOFENCING
+// ============================================================
+
+export const geofenceTypeEnum = pgEnum('geofence_type', ['office', 'warehouse', 'job_site', 'client_location', 'restricted'])
+export const geofenceEventTypeEnum = pgEnum('geofence_event_type', ['entry', 'exit', 'clock_in', 'clock_out', 'violation'])
+
+export const geofenceZones = pgTable('geofence_zones', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: geofenceTypeEnum('type').default('office').notNull(),
+  latitude: real('latitude').notNull(),
+  longitude: real('longitude').notNull(),
+  radiusMeters: integer('radius_meters').notNull(),
+  address: text('address'),
+  isActive: boolean('is_active').default(true).notNull(),
+  requireClockInWithin: boolean('require_clock_in_within').default(false).notNull(),
+  alertOnViolation: boolean('alert_on_violation').default(true).notNull(),
+  assignedDepartments: jsonb('assigned_departments'), // string[] department IDs
+  assignedEmployees: jsonb('assigned_employees'), // string[] employee IDs
+  operatingHours: jsonb('operating_hours'), // { [day]: { start, end } }
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const geofenceEvents = pgTable('geofence_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  zoneId: uuid('zone_id').references(() => geofenceZones.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  eventType: geofenceEventTypeEnum('event_type').notNull(),
+  latitude: real('latitude').notNull(),
+  longitude: real('longitude').notNull(),
+  accuracy: real('accuracy'), // GPS accuracy in meters
+  distanceFromCenter: real('distance_from_center'), // meters
+  isWithinZone: boolean('is_within_zone').notNull(),
+  deviceInfo: jsonb('device_info'), // { platform, model, osVersion }
+  timeEntryId: uuid('time_entry_id').references(() => timeEntries.id),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+})
+
+// ============================================================
+// FULL IDENTITY PROVIDER (IdP) - SSO/SAML/MFA
+// ============================================================
+
+export const idpProtocolEnum = pgEnum('idp_protocol', ['saml', 'oidc', 'ldap', 'scim'])
+export const idpAppStatusEnum = pgEnum('idp_app_status', ['active', 'inactive', 'pending_setup'])
+export const mfaPolicyEnforcementEnum = pgEnum('mfa_policy_enforcement', ['required', 'optional', 'disabled'])
+
+export const idpConfigurations = pgTable('idp_configurations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  isEnabled: boolean('is_enabled').default(false).notNull(),
+  defaultProtocol: idpProtocolEnum('default_protocol').default('saml').notNull(),
+  entityId: varchar('entity_id', { length: 500 }).notNull(),
+  ssoUrl: varchar('sso_url', { length: 500 }).notNull(),
+  sloUrl: varchar('slo_url', { length: 500 }),
+  certificate: text('certificate').notNull(),
+  privateKey: text('private_key'),
+  metadataUrl: varchar('metadata_url', { length: 500 }),
+  sessionTimeout: integer('session_timeout').default(480), // minutes
+  forceReauth: boolean('force_reauth').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const samlApps = pgTable('saml_apps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  idpConfigId: uuid('idp_config_id').references(() => idpConfigurations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  logo: varchar('logo', { length: 500 }),
+  protocol: idpProtocolEnum('protocol').default('saml').notNull(),
+  spEntityId: varchar('sp_entity_id', { length: 500 }),
+  acsUrl: varchar('acs_url', { length: 500 }),
+  sloUrl: varchar('slo_url', { length: 500 }),
+  nameIdFormat: varchar('name_id_format', { length: 255 }).default('email'),
+  attributeMappings: jsonb('attribute_mappings'), // Record<string, string>
+  status: idpAppStatusEnum('status').default('pending_setup').notNull(),
+  assignedGroups: jsonb('assigned_groups'), // string[] department/role
+  loginCount: integer('login_count').default(0),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const mfaPolicies = pgTable('mfa_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  enforcement: mfaPolicyEnforcementEnum('enforcement').default('required').notNull(),
+  allowedMethods: jsonb('allowed_methods').notNull(), // ['totp', 'sms', 'email', 'webauthn', 'push']
+  gracePeriodhours: integer('grace_period_hours').default(0),
+  rememberDeviceDays: integer('remember_device_days').default(30),
+  appliesTo: policyAppliesToEnum('applies_to').default('all').notNull(),
+  targetValue: varchar('target_value', { length: 255 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ZERO-TOUCH DEPLOYMENT
+// ============================================================
+
+export const deploymentProfileStatusEnum = pgEnum('deployment_profile_status', ['active', 'draft', 'archived'])
+
+export const deploymentProfiles = pgTable('deployment_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  platform: managedDevicePlatformEnum('platform').notNull(),
+  status: deploymentProfileStatusEnum('status').default('draft').notNull(),
+  config: jsonb('config').notNull(), // { wifiConfig, vpnConfig, securitySettings, apps, scripts, wallpaper, ... }
+  appsToInstall: jsonb('apps_to_install'), // string[] app IDs from catalog
+  securityPolicyIds: jsonb('security_policy_ids'), // string[] security policy IDs
+  welcomeMessage: text('welcome_message'),
+  skipSetupSteps: jsonb('skip_setup_steps'), // string[] e.g. ['location_services', 'siri', 'apple_pay']
+  isDefault: boolean('is_default').default(false).notNull(),
+  deviceCount: integer('device_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const deviceEnrollmentTokens = pgTable('device_enrollment_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  profileId: uuid('profile_id').references(() => deploymentProfiles.id, { onDelete: 'cascade' }).notNull(),
+  token: varchar('token', { length: 500 }).notNull(),
+  assignedTo: uuid('assigned_to').references(() => employees.id),
+  isUsed: boolean('is_used').default(false).notNull(),
+  usedAt: timestamp('used_at'),
+  deviceId: uuid('device_id').references(() => managedDevices.id),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// PASSWORD MANAGER
+// ============================================================
+
+export const vaultItemTypeEnum = pgEnum('vault_item_type', ['login', 'secure_note', 'credit_card', 'identity', 'ssh_key', 'api_key'])
+
+export const passwordVaults = pgTable('password_vaults', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  isShared: boolean('is_shared').default(false).notNull(),
+  ownerId: uuid('owner_id').references(() => employees.id).notNull(),
+  sharedWith: jsonb('shared_with'), // Array<{ employeeId | departmentId, role: 'viewer' | 'editor' }>
+  encryptionKeyId: varchar('encryption_key_id', { length: 255 }),
+  itemCount: integer('item_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const vaultItems = pgTable('vault_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  vaultId: uuid('vault_id').references(() => passwordVaults.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  type: vaultItemTypeEnum('type').default('login').notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: varchar('url', { length: 500 }),
+  username: varchar('username', { length: 255 }),
+  encryptedPassword: text('encrypted_password'),
+  notes: text('notes'),
+  customFields: jsonb('custom_fields'), // Array<{ name, value, isHidden }>
+  tags: jsonb('tags'), // string[]
+  passwordStrength: varchar('password_strength', { length: 20 }), // weak | fair | strong | very_strong
+  lastUsedAt: timestamp('last_used_at'),
+  passwordChangedAt: timestamp('password_changed_at'),
+  autoFill: boolean('auto_fill').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// DEVICE STORE / BUYBACK
+// ============================================================
+
+export const deviceCatalogStatusEnum = pgEnum('device_catalog_status', ['available', 'out_of_stock', 'discontinued', 'coming_soon'])
+export const deviceOrderStatusEnum = pgEnum('device_order_status', ['pending_approval', 'approved', 'ordered', 'shipped', 'delivered', 'cancelled'])
+export const buybackStatusEnum = pgEnum('buyback_status', ['submitted', 'evaluating', 'quote_sent', 'accepted', 'rejected', 'completed'])
+
+export const deviceStoreCatalog = pgTable('device_store_catalog', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  manufacturer: varchar('manufacturer', { length: 100 }).notNull(),
+  model: varchar('model', { length: 255 }).notNull(),
+  category: varchar('category', { length: 100 }).notNull(), // laptop | desktop | phone | tablet | monitor | accessories
+  platform: varchar('platform', { length: 50 }),
+  specs: jsonb('specs'), // { cpu, ram, storage, display, battery }
+  price: integer('price').notNull(), // cents
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  imageUrl: text('image_url'),
+  status: deviceCatalogStatusEnum('status').default('available').notNull(),
+  stockCount: integer('stock_count').default(0).notNull(),
+  supplier: varchar('supplier', { length: 255 }),
+  warrantyMonths: integer('warranty_months').default(12),
+  isApproved: boolean('is_approved').default(true).notNull(),
+  allowedRoles: jsonb('allowed_roles'), // string[] or null for all
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const deviceOrders = pgTable('device_orders', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  catalogItemId: uuid('catalog_item_id').references(() => deviceStoreCatalog.id).notNull(),
+  requesterId: uuid('requester_id').references(() => employees.id).notNull(),
+  forEmployeeId: uuid('for_employee_id').references(() => employees.id).notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  totalPrice: integer('total_price').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  status: deviceOrderStatusEnum('status').default('pending_approval').notNull(),
+  shippingAddress: text('shipping_address'),
+  trackingNumber: varchar('tracking_number', { length: 255 }),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  approvedAt: timestamp('approved_at'),
+  orderedAt: timestamp('ordered_at'),
+  deliveredAt: timestamp('delivered_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const buybackRequests = pgTable('buyback_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  deviceId: uuid('device_id').references(() => managedDevices.id),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  deviceName: varchar('device_name', { length: 255 }).notNull(),
+  condition: inventoryConditionEnum('condition').notNull(),
+  originalPrice: integer('original_price'),
+  buybackPrice: integer('buyback_price'),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  status: buybackStatusEnum('status').default('submitted').notNull(),
+  photos: jsonb('photos'), // string[] URLs
+  employeeNotes: text('employee_notes'),
+  evaluationNotes: text('evaluation_notes'),
+  evaluatedBy: uuid('evaluated_by').references(() => employees.id),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// NO-CODE APP BUILDER (APP STUDIO)
+// ============================================================
+
+export const customAppStatusEnum = pgEnum('custom_app_status', ['draft', 'published', 'archived'])
+export const appComponentTypeEnum = pgEnum('app_component_type', ['form', 'table', 'chart', 'text', 'image', 'button', 'container', 'list', 'detail', 'filter', 'tabs', 'modal'])
+export const appDataSourceTypeEnum = pgEnum('app_data_source_type', ['database', 'api', 'csv', 'google_sheets', 'airtable', 'manual'])
+
+export const customApps = pgTable('custom_apps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  icon: varchar('icon', { length: 50 }),
+  slug: varchar('slug', { length: 100 }).notNull(),
+  status: customAppStatusEnum('status').default('draft').notNull(),
+  version: integer('version').default(1).notNull(),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  publishedBy: uuid('published_by').references(() => employees.id),
+  publishedAt: timestamp('published_at'),
+  accessRoles: jsonb('access_roles'), // string[] or null for all
+  theme: jsonb('theme'), // { primaryColor, headerStyle, layout }
+  settings: jsonb('settings'), // { showInSidebar, requireAuth, analytics }
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const appPages = pgTable('app_pages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  appId: uuid('app_id').references(() => customApps.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull(),
+  layout: jsonb('layout'), // { type: 'single' | 'sidebar' | 'tabs', config }
+  isHomePage: boolean('is_home_page').default(false).notNull(),
+  orderIndex: integer('order_index').default(0).notNull(),
+  icon: varchar('icon', { length: 50 }),
+  isVisible: boolean('is_visible').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const appComponents = pgTable('app_components', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  pageId: uuid('page_id').references(() => appPages.id, { onDelete: 'cascade' }).notNull(),
+  type: appComponentTypeEnum('type').notNull(),
+  label: varchar('label', { length: 255 }),
+  config: jsonb('config').notNull(), // type-specific configuration
+  dataSourceId: uuid('data_source_id'),
+  position: jsonb('position'), // { x, y, width, height }
+  orderIndex: integer('order_index').default(0).notNull(),
+  isVisible: boolean('is_visible').default(true).notNull(),
+  conditionalVisibility: jsonb('conditional_visibility'), // { field, operator, value }
+  style: jsonb('style'), // CSS-like properties
+})
+
+export const appDataSources = pgTable('app_data_sources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  appId: uuid('app_id').references(() => customApps.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: appDataSourceTypeEnum('type').notNull(),
+  config: jsonb('config').notNull(), // { table, columns, filters, sorting } | { url, method, headers } | etc.
+  schema: jsonb('schema'), // Array<{ name, type, required, defaultValue }>
+  refreshInterval: integer('refresh_interval'), // seconds, null = manual
+  lastRefreshedAt: timestamp('last_refreshed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// RQL / CUSTOM QUERY LANGUAGE
+// ============================================================
+
+export const savedQueryStatusEnum = pgEnum('saved_query_status', ['active', 'archived'])
+
+export const savedQueries = pgTable('saved_queries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  query: text('query').notNull(), // RQL query string
+  parsedAst: jsonb('parsed_ast'), // parsed query AST for execution
+  resultColumns: jsonb('result_columns'), // Array<{ name, type, label }>
+  parameters: jsonb('parameters'), // Array<{ name, type, defaultValue, label }>
+  tags: jsonb('tags'), // string[]
+  isPublic: boolean('is_public').default(false).notNull(),
+  status: savedQueryStatusEnum('status').default('active').notNull(),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  lastRunAt: timestamp('last_run_at'),
+  runCount: integer('run_count').default(0).notNull(),
+  avgExecutionMs: integer('avg_execution_ms'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const querySchedules = pgTable('query_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  queryId: uuid('query_id').references(() => savedQueries.id, { onDelete: 'cascade' }).notNull(),
+  frequency: varchar('frequency', { length: 50 }).notNull(), // hourly | daily | weekly | monthly
+  recipients: jsonb('recipients'), // Array<{ employeeId?, email?, channel: 'email' | 'slack' }>
+  format: varchar('format', { length: 20 }).default('csv').notNull(), // csv | xlsx | json | pdf
+  nextRunAt: timestamp('next_run_at'),
+  lastRunAt: timestamp('last_run_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// EOR (EMPLOYER OF RECORD)
+// ============================================================
+
+export const eorEntityStatusEnum = pgEnum('eor_entity_status', ['active', 'pending_setup', 'suspended', 'terminated'])
+export const eorEmployeeStatusEnum = pgEnum('eor_employee_status', ['onboarding', 'active', 'on_leave', 'offboarding', 'terminated'])
+
+export const eorEntities = pgTable('eor_entities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  countryCode: varchar('country_code', { length: 5 }).notNull(),
+  legalEntityName: varchar('legal_entity_name', { length: 500 }).notNull(),
+  partnerName: varchar('partner_name', { length: 255 }).notNull(), // EOR provider name
+  status: eorEntityStatusEnum('status').default('pending_setup').notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  taxId: varchar('tax_id', { length: 100 }),
+  registrationNumber: varchar('registration_number', { length: 100 }),
+  address: text('address'),
+  monthlyFee: integer('monthly_fee'), // per employee, cents
+  setupFee: integer('setup_fee'),
+  employeeCount: integer('employee_count').default(0).notNull(),
+  contractStartDate: date('contract_start_date'),
+  contractEndDate: date('contract_end_date'),
+  benefits: jsonb('benefits'), // { health, retirement, leave, other }
+  complianceNotes: text('compliance_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const eorEmployees = pgTable('eor_employees', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  eorEntityId: uuid('eor_entity_id').references(() => eorEntities.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  jobTitle: varchar('job_title', { length: 255 }),
+  department: varchar('department', { length: 255 }),
+  status: eorEmployeeStatusEnum('status').default('onboarding').notNull(),
+  salary: integer('salary').notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date'),
+  contractType: varchar('contract_type', { length: 50 }).default('full_time').notNull(),
+  localBenefits: jsonb('local_benefits'), // country-specific benefits
+  taxSetup: jsonb('tax_setup'), // local tax configuration
+  visaRequired: boolean('visa_required').default(false),
+  visaStatus: varchar('visa_status', { length: 50 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const eorContracts = pgTable('eor_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  eorEmployeeId: uuid('eor_employee_id').references(() => eorEmployees.id, { onDelete: 'cascade' }).notNull(),
+  contractType: varchar('contract_type', { length: 50 }).notNull(), // employment_agreement | amendment | termination | nda
+  documentUrl: text('document_url'),
+  status: varchar('status', { length: 50 }).default('draft').notNull(), // draft | pending_signature | active | terminated
+  effectiveDate: date('effective_date'),
+  expirationDate: date('expiration_date'),
+  terms: jsonb('terms'), // { probationPeriod, noticePeriod, nonCompete, ip_assignment }
+  signedAt: timestamp('signed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// CONTRACTOR OF RECORD
+// ============================================================
+
+export const corContractorStatusEnum = pgEnum('cor_contractor_status', ['onboarding', 'active', 'paused', 'terminated'])
+export const corPaymentFrequencyEnum = pgEnum('cor_payment_frequency', ['weekly', 'biweekly', 'monthly', 'milestone', 'on_completion'])
+
+export const corContractors = pgTable('cor_contractors', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  status: corContractorStatusEnum('status').default('onboarding').notNull(),
+  jobTitle: varchar('job_title', { length: 255 }),
+  department: varchar('department', { length: 255 }),
+  rate: integer('rate').notNull(), // hourly/daily/project rate in cents
+  rateType: varchar('rate_type', { length: 20 }).notNull(), // hourly | daily | monthly | project
+  currency: varchar('currency', { length: 10 }).notNull(),
+  paymentFrequency: corPaymentFrequencyEnum('payment_frequency').default('monthly').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date'),
+  complianceStatus: varchar('compliance_status', { length: 50 }).default('pending').notNull(), // pending | compliant | at_risk | non_compliant
+  taxClassification: varchar('tax_classification', { length: 50 }), // independent_contractor | sole_proprietor | llc | corporation
+  taxDocuments: jsonb('tax_documents'), // Array<{ type: 'w9' | 'w8ben' | 'local_tax_form', url, uploadedAt }>
+  misclassificationRisk: varchar('misclassification_risk', { length: 20 }), // low | medium | high
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const corContracts = pgTable('cor_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  contractorId: uuid('contractor_id').references(() => corContractors.id, { onDelete: 'cascade' }).notNull(),
+  contractType: varchar('contract_type', { length: 50 }).notNull(), // sow | msa | nda | ip_assignment
+  title: varchar('title', { length: 255 }).notNull(),
+  documentUrl: text('document_url'),
+  status: varchar('status', { length: 50 }).default('draft').notNull(),
+  scopeOfWork: text('scope_of_work'),
+  deliverables: jsonb('deliverables'), // Array<{ title, dueDate, amount }>
+  totalValue: integer('total_value'),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  startDate: date('start_date'),
+  endDate: date('end_date'),
+  signedAt: timestamp('signed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const corPayments = pgTable('cor_payments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  contractorId: uuid('contractor_id').references(() => corContractors.id, { onDelete: 'cascade' }).notNull(),
+  contractId: uuid('contract_id').references(() => corContracts.id),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // pending | approved | processing | paid | failed
+  periodStart: date('period_start'),
+  periodEnd: date('period_end'),
+  hoursWorked: real('hours_worked'),
+  invoiceUrl: text('invoice_url'),
+  paymentMethod: varchar('payment_method', { length: 50 }), // bank_transfer | paypal | wise | crypto
+  paidAt: timestamp('paid_at'),
+  approvedBy: uuid('approved_by').references(() => employees.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// GLOBAL BENEFITS
+// ============================================================
+
+export const globalBenefitCategoryEnum = pgEnum('global_benefit_category', ['health', 'retirement', 'life_insurance', 'disability', 'wellness', 'meal_allowance', 'transportation', 'housing', 'education', 'childcare', 'statutory'])
+
+export const globalBenefitPlans = pgTable('global_benefit_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  category: globalBenefitCategoryEnum('category').notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  countryCode: varchar('country_code', { length: 5 }).notNull(),
+  provider: varchar('provider', { length: 255 }),
+  description: text('description'),
+  isStatutory: boolean('is_statutory').default(false).notNull(), // government-mandated benefit
+  statutoryReference: text('statutory_reference'), // law/regulation reference
+  costEmployee: integer('cost_employee').default(0),
+  costEmployer: integer('cost_employer').default(0),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  coverageDetails: jsonb('coverage_details'), // country-specific coverage structure
+  eligibilityCriteria: jsonb('eligibility_criteria'), // { minTenure, employmentType, roles }
+  isActive: boolean('is_active').default(true).notNull(),
+  effectiveDate: date('effective_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const countryBenefitConfigs = pgTable('country_benefit_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  countryCode: varchar('country_code', { length: 5 }).notNull(),
+  mandatoryBenefits: jsonb('mandatory_benefits'), // Array<{ name, category, description, employerCost, employeeCost }>
+  supplementaryBenefits: jsonb('supplementary_benefits'), // same structure, optional additions
+  taxImplications: jsonb('tax_implications'), // { deductible, taxable, thresholds }
+  complianceNotes: text('compliance_notes'),
+  lastReviewedAt: timestamp('last_reviewed_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const globalBenefitEnrollments = pgTable('global_benefit_enrollments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  planId: uuid('plan_id').references(() => globalBenefitPlans.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  coverageLevel: varchar('coverage_level', { length: 50 }).default('employee_only'),
+  dependentCount: integer('dependent_count').default(0),
+  employeeContribution: integer('employee_contribution').default(0),
+  employerContribution: integer('employer_contribution').default(0),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  enrolledAt: date('enrolled_at').notNull(),
+  terminatedAt: date('terminated_at'),
+})
+
+// ─── HR Cloud Agent Schema Additions ──────────────────────────────────────
+
+export const i9Documents = pgTable('i9_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  i9FormId: uuid('i9_form_id').references(() => i9Forms.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  category: i9DocumentCategoryEnum('category').notNull(),
+  documentTitle: varchar('document_title', { length: 255 }).notNull(),
+  documentNumber: varchar('document_number', { length: 255 }),
+  issuingAuthority: varchar('issuing_authority', { length: 255 }),
+  expirationDate: date('expiration_date'),
+  fileUrl: text('file_url'),
+  isVerified: boolean('is_verified').default(false).notNull(),
+  verifiedBy: uuid('verified_by').references(() => employees.id),
+  verifiedAt: timestamp('verified_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const peoEmployeeEnrollments = pgTable('peo_employee_enrollments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  peoConfigId: uuid('peo_config_id').references(() => peoConfigurations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  status: coEmploymentStatusEnum('status').default('pending').notNull(),
+  workState: varchar('work_state', { length: 50 }),
+  workCountry: varchar('work_country', { length: 100 }).default('US').notNull(),
+  workersCompCode: varchar('workers_comp_code', { length: 20 }),
+  workersCompDescription: varchar('workers_comp_description', { length: 255 }),
+  enrolledAt: timestamp('enrolled_at'),
+  terminatedAt: timestamp('terminated_at'),
+  terminationReason: text('termination_reason'),
+  peoEmployeeId: varchar('peo_employee_id', { length: 100 }),
+  syncStatus: varchar('sync_status', { length: 50 }).default('pending'),
+  lastSyncAt: timestamp('last_sync_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const peoWorkersCompCodes = pgTable('peo_workers_comp_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  peoConfigId: uuid('peo_config_id').references(() => peoConfigurations.id, { onDelete: 'cascade' }).notNull(),
+  classCode: varchar('class_code', { length: 20 }).notNull(),
+  description: varchar('description', { length: 500 }).notNull(),
+  state: varchar('state', { length: 50 }).notNull(),
+  rate: real('rate').notNull(),
+  effectiveDate: date('effective_date'),
+  expirationDate: date('expiration_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+})
+
+export const peoInvoices = pgTable('peo_invoices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  peoConfigId: uuid('peo_config_id').references(() => peoConfigurations.id, { onDelete: 'cascade' }).notNull(),
+  invoiceNumber: varchar('invoice_number', { length: 100 }).notNull(),
+  period: varchar('period', { length: 50 }).notNull(),
+  adminFees: real('admin_fees').notNull(),
+  workersCompPremium: real('workers_comp_premium').default(0).notNull(),
+  benefitsCost: real('benefits_cost').default(0).notNull(),
+  payrollTaxes: real('payroll_taxes').default(0).notNull(),
+  totalAmount: real('total_amount').notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  dueDate: date('due_date'),
+  paidAt: timestamp('paid_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const sandboxAccessLog = pgTable('sandbox_access_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sandboxId: uuid('sandbox_id').references(() => sandboxEnvironments.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  details: text('details'),
+  ipAddress: varchar('ip_address', { length: 50 }),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+})
+
+export const chatChannelMembers = pgTable('chat_channel_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channelId: uuid('channel_id').references(() => chatChannels.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  role: varchar('role', { length: 50 }).default('member').notNull(),
+  isMuted: boolean('is_muted').default(false).notNull(),
+  lastReadAt: timestamp('last_read_at'),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+})
+
+export const chatReactions = pgTable('chat_reactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id').references(() => chatMessages.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  emoji: varchar('emoji', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// Workers' Compensation
+// ============================================================
+
+export const workersCompPolicies = pgTable('workers_comp_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  carrier: varchar('carrier', { length: 255 }),
+  policyNumber: varchar('policy_number', { length: 100 }),
+  status: varchar('status', { length: 20 }).default('active').notNull(),
+  effectiveDate: date('effective_date'),
+  expiryDate: date('expiry_date'),
+  premium: integer('premium'),
+  coveredEmployees: integer('covered_employees'),
+  classCodes: jsonb('class_codes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const workersCompClaims = pgTable('workers_comp_claims', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  policyId: uuid('policy_id').references(() => workersCompPolicies.id, { onDelete: 'cascade' }),
+  employeeName: varchar('employee_name', { length: 255 }),
+  incidentDate: date('incident_date'),
+  description: text('description'),
+  injuryType: varchar('injury_type', { length: 100 }),
+  bodyPart: varchar('body_part', { length: 100 }),
+  status: varchar('status', { length: 20 }).default('open').notNull(),
+  reserveAmount: integer('reserve_amount'),
+  paidAmount: integer('paid_amount').default(0),
+  filedDate: date('filed_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const workersCompClassCodes = pgTable('workers_comp_class_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  code: varchar('code', { length: 20 }).notNull(),
+  description: varchar('description', { length: 500 }),
+  rate: real('rate'),
+  employeeCount: integer('employee_count'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const workersCompAudits = pgTable('workers_comp_audits', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  auditDate: date('audit_date'),
+  period: varchar('period', { length: 100 }),
+  auditor: varchar('auditor', { length: 255 }),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  findings: text('findings'),
+  adjustmentAmount: integer('adjustment_amount'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// Dynamic Groups
+// ============================================================
+
+export const dynamicGroups = pgTable('dynamic_groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  type: varchar('type', { length: 20 }).default('dynamic').notNull(),
+  rule: jsonb('rule'),
+  memberCount: integer('member_count').default(0),
+  createdBy: uuid('created_by').references(() => employees.id),
+  lastSyncedAt: timestamp('last_synced_at'),
+  modules: jsonb('modules'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })

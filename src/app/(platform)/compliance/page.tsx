@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { Pagination } from '@/components/ui/pagination'
 import {
   ShieldCheck, AlertTriangle, CheckCircle, XCircle, Clock, Plus, Filter,
   FileText, Upload, Bell, Globe, Trash2, Eye, Calendar, Search,
-  ChevronRight, Download, Star, ArrowUpRight,
+  ChevronRight, Download, Star, ArrowUpRight, Radar, Play, RotateCcw,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
@@ -48,8 +48,14 @@ export default function CompliancePage() {
     addComplianceRequirement, updateComplianceRequirement, deleteComplianceRequirement,
     addComplianceDocument, updateComplianceDocument, deleteComplianceDocument,
     dismissComplianceAlert,
+    autoDetectionScans, addAutoDetectionScan, updateAutoDetectionScan,
     employees, getEmployeeName,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'autoDetectionScans'])
+  }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('overview')
   const [reqPage, setReqPage] = useState(1)
@@ -75,6 +81,51 @@ export default function CompliancePage() {
   const [docForm, setDocForm] = useState({
     requirement_id: '', name: '', file_url: '', expires_at: '',
   })
+
+  // Auto-Detection state
+  const [scanPage, setScanPage] = useState(1)
+
+  const adTotalScans = autoDetectionScans.length
+  const adIssuesFound = autoDetectionScans.length
+  const adAutoResolved = autoDetectionScans.filter(s => s.status === 'auto_resolved').length
+  const adPendingReview = autoDetectionScans.filter(s => s.status === 'pending_review').length
+
+  const AD_STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+    auto_resolved: 'success',
+    pending_review: 'warning',
+    dismissed: 'default',
+    escalated: 'error',
+  }
+
+  function runNewScan() {
+    const modules = ['Payroll', 'Leave', 'Benefits', 'Time Tracking', 'Data Privacy', 'Expenses', 'Safety', 'Immigration', 'Onboarding']
+    const rules = [
+      'Overtime limit exceeded (>48h/week)',
+      'Negative leave balance detected',
+      'PII exported without encryption',
+      'Dependent age limit exceeded',
+      'Clock-in outside geofence radius',
+      'Receipt missing for claim > $50',
+      'Minimum wage threshold not met',
+      'Background check expired',
+      'Certification lapsed for equipment operation',
+      'Work permit expiring within 30 days',
+      'Mandatory training overdue',
+      'Policy acknowledgment missing',
+    ]
+    const names = ['Adaeze Okonkwo', 'Kwame Mensah', 'Fatou Diallo', 'Emeka Nwosu', 'Amina Bello', 'Kofi Asante', 'Chinelo Eze', 'Yaw Boateng']
+    const severities: Array<'critical' | 'high' | 'medium' | 'low'> = ['critical', 'high', 'medium', 'low']
+    const statuses: Array<'auto_resolved' | 'pending_review'> = ['auto_resolved', 'pending_review']
+    addAutoDetectionScan({
+      scan_date: new Date().toISOString().split('T')[0],
+      module: modules[Math.floor(Math.random() * modules.length)],
+      rule_violated: rules[Math.floor(Math.random() * rules.length)],
+      severity: severities[Math.floor(Math.random() * severities.length)],
+      employee: names[Math.floor(Math.random() * names.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+    })
+    setScanPage(1)
+  }
 
   // Stats
   const totalReqs = complianceRequirements.length
@@ -209,6 +260,7 @@ export default function CompliancePage() {
     { id: 'documents', label: 'Documents', count: complianceDocuments.length },
     { id: 'alerts', label: 'Alerts', count: complianceAlerts.filter(a => !a.is_read).length },
     { id: 'countries', label: 'Countries', count: countries.length },
+    { id: 'auto_detection', label: 'Auto-Detection', count: adPendingReview },
   ]
 
   return (
@@ -699,6 +751,119 @@ export default function CompliancePage() {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Auto-Detection Tab */}
+      {activeTab === 'auto_detection' && (
+        <div className="space-y-6">
+          {/* Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Total Scans" value={adTotalScans} icon={<Radar size={20} />} />
+            <StatCard label="Issues Found" value={adIssuesFound} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Auto-Resolved" value={adAutoResolved} icon={<CheckCircle size={20} />} change={adTotalScans > 0 ? `${Math.round((adAutoResolved / adTotalScans) * 100)}%` : '0%'} changeType="positive" />
+            <StatCard label="Pending Review" value={adPendingReview} icon={<Clock size={20} />} change={adPendingReview > 0 ? `${adPendingReview} items` : 'Clear'} changeType={adPendingReview > 0 ? 'negative' : 'positive'} />
+          </div>
+
+          {/* Run Scan Button */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-t3">Automated compliance scans detect policy violations across all platform modules.</p>
+            <Button size="sm" onClick={runNewScan}>
+              <Play size={14} /> Run Scan
+            </Button>
+          </div>
+
+          {/* Auto-Detection Scans Table */}
+          <Card padding="none">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-divider text-t3 font-medium">
+                    <th className="text-left px-4 py-3">Scan Date</th>
+                    <th className="text-left px-4 py-3">Module</th>
+                    <th className="text-left px-4 py-3">Rule Violated</th>
+                    <th className="text-left px-4 py-3">Severity</th>
+                    <th className="text-left px-4 py-3">Employee</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider">
+                  {autoDetectionScans.slice((scanPage - 1) * ITEMS_PER_PAGE, scanPage * ITEMS_PER_PAGE).map(scan => (
+                    <tr key={scan.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3 text-t2">{scan.scan_date}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="default">{scan.module}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-t1 max-w-[240px] truncate">{scan.rule_violated}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-medium border ${SEVERITY_COLORS[scan.severity]}`}>
+                          {scan.severity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-t2">{scan.employee}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={AD_STATUS_VARIANTS[scan.status]}>{scan.status.replace(/_/g, ' ')}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          {scan.status === 'pending_review' && (
+                            <>
+                              <button
+                                onClick={() => updateAutoDetectionScan(scan.id, { status: 'auto_resolved' })}
+                                className="p-1 rounded hover:bg-green-500/10 text-t3 hover:text-green-400 transition-colors"
+                                title="Resolve"
+                              >
+                                <CheckCircle size={14} />
+                              </button>
+                              <button
+                                onClick={() => updateAutoDetectionScan(scan.id, { status: 'escalated' })}
+                                className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
+                                title="Escalate"
+                              >
+                                <ArrowUpRight size={14} />
+                              </button>
+                              <button
+                                onClick={() => updateAutoDetectionScan(scan.id, { status: 'dismissed' })}
+                                className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
+                                title="Dismiss"
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            </>
+                          )}
+                          {scan.status !== 'pending_review' && (
+                            <button
+                              onClick={() => updateAutoDetectionScan(scan.id, { status: 'pending_review' })}
+                              className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
+                              title="Reopen"
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {autoDetectionScans.length > ITEMS_PER_PAGE && (
+              <div className="px-4 py-3 border-t border-divider">
+                <Pagination
+                  totalPages={Math.ceil(autoDetectionScans.length / ITEMS_PER_PAGE)}
+                  currentPage={scanPage}
+                  onPageChange={setScanPage}
+                />
+              </div>
+            )}
+            {autoDetectionScans.length === 0 && (
+              <div className="px-6 py-8 text-center">
+                <Radar size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-xs text-t3">No auto-detection scans yet. Click "Run Scan" to start.</p>
+              </div>
+            )}
+          </Card>
         </div>
       )}
 

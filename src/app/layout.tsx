@@ -23,10 +23,12 @@ export const metadata: Metadata = {
   description: 'The unified workforce platform. Performance, compensation, learning, engagement, mentoring, analytics, payroll, and more. One platform, zero silos.',
   icons: {
     icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
       { url: '/favicons/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicons/favicon-32.png', sizes: '32x32', type: 'image/png' },
       { url: '/favicons/favicon-16.png', sizes: '16x16', type: 'image/png' },
     ],
+    shortcut: [{ url: '/favicon.ico' }],
     apple: [
       { url: '/favicons/apple-touch-icon.png', sizes: '180x180' },
     ],
