@@ -70,7 +70,7 @@ async function checkRateLimit(
 }
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events']
+const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -218,7 +218,7 @@ export async function middleware(request: NextRequest) {
   // Allow public routes
   if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
     // If user is already authenticated and tries to access login/signup, redirect to dashboard
-    if (pathname === '/login' || pathname === '/signup') {
+    if (pathname === '/login' || pathname === '/signup' || pathname === '/demo') {
       const sessionCookie = request.cookies.get(COOKIE_NAME)
       if (sessionCookie?.value) {
         try {

@@ -19,6 +19,11 @@ import {
   calculateStatutoryDeductions,
   type StatutoryResult,
 } from '@/lib/payroll/statutory-deductions'
+import {
+  getMinimumWage,
+  getOvertimeRules,
+  getMandatoryBonuses,
+} from '@/lib/payroll/labor-law-registry'
 
 // ============================================================
 // TYPES & INTERFACES
@@ -921,8 +926,10 @@ function resolveCountryCode(country: string | null): SupportedCountry {
     RW: 'RW', RWANDA: 'RW',
     ET: 'ET', ETHIOPIA: 'ET',
     BI: 'BI', BURUNDI: 'BI',
+    SS: 'SS', 'SOUTH SUDAN': 'SS',
     // Southern Africa
     ZA: 'ZA', 'SOUTH AFRICA': 'ZA',
+    MW: 'MW', MALAWI: 'MW',
     ZW: 'ZW', ZIMBABWE: 'ZW',
     MZ: 'MZ', MOZAMBIQUE: 'MZ',
     ZM: 'ZM', ZAMBIA: 'ZM',
@@ -1013,15 +1020,34 @@ export async function processPayroll(
 
     // --- Overtime calculation ---
     const ot = options.overtime?.[employee.id]
-    const overtimeRate = ot?.rate ?? 1.5
+    const countryOT = getOvertimeRules(countryCode)
+    const overtimeRate = ot?.rate ?? countryOT?.overtimeMultiplier ?? 1.5
     const overtimeHours = ot?.hours ?? 0
-    // Hourly rate = annual salary / (52 weeks * 40 hours)
-    const hourlyRate = annualSalary / (52 * 40)
+    // Hourly rate = annual salary / (52 weeks * standard weekly hours)
+    const weeklyHours = countryOT?.standardWeeklyHours ?? 40
+    const hourlyRate = annualSalary / (52 * weeklyHours)
     const overtimePay = Math.round(overtimeHours * hourlyRate * overtimeRate * 100) / 100
 
     // --- Bonus calculation ---
     const bonuses = options.bonuses?.[employee.id] ?? []
-    const bonusPay = Math.round(bonuses.reduce((sum, b) => sum + b.amount, 0) * 100) / 100
+    let bonusPay = Math.round(bonuses.reduce((sum, b) => sum + b.amount, 0) * 100) / 100
+
+    // --- 13th month bonus auto-injection ---
+    const mandatoryBonuses = getMandatoryBonuses(countryCode)
+    if (mandatoryBonuses?.thirteenthMonth && period) {
+      const periodMonth = parseInt(period.split('-')[1], 10) // e.g. "2025-12" → 12
+      if (periodMonth === mandatoryBonuses.paymentMonth) {
+        const thirteenthAmount = mandatoryBonuses.thirteenthMonthAmount === 'full_month'
+          ? monthlyBase
+          : mandatoryBonuses.thirteenthMonthAmount === 'half_month'
+            ? Math.round(monthlyBase / 2 * 100) / 100
+            : 0
+        if (thirteenthAmount > 0) {
+          bonusPay = Math.round((bonusPay + thirteenthAmount) * 100) / 100
+          bonuses.push({ type: '13th_month', amount: thirteenthAmount, description: '13th Month Salary' })
+        }
+      }
+    }
 
     // --- Gross pay = base + overtime + bonus ---
     const monthlyGross = Math.round((monthlyBase + overtimePay + bonusPay) * 100) / 100
@@ -1853,24 +1879,33 @@ export async function getPayrollAnalytics(orgId: string): Promise<PayrollAnalyti
 // 6. COMPLIANCE CHECKS
 // ============================================================
 
-/** Minimum wage data by country (annual, in local currency) */
-const MINIMUM_WAGES: Record<string, { hourly: number; annual: number; currency: CurrencyCode; hoursPerWeek: number }> = {
+/** Minimum wage data by country (annual, in local currency) — base 6 + labor law registry */
+const BASE_MINIMUM_WAGES: Record<string, { hourly: number; annual: number; currency: CurrencyCode; hoursPerWeek: number }> = {
   US: { hourly: 7.25, annual: 15080, currency: 'USD', hoursPerWeek: 40 },
   UK: { hourly: 11.44, annual: 23795, currency: 'GBP', hoursPerWeek: 40 },
   DE: { hourly: 12.41, annual: 25813, currency: 'EUR', hoursPerWeek: 40 },
-  FR: { hourly: 11.65, annual: 21203, currency: 'EUR', hoursPerWeek: 35 },
   CA: { hourly: 17.20, annual: 35776, currency: 'CAD', hoursPerWeek: 40 },
   AU: { hourly: 23.23, annual: 48318, currency: 'AUD', hoursPerWeek: 38 },
 }
 
-/** Maximum standard working hours per week by country */
-const MAX_WEEKLY_HOURS: Record<string, number> = {
-  US: 40,  // Overtime after 40
-  UK: 48,  // Working Time Directive
-  DE: 48,  // Arbeitszeitgesetz (8h/day * 6 days, avg 48)
-  FR: 35,  // Legal working week
-  CA: 40,  // Standard, varies by province
-  AU: 38,  // National Employment Standards
+/** Resolve minimum wage: labor law registry first, then base dict */
+function resolveMinimumWage(countryCode: string): { hourly: number; annual: number; currency: string; hoursPerWeek: number } | null {
+  const registryWage = getMinimumWage(countryCode)
+  if (registryWage && registryWage.annual > 0) {
+    const ot = getOvertimeRules(countryCode)
+    const hoursPerWeek = ot?.standardWeeklyHours ?? 40
+    const hourly = Math.round((registryWage.annual / (52 * hoursPerWeek)) * 100) / 100
+    return { hourly, annual: registryWage.annual, currency: registryWage.currency, hoursPerWeek }
+  }
+  return BASE_MINIMUM_WAGES[countryCode] ?? null
+}
+
+/** Resolve max weekly hours: labor law registry first, then defaults */
+function resolveMaxWeeklyHours(countryCode: string): number {
+  const ot = getOvertimeRules(countryCode)
+  if (ot) return ot.maxWeeklyHours
+  const defaults: Record<string, number> = { US: 40, UK: 48, DE: 48, CA: 40, AU: 38 }
+  return defaults[countryCode] ?? 40
 }
 
 /**
@@ -1906,13 +1941,13 @@ export async function validatePayrollCompliance(orgId: string): Promise<Complian
     const countryCode = resolveCountryCode(employee.country)
     const { salary, currency } = await getEmployeeSalary(employee.id, orgId)
 
-    // --- Minimum Wage Check ---
-    const minWage = MINIMUM_WAGES[countryCode]
+    // --- Minimum Wage Check (uses labor law registry for all 36 countries + base 6) ---
+    const minWage = resolveMinimumWage(countryCode)
     if (minWage && salary > 0) {
       // Convert employee salary to the country's local currency for comparison
       const salaryInLocal = currency === minWage.currency
         ? salary
-        : convertCurrency(salary, currency, minWage.currency)
+        : convertCurrency(salary, currency, minWage.currency as CurrencyCode)
 
       if (salaryInLocal < minWage.annual) {
         issues.push({
@@ -2002,9 +2037,20 @@ export async function validatePayrollCompliance(orgId: string): Promise<Complian
     }
 
     // --- Country-Specific Contract/Working Hours Check ---
-    const maxHours = MAX_WEEKLY_HOURS[countryCode]
-    if (maxHours && countryCode === 'FR') {
-      // France: legal work week is 35 hours. If employee is classified as full-time, flag for awareness.
+    const maxHours = resolveMaxWeeklyHours(countryCode)
+    const countryOTRules = getOvertimeRules(countryCode)
+    if (countryOTRules) {
+      const stdHours = countryOTRules.standardWeeklyHours
+      issues.push({
+        severity: 'info',
+        category: 'Working Hours',
+        country: countryCode,
+        employeeId: employee.id,
+        employeeName: employee.fullName,
+        description: `${countryCode} standard work week: ${stdHours}h (max ${maxHours}h). Overtime at ${countryOTRules.overtimeMultiplier}x above ${stdHours}h.`,
+        recommendation: 'Verify that overtime hours are tracked and compensated according to local labor law.',
+      })
+    } else if (countryCode === 'FR') {
       issues.push({
         severity: 'info',
         category: 'Working Hours',

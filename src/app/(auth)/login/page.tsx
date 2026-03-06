@@ -5,50 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { TempoLockup } from '@/components/brand/tempo-lockup'
-import { allDemoCredentials } from '@/lib/demo-data'
-import type { DemoCredential } from '@/lib/demo-data'
 import { useTempo } from '@/lib/store'
-import {
-  Shield, Users, UserCheck, Briefcase, User, Banknote, Laptop, KeyRound, ArrowLeft, CheckCircle
-} from 'lucide-react'
-
-const roleIcons: Record<string, React.ReactNode> = {
-  owner: <Shield size={20} />,
-  admin: <Briefcase size={20} />,
-  hrbp: <Users size={20} />,
-  manager: <UserCheck size={20} />,
-  employee: <User size={20} />,
-}
-
-interface OrgGroup {
-  name: string
-  industry: string
-  country: string
-  credentials: DemoCredential[]
-}
-
-const orgGroups: OrgGroup[] = [
-  {
-    name: 'Ecobank Transnational',
-    industry: 'Banking & Financial Services',
-    country: 'Nigeria',
-    credentials: allDemoCredentials.filter(c => !c.employeeId.startsWith('kemp-')),
-  },
-  {
-    name: 'Kash & Co',
-    industry: 'Consulting & Professional Services',
-    country: 'South Africa',
-    credentials: allDemoCredentials.filter(c => c.employeeId.startsWith('kemp-')),
-  },
-]
-
-const roleColors: Record<string, string> = {
-  owner: 'bg-tempo-600/10 text-tempo-600 border-tempo-600/20',
-  admin: 'bg-blue-50 text-blue-600 border-blue-200',
-  hrbp: 'bg-purple-50 text-purple-600 border-purple-200',
-  manager: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  employee: 'bg-gray-50 text-gray-600 border-gray-200',
-}
+import { KeyRound, ArrowLeft, CheckCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -94,24 +52,6 @@ export default function LoginPage() {
       setLoading(false)
     } else {
       setError(t('invalidCredentials'))
-      setLoading(false)
-    }
-  }
-
-  const handleDemoLogin = async (cred: DemoCredential) => {
-    setEmail(cred.email)
-    setPassword(cred.password)
-    setError('')
-    setLoading(true)
-
-    const result = await login(cred.email, cred.password)
-    if (result === true) {
-      router.push('/dashboard')
-    } else if (result && typeof result === 'object' && 'requiresMFA' in result) {
-      setMfaRequired(true)
-      setMfaToken(result.mfaToken)
-      setLoading(false)
-    } else {
       setLoading(false)
     }
   }
@@ -446,46 +386,12 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-divider">
-          <p className="text-[0.65rem] font-semibold text-t3 uppercase tracking-wider mb-4">{t('quickDemoAccess')}</p>
-          <div className="space-y-5">
-            {orgGroups.map((group) => (
-              <div key={group.name}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[0.7rem] font-semibold text-t1">{group.name}</span>
-                  <span className="text-[0.55rem] text-t3">{group.industry}</span>
-                  <span className="text-[0.5rem] text-t3 ml-auto">{group.country}</span>
-                </div>
-                <div className="space-y-1.5">
-                  {group.credentials.map((cred) => (
-                    <button
-                      key={cred.employeeId}
-                      onClick={() => handleDemoLogin(cred)}
-                      disabled={loading}
-                      className="w-full text-left rounded-lg border border-divider px-3 py-2 hover:bg-canvas/80 transition-all group disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${roleColors[cred.role]}`}>
-                          {roleIcons[cred.role] || <User size={18} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-t1">{cred.label}</span>
-                            <span className={`text-[0.55rem] font-medium px-1.5 py-0.5 rounded-full border ${roleColors[cred.role]}`}>
-                              {cred.role}
-                            </span>
-                          </div>
-                          <p className="text-[0.6rem] text-t3 truncate">{cred.description}</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[0.55rem] text-t3 text-center mt-3">{t('demoPwdNote')}</p>
-        </div>
+        <p className="text-[0.6rem] text-t3 text-center mt-6">
+          Don&apos;t have an account?{' '}
+          <a href="/signup" className="text-tempo-600 hover:text-tempo-700 font-medium transition-colors">
+            Request access
+          </a>
+        </p>
       </div>
     </div>
   )

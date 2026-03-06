@@ -238,3 +238,90 @@ describe('Payroll Engine - African Tax Calculations', () => {
 
 // Note: convertCurrency tests require DATABASE_URL (payroll-engine imports db).
 // Currency conversion is tested via integration/E2E tests against the running app.
+
+// ─── Labor Law Registry Integration Tests ──────────────────────────
+import {
+  getMinimumWage,
+  getOvertimeRules,
+  getMandatoryBonuses,
+} from '../payroll/labor-law-registry'
+
+describe('Payroll Engine - Labor Law Integration', () => {
+  describe('Minimum Wage Resolution', () => {
+    it('returns Nigerian minimum wage from registry', () => {
+      const mw = getMinimumWage('NG')
+      expect(mw).not.toBeNull()
+      expect(mw!.monthly).toBe(30000)
+      expect(mw!.annual).toBe(360000)
+      expect(mw!.currency).toBe('NGN')
+    })
+
+    it('returns French SMIC from registry', () => {
+      const mw = getMinimumWage('FR')
+      expect(mw).not.toBeNull()
+      expect(mw!.currency).toBe('EUR')
+      expect(mw!.annual).toBeGreaterThan(20000)
+    })
+
+    it('returns null for unregistered country', () => {
+      const mw = getMinimumWage('US')
+      // US is not in labor law registry — only in base dict
+      expect(mw).toBeNull()
+    })
+  })
+
+  describe('Country-Specific Overtime Rates', () => {
+    it('uses 1.5x for Nigeria', () => {
+      const ot = getOvertimeRules('NG')
+      expect(ot!.overtimeMultiplier).toBe(1.5)
+    })
+
+    it('uses 1.25x for France', () => {
+      const ot = getOvertimeRules('FR')
+      expect(ot!.overtimeMultiplier).toBe(1.25)
+    })
+
+    it('uses 1.2x for Cameroon', () => {
+      const ot = getOvertimeRules('CM')
+      expect(ot!.overtimeMultiplier).toBe(1.2)
+    })
+
+    it('uses country-specific standard hours (FR=35, KE=45)', () => {
+      const fr = getOvertimeRules('FR')
+      const ke = getOvertimeRules('KE')
+      expect(fr!.standardWeeklyHours).toBe(35)
+      expect(ke!.standardWeeklyHours).toBe(45)
+    })
+  })
+
+  describe('13th Month Bonus', () => {
+    it('Gabon has mandatory full-month 13th month', () => {
+      const bonuses = getMandatoryBonuses('GA')
+      expect(bonuses!.thirteenthMonth).toBe(true)
+      expect(bonuses!.thirteenthMonthAmount).toBe('full_month')
+      expect(bonuses!.paymentMonth).toBe(12)
+    })
+
+    it('Nigeria has mandatory 13th month', () => {
+      const bonuses = getMandatoryBonuses('NG')
+      expect(bonuses!.thirteenthMonth).toBe(true)
+    })
+
+    it('Ghana does NOT have mandatory 13th month', () => {
+      const bonuses = getMandatoryBonuses('GH')
+      expect(bonuses!.thirteenthMonth).toBe(false)
+    })
+
+    it('Zimbabwe has half-month 13th month', () => {
+      const bonuses = getMandatoryBonuses('ZW')
+      expect(bonuses!.thirteenthMonth).toBe(true)
+      expect(bonuses!.thirteenthMonthAmount).toBe('half_month')
+    })
+
+    it('DRC has mandatory full-month 13th month', () => {
+      const bonuses = getMandatoryBonuses('CD')
+      expect(bonuses!.thirteenthMonth).toBe(true)
+      expect(bonuses!.thirteenthMonthAmount).toBe('full_month')
+    })
+  })
+})

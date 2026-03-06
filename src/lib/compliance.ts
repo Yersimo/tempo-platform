@@ -2,7 +2,8 @@
 // Auto labor law monitoring, handbook builder, violation detection, EEO reporting
 
 import { db, schema } from '@/lib/db'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
+import { getMinimumWage } from '@/lib/payroll/labor-law-registry'
 
 // ---------------------------------------------------------------------------
 // Labor Law Database (built-in rules per jurisdiction)
@@ -76,18 +77,227 @@ const LABOR_LAW_RULES: LaborLawRule[] = [
   // France
   { id: 'fr-working-time', jurisdiction: 'FR', category: 'overtime', title: 'Durée du travail', description: 'French 35-hour week', requirement: '35-hour standard work week; overtime above 35h', effectiveDate: '2000-02-01', source: 'Code du travail L3121', severity: 'critical' },
   { id: 'fr-annual-leave', jurisdiction: 'FR', category: 'leave', title: 'Congés payés', description: 'French statutory leave', requirement: '30 working days (5 weeks) paid annual leave', effectiveDate: '1982-01-16', source: 'Code du travail L3141', severity: 'critical' },
+
+  // ═══ AFRICAN COUNTRIES ═══════════════════════════════════════════════
+
+  // Cameroon
+  { id: 'cm-min-wage', jurisdiction: 'CM', category: 'minimum_wage', title: 'SMIG', description: 'Cameroon minimum wage', requirement: 'XAF 36,270/month minimum (SMIG)', effectiveDate: '2014-07-01', source: 'Decree No. 2014/2217', severity: 'critical' },
+  { id: 'cm-overtime', jurisdiction: 'CM', category: 'overtime', title: 'Overtime', description: 'Cameroon overtime rules', requirement: '1.2x rate for hours above 40/week; 1.4x above 48h', effectiveDate: '1992-01-01', source: 'Labour Code Art. 80', severity: 'critical' },
+  { id: 'cm-annual-leave', jurisdiction: 'CM', category: 'leave', title: 'Annual Leave', description: 'Cameroon annual leave', requirement: '18 working days paid annual leave minimum', effectiveDate: '1992-01-01', source: 'Labour Code Art. 89', severity: 'critical' },
+  { id: 'cm-termination', jurisdiction: 'CM', category: 'termination', title: 'Notice Period', description: 'Cameroon notice requirement', requirement: 'Minimum 1 month notice; severance after 2 years', effectiveDate: '1992-01-01', source: 'Labour Code Art. 34', severity: 'warning' },
+
+  // Chad
+  { id: 'td-min-wage', jurisdiction: 'TD', category: 'minimum_wage', title: 'SMIG', description: 'Chad minimum wage', requirement: 'XAF 59,995/month minimum', effectiveDate: '2018-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'td-overtime', jurisdiction: 'TD', category: 'overtime', title: 'Overtime', description: 'Chad overtime rules', requirement: '1.25x rate above 39h/week; 1.5x above 48h', effectiveDate: '1996-01-01', source: 'Labour Code Art. 237', severity: 'critical' },
+  { id: 'td-annual-leave', jurisdiction: 'TD', category: 'leave', title: 'Annual Leave', description: 'Chad annual leave', requirement: '24 working days paid annual leave', effectiveDate: '1996-01-01', source: 'Labour Code Art. 222', severity: 'critical' },
+
+  // Central African Republic
+  { id: 'cf-min-wage', jurisdiction: 'CF', category: 'minimum_wage', title: 'SMIG', description: 'CAR minimum wage', requirement: 'XAF 35,000/month minimum', effectiveDate: '2009-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'cf-overtime', jurisdiction: 'CF', category: 'overtime', title: 'Overtime', description: 'CAR overtime rules', requirement: '1.25x rate above 40h/week', effectiveDate: '2009-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'cf-annual-leave', jurisdiction: 'CF', category: 'leave', title: 'Annual Leave', description: 'CAR annual leave', requirement: '24 working days paid annual leave', effectiveDate: '2009-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Republic of Congo
+  { id: 'cg-min-wage', jurisdiction: 'CG', category: 'minimum_wage', title: 'SMIG', description: 'Congo minimum wage', requirement: 'XAF 90,000/month minimum', effectiveDate: '2020-01-01', source: 'Decree 2020-34', severity: 'critical' },
+  { id: 'cg-overtime', jurisdiction: 'CG', category: 'overtime', title: 'Overtime', description: 'Congo overtime rules', requirement: '1.25x rate above 40h/week', effectiveDate: '1975-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'cg-annual-leave', jurisdiction: 'CG', category: 'leave', title: 'Annual Leave', description: 'Congo annual leave', requirement: '26 working days paid annual leave', effectiveDate: '1975-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Gabon
+  { id: 'ga-min-wage', jurisdiction: 'GA', category: 'minimum_wage', title: 'SMIG', description: 'Gabon minimum wage', requirement: 'XAF 150,000/month minimum', effectiveDate: '2010-01-01', source: 'Decree No. 1218', severity: 'critical' },
+  { id: 'ga-overtime', jurisdiction: 'GA', category: 'overtime', title: 'Overtime', description: 'Gabon overtime rules', requirement: '1.25x rate above 40h/week; 1.5x above 48h', effectiveDate: '1978-01-01', source: 'Labour Code Art. 167', severity: 'critical' },
+  { id: 'ga-annual-leave', jurisdiction: 'GA', category: 'leave', title: 'Annual Leave', description: 'Gabon annual leave', requirement: '24 working days paid annual leave', effectiveDate: '1978-01-01', source: 'Labour Code Art. 185', severity: 'critical' },
+  { id: 'ga-13th-month', jurisdiction: 'GA', category: 'benefits', title: '13th Month', description: 'Gabon mandatory 13th month', requirement: 'Mandatory 13th month salary paid in December', effectiveDate: '1978-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Equatorial Guinea
+  { id: 'gq-min-wage', jurisdiction: 'GQ', category: 'minimum_wage', title: 'SMIG', description: 'Equatorial Guinea minimum wage', requirement: 'XAF 129,035/month minimum', effectiveDate: '2012-01-01', source: 'Labour Law', severity: 'critical' },
+  { id: 'gq-overtime', jurisdiction: 'GQ', category: 'overtime', title: 'Overtime', description: 'EQ Guinea overtime', requirement: '1.25x rate above 40h/week', effectiveDate: '2012-01-01', source: 'Labour Law', severity: 'critical' },
+  { id: 'gq-annual-leave', jurisdiction: 'GQ', category: 'leave', title: 'Annual Leave', description: 'EQ Guinea annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2012-01-01', source: 'Labour Law', severity: 'critical' },
+
+  // Benin
+  { id: 'bj-min-wage', jurisdiction: 'BJ', category: 'minimum_wage', title: 'SMIG', description: 'Benin minimum wage', requirement: 'XOF 52,000/month minimum', effectiveDate: '2014-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'bj-overtime', jurisdiction: 'BJ', category: 'overtime', title: 'Overtime', description: 'Benin overtime rules', requirement: '1.12x rate above 40h/week; 1.35x above 48h', effectiveDate: '1998-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'bj-annual-leave', jurisdiction: 'BJ', category: 'leave', title: 'Annual Leave', description: 'Benin annual leave', requirement: '24 working days paid annual leave', effectiveDate: '1998-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Burkina Faso
+  { id: 'bf-min-wage', jurisdiction: 'BF', category: 'minimum_wage', title: 'SMIG', description: 'Burkina Faso minimum wage', requirement: 'XOF 34,664/month minimum', effectiveDate: '2012-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'bf-overtime', jurisdiction: 'BF', category: 'overtime', title: 'Overtime', description: 'Burkina Faso overtime', requirement: '1.15x rate above 40h/week; 1.35x above 46h', effectiveDate: '2008-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'bf-annual-leave', jurisdiction: 'BF', category: 'leave', title: 'Annual Leave', description: 'Burkina Faso annual leave', requirement: '30 working days paid annual leave', effectiveDate: '2008-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Côte d'Ivoire
+  { id: 'ci-min-wage', jurisdiction: 'CI', category: 'minimum_wage', title: 'SMIG', description: "Côte d'Ivoire minimum wage", requirement: 'XOF 75,000/month minimum', effectiveDate: '2023-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'ci-overtime', jurisdiction: 'CI', category: 'overtime', title: 'Overtime', description: "Côte d'Ivoire overtime", requirement: '1.15x rate above 40h/week; 1.5x above 46h', effectiveDate: '2015-01-01', source: 'Labour Code Art. 22', severity: 'critical' },
+  { id: 'ci-annual-leave', jurisdiction: 'CI', category: 'leave', title: 'Annual Leave', description: "Côte d'Ivoire annual leave", requirement: '24 working days paid annual leave (2.2 days/month)', effectiveDate: '2015-01-01', source: 'Labour Code Art. 25', severity: 'critical' },
+
+  // Mali
+  { id: 'ml-min-wage', jurisdiction: 'ML', category: 'minimum_wage', title: 'SMIG', description: 'Mali minimum wage', requirement: 'XOF 40,000/month minimum', effectiveDate: '2019-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'ml-overtime', jurisdiction: 'ML', category: 'overtime', title: 'Overtime', description: 'Mali overtime rules', requirement: '1.1x rate above 40h/week', effectiveDate: '1992-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'ml-annual-leave', jurisdiction: 'ML', category: 'leave', title: 'Annual Leave', description: 'Mali annual leave', requirement: '22 working days paid annual leave', effectiveDate: '1992-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Niger
+  { id: 'ne-min-wage', jurisdiction: 'NE', category: 'minimum_wage', title: 'SMIG', description: 'Niger minimum wage', requirement: 'XOF 30,047/month minimum', effectiveDate: '2012-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'ne-overtime', jurisdiction: 'NE', category: 'overtime', title: 'Overtime', description: 'Niger overtime rules', requirement: '1.1x rate above 40h/week; 1.35x above 48h', effectiveDate: '2012-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'ne-annual-leave', jurisdiction: 'NE', category: 'leave', title: 'Annual Leave', description: 'Niger annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2012-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Senegal
+  { id: 'sn-min-wage', jurisdiction: 'SN', category: 'minimum_wage', title: 'SMIG', description: 'Senegal minimum wage', requirement: 'XOF 58,900/month minimum', effectiveDate: '2019-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'sn-overtime', jurisdiction: 'SN', category: 'overtime', title: 'Overtime', description: 'Senegal overtime rules', requirement: '1.1x rate above 40h/week; 1.35x above 48h', effectiveDate: '1997-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'sn-annual-leave', jurisdiction: 'SN', category: 'leave', title: 'Annual Leave', description: 'Senegal annual leave', requirement: '24 working days paid annual leave', effectiveDate: '1997-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Togo
+  { id: 'tg-min-wage', jurisdiction: 'TG', category: 'minimum_wage', title: 'SMIG', description: 'Togo minimum wage', requirement: 'XOF 52,500/month minimum', effectiveDate: '2022-01-01', source: 'Decree', severity: 'critical' },
+  { id: 'tg-overtime', jurisdiction: 'TG', category: 'overtime', title: 'Overtime', description: 'Togo overtime rules', requirement: '1.2x rate above 40h/week; 1.4x above 48h', effectiveDate: '2006-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'tg-annual-leave', jurisdiction: 'TG', category: 'leave', title: 'Annual Leave', description: 'Togo annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2006-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Guinea-Bissau
+  { id: 'gw-min-wage', jurisdiction: 'GW', category: 'minimum_wage', title: 'SMIG', description: 'Guinea-Bissau minimum wage', requirement: 'XOF 19,030/month minimum', effectiveDate: '2013-01-01', source: 'Labour Law', severity: 'critical' },
+  { id: 'gw-overtime', jurisdiction: 'GW', category: 'overtime', title: 'Overtime', description: 'Guinea-Bissau overtime', requirement: '1.5x rate above 45h/week', effectiveDate: '1986-01-01', source: 'Labour Law', severity: 'critical' },
+  { id: 'gw-annual-leave', jurisdiction: 'GW', category: 'leave', title: 'Annual Leave', description: 'Guinea-Bissau annual leave', requirement: '22 working days paid annual leave', effectiveDate: '1986-01-01', source: 'Labour Law', severity: 'critical' },
+
+  // Rwanda
+  { id: 'rw-overtime', jurisdiction: 'RW', category: 'overtime', title: 'Overtime', description: 'Rwanda overtime rules', requirement: '1.5x rate above 45h/week; max 50h', effectiveDate: '2018-01-01', source: 'Labour Law No. 66/2018', severity: 'critical' },
+  { id: 'rw-annual-leave', jurisdiction: 'RW', category: 'leave', title: 'Annual Leave', description: 'Rwanda annual leave', requirement: '18 working days paid annual leave', effectiveDate: '2018-01-01', source: 'Labour Law No. 66/2018', severity: 'critical' },
+  { id: 'rw-termination', jurisdiction: 'RW', category: 'termination', title: 'Notice Period', description: 'Rwanda notice requirement', requirement: 'Minimum 1 month notice', effectiveDate: '2018-01-01', source: 'Labour Law No. 66/2018', severity: 'warning' },
+
+  // Kenya
+  { id: 'ke-min-wage', jurisdiction: 'KE', category: 'minimum_wage', title: 'Minimum Wage', description: 'Kenya minimum wage', requirement: 'KES 15,201/month minimum (general labourers, Nairobi)', effectiveDate: '2023-05-01', source: 'Labour Institutions Act', severity: 'critical' },
+  { id: 'ke-overtime', jurisdiction: 'KE', category: 'overtime', title: 'Overtime', description: 'Kenya overtime rules', requirement: '1.5x rate above 45h/week; 2x on rest days', effectiveDate: '2007-01-01', source: 'Employment Act 2007 §27', severity: 'critical' },
+  { id: 'ke-annual-leave', jurisdiction: 'KE', category: 'leave', title: 'Annual Leave', description: 'Kenya annual leave', requirement: '21 working days paid annual leave minimum', effectiveDate: '2007-01-01', source: 'Employment Act 2007 §28', severity: 'critical' },
+  { id: 'ke-termination', jurisdiction: 'KE', category: 'termination', title: 'Notice Period', description: 'Kenya notice requirement', requirement: 'Minimum 1 month notice for monthly employees', effectiveDate: '2007-01-01', source: 'Employment Act 2007 §35', severity: 'warning' },
+
+  // Burundi
+  { id: 'bi-overtime', jurisdiction: 'BI', category: 'overtime', title: 'Overtime', description: 'Burundi overtime rules', requirement: '1.35x rate above 40h/week; 2x on Sundays', effectiveDate: '1993-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'bi-annual-leave', jurisdiction: 'BI', category: 'leave', title: 'Annual Leave', description: 'Burundi annual leave', requirement: '18 working days paid annual leave', effectiveDate: '1993-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Uganda
+  { id: 'ug-overtime', jurisdiction: 'UG', category: 'overtime', title: 'Overtime', description: 'Uganda overtime rules', requirement: '1.5x rate above 48h/week; 2x on rest days/holidays', effectiveDate: '2006-01-01', source: 'Employment Act 2006 §53', severity: 'critical' },
+  { id: 'ug-annual-leave', jurisdiction: 'UG', category: 'leave', title: 'Annual Leave', description: 'Uganda annual leave', requirement: '21 working days paid annual leave', effectiveDate: '2006-01-01', source: 'Employment Act 2006 §54', severity: 'critical' },
+  { id: 'ug-termination', jurisdiction: 'UG', category: 'termination', title: 'Notice Period', description: 'Uganda notice requirement', requirement: 'Minimum 1 month notice for monthly employees', effectiveDate: '2006-01-01', source: 'Employment Act 2006 §58', severity: 'warning' },
+
+  // Tanzania
+  { id: 'tz-min-wage', jurisdiction: 'TZ', category: 'minimum_wage', title: 'Minimum Wage', description: 'Tanzania minimum wage', requirement: 'TZS 400,000/month minimum (private sector)', effectiveDate: '2024-07-01', source: 'Wage Order 2024', severity: 'critical' },
+  { id: 'tz-overtime', jurisdiction: 'TZ', category: 'overtime', title: 'Overtime', description: 'Tanzania overtime rules', requirement: '1.5x rate above 45h/week; 2x on rest days', effectiveDate: '2004-01-01', source: 'Employment Act 2004 §19', severity: 'critical' },
+  { id: 'tz-annual-leave', jurisdiction: 'TZ', category: 'leave', title: 'Annual Leave', description: 'Tanzania annual leave', requirement: '28 working days paid annual leave', effectiveDate: '2004-01-01', source: 'Employment Act 2004 §31', severity: 'critical' },
+
+  // Ethiopia
+  { id: 'et-overtime', jurisdiction: 'ET', category: 'overtime', title: 'Overtime', description: 'Ethiopia overtime rules', requirement: '1.25x rate above 48h/week; 2x on Sundays; 2.5x on holidays', effectiveDate: '2019-01-01', source: 'Labour Proc. No. 1156/2019', severity: 'critical' },
+  { id: 'et-annual-leave', jurisdiction: 'ET', category: 'leave', title: 'Annual Leave', description: 'Ethiopia annual leave', requirement: '16 working days paid annual leave (1st year), +1 day per 2 years service', effectiveDate: '2019-01-01', source: 'Labour Proc. No. 1156/2019', severity: 'critical' },
+  { id: 'et-termination', jurisdiction: 'ET', category: 'termination', title: 'Notice Period', description: 'Ethiopia notice requirement', requirement: 'Minimum 1 month notice; severance of 30 days per year of service', effectiveDate: '2019-01-01', source: 'Labour Proc. No. 1156/2019', severity: 'warning' },
+
+  // South Sudan
+  { id: 'ss-overtime', jurisdiction: 'SS', category: 'overtime', title: 'Overtime', description: 'South Sudan overtime rules', requirement: '1.5x rate above 40h/week; 2x on rest days', effectiveDate: '2017-01-01', source: 'Labour Act 2017', severity: 'critical' },
+  { id: 'ss-annual-leave', jurisdiction: 'SS', category: 'leave', title: 'Annual Leave', description: 'South Sudan annual leave', requirement: '20 working days paid annual leave', effectiveDate: '2017-01-01', source: 'Labour Act 2017', severity: 'critical' },
+
+  // DR Congo
+  { id: 'cd-overtime', jurisdiction: 'CD', category: 'overtime', title: 'Overtime', description: 'DRC overtime rules', requirement: '1.3x rate above 45h/week; 2x on Sundays/holidays', effectiveDate: '2002-01-01', source: 'Labour Code Art. 119', severity: 'critical' },
+  { id: 'cd-annual-leave', jurisdiction: 'CD', category: 'leave', title: 'Annual Leave', description: 'DRC annual leave', requirement: '12 working days paid annual leave (1 day/month)', effectiveDate: '2002-01-01', source: 'Labour Code Art. 141', severity: 'critical' },
+  { id: 'cd-13th-month', jurisdiction: 'CD', category: 'benefits', title: '13th Month', description: 'DRC mandatory 13th month', requirement: 'Mandatory 13th month salary paid in December', effectiveDate: '2002-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Malawi
+  { id: 'mw-min-wage', jurisdiction: 'MW', category: 'minimum_wage', title: 'Minimum Wage', description: 'Malawi minimum wage', requirement: 'MWK 50,000/month minimum', effectiveDate: '2022-01-01', source: 'Employment Act', severity: 'critical' },
+  { id: 'mw-overtime', jurisdiction: 'MW', category: 'overtime', title: 'Overtime', description: 'Malawi overtime rules', requirement: '1.5x rate above 48h/week; 2x on rest days', effectiveDate: '2000-01-01', source: 'Employment Act §36', severity: 'critical' },
+  { id: 'mw-annual-leave', jurisdiction: 'MW', category: 'leave', title: 'Annual Leave', description: 'Malawi annual leave', requirement: '18 working days paid annual leave', effectiveDate: '2000-01-01', source: 'Employment Act §44', severity: 'critical' },
+
+  // Zambia
+  { id: 'zm-min-wage', jurisdiction: 'ZM', category: 'minimum_wage', title: 'Minimum Wage', description: 'Zambia minimum wage', requirement: 'ZMW 2,100/month minimum (general workers)', effectiveDate: '2024-01-01', source: 'Minimum Wages & Conditions Act', severity: 'critical' },
+  { id: 'zm-overtime', jurisdiction: 'ZM', category: 'overtime', title: 'Overtime', description: 'Zambia overtime rules', requirement: '1.5x rate above 48h/week; 2x on Sundays/holidays', effectiveDate: '2019-01-01', source: 'Employment Code Act §41', severity: 'critical' },
+  { id: 'zm-annual-leave', jurisdiction: 'ZM', category: 'leave', title: 'Annual Leave', description: 'Zambia annual leave', requirement: '24 working days paid annual leave', effectiveDate: '2019-01-01', source: 'Employment Code Act §47', severity: 'critical' },
+
+  // Zimbabwe
+  { id: 'zw-overtime', jurisdiction: 'ZW', category: 'overtime', title: 'Overtime', description: 'Zimbabwe overtime rules', requirement: '1.5x rate above 44h/week; 2x on Sundays/holidays', effectiveDate: '2001-01-01', source: 'Labour Act §14', severity: 'critical' },
+  { id: 'zw-annual-leave', jurisdiction: 'ZW', category: 'leave', title: 'Annual Leave', description: 'Zimbabwe annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2001-01-01', source: 'Labour Act §14A', severity: 'critical' },
+  { id: 'zw-termination', jurisdiction: 'ZW', category: 'termination', title: 'Notice Period', description: 'Zimbabwe notice requirement', requirement: 'Minimum 3 months notice', effectiveDate: '2001-01-01', source: 'Labour Act §12', severity: 'warning' },
+
+  // Mozambique
+  { id: 'mz-overtime', jurisdiction: 'MZ', category: 'overtime', title: 'Overtime', description: 'Mozambique overtime rules', requirement: '1.5x rate above 44h/week; 2x on Sundays/holidays', effectiveDate: '2007-01-01', source: 'Labour Law Art. 105', severity: 'critical' },
+  { id: 'mz-annual-leave', jurisdiction: 'MZ', category: 'leave', title: 'Annual Leave', description: 'Mozambique annual leave', requirement: '12 working days paid annual leave (1 day/month)', effectiveDate: '2007-01-01', source: 'Labour Law Art. 100', severity: 'critical' },
+  { id: 'mz-13th-month', jurisdiction: 'MZ', category: 'benefits', title: '13th Month', description: 'Mozambique mandatory 13th month', requirement: 'Mandatory 13th month salary (subsídio de Natal)', effectiveDate: '2007-01-01', source: 'Labour Law Art. 76', severity: 'critical' },
+
+  // Nigeria
+  { id: 'ng-min-wage', jurisdiction: 'NG', category: 'minimum_wage', title: 'National Minimum Wage', description: 'Nigeria minimum wage', requirement: 'NGN 30,000/month minimum', effectiveDate: '2019-04-18', source: 'National Minimum Wage Act 2019', severity: 'critical' },
+  { id: 'ng-overtime', jurisdiction: 'NG', category: 'overtime', title: 'Overtime', description: 'Nigeria overtime rules', requirement: '1.5x rate above 40h/week', effectiveDate: '2004-01-01', source: 'Labour Act §13', severity: 'critical' },
+  { id: 'ng-annual-leave', jurisdiction: 'NG', category: 'leave', title: 'Annual Leave', description: 'Nigeria annual leave', requirement: '6 working days paid annual leave minimum', effectiveDate: '2004-01-01', source: 'Labour Act §18', severity: 'critical' },
+  { id: 'ng-termination', jurisdiction: 'NG', category: 'termination', title: 'Notice Period', description: 'Nigeria notice requirement', requirement: 'Minimum 1 month notice for monthly employees', effectiveDate: '2004-01-01', source: 'Labour Act §11', severity: 'warning' },
+
+  // Ghana
+  { id: 'gh-min-wage', jurisdiction: 'GH', category: 'minimum_wage', title: 'National Daily Minimum Wage', description: 'Ghana minimum wage', requirement: 'GHS 18.15/day minimum', effectiveDate: '2024-01-01', source: 'National Tripartite Committee', severity: 'critical' },
+  { id: 'gh-overtime', jurisdiction: 'GH', category: 'overtime', title: 'Overtime', description: 'Ghana overtime rules', requirement: '1.5x rate above 40h/week; 2x on rest days/holidays', effectiveDate: '2003-01-01', source: 'Labour Act 2003 §35', severity: 'critical' },
+  { id: 'gh-annual-leave', jurisdiction: 'GH', category: 'leave', title: 'Annual Leave', description: 'Ghana annual leave', requirement: '15 working days paid annual leave minimum', effectiveDate: '2003-01-01', source: 'Labour Act 2003 §20', severity: 'critical' },
+
+  // Guinea
+  { id: 'gn-min-wage', jurisdiction: 'GN', category: 'minimum_wage', title: 'SMIG', description: 'Guinea minimum wage', requirement: 'GNF 440,000/month minimum', effectiveDate: '2019-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'gn-overtime', jurisdiction: 'GN', category: 'overtime', title: 'Overtime', description: 'Guinea overtime rules', requirement: '1.3x rate above 40h/week; 1.6x above 48h', effectiveDate: '2014-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'gn-annual-leave', jurisdiction: 'GN', category: 'leave', title: 'Annual Leave', description: 'Guinea annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2014-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // Liberia
+  { id: 'lr-min-wage', jurisdiction: 'LR', category: 'minimum_wage', title: 'Minimum Wage', description: 'Liberia minimum wage', requirement: 'LRD 6,000/month minimum', effectiveDate: '2015-01-01', source: 'Decent Work Act 2015', severity: 'critical' },
+  { id: 'lr-overtime', jurisdiction: 'LR', category: 'overtime', title: 'Overtime', description: 'Liberia overtime rules', requirement: '1.5x rate above 48h/week', effectiveDate: '2015-01-01', source: 'Decent Work Act 2015', severity: 'critical' },
+  { id: 'lr-annual-leave', jurisdiction: 'LR', category: 'leave', title: 'Annual Leave', description: 'Liberia annual leave', requirement: '15 working days paid annual leave', effectiveDate: '2015-01-01', source: 'Decent Work Act 2015', severity: 'critical' },
+
+  // Sierra Leone
+  { id: 'sl-overtime', jurisdiction: 'SL', category: 'overtime', title: 'Overtime', description: 'Sierra Leone overtime rules', requirement: '1.5x rate above 40h/week', effectiveDate: '1960-01-01', source: 'Regulation of Wages Act', severity: 'critical' },
+  { id: 'sl-annual-leave', jurisdiction: 'SL', category: 'leave', title: 'Annual Leave', description: 'Sierra Leone annual leave', requirement: '19 working days paid annual leave', effectiveDate: '1960-01-01', source: 'Employers & Employed Act', severity: 'critical' },
+
+  // Gambia
+  { id: 'gm-overtime', jurisdiction: 'GM', category: 'overtime', title: 'Overtime', description: 'Gambia overtime rules', requirement: '1.5x rate above 48h/week', effectiveDate: '2007-01-01', source: 'Labour Act 2007', severity: 'critical' },
+  { id: 'gm-annual-leave', jurisdiction: 'GM', category: 'leave', title: 'Annual Leave', description: 'Gambia annual leave', requirement: '21 working days paid annual leave', effectiveDate: '2007-01-01', source: 'Labour Act 2007', severity: 'critical' },
+
+  // Cape Verde
+  { id: 'cv-min-wage', jurisdiction: 'CV', category: 'minimum_wage', title: 'Minimum Wage', description: 'Cape Verde minimum wage', requirement: 'CVE 14,000/month minimum', effectiveDate: '2017-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'cv-overtime', jurisdiction: 'CV', category: 'overtime', title: 'Overtime', description: 'Cape Verde overtime rules', requirement: '1.5x rate above 44h/week', effectiveDate: '2007-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'cv-annual-leave', jurisdiction: 'CV', category: 'leave', title: 'Annual Leave', description: 'Cape Verde annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2007-01-01', source: 'Labour Code', severity: 'critical' },
+
+  // São Tomé and Príncipe
+  { id: 'st-overtime', jurisdiction: 'ST', category: 'overtime', title: 'Overtime', description: 'São Tomé overtime rules', requirement: '1.5x rate above 40h/week', effectiveDate: '2019-01-01', source: 'Labour Code', severity: 'critical' },
+  { id: 'st-annual-leave', jurisdiction: 'ST', category: 'leave', title: 'Annual Leave', description: 'São Tomé annual leave', requirement: '22 working days paid annual leave', effectiveDate: '2019-01-01', source: 'Labour Code', severity: 'critical' },
 ]
 
 // ---------------------------------------------------------------------------
 // Compliance Scanning
 // ---------------------------------------------------------------------------
 
+// All supported African country ISO codes with their common name variants
+const AFRICAN_COUNTRY_MAP: Record<string, string> = {
+  CM: 'CM', CAMEROON: 'CM', CAMEROUN: 'CM',
+  TD: 'TD', CHAD: 'TD', TCHAD: 'TD',
+  CF: 'CF', 'CENTRAL AFRICAN REPUBLIC': 'CF',
+  CG: 'CG', CONGO: 'CG', 'REPUBLIC OF CONGO': 'CG', 'CONGO-BRAZZAVILLE': 'CG', 'CONGO BRAZZA': 'CG',
+  GA: 'GA', GABON: 'GA',
+  GQ: 'GQ', 'EQUATORIAL GUINEA': 'GQ', 'GUINEA EQUAT.': 'GQ', 'GUINEA EQUATORIAL': 'GQ',
+  BJ: 'BJ', BENIN: 'BJ',
+  BF: 'BF', 'BURKINA FASO': 'BF', BURKINA: 'BF',
+  CI: 'CI', "COTE D'IVOIRE": 'CI', 'IVORY COAST': 'CI',
+  ML: 'ML', MALI: 'ML',
+  NE: 'NE', NIGER: 'NE',
+  SN: 'SN', SENEGAL: 'SN',
+  TG: 'TG', TOGO: 'TG',
+  GW: 'GW', 'GUINEA-BISSAU': 'GW', 'GUINEA BISSAU': 'GW', 'GUINEE BISSAU': 'GW',
+  RW: 'RW', RWANDA: 'RW',
+  KE: 'KE', KENYA: 'KE',
+  BI: 'BI', BURUNDI: 'BI',
+  UG: 'UG', UGANDA: 'UG',
+  TZ: 'TZ', TANZANIA: 'TZ',
+  ET: 'ET', ETHIOPIA: 'ET',
+  SS: 'SS', 'SOUTH SUDAN': 'SS',
+  CD: 'CD', 'DR CONGO': 'CD', DRC: 'CD', 'DEMOCRATIC REPUBLIC OF CONGO': 'CD',
+  MW: 'MW', MALAWI: 'MW',
+  ZM: 'ZM', ZAMBIA: 'ZM',
+  ZW: 'ZW', ZIMBABWE: 'ZW',
+  MZ: 'MZ', MOZAMBIQUE: 'MZ',
+  NG: 'NG', NIGERIA: 'NG',
+  GH: 'GH', GHANA: 'GH',
+  GN: 'GN', GUINEA: 'GN',
+  LR: 'LR', LIBERIA: 'LR',
+  SL: 'SL', 'SIERRA LEONE': 'SL',
+  GM: 'GM', GAMBIA: 'GM', 'THE GAMBIA': 'GM',
+  CV: 'CV', 'CAPE VERDE': 'CV', 'CABO VERDE': 'CV',
+  ST: 'ST', 'SAO TOME AND PRINCIPE': 'ST', 'SAO TOME': 'ST',
+}
+
 export function getApplicableRules(countries: string[]): LaborLawRule[] {
   const jurisdictions = new Set<string>()
 
   for (const country of countries) {
     // Map country names/codes to jurisdiction codes
-    const upper = country.toUpperCase()
+    const upper = country.trim().toUpperCase()
     if (upper === 'US' || upper === 'USA' || upper === 'UNITED STATES') jurisdictions.add('US')
     if (upper.startsWith('US-') || upper === 'CALIFORNIA') jurisdictions.add('US-CA')
     if (upper === 'US-NY' || upper === 'NEW YORK') jurisdictions.add('US-NY')
@@ -96,6 +306,12 @@ export function getApplicableRules(countries: string[]): LaborLawRule[] {
     if (upper === 'FR' || upper === 'FRANCE') jurisdictions.add('FR')
     // Add US federal for any US state
     if (upper.startsWith('US') || upper === 'USA' || upper === 'UNITED STATES') jurisdictions.add('US')
+
+    // Map African countries
+    const africanCode = AFRICAN_COUNTRY_MAP[upper]
+    if (africanCode) {
+      jurisdictions.add(africanCode)
+    }
   }
 
   return LABOR_LAW_RULES.filter(r => jurisdictions.has(r.jurisdiction))
@@ -164,6 +380,46 @@ export async function scanCompliance(orgId: string): Promise<{
       remediation: 'Process pending salary reviews in Compensation module.',
       detectedAt: new Date().toISOString(),
     })
+  }
+
+  // 4. Minimum wage violation check (all countries in labor law registry)
+  const activeEmployees = employees.filter(e => e.isActive)
+  for (const emp of activeEmployees) {
+    if (!emp.country) continue
+    const countryCode = AFRICAN_COUNTRY_MAP[emp.country.trim().toUpperCase()] || emp.country.trim().toUpperCase()
+    const minWage = getMinimumWage(countryCode)
+    if (!minWage || minWage.annual <= 0) continue
+
+    // Look up latest salary
+    const latestReview = await db.select({
+      currentSalary: schema.salaryReviews.currentSalary,
+      proposedSalary: schema.salaryReviews.proposedSalary,
+      status: schema.salaryReviews.status,
+      currency: schema.salaryReviews.currency,
+    }).from(schema.salaryReviews)
+      .where(and(eq(schema.salaryReviews.employeeId, emp.id), eq(schema.salaryReviews.orgId, orgId)))
+      .orderBy(desc(schema.salaryReviews.createdAt))
+      .limit(1)
+
+    if (latestReview.length === 0) continue
+    const review = latestReview[0]
+    const salary = review.status === 'approved' ? review.proposedSalary : review.currentSalary
+    if (!salary || salary <= 0) continue
+
+    // Simple check: if salary currency matches minimum wage currency, compare directly
+    // (Cross-currency comparison happens in payroll engine's validatePayrollCompliance)
+    const salCurrency = (review.currency || 'USD').toUpperCase()
+    if (salCurrency === minWage.currency.toUpperCase() && salary < minWage.annual) {
+      violations.push({
+        id: `v-min-wage-${emp.id}`,
+        ruleId: `${countryCode.toLowerCase()}-min-wage`,
+        severity: 'critical',
+        title: 'Below Minimum Wage',
+        description: `Employee salary (${salary.toLocaleString()} ${minWage.currency}/year) is below the statutory minimum wage (${minWage.annual.toLocaleString()} ${minWage.currency}/year) for ${countryCode}.`,
+        remediation: `Increase salary to at least ${minWage.annual.toLocaleString()} ${minWage.currency} per year to comply with ${countryCode} minimum wage law.`,
+        detectedAt: new Date().toISOString(),
+      })
+    }
   }
 
   const critical = violations.filter(v => v.severity === 'critical').length

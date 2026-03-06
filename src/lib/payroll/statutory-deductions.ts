@@ -650,6 +650,42 @@ const STATUTORY_REGISTRY: Record<string, StatutoryDeduction[]> = {
       mandatory: true,
     },
   ],
+
+  // ─── Ethiopia ──────────────────────────────────────────
+  ET: [
+    {
+      name: 'Pension (Private Organizations)',
+      type: 'pension',
+      employeeRate: 0.07,
+      employerRate: 0.11,
+      currency: 'ETB',
+      mandatory: true,
+    },
+  ],
+
+  // ─── South Sudan ──────────────────────────────────────
+  SS: [
+    {
+      name: 'Social Insurance Fund',
+      type: 'social_insurance',
+      employeeRate: 0.04,
+      employerRate: 0.08,
+      currency: 'SSP',
+      mandatory: true,
+    },
+  ],
+
+  // ─── Malawi ────────────────────────────────────────────
+  MW: [
+    {
+      name: 'Pension Fund',
+      type: 'pension',
+      employeeRate: 0.05,
+      employerRate: 0.10,
+      currency: 'MWK',
+      mandatory: true,
+    },
+  ],
 }
 
 /**
