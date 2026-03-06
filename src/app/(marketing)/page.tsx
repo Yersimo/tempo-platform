@@ -119,6 +119,7 @@ export default function LandingPage() {
   const queryResultsRef = useRef<HTMLDivElement>(null)
   const trustRef = useRef<HTMLDivElement>(null)
   const [activeModule, setActiveModule] = useState(0)
+  const [heroModule, setHeroModule] = useState('dashboard')
 
   /* ─── Nav scroll effect ─── */
   useEffect(() => {
@@ -350,63 +351,236 @@ export default function LandingPage() {
                   <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: '-.035em', color: '#fff' }}>tempo</span>
                 </div>
                 <div className="l-sidebar-label">Modules</div>
-                <div className="l-sidebar-item active">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /></svg>
-                  Dashboard
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3,20 C5,14 9,10 11,8" /><path d="M6,21 C8,15 12,11 14,9 C16,7 18,5 21,4" /></svg>
-                  Performance
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12,2 L12,8" /><path d="M12,10 L12,14" /><rect x="4" y="14" width="16" height="8" rx="2" /></svg>
-                  Compensation
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2,7 L12,2 L22,7 L12,12 Z" /></svg>
-                  Learning
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12,4 L12,12" /><circle cx="12" cy="18" r="2.5" /></svg>
-                  Engagement
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="6" r="3" /><circle cx="17" cy="8" r="2.5" /></svg>
-                  Mentoring
-                </div>
-                <div className="l-sidebar-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3,22 L3,3" opacity=".3" /><path d="M3,22 L22,22" opacity=".3" /><path d="M6,16 C8,14 10,11 12,8 C14,5 18,4 20,4" /></svg>
-                  Analytics
-                </div>
+                {([
+                  { key: 'dashboard', label: 'Dashboard', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /></svg> },
+                  { key: 'performance', label: 'Performance', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3,20 C5,14 9,10 11,8" /><path d="M6,21 C8,15 12,11 14,9 C16,7 18,5 21,4" /></svg> },
+                  { key: 'compensation', label: 'Compensation', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12,2 L12,8" /><path d="M12,10 L12,14" /><rect x="4" y="14" width="16" height="8" rx="2" /></svg> },
+                  { key: 'learning', label: 'Learning', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2,7 L12,2 L22,7 L12,12 Z" /></svg> },
+                  { key: 'engagement', label: 'Engagement', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12,4 L12,12" /><circle cx="12" cy="18" r="2.5" /></svg> },
+                  { key: 'mentoring', label: 'Mentoring', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="6" r="3" /><circle cx="17" cy="8" r="2.5" /></svg> },
+                  { key: 'analytics', label: 'Analytics', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3,22 L3,3" opacity=".3" /><path d="M3,22 L22,22" opacity=".3" /><path d="M6,16 C8,14 10,11 12,8 C14,5 18,4 20,4" /></svg> },
+                ] as const).map((item) => (
+                  <div
+                    key={item.key}
+                    className={`l-sidebar-item${heroModule === item.key ? ' active' : ''}`}
+                    onClick={() => setHeroModule(item.key)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </div>
+                ))}
               </div>
               <div className="l-canvas">
-                <div className="l-canvas-header">
-                  <div>
-                    <div className="l-canvas-title">Workforce Overview</div>
-                    <div className="l-canvas-subtitle">Q4 2026 / All Regions</div>
+                {heroModule === 'dashboard' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Workforce Overview</div>
+                      <div className="l-canvas-subtitle">Q4 2026 / All Regions</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Export</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ New Review</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Export</span>
-                    <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ New Review</span>
+                  <div className="l-stat-grid" ref={statGridRef}>
+                    <div className="l-stat-card"><div className="l-stat-label">Review Completion</div><div className="l-stat-val orange">78%</div><div className="l-stat-delta">+12% vs Q3</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Active Employees</div><div className="l-stat-val">48,293</div><div className="l-stat-delta">+2.1% YoY</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Avg Comp Ratio</div><div className="l-stat-val">1.02</div><div className="l-stat-delta">At market</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Engagement (eNPS)</div><div className="l-stat-val">+42</div><div className="l-stat-delta">+8 vs H1</div></div>
                   </div>
-                </div>
-                <div className="l-stat-grid" ref={statGridRef}>
-                  <div className="l-stat-card"><div className="l-stat-label">Review Completion</div><div className="l-stat-val orange">78%</div><div className="l-stat-delta">+12% vs Q3</div></div>
-                  <div className="l-stat-card"><div className="l-stat-label">Active Employees</div><div className="l-stat-val">48,293</div><div className="l-stat-delta">+2.1% YoY</div></div>
-                  <div className="l-stat-card"><div className="l-stat-label">Avg Comp Ratio</div><div className="l-stat-val">1.02</div><div className="l-stat-delta">At market</div></div>
-                  <div className="l-stat-card"><div className="l-stat-label">Engagement (eNPS)</div><div className="l-stat-val">+42</div><div className="l-stat-delta">+8 vs H1</div></div>
-                </div>
-                <div className="l-demo-table" ref={tableRef}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr><th>Employee</th><th>Role</th><th>Region</th><th>Rating</th><th>Comp Ratio</th><th>Status</th></tr></thead>
-                    <tbody>
-                      <tr><td>Sarah Chen</td><td>VP Finance</td><td>Singapore</td><td>4.2</td><td>1.04</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
-                      <tr><td>Marcus Weber</td><td>Dir. Engineering</td><td>Germany</td><td>3.8</td><td>0.91</td><td><span className="l-tag l-tag-amber">In Review</span></td></tr>
-                      <tr><td>Fatou Diallo</td><td>HRBP</td><td>Senegal</td><td>4.5</td><td>0.97</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
-                      <tr><td>Carlos Mendez</td><td>Country Head</td><td>Mexico</td><td>&mdash;</td><td>1.12</td><td><span className="l-tag l-tag-blue">Pending</span></td></tr>
-                    </tbody>
-                  </table>
-                </div>
+                  <div className="l-demo-table" ref={tableRef}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Employee</th><th>Role</th><th>Region</th><th>Rating</th><th>Comp Ratio</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Sarah Chen</td><td>VP Finance</td><td>Singapore</td><td>4.2</td><td>1.04</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                        <tr><td>Marcus Weber</td><td>Dir. Engineering</td><td>Germany</td><td>3.8</td><td>0.91</td><td><span className="l-tag l-tag-amber">In Review</span></td></tr>
+                        <tr><td>Fatou Diallo</td><td>HRBP</td><td>Senegal</td><td>4.5</td><td>0.97</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                        <tr><td>Carlos Mendez</td><td>Country Head</td><td>Mexico</td><td>&mdash;</td><td>1.12</td><td><span className="l-tag l-tag-blue">Pending</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'performance' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Performance Reviews</div>
+                      <div className="l-canvas-subtitle">Q4 2026 Cycle / EMEA Region</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Calibrate</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ Start Review</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">Cycle Progress</div><div className="l-stat-val orange">73%</div><div className="l-stat-delta">164 of 224</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Avg Rating</div><div className="l-stat-val">3.8</div><div className="l-stat-delta">+0.2 vs H1</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Top Performers</div><div className="l-stat-val">38</div><div className="l-stat-delta">17% of pool</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Overdue</div><div className="l-stat-val" style={{ color: '#ef4444' }}>12</div><div className="l-stat-delta">5 managers</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Employee</th><th>Manager</th><th>Self Review</th><th>Manager Review</th><th>Rating</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Amara Kone</td><td>O. Adeyemi</td><td><span className="l-tag l-tag-green">Done</span></td><td><span className="l-tag l-tag-green">Done</span></td><td>4.5</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                        <tr><td>Kofi Asante</td><td>N. Okafor</td><td><span className="l-tag l-tag-green">Done</span></td><td><span className="l-tag l-tag-amber">Draft</span></td><td>&mdash;</td><td><span className="l-tag l-tag-amber">In Progress</span></td></tr>
+                        <tr><td>Binta Sow</td><td>A. Darko</td><td><span className="l-tag l-tag-blue">Pending</span></td><td><span className="l-tag l-tag-blue">Pending</span></td><td>&mdash;</td><td><span className="l-tag l-tag-blue">Not Started</span></td></tr>
+                        <tr><td>David Osei</td><td>O. Adeyemi</td><td><span className="l-tag l-tag-green">Done</span></td><td><span className="l-tag l-tag-green">Done</span></td><td>3.2</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'compensation' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Compensation Planning</div>
+                      <div className="l-canvas-subtitle">2026 Annual Review / All Bands</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Bands</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ Propose</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">Total Budget</div><div className="l-stat-val orange">$2.4M</div><div className="l-stat-delta">87% allocated</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Avg Increase</div><div className="l-stat-val">6.2%</div><div className="l-stat-delta">Market: 5.8%</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Below Band</div><div className="l-stat-val" style={{ color: '#ef4444' }}>23</div><div className="l-stat-delta">Priority review</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Equity Gap</div><div className="l-stat-val">2.1%</div><div className="l-stat-delta">-1.4% vs 2025</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Employee</th><th>Level</th><th>Current</th><th>Proposed</th><th>Comp Ratio</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Fatou Diallo</td><td>P4</td><td>$62,000</td><td>$68,200</td><td><span style={{ color: 'var(--o)' }}>0.89</span></td><td><span className="l-tag l-tag-amber">Pending HR</span></td></tr>
+                        <tr><td>Sarah Chen</td><td>P6</td><td>$148,000</td><td>$155,400</td><td>1.04</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
+                        <tr><td>Marcus Weber</td><td>P5</td><td>$112,000</td><td>$121,000</td><td><span style={{ color: 'var(--o)' }}>0.91</span></td><td><span className="l-tag l-tag-amber">Manager Review</span></td></tr>
+                        <tr><td>Kwame Asante</td><td>P3</td><td>$44,500</td><td>$48,200</td><td>0.97</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'learning' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Learning Paths</div>
+                      <div className="l-canvas-subtitle">Active Programs / Q4 2026</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Catalog</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ Create Path</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">Active Learners</div><div className="l-stat-val orange">1,247</div><div className="l-stat-delta">+18% vs Q3</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Courses</div><div className="l-stat-val">86</div><div className="l-stat-delta">12 new this Q</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Completion Rate</div><div className="l-stat-val">64%</div><div className="l-stat-delta">+9% vs Q3</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Skill Gaps Closed</div><div className="l-stat-val">142</div><div className="l-stat-delta">38 this month</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Program</th><th>Type</th><th>Enrolled</th><th>Completion</th><th>Avg Score</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Leadership Essentials</td><td>Mandatory</td><td>342</td><td>78%</td><td>88/100</td><td><span className="l-tag l-tag-green">Active</span></td></tr>
+                        <tr><td>Data Analytics</td><td>Elective</td><td>128</td><td>45%</td><td>92/100</td><td><span className="l-tag l-tag-green">Active</span></td></tr>
+                        <tr><td>Compliance 2026</td><td>Mandatory</td><td>1,247</td><td>91%</td><td>85/100</td><td><span className="l-tag l-tag-amber">Closing</span></td></tr>
+                        <tr><td>AI for Managers</td><td>Elective</td><td>64</td><td>12%</td><td>&mdash;</td><td><span className="l-tag l-tag-blue">New</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'engagement' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Employee Engagement</div>
+                      <div className="l-canvas-subtitle">Pulse Survey / March 2026</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>History</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ New Survey</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">eNPS Score</div><div className="l-stat-val orange">+42</div><div className="l-stat-delta">+8 vs H1</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Response Rate</div><div className="l-stat-val">87%</div><div className="l-stat-delta">+5% vs prev</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Promoters</div><div className="l-stat-val" style={{ color: '#16a34a' }}>58%</div><div className="l-stat-delta">+4% QoQ</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Detractors</div><div className="l-stat-val" style={{ color: '#ef4444' }}>16%</div><div className="l-stat-delta">-3% QoQ</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Department</th><th>eNPS</th><th>Response</th><th>Top Theme</th><th>Trend</th><th>Action</th></tr></thead>
+                      <tbody>
+                        <tr><td>Engineering</td><td>+52</td><td>91%</td><td>Career growth</td><td style={{ color: '#16a34a' }}>+6</td><td><span className="l-tag l-tag-green">On Track</span></td></tr>
+                        <tr><td>Sales</td><td>+28</td><td>84%</td><td>Work-life balance</td><td style={{ color: '#ef4444' }}>-4</td><td><span className="l-tag l-tag-amber">Action Plan</span></td></tr>
+                        <tr><td>Operations</td><td>+45</td><td>89%</td><td>Team culture</td><td style={{ color: '#16a34a' }}>+12</td><td><span className="l-tag l-tag-green">On Track</span></td></tr>
+                        <tr><td>Finance</td><td>+31</td><td>78%</td><td>Recognition</td><td style={{ color: 'var(--o)' }}>+1</td><td><span className="l-tag l-tag-blue">Monitoring</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'mentoring' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Mentoring Programs</div>
+                      <div className="l-canvas-subtitle">Active Matches / All Programs</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Programs</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ Match</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">Active Pairs</div><div className="l-stat-val orange">84</div><div className="l-stat-delta">+12 this Q</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Sessions / Month</div><div className="l-stat-val">312</div><div className="l-stat-delta">3.7 per pair</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Match Score</div><div className="l-stat-val">92%</div><div className="l-stat-delta">AI-powered</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Goal Progress</div><div className="l-stat-val">68%</div><div className="l-stat-delta">+14% vs Q3</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Mentee</th><th>Mentor</th><th>Program</th><th>Sessions</th><th>Progress</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Binta Sow</td><td>Amara Kone</td><td>Leadership</td><td>8/12</td><td>67%</td><td><span className="l-tag l-tag-green">Active</span></td></tr>
+                        <tr><td>Kofi Asante</td><td>Sarah Chen</td><td>Cross-functional</td><td>5/10</td><td>50%</td><td><span className="l-tag l-tag-green">Active</span></td></tr>
+                        <tr><td>David Osei</td><td>Marcus Weber</td><td>Technical</td><td>3/8</td><td>38%</td><td><span className="l-tag l-tag-amber">Behind</span></td></tr>
+                        <tr><td>Priya Sharma</td><td>Fatou Diallo</td><td>Leadership</td><td>12/12</td><td>100%</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
+
+                {heroModule === 'analytics' && (<>
+                  <div className="l-canvas-header">
+                    <div>
+                      <div className="l-canvas-title">Workforce Analytics</div>
+                      <div className="l-canvas-subtitle">Cross-Module Insights / 2026</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--lbg)', border: '1px solid var(--bd)', color: 'var(--lt3)', fontWeight: 500 }}>Reports</span>
+                      <span style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, background: 'var(--o)', color: '#fff', fontWeight: 500 }}>+ Query</span>
+                    </div>
+                  </div>
+                  <div className="l-stat-grid animated">
+                    <div className="l-stat-card"><div className="l-stat-label">Flight Risk</div><div className="l-stat-val" style={{ color: '#ef4444' }}>47</div><div className="l-stat-delta">High risk employees</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Attrition Rate</div><div className="l-stat-val orange">8.2%</div><div className="l-stat-delta">Industry: 12.1%</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Gender Pay Gap</div><div className="l-stat-val">2.1%</div><div className="l-stat-delta">-1.4% vs 2025</div></div>
+                    <div className="l-stat-card"><div className="l-stat-label">Diversity Index</div><div className="l-stat-val">0.84</div><div className="l-stat-delta">+0.06 YoY</div></div>
+                  </div>
+                  <div className="l-demo-table animated">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th>Insight</th><th>Module</th><th>Impact</th><th>Confidence</th><th>Action</th><th>Priority</th></tr></thead>
+                      <tbody>
+                        <tr><td>Underpaid top performers</td><td>Comp + Perf</td><td>23 employees</td><td>94%</td><td>Salary review</td><td><span className="l-tag l-tag-amber">High</span></td></tr>
+                        <tr><td>Manager skill gap</td><td>Learning</td><td>8 teams</td><td>87%</td><td>Training enrolled</td><td><span className="l-tag l-tag-amber">High</span></td></tr>
+                        <tr><td>Engagement dip: Sales</td><td>Engagement</td><td>-4 eNPS</td><td>91%</td><td>Action plan</td><td><span className="l-tag l-tag-green">Medium</span></td></tr>
+                        <tr><td>Succession gap: VP</td><td>Mentoring</td><td>3 roles</td><td>78%</td><td>Pipeline build</td><td><span className="l-tag l-tag-blue">Monitor</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>)}
               </div>
             </div>
           </div>
