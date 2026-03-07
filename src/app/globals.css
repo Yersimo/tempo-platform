@@ -603,3 +603,23 @@ body {
   .l-footer-inner { flex-direction: column; gap: 16px; text-align: center; }
   .l-hero-ctas { flex-direction: column; align-items: center; }
 }
+
+/* ─── Course Player ─── */
+.course-player-prose { font-size: 0.95rem; line-height: 1.8; color: var(--color-t2); }
+.course-player-prose p { margin-bottom: 0.85rem; }
+.course-player-prose h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-t1); }
+.course-player-prose h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; margin-top: 1.5rem; color: var(--color-t1); }
+.course-player-prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.course-player-prose ul li { margin-bottom: 0.35rem; line-height: 1.65; }
+.course-player-prose strong { font-weight: 600; color: var(--color-t1); }
+.course-player-prose .cp-callout { background: var(--color-tempo-50, #fff7ed); border-left: 3px solid var(--color-tempo-500, #f97316); border-radius: 0 0.5rem 0.5rem 0; padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.85rem; color: var(--color-t1); }
+.course-player-prose .cp-callout-info { background: #eff6ff; border-left-color: #3b82f6; }
+.course-player-prose .cp-callout-success { background: #f0fdf4; border-left-color: #22c55e; }
+.course-player-prose .cp-divider { height: 1px; background: var(--color-divider); margin: 1.5rem 0; }
+.course-player-prose .cp-step { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+.course-player-prose .cp-step-num { width: 1.5rem; height: 1.5rem; border-radius: 9999px; background: var(--color-tempo-500, #f97316); color: white; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.15rem; }
+.course-player-prose .cp-step-content { flex: 1; }
+@keyframes slideInPlayer { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.course-player-enter { animation: slideInPlayer 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes celebratePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.celebrate-pulse { animation: celebratePulse 0.6s ease-in-out 3; }

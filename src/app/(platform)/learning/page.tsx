@@ -18,6 +18,7 @@ import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
 import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
+import { CoursePlayer } from '@/components/learning/course-player'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
@@ -125,6 +126,19 @@ export default function LearningPage() {
   const [libraryLanguage, setLibraryLanguage] = useState('all')
   const [showContentDetailModal, setShowContentDetailModal] = useState(false)
   const [selectedContentItem, setSelectedContentItem] = useState<typeof contentLibrary[number] | null>(null)
+
+  // Course Player state
+  const [playerEnrollmentId, setPlayerEnrollmentId] = useState<string | null>(null)
+  const [playerCourseId, setPlayerCourseId] = useState<string | null>(null)
+
+  function openPlayer(enrollmentId: string, courseId: string) {
+    const enr = enrollments.find(e => e.id === enrollmentId)
+    if (enr?.status === 'enrolled') {
+      updateEnrollment(enrollmentId, { status: 'in_progress', progress: 5 })
+    }
+    setPlayerEnrollmentId(enrollmentId)
+    setPlayerCourseId(courseId)
+  }
 
   // Gamification state
   const [gamificationSubTab, setGamificationSubTab] = useState<'leaderboard' | 'badges' | 'points' | 'challenges'>('leaderboard')
@@ -1066,7 +1080,7 @@ export default function LearningPage() {
                           <p className="text-xs text-t3">{course?.category} · {course?.duration_hours}h</p>
                           <Progress value={enr.progress} showLabel className="mt-1" color="orange" />
                         </div>
-                        <Button size="sm" variant="primary" onClick={() => handleCompleteEnrollment(enr.id)}>{t('resumeLearning')}</Button>
+                        <Button size="sm" variant="primary" onClick={() => openPlayer(enr.id, enr.course_id)}>{t('resumeLearning')}</Button>
                       </div>
                     </Card>
                   )
@@ -1263,8 +1277,10 @@ export default function LearningPage() {
                       <Button size="sm" variant="outline" onClick={() => handleViewCertificate(myEnrollment.id)}>
                         <Medal size={12} /> {t('certificate')}
                       </Button>
-                    ) : enrolled ? (
-                      <Badge variant="success">{tc('enrolled')}</Badge>
+                    ) : enrolled && myEnrollment ? (
+                      <Button size="sm" variant="primary" onClick={() => openPlayer(myEnrollment.id, course.id)}>
+                        <Play size={12} /> {myEnrollment.status === 'in_progress' ? 'Continue' : 'Start'}
+                      </Button>
                     ) : hasUnmetPrereqs ? (
                       <Badge variant="warning" className="text-[0.6rem]"><Lock size={10} /> Locked</Badge>
                     ) : (
@@ -1334,10 +1350,10 @@ export default function LearningPage() {
                   </Badge>
                   <div className="flex gap-1">
                     {enr.status === 'enrolled' && (
-                      <Button size="sm" variant="primary" onClick={() => handleStartEnrollment(enr.id)}>{tc('start')}</Button>
+                      <Button size="sm" variant="primary" onClick={() => openPlayer(enr.id, enr.course_id)}>{tc('start')}</Button>
                     )}
                     {enr.status === 'in_progress' && (
-                      <Button size="sm" variant="primary" onClick={() => handleCompleteEnrollment(enr.id)}>{tc('complete')}</Button>
+                      <Button size="sm" variant="primary" onClick={() => openPlayer(enr.id, enr.course_id)}>Continue</Button>
                     )}
                     {enr.status === 'completed' && (
                       <Button size="sm" variant="outline" onClick={() => handleViewCertificate(enr.id)}>
@@ -3871,6 +3887,15 @@ export default function LearningPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Course Player */}
+      {playerEnrollmentId && playerCourseId && (
+        <CoursePlayer
+          courseId={playerCourseId}
+          enrollmentId={playerEnrollmentId}
+          onClose={() => { setPlayerEnrollmentId(null); setPlayerCourseId(null) }}
+        />
+      )}
     </>
   )
 }
