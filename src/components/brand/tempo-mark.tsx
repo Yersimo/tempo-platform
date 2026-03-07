@@ -9,9 +9,9 @@ interface TempoMarkProps {
 
 export function TempoMark({ variant = 'color', size = 40, className = '', showCrossbar = true }: TempoMarkProps) {
   const colors = {
-    color: { crossbar: '#ea580c', trail: '#fb923c', lead: '#ea580c', crossbarOpacity: 0.18, trailOpacity: 0.5 },
-    white: { crossbar: 'white', trail: 'white', lead: 'white', crossbarOpacity: 0.15, trailOpacity: 0.4 },
-    mono: { crossbar: '#111', trail: '#111', lead: '#111', crossbarOpacity: 0.1, trailOpacity: 0.2 },
+    color: { crossbar: '#ea580c', trail: '#fb923c', lead: '#ea580c', crossbarOpacity: 0.6, trailOpacity: 0.5 },
+    white: { crossbar: '#fb923c', trail: 'white', lead: 'white', crossbarOpacity: 0.85, trailOpacity: 0.4 },
+    mono: { crossbar: '#111', trail: '#111', lead: '#111', crossbarOpacity: 0.35, trailOpacity: 0.2 },
   }
 
   const c = colors[variant]
@@ -25,11 +25,11 @@ export function TempoMark({ variant = 'color', size = 40, className = '', showCr
       fill="none"
       className={className}
     >
-      {showCrossbar && size >= 16 && (
+      {showCrossbar && (
         <line
           x1="2" y1="3" x2="78" y2="3"
           stroke={c.crossbar}
-          strokeWidth="4"
+          strokeWidth={size < 20 ? 6 : 5}
           strokeLinecap="round"
           opacity={c.crossbarOpacity}
         />

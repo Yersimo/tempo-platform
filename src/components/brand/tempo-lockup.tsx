@@ -9,7 +9,7 @@ interface TempoLockupProps {
 }
 
 const sizes = {
-  sm: { mark: 16, text: 'text-sm', gap: 'gap-1' },
+  sm: { mark: 20, text: 'text-sm', gap: 'gap-1' },
   md: { mark: 24, text: 'text-xl', gap: 'gap-1.5' },
   lg: { mark: 32, text: 'text-2xl', gap: 'gap-2' },
   xl: { mark: 48, text: 'text-4xl', gap: 'gap-3' },
@@ -18,7 +18,7 @@ const sizes = {
 export function TempoLockup({ variant = 'color', size = 'md', className = '' }: TempoLockupProps) {
   const s = sizes[size]
   const textColor = variant === 'white' ? 'text-white' : variant === 'mono' ? 'text-t1' : 'text-t1'
-  const showCrossbar = size !== 'sm'
+  const showCrossbar = true
 
   return (
     <div className={`inline-flex items-end ${s.gap} ${className}`}>

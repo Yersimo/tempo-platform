@@ -6,7 +6,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 function TempoSvgMark({ width = 12, className = '' }: { width?: number; className?: string }) {
   return (
     <svg style={{ width, height: 'auto' }} className={className} viewBox="0 0 80 100" fill="none">
-      <line x1="2" y1="3" x2="78" y2="3" stroke="#fb923c" strokeWidth="5" strokeLinecap="round" opacity=".18" />
+      <line x1="2" y1="3" x2="78" y2="3" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" opacity=".6" />
       <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" strokeWidth="12" strokeLinecap="round" opacity=".5" />
       <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" strokeWidth="12" strokeLinecap="round" />
     </svg>
