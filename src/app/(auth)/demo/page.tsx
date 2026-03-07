@@ -16,6 +16,8 @@ const DEMO_PIN = 'tempo2026'
 
 // ─── Magic link slugs → credential mapping ────────────────────
 const MAGIC_LINK_MAP: Record<string, { email: string; password: string }> = {
+  // Master Admin
+  'admin': { email: 'yersimo@theworktempo.com', password: 'W@kilisha2026' },
   // Ecobank
   'ecobank-chro': { email: 'amara.kone@ecobank.com', password: 'demo1234' },
   'ecobank-cfo': { email: 'i.agu@ecobank.com', password: 'demo1234' },

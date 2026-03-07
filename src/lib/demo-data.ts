@@ -879,6 +879,7 @@ export interface DemoCredential {
 }
 
 export const demoCredentials: DemoCredential[] = [
+  { email: 'yersimo@theworktempo.com', password: 'W@kilisha2026', employeeId: 'emp-17', role: 'owner', label: 'Master Admin', title: 'Platform Owner', department: 'Executive', description: 'Master admin with full super access. Can switch to any user role.' },
   { email: 'amara.kone@ecobank.com', password: 'demo1234', employeeId: 'emp-17', role: 'owner', label: 'CHRO (Owner)', title: 'CHRO', department: 'Human Resources', description: 'Full platform access. Sees all modules, AI insights, and executive dashboards.' },
   { email: 'o.adeyemi@ecobank.com', password: 'demo1234', employeeId: 'emp-1', role: 'admin', label: 'Department Head', title: 'Head of Retail Banking', department: 'Retail Banking', description: 'Department admin. Manages team performance, approvals, and recruiting.' },
   { email: 'a.darko@ecobank.com', password: 'demo1234', employeeId: 'emp-20', role: 'hrbp', label: 'HR Business Partner', title: 'HR Business Partner', department: 'Human Resources', description: 'HR operations. Manages people, performance reviews, compensation, and engagement.' },
@@ -4569,6 +4570,13 @@ export interface DemoAdminCredential {
 }
 
 export const demoAdminCredentials: DemoAdminCredential[] = [
+  {
+    email: 'yersimo@theworktempo.com',
+    password: 'W@kilisha2026',
+    name: 'Simon Rey',
+    role: 'super_admin',
+    description: 'Master admin — full platform access, impersonation, org management',
+  },
   {
     email: 'admin@tempo.dev',
     password: 'admin1234',

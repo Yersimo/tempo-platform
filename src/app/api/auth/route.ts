@@ -389,11 +389,13 @@ export async function POST(request: NextRequest) {
       const sessionCookie = request.cookies.get(getSessionCookieName())
       let callerOrgId: string | null = null
       let callerRole: string | null = null
+      let callerSessionId: string | null = null
       if (sessionCookie?.value) {
         const currentSession = await validateSession(sessionCookie.value)
         if (currentSession) {
           callerOrgId = currentSession.orgId
           callerRole = currentSession.role
+          callerSessionId = currentSession.sessionId
           await revokeSession(currentSession.sessionId)
         }
       }
@@ -402,16 +404,54 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Active session required' }, { status: 401 })
       }
 
-      // Only owner and admin can switch users
-      if (callerRole !== 'owner' && callerRole !== 'admin') {
+      // Allow switching for demo sessions (any role), restrict to owner/admin for real sessions
+      const isDemoSession = callerSessionId?.startsWith('demo-')
+      if (!isDemoSession && callerRole !== 'owner' && callerRole !== 'admin') {
         return NextResponse.json({ error: 'Only owners and admins can switch users' }, { status: 403 })
       }
 
       // Only allow switching to employees within the SAME org
-      const [employee] = await db.select().from(schema.employees)
-        .where(and(eq(schema.employees.id, employeeId), eq(schema.employees.orgId, callerOrgId)))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let employee: any = null
+      try {
+        const [dbEmp] = await db.select().from(schema.employees)
+          .where(and(eq(schema.employees.id, employeeId), eq(schema.employees.orgId, callerOrgId)))
+        if (dbEmp) employee = dbEmp
+      } catch { /* DB unavailable */ }
 
+      // Demo fallback: if employee not in DB, check demo data
       if (!employee) {
+        const demoCred = allDemoCredentials.find(c => c.employeeId === employeeId)
+        if (demoCred) {
+          const demoOrgId = employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+          const orgData = getDemoDataForOrg(demoOrgId)
+          const demoEmp = orgData.employees.find((e: { id: string }) => e.id === employeeId)
+          if (demoEmp) {
+            // Build a demo JWT session (no DB session needed)
+            const demoToken = await createToken({
+              employeeId: demoCred.employeeId,
+              email: demoCred.email,
+              role: demoCred.role,
+              orgId: demoOrgId,
+              sessionId: `demo-${Date.now()}`,
+            })
+            const demoUser = {
+              id: `user-${demoCred.employeeId}`,
+              email: demoCred.email,
+              full_name: demoEmp.profile?.full_name || demoCred.label,
+              avatar_url: demoEmp.profile?.avatar_url || null,
+              role: demoCred.role,
+              department_id: demoEmp.department_id || null,
+              employee_id: demoCred.employeeId,
+              job_title: demoEmp.job_title || demoCred.title,
+              department_name: demoCred.department,
+            }
+            const demoCookie = setSessionCookie(demoToken)
+            const demoResponse = NextResponse.json({ user: demoUser })
+            demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
+            return demoResponse
+          }
+        }
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
       }
 
@@ -443,14 +483,16 @@ export async function POST(request: NextRequest) {
       }
 
       // Audit log (uses 'login' action since switch_user is not in the enum)
-      await db.insert(schema.auditLog).values({
-        orgId: employee.orgId,
-        userId: employee.id,
-        action: 'login',
-        entityType: 'session',
-        entityId: employee.id,
-        details: `Switch to user: ${employee.fullName} (${employee.email})`,
-      })
+      try {
+        await db.insert(schema.auditLog).values({
+          orgId: employee.orgId,
+          userId: employee.id,
+          action: 'login',
+          entityType: 'session',
+          entityId: employee.id,
+          details: `Switch to user: ${employee.fullName} (${employee.email})`,
+        })
+      } catch { /* non-critical */ }
 
       const cookie = setSessionCookie(token)
       const response = NextResponse.json({ user })

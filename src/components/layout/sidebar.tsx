@@ -14,7 +14,9 @@ import {
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
   CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
   KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
+  ArrowLeftRight, X, Building2,
 } from 'lucide-react'
+import { allDemoCredentials } from '@/lib/demo-data'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/search'
@@ -34,8 +36,9 @@ interface NavGroup {
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, logout, org } = useTempo()
+  const { currentUser, logout, switchUser, org } = useTempo()
   const [collapsed, setCollapsed] = useState(false)
+  const [showSwitcher, setShowSwitcher] = useState(false)
   const t = useTranslations('nav')
   const tCommon = useTranslations('common')
 
@@ -132,10 +135,27 @@ export function Sidebar() {
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   const roleBadge = currentUser?.role || 'owner'
 
+  // Allow switching for all demo users (owners/admins always, others if demo session)
+  const canSwitchUsers = true // All demo users can switch for testing purposes
+
+  const handleSwitchUser = async (employeeId: string) => {
+    setShowSwitcher(false)
+    await switchUser(employeeId)
+    router.push('/dashboard')
+    // Force full reload to refresh all module data for new user/org
+    setTimeout(() => window.location.reload(), 100)
+  }
+
   const handleLogout = async () => {
     await logout()
     router.push('/login')
   }
+
+  // Group demo credentials by org for the switcher
+  const ecobankUsers = allDemoCredentials.filter(c => !c.employeeId.startsWith('kemp-'))
+  const kashUsers = allDemoCredentials.filter(c => c.employeeId.startsWith('kemp-'))
+  const roleOrder = ['owner', 'admin', 'hrbp', 'manager', 'employee'] as const
+  const roleLabels: Record<string, string> = { owner: 'Owner', admin: 'Admin', hrbp: 'HRBP', manager: 'Manager', employee: 'Employee' }
 
   return (
     <>
@@ -237,6 +257,89 @@ export function Sidebar() {
               <LocaleSwitcher />
               <ThemeToggle />
             </div>
+            {/* User Switcher Panel */}
+            {showSwitcher && canSwitchUsers && (
+              <div className="relative">
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1a2e] border border-white/10 rounded-lg shadow-xl max-h-[60vh] overflow-y-auto z-50">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 sticky top-0 bg-[#1a1a2e]">
+                    <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Switch User</span>
+                    <button onClick={() => setShowSwitcher(false)} className="text-white/40 hover:text-white transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {/* Ecobank */}
+                  <div className="px-2 py-1.5">
+                    <div className="flex items-center gap-1.5 px-2 py-1">
+                      <Building2 size={10} className="text-tempo-400" />
+                      <span className="text-[0.6rem] font-semibold text-tempo-400 uppercase tracking-wider">Ecobank Transnational</span>
+                    </div>
+                    {roleOrder.map(r => {
+                      const users = ecobankUsers.filter(u => u.role === r)
+                      if (users.length === 0) return null
+                      return users.map(u => {
+                        const isCurrentUser = currentUser?.employee_id === u.employeeId
+                        const userInitials = u.label.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                        return (
+                          <button
+                            key={u.employeeId + u.email}
+                            onClick={() => !isCurrentUser && handleSwitchUser(u.employeeId)}
+                            className={cn(
+                              'flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-left transition-colors',
+                              isCurrentUser ? 'bg-tempo-600/15 cursor-default' : 'hover:bg-white/[0.06] cursor-pointer'
+                            )}
+                          >
+                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-[0.55rem] font-semibold shrink-0">
+                              {userInitials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn('text-[0.7rem] truncate', isCurrentUser ? 'text-tempo-400 font-medium' : 'text-white/80')}>{u.title}</span>
+                                <span className="text-[0.5rem] font-semibold px-1 py-0.5 rounded bg-white/10 text-white/50 uppercase shrink-0">{roleLabels[u.role]}</span>
+                              </div>
+                              <div className="text-[0.6rem] text-white/30 truncate">{u.department}</div>
+                            </div>
+                            {isCurrentUser && <div className="w-1.5 h-1.5 rounded-full bg-tempo-500 shrink-0" />}
+                          </button>
+                        )
+                      })
+                    })}
+                  </div>
+                  {/* Kash & Co */}
+                  <div className="px-2 py-1.5 border-t border-white/5">
+                    <div className="flex items-center gap-1.5 px-2 py-1">
+                      <Building2 size={10} className="text-blue-400" />
+                      <span className="text-[0.6rem] font-semibold text-blue-400 uppercase tracking-wider">Kash & Co (South Africa)</span>
+                    </div>
+                    {kashUsers.map(u => {
+                      const isCurrentUser = currentUser?.employee_id === u.employeeId
+                      const userInitials = u.label.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                      return (
+                        <button
+                          key={u.employeeId}
+                          onClick={() => !isCurrentUser && handleSwitchUser(u.employeeId)}
+                          className={cn(
+                            'flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-left transition-colors',
+                            isCurrentUser ? 'bg-blue-600/15 cursor-default' : 'hover:bg-white/[0.06] cursor-pointer'
+                          )}
+                        >
+                          <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-[0.55rem] font-semibold shrink-0">
+                            {userInitials}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn('text-[0.7rem] truncate', isCurrentUser ? 'text-blue-400 font-medium' : 'text-white/80')}>{u.title}</span>
+                              <span className="text-[0.5rem] font-semibold px-1 py-0.5 rounded bg-white/10 text-white/50 uppercase shrink-0">{roleLabels[u.role]}</span>
+                            </div>
+                            <div className="text-[0.6rem] text-white/30 truncate">{u.department}</div>
+                          </div>
+                          {isCurrentUser && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3 px-2 py-1.5">
               <div className="w-8 h-8 rounded-full bg-tempo-600/20 flex items-center justify-center text-tempo-400 text-xs font-semibold">
                 {initials}
@@ -250,13 +353,27 @@ export function Sidebar() {
                 </div>
                 <div className="text-[0.65rem] text-white/40 truncate">{displayTitle}</div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="text-white/40 hover:text-red-400 transition-colors"
-                title={tCommon('signOut')}
-              >
-                <LogOut size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                {canSwitchUsers && (
+                  <button
+                    onClick={() => setShowSwitcher(!showSwitcher)}
+                    className={cn(
+                      'text-white/40 hover:text-tempo-400 transition-colors p-0.5',
+                      showSwitcher && 'text-tempo-400'
+                    )}
+                    title="Switch user"
+                  >
+                    <ArrowLeftRight size={13} />
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="text-white/40 hover:text-red-400 transition-colors p-0.5"
+                  title={tCommon('signOut')}
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             </div>
           </div>
         )}
