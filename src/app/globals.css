@@ -224,9 +224,17 @@ body {
 }
 .l-nav-left { display: flex; align-items: center; gap: 40px; }
 .l-nav-logo { display: flex; align-items: flex-end; gap: 0; text-decoration: none; }
+.l-nav-wordmark { color: #fff; transition: color .3s; }
+.l-nav.scrolled .l-nav-wordmark { color: var(--lt1); }
 .l-nav-links { display: flex; gap: 28px; }
-.l-nav-links a { font-size: 14px; font-weight: 400; color: var(--lt2); text-decoration: none; transition: .15s; }
-.l-nav-links a:hover { color: var(--lt1); }
+.l-nav-links a { font-size: 14px; font-weight: 400; color: rgba(255,255,255,.6); text-decoration: none; transition: color .3s; }
+.l-nav-links a:hover { color: #fff; }
+.l-nav.scrolled .l-nav-links a { color: var(--lt2); }
+.l-nav.scrolled .l-nav-links a:hover { color: var(--lt1); }
+.l-nav-signin { color: rgba(255,255,255,.6); transition: color .3s; }
+.l-nav-signin:hover { color: #fff; }
+.l-nav.scrolled .l-nav-signin { color: var(--lt2); }
+.l-nav.scrolled .l-nav-signin:hover { color: var(--lt1); }
 .l-nav-cta {
   font-size: 14px; font-weight: 500; color: #fff; background: var(--o);
   padding: 8px 20px; border-radius: 8px; text-decoration: none; transition: .15s;

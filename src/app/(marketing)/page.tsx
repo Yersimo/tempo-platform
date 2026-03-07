@@ -302,9 +302,9 @@ export default function LandingPage() {
       <nav className="l-nav" ref={navRef}>
         <div className="l-nav-left">
           <a href="#" className="l-nav-logo" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-            <TempoSvgMark width={12} />
-            <span style={{ width: 3, display: 'inline-block' }} />
-            <span style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.035em', color: 'var(--lt1)' }}>tempo</span>
+            <TempoSvgMark width={16} />
+            <span style={{ width: 4, display: 'inline-block' }} />
+            <span className="l-nav-wordmark" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.035em' }}>tempo</span>
           </a>
           <div className="l-nav-links">
             <a href="#platform" onClick={(e) => handleAnchorClick(e, 'platform')}>Platform</a>
@@ -314,7 +314,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <a href="/login" style={{ fontSize: 14, fontWeight: 500, color: 'var(--lt2)', textDecoration: 'none', transition: '.15s' }}>Sign In</a>
+          <a href="/login" className="l-nav-signin" style={{ fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>Sign In</a>
           <a href="#demo" className="l-nav-cta" onClick={(e) => handleAnchorClick(e, 'demo')}>Request a Demo</a>
         </div>
       </nav>
