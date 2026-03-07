@@ -1738,6 +1738,28 @@ export const demoCourseBlocks = [
   { id: 'block-8', course_id: 'course-1', module_index: 2, order: 1, type: 'text' as const, title: 'Building High-Performance Teams', content: 'Learn how to build trust, establish psychological safety, and create a culture of accountability within your team.', duration_minutes: 22, status: 'draft' as const },
   { id: 'block-9', course_id: 'course-4', module_index: 0, order: 0, type: 'text' as const, title: 'What is Digital Banking?', content: 'An introduction to digital banking concepts, fintech disruption, and the evolution of banking platforms.', duration_minutes: 15, status: 'published' as const },
   { id: 'block-10', course_id: 'course-4', module_index: 0, order: 1, type: 'interactive' as const, title: 'API Explorer Sandbox', content: 'Hands-on sandbox environment to explore banking APIs and test endpoints.', duration_minutes: 30, status: 'published' as const },
+  // Kash & Co course blocks
+  { id: 'kblock-1', course_id: 'kcourse-1', module_index: 0, order: 0, type: 'text' as const, title: 'The Consulting Mindset', content: 'Introduction to structured thinking, the pyramid principle, and MECE frameworks for problem solving.', duration_minutes: 20, status: 'published' as const },
+  { id: 'kblock-2', course_id: 'kcourse-1', module_index: 0, order: 1, type: 'video' as const, title: 'Hypothesis-Driven Approach', content: 'https://videos.tempo.com/hypothesis-driven.mp4', duration_minutes: 25, status: 'published' as const },
+  { id: 'kblock-3', course_id: 'kcourse-1', module_index: 0, order: 2, type: 'quiz' as const, title: 'Module 1 Assessment', content: 'kquiz-q1,kquiz-q2', duration_minutes: 10, status: 'published' as const },
+  { id: 'kblock-4', course_id: 'kcourse-1', module_index: 1, order: 0, type: 'text' as const, title: 'Client Communication Essentials', content: 'Frameworks for executive presentations, managing client expectations, and delivering difficult messages.', duration_minutes: 20, status: 'published' as const },
+  { id: 'kblock-5', course_id: 'kcourse-1', module_index: 1, order: 1, type: 'interactive' as const, title: 'Mock Client Presentation', content: 'Practice delivering a strategy recommendation to a simulated C-suite audience.', duration_minutes: 30, status: 'published' as const },
+  { id: 'kblock-6', course_id: 'kcourse-2', module_index: 0, order: 0, type: 'text' as const, title: 'DCF Fundamentals', content: 'Building discounted cash flow models from scratch: WACC, terminal value, and sensitivity analysis.', duration_minutes: 25, status: 'published' as const },
+  { id: 'kblock-7', course_id: 'kcourse-2', module_index: 0, order: 1, type: 'download' as const, title: 'Excel Model Template Pack', content: 'https://docs.tempo.com/dcf-model-templates.xlsx', duration_minutes: 5, status: 'published' as const },
+  { id: 'kblock-8', course_id: 'kcourse-2', module_index: 1, order: 0, type: 'video' as const, title: 'LBO Modelling Masterclass', content: 'https://videos.tempo.com/lbo-masterclass.mp4', duration_minutes: 40, status: 'published' as const },
+  { id: 'kblock-9', course_id: 'kcourse-4', module_index: 0, order: 0, type: 'text' as const, title: 'Python for Data Analysis', content: 'Setting up your environment, pandas basics, and loading client datasets for exploratory analysis.', duration_minutes: 20, status: 'published' as const },
+  { id: 'kblock-10', course_id: 'kcourse-4', module_index: 0, order: 1, type: 'interactive' as const, title: 'Jupyter Notebook Lab', content: 'Hands-on lab analyzing a sample consulting engagement dataset with Python.', duration_minutes: 45, status: 'published' as const },
+  { id: 'kblock-11', course_id: 'kcourse-5', module_index: 0, order: 0, type: 'text' as const, title: 'Sub-Saharan Africa Overview', content: 'Key economic indicators, growth sectors, and business environment across 15 major African markets.', duration_minutes: 30, status: 'published' as const },
+  { id: 'kblock-12', course_id: 'kcourse-5', module_index: 0, order: 1, type: 'video' as const, title: 'Case Study: East Africa Tech Boom', content: 'https://videos.tempo.com/east-africa-tech.mp4', duration_minutes: 20, status: 'published' as const },
+  // kcourse-3: Client Relationship Management
+  { id: 'kblock-13', course_id: 'kcourse-3', module_index: 0, order: 0, type: 'text' as const, title: 'Building Executive Relationships', content: 'How to earn trust with C-suite stakeholders: preparation, active listening, and delivering on promises.', duration_minutes: 20, status: 'published' as const },
+  { id: 'kblock-14', course_id: 'kcourse-3', module_index: 0, order: 1, type: 'video' as const, title: 'Navigating Difficult Client Conversations', content: 'https://videos.tempo.com/difficult-conversations.mp4', duration_minutes: 22, status: 'published' as const },
+  { id: 'kblock-15', course_id: 'kcourse-3', module_index: 1, order: 0, type: 'interactive' as const, title: 'Client Negotiation Simulation', content: 'Role-play exercise negotiating scope changes with a demanding client.', duration_minutes: 35, status: 'published' as const },
+  // kcourse-6: Partner Development Program
+  { id: 'kblock-16', course_id: 'kcourse-6', module_index: 0, order: 0, type: 'text' as const, title: 'Executive Presence & Gravitas', content: 'Developing the personal brand, communication style, and strategic thinking expected at the partner level.', duration_minutes: 25, status: 'published' as const },
+  { id: 'kblock-17', course_id: 'kcourse-6', module_index: 0, order: 1, type: 'video' as const, title: 'Rainmaking: Business Development Masterclass', content: 'https://videos.tempo.com/rainmaking.mp4', duration_minutes: 35, status: 'published' as const },
+  { id: 'kblock-18', course_id: 'kcourse-6', module_index: 1, order: 0, type: 'text' as const, title: 'Practice Leadership & P&L Management', content: 'Running a consulting practice: team development, financial management, and strategic planning at scale.', duration_minutes: 30, status: 'published' as const },
+  { id: 'kblock-19', course_id: 'kcourse-6', module_index: 1, order: 1, type: 'quiz' as const, title: 'Partner Readiness Assessment', content: 'kquiz-q4,kquiz-q5', duration_minutes: 15, status: 'draft' as const },
 ]
 
 // ============================================================
@@ -1753,6 +1775,15 @@ export const demoQuizQuestions = [
   { id: 'quiz-q6', org_id: 'org-1', course_id: 'course-4', type: 'multiple_choice' as const, question: 'Which API architecture style is most commonly used in modern banking platforms?', options: ['SOAP', 'REST', 'GraphQL', 'gRPC'] as string[], correct_answer: 'REST', points: 10, explanation: 'REST APIs are the most widely adopted standard in open banking and fintech integrations.' },
   { id: 'quiz-q7', org_id: 'org-1', course_id: 'course-4', type: 'essay' as const, question: 'Describe three key security considerations when designing a digital banking API.', options: [] as string[], correct_answer: '', points: 25, explanation: 'Responses should cover authentication (OAuth2/mTLS), encryption (TLS 1.3), and rate limiting/DDoS protection.' },
   { id: 'quiz-q8', org_id: 'org-1', course_id: 'course-3', type: 'true_false' as const, question: 'A higher debt-to-equity ratio always indicates a riskier credit profile.', options: ['True', 'False'] as string[], correct_answer: 'False', points: 5, explanation: 'Context matters: capital-intensive industries typically carry higher leverage. The ratio must be evaluated relative to industry norms.' },
+  // Kash & Co quiz questions
+  { id: 'kquiz-q1', org_id: 'org-2', course_id: 'kcourse-1', type: 'multiple_choice' as const, question: 'Which framework ensures a problem is broken into non-overlapping, comprehensive parts?', options: ['SWOT', 'MECE', 'Porter\'s Five Forces', 'BCG Matrix'] as string[], correct_answer: 'MECE', points: 10, explanation: 'MECE (Mutually Exclusive, Collectively Exhaustive) is the fundamental consulting framework for structured problem decomposition.' },
+  { id: 'kquiz-q2', org_id: 'org-2', course_id: 'kcourse-1', type: 'true_false' as const, question: 'In hypothesis-driven consulting, you should collect all available data before forming a hypothesis.', options: ['True', 'False'] as string[], correct_answer: 'False', points: 5, explanation: 'Hypothesis-driven consulting forms an initial hypothesis first, then tests it with targeted data collection to stay efficient.' },
+  { id: 'kquiz-q3', org_id: 'org-2', course_id: 'kcourse-1', type: 'fill_blank' as const, question: 'The communication framework where the main conclusion is presented first is called the _____ Principle.', options: [] as string[], correct_answer: 'Pyramid', points: 10, explanation: 'The Pyramid Principle, developed by Barbara Minto at McKinsey, structures communication with the conclusion first, followed by supporting arguments.' },
+  { id: 'kquiz-q4', org_id: 'org-2', course_id: 'kcourse-2', type: 'multiple_choice' as const, question: 'In a DCF model, what discount rate is typically used for an unlevered free cash flow?', options: ['Cost of Equity', 'WACC', 'Risk-Free Rate', 'Cost of Debt'] as string[], correct_answer: 'WACC', points: 10, explanation: 'WACC (Weighted Average Cost of Capital) is used to discount unlevered free cash flows as it reflects the blended cost of all capital sources.' },
+  { id: 'kquiz-q5', org_id: 'org-2', course_id: 'kcourse-2', type: 'essay' as const, question: 'Explain the key differences between an LBO model and a standard DCF valuation, and when each is most appropriate.', options: [] as string[], correct_answer: '', points: 25, explanation: 'Responses should cover leverage mechanics, IRR vs NPV focus, sponsor returns, and use cases for financial vs strategic buyers.' },
+  { id: 'kquiz-q6', org_id: 'org-2', course_id: 'kcourse-4', type: 'multiple_choice' as const, question: 'Which Python library is most commonly used for tabular data manipulation in consulting analytics?', options: ['NumPy', 'pandas', 'matplotlib', 'scikit-learn'] as string[], correct_answer: 'pandas', points: 10, explanation: 'pandas is the standard library for data manipulation in Python, providing DataFrames for structured data analysis.' },
+  { id: 'kquiz-q7', org_id: 'org-2', course_id: 'kcourse-5', type: 'multiple_choice' as const, question: 'Which African regional economic community covers East Africa?', options: ['ECOWAS', 'SADC', 'EAC', 'COMESA'] as string[], correct_answer: 'EAC', points: 10, explanation: 'The East African Community (EAC) includes Kenya, Tanzania, Uganda, Rwanda, Burundi, South Sudan, and the DRC.' },
+  { id: 'kquiz-q8', org_id: 'org-2', course_id: 'kcourse-5', type: 'matching' as const, question: 'Match each African market with its primary economic driver.', options: ['Nigeria:Oil & Gas', 'Kenya:Technology & Services', 'South Africa:Mining & Finance', 'Rwanda:Tourism & ICT'] as string[], correct_answer: 'Nigeria:Oil & Gas,Kenya:Technology & Services,South Africa:Mining & Finance,Rwanda:Tourism & ICT', points: 20, explanation: 'Understanding the key economic sectors helps consultants tailor industry-specific strategies for each market.' },
 ]
 
 // ============================================================
@@ -3440,6 +3471,15 @@ export const demoLearnerBadges = [
   { id: 'badge-10', org_id: 'org-1', employee_id: 'emp-11', badge_type: 'path_complete' as const, badge_name: 'Path Completer', badge_icon: 'map', description: 'Completed a full learning path', earned_at: '2026-01-30T00:00:00Z', course_id: null, metadata: { path: 'Technology Fundamentals' } },
   { id: 'badge-11', org_id: 'org-1', employee_id: 'emp-4', badge_type: 'compliance_champion' as const, badge_name: 'Compliance Champion', badge_icon: 'shield', description: 'Completed all mandatory compliance courses', earned_at: '2026-01-28T00:00:00Z', course_id: null, metadata: { courses_completed: 2 } },
   { id: 'badge-12', org_id: 'org-1', employee_id: 'emp-22', badge_type: 'top_learner' as const, badge_name: 'Top Learner', badge_icon: 'crown', description: 'Ranked in top 10% of learners this month', earned_at: '2026-02-15T00:00:00Z', course_id: null, metadata: { rank: 5 } },
+  // Kash & Co badges
+  { id: 'kbadge-1', org_id: 'org-2', employee_id: 'kemp-4', badge_type: 'course_complete' as const, badge_name: 'First Course Complete', badge_icon: 'award', description: 'Completed Advanced Financial Modelling', earned_at: '2025-12-15T00:00:00Z', course_id: 'kcourse-2', metadata: null },
+  { id: 'kbadge-2', org_id: 'org-2', employee_id: 'kemp-4', badge_type: 'first_quiz_perfect' as const, badge_name: 'Perfect Score', badge_icon: 'star', description: 'Achieved 100% on financial modelling quiz', earned_at: '2025-12-16T00:00:00Z', course_id: 'kcourse-2', metadata: { score: 100 } },
+  { id: 'kbadge-3', org_id: 'org-2', employee_id: 'kemp-5', badge_type: 'streak_7' as const, badge_name: '7-Day Streak', badge_icon: 'flame', description: 'Maintained a 7-day learning streak', earned_at: '2026-02-08T00:00:00Z', course_id: null, metadata: { streak_days: 7 } },
+  { id: 'kbadge-4', org_id: 'org-2', employee_id: 'kemp-14', badge_type: 'course_complete' as const, badge_name: 'Foundation Complete', badge_icon: 'award', description: 'Completed Consulting Foundations', earned_at: '2025-10-01T00:00:00Z', course_id: 'kcourse-1', metadata: null },
+  { id: 'kbadge-5', org_id: 'org-2', employee_id: 'kemp-3', badge_type: 'top_learner' as const, badge_name: 'Top Learner', badge_icon: 'crown', description: 'Ranked in top 10% of learners this month', earned_at: '2026-02-01T00:00:00Z', course_id: null, metadata: { rank: 2 } },
+  { id: 'kbadge-6', org_id: 'org-2', employee_id: 'kemp-8', badge_type: 'streak_30' as const, badge_name: '30-Day Streak', badge_icon: 'flame', description: 'Maintained a 30-day learning streak', earned_at: '2026-01-20T00:00:00Z', course_id: null, metadata: { streak_days: 30 } },
+  { id: 'kbadge-7', org_id: 'org-2', employee_id: 'kemp-10', badge_type: 'path_complete' as const, badge_name: 'Path Completer', badge_icon: 'map', description: 'Completed Data-Driven Advisory path', earned_at: '2026-01-25T00:00:00Z', course_id: null, metadata: { path: 'Data-Driven Advisory' } },
+  { id: 'kbadge-8', org_id: 'org-2', employee_id: 'kemp-2', badge_type: 'mentor' as const, badge_name: 'Knowledge Mentor', badge_icon: 'users', description: 'Mentored 5 junior consultants', earned_at: '2026-02-10T00:00:00Z', course_id: null, metadata: { peers_helped: 5 } },
 ]
 
 // === From agent-aeb74e56 ===
@@ -3462,6 +3502,21 @@ export const demoLearnerPoints = [
   { id: 'lp-16', org_id: 'org-1', employee_id: 'emp-11', points: 50, source: 'discussion_post' as const, description: 'Operations process discussion', earned_at: '2026-01-25T00:00:00Z' },
   { id: 'lp-17', org_id: 'org-1', employee_id: 'emp-22', points: 150, source: 'course_complete' as const, description: 'Completed compliance training suite', earned_at: '2026-02-01T00:00:00Z' },
   { id: 'lp-18', org_id: 'org-1', employee_id: 'emp-22', points: 100, source: 'quiz_score' as const, description: 'Top scorer on risk assessment', earned_at: '2026-02-15T00:00:00Z' },
+  // Kash & Co learner points
+  { id: 'klp-p1', org_id: 'org-2', employee_id: 'kemp-4', points: 200, source: 'course_complete' as const, description: 'Completed Advanced Financial Modelling', earned_at: '2025-12-15T00:00:00Z' },
+  { id: 'klp-p2', org_id: 'org-2', employee_id: 'kemp-4', points: 100, source: 'quiz_score' as const, description: 'Perfect score on DCF quiz', earned_at: '2025-12-16T00:00:00Z' },
+  { id: 'klp-p3', org_id: 'org-2', employee_id: 'kemp-4', points: 50, source: 'discussion_post' as const, description: 'Shared financial modelling tips', earned_at: '2025-12-20T00:00:00Z' },
+  { id: 'klp-p4', org_id: 'org-2', employee_id: 'kemp-5', points: 150, source: 'course_complete' as const, description: 'Completed Consulting Foundations (70%)', earned_at: '2026-02-01T00:00:00Z' },
+  { id: 'klp-p5', org_id: 'org-2', employee_id: 'kemp-5', points: 100, source: 'streak_bonus' as const, description: '7-day learning streak bonus', earned_at: '2026-02-08T00:00:00Z' },
+  { id: 'klp-p6', org_id: 'org-2', employee_id: 'kemp-14', points: 150, source: 'course_complete' as const, description: 'Completed Consulting Foundations', earned_at: '2025-10-01T00:00:00Z' },
+  { id: 'klp-p7', org_id: 'org-2', employee_id: 'kemp-14', points: 75, source: 'quiz_score' as const, description: 'Scored 85% on foundations quiz', earned_at: '2025-10-05T00:00:00Z' },
+  { id: 'klp-p8', org_id: 'org-2', employee_id: 'kemp-3', points: 200, source: 'streak_bonus' as const, description: '30-day streak and top learner bonus', earned_at: '2026-02-01T00:00:00Z' },
+  { id: 'klp-p9', org_id: 'org-2', employee_id: 'kemp-3', points: 100, source: 'peer_help' as const, description: 'Mentored junior consultants on case methods', earned_at: '2026-01-25T00:00:00Z' },
+  { id: 'klp-p10', org_id: 'org-2', employee_id: 'kemp-8', points: 250, source: 'streak_bonus' as const, description: '30-day learning streak bonus', earned_at: '2026-01-20T00:00:00Z' },
+  { id: 'klp-p11', org_id: 'org-2', employee_id: 'kemp-8', points: 50, source: 'discussion_post' as const, description: 'Strategy framework discussion', earned_at: '2026-01-15T00:00:00Z' },
+  { id: 'klp-p12', org_id: 'org-2', employee_id: 'kemp-10', points: 150, source: 'course_complete' as const, description: 'Completed Data Analytics path', earned_at: '2026-01-25T00:00:00Z' },
+  { id: 'klp-p13', org_id: 'org-2', employee_id: 'kemp-10', points: 80, source: 'quiz_score' as const, description: 'Scored 90% on Python analytics quiz', earned_at: '2026-01-28T00:00:00Z' },
+  { id: 'klp-p14', org_id: 'org-2', employee_id: 'kemp-2', points: 75, source: 'peer_help' as const, description: 'Mentored 5 consultants on client skills', earned_at: '2026-02-10T00:00:00Z' },
 ]
 
 // === From agent-aeb74e56 ===
@@ -4058,14 +4113,14 @@ export function getDemoDataForOrg(orgId: string) {
       notifications: kashNotifications,
       learningPaths: kashLearningPaths,
       liveSessions: kashLiveSessions,
-      courseBlocks: [] as typeof demoCourseBlocks,
-      quizQuestions: [] as typeof demoQuizQuestions,
-      discussions: [] as typeof demoDiscussions,
-      studyGroups: [] as typeof demoStudyGroups,
-      complianceTraining: [] as typeof demoComplianceTraining,
-      autoEnrollRules: [] as typeof demoAutoEnrollRules,
-      assessmentAttempts: [] as typeof demoAssessmentAttempts,
-      learningAssignments: [] as typeof demoLearningAssignments,
+      courseBlocks: demoCourseBlocks,
+      quizQuestions: demoQuizQuestions,
+      discussions: demoDiscussions,
+      studyGroups: demoStudyGroups,
+      complianceTraining: demoComplianceTraining,
+      autoEnrollRules: demoAutoEnrollRules,
+      assessmentAttempts: demoAssessmentAttempts,
+      learningAssignments: demoLearningAssignments,
       careerSiteConfig: kashCareerSiteConfig,
       jobDistributions: kashJobDistributions,
       interviews: [] as typeof demoInterviews,
@@ -4124,12 +4179,12 @@ export function getDemoDataForOrg(orgId: string) {
       advancedExpensePolicies: [] as typeof demoAdvancedExpensePolicies,
       reimbursementBatches: [] as typeof demoReimbursementBatches,
       // LMS Enhancements
-      coursePrerequisites: [] as typeof demoCoursePrerequisites,
-      scormPackages: [] as typeof demoScormPackages,
-      scormTracking: [] as typeof demoScormTracking,
-      contentLibrary: [] as typeof demoContentLibrary,
-      learnerBadges: [] as typeof demoLearnerBadges,
-      learnerPoints: [] as typeof demoLearnerPoints,
+      coursePrerequisites: demoCoursePrerequisites,
+      scormPackages: demoScormPackages,
+      scormTracking: demoScormTracking,
+      contentLibrary: demoContentLibrary,
+      learnerBadges: demoLearnerBadges,
+      learnerPoints: demoLearnerPoints,
       // Survey Enhancements
       surveyTemplates: [] as typeof demoSurveyTemplates,
       surveySchedules: [] as typeof demoSurveySchedules,

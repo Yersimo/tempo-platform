@@ -785,13 +785,14 @@ export default function LearningPage() {
   }
 
   // Gamification computed data
+  const employeeIds = useMemo(() => new Set(employees.map(e => e.id)), [employees])
   const gamificationLeaderboard = useMemo(() => {
     const pointsByEmp = new Map<string, number>()
-    learnerPoints.forEach(p => {
+    learnerPoints.filter(p => employeeIds.has(p.employee_id)).forEach(p => {
       pointsByEmp.set(p.employee_id, (pointsByEmp.get(p.employee_id) ?? 0) + p.points)
     })
     const badgesByEmp = new Map<string, number>()
-    learnerBadges.forEach(b => {
+    learnerBadges.filter(b => employeeIds.has(b.employee_id)).forEach(b => {
       badgesByEmp.set(b.employee_id, (badgesByEmp.get(b.employee_id) ?? 0) + 1)
     })
     return [...pointsByEmp.entries()].map(([empId, pts]) => ({
@@ -801,7 +802,7 @@ export default function LearningPage() {
       badges: badgesByEmp.get(empId) ?? 0,
       coursesCompleted: enrollments.filter(e => e.employee_id === empId && e.status === 'completed').length,
     })).sort((a, b) => b.points - a.points)
-  }, [learnerPoints, learnerBadges, enrollments, getEmployeeName])
+  }, [learnerPoints, learnerBadges, enrollments, getEmployeeName, employeeIds])
 
   const myPoints = useMemo(() => {
     return learnerPoints.filter(p => p.employee_id === currentEmployeeId).reduce((a, p) => a + p.points, 0)
