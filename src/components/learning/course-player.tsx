@@ -55,11 +55,11 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   }, [blocks])
 
   // --- State ---
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(0)
+  const initialUnlockedCount = Math.max(1, Math.ceil(((enrollment?.progress || 0) / 100) * blocks.length))
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(Math.min(initialUnlockedCount - 1, blocks.length - 1))
   const [blockStatuses, setBlockStatuses] = useState<Map<string, BlockStatus>>(() => {
     const map = new Map<string, BlockStatus>()
-    const existingProgress = enrollment?.progress || 0
-    const unlockedCount = Math.max(1, Math.ceil((existingProgress / 100) * blocks.length))
+    const unlockedCount = initialUnlockedCount
     blocks.forEach((b, i) => {
       if (i < unlockedCount - 1) map.set(b.id, 'completed')
       else if (i === unlockedCount - 1) map.set(b.id, 'available')
