@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useTempo } from '@/lib/store'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils/cn'
 import {
   X, ChevronLeft, ChevronRight, CheckCircle, Play, FileText,
   Video, HelpCircle, Zap, Download, Lock, BookOpen, Award,
-  AlertTriangle, Clock, Brain, ArrowRight, Trophy
+  AlertTriangle, Clock, Brain, ArrowRight, Trophy, Sparkles,
+  ChevronDown, BarChart3, Target, GraduationCap, Menu
 } from 'lucide-react'
 
 interface CoursePlayerProps {
@@ -19,6 +20,12 @@ interface CoursePlayerProps {
 }
 
 type BlockStatus = 'locked' | 'available' | 'completed'
+
+// Estimate reading time from text content
+function estimateReadingTime(text: string): number {
+  const words = text.split(/\s+/).length
+  return Math.max(1, Math.ceil(words / 200)) // 200 wpm average
+}
 
 export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerProps) {
   const {
@@ -51,8 +58,6 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0)
   const [blockStatuses, setBlockStatuses] = useState<Map<string, BlockStatus>>(() => {
     const map = new Map<string, BlockStatus>()
-    // Initialize: first block available, rest locked
-    // If enrollment has progress, unlock proportionally
     const existingProgress = enrollment?.progress || 0
     const unlockedCount = Math.max(1, Math.ceil((existingProgress / 100) * blocks.length))
     blocks.forEach((b, i) => {
@@ -62,6 +67,17 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     })
     return map
   })
+
+  // Block transition direction for animations
+  const [transitionDir, setTransitionDir] = useState<'forward' | 'backward'>('forward')
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Mobile sidebar
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+
+  // Collapsed module state
+  const [collapsedModules, setCollapsedModules] = useState<Set<number>>(new Set())
 
   // Quiz state for quiz blocks
   const [quizState, setQuizState] = useState<{
@@ -90,14 +106,39 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   // Quiz questions for current block
   const currentQuizQuestions = useMemo(() => {
     if (!currentBlock || currentBlock.type !== 'quiz') return []
-    // Content field has comma-separated question IDs
     const qIds = (currentBlock.content || '').split(',').map((s: string) => s.trim())
-    // Also fall back to all questions for this course if no IDs specified
     if (qIds.length === 0 || (qIds.length === 1 && !qIds[0])) {
       return quizQuestions.filter(q => q.course_id === courseId)
     }
     return qIds.map(id => quizQuestions.find(q => q.id === id)).filter(Boolean) as typeof quizQuestions
   }, [currentBlock, quizQuestions, courseId])
+
+  // Module progress calculations
+  const moduleProgress = useMemo(() => {
+    return modules.map(([, moduleBlocks]) => {
+      const completed = moduleBlocks.filter(b => blockStatuses.get(b.id) === 'completed').length
+      return { completed, total: moduleBlocks.length, percent: Math.round((completed / moduleBlocks.length) * 100) }
+    })
+  }, [modules, blockStatuses])
+
+  // Animated block navigation
+  const navigateToBlock = useCallback((index: number, direction?: 'forward' | 'backward') => {
+    const block = blocks[index]
+    if (!block) return
+    const status = blockStatuses.get(block.id)
+    if (status === 'locked') return
+
+    const dir = direction || (index > currentBlockIndex ? 'forward' : 'backward')
+    setTransitionDir(dir)
+    setIsTransitioning(true)
+
+    setTimeout(() => {
+      setCurrentBlockIndex(index)
+      setQuizState(null)
+      setIsTransitioning(false)
+      if (contentRef.current) contentRef.current.scrollTop = 0
+    }, 200)
+  }, [blocks, blockStatuses, currentBlockIndex])
 
   // --- Handlers ---
   const markBlockComplete = useCallback(() => {
@@ -105,7 +146,6 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     const newStatuses = new Map(blockStatuses)
     newStatuses.set(currentBlock.id, 'completed')
 
-    // Unlock next block
     const nextIdx = currentBlockIndex + 1
     if (nextIdx < blocks.length) {
       const nextBlock = blocks[nextIdx]
@@ -116,28 +156,16 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
 
     setBlockStatuses(newStatuses)
 
-    // Check if all blocks completed
     const newCompletedCount = [...newStatuses.values()].filter(s => s === 'completed').length
     if (newCompletedCount === blocks.length) {
-      // All done!
       updateEnrollment(enrollmentId, { status: 'completed', progress: 100, completed_at: new Date().toISOString() })
       setTimeout(() => setShowCompletion(true), 400)
     } else {
-      // Auto-advance to next block
       if (nextIdx < blocks.length) {
-        setTimeout(() => setCurrentBlockIndex(nextIdx), 300)
+        setTimeout(() => navigateToBlock(nextIdx, 'forward'), 300)
       }
     }
-  }, [currentBlock, currentBlockIndex, blocks, blockStatuses, enrollmentId, updateEnrollment])
-
-  const goToBlock = useCallback((index: number) => {
-    const block = blocks[index]
-    if (!block) return
-    const status = blockStatuses.get(block.id)
-    if (status === 'locked') return
-    setCurrentBlockIndex(index)
-    setQuizState(null) // Reset quiz when navigating
-  }, [blocks, blockStatuses])
+  }, [currentBlock, currentBlockIndex, blocks, blockStatuses, enrollmentId, updateEnrollment, navigateToBlock])
 
   const startQuiz = useCallback(() => {
     setQuizState({ questionIndex: 0, answers: {}, submitted: false, score: null, passed: null })
@@ -151,7 +179,6 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
 
     setQuizState(prev => prev ? { ...prev, submitted: true, score, passed } : null)
 
-    // Record attempt
     addAssessmentAttempt({
       employee_id: currentEmployeeId,
       course_id: courseId,
@@ -185,11 +212,14 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     }
   }
 
-  const statusIcon = (status: BlockStatus) => {
-    switch (status) {
-      case 'completed': return <CheckCircle size={16} className="text-green-500" />
-      case 'available': return <Play size={16} className="text-tempo-600" />
-      case 'locked': return <Lock size={14} className="text-t3" />
+  const blockTypeLabel = (type: string) => {
+    switch (type) {
+      case 'text': return 'Reading'
+      case 'video': return 'Video'
+      case 'quiz': return 'Quiz'
+      case 'interactive': return 'Activity'
+      case 'download': return 'Resource'
+      default: return 'Lesson'
     }
   }
 
@@ -209,38 +239,74 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   if (showCompletion) {
     const elapsed = Math.round((Date.now() - startTime) / 60000)
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-tempo-50 via-white to-green-50 flex items-center justify-center">
-        <div className="text-center max-w-md celebrate-pulse">
-          <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <Trophy size={48} className="text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-t1 mb-2">Course Complete!</h2>
-          <p className="text-t2 mb-1">{course.title}</p>
-          <p className="text-xs text-t3 mb-6">{elapsed > 0 ? `${elapsed} minutes` : 'Less than a minute'} · {blocks.length} lessons completed</p>
+      <div className="fixed inset-0 z-50 cp-completion-bg flex items-center justify-center p-4">
+        {/* Confetti particles */}
+        <div className="cp-confetti-container">
+          {Array.from({ length: 50 }).map((_, i) => (
+            <div key={i} className="cp-confetti" style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${2 + Math.random() * 3}s`,
+              backgroundColor: ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#ec4899'][i % 6],
+            }} />
+          ))}
+        </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-divider">
-            <div className="flex items-center justify-center gap-8">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">100%</p>
-                <p className="text-xs text-t3">Progress</p>
+        <div className="text-center max-w-lg relative z-10 cp-completion-enter">
+          {/* Trophy with glow */}
+          <div className="cp-trophy-glow mx-auto mb-8">
+            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center mx-auto shadow-lg">
+              <Trophy size={52} className="text-amber-500" />
+            </div>
+          </div>
+
+          <h2 className="text-3xl font-bold text-t1 mb-2">Congratulations!</h2>
+          <p className="text-lg text-t2 mb-1">You completed</p>
+          <p className="text-lg font-semibold text-t1 mb-8">{course.title}</p>
+
+          {/* Stats cards */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="cp-stat-card">
+              <div className="cp-stat-icon bg-green-50">
+                <Target size={20} className="text-green-600" />
               </div>
-              <div className="w-px h-12 bg-divider" />
-              <div className="text-center">
-                <p className="text-3xl font-bold text-tempo-600">{blocks.length}</p>
-                <p className="text-xs text-t3">Lessons</p>
+              <p className="text-2xl font-bold text-t1">100%</p>
+              <p className="text-xs text-t3">Score</p>
+            </div>
+            <div className="cp-stat-card">
+              <div className="cp-stat-icon bg-blue-50">
+                <BarChart3 size={20} className="text-blue-600" />
               </div>
-              <div className="w-px h-12 bg-divider" />
-              <div className="text-center">
-                <p className="text-3xl font-bold text-blue-600"><Award size={28} /></p>
-                <p className="text-xs text-t3">Certificate</p>
+              <p className="text-2xl font-bold text-t1">{blocks.length}</p>
+              <p className="text-xs text-t3">Lessons</p>
+            </div>
+            <div className="cp-stat-card">
+              <div className="cp-stat-icon bg-purple-50">
+                <Clock size={20} className="text-purple-600" />
               </div>
+              <p className="text-2xl font-bold text-t1">{elapsed > 0 ? `${elapsed}m` : '<1m'}</p>
+              <p className="text-xs text-t3">Duration</p>
+            </div>
+          </div>
+
+          {/* Certificate card */}
+          <div className="cp-certificate-card mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center shadow-md">
+                <GraduationCap size={28} className="text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-semibold text-t1">Certificate of Completion</p>
+                <p className="text-sm text-t3">{course.title}</p>
+              </div>
+              <Award size={24} className="text-tempo-500" />
             </div>
           </div>
 
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={onClose}>Back to Learning</Button>
-            <Button variant="primary" onClick={() => { addToast('Certificate issued!'); onClose() }}>
-              <Award size={14} /> View Certificate
+            <Button variant="outline" size="lg" onClick={onClose}>Back to Learning</Button>
+            <Button variant="primary" size="lg" onClick={() => { addToast('Certificate issued!'); onClose() }}>
+              <Award size={16} /> View Certificate
             </Button>
           </div>
         </div>
@@ -248,92 +314,259 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     )
   }
 
+  // Current module info
+  const currentModuleIndex = modules.findIndex(([, mBlocks]) => mBlocks.some(b => b.id === currentBlock?.id))
+
   // --- Main Player ---
   return (
-    <div className="fixed inset-0 z-50 bg-white course-player-enter flex flex-col">
-      {/* Top Bar */}
-      <div className="h-14 border-b border-divider flex items-center px-4 gap-4 shrink-0 bg-white">
-        <button onClick={onClose} className="flex items-center gap-1.5 text-sm text-t2 hover:text-t1 transition-colors">
+    <div className="fixed inset-0 z-50 bg-[#fafafa] course-player-enter flex flex-col">
+      {/* Top Bar — Clean, minimal like Sana */}
+      <div className="h-14 border-b border-divider/60 flex items-center px-5 gap-4 shrink-0 bg-white/80 backdrop-blur-sm">
+        <button onClick={onClose} className="flex items-center gap-1.5 text-sm text-t2 hover:text-t1 transition-colors cp-hover-lift">
           <ChevronLeft size={18} /> <span className="hidden sm:inline">Back</span>
         </button>
-        <div className="flex-1 min-w-0">
+
+        {/* Mobile menu toggle */}
+        <button
+          onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+          className="md:hidden p-1.5 rounded-lg hover:bg-canvas transition-colors text-t3 hover:text-t1"
+        >
+          <Menu size={18} />
+        </button>
+
+        <div className="flex-1 min-w-0 text-center">
           <p className="text-sm font-semibold text-t1 truncate">{course.title}</p>
-          <p className="text-[0.6rem] text-t3">{course.category} · {course.duration_hours}h</p>
         </div>
-        <div className="w-48 flex items-center gap-3">
-          <Progress value={progressPercent} showLabel color="orange" />
+
+        {/* Segmented progress bar */}
+        <div className="hidden sm:flex items-center gap-1.5">
+          {modules.map(([, moduleBlocks], mi) => {
+            const mp = moduleProgress[mi]
+            return (
+              <div key={mi} className="flex items-center gap-0.5">
+                {moduleBlocks.map(block => {
+                  const status = blockStatuses.get(block.id)
+                  return (
+                    <div
+                      key={block.id}
+                      className={cn(
+                        'cp-progress-segment',
+                        status === 'completed' && 'cp-progress-completed',
+                        blocks.indexOf(block) === currentBlockIndex && 'cp-progress-current',
+                      )}
+                      title={block.title}
+                    />
+                  )
+                })}
+                {mi < modules.length - 1 && <div className="w-1.5" />}
+              </div>
+            )
+          })}
+          <span className="text-xs font-medium text-t2 ml-2">{progressPercent}%</span>
         </div>
+
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-canvas transition-colors text-t3 hover:text-t1">
           <X size={18} />
         </button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-72 border-r border-divider overflow-y-auto bg-canvas/50 shrink-0 hidden md:block">
-          <div className="p-4">
-            <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-3">Course Outline</p>
-            {modules.map(([moduleIdx, moduleBlocks], mi) => (
-              <div key={moduleIdx} className="mb-4">
-                <p className="text-[0.65rem] font-semibold text-t2 mb-2 uppercase tracking-wide">
-                  Module {mi + 1}
-                </p>
-                <div className="space-y-1">
-                  {moduleBlocks.map(block => {
-                    const globalIdx = blocks.indexOf(block)
-                    const status = blockStatuses.get(block.id) || 'locked'
-                    const isCurrent = globalIdx === currentBlockIndex
-                    return (
-                      <button
-                        key={block.id}
-                        onClick={() => goToBlock(globalIdx)}
-                        disabled={status === 'locked'}
-                        className={cn(
-                          'w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-all text-xs',
-                          isCurrent && 'bg-tempo-50 border border-tempo-200 shadow-sm',
-                          !isCurrent && status !== 'locked' && 'hover:bg-white hover:shadow-sm',
-                          status === 'locked' && 'opacity-40 cursor-not-allowed',
-                        )}
-                      >
-                        <div className="shrink-0">{statusIcon(status)}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn('font-medium truncate', isCurrent ? 'text-tempo-700' : 'text-t1')}>{block.title}</p>
-                          <p className="text-[0.6rem] text-t3 flex items-center gap-1 mt-0.5">
-                            {blockIcon(block.type, 10)}
-                            <span className="capitalize">{block.type}</span>
-                            {block.duration_minutes > 0 && <> · {block.duration_minutes}min</>}
-                          </p>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar — Enhanced with module progress circles */}
+        <div className={cn(
+          'cp-sidebar',
+          showMobileSidebar && 'cp-sidebar-mobile-open'
+        )}>
+          {/* Mobile close */}
+          <div className="md:hidden flex items-center justify-between p-4 border-b border-divider/40">
+            <p className="text-sm font-semibold text-t1">Course Outline</p>
+            <button onClick={() => setShowMobileSidebar(false)} className="p-1 rounded-lg hover:bg-canvas"><X size={16} /></button>
+          </div>
+
+          <div className="p-4 overflow-y-auto flex-1">
+            {/* Overall progress */}
+            <div className="mb-5 p-3 rounded-xl bg-white border border-divider/50">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-t1">Your Progress</p>
+                <span className="text-xs font-bold text-tempo-600">{progressPercent}%</span>
               </div>
-            ))}
+              <div className="cp-progress-track">
+                <div className="cp-progress-fill" style={{ width: `${progressPercent}%` }} />
+              </div>
+              <p className="text-[0.6rem] text-t3 mt-1.5">{completedCount} of {blocks.length} lessons completed</p>
+            </div>
+
+            {modules.map(([moduleIdx, moduleBlocks], mi) => {
+              const mp = moduleProgress[mi]
+              const isCollapsed = collapsedModules.has(moduleIdx)
+              const isCurrentModule = mi === currentModuleIndex
+
+              return (
+                <div key={moduleIdx} className="mb-3">
+                  {/* Module header with progress ring */}
+                  <button
+                    onClick={() => {
+                      const next = new Set(collapsedModules)
+                      isCollapsed ? next.delete(moduleIdx) : next.add(moduleIdx)
+                      setCollapsedModules(next)
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-3 p-2 rounded-lg transition-colors mb-1',
+                      isCurrentModule ? 'bg-tempo-50/60' : 'hover:bg-white/80',
+                    )}
+                  >
+                    {/* Mini progress ring */}
+                    <div className="cp-module-ring shrink-0">
+                      <svg width="28" height="28" viewBox="0 0 28 28">
+                        <circle cx="14" cy="14" r="11" fill="none" stroke="var(--color-divider)" strokeWidth="2.5" />
+                        <circle
+                          cx="14" cy="14" r="11" fill="none"
+                          stroke={mp.percent === 100 ? '#22c55e' : 'var(--color-tempo-500)'}
+                          strokeWidth="2.5"
+                          strokeDasharray={`${(mp.percent / 100) * 69.115} 69.115`}
+                          strokeLinecap="round"
+                          transform="rotate(-90 14 14)"
+                          className="transition-all duration-500"
+                        />
+                      </svg>
+                      {mp.percent === 100 ? (
+                        <CheckCircle size={12} className="absolute inset-0 m-auto text-green-500" />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-[0.5rem] font-bold text-t2">
+                          {mi + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 text-left min-w-0">
+                      <p className={cn(
+                        'text-xs font-semibold truncate',
+                        isCurrentModule ? 'text-tempo-700' : 'text-t1'
+                      )}>Module {mi + 1}</p>
+                      <p className="text-[0.6rem] text-t3">{mp.completed}/{mp.total} lessons</p>
+                    </div>
+
+                    <ChevronDown size={14} className={cn(
+                      'text-t3 transition-transform duration-200',
+                      isCollapsed && '-rotate-90'
+                    )} />
+                  </button>
+
+                  {/* Block list */}
+                  {!isCollapsed && (
+                    <div className="ml-1 space-y-0.5 cp-module-blocks-enter">
+                      {moduleBlocks.map(block => {
+                        const globalIdx = blocks.indexOf(block)
+                        const status = blockStatuses.get(block.id) || 'locked'
+                        const isCurrent = globalIdx === currentBlockIndex
+                        return (
+                          <button
+                            key={block.id}
+                            onClick={() => { navigateToBlock(globalIdx); setShowMobileSidebar(false) }}
+                            disabled={status === 'locked'}
+                            className={cn(
+                              'cp-sidebar-item',
+                              isCurrent && 'cp-sidebar-item-active',
+                              !isCurrent && status !== 'locked' && 'cp-sidebar-item-available',
+                              status === 'locked' && 'cp-sidebar-item-locked',
+                            )}
+                          >
+                            {/* Status indicator */}
+                            <div className={cn(
+                              'cp-block-status-dot',
+                              status === 'completed' && 'cp-block-dot-completed',
+                              status === 'available' && isCurrent && 'cp-block-dot-current',
+                              status === 'available' && !isCurrent && 'cp-block-dot-available',
+                              status === 'locked' && 'cp-block-dot-locked',
+                            )}>
+                              {status === 'completed' ? <CheckCircle size={10} className="text-white" /> : null}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                'text-xs truncate',
+                                isCurrent ? 'font-semibold text-tempo-700' : status === 'locked' ? 'text-t3' : 'font-medium text-t1'
+                              )}>{block.title}</p>
+                              <p className="text-[0.55rem] text-t3 flex items-center gap-1 mt-0.5">
+                                {blockIcon(block.type, 9)}
+                                <span>{blockTypeLabel(block.type)}</span>
+                                {block.duration_minutes > 0 && <> · {block.duration_minutes}min</>}
+                              </p>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Mobile overlay */}
+        {showMobileSidebar && (
+          <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setShowMobileSidebar(false)} />
+        )}
+
+        {/* Main Content — Card-based presentation */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-6 py-8">
-              {currentBlock && renderBlock(currentBlock)}
+          <div ref={contentRef} className="flex-1 overflow-y-auto cp-content-scroll">
+            <div className={cn(
+              'max-w-2xl mx-auto px-6 py-10',
+              isTransitioning
+                ? transitionDir === 'forward' ? 'cp-block-exit-left' : 'cp-block-exit-right'
+                : transitionDir === 'forward' ? 'cp-block-enter-right' : 'cp-block-enter-left'
+            )}>
+              {/* Block type pill */}
+              {currentBlock && (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className={cn(
+                    'cp-block-type-pill',
+                    currentBlock.type === 'text' && 'cp-pill-reading',
+                    currentBlock.type === 'video' && 'cp-pill-video',
+                    currentBlock.type === 'quiz' && 'cp-pill-quiz',
+                    currentBlock.type === 'interactive' && 'cp-pill-activity',
+                    currentBlock.type === 'download' && 'cp-pill-resource',
+                  )}>
+                    {blockIcon(currentBlock.type, 13)}
+                    <span>{blockTypeLabel(currentBlock.type)}</span>
+                  </div>
+                  {currentBlock.type === 'text' && (
+                    <span className="text-xs text-t3 flex items-center gap-1">
+                      <Clock size={11} /> {estimateReadingTime(currentBlock.content)} min read
+                    </span>
+                  )}
+                  {currentBlock.duration_minutes > 0 && currentBlock.type !== 'text' && (
+                    <span className="text-xs text-t3 flex items-center gap-1">
+                      <Clock size={11} /> {currentBlock.duration_minutes} min
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Content card */}
+              <div className="cp-content-card">
+                {currentBlock && renderBlock(currentBlock)}
+              </div>
             </div>
           </div>
 
-          {/* Bottom Bar */}
-          <div className="h-16 border-t border-divider flex items-center justify-between px-6 shrink-0 bg-white">
+          {/* Bottom Bar — Refined navigation */}
+          <div className="h-16 border-t border-divider/60 flex items-center justify-between px-6 shrink-0 bg-white/80 backdrop-blur-sm">
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => goToBlock(currentBlockIndex - 1)}
+              onClick={() => navigateToBlock(currentBlockIndex - 1, 'backward')}
               disabled={currentBlockIndex === 0}
+              className="cp-hover-lift"
             >
               <ChevronLeft size={14} /> Previous
             </Button>
 
-            <div className="text-xs text-t3">
-              {currentBlockIndex + 1} of {blocks.length} lessons
+            <div className="text-xs text-t3 flex items-center gap-2">
+              <span className="hidden sm:inline text-t2 font-medium">{currentBlock?.title}</span>
+              <span className="text-t3">·</span>
+              <span>{currentBlockIndex + 1} / {blocks.length}</span>
             </div>
 
             {currentBlockIndex < blocks.length - 1 ? (
@@ -343,10 +576,11 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
                 onClick={() => {
                   const status = blockStatuses.get(currentBlock?.id || '')
                   if (status === 'completed') {
-                    goToBlock(currentBlockIndex + 1)
+                    navigateToBlock(currentBlockIndex + 1, 'forward')
                   }
                 }}
                 disabled={blockStatuses.get(currentBlock?.id || '') !== 'completed'}
+                className="cp-hover-lift"
               >
                 Next <ChevronRight size={14} />
               </Button>
@@ -360,6 +594,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
                   }
                 }}
                 disabled={completedCount < blocks.length}
+                className="cp-hover-lift"
               >
                 Finish Course <Award size={14} />
               </Button>
@@ -458,28 +693,18 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   function renderTextBlock(block: typeof blocks[0], status: BlockStatus) {
     return (
       <div className="course-player-prose">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <FileText size={16} className="text-blue-600" />
-          </div>
-          <div>
-            <Badge>Reading</Badge>
-            <span className="text-xs text-t3 ml-2">{block.duration_minutes} min</span>
-          </div>
-        </div>
-
-        <h2 className="text-xl font-bold text-t1 mb-4">{block.title}</h2>
-        <div>{renderRichContent(block.content)}</div>
+        <h2 className="cp-block-title">{block.title}</h2>
+        <div className="cp-rich-content">{renderRichContent(block.content)}</div>
 
         {status !== 'completed' && (
-          <div className="mt-8 pt-6 border-t border-divider">
-            <Button variant="primary" onClick={markBlockComplete}>
+          <div className="mt-10 pt-6 border-t border-divider/40">
+            <Button variant="primary" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
               <CheckCircle size={14} /> Mark as Read
             </Button>
           </div>
         )}
         {status === 'completed' && (
-          <div className="mt-8 pt-6 border-t border-divider flex items-center gap-2 text-green-600 text-sm">
+          <div className="mt-10 pt-6 border-t border-divider/40 cp-completed-badge">
             <CheckCircle size={16} /> Completed
           </div>
         )}
@@ -490,36 +715,24 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   function renderVideoBlock(block: typeof blocks[0], status: BlockStatus) {
     return (
       <div>
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-            <Video size={16} className="text-purple-600" />
+        <h2 className="cp-block-title">{block.title}</h2>
+
+        <div className="cp-video-player group">
+          <div className="cp-video-play-btn group-hover:scale-110">
+            <Play size={28} className="text-white ml-1" />
           </div>
-          <div>
-            <Badge>Video</Badge>
-            <span className="text-xs text-t3 ml-2">{block.duration_minutes} min</span>
-          </div>
+          <p className="text-white/50 text-sm mt-4">{block.title}</p>
+          <p className="text-white/30 text-xs mt-1">{block.duration_minutes} min</p>
         </div>
 
-        <h2 className="text-xl font-bold text-t1 mb-4">{block.title}</h2>
-
-        <div className="aspect-video bg-gray-900 rounded-xl overflow-hidden mb-4 relative flex items-center justify-center">
-          {/* In a real app this would be a video player */}
-          <div className="text-center">
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3 cursor-pointer hover:bg-white/30 transition-colors">
-              <Play size={32} className="text-white ml-1" />
-            </div>
-            <p className="text-white/60 text-sm">{block.title}</p>
-            <p className="text-white/40 text-xs mt-1">{block.duration_minutes} min</p>
+        {status !== 'completed' ? (
+          <div className="mt-6">
+            <Button variant="primary" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
+              <CheckCircle size={14} /> Mark as Watched
+            </Button>
           </div>
-        </div>
-
-        {status !== 'completed' && (
-          <Button variant="primary" onClick={markBlockComplete}>
-            <CheckCircle size={14} /> Mark as Watched
-          </Button>
-        )}
-        {status === 'completed' && (
-          <div className="flex items-center gap-2 text-green-600 text-sm">
+        ) : (
+          <div className="mt-6 cp-completed-badge">
             <CheckCircle size={16} /> Completed
           </div>
         )}
@@ -543,19 +756,23 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     // Not started quiz yet
     if (!quizState) {
       return (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 rounded-2xl bg-tempo-50 flex items-center justify-center mx-auto mb-6">
-            <Brain size={36} className="text-tempo-600" />
+        <div className="text-center py-10">
+          <div className="cp-quiz-start-icon mx-auto mb-6">
+            <Brain size={40} className="text-tempo-600" />
           </div>
-          <h2 className="text-xl font-bold text-t1 mb-2">{block.title}</h2>
-          <p className="text-t3 text-sm mb-1">{currentQuizQuestions.length} questions · {block.duration_minutes} min</p>
-          <p className="text-t3 text-xs mb-6">You need 70% to pass</p>
+          <h2 className="text-2xl font-bold text-t1 mb-3">{block.title}</h2>
+          <div className="flex items-center justify-center gap-4 text-sm text-t3 mb-2">
+            <span className="flex items-center gap-1"><HelpCircle size={14} /> {currentQuizQuestions.length} questions</span>
+            <span className="flex items-center gap-1"><Clock size={14} /> {block.duration_minutes} min</span>
+            <span className="flex items-center gap-1"><Target size={14} /> 70% to pass</span>
+          </div>
+          <p className="text-xs text-t3 mb-8">Test your knowledge from the previous sections</p>
           {status === 'completed' ? (
-            <div className="flex items-center gap-2 text-green-600 text-sm justify-center">
+            <div className="cp-completed-badge justify-center">
               <CheckCircle size={16} /> Already Passed
             </div>
           ) : (
-            <Button variant="primary" size="lg" onClick={startQuiz}>
+            <Button variant="primary" size="lg" onClick={startQuiz} className="cp-hover-lift">
               <Play size={16} /> Start Quiz
             </Button>
           )}
@@ -565,20 +782,36 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
 
     // Quiz submitted — show results
     if (quizState.submitted) {
+      const correct = currentQuizQuestions.filter(q => quizState.answers[q.id] === q.correct_answer).length
       return (
-        <div className="text-center py-12">
-          <div className={cn('w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4',
-            quizState.passed ? 'bg-green-100' : 'bg-red-100')}>
-            {quizState.passed ? <CheckCircle size={36} className="text-green-600" /> : <AlertTriangle size={36} className="text-red-600" />}
+        <div className="text-center py-10 cp-quiz-results-enter">
+          {/* Score circle */}
+          <div className="cp-score-ring mx-auto mb-6">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="#f0f0f0" strokeWidth="8" />
+              <circle
+                cx="60" cy="60" r="52" fill="none"
+                stroke={quizState.passed ? '#22c55e' : '#ef4444'}
+                strokeWidth="8"
+                strokeDasharray={`${((quizState.score || 0) / 100) * 326.73} 326.73`}
+                strokeLinecap="round"
+                transform="rotate(-90 60 60)"
+                className="cp-score-ring-fill"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold text-t1">{quizState.score}%</span>
+              <span className="text-xs text-t3">Score</span>
+            </div>
           </div>
-          <h3 className="text-lg font-bold text-t1 mb-1">Quiz Results</h3>
-          <Badge variant={quizState.passed ? 'success' : 'error'} className="mb-4">
-            {quizState.passed ? 'Passed' : 'Failed'}
+
+          <Badge variant={quizState.passed ? 'success' : 'error'} className="mb-3 text-sm px-4 py-1">
+            {quizState.passed ? 'Passed!' : 'Not Passed'}
           </Badge>
-          <p className="text-3xl font-bold text-t1 mb-1">{quizState.score}%</p>
-          <p className="text-xs text-t3 mb-6">70% required to pass</p>
+          <p className="text-sm text-t2 mb-1">{correct} of {currentQuizQuestions.length} correct</p>
+          <p className="text-xs text-t3 mb-8">70% required to pass</p>
           {!quizState.passed && (
-            <Button variant="primary" onClick={startQuiz}>
+            <Button variant="primary" size="lg" onClick={startQuiz} className="cp-hover-lift">
               <ArrowRight size={14} /> Retry Quiz
             </Button>
           )}
@@ -592,21 +825,22 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
 
     return (
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-sm font-semibold text-t1">{block.title}</h3>
-            <p className="text-xs text-t3">Question {quizState.questionIndex + 1} of {currentQuizQuestions.length}</p>
-          </div>
-          <Progress
-            value={Math.round(((quizState.questionIndex + 1) / currentQuizQuestions.length) * 100)}
-            showLabel
-            className="w-32"
-          />
+        {/* Question progress dots */}
+        <div className="flex items-center gap-2 mb-8">
+          {currentQuizQuestions.map((_, i) => (
+            <div key={i} className={cn(
+              'cp-question-dot',
+              i === quizState.questionIndex && 'cp-question-dot-active',
+              i < quizState.questionIndex && 'cp-question-dot-done',
+            )} />
+          ))}
+          <span className="ml-auto text-xs text-t3">{quizState.questionIndex + 1} / {currentQuizQuestions.length}</span>
         </div>
 
-        <div className="bg-canvas rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Badge>
+        {/* Question card */}
+        <div className="cp-quiz-question-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Badge className="cp-quiz-type-badge">
               {currentQ.type === 'multiple_choice' ? 'Multiple Choice' :
                currentQ.type === 'true_false' ? 'True / False' :
                currentQ.type === 'fill_blank' ? 'Fill in the Blank' :
@@ -614,23 +848,27 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
             </Badge>
             <span className="text-xs text-t3">{currentQ.points} pts</span>
           </div>
-          <p className="text-sm font-medium text-t1 mb-4">{currentQ.question}</p>
+          <p className="text-base font-medium text-t1 mb-6 leading-relaxed">{currentQ.question}</p>
 
           {/* Multiple choice / True-false */}
           {(currentQ.type === 'multiple_choice' || currentQ.type === 'true_false') && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {(currentQ.type === 'true_false' ? ['True', 'False'] : (currentQ.options || [])).map((opt: string, i: number) => (
                 <button
                   key={i}
                   onClick={() => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: opt } } : null)}
                   className={cn(
-                    'w-full text-left p-3 rounded-lg border text-sm transition-colors',
-                    quizState.answers[currentQ.id] === opt
-                      ? 'border-tempo-500 bg-tempo-50 text-tempo-700'
-                      : 'border-divider hover:border-tempo-300 bg-white'
+                    'cp-quiz-option',
+                    quizState.answers[currentQ.id] === opt && 'cp-quiz-option-selected',
                   )}
                 >
-                  {opt}
+                  <div className={cn(
+                    'cp-quiz-option-indicator',
+                    quizState.answers[currentQ.id] === opt && 'cp-quiz-option-indicator-selected',
+                  )}>
+                    {quizState.answers[currentQ.id] === opt && <CheckCircle size={12} className="text-white" />}
+                  </div>
+                  <span>{opt}</span>
                 </button>
               ))}
             </div>
@@ -642,7 +880,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
               type="text"
               value={quizState.answers[currentQ.id] || ''}
               onChange={(e) => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: e.target.value } } : null)}
-              className="w-full p-3 border border-divider rounded-lg text-sm bg-white focus:outline-none focus:border-tempo-500"
+              className="cp-quiz-input"
               placeholder="Type your answer..."
             />
           )}
@@ -652,7 +890,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
             <textarea
               value={quizState.answers[currentQ.id] || ''}
               onChange={(e) => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: e.target.value } } : null)}
-              className="w-full p-3 border border-divider rounded-lg text-sm bg-white focus:outline-none focus:border-tempo-500 h-32 resize-none"
+              className="cp-quiz-textarea"
               placeholder="Write your response..."
             />
           )}
@@ -664,7 +902,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
               {(currentQ.options || []).map((pair: string, i: number) => {
                 const [term, def] = pair.split(':')
                 return (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-white border border-divider">
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-divider/60 cp-hover-lift">
                     <span className="font-medium text-t1 w-1/2">{term}</span>
                     <ArrowRight size={12} className="text-t3" />
                     <span className="text-t2 w-1/2">{def}</span>
@@ -674,7 +912,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
               <Button
                 size="sm"
                 variant="outline"
-                className="mt-2"
+                className="mt-3"
                 onClick={() => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: currentQ.correct_answer } } : null)}
               >
                 Confirm Matches
@@ -684,12 +922,13 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
         </div>
 
         {/* Quiz Navigation */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-6">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setQuizState(prev => prev && prev.questionIndex > 0 ? { ...prev, questionIndex: prev.questionIndex - 1 } : prev)}
             disabled={quizState.questionIndex === 0}
+            className="cp-hover-lift"
           >
             <ChevronLeft size={14} /> Previous
           </Button>
@@ -697,11 +936,12 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
             <Button
               size="sm"
               onClick={() => setQuizState(prev => prev ? { ...prev, questionIndex: prev.questionIndex + 1 } : null)}
+              className="cp-hover-lift"
             >
               Next <ChevronRight size={14} />
             </Button>
           ) : (
-            <Button size="sm" onClick={submitQuiz}>
+            <Button size="sm" onClick={submitQuiz} className="cp-hover-lift">
               Submit Quiz <CheckCircle size={14} />
             </Button>
           )}
@@ -713,13 +953,13 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   function renderInteractiveBlock(block: typeof blocks[0], status: BlockStatus) {
     return (
       <div className="text-center py-8">
-        <div className="w-20 h-20 rounded-2xl bg-yellow-50 flex items-center justify-center mx-auto mb-6">
+        <div className="cp-interactive-icon mx-auto mb-6">
           <Zap size={36} className="text-yellow-600" />
         </div>
-        <h2 className="text-xl font-bold text-t1 mb-3">{block.title}</h2>
-        <p className="text-t2 text-sm max-w-lg mx-auto mb-6">{block.content}</p>
+        <h2 className="cp-block-title text-center">{block.title}</h2>
+        <p className="text-t2 text-sm max-w-lg mx-auto mb-8">{block.content}</p>
 
-        <div className="max-w-md mx-auto bg-canvas rounded-xl p-6 mb-6 border border-divider">
+        <div className="max-w-md mx-auto bg-white rounded-2xl p-6 mb-8 border border-divider/40 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Clock size={14} className="text-t3" />
             <span className="text-xs text-t3">{block.duration_minutes} min estimated</span>
@@ -728,11 +968,11 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
         </div>
 
         {status !== 'completed' ? (
-          <Button variant="primary" size="lg" onClick={markBlockComplete}>
+          <Button variant="primary" size="lg" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
             <CheckCircle size={16} /> Complete Activity
           </Button>
         ) : (
-          <div className="flex items-center gap-2 text-green-600 text-sm justify-center">
+          <div className="cp-completed-badge justify-center">
             <CheckCircle size={16} /> Completed
           </div>
         )}
@@ -743,32 +983,32 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
   function renderDownloadBlock(block: typeof blocks[0], status: BlockStatus) {
     return (
       <div className="text-center py-8">
-        <div className="w-20 h-20 rounded-2xl bg-green-50 flex items-center justify-center mx-auto mb-6">
-          <Download size={36} className="text-green-600" />
+        <div className="cp-download-icon mx-auto mb-6">
+          <Download size={36} className="text-emerald-600" />
         </div>
-        <h2 className="text-xl font-bold text-t1 mb-3">{block.title}</h2>
-        <p className="text-t3 text-sm mb-6">Download this resource to continue</p>
+        <h2 className="cp-block-title text-center">{block.title}</h2>
+        <p className="text-t3 text-sm mb-8">Download this resource to continue</p>
 
-        <div className="max-w-sm mx-auto bg-canvas rounded-xl p-6 mb-6 border border-divider flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center border border-divider">
+        <div className="max-w-sm mx-auto cp-download-card mb-8">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-tempo-50 to-tempo-100 flex items-center justify-center border border-tempo-200/50">
             <FileText size={20} className="text-tempo-600" />
           </div>
           <div className="text-left flex-1">
-            <p className="text-sm font-medium text-t1">{block.title}</p>
+            <p className="text-sm font-semibold text-t1">{block.title}</p>
             <p className="text-xs text-t3">{block.content?.split('/').pop()}</p>
           </div>
           <a href={block.content} target="_blank" rel="noopener noreferrer"
-            className="p-2 rounded-lg hover:bg-white transition-colors">
+            className="p-2.5 rounded-xl hover:bg-tempo-50 transition-colors border border-divider/40">
             <Download size={16} className="text-tempo-600" />
           </a>
         </div>
 
         {status !== 'completed' ? (
-          <Button variant="primary" onClick={markBlockComplete}>
+          <Button variant="primary" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
             <CheckCircle size={14} /> Mark as Downloaded
           </Button>
         ) : (
-          <div className="flex items-center gap-2 text-green-600 text-sm justify-center">
+          <div className="cp-completed-badge justify-center">
             <CheckCircle size={16} /> Completed
           </div>
         )}
