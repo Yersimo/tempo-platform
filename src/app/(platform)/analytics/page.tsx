@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
-import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk } from '@/lib/ai-engine'
@@ -30,6 +30,9 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('workforce')
   const [deptFilter, setDeptFilter] = useState('all')
   const [queryResults, setQueryResults] = useState<{ results: any[]; description: string } | null>(null)
+  const [queryFollowUps, setQueryFollowUps] = useState<string[]>([])
+  const [queryLoading, setQueryLoading] = useState(false)
+  const [queryHighlight, setQueryHighlight] = useState('')
 
   // AI-powered analytics
   const boardNarrative = useMemo(() => generateBoardNarrative({ employees: employees || [], goals: goals || [], reviews: reviews || [], engagementScores: engagementScores || [], jobPostings: jobPostings || [], payrollRuns: payrollRuns || [], salaryReviews: salaryReviews || [] }), [employees, goals, reviews, salaryReviews])
@@ -43,10 +46,66 @@ export default function AnalyticsPage() {
     cacheKey: `analytics-narrative-${employees.length}-${reviews.length}`,
   })
 
-  const handleAIQuery = useCallback((query: string) => {
+  const handleAIQuery = useCallback(async (query: string) => {
+    setQueryLoading(true)
+    setQueryFollowUps([])
+    setQueryHighlight('')
+
+    // First: instant deterministic results
     const storeData = { employees, departments, goals, reviews, enrollments, engagementScores, mentoringPairs, expenseReports, jobPostings, leaveRequests, payrollRuns, compBands, courses, salaryReviews }
     const result = parseNaturalLanguageQuery(query, storeData)
     setQueryResults(result)
+
+    // Then: enhance with Claude for richer description + follow-ups
+    try {
+      const dataSummary = {
+        query,
+        resultCount: result.results.length,
+        resultDescription: result.description,
+        context: {
+          totalEmployees: employees.length,
+          totalGoals: goals.length,
+          totalReviews: reviews.length,
+          departments: departments.map(d => d.name),
+          countries: [...new Set(employees.map(e => e.country))],
+        },
+      }
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-org-id': 'demo' },
+        body: JSON.stringify({ action: 'analyzeWorkforceQuery', data: dataSummary }),
+      })
+      const json = await res.json()
+      if (json.result) {
+        if (json.result.description) {
+          setQueryResults({ ...result, description: json.result.description })
+        }
+        if (json.result.followUps) {
+          setQueryFollowUps(json.result.followUps)
+        }
+        if (json.result.highlight) {
+          setQueryHighlight(json.result.highlight)
+        }
+      }
+      // If API returned error or no follow-ups, generate fallback
+      if (!json.result?.followUps) {
+        const fallbackFollowUps = [
+          `Show ${result.results.length > 0 ? 'details for' : 'all'} ${query.includes('perform') ? 'performance by department' : 'employees by country'}`,
+          `Compare ${query.includes('comp') ? 'compensation across levels' : 'engagement scores by team'}`,
+          `What are the top risks for ${query.includes('risk') ? 'retention' : 'the organization'}?`,
+        ]
+        setQueryFollowUps(fallbackFollowUps)
+      }
+    } catch {
+      // Fallback: generate static follow-ups based on query type
+      const fallbackFollowUps = [
+        `Show ${result.results.length > 0 ? 'details for' : 'all'} ${query.includes('perform') ? 'performance by department' : 'employees by country'}`,
+        `Compare ${query.includes('comp') ? 'compensation across levels' : 'engagement scores by team'}`,
+        `What are the top risks for ${query.includes('risk') ? 'retention' : 'the organization'}?`,
+      ]
+      setQueryFollowUps(fallbackFollowUps)
+    }
+    setQueryLoading(false)
   }, [employees, departments, goals, reviews, enrollments, engagementScores, mentoringPairs, expenseReports, jobPostings, leaveRequests, payrollRuns, compBands, courses, salaryReviews])
 
   const tabs = [
@@ -108,10 +167,39 @@ export default function AnalyticsPage() {
           'Analytics Report - Workforce Overview'
         )}><FileText size={14} /> {t('generateReport')}</Button>} />
 
-      {/* AI Natural Language Query Bar */}
+      {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
+      {queryLoading && (
+        <Card className="mb-6 border-tempo-200 bg-tempo-50/30">
+          <div className="flex items-center gap-3 p-2">
+            <AIEnhancingIndicator isLoading={true} />
+            <span className="text-xs text-t2">Analyzing your question with AI...</span>
+          </div>
+        </Card>
+      )}
       {queryResults && (
-        <AIInsightPanel title={t('queryResults')} narrative={{ summary: queryResults.description, bulletPoints: queryResults.results.slice(0, 5).map(r => r.profile?.full_name || r.title || r.id || 'Match') }} className="mb-6" />
+        <div className="mb-6 space-y-3">
+          <AIInsightPanel title={t('queryResults')} narrative={{ summary: queryResults.description, bulletPoints: queryResults.results.slice(0, 5).map(r => r.profile?.full_name || r.title || r.id || 'Match') }} />
+          {queryHighlight && (
+            <Card className="border-tempo-200 bg-tempo-50/20">
+              <div className="flex items-center gap-2 p-1">
+                <AlertTriangle size={14} className="text-tempo-600 shrink-0" />
+                <span className="text-xs font-medium text-tempo-700">{queryHighlight}</span>
+              </div>
+            </Card>
+          )}
+          {queryFollowUps.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[0.65rem] text-t3 font-medium uppercase tracking-wider">Explore more</span>
+              {queryFollowUps.map((followUp, i) => (
+                <button key={i} onClick={() => handleAIQuery(followUp)}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-surface border border-divider text-t2 hover:border-tempo-300 hover:bg-tempo-50 hover:text-tempo-700 transition-all">
+                  <Search size={10} /> {followUp}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

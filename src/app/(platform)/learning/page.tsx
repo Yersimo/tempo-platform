@@ -163,8 +163,47 @@ export default function LearningPage() {
     { id: 'social', label: t('tabSocialLearning'), count: discussions.length },
     { id: 'content-library', label: 'Content Library', count: contentLibrary.length },
     { id: 'gamification', label: 'Gamification', count: learnerBadges.length },
+    { id: 'certifications', label: 'Certifications' },
+    { id: 'adaptive', label: 'Adaptive Learning' },
     { id: 'transcript', label: 'Transcript' },
   ]
+
+  // SeamlessHR-inspired: Certification tracking with expiration
+  const certifications = useMemo(() => {
+    return complianceTraining.filter(ct => ct.status === 'completed').map(ct => {
+      const course = courses.find(c => c.id === ct.course_id)
+      const completedDate = new Date(ct.deadline)
+      const expiryDate = new Date(completedDate)
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+      const daysUntilExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      return {
+        ...ct,
+        courseTitle: course?.title || 'Unknown',
+        completedDate: completedDate.toISOString().split('T')[0],
+        expiryDate: expiryDate.toISOString().split('T')[0],
+        daysUntilExpiry,
+        status: daysUntilExpiry < 0 ? 'expired' : daysUntilExpiry < 30 ? 'expiring_soon' : 'valid',
+      }
+    })
+  }, [complianceTraining, courses])
+
+  // Spaced repetition scores (simulated based on enrollment dates)
+  const spacedRepetitionData = useMemo(() => {
+    return enrollments.filter(e => e.status === 'completed').map(e => {
+      const course = courses.find(c => c.id === e.course_id)
+      const completedAt = e.completed_at ? new Date(e.completed_at) : new Date()
+      const daysSince = Math.ceil((Date.now() - completedAt.getTime()) / (1000 * 60 * 60 * 24))
+      const retentionScore = Math.max(20, Math.round(100 * Math.exp(-0.02 * daysSince)))
+      return {
+        courseTitle: course?.title || 'Unknown',
+        completedAt: completedAt.toISOString().split('T')[0],
+        daysSince,
+        retentionScore,
+        needsReview: retentionScore < 60,
+        nextReviewDate: new Date(Date.now() + (retentionScore > 80 ? 30 : retentionScore > 60 ? 14 : 3) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      }
+    }).sort((a, b) => a.retentionScore - b.retentionScore)
+  }, [enrollments, courses])
 
   const completedCount = enrollments.filter(e => e.status === 'completed').length
   const inProgressCount = enrollments.filter(e => e.status === 'in_progress').length
@@ -227,10 +266,75 @@ export default function LearningPage() {
     updateEnrollment(enrollmentId, { status: 'completed', progress: 100, completed_at: new Date().toISOString() })
   }
 
-  function handleGenerateOutline() {
+  // AI Writing Assistant state (Sana-inspired)
+  const [aiWritingOpen, setAiWritingOpen] = useState(false)
+  const [aiWritingText, setAiWritingText] = useState('')
+  const [aiWritingResult, setAiWritingResult] = useState('')
+  const [aiWritingLoading, setAiWritingLoading] = useState(false)
+  const [aiWritingAction, setAiWritingAction] = useState('')
+
+  // Certification tracking state (SeamlessHR-inspired)
+  const [showCertModal, setShowCertModal] = useState(false)
+
+  // AI-powered course generation (calls Claude API)
+  const [aiGenerating, setAiGenerating] = useState(false)
+
+  async function handleAiWritingAssist(action: string, text: string) {
+    setAiWritingLoading(true)
+    setAiWritingAction(action)
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-org-id': 'demo' },
+        body: JSON.stringify({ action: 'aiWritingAssist', data: { action, text } }),
+      })
+      const json = await res.json()
+      if (json.result?.result) {
+        setAiWritingResult(json.result.result)
+      } else if (json.fallback) {
+        // Fallback: simple deterministic transform
+        if (action === 'shorten') setAiWritingResult(text.split('. ').slice(0, Math.ceil(text.split('. ').length / 2)).join('. ') + '.')
+        else if (action === 'continue') setAiWritingResult(text + '\n\nFurthermore, this concept extends to practical applications in the workplace. Teams that embrace these principles see measurable improvements in both efficiency and employee satisfaction.')
+        else setAiWritingResult(text)
+      }
+    } catch {
+      setAiWritingResult(text)
+    }
+    setAiWritingLoading(false)
+  }
+
+  async function handleGenerateOutline() {
     if (!builderForm.topic) return
-    const outline = generateCourseOutline(builderForm.topic, builderForm.level, builderForm.duration)
-    setGeneratedOutline(outline)
+    setAiGenerating(true)
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-org-id': 'demo' },
+        body: JSON.stringify({ action: 'generateCourseContent', data: { topic: builderForm.topic, level: builderForm.level, duration_hours: builderForm.duration } }),
+      })
+      const json = await res.json()
+      if (json.result?.modules) {
+        setGeneratedOutline({
+          title: json.result.title || builderForm.topic,
+          description: json.result.description || `AI-generated course on ${builderForm.topic}`,
+          level: builderForm.level,
+          total_duration_hours: builderForm.duration,
+          modules: json.result.modules.map((m: any) => ({
+            title: m.title,
+            duration_minutes: m.duration_minutes || Math.round((builderForm.duration * 60) / json.result.modules.length),
+            lessons: m.lessons?.map((l: any) => typeof l === 'string' ? l : l.title) || [],
+          })),
+        })
+      } else {
+        // Fallback to deterministic generation
+        const outline = generateCourseOutline(builderForm.topic, builderForm.level, builderForm.duration)
+        setGeneratedOutline(outline)
+      }
+    } catch {
+      const outline = generateCourseOutline(builderForm.topic, builderForm.level, builderForm.duration)
+      setGeneratedOutline(outline)
+    }
+    setAiGenerating(false)
   }
 
   function handleSaveGeneratedCourse() {
@@ -1983,6 +2087,9 @@ export default function LearningPage() {
               </div>
               {selectedBuilderCourse && (
                 <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setAiWritingOpen(!aiWritingOpen)}>
+                    <Brain size={14} /> AI Assistant
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     const outline = generateCourseOutline(courses.find(c => c.id === selectedBuilderCourse)?.title || 'Course', 'intermediate', 8)
                     outline.modules.forEach((mod, mi) => {
@@ -1997,6 +2104,50 @@ export default function LearningPage() {
                 </div>
               )}
             </div>
+
+            {/* Sana-inspired AI Writing Assistant Panel */}
+            {aiWritingOpen && (
+              <Card className="border-tempo-200 bg-tempo-50/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-tempo-600" />
+                    <h4 className="text-sm font-semibold text-t1">AI Writing Assistant</h4>
+                    <Badge variant="ai">Claude</Badge>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => { setAiWritingOpen(false); setAiWritingResult('') }}>×</Button>
+                </div>
+                <Textarea value={aiWritingText} onChange={(e) => setAiWritingText(e.target.value)} placeholder="Paste or type content here for AI assistance..." rows={4} className="mb-3" />
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[
+                    { action: 'continue', label: 'Continue writing', icon: <PenTool size={12} /> },
+                    { action: 'shorten', label: 'Shorten', icon: <AlignLeft size={12} /> },
+                    { action: 'rephrase', label: 'Rephrase', icon: <Zap size={12} /> },
+                    { action: 'simplify', label: 'Simplify', icon: <BookOpen size={12} /> },
+                    { action: 'add_examples', label: 'Add examples', icon: <ListChecks size={12} /> },
+                    { action: 'generate_quiz', label: 'Generate quiz', icon: <HelpCircle size={12} /> },
+                  ].map(({ action, label, icon }) => (
+                    <Button key={action} size="sm" variant={aiWritingAction === action && aiWritingLoading ? 'primary' : 'outline'}
+                      onClick={() => handleAiWritingAssist(action, aiWritingText)}
+                      disabled={aiWritingLoading || !aiWritingText}>
+                      {aiWritingLoading && aiWritingAction === action ? <AIPulse size="sm" /> : icon} {label}
+                    </Button>
+                  ))}
+                </div>
+                {aiWritingResult && (
+                  <div className="bg-surface rounded-lg p-3 border border-divider">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles size={12} className="text-tempo-600" />
+                      <span className="text-[0.6rem] text-tempo-600 font-medium uppercase">AI Result</span>
+                    </div>
+                    <p className="text-xs text-t1 whitespace-pre-wrap">{aiWritingResult}</p>
+                    <div className="flex gap-2 mt-3">
+                      <Button size="sm" variant="primary" onClick={() => { setAiWritingText(aiWritingResult); setAiWritingResult('') }}>Use this</Button>
+                      <Button size="sm" variant="outline" onClick={() => setAiWritingResult('')}>Discard</Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
 
             {!selectedBuilderCourse ? (
               <Card><div className="text-center py-12 text-sm text-t3">{t('noCourseSelected')}</div></Card>
@@ -2019,6 +2170,7 @@ export default function LearningPage() {
                             </div>
                             <Badge variant={block.status === 'published' ? 'success' : 'default'}>{block.status === 'published' ? t('statusPublished') : t('statusDraft')}</Badge>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button size="sm" variant="outline" onClick={() => { setAiWritingText(block.content || block.title); setAiWritingOpen(true) }}><Sparkles size={10} /> AI</Button>
                               {block.status === 'draft' && (
                                 <Button size="sm" variant="outline" onClick={() => updateCourseBlock(block.id, { status: 'published' })}>{t('publishBlock')}</Button>
                               )}
@@ -2670,6 +2822,162 @@ export default function LearningPage() {
         </div>
       )}
 
+      {/* Certifications Tab (SeamlessHR-inspired) */}
+      {activeTab === 'certifications' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">Certification Management</h3>
+              <p className="text-xs text-t3">Track certifications, expiration dates, and renewal requirements</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Total Certifications" value={certifications.length} icon={<Award size={20} />} />
+            <StatCard label="Valid" value={certifications.filter(c => c.status === 'valid').length} icon={<CheckCircle size={20} />} />
+            <StatCard label="Expiring Soon" value={certifications.filter(c => c.status === 'expiring_soon').length} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Expired" value={certifications.filter(c => c.status === 'expired').length} icon={<Shield size={20} />} />
+          </div>
+
+          {certifications.length === 0 ? (
+            <Card>
+              <div className="text-center py-12">
+                <Award size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm text-t2 font-medium">No certifications yet</p>
+                <p className="text-xs text-t3 mt-1">Complete compliance training courses to earn certifications</p>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-divider">
+                      <th className="text-left py-2.5 px-3 text-t3 font-medium">Certification</th>
+                      <th className="text-left py-2.5 px-3 text-t3 font-medium">Completed</th>
+                      <th className="text-left py-2.5 px-3 text-t3 font-medium">Expires</th>
+                      <th className="text-right py-2.5 px-3 text-t3 font-medium">Days Left</th>
+                      <th className="text-right py-2.5 px-3 text-t3 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {certifications.map((cert, i) => (
+                      <tr key={i} className="border-b border-divider/50 hover:bg-canvas transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center', cert.status === 'valid' ? 'bg-green-500/10' : cert.status === 'expiring_soon' ? 'bg-amber-500/10' : 'bg-red-500/10')}>
+                              <Award size={14} className={cert.status === 'valid' ? 'text-green-500' : cert.status === 'expiring_soon' ? 'text-amber-500' : 'text-red-500'} />
+                            </div>
+                            <span className="font-medium text-t1">{cert.courseTitle}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-t2">{cert.completedDate}</td>
+                        <td className="py-2.5 px-3 text-t2">{cert.expiryDate}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className={cert.daysUntilExpiry < 0 ? 'text-red-500 font-semibold' : cert.daysUntilExpiry < 30 ? 'text-amber-500 font-semibold' : 'text-t2'}>
+                            {cert.daysUntilExpiry < 0 ? `${Math.abs(cert.daysUntilExpiry)}d overdue` : `${cert.daysUntilExpiry}d`}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <Badge variant={cert.status === 'valid' ? 'success' : cert.status === 'expiring_soon' ? 'warning' : 'error'}>
+                            {cert.status === 'valid' ? 'Valid' : cert.status === 'expiring_soon' ? 'Expiring Soon' : 'Expired'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Adaptive Learning Tab (SeamlessHR + Sana-inspired) */}
+      {activeTab === 'adaptive' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">Adaptive Learning <Badge variant="ai">AI-Powered</Badge></h3>
+              <p className="text-xs text-t3">Spaced repetition and knowledge retention tracking to maximize learning outcomes</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Avg Retention" value={`${spacedRepetitionData.length > 0 ? Math.round(spacedRepetitionData.reduce((a, s) => a + s.retentionScore, 0) / spacedRepetitionData.length) : 0}%`} icon={<Brain size={20} />} />
+            <StatCard label="Needs Review" value={spacedRepetitionData.filter(s => s.needsReview).length} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Strong Retention" value={spacedRepetitionData.filter(s => s.retentionScore >= 80).length} icon={<TrendingUp size={20} />} />
+            <StatCard label="Courses Completed" value={spacedRepetitionData.length} icon={<CheckCircle size={20} />} />
+          </div>
+
+          {spacedRepetitionData.length === 0 ? (
+            <Card>
+              <div className="text-center py-12">
+                <Brain size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm text-t2 font-medium">No completed courses yet</p>
+                <p className="text-xs text-t3 mt-1">Complete courses to start tracking knowledge retention</p>
+              </div>
+            </Card>
+          ) : (
+            <>
+              {/* Knowledge Retention Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {spacedRepetitionData.slice(0, 9).map((item, i) => (
+                  <Card key={i} className={item.needsReview ? 'border-amber-200 bg-amber-50/20' : ''}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-t1 truncate flex-1">{item.courseTitle}</span>
+                      {item.needsReview && <Badge variant="warning">Review needed</Badge>}
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex-1">
+                        <Progress value={item.retentionScore} color={item.retentionScore >= 80 ? 'success' : item.retentionScore >= 60 ? 'orange' : 'warning'} />
+                      </div>
+                      <span className={cn('text-sm font-bold', item.retentionScore >= 80 ? 'text-green-600' : item.retentionScore >= 60 ? 'text-blue-600' : 'text-amber-600')}>
+                        {item.retentionScore}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[0.6rem] text-t3">
+                      <span>Completed {item.daysSince}d ago</span>
+                      <span>Next review: {item.nextReviewDate}</span>
+                    </div>
+                    {item.needsReview && (
+                      <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => addToast('Spaced repetition quiz would launch here')}>
+                        <Play size={10} /> Start Review Quiz
+                      </Button>
+                    )}
+                  </Card>
+                ))}
+              </div>
+
+              {/* Forgetting Curve Explanation */}
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <Brain size={16} className="text-tempo-600" />
+                  <h4 className="text-sm font-semibold text-t1">How Adaptive Learning Works</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-tempo-600 mb-2 text-sm font-bold">1</div>
+                    <p className="text-xs font-medium text-t1 mb-1">Track Retention</p>
+                    <p className="text-[0.6rem] text-t3">Knowledge retention is modeled using the Ebbinghaus forgetting curve, estimating how much you remember over time.</p>
+                  </div>
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-tempo-600 mb-2 text-sm font-bold">2</div>
+                    <p className="text-xs font-medium text-t1 mb-1">Smart Scheduling</p>
+                    <p className="text-[0.6rem] text-t3">Review quizzes are scheduled at optimal intervals. Low retention triggers earlier reviews. Strong retention extends intervals.</p>
+                  </div>
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="w-8 h-8 rounded-full bg-tempo-100 flex items-center justify-center text-tempo-600 mb-2 text-sm font-bold">3</div>
+                    <p className="text-xs font-medium text-t1 mb-1">Reinforce & Grow</p>
+                    <p className="text-[0.6rem] text-t3">Each successful review strengthens neural pathways, making knowledge permanent. The system adapts difficulty based on your performance.</p>
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Transcript Tab */}
       {activeTab === 'transcript' && (
         <div className="space-y-6">
@@ -3168,9 +3476,23 @@ export default function LearningPage() {
                 ]} />
                 <Input label={t('duration') + ' (hours)'} type="number" min={1} max={100} value={builderForm.duration} onChange={(e) => setBuilderForm({ ...builderForm, duration: Number(e.target.value) })} />
               </div>
+              {aiGenerating && (
+                <div className="bg-tempo-50/50 rounded-xl p-6 border border-tempo-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <AIPulse size="md" />
+                    <div>
+                      <p className="text-sm font-medium text-t1">Generating course with AI...</p>
+                      <p className="text-xs text-t3">Claude is creating a structured course outline with lesson content</p>
+                    </div>
+                  </div>
+                  <Progress value={65} showLabel color="orange" />
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="secondary" onClick={() => setShowBuilderModal(false)}>{tc('cancel')}</Button>
-                <Button onClick={handleGenerateOutline}><Sparkles size={14} /> {t('generateOutline')}</Button>
+                <Button onClick={handleGenerateOutline} disabled={aiGenerating || !builderForm.topic}>
+                  {aiGenerating ? <><AIPulse size="sm" /> Generating...</> : <><Sparkles size={14} /> {t('generateOutline')}</>}
+                </Button>
               </div>
             </>
           ) : (

@@ -58,7 +58,9 @@ Given the employee profile (role, level, tenure, skills, performance ratings), s
 
   enhanceQuery: `${SYSTEM_BASE}
 
-Parse the user's natural language query about workforce data. Identify the intent and extract filters. Return JSON: { "intent": "filter|aggregate|compare|trend", "filters": { "field": "value" }, "description": "...", "suggestedSQL": "..." }`,
+Parse the user's natural language query about workforce data. Identify the intent, extract filters, generate a human-readable description of the results, and suggest 3 follow-up queries the user might ask next.
+
+Return JSON: { "intent": "filter|aggregate|compare|trend", "filters": { "field": "value" }, "description": "A clear 1-2 sentence description of the query results", "suggestedSQL": "...", "followUps": ["Follow-up query 1", "Follow-up query 2", "Follow-up query 3"], "chartType": "bar|line|donut|table|gauge", "chartTitle": "..." }`,
 
   enhanceProjectHealth: `${SYSTEM_BASE}
 
@@ -71,6 +73,55 @@ Evaluate the provided OKR (Objective + Key Results) for quality. Check: ambitiou
   enhanceWorkflowOptimization: `${SYSTEM_BASE}
 
 Analyze the provided workflow (steps, run history, failure patterns) and suggest optimizations. Return JSON array: [{ "id": "ai-wf-opt-...", "title": "...", "rationale": "...", "impact": "high"|"medium"|"low", "effort": "low"|"medium"|"high", "category": "workflow" }]`,
+
+  // ── Sana-inspired: AI Course Content Generation ──
+  generateCourseContent: `${SYSTEM_BASE}
+
+You are an expert instructional designer. Given a course topic, level, and duration, generate a complete course outline with rich lesson content. Each lesson should include actual teaching content, not just titles. Structure content for adult learners in an enterprise setting.
+
+Return JSON: { "title": "...", "description": "...", "level": "beginner|intermediate|advanced", "modules": [{ "title": "Module Title", "description": "Module overview", "duration_minutes": number, "lessons": [{ "title": "Lesson Title", "content": "2-3 paragraphs of actual teaching content with key concepts, examples, and takeaways", "type": "text|video|interactive|assessment", "duration_minutes": number, "keyTakeaways": ["...", "..."] }] }], "learningObjectives": ["...", "..."], "assessmentStrategy": "..." }`,
+
+  // ── Sana-inspired: AI Writing Assistant (Continue, Shorten, Rephrase) ──
+  aiWritingAssist: `${SYSTEM_BASE}
+
+You are an expert course content writer. Perform the requested writing action on the provided text. Available actions:
+- "continue": Extend the text with 2-3 more paragraphs in the same style and tone
+- "shorten": Condense to ~50% of original length while preserving key points
+- "rephrase": Rewrite completely with different phrasing but same meaning
+- "simplify": Rewrite for a broader audience, reduce jargon
+- "add_examples": Add 2-3 concrete workplace examples to illustrate the concepts
+- "generate_quiz": Generate 3-5 assessment questions from the content
+
+Return JSON: { "result": "The transformed text", "action": "the action performed", "wordCount": number }
+
+For "generate_quiz" action, return: { "result": "Quiz generated", "action": "generate_quiz", "questions": [{ "question": "...", "type": "multiple_choice|true_false", "options": ["A", "B", "C", "D"], "correct": "A", "explanation": "..." }] }`,
+
+  // ── Sana-inspired: Natural Language Analytics with Auto-Chart ──
+  analyzeWorkforceQuery: `${SYSTEM_BASE}
+
+You are a workforce analytics AI. Given the user's natural language question and a summary of available data, do the following:
+1. Interpret the question
+2. Describe what the data shows
+3. Recommend the best visualization type
+4. Provide the data formatted for rendering
+5. Suggest 3 follow-up questions
+
+Return JSON: {
+  "description": "1-2 sentence answer to the question",
+  "chartType": "bar|line|donut|table|gauge|number",
+  "chartTitle": "Title for the visualization",
+  "chartData": [{ "name": "Label", "value": number }],
+  "highlight": "One key insight to call out",
+  "followUps": ["Question 1?", "Question 2?", "Question 3?"],
+  "severity": "positive|neutral|warning|critical"
+}`,
+
+  // ── Sana-inspired: AI Quiz Generation from Content ──
+  generateSmartQuiz: `${SYSTEM_BASE}
+
+You are an expert assessment designer. Given course content text, generate adaptive quiz questions that test comprehension at multiple levels (recall, application, analysis). Include clear explanations for each answer.
+
+Return JSON: { "questions": [{ "question": "...", "type": "multiple_choice|true_false|fill_blank|scenario", "difficulty": "easy|medium|hard", "options": ["A", "B", "C", "D"], "correct": "B", "explanation": "Why B is correct and why other options are wrong", "bloomLevel": "remember|understand|apply|analyze", "points": number }], "passingScore": number, "estimatedMinutes": number }`,
 }
 
 export async function POST(request: NextRequest) {
@@ -107,9 +158,13 @@ export async function POST(request: NextRequest) {
     if (!client) {
       return NextResponse.json({ error: 'AI client not available', fallback: true }, { status: 503 })
     }
+    // Use higher token limit for content generation actions
+    const contentActions = ['generateCourseContent', 'aiWritingAssist', 'analyzeWorkforceQuery', 'generateSmartQuiz']
+    const maxTokens = contentActions.includes(action) ? 4096 : 1024
+
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       system: systemPrompt + localeInstruction,
       messages: [
         {
