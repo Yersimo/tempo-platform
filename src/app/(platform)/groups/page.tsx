@@ -52,6 +52,8 @@ export default function GroupsPage() {
   const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup } = useTempo()
   const [activeTab, setActiveTab] = useState<'groups' | 'rules' | 'modules'>('groups')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<any | null>(null)
   const [showMembersModal, setShowMembersModal] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null)
   const [filterType, setFilterType] = useState<'all' | 'dynamic' | 'static'>('all')
@@ -125,6 +127,33 @@ export default function GroupsPage() {
       modules: groupForm.modules,
     })
     setShowCreateModal(false)
+  }
+
+  function openEditGroup(group: any) {
+    setEditingGroup(group)
+    setGroupForm({
+      name: group.name,
+      description: group.description || '',
+      type: group.type,
+      rule_field: group.rule?.field || 'department',
+      rule_operator: group.rule?.operator || 'equals',
+      rule_value: Array.isArray(group.rule?.value) ? group.rule.value.join(', ') : (group.rule?.value || ''),
+      modules: [...(group.modules || [])],
+    })
+    setShowEditModal(true)
+  }
+
+  function submitEditGroup() {
+    if (!editingGroup || !groupForm.name) return
+    updateGroup(editingGroup.id, {
+      name: groupForm.name,
+      description: groupForm.description,
+      type: groupForm.type,
+      rule: groupForm.type === 'dynamic' ? { field: groupForm.rule_field, operator: groupForm.rule_operator, value: groupForm.rule_value } : null,
+      modules: groupForm.modules,
+    })
+    setShowEditModal(false)
+    setEditingGroup(null)
   }
 
   function syncGroup(id: string) {
@@ -259,7 +288,7 @@ export default function GroupsPage() {
                   <Button size="sm" variant="secondary" onClick={() => viewMembers(group)}>
                     <Eye size={12} /> View Members
                   </Button>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" variant="ghost" onClick={() => openEditGroup(group)}>
                     <Edit size={12} /> Edit
                   </Button>
                   {group.type === 'dynamic' && (
@@ -480,6 +509,88 @@ export default function GroupsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitGroup}>Create Group</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Edit Group Modal ── */}
+      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Group">
+        <div className="space-y-4">
+          <Input
+            label="Group Name"
+            placeholder="e.g. All Engineering"
+            value={groupForm.name}
+            onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+          />
+          <Textarea
+            label="Description"
+            placeholder="Describe the purpose of this group"
+            rows={2}
+            value={groupForm.description}
+            onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
+          />
+          <Select
+            label="Group Type"
+            value={groupForm.type}
+            onChange={(e) => setGroupForm({ ...groupForm, type: e.target.value as 'dynamic' | 'static' })}
+            options={[
+              { value: 'dynamic', label: 'Dynamic (rule-based)' },
+              { value: 'static', label: 'Static (manual membership)' },
+            ]}
+          />
+
+          {groupForm.type === 'dynamic' && (
+            <div className="border border-divider rounded-lg p-4">
+              <h4 className="text-xs font-semibold text-t1 mb-3 flex items-center gap-1.5">
+                <Filter size={13} /> Membership Rule
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                <Select
+                  label="Field"
+                  value={groupForm.rule_field}
+                  onChange={(e) => setGroupForm({ ...groupForm, rule_field: e.target.value })}
+                  options={RULE_FIELDS.map(f => ({ value: f.value, label: f.label }))}
+                />
+                <Select
+                  label="Operator"
+                  value={groupForm.rule_operator}
+                  onChange={(e) => setGroupForm({ ...groupForm, rule_operator: e.target.value })}
+                  options={(currentFieldDef?.operators || ['equals']).map(op => ({ value: op, label: op }))}
+                />
+                <Input
+                  label="Value"
+                  placeholder={currentFieldDef?.example || 'Value'}
+                  value={groupForm.rule_value}
+                  onChange={(e) => setGroupForm({ ...groupForm, rule_value: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs font-medium text-t1 mb-2 block">Assign to Modules</label>
+            <div className="grid grid-cols-2 gap-2">
+              {AVAILABLE_MODULES.map(mod => (
+                <button
+                  key={mod.value}
+                  onClick={() => toggleModule(mod.value)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors border ${
+                    groupForm.modules.includes(mod.value)
+                      ? 'border-accent bg-accent/5 text-accent'
+                      : 'border-divider bg-canvas text-t2 hover:border-border'
+                  }`}
+                >
+                  {MODULE_ICONS[mod.value]}
+                  {mod.label}
+                  {groupForm.modules.includes(mod.value) && <CheckCircle size={12} className="ml-auto" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitEditGroup}><Edit size={14} /> Save Changes</Button>
           </div>
         </div>
       </Modal>

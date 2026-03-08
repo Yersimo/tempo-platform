@@ -15,8 +15,10 @@ import { useTempo } from '@/lib/store'
 
 export default function SandboxPage() {
   const tc = useTranslations('common')
-  const { sandboxEnvironments, employees, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment } = useTempo()
+  const { sandboxEnvironments, employees, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment, addToast } = useTempo()
 
+  const [showEnvDetailModal, setShowEnvDetailModal] = useState(false)
+  const [detailEnv, setDetailEnv] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'environments' | 'configuration' | 'activity'>('environments')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
@@ -110,6 +112,15 @@ export default function SandboxPage() {
     const current = new Date(env.expires_at)
     current.setDate(current.getDate() + 14)
     updateSandboxEnvironment(id, { expires_at: current.toISOString() })
+  }
+
+  function openEnvironment(env: any) {
+    setDetailEnv(env)
+    setShowEnvDetailModal(true)
+  }
+
+  function saveRetentionPolicy() {
+    addToast(`Retention policy updated to ${retentionDays} days`, 'success')
   }
 
   // Static activity log data
@@ -291,7 +302,7 @@ export default function SandboxPage() {
                     <Trash2 size={12} />
                   </Button>
                   <div className="flex-1" />
-                  <Button size="sm" variant="primary">
+                  <Button size="sm" variant="primary" onClick={() => openEnvironment(env)}>
                     <ExternalLink size={12} /> Open
                   </Button>
                 </div>
@@ -390,7 +401,7 @@ export default function SandboxPage() {
                   { value: '90', label: '90 days' },
                 ]}
               />
-              <Button size="sm" variant="secondary">Save Policy</Button>
+              <Button size="sm" variant="secondary" onClick={saveRetentionPolicy}>Save Policy</Button>
             </div>
           </Card>
         </div>
@@ -432,6 +443,61 @@ export default function SandboxPage() {
           </div>
         </Card>
       )}
+
+      {/* ── Environment Detail Modal ── */}
+      <Modal open={showEnvDetailModal} onClose={() => setShowEnvDetailModal(false)} title={detailEnv?.name || 'Environment Details'}>
+        {detailEnv && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant={statusVariant(detailEnv.status)}>{detailEnv.status}</Badge>
+              <Badge variant="default">{typeLabel(detailEnv.type)}</Badge>
+              {detailEnv.data_masking && (
+                <span className="flex items-center gap-1 text-xs text-t3">
+                  <Shield size={12} className="text-success" /> Data Masking Enabled
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Created by</span>
+                <span className="text-t1 font-medium">{getEmployeeName(detailEnv.created_by)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Created</span>
+                <span className="text-t1">{formatDate(detailEnv.created_at)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Last Refreshed</span>
+                <span className="text-t1">{formatDate(detailEnv.last_refreshed_at)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Expires</span>
+                <span className="text-t1">{formatDate(detailEnv.expires_at)} ({getDaysRemaining(detailEnv.expires_at)}d remaining)</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Source Org</span>
+                <span className="text-t1 font-mono">{detailEnv.source_org_id}</span>
+              </div>
+            </div>
+
+            <div className="bg-canvas rounded-lg p-3">
+              <p className="text-xs text-t3 mb-1">Environment URL</p>
+              <p className="text-xs font-mono text-t1">https://sandbox-{detailEnv.id}.tempo.dev</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button size="sm" variant="secondary" onClick={() => { refreshEnvironment(detailEnv.id); addToast('Environment refreshed', 'success') }}>
+                <RefreshCw size={14} /> Refresh Data
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { extendEnvironment(detailEnv.id); addToast('Environment extended by 14 days', 'success') }}>
+                <Clock size={14} /> Extend
+              </Button>
+              <Button variant="secondary" onClick={() => setShowEnvDetailModal(false)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* ── Create Sandbox Modal ── */}
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Sandbox Environment">

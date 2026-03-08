@@ -43,6 +43,8 @@ export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<'documents' | 'templates' | 'audit'>('documents')
   const [showNewDocModal, setShowNewDocModal] = useState(false)
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState<any>(null)
   const [editTemplateForm, setEditTemplateForm] = useState({
     id: '',
     name: '',
@@ -329,6 +331,25 @@ export default function DocumentsPage() {
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
 
+  function viewDocument(doc: any) {
+    setPreviewDoc(doc)
+    setShowPreviewModal(true)
+  }
+
+  function downloadDocument(doc: any) {
+    const content = `Document: ${doc.title}\nStatus: ${doc.status}\nSigning Flow: ${doc.signing_flow}\nCreated: ${new Date(doc.created_at).toLocaleDateString()}\n${doc.completed_at ? `Completed: ${new Date(doc.completed_at).toLocaleDateString()}` : ''}\n\nSigners:\n${(doc.signers || []).map((s: any, i: number) => `  ${i + 1}. ${s.name} (${s.email}) - ${s.status}`).join('\n')}`
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    addToast('Document downloaded', 'success')
+  }
+
   const tabs = [
     { key: 'documents' as const, label: 'Documents', icon: <FileText size={14} /> },
     { key: 'templates' as const, label: 'Templates', icon: <Copy size={14} /> },
@@ -439,7 +460,7 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1 justify-center">
-                        <Button size="sm" variant="ghost" title="View">
+                        <Button size="sm" variant="ghost" title="View" onClick={() => viewDocument(doc)}>
                           <Eye size={12} />
                         </Button>
                         {(doc.status === 'pending' || doc.status === 'in_progress') && (
@@ -448,7 +469,7 @@ export default function DocumentsPage() {
                           </Button>
                         )}
                         {doc.status === 'completed' && (
-                          <Button size="sm" variant="ghost" title="Download">
+                          <Button size="sm" variant="ghost" title="Download" onClick={() => downloadDocument(doc)}>
                             <Download size={12} />
                           </Button>
                         )}
@@ -666,6 +687,61 @@ export default function DocumentsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Document Preview Modal */}
+      <Modal open={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={previewDoc?.title || 'Document Preview'}>
+        {previewDoc && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              {getStatusBadge(previewDoc.status)}
+              <Badge variant={previewDoc.signing_flow === 'sequential' ? 'default' : 'info'}>
+                {previewDoc.signing_flow}
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Created</span>
+                <span className="text-t1">{new Date(previewDoc.created_at).toLocaleDateString()}</span>
+              </div>
+              {previewDoc.completed_at && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-t3">Completed</span>
+                  <span className="text-t1">{new Date(previewDoc.completed_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Created By</span>
+                <span className="text-t1">{employees.find((e: any) => e.id === previewDoc.created_by)?.profile?.full_name || 'Unknown'}</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-t1 mb-2">Signers</p>
+              <div className="space-y-2">
+                {previewDoc.signers?.map((signer: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-canvas rounded-lg">
+                    <div>
+                      <p className="text-xs font-medium text-t1">{signer.name}</p>
+                      <p className="text-xs text-t3">{signer.email}</p>
+                    </div>
+                    {getSignerStatusBadge(signer.status)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              {previewDoc.status === 'completed' && (
+                <Button size="sm" variant="secondary" onClick={() => { downloadDocument(previewDoc); setShowPreviewModal(false) }}>
+                  <Download size={14} /> Download
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>Close</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* New Document Modal */}

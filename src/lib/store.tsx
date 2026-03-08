@@ -4079,13 +4079,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- Notifications ----
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n) as typeof prev)
+    logAudit('update', 'notification', id, 'Marked notification as read')
     apiPost('notifications', 'update', { is_read: true }, id)
-  }, [])
+  }, [logAudit])
 
   const markAllNotificationsRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })) as typeof prev)
+    logAudit('update', 'notification', 'all', 'Marked all notifications as read')
+    addToast('All notifications marked as read')
     apiPost('notifications', 'update', { is_read: true, bulk: true })
-  }, [])
+  }, [logAudit, addToast])
 
   const unreadNotificationCount = notifications.filter(n => !n.is_read).length
 

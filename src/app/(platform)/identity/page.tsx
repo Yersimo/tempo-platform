@@ -81,6 +81,14 @@ export default function IdentityPage() {
 
   // Add SSO App Modal
   const [showAppModal, setShowAppModal] = useState(false)
+  const [showConfigModal, setShowConfigModal] = useState(false)
+  const [configApp, setConfigApp] = useState<any>(null)
+  const [configForm, setConfigForm] = useState({
+    name: '',
+    sso_url: '',
+    idp_id: '',
+    status: 'active',
+  })
   const [appForm, setAppForm] = useState({
     name: '',
     sso_url: '',
@@ -141,6 +149,41 @@ export default function IdentityPage() {
       addToast(`Failed to update via API, applying locally`, 'error')
     }
     updateSamlApp(app.id, { status: newStatus })
+  }
+
+  function openConfigureApp(app: any) {
+    setConfigApp(app)
+    setConfigForm({
+      name: app.name,
+      sso_url: app.sso_url,
+      idp_id: app.idp_id,
+      status: app.status,
+    })
+    setShowConfigModal(true)
+  }
+
+  async function submitConfigApp() {
+    if (!configApp || !configForm.name || !configForm.sso_url) return
+    try {
+      await idpAPI('POST', undefined, {
+        action: 'register-app',
+        id: configApp.id,
+        name: configForm.name,
+        acsUrl: configForm.sso_url,
+        idpConfigId: configForm.idp_id,
+        status: configForm.status,
+      })
+      addToast(`Application "${configForm.name}" updated`)
+    } catch {
+      addToast('Failed to update app via API, applying locally', 'error')
+    }
+    updateSamlApp(configApp.id, {
+      name: configForm.name,
+      sso_url: configForm.sso_url,
+      idp_id: configForm.idp_id,
+      status: configForm.status,
+    })
+    setShowConfigModal(false)
   }
 
   async function toggleMfaPolicy(policy: any) {
@@ -278,7 +321,7 @@ export default function IdentityPage() {
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-divider">
-                <Button variant="secondary" size="sm" className="flex-1">
+                <Button variant="secondary" size="sm" className="flex-1" onClick={() => openConfigureApp(app)}>
                   <Settings size={12} /> Configure
                 </Button>
                 <Button
@@ -671,6 +714,43 @@ export default function IdentityPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAppModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitApp}>Add Application</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Configure SSO App Modal */}
+      <Modal open={showConfigModal} onClose={() => setShowConfigModal(false)} title={`Configure ${configApp?.name || 'Application'}`}>
+        <div className="space-y-4">
+          <Input
+            label="Application Name"
+            placeholder="e.g. Slack, GitHub, Jira"
+            value={configForm.name}
+            onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
+          />
+          <Input
+            label="SSO URL"
+            placeholder="https://your-app.com/sso"
+            value={configForm.sso_url}
+            onChange={(e) => setConfigForm({ ...configForm, sso_url: e.target.value })}
+          />
+          <Select
+            label="Identity Provider"
+            value={configForm.idp_id}
+            onChange={(e) => setConfigForm({ ...configForm, idp_id: e.target.value })}
+            options={idpConfigurations.map(idp => ({ value: idp.id, label: idp.name }))}
+          />
+          <Select
+            label={tc('status')}
+            value={configForm.status}
+            onChange={(e) => setConfigForm({ ...configForm, status: e.target.value })}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowConfigModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitConfigApp}><Settings size={14} /> Save Configuration</Button>
           </div>
         </div>
       </Modal>

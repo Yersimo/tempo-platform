@@ -99,7 +99,7 @@ async function chatAPI(method: 'GET' | 'POST' | 'PUT' | 'DELETE', params?: Recor
 
 // ---------- component ----------
 export default function ChatPage() {
-  const { employees, currentUser, chatChannels, chatMessages } = useTempo()
+  const { employees, currentUser, chatChannels, chatMessages, addToast } = useTempo()
   const employeeId = currentUser?.employee_id || ''
 
   // Whether we're in "live API" mode or "seed data" fallback
@@ -128,6 +128,10 @@ export default function ChatPage() {
   const [dmSearch, setDmSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [typingUsers, setTypingUsers] = useState<Record<string, number>>({})
+  const [threadMessage, setThreadMessage] = useState<any>(null)
+  const [threadReplies, setThreadReplies] = useState<any[]>([])
+  const [threadInput, setThreadInput] = useState('')
+  const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -449,6 +453,65 @@ export default function ChatPage() {
       }
       return { ...m, reactions: [...(m.reactions || []), { emoji, count: 1 }] }
     }))
+  }
+
+  // ---- Open thread view ----
+  function openThread(msg: any) {
+    setThreadMessage(msg)
+    // Load existing thread replies from messages with this thread_id
+    const replies = messages.filter(m => m.thread_id === msg.id)
+    setThreadReplies(replies)
+    setThreadInput('')
+  }
+
+  function closeThread() {
+    setThreadMessage(null)
+    setThreadReplies([])
+    setThreadInput('')
+  }
+
+  async function sendThreadReply() {
+    const content = threadInput.trim()
+    if (!content || !threadMessage) return
+    const newReply = {
+      id: `reply-${Date.now()}`,
+      channel_id: activeChannelId,
+      sender_id: employeeId || 'emp-1',
+      content,
+      timestamp: new Date().toISOString(),
+      thread_id: threadMessage.id,
+      is_pinned: false,
+      reactions: [],
+    }
+    if (isLive) {
+      try {
+        await chatAPI('POST', undefined, {
+          action: 'send-message',
+          channelId: activeChannelId,
+          senderId: employeeId,
+          content,
+          threadId: threadMessage.id,
+        })
+      } catch { /* fall through to local */ }
+    }
+    setThreadReplies(prev => [...prev, newReply])
+    setMessages(prev => [...prev, newReply])
+    setThreadInput('')
+  }
+
+  // ---- Save/bookmark message ----
+  function toggleSaveMessage(msgId: string) {
+    setSavedMessageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(msgId)) {
+        next.delete(msgId)
+        addToast('Message unsaved', 'success')
+      } else {
+        next.add(msgId)
+        addToast('Message saved', 'success')
+      }
+      return next
+    })
   }
 
   // Key handler
@@ -781,7 +844,11 @@ export default function ChatPage() {
                       >
                         <Smile size={14} />
                       </button>
-                      <button className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors" title="Thread">
+                      <button
+                        onClick={() => openThread(msg)}
+                        className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors"
+                        title="Thread"
+                      >
                         <MessageSquare size={14} />
                       </button>
                       <button
@@ -791,7 +858,14 @@ export default function ChatPage() {
                       >
                         <Pin size={14} />
                       </button>
-                      <button className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors" title="Save">
+                      <button
+                        onClick={() => toggleSaveMessage(msg.id)}
+                        className={cn(
+                          'p-1 hover:bg-canvas rounded transition-colors',
+                          savedMessageIds.has(msg.id) ? 'text-amber-500' : 'text-t3 hover:text-t1'
+                        )}
+                        title={savedMessageIds.has(msg.id) ? 'Unsave' : 'Save'}
+                      >
                         <Star size={14} />
                       </button>
                     </div>
@@ -867,6 +941,79 @@ export default function ChatPage() {
           </p>
         </div>
       </div>
+
+      {/* ──────── THREAD PANEL ──────── */}
+      {threadMessage && (
+        <div className="w-80 flex-shrink-0 bg-card border-l border-divider flex flex-col">
+          {/* Thread header */}
+          <div className="px-4 py-3 border-b border-divider flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-t1">Thread</h3>
+              <p className="text-xs text-t3">{threadReplies.length} {threadReplies.length === 1 ? 'reply' : 'replies'}</p>
+            </div>
+            <button
+              onClick={closeThread}
+              className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors"
+            >
+              <span className="text-lg leading-none">&times;</span>
+            </button>
+          </div>
+
+          {/* Original message */}
+          <div className="px-4 py-3 border-b border-divider bg-canvas/50">
+            <div className="flex items-start gap-2">
+              <div className="w-8 h-8 rounded-lg bg-tempo-600/15 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-tempo-600">{getInitials(getSenderName(threadMessage.sender_id))}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-semibold text-t1">{getSenderName(threadMessage.sender_id)}</span>
+                  <span className="text-[0.6rem] text-t3">{formatTime(threadMessage.timestamp)}</span>
+                </div>
+                <p className="text-xs text-t2 mt-0.5 whitespace-pre-wrap">{threadMessage.content}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Thread replies */}
+          <div className="flex-1 overflow-y-auto px-4 py-2">
+            {threadReplies.length === 0 && (
+              <p className="text-xs text-t3 text-center py-4">No replies yet. Start the conversation!</p>
+            )}
+            {threadReplies.map(reply => (
+              <div key={reply.id} className="flex items-start gap-2 py-2">
+                <div className="w-7 h-7 rounded-lg bg-tempo-600/15 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[0.55rem] font-bold text-tempo-600">{getInitials(getSenderName(reply.sender_id))}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-semibold text-t1">{getSenderName(reply.sender_id)}</span>
+                    <span className="text-[0.6rem] text-t3">{formatTime(reply.timestamp)}</span>
+                  </div>
+                  <p className="text-xs text-t2 mt-0.5 whitespace-pre-wrap">{reply.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Thread input */}
+          <div className="px-3 py-2 border-t border-divider">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Reply..."
+                value={threadInput}
+                onChange={e => setThreadInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendThreadReply() } }}
+                className="flex-1 py-1.5 px-2.5 text-xs bg-surface border border-divider rounded-md text-t1 placeholder:text-t3 focus:outline-none focus:ring-1 focus:ring-tempo-600/30 focus:border-tempo-600"
+              />
+              <Button size="sm" onClick={sendThreadReply} disabled={!threadInput.trim()}>
+                <Send size={12} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ──────── CREATE CHANNEL MODAL ──────── */}
       <Modal open={showCreateChannel} onClose={() => setShowCreateChannel(false)} title="Create a Channel" size="sm">

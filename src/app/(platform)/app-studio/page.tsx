@@ -15,12 +15,17 @@ import { useTempo } from '@/lib/store'
 
 export default function AppStudioPage() {
   const tc = useTranslations('common')
-  const { customApps, appPages, employees, departments, invoices, leaveRequests, addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage } = useTempo()
+  const { customApps, appPages, employees, departments, invoices, leaveRequests, addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage, addToast } = useTempo()
 
   const [activeTab, setActiveTab] = useState<'apps' | 'templates' | 'datasources'>('apps')
   const [editingAppId, setEditingAppId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showAddPageModal, setShowAddPageModal] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewApp, setPreviewApp] = useState<any>(null)
+  const [showConfigPageModal, setShowConfigPageModal] = useState(false)
+  const [configPage, setConfigPage] = useState<any>(null)
+  const [configPageForm, setConfigPageForm] = useState({ name: '', slug: '', icon: 'layout' })
   const [appForm, setAppForm] = useState({ name: '', description: '', icon: 'monitor', access: 'all' })
   const [pageForm, setPageForm] = useState({ name: '', slug: '', icon: 'layout', is_home_page: false })
 
@@ -143,6 +148,28 @@ export default function AppStudioPage() {
     updateAppPage(pageId, { is_home_page: true })
   }
 
+  function openPreviewApp(app: any) {
+    setPreviewApp(app)
+    setShowPreviewModal(true)
+  }
+
+  function openConfigPage(page: any) {
+    setConfigPage(page)
+    setConfigPageForm({ name: page.name, slug: page.slug, icon: page.icon || 'layout' })
+    setShowConfigPageModal(true)
+  }
+
+  function submitConfigPage() {
+    if (!configPage || !configPageForm.name) return
+    updateAppPage(configPage.id, {
+      name: configPageForm.name,
+      slug: configPageForm.slug || configPageForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      icon: configPageForm.icon,
+    })
+    addToast(`Page "${configPageForm.name}" updated`, 'success')
+    setShowConfigPageModal(false)
+  }
+
   // ─── App Detail View ───
   if (editingApp) {
     return (
@@ -215,7 +242,7 @@ export default function AppStudioPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex gap-1 justify-center">
-                        <Button size="sm" variant="secondary"><Settings size={12} /> Configure</Button>
+                        <Button size="sm" variant="secondary" onClick={() => openConfigPage(page)}><Settings size={12} /> Configure</Button>
                       </div>
                     </td>
                   </tr>
@@ -370,7 +397,7 @@ export default function AppStudioPage() {
                 <Button size="sm" variant="secondary" onClick={() => setEditingAppId(app.id)}>
                   <Code size={12} /> Edit
                 </Button>
-                <Button size="sm" variant="ghost">
+                <Button size="sm" variant="ghost" onClick={() => openPreviewApp(app)}>
                   <Eye size={12} /> Preview
                 </Button>
                 {app.status === 'draft' ? (
@@ -468,6 +495,108 @@ export default function AppStudioPage() {
           ))}
         </div>
       )}
+
+      {/* ── App Preview Modal ── */}
+      <Modal open={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={previewApp ? `Preview: ${previewApp.name}` : 'App Preview'}>
+        {previewApp && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                {getIcon(previewApp.icon || 'blocks')}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-t1">{previewApp.name}</h3>
+                <p className="text-xs text-t3">{previewApp.description || 'No description'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Status</span>
+                <Badge variant={previewApp.status === 'published' ? 'success' : 'default'}>
+                  {previewApp.status}
+                </Badge>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Version</span>
+                <span className="text-t1 font-medium">v{previewApp.version}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Pages</span>
+                <span className="text-t1 font-medium">{getPageCount(previewApp.id)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Created By</span>
+                <span className="text-t1">{getCreatorName(previewApp.created_by)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-t3">Access</span>
+                <span className="text-t1">{previewApp.access_roles ? previewApp.access_roles.join(', ') : 'All employees'}</span>
+              </div>
+            </div>
+
+            {/* Page list preview */}
+            {appPages.filter(p => p.app_id === previewApp.id).length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-t1 mb-2">Pages</p>
+                <div className="space-y-1">
+                  {appPages.filter(p => p.app_id === previewApp.id).map(page => (
+                    <div key={page.id} className="flex items-center gap-2 p-2 bg-canvas rounded-lg text-xs">
+                      <span className="text-t3">{getIcon(page.icon || 'layout', 14)}</span>
+                      <span className="text-t1 font-medium">{page.name}</span>
+                      <span className="text-t3 font-mono">/{page.slug}</span>
+                      {page.is_home_page && <Badge variant="success">Home</Badge>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => { setShowPreviewModal(false); setEditingAppId(previewApp.id) }}>
+                <Code size={14} /> Open Editor
+              </Button>
+              <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Configure Page Modal ── */}
+      <Modal open={showConfigPageModal} onClose={() => setShowConfigPageModal(false)} title={`Configure Page: ${configPage?.name || ''}`}>
+        <div className="space-y-4">
+          <Input
+            label="Page Name"
+            placeholder="e.g. Dashboard"
+            value={configPageForm.name}
+            onChange={(e) => setConfigPageForm({ ...configPageForm, name: e.target.value })}
+          />
+          <Input
+            label="Slug"
+            placeholder="e.g. dashboard"
+            value={configPageForm.slug}
+            onChange={(e) => setConfigPageForm({ ...configPageForm, slug: e.target.value })}
+          />
+          <Select
+            label="Icon"
+            value={configPageForm.icon}
+            onChange={(e) => setConfigPageForm({ ...configPageForm, icon: e.target.value })}
+            options={[
+              { value: 'layout', label: 'Layout' },
+              { value: 'monitor', label: 'Monitor' },
+              { value: 'users', label: 'Users' },
+              { value: 'folder', label: 'Folder' },
+              { value: 'file-text', label: 'File Text' },
+              { value: 'database', label: 'Database' },
+              { value: 'clipboard-list', label: 'Clipboard' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowConfigPageModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitConfigPage}><Settings size={14} /> Save</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ── Create App Modal ── */}
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Custom App">
