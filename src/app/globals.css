@@ -1182,3 +1182,11 @@ body {
 /* Completion scale-up */
 @keyframes scormCompletionEnter { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .scorm-completion-enter { animation: scormCompletionEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Print styles for certificate */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-certificate, .print-certificate * { visibility: visible !important; }
+  .print-certificate { position: absolute; left: 0; top: 0; width: 100%; }
+  .print\:hidden { display: none !important; }
+}

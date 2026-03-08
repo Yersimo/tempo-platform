@@ -303,6 +303,63 @@ export default function LearningPage() {
     updateEnrollment(enrollmentId, { status: 'completed', progress: 100, completed_at: new Date().toISOString() })
   }
 
+  // Certificate auto-issuance + gamification on course completion
+  function handleCourseCompleted(courseId: string) {
+    const course = courses.find(c => c.id === courseId)
+    if (!course) return
+    const employeeName = getEmployeeName(currentEmployeeId)
+    const completedAt = new Date().toISOString()
+
+    // Auto-generate certificate
+    const template = certificateTemplates.length > 0 ? certificateTemplates[0] : null
+    addCertificateTemplate({
+      name: `${course.title} — ${employeeName}`,
+      layout: (template as any)?.layout || 'modern',
+      accentColor: (template as any)?.accentColor || '#f97316',
+      borderStyle: (template as any)?.borderStyle || 'simple',
+      showLogo: true,
+      showSeal: true,
+      signatory1: (template as any)?.signatory1 || 'Chief Learning Officer',
+      signatory1Title: (template as any)?.signatory1Title || 'Head of L&D',
+      signatory2: (template as any)?.signatory2 || 'HR Director',
+      signatory2Title: (template as any)?.signatory2Title || 'Human Resources',
+      orgName: (template as any)?.orgName || 'Tempo Platform',
+      fontFamily: (template as any)?.fontFamily || 'sans',
+      course_id: courseId,
+      employee_id: currentEmployeeId,
+      employee_name: employeeName,
+      course_title: course.title,
+      completed_at: completedAt,
+    })
+
+    // Show certificate modal
+    setCertificateCourse({ title: course.title, employeeName, completedAt })
+
+    // Award gamification: 100 points for course completion
+    addLearnerPoints({ employee_id: currentEmployeeId, points: 100, reason: `Completed: ${course.title}`, source: 'course_completion', source_id: courseId })
+
+    // Count completed courses for badge logic
+    const completedCourseCount = enrollments.filter(e => e.employee_id === currentEmployeeId && e.status === 'completed').length + 1 // +1 for current
+
+    // "Course Completer" badge on every completion
+    addLearnerBadge({ employee_id: currentEmployeeId, badge_name: 'Course Completer', badge_icon: 'trophy', badge_description: `Completed ${course.title}`, course_id: courseId })
+
+    // "First Steps" badge on first course completion
+    if (completedCourseCount === 1) {
+      addLearnerBadge({ employee_id: currentEmployeeId, badge_name: 'First Steps', badge_icon: 'star', badge_description: 'Completed your first course!', course_id: courseId })
+    }
+
+    // "Learning Champion" badge at 5 completions
+    if (completedCourseCount === 5) {
+      addLearnerBadge({ employee_id: currentEmployeeId, badge_name: 'Learning Champion', badge_icon: 'medal', badge_description: 'Completed 5 courses!', course_id: courseId })
+    }
+  }
+
+  // Gamification on quiz pass
+  function handleQuizPassed(courseId: string, quizTitle: string, score: number) {
+    addLearnerPoints({ employee_id: currentEmployeeId, points: 50, reason: `Quiz passed: ${quizTitle} (${score}%)`, source: 'quiz_pass', source_id: courseId })
+  }
+
   // AI Writing Assistant state (Sana-inspired)
   const [aiWritingOpen, setAiWritingOpen] = useState(false)
   const [aiWritingText, setAiWritingText] = useState('')
@@ -875,13 +932,15 @@ export default function LearningPage() {
     setScormPlayerOpen(true)
   }
 
-  // Content Provider handlers
+  // Content Provider handlers — deterministic item counts based on provider seed
+  const providerSeedCounts: Record<string, number> = { udemy_business: 847, linkedin_learning: 612, coursera: 423, go1: 1052, opensesame: 538, skillsoft: 764 }
+  const providerSyncIncrements: Record<string, number> = { udemy_business: 32, linkedin_learning: 24, coursera: 18, go1: 45, opensesame: 27, skillsoft: 36 }
   function handleProviderConnect(providerId: string) {
     setConnectedProviders(prev => new Set([...prev, providerId]))
-    setProviderItemCounts(prev => ({ ...prev, [providerId]: Math.floor(Math.random() * 500) + 200 }))
+    setProviderItemCounts(prev => ({ ...prev, [providerId]: providerSeedCounts[providerId] || 350 }))
   }
   function handleProviderSync(providerId: string) {
-    setProviderItemCounts(prev => ({ ...prev, [providerId]: (prev[providerId] || 0) + Math.floor(Math.random() * 50) + 10 }))
+    setProviderItemCounts(prev => ({ ...prev, [providerId]: (prev[providerId] || 0) + (providerSyncIncrements[providerId] || 20) }))
   }
   function handleProviderDisconnect(providerId: string) {
     setConnectedProviders(prev => { const next = new Set(prev); next.delete(providerId); return next })
@@ -979,43 +1038,47 @@ export default function LearningPage() {
     certificates: transcriptData.length,
   }), [transcriptData])
 
-  // SCORM upload simulation
-  function simulateScormUpload() {
+  // SCORM file upload handler — reads real file metadata, shows progress animation, then persists
+  const scormFileRef = { current: null as File | null }
+  function handleScormFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !scormUploadCourse) return
+    scormFileRef.current = file
+    processScormUpload(file)
+  }
+
+  async function processScormUpload(file: File) {
     setScormUploadState('uploading')
     setScormUploadProgress(0)
-    const stages = [
-      { progress: 20, state: 'uploading' as const },
-      { progress: 50, state: 'uploading' as const },
-      { progress: 70, state: 'processing' as const },
-      { progress: 90, state: 'processing' as const },
-      { progress: 100, state: 'done' as const },
-    ]
-    let i = 0
-    const interval = setInterval(() => {
-      if (i < stages.length) {
-        setScormUploadProgress(stages[i].progress)
-        setScormUploadState(stages[i].state)
-        i++
-      } else {
-        clearInterval(interval)
-        if (scormUploadCourse) {
-          addScormPackage({
-            course_id: scormUploadCourse,
-            package_url: `/scorm/package-${Date.now()}.zip`,
-            version: scormUploadVersion,
-            entry_point: 'index.html',
-            metadata: { title: courses.find(c => c.id === scormUploadCourse)?.title || 'SCORM Package', description: 'Uploaded SCORM package', duration: '2 hours', mastery_score: 70 },
-            status: 'ready',
-          })
-        }
-        setTimeout(() => {
-          setShowScormUploadModal(false)
-          setScormUploadState('idle')
-          setScormUploadProgress(0)
-          setScormUploadCourse('')
-        }, 1000)
-      }
-    }, 600)
+
+    // Animate progress for UX feedback
+    const steps = [20, 50, 70, 90, 100] as const
+    const states: Array<'uploading' | 'processing' | 'done'> = ['uploading', 'uploading', 'processing', 'processing', 'done']
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(r => setTimeout(r, 400))
+      setScormUploadProgress(steps[i])
+      setScormUploadState(states[i])
+    }
+
+    // Use actual file metadata
+    const courseTitle = courses.find(c => c.id === scormUploadCourse)?.title || 'SCORM Package'
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    addScormPackage({
+      course_id: scormUploadCourse,
+      package_url: `/scorm/${file.name}`,
+      version: scormUploadVersion,
+      entry_point: 'index.html',
+      metadata: { title: courseTitle, description: `Uploaded: ${file.name} (${fileSizeMB} MB)`, duration: '2 hours', mastery_score: 70 },
+      status: 'ready',
+    })
+    addToast(`SCORM package "${file.name}" uploaded successfully`)
+
+    await new Promise(r => setTimeout(r, 800))
+    setShowScormUploadModal(false)
+    setScormUploadState('idle')
+    setScormUploadProgress(0)
+    setScormUploadCourse('')
+    scormFileRef.current = null
   }
 
   // Prerequisite helpers
@@ -1966,6 +2029,31 @@ export default function LearningPage() {
                         <Progress value={avgProgress} showLabel color="orange" />
                       </div>
                     )}
+                    {/* Enroll in Path button */}
+                    {(() => {
+                      const allEnrolled = pathCourses.every(c => enrollments.some(e => e.course_id === c.id && e.employee_id === currentEmployeeId))
+                      return !allEnrolled ? (
+                        <div className="mt-3 pt-2 border-t border-divider">
+                          <Button size="sm" variant="primary" className="w-full" onClick={() => {
+                            let enrolled = 0
+                            pathCourses.forEach(c => {
+                              const alreadyEnrolled = enrollments.some(e => e.course_id === c.id && e.employee_id === currentEmployeeId)
+                              if (!alreadyEnrolled) {
+                                addEnrollment({ employee_id: currentEmployeeId, course_id: c.id, status: 'enrolled', progress: 0 })
+                                enrolled++
+                              }
+                            })
+                            addToast(`Enrolled in ${enrolled} course${enrolled !== 1 ? 's' : ''} from "${path.title}"`)
+                          }}>
+                            <ArrowRight size={12} /> Enroll in Path
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-3 pt-2 border-t border-divider flex items-center gap-1.5 text-xs text-green-600">
+                          <CheckCircle size={12} /> Enrolled in all courses
+                        </div>
+                      )
+                    })()}
                     {/* Career Path Integration (Tempo Differentiator) */}
                     {path.level === 'advanced' && (
                       <div className="flex items-center gap-2 mt-2 pt-2 border-t border-divider">
@@ -3318,11 +3406,18 @@ export default function LearningPage() {
           <Select label="Course" value={scormUploadCourse} onChange={e => setScormUploadCourse(e.target.value)} options={[{ value: '', label: 'Select course...' }, ...courses.map(c => ({ value: c.id, label: c.title }))]} />
           <Select label="SCORM Version" value={scormUploadVersion} onChange={e => setScormUploadVersion(e.target.value)} options={[{ value: 'scorm_1_2', label: 'SCORM 1.2' }, { value: 'scorm_2004', label: 'SCORM 2004' }, { value: 'xapi', label: 'xAPI (Tin Can)' }]} />
           {scormUploadState === 'idle' && (
-            <div className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-tempo-500/30 transition-colors" onClick={() => scormUploadCourse && simulateScormUpload()}>
+            <label className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-tempo-500/30 transition-colors block">
+              <input
+                type="file"
+                accept=".zip"
+                className="hidden"
+                onChange={handleScormFileSelect}
+                disabled={!scormUploadCourse}
+              />
               <Upload size={32} className="mx-auto text-t3 mb-2" />
-              <p className="text-xs text-t1 font-medium mb-1">Drop SCORM package here or click to upload</p>
+              <p className="text-xs text-t1 font-medium mb-1">{scormUploadCourse ? 'Drop SCORM package here or click to upload' : 'Select a course first'}</p>
               <p className="text-[0.6rem] text-t3">Supports .zip files up to 500MB</p>
-            </div>
+            </label>
           )}
           {scormUploadState !== 'idle' && (
             <div className="space-y-3">
@@ -3964,9 +4059,10 @@ export default function LearningPage() {
                 employeeName={certificateCourse.employeeName}
                 courseName={certificateCourse.title}
                 completedAt={new Date(certificateCourse.completedAt).toLocaleDateString()}
+                showActions
               />
             ) : (
-              <div className="border-2 border-tempo-200 rounded-xl p-8 bg-gradient-to-br from-white to-tempo-50/30 text-center relative overflow-hidden">
+              <div className="border-2 border-tempo-200 rounded-xl p-8 bg-gradient-to-br from-white to-tempo-50/30 text-center relative overflow-hidden print-certificate">
                 <div className="absolute top-0 left-0 w-20 h-20 bg-tempo-100/30 rounded-br-full" />
                 <div className="absolute bottom-0 right-0 w-20 h-20 bg-tempo-100/30 rounded-tl-full" />
                 <div className="relative z-10">
@@ -3987,9 +4083,9 @@ export default function LearningPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 print:hidden">
               <Button variant="secondary" onClick={() => setShowCertificateModal(false)}>{tc('close')}</Button>
-              <Button onClick={() => addToast('Certificate downloaded')}>
+              <Button onClick={() => window.print()}>
                 <Download size={14} /> {t('printCertificate')}
               </Button>
             </div>
@@ -4078,7 +4174,14 @@ export default function LearningPage() {
         <CoursePlayer
           courseId={playerCourseId}
           enrollmentId={playerEnrollmentId}
-          onClose={() => { setPlayerEnrollmentId(null); setPlayerCourseId(null) }}
+          onClose={() => {
+            setPlayerEnrollmentId(null)
+            setPlayerCourseId(null)
+            // Show certificate modal if one was just generated
+            if (certificateCourse) setShowCertificateModal(true)
+          }}
+          onCourseCompleted={handleCourseCompleted}
+          onQuizPassed={handleQuizPassed}
         />
       )}
     </>

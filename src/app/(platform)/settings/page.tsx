@@ -440,9 +440,33 @@ export default function SettingsPage() {
     entry.entity_type.toLowerCase().includes(auditSearch.toLowerCase())
   )
 
-  function submitOrg() {
-    updateOrg(orgForm)
-    setShowOrgModal(false)
+  async function submitOrg() {
+    if (!orgForm.name) {
+      addToast('Company name is required', 'error')
+      return
+    }
+    try {
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity: 'organizations',
+          action: 'update',
+          id: org.id,
+          data: orgForm,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to save')
+      }
+      updateOrg(orgForm)
+      setShowOrgModal(false)
+    } catch (err: any) {
+      // Still update locally even if API fails
+      updateOrg(orgForm)
+      setShowOrgModal(false)
+    }
   }
 
   function submitDept() {

@@ -17,6 +17,8 @@ interface CoursePlayerProps {
   courseId: string
   enrollmentId: string
   onClose: () => void
+  onCourseCompleted?: (courseId: string) => void
+  onQuizPassed?: (courseId: string, quizTitle: string, score: number) => void
 }
 
 type BlockStatus = 'locked' | 'available' | 'completed'
@@ -27,7 +29,7 @@ function estimateReadingTime(text: string): number {
   return Math.max(1, Math.ceil(words / 200)) // 200 wpm average
 }
 
-export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerProps) {
+export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseCompleted, onQuizPassed }: CoursePlayerProps) {
   const {
     courses, courseBlocks, quizQuestions, enrollments,
     updateEnrollment, addAssessmentAttempt, currentEmployeeId, addToast,
@@ -159,6 +161,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     const newCompletedCount = [...newStatuses.values()].filter(s => s === 'completed').length
     if (newCompletedCount === blocks.length) {
       updateEnrollment(enrollmentId, { status: 'completed', progress: 100, completed_at: new Date().toISOString() })
+      onCourseCompleted?.(courseId)
       setTimeout(() => setShowCompletion(true), 400)
     } else {
       if (nextIdx < blocks.length) {
@@ -196,9 +199,10 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
     })
 
     if (passed) {
+      onQuizPassed?.(courseId, currentBlock.title, score)
       markBlockComplete()
     }
-  }, [quizState, currentBlock, currentQuizQuestions, addAssessmentAttempt, currentEmployeeId, courseId, markBlockComplete])
+  }, [quizState, currentBlock, currentQuizQuestions, addAssessmentAttempt, currentEmployeeId, courseId, markBlockComplete, onQuizPassed])
 
   // --- Block Type Icons ---
   const blockIcon = (type: string, size = 14) => {
@@ -305,7 +309,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose }: CoursePlayerPr
 
           <div className="flex gap-3 justify-center">
             <Button variant="outline" size="lg" onClick={onClose}>Back to Learning</Button>
-            <Button variant="primary" size="lg" onClick={() => { addToast('Certificate issued!'); onClose() }}>
+            <Button variant="primary" size="lg" onClick={() => { onClose() }}>
               <Award size={16} /> View Certificate
             </Button>
           </div>

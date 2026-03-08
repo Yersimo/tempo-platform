@@ -185,8 +185,8 @@ export default function DocumentsPage() {
         document_url: '/docs/uploaded-document.pdf',
         signers,
       })
-      addToast('Document created and sent for signing')
-    } catch {
+      addToast('Document created and sent for signing', 'success')
+    } catch (err: any) {
       addSignatureDocument({
         title: docForm.title,
         status: 'pending',
@@ -195,7 +195,7 @@ export default function DocumentsPage() {
         document_url: '/docs/uploaded-document.pdf',
         signers,
       })
-      addToast('Document created locally (API unavailable)', 'info')
+      addToast(`Document saved locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
     }
     setShowNewDocModal(false)
   }
@@ -205,10 +205,10 @@ export default function DocumentsPage() {
     try {
       await esigAPI('POST', 'send', { documentId: docId, senderEmail })
       updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
-      addToast('Reminder sent successfully')
-    } catch {
+      addToast('Reminder sent successfully', 'success')
+    } catch (err: any) {
       updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
-      addToast('Reminder recorded locally (API unavailable)', 'info')
+      addToast(`Reminder recorded locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
     }
   }
 
@@ -220,10 +220,10 @@ export default function DocumentsPage() {
     try {
       await esigAPI('POST', 'create-from-template', { templateId, signerAssignments, createdBy })
       updateSignatureTemplate(templateId, { usage_count: (template.usage_count || 0) + 1 })
-      addToast('Template applied successfully')
-    } catch {
+      addToast('Template applied successfully', 'success')
+    } catch (err: any) {
       updateSignatureTemplate(templateId, { usage_count: (template.usage_count || 0) + 1 })
-      addToast('Template applied locally (API unavailable)', 'info')
+      addToast(`Template applied locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
     }
     setDocForm({
       title: '',
@@ -238,10 +238,10 @@ export default function DocumentsPage() {
     try {
       await esigAPI('DELETE', 'delete', { documentId: docId })
       deleteSignatureDocument(docId)
-      addToast('Document deleted')
-    } catch {
+      addToast('Document deleted', 'success')
+    } catch (err: any) {
       deleteSignatureDocument(docId)
-      addToast('Document removed locally (API unavailable)', 'info')
+      addToast(`Document removed locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
     }
   }
 

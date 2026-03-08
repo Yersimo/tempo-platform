@@ -323,11 +323,12 @@ export function CertificateDesigner({ open, onClose, onSave, existingTemplate, o
 }
 
 // Exported so the certificate view modal can also use it
-export function CertificatePreview({ template, courseName, employeeName, completedAt }: {
+export function CertificatePreview({ template, courseName, employeeName, completedAt, showActions = false }: {
   template: CertificateTemplate
   courseName: string
   employeeName: string
   completedAt: string
+  showActions?: boolean
 }) {
   const fontFamily = FONTS.find(f => f.id === template.fontFamily)?.family || 'system-ui, sans-serif'
   const color = template.accentColor
@@ -344,89 +345,112 @@ export function CertificatePreview({ template, courseName, employeeName, complet
     template.borderStyle === 'none' && 'cert-border-none',
   )
 
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const handleDownload = () => {
+    // Use print-to-PDF via the browser's print dialog
+    window.print()
+  }
+
   return (
-    <div className={borderClass} style={{ fontFamily, '--cert-accent': color } as React.CSSProperties}>
-      {/* Top accent */}
-      {(isModern || isCorporate) && (
-        <div className="cert-top-accent" style={{ background: color }} />
-      )}
-
-      {/* Logo area */}
-      {template.showLogo && (
-        <div className="cert-logo-area">
-          {isCorporate ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color }}>
-                <span className="text-white text-sm font-bold">{(template.orgName || 'T')[0]}</span>
-              </div>
-              <span className="text-sm font-semibold" style={{ color }}>{template.orgName || 'Organization'}</span>
-            </div>
-          ) : (
-            <p className="text-xs tracking-[0.2em] uppercase" style={{ color }}>{template.orgName || 'Organization'}</p>
-          )}
-        </div>
-      )}
-
-      {/* Decorative element */}
-      {isClassic && (
-        <div className="cert-ornament" style={{ color }}>✦</div>
-      )}
-
-      {/* Header */}
-      <div className={cn('cert-header', isMinimal && 'cert-header-minimal')}>
-        {!isMinimal && <Award size={isClassic ? 32 : 24} style={{ color }} />}
-        <h2 className={cn(
-          'cert-title',
-          isClassic && 'cert-title-classic',
-          isMinimal && 'cert-title-minimal',
-        )} style={isClassic ? { color } : undefined}>
-          Certificate of Completion
-        </h2>
-      </div>
-
-      {/* Subtitle */}
-      <p className="cert-subtitle">This is to certify that</p>
-
-      {/* Employee name */}
-      <div className="cert-name-wrapper">
-        <p className="cert-employee-name" style={isModern || isCorporate ? { color } : undefined}>
-          {employeeName}
-        </p>
-        {(isClassic || isModern) && (
-          <div className="cert-name-line" style={{ background: color }} />
+    <div>
+      <div className={cn(borderClass, 'print-certificate')} style={{ fontFamily, '--cert-accent': color } as React.CSSProperties}>
+        {/* Top accent */}
+        {(isModern || isCorporate) && (
+          <div className="cert-top-accent" style={{ background: color }} />
         )}
-      </div>
 
-      {/* Course */}
-      <p className="cert-subtitle">has successfully completed</p>
-      <p className="cert-course-name">{courseName}</p>
-
-      {/* Date */}
-      <p className="cert-date">{completedAt}</p>
-
-      {/* Signatories */}
-      <div className="cert-signatories">
-        <div className="cert-signatory">
-          <div className="cert-sig-line" style={{ background: `${color}40` }} />
-          <p className="cert-sig-name">{template.signatory1}</p>
-          <p className="cert-sig-title">{template.signatory1Title}</p>
-        </div>
-        {template.showSeal && (
-          <div className="cert-seal" style={{ borderColor: color, color }}>
-            <Award size={20} />
-            <span className="text-[0.4rem] uppercase tracking-wider mt-0.5">Verified</span>
+        {/* Logo area */}
+        {template.showLogo && (
+          <div className="cert-logo-area">
+            {isCorporate ? (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color }}>
+                  <span className="text-white text-sm font-bold">{(template.orgName || 'T')[0]}</span>
+                </div>
+                <span className="text-sm font-semibold" style={{ color }}>{template.orgName || 'Organization'}</span>
+              </div>
+            ) : (
+              <p className="text-xs tracking-[0.2em] uppercase" style={{ color }}>{template.orgName || 'Organization'}</p>
+            )}
           </div>
         )}
-        <div className="cert-signatory">
-          <div className="cert-sig-line" style={{ background: `${color}40` }} />
-          <p className="cert-sig-name">{template.signatory2}</p>
-          <p className="cert-sig-title">{template.signatory2Title}</p>
+
+        {/* Decorative element */}
+        {isClassic && (
+          <div className="cert-ornament" style={{ color }}>✦</div>
+        )}
+
+        {/* Header */}
+        <div className={cn('cert-header', isMinimal && 'cert-header-minimal')}>
+          {!isMinimal && <Award size={isClassic ? 32 : 24} style={{ color }} />}
+          <h2 className={cn(
+            'cert-title',
+            isClassic && 'cert-title-classic',
+            isMinimal && 'cert-title-minimal',
+          )} style={isClassic ? { color } : undefined}>
+            Certificate of Completion
+          </h2>
         </div>
+
+        {/* Subtitle */}
+        <p className="cert-subtitle">This is to certify that</p>
+
+        {/* Employee name */}
+        <div className="cert-name-wrapper">
+          <p className="cert-employee-name" style={isModern || isCorporate ? { color } : undefined}>
+            {employeeName}
+          </p>
+          {(isClassic || isModern) && (
+            <div className="cert-name-line" style={{ background: color }} />
+          )}
+        </div>
+
+        {/* Course */}
+        <p className="cert-subtitle">has successfully completed</p>
+        <p className="cert-course-name">{courseName}</p>
+
+        {/* Date */}
+        <p className="cert-date">{completedAt}</p>
+
+        {/* Signatories */}
+        <div className="cert-signatories">
+          <div className="cert-signatory">
+            <div className="cert-sig-line" style={{ background: `${color}40` }} />
+            <p className="cert-sig-name">{template.signatory1}</p>
+            <p className="cert-sig-title">{template.signatory1Title}</p>
+          </div>
+          {template.showSeal && (
+            <div className="cert-seal" style={{ borderColor: color, color }}>
+              <Award size={20} />
+              <span className="text-[0.4rem] uppercase tracking-wider mt-0.5">Verified</span>
+            </div>
+          )}
+          <div className="cert-signatory">
+            <div className="cert-sig-line" style={{ background: `${color}40` }} />
+            <p className="cert-sig-name">{template.signatory2}</p>
+            <p className="cert-sig-title">{template.signatory2Title}</p>
+          </div>
+        </div>
+
+        {/* Bottom accent */}
+        {isCorporate && (
+          <div className="cert-bottom-accent" style={{ background: color }} />
+        )}
       </div>
 
-      {/* Bottom accent */}
-      {isCorporate && (
-        <div className="cert-bottom-accent" style={{ background: color }} />
+      {/* Action buttons — hidden during print */}
+      {showActions && (
+        <div className="flex justify-center gap-3 mt-4 print:hidden">
+          <Button variant="outline" size="sm" onClick={handleDownload}>
+            <Download size={14} /> Download PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer size={14} /> Print
+          </Button>
+        </div>
       )}
     </div>
   )

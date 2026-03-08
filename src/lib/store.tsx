@@ -2000,12 +2000,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEmployeeDocuments(prev => [...prev, { id, upload_date: new Date().toISOString().split('T')[0], ...data }] as typeof prev)
     logAudit('create', 'employee_document', id, `Uploaded document: ${data.name}`)
     addToast('Document uploaded')
+    apiPost('employeeDocuments', 'create', data)
   }, [logAudit, addToast])
 
   const updateEmployeeDocument = useCallback((id: string, data: AnyRecord) => {
     setEmployeeDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
     logAudit('update', 'employee_document', id, 'Updated document')
     addToast('Document updated')
+    apiPost('employeeDocuments', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Onboarding ----
@@ -2014,12 +2016,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setBuddyAssignments(prev => [...prev, { id, org_id: orgIdRef.current, assigned_date: new Date().toISOString().split('T')[0], ...data }] as typeof prev)
     logAudit('create', 'buddy_assignment', id, `Assigned buddy for ${data.new_hire_id}`)
     addToast('Buddy assigned')
+    apiPost('buddyAssignments', 'create', data)
   }, [logAudit, addToast])
 
   const updateBuddyAssignment = useCallback((id: string, data: AnyRecord) => {
     setBuddyAssignments(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
     logAudit('update', 'buddy_assignment', id, 'Updated buddy assignment')
     addToast('Buddy assignment updated')
+    apiPost('buddyAssignments', 'update', data, id)
   }, [logAudit, addToast])
 
   const addPreboardingTask = useCallback((data: AnyRecord) => {
@@ -2027,12 +2031,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPreboardingTasks(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'preboarding_task', id, `Created preboarding task: ${data.title}`)
     addToast('Preboarding task created')
+    apiPost('preboarding_tasks', 'create', data)
   }, [logAudit, addToast])
 
   const updatePreboardingTask = useCallback((id: string, data: AnyRecord) => {
     setPreboardingTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'preboarding_task', id, 'Updated preboarding task')
     addToast('Preboarding task updated')
+    apiPost('preboarding_tasks', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Offers ----
@@ -2041,12 +2047,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOffers(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'offer', id, `Created offer for: ${data.candidate_name}`)
     addToast('Offer created')
+    apiPost('offers', 'create', data)
   }, [logAudit, addToast])
 
   const updateOffer = useCallback((id: string, data: AnyRecord) => {
     setOffers(prev => prev.map(o => o.id === id ? { ...o, ...data } : o) as typeof prev)
     logAudit('update', 'offer', id, 'Updated offer')
     addToast('Offer updated')
+    apiPost('offers', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Offboarding ----
@@ -2055,12 +2063,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOffboardingChecklists(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'offboarding_checklist', id, `Created checklist: ${data.name}`)
     addToast('Offboarding checklist created')
+    apiPost('offboarding_checklists', 'create', data)
   }, [logAudit, addToast])
 
   const updateOffboardingChecklist = useCallback((id: string, data: AnyRecord) => {
     setOffboardingChecklists(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
     logAudit('update', 'offboarding_checklist', id, 'Updated offboarding checklist')
     addToast('Checklist updated')
+    apiPost('offboarding_checklists', 'update', data, id)
   }, [logAudit, addToast])
 
   const addOffboardingChecklistItem = useCallback((data: AnyRecord) => {
@@ -2068,18 +2078,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOffboardingChecklistItems(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'offboarding_checklist_item', id, `Added item: ${data.title}`)
     addToast('Checklist item added')
+    apiPost('offboarding_checklist_items', 'create', data)
   }, [logAudit, addToast])
 
   const updateOffboardingChecklistItem = useCallback((id: string, data: AnyRecord) => {
     setOffboardingChecklistItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
     logAudit('update', 'offboarding_checklist_item', id, 'Updated checklist item')
     addToast('Checklist item updated')
+    apiPost('offboarding_checklist_items', 'update', data, id)
   }, [logAudit, addToast])
 
   const deleteOffboardingChecklistItem = useCallback((id: string) => {
     setOffboardingChecklistItems(prev => prev.filter(i => i.id !== id))
     logAudit('delete', 'offboarding_checklist_item', id, 'Deleted checklist item')
     addToast('Checklist item removed')
+    apiPost('offboardingChecklistItems', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   const addOffboardingProcess = useCallback((data: AnyRecord) => {
@@ -2087,12 +2100,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOffboardingProcesses(prev => [...prev, { id, org_id: orgIdRef.current, started_at: new Date().toISOString(), completed_at: null, ...data }] as typeof prev)
     logAudit('create', 'offboarding_process', id, `Initiated offboarding for ${getEmployeeName(data.employee_id)}`)
     addToast('Offboarding process initiated')
+    apiPost('offboardingProcesses', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
 
   const updateOffboardingProcess = useCallback((id: string, data: AnyRecord) => {
     setOffboardingProcesses(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'offboarding_process', id, 'Updated offboarding process')
     addToast('Offboarding process updated')
+    apiPost('offboardingProcesses', 'update', data, id)
   }, [logAudit, addToast])
 
   const addOffboardingTask = useCallback((data: AnyRecord) => {
@@ -2100,12 +2115,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOffboardingTasks(prev => [...prev, { id, completed_at: null, completed_by: null, notes: null, ...data }] as typeof prev)
     logAudit('create', 'offboarding_task', id, 'Created offboarding task')
     addToast('Offboarding task created')
+    apiPost('offboardingTasks', 'create', data)
   }, [logAudit, addToast])
 
   const updateOffboardingTask = useCallback((id: string, data: AnyRecord) => {
     setOffboardingTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'offboarding_task', id, 'Updated offboarding task')
     addToast('Task updated')
+    apiPost('offboardingTasks', 'update', data, id)
   }, [logAudit, addToast])
 
   const addExitSurvey = useCallback((data: AnyRecord) => {
@@ -2113,6 +2130,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setExitSurveys(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'exit_survey', id, 'Exit survey submitted')
     addToast('Exit survey submitted')
+    apiPost('exitSurveys', 'create', data)
   }, [logAudit, addToast])
 
   // ---- CRUD: Time Entries ----
@@ -2142,16 +2160,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setTimeOffPolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'time_off_policy', id, `Created time off policy: ${data.name}`)
     addToast('Time off policy created')
+    apiPost('timeOffPolicies', 'create', data)
   }, [logAudit, addToast])
   const updateTimeOffPolicy = useCallback((id: string, data: AnyRecord) => {
     setTimeOffPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'time_off_policy', id, 'Updated time off policy')
     addToast('Time off policy updated')
+    apiPost('timeOffPolicies', 'update', data, id)
   }, [logAudit, addToast])
   const deleteTimeOffPolicy = useCallback((id: string) => {
     setTimeOffPolicies(prev => prev.filter(p => p.id !== id))
     logAudit('delete', 'time_off_policy', id, 'Deleted time off policy')
     addToast('Time off policy deleted')
+    apiPost('timeOffPolicies', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Time Off Balances ----
@@ -2160,11 +2181,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setTimeOffBalances(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'time_off_balance', id, 'Added time off balance')
     addToast('Balance updated')
+    apiPost('timeOffBalances', 'create', data)
   }, [logAudit, addToast])
   const updateTimeOffBalance = useCallback((id: string, data: AnyRecord) => {
     setTimeOffBalances(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
     logAudit('update', 'time_off_balance', id, 'Updated time off balance')
     addToast('Balance updated')
+    apiPost('timeOffBalances', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Overtime Rules ----
@@ -2173,16 +2196,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOvertimeRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'overtime_rule', id, `Created overtime rule: ${data.name}`)
     addToast('Overtime rule created')
+    apiPost('overtimeRules', 'create', data)
   }, [logAudit, addToast])
   const updateOvertimeRule = useCallback((id: string, data: AnyRecord) => {
     setOvertimeRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'overtime_rule', id, 'Updated overtime rule')
     addToast('Overtime rule updated')
+    apiPost('overtimeRules', 'update', data, id)
   }, [logAudit, addToast])
   const deleteOvertimeRule = useCallback((id: string) => {
     setOvertimeRules(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'overtime_rule', id, 'Deleted overtime rule')
     addToast('Overtime rule deleted')
+    apiPost('overtimeRules', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Shifts ----
@@ -2191,16 +2217,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setShiftsData(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'shift', id, 'Created shift')
     addToast('Shift created')
+    apiPost('shifts', 'create', data)
   }, [logAudit, addToast])
   const updateShift = useCallback((id: string, data: AnyRecord) => {
     setShiftsData(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
     logAudit('update', 'shift', id, 'Updated shift')
     addToast('Shift updated')
+    apiPost('shifts', 'update', data, id)
   }, [logAudit, addToast])
   const deleteShift = useCallback((id: string) => {
     setShiftsData(prev => prev.filter(s => s.id !== id))
     logAudit('delete', 'shift', id, 'Deleted shift')
     addToast('Shift deleted')
+    apiPost('shifts', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Open Enrollment Periods ----
@@ -2209,11 +2238,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOpenEnrollmentPeriods(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), reminders_sent: 0, ...data }] as typeof prev)
     logAudit('create', 'open_enrollment', id, `Created enrollment period: ${data.name}`)
     addToast('Open enrollment period created')
+    apiPost('openEnrollmentPeriods', 'create', data)
   }, [logAudit, addToast])
   const updateOpenEnrollmentPeriod = useCallback((id: string, data: AnyRecord) => {
     setOpenEnrollmentPeriods(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'open_enrollment', id, 'Updated enrollment period')
     addToast('Enrollment period updated')
+    apiPost('openEnrollmentPeriods', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: COBRA Events ----
@@ -2222,11 +2253,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCobraEvents(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'cobra_event', id, `Created COBRA event for ${getEmployeeName(data.employee_id)}`)
     addToast('COBRA event created')
+    apiPost('cobraEvents', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updateCobraEvent = useCallback((id: string, data: AnyRecord) => {
     setCobraEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e) as typeof prev)
     logAudit('update', 'cobra_event', id, 'Updated COBRA event')
     addToast('COBRA event updated')
+    apiPost('cobraEvents', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: ACA Tracking ----
@@ -2235,11 +2268,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAcaTracking(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'aca_tracking', id, `Added ACA tracking for ${getEmployeeName(data.employee_id)}`)
     addToast('ACA tracking record added')
+    apiPost('acaTracking', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updateAcaTracking = useCallback((id: string, data: AnyRecord) => {
     setAcaTracking(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
     logAudit('update', 'aca_tracking', id, 'Updated ACA tracking')
     addToast('ACA tracking updated')
+    apiPost('acaTracking', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Flex Benefit Accounts ----
@@ -2248,11 +2283,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setFlexBenefitAccounts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'flex_benefit_account', id, `Created flex account for ${getEmployeeName(data.employee_id)}`)
     addToast('Flex benefit account created')
+    apiPost('flexBenefitAccounts', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updateFlexBenefitAccount = useCallback((id: string, data: AnyRecord) => {
     setFlexBenefitAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
     logAudit('update', 'flex_benefit_account', id, 'Updated flex account')
     addToast('Flex benefit account updated')
+    apiPost('flexBenefitAccounts', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Flex Benefit Transactions ----
@@ -2261,11 +2298,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setFlexBenefitTransactions(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'flex_transaction', id, `Added flex transaction: ${data.description}`)
     addToast('Transaction recorded')
+    apiPost('flexBenefitTransactions', 'create', data)
   }, [logAudit, addToast])
   const updateFlexBenefitTransaction = useCallback((id: string, data: AnyRecord) => {
     setFlexBenefitTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'flex_transaction', id, 'Updated flex transaction')
     addToast('Transaction updated')
+    apiPost('flexBenefitTransactions', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Receipt Matches ----
@@ -2274,11 +2313,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setReceiptMatches(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'receipt_match', id, 'Created receipt match')
     addToast('Receipt match created')
+    apiPost('receiptMatches', 'create', data)
   }, [logAudit, addToast])
   const updateReceiptMatch = useCallback((id: string, data: AnyRecord) => {
     setReceiptMatches(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'receipt_match', id, 'Updated receipt match')
     addToast('Receipt match updated')
+    apiPost('receiptMatches', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Mileage Entries ----
@@ -2287,10 +2328,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setMileageEntries(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'mileage_entry', id, 'Created mileage entry')
     addToast('Mileage entry added')
+    apiPost('mileageEntries', 'create', data)
   }, [logAudit, addToast])
   const updateMileageEntry = useCallback((id: string, data: AnyRecord) => {
     setMileageEntries(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
     logAudit('update', 'mileage_entry', id, 'Updated mileage entry')
+    apiPost('mileageEntries', 'update', data, id)
   }, [logAudit])
 
   // ---- CRUD: Advanced Expense Policies ----
@@ -2299,16 +2342,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAdvancedExpensePolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'advanced_expense_policy', id, `Created advanced policy: ${data.name}`)
     addToast('Expense policy created')
+    apiPost('advancedExpensePolicies', 'create', data)
   }, [logAudit, addToast])
   const updateAdvancedExpensePolicy = useCallback((id: string, data: AnyRecord) => {
     setAdvancedExpensePolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'advanced_expense_policy', id, 'Updated advanced expense policy')
     addToast('Expense policy updated')
+    apiPost('advancedExpensePolicies', 'update', data, id)
   }, [logAudit, addToast])
   const deleteAdvancedExpensePolicy = useCallback((id: string) => {
     setAdvancedExpensePolicies(prev => prev.filter(p => p.id !== id))
     logAudit('delete', 'advanced_expense_policy', id, 'Deleted advanced expense policy')
     addToast('Expense policy deleted')
+    apiPost('advancedExpensePolicies', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Reimbursement Batches ----
@@ -2317,11 +2363,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setReimbursementBatches(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'reimbursement_batch', id, 'Created reimbursement batch')
     addToast('Reimbursement batch created')
+    apiPost('reimbursementBatches', 'create', data)
   }, [logAudit, addToast])
   const updateReimbursementBatch = useCallback((id: string, data: AnyRecord) => {
     setReimbursementBatches(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
     logAudit('update', 'reimbursement_batch', id, 'Updated reimbursement batch')
     addToast('Reimbursement batch updated')
+    apiPost('reimbursementBatches', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Duplicate Detections ----
@@ -2330,12 +2378,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setDuplicateDetections(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'duplicate_detection', id, 'Flagged duplicate expense')
     addToast('Duplicate expense flagged')
+    apiPost('duplicateDetections', 'create', data)
   }, [logAudit, addToast])
   const updateDuplicateDetection = useCallback((id: string, data: AnyRecord) => {
     setDuplicateDetections(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
     const action = data.status === 'confirmed_duplicate' ? 'Confirmed duplicate' : data.status === 'dismissed' ? 'Dismissed flag' : 'Updated'
     logAudit('update', 'duplicate_detection', id, action)
     addToast(`Duplicate ${action.toLowerCase()}`)
+    apiPost('duplicateDetections', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Background Checks ----
@@ -2344,11 +2394,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setBackgroundChecks(prev => [...prev, { id, org_id: orgIdRef.current, requested_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'background_check', id, `Requested background check for ${data.candidate_name || 'candidate'}`)
     addToast('Background check requested')
+    apiPost('backgroundChecks', 'create', data)
   }, [logAudit, addToast])
   const updateBackgroundCheck = useCallback((id: string, data: AnyRecord) => {
     setBackgroundChecks(prev => prev.map(bc => bc.id === id ? { ...bc, ...data } : bc) as typeof prev)
     logAudit('update', 'background_check', id, 'Updated background check')
     addToast('Background check updated')
+    apiPost('backgroundChecks', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Referral Program ----
@@ -2356,6 +2408,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setReferralProgram((prev: any) => ({ ...prev, ...data }))
     logAudit('update', 'referral_program', 'config', 'Updated referral program')
     addToast('Referral program updated')
+    apiPost('referralProgram', 'update', data)
   }, [logAudit, addToast])
 
   // ---- CRUD: Referrals ----
@@ -2364,11 +2417,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setReferrals(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'referral', id, `Submitted referral: ${data.candidate_name}`)
     addToast('Referral submitted')
+    apiPost('referrals', 'create', data)
   }, [logAudit, addToast])
   const updateReferral = useCallback((id: string, data: AnyRecord) => {
     setReferrals(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'referral', id, 'Updated referral')
     addToast('Referral updated')
+    apiPost('referrals', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Knockout Questions ----
@@ -2377,16 +2432,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setKnockoutQuestions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'knockout_question', id, 'Added screening question')
     addToast('Screening question added')
+    apiPost('knockoutQuestions', 'create', data)
   }, [logAudit, addToast])
   const updateKnockoutQuestion = useCallback((id: string, data: AnyRecord) => {
     setKnockoutQuestions(prev => prev.map(q => q.id === id ? { ...q, ...data } : q) as typeof prev)
     logAudit('update', 'knockout_question', id, 'Updated screening question')
     addToast('Screening question updated')
+    apiPost('knockoutQuestions', 'update', data, id)
   }, [logAudit, addToast])
   const deleteKnockoutQuestion = useCallback((id: string) => {
     setKnockoutQuestions(prev => prev.filter(q => q.id !== id))
     logAudit('delete', 'knockout_question', id, 'Deleted screening question')
     addToast('Screening question removed')
+    apiPost('knockoutQuestions', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Candidate Scheduling ----
@@ -2395,11 +2453,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCandidateScheduling(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'candidate_scheduling', id, 'Sent scheduling link to candidate')
     addToast('Scheduling link sent')
+    apiPost('candidateScheduling', 'create', data)
   }, [logAudit, addToast])
   const updateCandidateScheduling = useCallback((id: string, data: AnyRecord) => {
     setCandidateScheduling(prev => prev.map(cs => cs.id === id ? { ...cs, ...data } : cs) as typeof prev)
     logAudit('update', 'candidate_scheduling', id, 'Updated scheduling')
     addToast('Scheduling updated')
+    apiPost('candidateScheduling', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT Cloud — Managed Devices ----
@@ -2408,17 +2468,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setManagedDevices(prev => [...prev, { id, org_id: orgIdRef.current, enrolledAt: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'managed_device', id, `Enrolled device: ${data.name}`)
     addToast('Device enrolled')
+    apiPost('managedDevices', 'create', data)
   }, [logAudit, addToast])
   const updateManagedDevice = useCallback((id: string, data: AnyRecord) => {
     setManagedDevices(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
     logAudit('update', 'managed_device', id, 'Updated managed device')
     addToast('Device updated')
+    apiPost('managedDevices', 'update', data, id)
   }, [logAudit, addToast])
   const deleteManagedDevice = useCallback((id: string) => {
     setManagedDevices(prev => prev.filter(d => d.id !== id))
     setDeviceActions(prev => prev.filter(a => a.deviceId !== id))
     logAudit('delete', 'managed_device', id, 'Removed managed device')
     addToast('Device removed')
+    apiPost('managedDevices', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT Cloud — Device Actions ----
@@ -2427,11 +2490,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setDeviceActions(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'device_action', id, `Initiated ${data.actionType} on device`)
     addToast(`Device action "${data.actionType}" initiated`)
+    apiPost('deviceActions', 'create', data)
   }, [logAudit, addToast])
   const updateDeviceAction = useCallback((id: string, data: AnyRecord) => {
     setDeviceActions(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
     logAudit('update', 'device_action', id, 'Updated device action')
     addToast('Device action updated')
+    apiPost('deviceActions', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT Cloud — App Catalog ----
@@ -2440,17 +2505,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAppCatalog(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'app_catalog', id, `Added app: ${data.name}`)
     addToast(`App "${data.name}" added to catalog`)
+    apiPost('appCatalog', 'create', data)
   }, [logAudit, addToast])
   const updateAppCatalogItem = useCallback((id: string, data: AnyRecord) => {
     setAppCatalog(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
     logAudit('update', 'app_catalog', id, 'Updated app catalog entry')
     addToast('App updated')
+    apiPost('appCatalog', 'update', data, id)
   }, [logAudit, addToast])
   const deleteAppCatalogItem = useCallback((id: string) => {
     setAppCatalog(prev => prev.filter(a => a.id !== id))
     setAppAssignments(prev => prev.filter(a => a.appId !== id))
     logAudit('delete', 'app_catalog', id, 'Removed app from catalog')
     addToast('App removed from catalog')
+    apiPost('appCatalog', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT Cloud — App Assignments ----
@@ -2462,11 +2530,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     }
     logAudit('create', 'app_assignment', id, `Assigned app ${data.appId} to employee`)
     addToast('App assigned')
+    apiPost('appAssignments', 'create', data)
   }, [logAudit, addToast])
   const updateAppAssignment = useCallback((id: string, data: AnyRecord) => {
     setAppAssignments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
     logAudit('update', 'app_assignment', id, 'Updated app assignment')
     addToast('App assignment updated')
+    apiPost('appAssignments', 'update', data, id)
   }, [logAudit, addToast])
   const deleteAppAssignment = useCallback((id: string) => {
     const assignment = appAssignments.find(a => a.id === id)
@@ -2476,6 +2546,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     }
     logAudit('delete', 'app_assignment', id, 'Removed app assignment')
     addToast('App unassigned')
+    apiPost('appAssignments', 'delete', undefined, id)
   }, [logAudit, addToast, appAssignments])
 
   // ---- CRUD: IT Cloud — Security Policies ----
@@ -2484,16 +2555,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSecurityPoliciesIT(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'security_policy', id, `Created policy: ${data.name}`)
     addToast('Security policy created')
+    apiPost('securityPoliciesIT', 'create', data)
   }, [logAudit, addToast])
   const updateSecurityPolicyIT = useCallback((id: string, data: AnyRecord) => {
     setSecurityPoliciesIT(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'security_policy', id, 'Updated security policy')
     addToast('Security policy updated')
+    apiPost('securityPoliciesIT', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSecurityPolicyIT = useCallback((id: string) => {
     setSecurityPoliciesIT(prev => prev.filter(p => p.id !== id))
     logAudit('delete', 'security_policy', id, 'Deleted security policy')
     addToast('Security policy deleted')
+    apiPost('securityPoliciesIT', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: IT Cloud — Device Inventory ----
@@ -2502,16 +2576,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setDeviceInventory(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'device_inventory', id, `Added inventory item: ${data.name}`)
     addToast('Inventory item added')
+    apiPost('deviceInventory', 'create', data)
   }, [logAudit, addToast])
   const updateDeviceInventoryItem = useCallback((id: string, data: AnyRecord) => {
     setDeviceInventory(prev => prev.map(i => i.id === id ? { ...i, ...data } : i) as typeof prev)
     logAudit('update', 'device_inventory', id, 'Updated inventory item')
     addToast('Inventory item updated')
+    apiPost('deviceInventory', 'update', data, id)
   }, [logAudit, addToast])
   const deleteDeviceInventoryItem = useCallback((id: string) => {
     setDeviceInventory(prev => prev.filter(i => i.id !== id))
     logAudit('delete', 'device_inventory', id, 'Deleted inventory item')
     addToast('Inventory item deleted')
+    apiPost('deviceInventory', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: PIPs ----
@@ -2520,17 +2597,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPIPs(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'pip', id, `Created PIP for ${getEmployeeName(data.employee_id)}`)
     addToast('Performance Improvement Plan created')
+    apiPost('pips', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updatePIP = useCallback((id: string, data: AnyRecord) => {
     setPIPs(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
     logAudit('update', 'pip', id, 'Updated PIP')
     addToast('PIP updated')
+    apiPost('pips', 'update', data, id)
   }, [logAudit, addToast])
   const deletePIP = useCallback((id: string) => {
     setPIPs(prev => prev.filter(p => p.id !== id))
     setPIPCheckIns(prev => prev.filter(c => c.pip_id !== id))
     logAudit('delete', 'pip', id, 'Deleted PIP')
     addToast('PIP deleted')
+    apiPost('pips', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: PIP Check-Ins ----
@@ -2539,6 +2619,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPIPCheckIns(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'pip_checkin', id, 'Added PIP check-in')
     addToast('PIP check-in recorded')
+    apiPost('pipCheckIns', 'create', data)
   }, [logAudit, addToast])
 
   // ---- CRUD: Merit Cycles ----
@@ -2547,11 +2628,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setMeritCycles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'merit_cycle', id, `Created merit cycle: ${data.name}`)
     addToast('Merit cycle created')
+    apiPost('meritCycles', 'create', data)
   }, [logAudit, addToast])
   const updateMeritCycle = useCallback((id: string, data: AnyRecord) => {
     setMeritCycles(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
     logAudit('update', 'merit_cycle', id, 'Updated merit cycle')
     addToast('Merit cycle updated')
+    apiPost('meritCycles', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Merit Recommendations ----
@@ -2560,12 +2643,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setMeritRecommendations(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'merit_recommendation', id, `Submitted merit recommendation for ${getEmployeeName(data.employee_id)}`)
     addToast('Merit recommendation submitted')
+    apiPost('meritRecommendations', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updateMeritRecommendation = useCallback((id: string, data: AnyRecord) => {
     setMeritRecommendations(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     const action = data.status === 'final_approved' ? 'Approved' : data.status === 'rejected' ? 'Rejected' : 'Updated'
     logAudit('update', 'merit_recommendation', id, `${action} merit recommendation`)
     addToast(`Merit recommendation ${action.toLowerCase()}`)
+    apiPost('meritRecommendations', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Review Templates ----
@@ -2574,44 +2659,47 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setReviewTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'review_template', id, `Created review template: ${data.name}`)
     addToast('Review template created')
+    apiPost('reviewTemplates', 'create', data)
   }, [logAudit, addToast])
   const updateReviewTemplate = useCallback((id: string, data: AnyRecord) => {
     setReviewTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'review_template', id, 'Updated review template')
     addToast('Review template updated')
+    apiPost('reviewTemplates', 'update', data, id)
   }, [logAudit, addToast])
   const deleteReviewTemplate = useCallback((id: string) => {
     setReviewTemplates(prev => prev.filter(t => t.id !== id))
     logAudit('delete', 'review_template', id, 'Deleted review template')
     addToast('Review template deleted')
+    apiPost('reviewTemplates', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Course Prerequisites ----
-  const addCoursePrerequisite = useCallback((data: AnyRecord) => { const id = genId('prereq'); setCoursePrerequisites(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'course_prerequisite', id, 'Added prerequisite'); addToast('Prerequisite added') }, [logAudit, addToast])
-  const deleteCoursePrerequisite = useCallback((id: string) => { setCoursePrerequisites(prev => prev.filter(p => p.id !== id)); logAudit('delete', 'course_prerequisite', id, 'Removed prerequisite'); addToast('Prerequisite removed') }, [logAudit, addToast])
+  const addCoursePrerequisite = useCallback((data: AnyRecord) => { const id = genId('prereq'); setCoursePrerequisites(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'course_prerequisite', id, 'Added prerequisite'); addToast('Prerequisite added'); apiPost('coursePrerequisites', 'create', data) }, [logAudit, addToast])
+  const deleteCoursePrerequisite = useCallback((id: string) => { setCoursePrerequisites(prev => prev.filter(p => p.id !== id)); logAudit('delete', 'course_prerequisite', id, 'Removed prerequisite'); addToast('Prerequisite removed'); apiPost('coursePrerequisites', 'delete', undefined, id) }, [logAudit, addToast])
 
   // ---- CRUD: SCORM Packages ----
-  const addScormPackage = useCallback((data: AnyRecord) => { const id = genId('scorm'); setScormPackages(prev => [...prev, { id, org_id: orgIdRef.current, uploaded_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'scorm_package', id, 'Uploaded SCORM package'); addToast('SCORM package uploaded') }, [logAudit, addToast])
-  const updateScormPackage = useCallback((id: string, data: AnyRecord) => { setScormPackages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev); logAudit('update', 'scorm_package', id, 'Updated SCORM package') }, [logAudit])
+  const addScormPackage = useCallback((data: AnyRecord) => { const id = genId('scorm'); setScormPackages(prev => [...prev, { id, org_id: orgIdRef.current, uploaded_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'scorm_package', id, 'Uploaded SCORM package'); addToast('SCORM package uploaded'); apiPost('scormPackages', 'create', data) }, [logAudit, addToast])
+  const updateScormPackage = useCallback((id: string, data: AnyRecord) => { setScormPackages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev); logAudit('update', 'scorm_package', id, 'Updated SCORM package'); apiPost('scormPackages', 'update', data, id) }, [logAudit])
 
   // ---- CRUD: SCORM Tracking ----
-  const addScormTracking = useCallback((data: AnyRecord) => { const id = genId('st'); setScormTracking(prev => [...prev, { id, org_id: orgIdRef.current, last_accessed: new Date().toISOString(), ...data }] as typeof prev) }, [])
-  const updateScormTracking = useCallback((id: string, data: AnyRecord) => { setScormTracking(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev) }, [])
+  const addScormTracking = useCallback((data: AnyRecord) => { const id = genId('st'); setScormTracking(prev => [...prev, { id, org_id: orgIdRef.current, last_accessed: new Date().toISOString(), ...data }] as typeof prev); apiPost('scormTracking', 'create', data) }, [])
+  const updateScormTracking = useCallback((id: string, data: AnyRecord) => { setScormTracking(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev); apiPost('scormTracking', 'update', data, id) }, [])
 
   // ---- CRUD: Content Library ----
-  const addContentLibraryItem = useCallback((data: AnyRecord) => { const id = genId('cl'); setContentLibrary(prev => [...prev, { id, org_id: orgIdRef.current, added_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'content_library', id, `Added content: ${data.title}`); addToast('Content added to library') }, [logAudit, addToast])
-  const updateContentLibraryItem = useCallback((id: string, data: AnyRecord) => { setContentLibrary(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'content_library', id, 'Updated content'); addToast('Content updated') }, [logAudit, addToast])
-  const deleteContentLibraryItem = useCallback((id: string) => { setContentLibrary(prev => prev.filter(c => c.id !== id)); logAudit('delete', 'content_library', id, 'Removed content'); addToast('Content removed') }, [logAudit, addToast])
+  const addContentLibraryItem = useCallback((data: AnyRecord) => { const id = genId('cl'); setContentLibrary(prev => [...prev, { id, org_id: orgIdRef.current, added_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'content_library', id, `Added content: ${data.title}`); addToast('Content added to library'); apiPost('contentLibrary', 'create', data) }, [logAudit, addToast])
+  const updateContentLibraryItem = useCallback((id: string, data: AnyRecord) => { setContentLibrary(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'content_library', id, 'Updated content'); addToast('Content updated'); apiPost('contentLibrary', 'update', data, id) }, [logAudit, addToast])
+  const deleteContentLibraryItem = useCallback((id: string) => { setContentLibrary(prev => prev.filter(c => c.id !== id)); logAudit('delete', 'content_library', id, 'Removed content'); addToast('Content removed'); apiPost('contentLibrary', 'delete', undefined, id) }, [logAudit, addToast])
 
   // ---- CRUD: Learner Badges ----
-  const addLearnerBadge = useCallback((data: AnyRecord) => { const id = genId('badge'); setLearnerBadges(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learner_badge', id, `Awarded badge: ${data.badge_name}`); addToast(`Badge earned: ${data.badge_name}`) }, [logAudit, addToast])
+  const addLearnerBadge = useCallback((data: AnyRecord) => { const id = genId('badge'); setLearnerBadges(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learner_badge', id, `Awarded badge: ${data.badge_name}`); addToast(`Badge earned: ${data.badge_name}`); apiPost('learnerBadges', 'create', data) }, [logAudit, addToast])
 
   // ---- CRUD: Learner Points ----
-  const addLearnerPoints = useCallback((data: AnyRecord) => { const id = genId('lp'); setLearnerPoints(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev) }, [])
+  const addLearnerPoints = useCallback((data: AnyRecord) => { const id = genId('lp'); setLearnerPoints(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev); apiPost('learnerPoints', 'create', data) }, [])
 
   // ---- CRUD: Certificate Templates ----
-  const addCertificateTemplate = useCallback((data: AnyRecord) => { const id = genId('cert-tpl'); setCertificateTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'certificate_template', id, `Created template: ${data.name}`); addToast('Certificate template created') }, [logAudit, addToast])
-  const updateCertificateTemplate = useCallback((id: string, data: AnyRecord) => { setCertificateTemplates(prev => prev.map(ct => ct.id === id ? { ...ct, ...data } : ct) as typeof prev); logAudit('update', 'certificate_template', id, 'Updated certificate template'); addToast('Certificate template updated') }, [logAudit, addToast])
+  const addCertificateTemplate = useCallback((data: AnyRecord) => { const id = genId('cert-tpl'); setCertificateTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'certificate_template', id, `Created template: ${data.name}`); addToast('Certificate template created'); apiPost('certificateTemplates', 'create', data) }, [logAudit, addToast])
+  const updateCertificateTemplate = useCallback((id: string, data: AnyRecord) => { setCertificateTemplates(prev => prev.map(ct => ct.id === id ? { ...ct, ...data } : ct) as typeof prev); logAudit('update', 'certificate_template', id, 'Updated certificate template'); addToast('Certificate template updated'); apiPost('certificateTemplates', 'update', data, id) }, [logAudit, addToast])
 
   // ---- CRUD: Survey Templates ----
   const addSurveyTemplate = useCallback((data: AnyRecord) => {
@@ -2619,16 +2707,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSurveyTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), usageCount: 0, isDefault: false, ...data }] as typeof prev)
     logAudit('create', 'survey_template', id, `Created survey template: ${data.name}`)
     addToast('Survey template created')
+    apiPost('surveyTemplates', 'create', data)
   }, [logAudit, addToast])
   const updateSurveyTemplate = useCallback((id: string, data: AnyRecord) => {
     setSurveyTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'survey_template', id, 'Updated survey template')
     addToast('Survey template updated')
+    apiPost('surveyTemplates', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSurveyTemplate = useCallback((id: string) => {
     setSurveyTemplates(prev => prev.filter(t => t.id !== id))
     logAudit('delete', 'survey_template', id, 'Deleted survey template')
     addToast('Survey template deleted')
+    apiPost('surveyTemplates', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Survey Schedules ----
@@ -2637,16 +2728,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSurveySchedules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), is_active: true, ...data }] as typeof prev)
     logAudit('create', 'survey_schedule', id, 'Created survey schedule')
     addToast('Survey schedule created')
+    apiPost('surveySchedules', 'create', data)
   }, [logAudit, addToast])
   const updateSurveySchedule = useCallback((id: string, data: AnyRecord) => {
     setSurveySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
     logAudit('update', 'survey_schedule', id, 'Updated survey schedule')
     addToast('Survey schedule updated')
+    apiPost('surveySchedules', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSurveySchedule = useCallback((id: string) => {
     setSurveySchedules(prev => prev.filter(s => s.id !== id))
     logAudit('delete', 'survey_schedule', id, 'Deleted survey schedule')
     addToast('Survey schedule deleted')
+    apiPost('surveySchedules', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Survey Triggers ----
@@ -2655,25 +2749,30 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSurveyTriggers(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), is_active: true, recent_firings: [], ...data }] as typeof prev)
     logAudit('create', 'survey_trigger', id, 'Created survey trigger')
     addToast('Survey trigger created')
+    apiPost('surveyTriggers', 'create', data)
   }, [logAudit, addToast])
   const updateSurveyTrigger = useCallback((id: string, data: AnyRecord) => {
     setSurveyTriggers(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
     logAudit('update', 'survey_trigger', id, 'Updated survey trigger')
     addToast('Survey trigger updated')
+    apiPost('surveyTriggers', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSurveyTrigger = useCallback((id: string) => {
     setSurveyTriggers(prev => prev.filter(t => t.id !== id))
     logAudit('delete', 'survey_trigger', id, 'Deleted survey trigger')
     addToast('Survey trigger deleted')
+    apiPost('surveyTriggers', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Open-Ended Responses ----
   const addOpenEndedResponse = useCallback((data: AnyRecord) => {
     const id = genId('oer')
     setOpenEndedResponses(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    apiPost('openEndedResponses', 'create', data)
   }, [])
   const updateOpenEndedResponse = useCallback((id: string, data: AnyRecord) => {
     setOpenEndedResponses(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
+    apiPost('openEndedResponses', 'update', data, id)
   }, [])
 
   // ---- CRUD: Automation Workflows ----
@@ -2682,18 +2781,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAutomationWorkflows(prev => [...prev, { id, org_id: orgIdRef.current, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'automation_workflow', id, `Created automation workflow: ${data.name}`)
     addToast('Workflow created')
+    apiPost('automationWorkflows', 'create', data)
     return id
   }, [logAudit, addToast])
   const updateAutomationWorkflow = useCallback((id: string, data: AnyRecord) => {
     setAutomationWorkflows(prev => prev.map(w => w.id === id ? { ...w, ...data, updatedAt: new Date().toISOString() } : w) as typeof prev)
     logAudit('update', 'automation_workflow', id, 'Updated automation workflow')
     addToast('Workflow updated')
+    apiPost('automationWorkflows', 'update', data, id)
   }, [logAudit, addToast])
   const deleteAutomationWorkflow = useCallback((id: string) => {
     setAutomationWorkflows(prev => prev.filter(w => w.id !== id))
     setAutomationWorkflowSteps(prev => prev.filter(s => s.workflowId !== id))
     logAudit('delete', 'automation_workflow', id, 'Deleted automation workflow')
     addToast('Workflow deleted')
+    apiPost('automationWorkflows', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Automation Workflow Steps ----
@@ -2702,15 +2804,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAutomationWorkflowSteps(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'automation_workflow_step', id, 'Added step to workflow')
     addToast('Step added')
+    apiPost('automationWorkflowSteps', 'create', data)
   }, [logAudit, addToast])
   const updateAutomationWorkflowStep = useCallback((id: string, data: AnyRecord) => {
     setAutomationWorkflowSteps(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
     logAudit('update', 'automation_workflow_step', id, 'Updated automation step')
+    apiPost('automationWorkflowSteps', 'update', data, id)
   }, [logAudit])
   const deleteAutomationWorkflowStep = useCallback((id: string) => {
     setAutomationWorkflowSteps(prev => prev.filter(s => s.id !== id))
     logAudit('delete', 'automation_workflow_step', id, 'Deleted automation step')
     addToast('Step removed')
+    apiPost('automationWorkflowSteps', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Automation Workflow Runs ----
@@ -2719,10 +2824,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAutomationWorkflowRuns(prev => [...prev, { id, orgId: orgIdRef.current, startedAt: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'automation_workflow_run', id, 'Started automation workflow run')
     addToast('Workflow run started')
+    apiPost('automationWorkflowRuns', 'create', data)
   }, [logAudit, addToast])
   const updateAutomationWorkflowRun = useCallback((id: string, data: AnyRecord) => {
     setAutomationWorkflowRuns(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'automation_workflow_run', id, 'Updated automation workflow run')
+    apiPost('automationWorkflowRuns', 'update', data, id)
   }, [logAudit])
 
   // ---- CRUD: Headcount Planning ----
@@ -2731,41 +2838,49 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setHeadcountPlans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'headcount_plan', id, `Created headcount plan: ${data.name}`)
     addToast('Headcount plan created')
+    apiPost('headcountPlans', 'create', data)
   }, [logAudit, addToast])
   const updateHeadcountPlan = useCallback((id: string, data: AnyRecord) => {
     setHeadcountPlans(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
     logAudit('update', 'headcount_plan', id, 'Updated headcount plan')
     addToast('Headcount plan updated')
+    apiPost('headcountPlans', 'update', data, id)
   }, [logAudit, addToast])
   const addHeadcountPosition = useCallback((data: AnyRecord) => {
     const id = genId('hcpos')
     setHeadcountPositions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'headcount_position', id, `Created position: ${data.job_title}`)
     addToast('Position created')
+    apiPost('headcountPositions', 'create', data)
   }, [logAudit, addToast])
   const updateHeadcountPosition = useCallback((id: string, data: AnyRecord) => {
     setHeadcountPositions(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p) as typeof prev)
     logAudit('update', 'headcount_position', id, 'Updated position')
     addToast('Position updated')
+    apiPost('headcountPositions', 'update', data, id)
   }, [logAudit, addToast])
   const deleteHeadcountPosition = useCallback((id: string) => {
     setHeadcountPositions(prev => prev.filter(p => p.id !== id) as typeof prev)
     setHeadcountBudgetItems(prev => prev.filter(b => b.position_id !== id) as typeof prev)
     logAudit('delete', 'headcount_position', id, 'Deleted position')
     addToast('Position deleted')
+    apiPost('headcountPositions', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addHeadcountBudgetItem = useCallback((data: AnyRecord) => {
     const id = genId('hcbi')
     setHeadcountBudgetItems(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'headcount_budget_item', id, `Created budget item: ${data.category}`)
+    apiPost('headcountBudgetItems', 'create', data)
   }, [logAudit])
   const updateHeadcountBudgetItem = useCallback((id: string, data: AnyRecord) => {
     setHeadcountBudgetItems(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
     logAudit('update', 'headcount_budget_item', id, 'Updated budget item')
+    apiPost('headcountBudgetItems', 'update', data, id)
   }, [logAudit])
   const deleteHeadcountBudgetItem = useCallback((id: string) => {
     setHeadcountBudgetItems(prev => prev.filter(b => b.id !== id) as typeof prev)
     logAudit('delete', 'headcount_budget_item', id, 'Deleted budget item')
+    apiPost('headcountBudgetItems', 'delete', undefined, id)
   }, [logAudit])
 
   // ---- CRUD: Custom Field Definitions ----
@@ -2774,26 +2889,31 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCustomFieldDefinitions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'custom_field_definition', id, `Created custom field: ${data.name}`)
     addToast('Custom field created')
+    apiPost('customFieldDefinitions', 'create', data)
   }, [logAudit, addToast])
   const updateCustomFieldDefinition = useCallback((id: string, data: AnyRecord) => {
     setCustomFieldDefinitions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
     logAudit('update', 'custom_field_definition', id, 'Updated custom field definition')
     addToast('Custom field updated')
+    apiPost('customFieldDefinitions', 'update', data, id)
   }, [logAudit, addToast])
   const deleteCustomFieldDefinition = useCallback((id: string) => {
     setCustomFieldDefinitions(prev => prev.filter(d => d.id !== id))
     setCustomFieldValues(prev => prev.filter(v => v.field_definition_id !== id))
     logAudit('delete', 'custom_field_definition', id, 'Deleted custom field definition')
     addToast('Custom field deleted')
+    apiPost('customFieldDefinitions', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Custom Field Values ----
   const addCustomFieldValue = useCallback((data: AnyRecord) => {
     const id = genId('cfv')
     setCustomFieldValues(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data }] as typeof prev)
+    apiPost('customFieldValues', 'create', data)
   }, [])
   const updateCustomFieldValue = useCallback((id: string, data: AnyRecord) => {
     setCustomFieldValues(prev => prev.map(v => v.id === id ? { ...v, ...data, updated_at: new Date().toISOString() } : v) as typeof prev)
+    apiPost('customFieldValues', 'update', data, id)
   }, [])
 
   // ---- CRUD: Emergency Contacts ----
@@ -2802,16 +2922,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEmergencyContacts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'emergency_contact', id, `Added emergency contact: ${data.name}`)
     addToast('Emergency contact added')
+    apiPost('emergencyContacts', 'create', data)
   }, [logAudit, addToast])
   const updateEmergencyContact = useCallback((id: string, data: AnyRecord) => {
     setEmergencyContacts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
     logAudit('update', 'emergency_contact', id, 'Updated emergency contact')
     addToast('Emergency contact updated')
+    apiPost('emergencyContacts', 'update', data, id)
   }, [logAudit, addToast])
   const deleteEmergencyContact = useCallback((id: string) => {
     setEmergencyContacts(prev => prev.filter(c => c.id !== id))
     logAudit('delete', 'emergency_contact', id, 'Deleted emergency contact')
     addToast('Emergency contact removed')
+    apiPost('emergencyContacts', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Compliance Requirements ----
@@ -2820,11 +2943,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setComplianceRequirements(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'compliance_requirement', id, `Created requirement: ${data.name}`)
     addToast('Compliance requirement created')
+    apiPost('complianceRequirements', 'create', data)
   }, [logAudit, addToast])
   const updateComplianceRequirement = useCallback((id: string, data: AnyRecord) => {
     setComplianceRequirements(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'compliance_requirement', id, 'Updated compliance requirement')
     addToast('Compliance requirement updated')
+    apiPost('complianceRequirements', 'update', data, id)
   }, [logAudit, addToast])
   const deleteComplianceRequirement = useCallback((id: string) => {
     setComplianceRequirements(prev => prev.filter(r => r.id !== id))
@@ -2832,6 +2957,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setComplianceAlerts(prev => prev.filter(a => a.requirement_id !== id))
     logAudit('delete', 'compliance_requirement', id, 'Deleted compliance requirement')
     addToast('Compliance requirement deleted')
+    apiPost('complianceRequirements', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Compliance Documents ----
@@ -2840,28 +2966,34 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setComplianceDocuments(prev => [...prev, { id, org_id: orgIdRef.current, uploaded_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'compliance_document', id, `Uploaded document: ${data.name}`)
     addToast('Compliance document uploaded')
+    apiPost('complianceDocuments', 'create', data)
   }, [logAudit, addToast])
   const updateComplianceDocument = useCallback((id: string, data: AnyRecord) => {
     setComplianceDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev)
     logAudit('update', 'compliance_document', id, 'Updated compliance document')
     addToast('Compliance document updated')
+    apiPost('complianceDocuments', 'update', data, id)
   }, [logAudit, addToast])
   const deleteComplianceDocument = useCallback((id: string) => {
     setComplianceDocuments(prev => prev.filter(d => d.id !== id))
     logAudit('delete', 'compliance_document', id, 'Deleted compliance document')
     addToast('Compliance document deleted')
+    apiPost('complianceDocuments', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Compliance Alerts ----
   const addComplianceAlert = useCallback((data: AnyRecord) => {
     const id = genId('calert')
     setComplianceAlerts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    apiPost('complianceAlerts', 'create', data)
   }, [])
   const updateComplianceAlert = useCallback((id: string, data: AnyRecord) => {
     setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    apiPost('complianceAlerts', 'update', data, id)
   }, [])
   const dismissComplianceAlert = useCallback((id: string) => {
     setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a) as typeof prev)
+    apiPost('complianceAlerts', 'update', { is_read: true }, id)
   }, [])
 
   // ---- Journeys ----
@@ -2887,6 +3019,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const updateWidgetPreferences = useCallback((data: AnyRecord) => {
     setWidgetPreferences((prev: any) => ({ ...prev, ...data }))
     addToast('Dashboard layout updated')
+    apiPost('widgetPreferences', 'update', data)
   }, [addToast])
 
   // ---- CRUD: Goals ----
@@ -2959,12 +3092,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setOneOnOnes(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'one_on_one', id, `Scheduled 1:1 with ${getEmployeeName(data.employee_id)}`)
     addToast('1:1 meeting scheduled')
+    apiPost('oneOnOnes', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
 
   const updateOneOnOne = useCallback((id: string, data: AnyRecord) => {
     setOneOnOnes(prev => prev.map(o => o.id === id ? { ...o, ...data } : o) as typeof prev)
     logAudit('update', 'one_on_one', id, 'Updated 1:1 meeting')
     addToast('1:1 meeting updated')
+    apiPost('oneOnOnes', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Recognitions ----
@@ -2973,6 +3108,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setRecognitions(prev => [{ id, org_id: orgIdRef.current, created_at: new Date().toISOString(), likes: 0, ...data }, ...prev] as typeof prev)
     logAudit('create', 'recognition', id, `Gave kudos to ${getEmployeeName(data.to_id)}`)
     addToast('Recognition sent!')
+    apiPost('recognitions', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
 
   // ---- CRUD: Competency Ratings ----
@@ -2981,12 +3117,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCompetencyRatings(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'competency_rating', id, `Rated competency for ${getEmployeeName(data.employee_id)}`)
     addToast('Competency rating added')
+    apiPost('competencyRatings', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
 
   const updateCompetencyRating = useCallback((id: string, data: AnyRecord) => {
     setCompetencyRatings(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'competency_rating', id, 'Updated competency rating')
     addToast('Competency rating updated')
+    apiPost('competencyRatings', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Comp Bands ----
@@ -3033,22 +3171,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEquityGrants(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'equity_grant', id, `Created equity grant for ${getEmployeeName(data.employee_id)}`)
     addToast('Equity grant created')
+    apiPost('equityGrants', 'create', data)
   }, [logAudit, addToast, getEmployeeName])
   const updateEquityGrant = useCallback((id: string, data: AnyRecord) => {
     setEquityGrants(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev)
     logAudit('update', 'equity_grant', id, 'Updated equity grant')
     addToast('Equity grant updated')
+    apiPost('equityGrants', 'update', data, id)
   }, [logAudit, addToast])
   const addCompPlanningCycle = useCallback((data: AnyRecord) => {
     const id = genId('cpc')
     setCompPlanningCycles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'comp_planning_cycle', id, `Created planning cycle: ${data.name}`)
     addToast('Comp planning cycle created')
+    apiPost('compPlanningCycles', 'create', data)
   }, [logAudit, addToast])
   const updateCompPlanningCycle = useCallback((id: string, data: AnyRecord) => {
     setCompPlanningCycles(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev)
     logAudit('update', 'comp_planning_cycle', id, 'Updated comp planning cycle')
     addToast('Comp planning cycle updated')
+    apiPost('compPlanningCycles', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Courses ----
@@ -3123,33 +3265,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [logAudit, addToast])
 
   // ---- CRUD: Course Blocks ----
-  const addCourseBlock = useCallback((data: AnyRecord) => { const id = genId('block'); setCourseBlocks(prev => [...prev, { id, ...data }] as typeof prev); logAudit('create', 'course_block', id, `Added block: ${data.title}`); addToast('Content block added') }, [logAudit, addToast])
-  const updateCourseBlock = useCallback((id: string, data: AnyRecord) => { setCourseBlocks(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev); logAudit('update', 'course_block', id, 'Updated content block'); addToast('Content block updated') }, [logAudit, addToast])
-  const deleteCourseBlock = useCallback((id: string) => { setCourseBlocks(prev => prev.filter(b => b.id !== id)); logAudit('delete', 'course_block', id, 'Deleted content block'); addToast('Content block deleted') }, [logAudit, addToast])
-  const addQuizQuestion = useCallback((data: AnyRecord) => { const id = genId('quiz-q'); setQuizQuestions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'quiz_question', id, 'Added question'); addToast('Question added') }, [logAudit, addToast])
-  const updateQuizQuestion = useCallback((id: string, data: AnyRecord) => { setQuizQuestions(prev => prev.map(q => q.id === id ? { ...q, ...data } : q) as typeof prev); logAudit('update', 'quiz_question', id, 'Updated question'); addToast('Question updated') }, [logAudit, addToast])
-  const deleteQuizQuestion = useCallback((id: string) => { setQuizQuestions(prev => prev.filter(q => q.id !== id)); logAudit('delete', 'quiz_question', id, 'Deleted question'); addToast('Question deleted') }, [logAudit, addToast])
-  const addDiscussion = useCallback((data: AnyRecord) => { const id = genId('disc'); setDiscussions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), replies: 0, likes: 0, ...data }] as typeof prev); logAudit('create', 'discussion', id, `Started discussion: ${data.title}`); addToast('Discussion created') }, [logAudit, addToast])
-  const updateDiscussion = useCallback((id: string, data: AnyRecord) => { setDiscussions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev); logAudit('update', 'discussion', id, 'Updated discussion'); addToast('Discussion updated') }, [logAudit, addToast])
-  const addStudyGroup = useCallback((data: AnyRecord) => { const id = genId('sg'); setStudyGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'study_group', id, `Created group: ${data.name}`); addToast('Study group created') }, [logAudit, addToast])
-  const updateStudyGroup = useCallback((id: string, data: AnyRecord) => { setStudyGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev); logAudit('update', 'study_group', id, 'Updated study group'); addToast('Study group updated') }, [logAudit, addToast])
+  const addCourseBlock = useCallback((data: AnyRecord) => { const id = genId('block'); setCourseBlocks(prev => [...prev, { id, ...data }] as typeof prev); logAudit('create', 'course_block', id, `Added block: ${data.title}`); addToast('Content block added'); apiPost('courseBlocks', 'create', data) }, [logAudit, addToast])
+  const updateCourseBlock = useCallback((id: string, data: AnyRecord) => { setCourseBlocks(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev); logAudit('update', 'course_block', id, 'Updated content block'); addToast('Content block updated'); apiPost('courseBlocks', 'update', data, id) }, [logAudit, addToast])
+  const deleteCourseBlock = useCallback((id: string) => { setCourseBlocks(prev => prev.filter(b => b.id !== id)); logAudit('delete', 'course_block', id, 'Deleted content block'); addToast('Content block deleted'); apiPost('courseBlocks', 'delete', undefined, id) }, [logAudit, addToast])
+  const addQuizQuestion = useCallback((data: AnyRecord) => { const id = genId('quiz-q'); setQuizQuestions(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'quiz_question', id, 'Added question'); addToast('Question added'); apiPost('quizQuestions', 'create', data) }, [logAudit, addToast])
+  const updateQuizQuestion = useCallback((id: string, data: AnyRecord) => { setQuizQuestions(prev => prev.map(q => q.id === id ? { ...q, ...data } : q) as typeof prev); logAudit('update', 'quiz_question', id, 'Updated question'); addToast('Question updated'); apiPost('quizQuestions', 'update', data, id) }, [logAudit, addToast])
+  const deleteQuizQuestion = useCallback((id: string) => { setQuizQuestions(prev => prev.filter(q => q.id !== id)); logAudit('delete', 'quiz_question', id, 'Deleted question'); addToast('Question deleted'); apiPost('quizQuestions', 'delete', undefined, id) }, [logAudit, addToast])
+  const addDiscussion = useCallback((data: AnyRecord) => { const id = genId('disc'); setDiscussions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), replies: 0, likes: 0, ...data }] as typeof prev); logAudit('create', 'discussion', id, `Started discussion: ${data.title}`); addToast('Discussion created'); apiPost('discussions', 'create', data) }, [logAudit, addToast])
+  const updateDiscussion = useCallback((id: string, data: AnyRecord) => { setDiscussions(prev => prev.map(d => d.id === id ? { ...d, ...data } : d) as typeof prev); logAudit('update', 'discussion', id, 'Updated discussion'); addToast('Discussion updated'); apiPost('discussions', 'update', data, id) }, [logAudit, addToast])
+  const addStudyGroup = useCallback((data: AnyRecord) => { const id = genId('sg'); setStudyGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'study_group', id, `Created group: ${data.name}`); addToast('Study group created'); apiPost('studyGroups', 'create', data) }, [logAudit, addToast])
+  const updateStudyGroup = useCallback((id: string, data: AnyRecord) => { setStudyGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev); logAudit('update', 'study_group', id, 'Updated study group'); addToast('Study group updated'); apiPost('studyGroups', 'update', data, id) }, [logAudit, addToast])
 
   // ---- CRUD: Compliance Training ----
-  const addComplianceTraining = useCallback((data: AnyRecord) => { const id = genId('ct'); setComplianceTraining(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'compliance_training', id, `Added compliance: ${data.title}`); addToast('Compliance training added') }, [logAudit, addToast])
-  const updateComplianceTraining = useCallback((id: string, data: AnyRecord) => { setComplianceTraining(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'compliance_training', id, 'Updated compliance training') }, [logAudit])
+  const addComplianceTraining = useCallback((data: AnyRecord) => { const id = genId('ct'); setComplianceTraining(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'compliance_training', id, `Added compliance: ${data.title}`); addToast('Compliance training added'); apiPost('complianceTraining', 'create', data) }, [logAudit, addToast])
+  const updateComplianceTraining = useCallback((id: string, data: AnyRecord) => { setComplianceTraining(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'compliance_training', id, 'Updated compliance training'); apiPost('complianceTraining', 'update', data, id) }, [logAudit])
 
   // ---- CRUD: Auto-Enrollment Rules ----
-  const addAutoEnrollRule = useCallback((data: AnyRecord) => { const id = genId('aer'); setAutoEnrollRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), triggered_count: 0, ...data }] as typeof prev); logAudit('create', 'auto_enroll_rule', id, `Created rule: ${data.name}`); addToast('Auto-enrollment rule created') }, [logAudit, addToast])
-  const updateAutoEnrollRule = useCallback((id: string, data: AnyRecord) => { setAutoEnrollRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev); logAudit('update', 'auto_enroll_rule', id, 'Updated rule'); addToast('Rule updated') }, [logAudit, addToast])
-  const deleteAutoEnrollRule = useCallback((id: string) => { setAutoEnrollRules(prev => prev.filter(r => r.id !== id)); logAudit('delete', 'auto_enroll_rule', id, 'Deleted rule'); addToast('Rule deleted') }, [logAudit, addToast])
+  const addAutoEnrollRule = useCallback((data: AnyRecord) => { const id = genId('aer'); setAutoEnrollRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), triggered_count: 0, ...data }] as typeof prev); logAudit('create', 'auto_enroll_rule', id, `Created rule: ${data.name}`); addToast('Auto-enrollment rule created'); apiPost('autoEnrollRules', 'create', data) }, [logAudit, addToast])
+  const updateAutoEnrollRule = useCallback((id: string, data: AnyRecord) => { setAutoEnrollRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev); logAudit('update', 'auto_enroll_rule', id, 'Updated rule'); addToast('Rule updated'); apiPost('autoEnrollRules', 'update', data, id) }, [logAudit, addToast])
+  const deleteAutoEnrollRule = useCallback((id: string) => { setAutoEnrollRules(prev => prev.filter(r => r.id !== id)); logAudit('delete', 'auto_enroll_rule', id, 'Deleted rule'); addToast('Rule deleted'); apiPost('autoEnrollRules', 'delete', undefined, id) }, [logAudit, addToast])
 
   // ---- CRUD: Assessment Attempts ----
-  const addAssessmentAttempt = useCallback((data: AnyRecord) => { const id = genId('att'); setAssessmentAttempts(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'assessment_attempt', id, 'Assessment submitted'); addToast('Assessment submitted') }, [logAudit, addToast])
-  const updateAssessmentAttempt = useCallback((id: string, data: AnyRecord) => { setAssessmentAttempts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev) }, [])
+  const addAssessmentAttempt = useCallback((data: AnyRecord) => { const id = genId('att'); setAssessmentAttempts(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'assessment_attempt', id, 'Assessment submitted'); addToast('Assessment submitted'); apiPost('assessmentAttempts', 'create', data) }, [logAudit, addToast])
+  const updateAssessmentAttempt = useCallback((id: string, data: AnyRecord) => { setAssessmentAttempts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev); apiPost('assessmentAttempts', 'update', data, id) }, [])
 
   // ---- CRUD: Learning Assignments ----
-  const addLearningAssignment = useCallback((data: AnyRecord) => { const id = genId('la'); setLearningAssignments(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learning_assignment', id, `Assigned learning: ${data.course_id}`); addToast('Learning assigned') }, [logAudit, addToast])
-  const updateLearningAssignment = useCallback((id: string, data: AnyRecord) => { setLearningAssignments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev); logAudit('update', 'learning_assignment', id, 'Updated assignment'); addToast('Assignment updated') }, [logAudit, addToast])
+  const addLearningAssignment = useCallback((data: AnyRecord) => { const id = genId('la'); setLearningAssignments(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'learning_assignment', id, `Assigned learning: ${data.course_id}`); addToast('Learning assigned'); apiPost('learningAssignments', 'create', data) }, [logAudit, addToast])
+  const updateLearningAssignment = useCallback((id: string, data: AnyRecord) => { setLearningAssignments(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev); logAudit('update', 'learning_assignment', id, 'Updated assignment'); addToast('Assignment updated'); apiPost('learningAssignments', 'update', data, id) }, [logAudit, addToast])
 
   // ---- CRUD: Surveys ----
   const addSurvey = useCallback((data: AnyRecord) => {
@@ -3263,6 +3405,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEmployeePayrollEntries(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'employee_payroll_entry', id, `Added payroll entry for ${data.employee_name}`)
     addToast('Payroll entry added')
+    apiPost('employeePayrollEntries', 'create', data)
   }, [logAudit, addToast])
 
   const addContractorPayment = useCallback((data: AnyRecord) => {
@@ -3270,12 +3413,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setContractorPayments(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'contractor_payment', id, `Added contractor payment: ${data.contractor_name}`)
     addToast('Contractor payment added')
+    apiPost('contractorPayments', 'create', data)
   }, [logAudit, addToast])
 
   const updateContractorPayment = useCallback((id: string, data: AnyRecord) => {
     setContractorPayments(prev => prev.map(cp => cp.id === id ? { ...cp, ...data } : cp) as typeof prev)
     logAudit('update', 'contractor_payment', id, 'Updated contractor payment')
     addToast('Contractor payment updated')
+    apiPost('contractorPayments', 'update', data, id)
   }, [logAudit, addToast])
 
   const addPayrollSchedule = useCallback((data: AnyRecord) => {
@@ -3283,12 +3428,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPayrollSchedules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'payroll_schedule', id, `Created payroll schedule: ${data.name}`)
     addToast('Payroll schedule created')
+    apiPost('payrollSchedules', 'create', data)
   }, [logAudit, addToast])
 
   const updatePayrollSchedule = useCallback((id: string, data: AnyRecord) => {
     setPayrollSchedules(prev => prev.map(ps => ps.id === id ? { ...ps, ...data } : ps) as typeof prev)
     logAudit('update', 'payroll_schedule', id, 'Updated payroll schedule')
     addToast('Payroll schedule updated')
+    apiPost('payrollSchedules', 'update', data, id)
   }, [logAudit, addToast])
 
   const addTaxConfig = useCallback((data: AnyRecord) => {
@@ -3296,24 +3443,28 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setTaxConfigs(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
     logAudit('create', 'tax_config', id, `Added tax config for ${data.country}`)
     addToast('Tax configuration added')
+    apiPost('taxConfigs', 'create', data)
   }, [logAudit, addToast])
 
   const updateTaxConfig = useCallback((id: string, data: AnyRecord) => {
     setTaxConfigs(prev => prev.map(tc => tc.id === id ? { ...tc, ...data } : tc) as typeof prev)
     logAudit('update', 'tax_config', id, 'Updated tax configuration')
     addToast('Tax configuration updated')
+    apiPost('taxConfigs', 'update', data, id)
   }, [logAudit, addToast])
 
   const resolveComplianceIssue = useCallback((id: string) => {
     setComplianceIssues(prev => prev.map(ci => ci.id === id ? { ...ci, status: 'resolved' as const } : ci) as typeof prev)
     logAudit('update', 'compliance_issue', id, 'Resolved compliance issue')
     addToast('Compliance issue resolved')
+    apiPost('complianceIssues', 'update', { status: 'resolved' }, id)
   }, [logAudit, addToast])
 
   const updateTaxFiling = useCallback((id: string, data: AnyRecord) => {
     setTaxFilings(prev => prev.map(tf => tf.id === id ? { ...tf, ...data } : tf) as typeof prev)
     logAudit('update', 'tax_filing', id, 'Updated tax filing')
     addToast('Tax filing updated')
+    apiPost('taxFilings', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Leave Requests ----
@@ -3427,12 +3578,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setExpensePolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'expense_policy', id, `Created expense policy: ${data.category}`)
     addToast('Expense policy created')
+    apiPost('expensePolicies', 'create', data)
   }, [logAudit, addToast])
 
   const updateExpensePolicy = useCallback((id: string, data: AnyRecord) => {
     setExpensePolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p) as typeof prev)
     logAudit('update', 'expense_policy', id, 'Updated expense policy')
     addToast('Expense policy updated')
+    apiPost('expensePolicies', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Mileage Logs ----
@@ -3441,12 +3594,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setMileageLogs(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
     logAudit('create', 'mileage_log', id, 'Created mileage log entry')
     addToast('Mileage entry added')
+    apiPost('mileageLogs', 'create', data)
   }, [logAudit, addToast])
 
   const updateMileageLog = useCallback((id: string, data: AnyRecord) => {
     setMileageLogs(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
     logAudit('update', 'mileage_log', id, 'Updated mileage log')
     addToast('Mileage entry updated')
+    apiPost('mileageLogs', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- CRUD: Recruiting ----
@@ -3734,12 +3889,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAutomationRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), executions: 0, last_executed: null, ...data }] as typeof prev)
     logAudit('create', 'automation_rule', id, `Created automation rule: ${data.name}`)
     addToast('Automation rule created')
+    apiPost('automationRules', 'create', data)
   }, [logAudit, addToast])
 
   const updateAutomationRule = useCallback((id: string, data: AnyRecord) => {
     setAutomationRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'automation_rule', id, 'Updated automation rule')
     addToast('Automation rule updated')
+    apiPost('automationRules', 'update', data, id)
   }, [logAudit, addToast])
 
   const toggleAutomationRule = useCallback((id: string) => {
@@ -3748,6 +3905,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     const newState = rule ? !rule.is_active : true
     logAudit('update', 'automation_rule', id, `${newState ? 'Activated' : 'Deactivated'} automation rule`)
     addToast(`Automation rule ${newState ? 'activated' : 'deactivated'}`)
+    apiPost('automationRules', 'update', { is_active: newState }, id)
   }, [logAudit, addToast, automationRules])
 
   // ---- CRUD: Strategic Objectives ----
@@ -3936,27 +4094,32 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSignatureDocuments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'signature_document', id, `Created signature document: ${data.title || 'Untitled'}`)
     addToast('Signature document created')
+    apiPost('signatureDocuments', 'create', data)
   }, [logAudit, addToast])
   const updateSignatureDocument = useCallback((id: string, data: AnyRecord) => {
     setSignatureDocuments(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
     logAudit('update', 'signature_document', id, 'Updated signature document')
     addToast('Signature document updated')
+    apiPost('signatureDocuments', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSignatureDocument = useCallback((id: string) => {
     setSignatureDocuments(prev => prev.filter(d => d.id !== id))
     logAudit('delete', 'signature_document', id, 'Deleted signature document')
     addToast('Signature document removed')
+    apiPost('signatureDocuments', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addSignatureTemplate = useCallback((data: AnyRecord) => {
     const id = genId('sig-tpl')
     setSignatureTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'signature_template', id, `Created signature template: ${data.name || 'Untitled'}`)
     addToast('Signature template created')
+    apiPost('signatureTemplates', 'create', data)
   }, [logAudit, addToast])
   const updateSignatureTemplate = useCallback((id: string, data: AnyRecord) => {
     setSignatureTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
     logAudit('update', 'signature_template', id, 'Updated signature template')
     addToast('Signature template updated')
+    apiPost('signatureTemplates', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- E-Verify / I-9 ----
@@ -3965,22 +4128,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setI9Forms(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'i9_form', id, `Created I-9 form for employee ${data.employee_id}`)
     addToast('I-9 form created')
+    apiPost('i9Forms', 'create', data)
   }, [logAudit, addToast])
   const updateI9Form = useCallback((id: string, data: AnyRecord) => {
     setI9Forms(prev => prev.map(f => f.id === id ? { ...f, ...data } : f))
     logAudit('update', 'i9_form', id, 'Updated I-9 form')
     addToast('I-9 form updated')
+    apiPost('i9Forms', 'update', data, id)
   }, [logAudit, addToast])
   const addEVerifyCase = useCallback((data: AnyRecord) => {
     const id = genId('everify')
     setEverifyCases(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'everify_case', id, `Created E-Verify case for ${data.employee_id}`)
     addToast('E-Verify case created')
+    apiPost('eVerifyCases', 'create', data)
   }, [logAudit, addToast])
   const updateEVerifyCase = useCallback((id: string, data: AnyRecord) => {
     setEverifyCases(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'everify_case', id, 'Updated E-Verify case')
     addToast('E-Verify case updated')
+    apiPost('eVerifyCases', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- PEO / Co-employment ----
@@ -3989,22 +4156,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPeoConfigurations(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'peo_configuration', id, `Created PEO config: ${data.provider_name || 'PEO'}`)
     addToast('PEO configuration created')
+    apiPost('peoConfigurations', 'create', data)
   }, [logAudit, addToast])
   const updatePeoConfiguration = useCallback((id: string, data: AnyRecord) => {
     setPeoConfigurations(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'peo_configuration', id, 'Updated PEO configuration')
     addToast('PEO configuration updated')
+    apiPost('peoConfigurations', 'update', data, id)
   }, [logAudit, addToast])
   const addCoEmploymentRecord = useCallback((data: AnyRecord) => {
     const id = genId('coemp')
     setCoEmploymentRecords(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
     logAudit('create', 'co_employment_record', id, `Created co-employment record`)
     addToast('Co-employment record created')
+    apiPost('coEmploymentRecords', 'create', data)
   }, [logAudit, addToast])
   const updateCoEmploymentRecord = useCallback((id: string, data: AnyRecord) => {
     setCoEmploymentRecords(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'co_employment_record', id, 'Updated co-employment record')
     addToast('Co-employment record updated')
+    apiPost('coEmploymentRecords', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Sandbox Environment ----
@@ -4013,16 +4184,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSandboxEnvironments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'provisioning', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'sandbox', id, `Created sandbox: ${data.name || 'Sandbox'}`)
     addToast('Sandbox environment created')
+    apiPost('sandboxEnvironments', 'create', data)
   }, [logAudit, addToast])
   const updateSandboxEnvironment = useCallback((id: string, data: AnyRecord) => {
     setSandboxEnvironments(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
     logAudit('update', 'sandbox', id, 'Updated sandbox environment')
     addToast('Sandbox environment updated')
+    apiPost('sandboxEnvironments', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSandboxEnvironment = useCallback((id: string) => {
     setSandboxEnvironments(prev => prev.filter(s => s.id !== id))
     logAudit('delete', 'sandbox', id, 'Deleted sandbox environment')
     addToast('Sandbox environment removed')
+    apiPost('sandboxEnvironments', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Built-in Chat ----
@@ -4031,11 +4205,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setChatChannels(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'chat_channel', id, `Created channel: ${data.name || '#general'}`)
     addToast('Chat channel created')
+    apiPost('chatChannels', 'create', data)
   }, [logAudit, addToast])
   const updateChatChannel = useCallback((id: string, data: AnyRecord) => {
     setChatChannels(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'chat_channel', id, 'Updated chat channel')
     addToast('Chat channel updated')
+    apiPost('chatChannels', 'update', data, id)
   }, [logAudit, addToast])
   const addChatMessage = useCallback((data: AnyRecord) => {
     const id = genId('msg')
@@ -4054,11 +4230,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setInterviewRecordings(prev => [...prev, { id, org_id: orgIdRef.current, status: 'scheduled', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'interview_recording', id, 'Scheduled interview recording')
     addToast('Interview recording scheduled')
+    apiPost('interviewRecordings', 'create', data)
   }, [logAudit, addToast])
   const updateInterviewRecording = useCallback((id: string, data: AnyRecord) => {
     setInterviewRecordings(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'interview_recording', id, 'Updated interview recording')
     addToast('Interview recording updated')
+    apiPost('interviewRecordings', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- AI Video Screens ----
@@ -4067,33 +4245,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setVideoScreenTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'video_screen_template', id, `Created video screen template: ${data.title || 'Untitled'}`)
     addToast('Video screen template created')
+    apiPost('videoScreenTemplates', 'create', data)
   }, [logAudit, addToast])
   const updateVideoScreenTemplate = useCallback((id: string, data: AnyRecord) => {
     setVideoScreenTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
     logAudit('update', 'video_screen_template', id, 'Updated video screen template')
     addToast('Video screen template updated')
+    apiPost('videoScreenTemplates', 'update', data, id)
   }, [logAudit, addToast])
   const addVideoScreenInvite = useCallback((data: AnyRecord) => {
     const id = genId('vsi')
     setVideoScreenInvites(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', sent_at: new Date().toISOString(), ...data }])
     logAudit('create', 'video_screen_invite', id, `Sent video screen invite to ${data.candidate_email}`)
     addToast('Video screen invite sent')
+    apiPost('videoScreenInvites', 'create', data)
   }, [logAudit, addToast])
   const updateVideoScreenInvite = useCallback((id: string, data: AnyRecord) => {
     setVideoScreenInvites(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
     logAudit('update', 'video_screen_invite', id, 'Updated video screen invite')
     addToast('Video screen invite updated')
+    apiPost('videoScreenInvites', 'update', data, id)
   }, [logAudit, addToast])
   const addVideoScreenResponse = useCallback((data: AnyRecord) => {
     const id = genId('vsr')
     setVideoScreenResponses(prev => [...prev, { id, org_id: orgIdRef.current, submitted_at: new Date().toISOString(), ...data }])
     logAudit('create', 'video_screen_response', id, 'Video screen response submitted')
     addToast('Video screen response recorded')
+    apiPost('videoScreenResponses', 'create', data)
   }, [logAudit, addToast])
   const updateVideoScreenResponse = useCallback((id: string, data: AnyRecord) => {
     setVideoScreenResponses(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'video_screen_response', id, 'Updated video screen response')
     addToast('Video screen response updated')
+    apiPost('videoScreenResponses', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Corporate Cards ----
@@ -4102,22 +4286,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCorporateCards(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', issued_at: new Date().toISOString(), ...data }])
     logAudit('create', 'corporate_card', id, `Issued corporate card ending ${data.last_four || '****'}`)
     addToast('Corporate card issued')
+    apiPost('corporateCards', 'create', data)
   }, [logAudit, addToast])
   const updateCorporateCard = useCallback((id: string, data: AnyRecord) => {
     setCorporateCards(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'corporate_card', id, 'Updated corporate card')
     addToast('Corporate card updated')
+    apiPost('corporateCards', 'update', data, id)
   }, [logAudit, addToast])
   const addCardTransaction = useCallback((data: AnyRecord) => {
     const id = genId('txn')
     setCardTransactions(prev => [...prev, { id, org_id: orgIdRef.current, transaction_date: new Date().toISOString(), ...data }])
     logAudit('create', 'card_transaction', id, `Card transaction: ${data.merchant || 'Unknown'}`)
     addToast('Card transaction recorded')
+    apiPost('cardTransactions', 'create', data)
   }, [logAudit, addToast])
   const updateCardTransaction = useCallback((id: string, data: AnyRecord) => {
     setCardTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
     logAudit('update', 'card_transaction', id, 'Updated card transaction')
     addToast('Card transaction updated')
+    apiPost('cardTransactions', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Bill Pay ----
@@ -4126,22 +4314,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setBillPayments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'bill_payment', id, `Created bill payment: $${((data.amount || 0) / 100).toFixed(2)}`)
     addToast('Bill payment created')
+    apiPost('billPayments', 'create', data)
   }, [logAudit, addToast])
   const updateBillPayment = useCallback((id: string, data: AnyRecord) => {
     setBillPayments(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'bill_payment', id, 'Updated bill payment')
     addToast('Bill payment updated')
+    apiPost('billPayments', 'update', data, id)
   }, [logAudit, addToast])
   const addBillPaySchedule = useCallback((data: AnyRecord) => {
     const id = genId('bps')
     setBillPaySchedules(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
     logAudit('create', 'bill_pay_schedule', id, 'Created recurring payment schedule')
     addToast('Payment schedule created')
+    apiPost('billPaySchedules', 'create', data)
   }, [logAudit, addToast])
   const updateBillPaySchedule = useCallback((id: string, data: AnyRecord) => {
     setBillPaySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
     logAudit('update', 'bill_pay_schedule', id, 'Updated payment schedule')
     addToast('Payment schedule updated')
+    apiPost('billPaySchedules', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Travel Management ----
@@ -4150,33 +4342,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setTravelRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', submitted_at: new Date().toISOString(), ...data }])
     logAudit('create', 'travel_request', id, `Created travel request: ${data.destination || 'Trip'}`)
     addToast('Travel request submitted')
+    apiPost('travelRequests', 'create', data)
   }, [logAudit, addToast])
   const updateTravelRequest = useCallback((id: string, data: AnyRecord) => {
     setTravelRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'travel_request', id, 'Updated travel request')
     addToast('Travel request updated')
+    apiPost('travelRequests', 'update', data, id)
   }, [logAudit, addToast])
   const addTravelBooking = useCallback((data: AnyRecord) => {
     const id = genId('booking')
     setTravelBookings(prev => [...prev, { id, org_id: orgIdRef.current, booked_at: new Date().toISOString(), ...data }])
     logAudit('create', 'travel_booking', id, `Booked: ${data.type || 'travel'}`)
     addToast('Travel booking confirmed')
+    apiPost('travelBookings', 'create', data)
   }, [logAudit, addToast])
   const updateTravelBooking = useCallback((id: string, data: AnyRecord) => {
     setTravelBookings(prev => prev.map(b => b.id === id ? { ...b, ...data } : b))
     logAudit('update', 'travel_booking', id, 'Updated travel booking')
     addToast('Travel booking updated')
+    apiPost('travelBookings', 'update', data, id)
   }, [logAudit, addToast])
   const addTravelPolicy = useCallback((data: AnyRecord) => {
     const id = genId('tpol')
     setTravelPolicies(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
     logAudit('create', 'travel_policy', id, `Created travel policy: ${data.name || 'Policy'}`)
     addToast('Travel policy created')
+    apiPost('travelPolicies', 'create', data)
   }, [logAudit, addToast])
   const updateTravelPolicy = useCallback((id: string, data: AnyRecord) => {
     setTravelPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'travel_policy', id, 'Updated travel policy')
     addToast('Travel policy updated')
+    apiPost('travelPolicies', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Procurement / Purchase Orders ----
@@ -4185,22 +4383,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPurchaseOrders(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'purchase_order', id, `Created PO: ${data.po_number || id}`)
     addToast('Purchase order created')
+    apiPost('purchaseOrders', 'create', data)
   }, [logAudit, addToast])
   const updatePurchaseOrder = useCallback((id: string, data: AnyRecord) => {
     setPurchaseOrders(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'purchase_order', id, 'Updated purchase order')
     addToast('Purchase order updated')
+    apiPost('purchaseOrders', 'update', data, id)
   }, [logAudit, addToast])
   const addProcurementRequest = useCallback((data: AnyRecord) => {
     const id = genId('preq')
     setProcurementRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', submitted_at: new Date().toISOString(), ...data }])
     logAudit('create', 'procurement_request', id, `Created procurement request: ${data.title || 'Request'}`)
     addToast('Procurement request submitted')
+    apiPost('procurementRequests', 'create', data)
   }, [logAudit, addToast])
   const updateProcurementRequest = useCallback((id: string, data: AnyRecord) => {
     setProcurementRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'procurement_request', id, 'Updated procurement request')
     addToast('Procurement request updated')
+    apiPost('procurementRequests', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Multi-currency ----
@@ -4209,17 +4411,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCurrencyAccounts(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
     logAudit('create', 'currency_account', id, `Created ${data.currency || 'FX'} account`)
     addToast('Currency account created')
+    apiPost('currencyAccounts', 'create', data)
   }, [logAudit, addToast])
   const updateCurrencyAccount = useCallback((id: string, data: AnyRecord) => {
     setCurrencyAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
     logAudit('update', 'currency_account', id, 'Updated currency account')
     addToast('Currency account updated')
+    apiPost('currencyAccounts', 'update', data, id)
   }, [logAudit, addToast])
   const addFxTransaction = useCallback((data: AnyRecord) => {
     const id = genId('fx')
     setFxTransactions(prev => [...prev, { id, org_id: orgIdRef.current, executed_at: new Date().toISOString(), ...data }])
     logAudit('create', 'fx_transaction', id, `FX: ${data.from_currency}→${data.to_currency}`)
     addToast('FX transaction executed')
+    apiPost('fxTransactions', 'create', data)
   }, [logAudit, addToast])
 
   // ---- 401(k) Administration ----
@@ -4228,28 +4433,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setRetirementPlans(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'retirement_plan', id, `Created retirement plan: ${data.name || 'Plan'}`)
     addToast('Retirement plan created')
+    apiPost('retirementPlans', 'create', data)
   }, [logAudit, addToast])
   const updateRetirementPlan = useCallback((id: string, data: AnyRecord) => {
     setRetirementPlans(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'retirement_plan', id, 'Updated retirement plan')
     addToast('Retirement plan updated')
+    apiPost('retirementPlans', 'update', data, id)
   }, [logAudit, addToast])
   const addRetirementEnrollment = useCallback((data: AnyRecord) => {
     const id = genId('renr')
     setRetirementEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, enrolled_at: new Date().toISOString(), ...data }])
     logAudit('create', 'retirement_enrollment', id, 'Employee enrolled in retirement plan')
     addToast('Retirement enrollment created')
+    apiPost('retirementEnrollments', 'create', data)
   }, [logAudit, addToast])
   const updateRetirementEnrollment = useCallback((id: string, data: AnyRecord) => {
     setRetirementEnrollments(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
     logAudit('update', 'retirement_enrollment', id, 'Updated retirement enrollment')
     addToast('Retirement enrollment updated')
+    apiPost('retirementEnrollments', 'update', data, id)
   }, [logAudit, addToast])
   const addRetirementContribution = useCallback((data: AnyRecord) => {
     const id = genId('rcon')
     setRetirementContributions(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'retirement_contribution', id, 'Retirement contribution recorded')
     addToast('Contribution recorded')
+    apiPost('retirementContributions', 'create', data)
   }, [logAudit, addToast])
 
   // ---- Carrier Integration ----
@@ -4258,17 +4468,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCarrierIntegrations(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'carrier_integration', id, `Added carrier: ${data.carrier_name || 'Carrier'}`)
     addToast('Carrier integration added')
+    apiPost('carrierIntegrations', 'create', data)
   }, [logAudit, addToast])
   const updateCarrierIntegration = useCallback((id: string, data: AnyRecord) => {
     setCarrierIntegrations(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'carrier_integration', id, 'Updated carrier integration')
     addToast('Carrier integration updated')
+    apiPost('carrierIntegrations', 'update', data, id)
   }, [logAudit, addToast])
   const addEnrollmentFeed = useCallback((data: AnyRecord) => {
     const id = genId('feed')
     setEnrollmentFeeds(prev => [...prev, { id, org_id: orgIdRef.current, generated_at: new Date().toISOString(), ...data }])
     logAudit('create', 'enrollment_feed', id, 'Enrollment feed generated')
     addToast('Enrollment feed generated')
+    apiPost('enrollmentFeeds', 'create', data)
   }, [logAudit, addToast])
 
   // ---- Geofencing ----
@@ -4277,16 +4490,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setGeofenceZones(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
     logAudit('create', 'geofence_zone', id, `Created geofence zone: ${data.name || 'Zone'}`)
     addToast('Geofence zone created')
+    apiPost('geofenceZones', 'create', data)
   }, [logAudit, addToast])
   const updateGeofenceZone = useCallback((id: string, data: AnyRecord) => {
     setGeofenceZones(prev => prev.map(z => z.id === id ? { ...z, ...data } : z))
     logAudit('update', 'geofence_zone', id, 'Updated geofence zone')
     addToast('Geofence zone updated')
+    apiPost('geofenceZones', 'update', data, id)
   }, [logAudit, addToast])
   const deleteGeofenceZone = useCallback((id: string) => {
     setGeofenceZones(prev => prev.filter(z => z.id !== id))
     logAudit('delete', 'geofence_zone', id, 'Deleted geofence zone')
     addToast('Geofence zone removed')
+    apiPost('geofenceZones', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addGeofenceEvent = useCallback((data: AnyRecord) => {
     const id = genId('gfev')
@@ -4299,33 +4515,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setIdpConfigurations(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'idp_configuration', id, `Created IdP: ${data.name || 'Provider'}`)
     addToast('Identity provider configured')
+    apiPost('idpConfigurations', 'create', data)
   }, [logAudit, addToast])
   const updateIdpConfiguration = useCallback((id: string, data: AnyRecord) => {
     setIdpConfigurations(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'idp_configuration', id, 'Updated IdP configuration')
     addToast('Identity provider updated')
+    apiPost('idpConfigurations', 'update', data, id)
   }, [logAudit, addToast])
   const addSamlApp = useCallback((data: AnyRecord) => {
     const id = genId('saml')
     setSamlApps(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'saml_app', id, `Added SAML app: ${data.name || 'App'}`)
     addToast('SAML app added')
+    apiPost('samlApps', 'create', data)
   }, [logAudit, addToast])
   const updateSamlApp = useCallback((id: string, data: AnyRecord) => {
     setSamlApps(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
     logAudit('update', 'saml_app', id, 'Updated SAML app')
     addToast('SAML app updated')
+    apiPost('samlApps', 'update', data, id)
   }, [logAudit, addToast])
   const addMfaPolicy = useCallback((data: AnyRecord) => {
     const id = genId('mfa')
     setMfaPolicies(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
     logAudit('create', 'mfa_policy', id, `Created MFA policy: ${data.name || 'Policy'}`)
     addToast('MFA policy created')
+    apiPost('mfaPolicies', 'create', data)
   }, [logAudit, addToast])
   const updateMfaPolicy = useCallback((id: string, data: AnyRecord) => {
     setMfaPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'mfa_policy', id, 'Updated MFA policy')
     addToast('MFA policy updated')
+    apiPost('mfaPolicies', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Zero-touch Deployment ----
@@ -4334,22 +4556,26 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setDeploymentProfiles(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'deployment_profile', id, `Created deployment profile: ${data.name || 'Profile'}`)
     addToast('Deployment profile created')
+    apiPost('deploymentProfiles', 'create', data)
   }, [logAudit, addToast])
   const updateDeploymentProfile = useCallback((id: string, data: AnyRecord) => {
     setDeploymentProfiles(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'deployment_profile', id, 'Updated deployment profile')
     addToast('Deployment profile updated')
+    apiPost('deploymentProfiles', 'update', data, id)
   }, [logAudit, addToast])
   const addEnrollmentToken = useCallback((data: AnyRecord) => {
     const id = genId('token')
     setEnrollmentTokens(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'enrollment_token', id, 'Generated device enrollment token')
     addToast('Enrollment token generated')
+    apiPost('enrollmentTokens', 'create', data)
   }, [logAudit, addToast])
   const updateEnrollmentToken = useCallback((id: string, data: AnyRecord) => {
     setEnrollmentTokens(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
     logAudit('update', 'enrollment_token', id, 'Updated enrollment token')
     addToast('Enrollment token updated')
+    apiPost('enrollmentTokens', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Password Manager ----
@@ -4358,27 +4584,32 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setPasswordVaults(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'password_vault', id, `Created vault: ${data.name || 'Vault'}`)
     addToast('Password vault created')
+    apiPost('passwordVaults', 'create', data)
   }, [logAudit, addToast])
   const updatePasswordVault = useCallback((id: string, data: AnyRecord) => {
     setPasswordVaults(prev => prev.map(v => v.id === id ? { ...v, ...data } : v))
     logAudit('update', 'password_vault', id, 'Updated password vault')
     addToast('Password vault updated')
+    apiPost('passwordVaults', 'update', data, id)
   }, [logAudit, addToast])
   const addVaultItem = useCallback((data: AnyRecord) => {
     const id = genId('vi')
     setVaultItems(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'vault_item', id, `Added credential: ${data.name || 'Item'}`)
     addToast('Vault item added')
+    apiPost('vaultItems', 'create', data)
   }, [logAudit, addToast])
   const updateVaultItem = useCallback((id: string, data: AnyRecord) => {
     setVaultItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
     logAudit('update', 'vault_item', id, 'Updated vault item')
     addToast('Vault item updated')
+    apiPost('vaultItems', 'update', data, id)
   }, [logAudit, addToast])
   const deleteVaultItem = useCallback((id: string) => {
     setVaultItems(prev => prev.filter(i => i.id !== id))
     logAudit('delete', 'vault_item', id, 'Deleted vault item')
     addToast('Vault item removed')
+    apiPost('vaultItems', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Device Store / Buyback ----
@@ -4387,33 +4618,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setDeviceStoreCatalog(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
     logAudit('create', 'device_catalog', id, `Added device: ${data.name || 'Device'}`)
     addToast('Device added to catalog')
+    apiPost('deviceStoreCatalog', 'create', data)
   }, [logAudit, addToast])
   const updateDeviceStoreCatalogItem = useCallback((id: string, data: AnyRecord) => {
     setDeviceStoreCatalog(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
     logAudit('update', 'device_catalog', id, 'Updated catalog item')
     addToast('Catalog item updated')
+    apiPost('deviceStoreCatalog', 'update', data, id)
   }, [logAudit, addToast])
   const addDeviceOrder = useCallback((data: AnyRecord) => {
     const id = genId('dord')
     setDeviceOrders(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', ordered_at: new Date().toISOString(), ...data }])
     logAudit('create', 'device_order', id, 'Device order placed')
     addToast('Device order placed')
+    apiPost('deviceOrders', 'create', data)
   }, [logAudit, addToast])
   const updateDeviceOrder = useCallback((id: string, data: AnyRecord) => {
     setDeviceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o))
     logAudit('update', 'device_order', id, 'Updated device order')
     addToast('Device order updated')
+    apiPost('deviceOrders', 'update', data, id)
   }, [logAudit, addToast])
   const addBuybackRequest = useCallback((data: AnyRecord) => {
     const id = genId('bb')
     setBuybackRequests(prev => [...prev, { id, org_id: orgIdRef.current, status: 'submitted', submitted_at: new Date().toISOString(), ...data }])
     logAudit('create', 'buyback_request', id, 'Buyback request submitted')
     addToast('Buyback request submitted')
+    apiPost('buybackRequests', 'create', data)
   }, [logAudit, addToast])
   const updateBuybackRequest = useCallback((id: string, data: AnyRecord) => {
     setBuybackRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'buyback_request', id, 'Updated buyback request')
     addToast('Buyback request updated')
+    apiPost('buybackRequests', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- No-code App Builder ----
@@ -4422,23 +4659,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCustomApps(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', version: 1, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'custom_app', id, `Created app: ${data.name || 'App'}`)
     addToast('Custom app created')
+    apiPost('customApps', 'create', data)
   }, [logAudit, addToast])
   const updateCustomApp = useCallback((id: string, data: AnyRecord) => {
     setCustomApps(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
     logAudit('update', 'custom_app', id, 'Updated custom app')
     addToast('Custom app updated')
+    apiPost('customApps', 'update', data, id)
   }, [logAudit, addToast])
   const deleteCustomApp = useCallback((id: string) => {
     setCustomApps(prev => prev.filter(a => a.id !== id))
     setAppPages(prev => prev.filter(p => p.app_id !== id))
     logAudit('delete', 'custom_app', id, 'Deleted custom app')
     addToast('Custom app removed')
+    apiPost('customApps', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addAppPage = useCallback((data: AnyRecord) => {
     const id = genId('page')
     setAppPages(prev => [...prev, { id, ...data }])
     logAudit('create', 'app_page', id, `Added page: ${data.name || 'Page'}`)
     addToast('App page added')
+    apiPost('appPages', 'create', data)
   }, [logAudit, addToast])
   const updateAppPage = useCallback((id: string, data: AnyRecord) => {
     setAppPages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
@@ -4455,6 +4696,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAppDataSources(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'app_data_source', id, `Added data source: ${data.name || 'Source'}`)
     addToast('Data source added')
+    apiPost('appDataSources', 'create', data)
   }, [logAudit, addToast])
   const updateAppDataSource = useCallback((id: string, data: AnyRecord) => {
     setAppDataSources(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
@@ -4466,28 +4708,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setSavedQueries(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', run_count: 0, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'saved_query', id, `Created query: ${data.name || 'Query'}`)
     addToast('Query saved')
+    apiPost('savedQueries', 'create', data)
   }, [logAudit, addToast])
   const updateSavedQuery = useCallback((id: string, data: AnyRecord) => {
     setSavedQueries(prev => prev.map(q => q.id === id ? { ...q, ...data } : q))
     logAudit('update', 'saved_query', id, 'Updated saved query')
     addToast('Query updated')
+    apiPost('savedQueries', 'update', data, id)
   }, [logAudit, addToast])
   const deleteSavedQuery = useCallback((id: string) => {
     setSavedQueries(prev => prev.filter(q => q.id !== id))
     setQuerySchedules(prev => prev.filter(s => s.query_id !== id))
     logAudit('delete', 'saved_query', id, 'Deleted saved query')
     addToast('Query removed')
+    apiPost('savedQueries', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addQuerySchedule = useCallback((data: AnyRecord) => {
     const id = genId('qsched')
     setQuerySchedules(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
     logAudit('create', 'query_schedule', id, 'Created query schedule')
     addToast('Query schedule created')
+    apiPost('querySchedules', 'create', data)
   }, [logAudit, addToast])
   const updateQuerySchedule = useCallback((id: string, data: AnyRecord) => {
     setQuerySchedules(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))
     logAudit('update', 'query_schedule', id, 'Updated query schedule')
     addToast('Query schedule updated')
+    apiPost('querySchedules', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- EOR (Employer of Record) ----
@@ -4496,33 +4743,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEorEntities(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending_setup', employee_count: 0, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'eor_entity', id, `Created EOR entity in ${data.country || 'Unknown'}`)
     addToast('EOR entity created')
+    apiPost('eorEntities', 'create', data)
   }, [logAudit, addToast])
   const updateEorEntity = useCallback((id: string, data: AnyRecord) => {
     setEorEntities(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
     logAudit('update', 'eor_entity', id, 'Updated EOR entity')
     addToast('EOR entity updated')
+    apiPost('eorEntities', 'update', data, id)
   }, [logAudit, addToast])
   const addEorEmployee = useCallback((data: AnyRecord) => {
     const id = genId('eoremp')
     setEorEmployees(prev => [...prev, { id, org_id: orgIdRef.current, status: 'onboarding', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'eor_employee', id, `Added EOR employee: ${data.full_name}`)
     addToast('EOR employee added')
+    apiPost('eorEmployees', 'create', data)
   }, [logAudit, addToast])
   const updateEorEmployee = useCallback((id: string, data: AnyRecord) => {
     setEorEmployees(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
     logAudit('update', 'eor_employee', id, 'Updated EOR employee')
     addToast('EOR employee updated')
+    apiPost('eorEmployees', 'update', data, id)
   }, [logAudit, addToast])
   const addEorContract = useCallback((data: AnyRecord) => {
     const id = genId('eorc')
     setEorContracts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'eor_contract', id, 'Created EOR contract')
     addToast('EOR contract created')
+    apiPost('eorContracts', 'create', data)
   }, [logAudit, addToast])
   const updateEorContract = useCallback((id: string, data: AnyRecord) => {
     setEorContracts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'eor_contract', id, 'Updated EOR contract')
     addToast('EOR contract updated')
+    apiPost('eorContracts', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Contractor of Record ----
@@ -4531,33 +4784,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setCorContractors(prev => [...prev, { id, org_id: orgIdRef.current, status: 'onboarding', compliance_status: 'pending', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'cor_contractor', id, `Added contractor: ${data.full_name}`)
     addToast('Contractor added')
+    apiPost('corContractors', 'create', data)
   }, [logAudit, addToast])
   const updateCorContractor = useCallback((id: string, data: AnyRecord) => {
     setCorContractors(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'cor_contractor', id, 'Updated contractor')
     addToast('Contractor updated')
+    apiPost('corContractors', 'update', data, id)
   }, [logAudit, addToast])
   const addCorContract = useCallback((data: AnyRecord) => {
     const id = genId('corc')
     setCorContracts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'draft', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'cor_contract', id, `Created contractor agreement: ${data.title || 'Contract'}`)
     addToast('Contractor agreement created')
+    apiPost('corContracts', 'create', data)
   }, [logAudit, addToast])
   const updateCorContract = useCallback((id: string, data: AnyRecord) => {
     setCorContracts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'cor_contract', id, 'Updated contractor agreement')
     addToast('Contractor agreement updated')
+    apiPost('corContracts', 'update', data, id)
   }, [logAudit, addToast])
   const addCorPayment = useCallback((data: AnyRecord) => {
     const id = genId('corp')
     setCorPayments(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'cor_payment', id, 'Contractor payment created')
     addToast('Contractor payment created')
+    apiPost('corPayments', 'create', data)
   }, [logAudit, addToast])
   const updateCorPayment = useCallback((id: string, data: AnyRecord) => {
     setCorPayments(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'cor_payment', id, 'Updated contractor payment')
     addToast('Contractor payment updated')
+    apiPost('corPayments', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Global Benefits ----
@@ -4566,33 +4825,39 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setGlobalBenefitPlans(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'global_benefit_plan', id, `Created global benefit: ${data.name || 'Plan'} (${data.country})`)
     addToast('Global benefit plan created')
+    apiPost('globalBenefitPlans', 'create', data)
   }, [logAudit, addToast])
   const updateGlobalBenefitPlan = useCallback((id: string, data: AnyRecord) => {
     setGlobalBenefitPlans(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'global_benefit_plan', id, 'Updated global benefit plan')
     addToast('Global benefit plan updated')
+    apiPost('globalBenefitPlans', 'update', data, id)
   }, [logAudit, addToast])
   const addCountryBenefitConfig = useCallback((data: AnyRecord) => {
     const id = genId('cbc')
     setCountryBenefitConfigs(prev => [...prev, { id, org_id: orgIdRef.current, updated_at: new Date().toISOString(), ...data }])
     logAudit('create', 'country_benefit_config', id, `Configured benefits for ${data.country || 'country'}`)
     addToast('Country benefits configured')
+    apiPost('countryBenefitConfigs', 'create', data)
   }, [logAudit, addToast])
   const updateCountryBenefitConfig = useCallback((id: string, data: AnyRecord) => {
     setCountryBenefitConfigs(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'country_benefit_config', id, 'Updated country benefit config')
     addToast('Country benefit config updated')
+    apiPost('countryBenefitConfigs', 'update', data, id)
   }, [logAudit, addToast])
   const addGlobalBenefitEnrollment = useCallback((data: AnyRecord) => {
     const id = genId('gbe')
     setGlobalBenefitEnrollments(prev => [...prev, { id, org_id: orgIdRef.current, enrolled_at: new Date().toISOString().split('T')[0], ...data }])
     logAudit('create', 'global_benefit_enrollment', id, 'Employee enrolled in global benefit')
     addToast('Global benefit enrollment created')
+    apiPost('globalBenefitEnrollments', 'create', data)
   }, [logAudit, addToast])
   const updateGlobalBenefitEnrollment = useCallback((id: string, data: AnyRecord) => {
     setGlobalBenefitEnrollments(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
     logAudit('update', 'global_benefit_enrollment', id, 'Updated global benefit enrollment')
     addToast('Global benefit enrollment updated')
+    apiPost('globalBenefitEnrollments', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Workers' Compensation ----
@@ -4601,44 +4866,52 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setWorkersCompPolicies(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'workers_comp_policy', id, `Created workers comp policy: ${data.name || 'Policy'}`)
     addToast('Workers comp policy created')
+    apiPost('workersCompPolicies', 'create', data)
   }, [logAudit, addToast])
   const updateWorkersCompPolicy = useCallback((id: string, data: AnyRecord) => {
     setWorkersCompPolicies(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
     logAudit('update', 'workers_comp_policy', id, 'Updated workers comp policy')
     addToast('Workers comp policy updated')
+    apiPost('workersCompPolicies', 'update', data, id)
   }, [logAudit, addToast])
   const addWorkersCompClaim = useCallback((data: AnyRecord) => {
     const id = genId('wccl')
     setWorkersCompClaims(prev => [...prev, { id, org_id: orgIdRef.current, status: 'open', filed_date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'workers_comp_claim', id, `Filed workers comp claim for ${data.employee_name || 'Unknown'}`)
     addToast('Workers comp claim filed')
+    apiPost('workersCompClaims', 'create', data)
   }, [logAudit, addToast])
   const updateWorkersCompClaim = useCallback((id: string, data: AnyRecord) => {
     setWorkersCompClaims(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'workers_comp_claim', id, 'Updated workers comp claim')
     addToast('Workers comp claim updated')
+    apiPost('workersCompClaims', 'update', data, id)
   }, [logAudit, addToast])
   const addWorkersCompClassCode = useCallback((data: AnyRecord) => {
     const id = genId('wccc')
     setWorkersCompClassCodes(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'workers_comp_class_code', id, `Added class code: ${data.code || 'Unknown'}`)
     addToast('Class code added')
+    apiPost('workersCompClassCodes', 'create', data)
   }, [logAudit, addToast])
   const updateWorkersCompClassCode = useCallback((id: string, data: AnyRecord) => {
     setWorkersCompClassCodes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
     logAudit('update', 'workers_comp_class_code', id, 'Updated class code')
     addToast('Class code updated')
+    apiPost('workersCompClassCodes', 'update', data, id)
   }, [logAudit, addToast])
   const addWorkersCompAudit = useCallback((data: AnyRecord) => {
     const id = genId('wcaud')
     setWorkersCompAudits(prev => [...prev, { id, org_id: orgIdRef.current, status: 'scheduled', created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'workers_comp_audit', id, 'Scheduled workers comp audit')
     addToast('Workers comp audit scheduled')
+    apiPost('workersCompAudits', 'create', data)
   }, [logAudit, addToast])
   const updateWorkersCompAudit = useCallback((id: string, data: AnyRecord) => {
     setWorkersCompAudits(prev => prev.map(a => a.id === id ? { ...a, ...data } : a))
     logAudit('update', 'workers_comp_audit', id, 'Updated workers comp audit')
     addToast('Workers comp audit updated')
+    apiPost('workersCompAudits', 'update', data, id)
   }, [logAudit, addToast])
 
   // ---- Groups ----
@@ -4647,16 +4920,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setGroups(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'group', id, `Created group ${data.name || ''}`)
     addToast('Group created')
+    apiPost('groups', 'create', data)
   }, [logAudit, addToast])
   const updateGroup = useCallback((id: string, data: AnyRecord) => {
     setGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g))
     logAudit('update', 'group', id, 'Updated group')
     addToast('Group updated')
+    apiPost('groups', 'update', data, id)
   }, [logAudit, addToast])
   const deleteGroup = useCallback((id: string) => {
     setGroups(prev => prev.filter(g => g.id !== id))
     logAudit('delete', 'group', id, 'Deleted group')
     addToast('Group deleted')
+    apiPost('groups', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Provisioning Rules ----
@@ -4665,16 +4941,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setProvisioningRules(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'provisioning_rule', id, `Created provisioning rule ${data.name || ''}`)
     addToast('Provisioning rule created')
+    apiPost('provisioningRules', 'create', data)
   }, [logAudit, addToast])
   const updateProvisioningRule = useCallback((id: string, data: AnyRecord) => {
     setProvisioningRules(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'provisioning_rule', id, 'Updated provisioning rule')
     addToast('Provisioning rule updated')
+    apiPost('provisioningRules', 'update', data, id)
   }, [logAudit, addToast])
   const deleteProvisioningRule = useCallback((id: string) => {
     setProvisioningRules(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'provisioning_rule', id, 'Deleted provisioning rule')
     addToast('Provisioning rule deleted')
+    apiPost('provisioningRules', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Encryption Policies ----
@@ -4683,16 +4962,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setEncryptionPolicies(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'encryption_policy', id, `Created encryption policy ${data.name || ''}`)
     addToast('Encryption policy created')
+    apiPost('encryptionPolicies', 'create', data)
   }, [logAudit, addToast])
   const updateEncryptionPolicy = useCallback((id: string, data: AnyRecord) => {
     setEncryptionPolicies(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'encryption_policy', id, 'Updated encryption policy')
     addToast('Encryption policy updated')
+    apiPost('encryptionPolicies', 'update', data, id)
   }, [logAudit, addToast])
   const deleteEncryptionPolicy = useCallback((id: string) => {
     setEncryptionPolicies(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'encryption_policy', id, 'Deleted encryption policy')
     addToast('Encryption policy deleted')
+    apiPost('encryptionPolicies', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- SCIM Providers ----
@@ -4701,16 +4983,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setScimProviders(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'scim_provider', id, `Created SCIM provider ${data.name || ''}`)
     addToast('SCIM provider created')
+    apiPost('scimProviders', 'create', data)
   }, [logAudit, addToast])
   const updateScimProvider = useCallback((id: string, data: AnyRecord) => {
     setScimProviders(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'scim_provider', id, 'Updated SCIM provider')
     addToast('SCIM provider updated')
+    apiPost('scimProviders', 'update', data, id)
   }, [logAudit, addToast])
   const deleteScimProvider = useCallback((id: string) => {
     setScimProviders(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'scim_provider', id, 'Deleted SCIM provider')
     addToast('SCIM provider deleted')
+    apiPost('scimProviders', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Auto Detection Scans ----
@@ -4719,32 +5004,38 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setAutoDetectionScans(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'auto_detection_scan', id, `Created auto detection scan ${data.name || ''}`)
     addToast('Auto detection scan created')
+    apiPost('autoDetectionScans', 'create', data)
   }, [logAudit, addToast])
   const updateAutoDetectionScan = useCallback((id: string, data: AnyRecord) => {
     setAutoDetectionScans(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'auto_detection_scan', id, 'Updated auto detection scan')
     addToast('Auto detection scan updated')
+    apiPost('autoDetectionScans', 'update', data, id)
   }, [logAudit, addToast])
   const deleteAutoDetectionScan = useCallback((id: string) => {
     setAutoDetectionScans(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'auto_detection_scan', id, 'Deleted auto detection scan')
     addToast('Auto detection scan deleted')
+    apiPost('autoDetectionScans', 'delete', undefined, id)
   }, [logAudit, addToast])
   const addShadowITDetection = useCallback((data: AnyRecord) => {
     const id = genId('sit')
     setShadowITDetections(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
     logAudit('create', 'shadow_it_detection', id, `Detected shadow IT: ${data.app_name || ''}`)
     addToast('Shadow IT detection added')
+    apiPost('shadowITDetections', 'create', data)
   }, [logAudit, addToast])
   const updateShadowITDetection = useCallback((id: string, data: AnyRecord) => {
     setShadowITDetections(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
     logAudit('update', 'shadow_it_detection', id, 'Updated shadow IT detection')
     addToast('Shadow IT detection updated')
+    apiPost('shadowITDetections', 'update', data, id)
   }, [logAudit, addToast])
   const deleteShadowITDetection = useCallback((id: string) => {
     setShadowITDetections(prev => prev.filter(r => r.id !== id))
     logAudit('delete', 'shadow_it_detection', id, 'Deleted shadow IT detection')
     addToast('Shadow IT detection deleted')
+    apiPost('shadowITDetections', 'delete', undefined, id)
   }, [logAudit, addToast])
 
   // ---- Auth ----

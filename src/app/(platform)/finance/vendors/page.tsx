@@ -37,7 +37,7 @@ const PAYMENT_TERMS_OPTIONS = [
 
 export default function VendorsPage() {
   const tc = useTranslations('common')
-  const { vendors, invoices, addVendor, updateVendor } = useTempo()
+  const { vendors, invoices, addVendor, updateVendor, addToast } = useTempo()
 
   const [activeTab, setActiveTab] = useState<TabKey>('directory')
   const [showVendorModal, setShowVendorModal] = useState(false)
@@ -51,6 +51,64 @@ export default function VendorsPage() {
     tax_id: '',
   })
 
+  // ── Contract CRUD State ──────────────────────
+  const [showContractModal, setShowContractModal] = useState(false)
+  const [editingContractId, setEditingContractId] = useState<string | null>(null)
+  const [localContracts, setLocalContracts] = useState<{
+    id: string; vendor_id: string; contract_number: string; start_date: string; end_date: string;
+    annual_value: number; renewal_type: string; status: string;
+    org_id?: string; currency?: string; performance_rating?: number; notes?: string;
+  }[]>(demoVendorContracts)
+  const [contractForm, setContractForm] = useState({
+    vendor_id: '',
+    contract_number: '',
+    start_date: '',
+    end_date: '',
+    annual_value: '',
+    renewal_type: 'manual' as 'auto' | 'manual',
+    status: 'active' as string,
+  })
+
+  const resetContractForm = () => {
+    setContractForm({ vendor_id: '', contract_number: '', start_date: '', end_date: '', annual_value: '', renewal_type: 'manual', status: 'active' })
+    setEditingContractId(null)
+    setShowContractModal(false)
+  }
+
+  const handleSaveContract = () => {
+    if (!contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value) return
+    const value = parseFloat(contractForm.annual_value)
+    if (isNaN(value)) return
+
+    if (editingContractId) {
+      setLocalContracts(prev => prev.map(c => c.id === editingContractId ? {
+        ...c,
+        vendor_id: contractForm.vendor_id,
+        contract_number: contractForm.contract_number || c.contract_number,
+        start_date: contractForm.start_date,
+        end_date: contractForm.end_date,
+        annual_value: value,
+        renewal_type: contractForm.renewal_type,
+        status: contractForm.status,
+      } : c))
+      addToast('Contract updated successfully', 'success')
+    } else {
+      const id = `vc-${Date.now()}`
+      setLocalContracts(prev => [...prev, {
+        id,
+        vendor_id: contractForm.vendor_id,
+        contract_number: contractForm.contract_number || `CNT-${Date.now().toString(36).toUpperCase()}`,
+        start_date: contractForm.start_date,
+        end_date: contractForm.end_date,
+        annual_value: value,
+        renewal_type: contractForm.renewal_type,
+        status: contractForm.status,
+      }])
+      addToast('Contract created successfully', 'success')
+    }
+    resetContractForm()
+  }
+
   // Vendor spend aggregation from invoices (amounts in cents)
   const vendorSpendMap = useMemo(() => {
     const map: Record<string, number> = {}
@@ -61,7 +119,7 @@ export default function VendorsPage() {
   }, [invoices])
 
   const totalSpend = Object.values(vendorSpendMap).reduce((a, b) => a + b, 0)
-  const activeContracts = demoVendorContracts.filter(c => c.status === 'active').length
+  const activeContracts = localContracts.filter(c => c.status === 'active').length
   const complianceRate = vendors.length > 0
     ? Math.round((vendors.filter(v => v.tax_id).length / vendors.length) * 100)
     : 0
@@ -293,8 +351,13 @@ export default function VendorsPage() {
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Vendor Contracts</CardTitle>
-              <span className="text-xs text-t3">{demoVendorContracts.length} contracts</span>
+              <div className="flex items-center gap-3">
+                <CardTitle>Vendor Contracts</CardTitle>
+                <span className="text-xs text-t3">{localContracts.length} contracts</span>
+              </div>
+              <Button onClick={() => { resetContractForm(); setShowContractModal(true) }}>
+                <Plus size={14} /> New Contract
+              </Button>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">
@@ -308,10 +371,11 @@ export default function VendorsPage() {
                   <th className="tempo-th text-right px-4 py-3">Annual Value</th>
                   <th className="tempo-th text-center px-4 py-3">Renewal</th>
                   <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                  <th className="tempo-th text-center px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {demoVendorContracts.map(contract => {
+                {localContracts.map(contract => {
                   const vendor = vendors.find(v => v.id === contract.vendor_id)
                   const isExpiringSoon = contract.status === 'expiring_soon'
                   const endDate = new Date(contract.end_date)
@@ -352,6 +416,26 @@ export default function VendorsPage() {
                         }>
                           {isExpiringSoon ? 'Expiring Soon' : contract.status}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => {
+                            setEditingContractId(contract.id)
+                            setContractForm({
+                              vendor_id: contract.vendor_id,
+                              contract_number: contract.contract_number,
+                              start_date: contract.start_date,
+                              end_date: contract.end_date,
+                              annual_value: String(contract.annual_value),
+                              renewal_type: contract.renewal_type as 'auto' | 'manual',
+                              status: contract.status,
+                            })
+                            setShowContractModal(true)
+                          }}
+                          className="text-tempo-600 hover:text-tempo-700"
+                        >
+                          <Edit size={14} />
+                        </button>
                       </td>
                     </tr>
                   )
@@ -610,6 +694,83 @@ export default function VendorsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowVendorModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitVendor}>{editingVendor ? tc('save') : 'Add Vendor'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Contract Create/Edit Modal ── */}
+      <Modal
+        open={showContractModal}
+        onClose={resetContractForm}
+        title={editingContractId ? 'Edit Contract' : 'New Vendor Contract'}
+      >
+        <div className="space-y-4">
+          <Select
+            label="Vendor"
+            value={contractForm.vendor_id}
+            onChange={(e) => setContractForm({ ...contractForm, vendor_id: e.target.value })}
+            options={[
+              { value: '', label: 'Select vendor...' },
+              ...vendors.map(v => ({ value: v.id, label: v.name })),
+            ]}
+          />
+          <Input
+            label="Contract Number"
+            placeholder="Auto-generated if empty"
+            value={contractForm.contract_number}
+            onChange={(e) => setContractForm({ ...contractForm, contract_number: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start Date"
+              type="date"
+              value={contractForm.start_date}
+              onChange={(e) => setContractForm({ ...contractForm, start_date: e.target.value })}
+            />
+            <Input
+              label="End Date"
+              type="date"
+              value={contractForm.end_date}
+              onChange={(e) => setContractForm({ ...contractForm, end_date: e.target.value })}
+            />
+          </div>
+          <Input
+            label="Annual Value ($)"
+            type="number"
+            placeholder="e.g. 50000"
+            value={contractForm.annual_value}
+            onChange={(e) => setContractForm({ ...contractForm, annual_value: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Renewal Type"
+              value={contractForm.renewal_type}
+              onChange={(e) => setContractForm({ ...contractForm, renewal_type: e.target.value as 'auto' | 'manual' })}
+              options={[
+                { value: 'manual', label: 'Manual' },
+                { value: 'auto', label: 'Auto-Renew' },
+              ]}
+            />
+            <Select
+              label="Status"
+              value={contractForm.status}
+              onChange={(e) => setContractForm({ ...contractForm, status: e.target.value })}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'expiring_soon', label: 'Expiring Soon' },
+                { value: 'expired', label: 'Expired' },
+                { value: 'terminated', label: 'Terminated' },
+              ]}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={resetContractForm}>{tc('cancel')}</Button>
+            <Button
+              onClick={handleSaveContract}
+              disabled={!contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value}
+            >
+              {editingContractId ? tc('save') : 'Create Contract'}
+            </Button>
           </div>
         </div>
       </Modal>

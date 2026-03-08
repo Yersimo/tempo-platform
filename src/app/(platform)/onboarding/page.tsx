@@ -22,7 +22,8 @@ import {
   BookOpen, Heart, UserPlus, Clock, DollarSign, FolderKanban,
   Star, Lightbulb, Calendar, Laptop, Play, FileText, Package,
   GraduationCap, Send, Sparkles, Timer, ChevronRight, User,
-  CheckSquare, Video, Coffee, MapPin, Upload, Download, AlertCircle, Table
+  CheckSquare, Video, Coffee, MapPin, Upload, Download, AlertCircle, Table,
+  Plus, X
 } from 'lucide-react'
 
 // ─── Platform Setup Wizard (preserved from original) ─────────────────
@@ -290,6 +291,13 @@ export default function OnboardingPage() {
   const [preboardCategoryFilter, setPreboardCategoryFilter] = useState('all')
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
   const [taskForm, setTaskForm] = useState({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
+
+  // ─── Template Builder State ─────────────────────────────────────────
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templateCategory, setTemplateCategory] = useState('documents')
+  const [templateItems, setTemplateItems] = useState<{ title: string; description: string; due_days: number; assignee: string }[]>([])
+  const [templateItemForm, setTemplateItemForm] = useState({ title: '', description: '', due_days: 7, assignee: '' })
 
   // ─── Bulk Preboarding Tasks State ────────────────────────────────
   const [showBulkTaskModal, setShowBulkTaskModal] = useState(false)
@@ -571,6 +579,38 @@ export default function OnboardingPage() {
     })
     setTaskForm({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
     setShowAddTaskModal(false)
+  }
+
+  const addTemplateItem = () => {
+    if (!templateItemForm.title) return
+    setTemplateItems(prev => [...prev, { ...templateItemForm }])
+    setTemplateItemForm({ title: '', description: '', due_days: 7, assignee: '' })
+  }
+
+  const removeTemplateItem = (idx: number) => {
+    setTemplateItems(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const applyTemplate = (employeeId: string) => {
+    if (!employeeId || templateItems.length === 0) return
+    const today = new Date()
+    templateItems.forEach(item => {
+      const dueDate = new Date(today.getTime() + item.due_days * 86400000).toISOString().split('T')[0]
+      addPreboardingTask({
+        employee_id: employeeId,
+        title: item.title,
+        category: templateCategory,
+        status: 'pending',
+        priority: 'medium',
+        due_date: dueDate,
+        completed_date: null,
+      })
+    })
+    addToast(`Applied template "${templateName}" with ${templateItems.length} tasks`)
+    setShowTemplateModal(false)
+    setTemplateName('')
+    setTemplateCategory('documents')
+    setTemplateItems([])
   }
 
   // ─── Setup Wizard Render ───────────────────────────────────────────
@@ -1422,9 +1462,14 @@ export default function OnboardingPage() {
                 </button>
               ))}
             </div>
-            <Button onClick={() => setShowAddTaskModal(true)}>
-              <FileText size={14} /> {tc('add')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowTemplateModal(true)}>
+                <Table size={14} /> Create Template
+              </Button>
+              <Button onClick={() => setShowAddTaskModal(true)}>
+                <FileText size={14} /> {tc('add')}
+              </Button>
+            </div>
           </div>
 
           {/* Task List */}
@@ -1505,6 +1550,102 @@ export default function OnboardingPage() {
               </div>
             </div>
           </Card>
+
+          {/* Template Builder Modal */}
+          <Modal open={showTemplateModal} onClose={() => setShowTemplateModal(false)} title="Create Checklist Template" size="lg">
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-t1 block mb-1">Template Name</label>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                  placeholder="e.g. Engineering Onboarding Checklist"
+                />
+              </div>
+              <Select label="Category" value={templateCategory} onChange={e => setTemplateCategory(e.target.value)} options={[
+                { value: 'documents', label: t('documentsCategory') },
+                { value: 'benefits', label: t('benefitsCategory') },
+                { value: 'payroll', label: t('payrollCategory') },
+                { value: 'equipment', label: t('equipmentCategory') },
+                { value: 'training', label: t('trainingCategory') },
+                { value: 'accounts', label: t('accountsCategory') },
+              ]} />
+
+              {/* Existing template items */}
+              {templateItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-t1">Checklist Items ({templateItems.length})</p>
+                  {templateItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-canvas border border-border rounded-lg">
+                      <CheckSquare size={14} className="text-tempo-600 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-t1 truncate">{item.title}</p>
+                        {item.description && <p className="text-xs text-t3 truncate">{item.description}</p>}
+                      </div>
+                      <span className="text-xs text-t3 shrink-0">Due: +{item.due_days}d</span>
+                      <button onClick={() => removeTemplateItem(idx)} className="text-t3 hover:text-error shrink-0">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new item form */}
+              <div className="p-3 bg-canvas border border-dashed border-border rounded-lg space-y-3">
+                <p className="text-xs font-medium text-t2">Add Checklist Item</p>
+                <input
+                  type="text"
+                  value={templateItemForm.title}
+                  onChange={e => setTemplateItemForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                  placeholder="Item title..."
+                />
+                <input
+                  type="text"
+                  value={templateItemForm.description}
+                  onChange={e => setTemplateItemForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                  placeholder="Description (optional)..."
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-t1 block mb-1">Due (days after start)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={templateItemForm.due_days}
+                      onChange={e => setTemplateItemForm(f => ({ ...f, due_days: parseInt(e.target.value) || 7 }))}
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                    />
+                  </div>
+                  <Select label="Assignee" value={templateItemForm.assignee} onChange={e => setTemplateItemForm(f => ({ ...f, assignee: e.target.value }))} options={[
+                    { value: '', label: 'New Hire (self)' },
+                    { value: 'manager', label: 'Manager' },
+                    { value: 'hr', label: 'HR Team' },
+                    { value: 'it', label: 'IT Team' },
+                  ]} />
+                </div>
+                <Button variant="secondary" onClick={addTemplateItem} disabled={!templateItemForm.title} className="w-full">
+                  <Plus size={14} /> Add Item
+                </Button>
+              </div>
+
+              {/* Apply template to employee */}
+              {templateItems.length > 0 && (
+                <div className="border-t border-divider pt-4 space-y-3">
+                  <p className="text-xs font-medium text-t1">Apply Template to New Hire</p>
+                  <Select label={t('newHire')} value="" onChange={e => { if (e.target.value) applyTemplate(e.target.value) }} options={[
+                    { value: '', label: t('selectNewHire') },
+                    ...employees.map(e => ({ value: e.id, label: e.profile.full_name })),
+                  ]} />
+                  <p className="text-xs text-t3">Select a new hire to create {templateItems.length} tasks from this template</p>
+                </div>
+              )}
+            </div>
+          </Modal>
 
           {/* Add Task Modal */}
           <Modal open={showAddTaskModal} onClose={() => setShowAddTaskModal(false)} title={t('preboardingTasks')}>

@@ -59,8 +59,13 @@ export default function OffboardingPage() {
     addOffboardingChecklistItem, updateOffboardingChecklistItem, deleteOffboardingChecklistItem,
     addOffboardingProcess, updateOffboardingProcess,
     addOffboardingTask, updateOffboardingTask,
-    addExitSurvey,
+    addExitSurvey, addToast,
   } = useTempo()
+
+  // ── Knowledge Transfer State ────────────────────
+  const [showKTModal, setShowKTModal] = useState(false)
+  const [ktItems, setKTItems] = useState<{ id: string; employee_id: string; area: string; recipient_id: string; status: 'pending' | 'in_progress' | 'completed'; notes: string; created_at: string }[]>([])
+  const [ktForm, setKTForm] = useState({ employee_id: '', area: '', recipient_id: '', notes: '' })
 
   // ── Tab State ───────────────────────────────
   const [activeTab, setActiveTab] = useState('processes')
@@ -68,6 +73,7 @@ export default function OffboardingPage() {
     { id: 'processes', label: 'Active Processes', count: offboardingProcesses.filter(p => p.status !== 'completed' && p.status !== 'cancelled').length },
     { id: 'checklists', label: 'Checklists', count: offboardingChecklists.length },
     { id: 'surveys', label: 'Exit Surveys', count: exitSurveys.length },
+    { id: 'knowledge-transfer', label: 'Knowledge Transfer', count: ktItems.length },
     { id: 'analytics', label: 'Analytics' },
   ]
 
@@ -93,6 +99,22 @@ export default function OffboardingPage() {
 
   // ── Survey State ────────────────────────────
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const [showSurveyModal, setShowSurveyModal] = useState(false)
+  const [surveyForm, setSurveyForm] = useState({
+    employee_id: '',
+    is_anonymous: false,
+    overall_satisfaction: 3,
+    management_rating: 3,
+    work_life_balance: 3,
+    career_growth: 3,
+    compensation_satisfaction: 3,
+    team_culture: 3,
+    reason_for_leaving: '',
+    what_could_improve: '',
+    best_part: '',
+    additional_comments: '',
+    would_recommend: true,
+  })
 
   // ═══════════════════════════════════════════════
   //  COMPUTED VALUES
@@ -280,6 +302,39 @@ export default function OffboardingPage() {
     setShowChecklistModal(false)
     setEditingChecklistId(null)
     setChecklistForm({ name: '', description: '', is_default: false })
+  }
+
+  function handleSubmitSurvey() {
+    if (!surveyForm.employee_id && !surveyForm.is_anonymous) {
+      addToast('Please select an employee or mark as anonymous', 'error')
+      return
+    }
+    addExitSurvey({
+      employee_id: surveyForm.is_anonymous ? null : surveyForm.employee_id,
+      is_anonymous: surveyForm.is_anonymous,
+      responses: {
+        overall_satisfaction: surveyForm.overall_satisfaction,
+        management_rating: surveyForm.management_rating,
+        work_life_balance: surveyForm.work_life_balance,
+        career_growth: surveyForm.career_growth,
+        compensation_satisfaction: surveyForm.compensation_satisfaction,
+        team_culture: surveyForm.team_culture,
+        reason_for_leaving: surveyForm.reason_for_leaving,
+        what_could_improve: surveyForm.what_could_improve,
+        best_part: surveyForm.best_part,
+        additional_comments: surveyForm.additional_comments,
+        would_recommend: surveyForm.would_recommend,
+      },
+    })
+    addToast('Exit survey submitted successfully')
+    setShowSurveyModal(false)
+    setSurveyForm({
+      employee_id: '', is_anonymous: false,
+      overall_satisfaction: 3, management_rating: 3, work_life_balance: 3,
+      career_growth: 3, compensation_satisfaction: 3, team_culture: 3,
+      reason_for_leaving: '', what_could_improve: '', best_part: '',
+      additional_comments: '', would_recommend: true,
+    })
   }
 
   function handleSaveItem() {
@@ -798,6 +853,12 @@ export default function OffboardingPage() {
                   </Card>
                 )}
 
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => setShowSurveyModal(true)}>
+                    <Plus size={14} className="mr-1" /> Submit Exit Survey
+                  </Button>
+                </div>
+
                 {exitSurveys.length === 0 ? (
                   <Card className="text-center py-12">
                     <MessageSquareText size={32} className="mx-auto text-t3 mb-3" />
@@ -843,6 +904,149 @@ export default function OffboardingPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: Knowledge Transfer
+        ═══════════════════════════════════════ */}
+        {activeTab === 'knowledge-transfer' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-t1">Knowledge Transfer Tracking</h3>
+                <p className="text-xs text-t3">Document and track knowledge handovers for departing employees</p>
+              </div>
+              <Button onClick={() => setShowKTModal(true)}>
+                <Plus size={14} /> Add Knowledge Area
+              </Button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label="Total Areas" value={ktItems.length} icon={<BookOpen size={18} />} />
+              <StatCard label="In Progress" value={ktItems.filter(k => k.status === 'in_progress').length} icon={<Clock size={18} />} />
+              <StatCard label="Completed" value={ktItems.filter(k => k.status === 'completed').length} icon={<CheckCircle2 size={18} />} />
+            </div>
+
+            {/* Knowledge Transfer Items */}
+            {ktItems.length === 0 ? (
+              <Card>
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500 mx-auto mb-3">
+                    <BookOpen size={24} />
+                  </div>
+                  <p className="text-sm font-medium text-t1 mb-1">No knowledge transfers yet</p>
+                  <p className="text-xs text-t3">Create a knowledge transfer area to track handovers</p>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {ktItems.map(item => {
+                  const emp = employees.find(e => e.id === item.employee_id)
+                  const recipient = employees.find(e => e.id === item.recipient_id)
+                  return (
+                    <Card key={item.id}>
+                      <div className="p-4 flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          item.status === 'completed' ? 'bg-green-50 text-green-600' :
+                          item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' :
+                          'bg-gray-50 text-gray-500'
+                        }`}>
+                          <BookOpen size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1">{item.area}</p>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs text-t3">From: {emp?.profile?.full_name || 'Unknown'}</span>
+                            <span className="text-xs text-t3">To: {recipient?.profile?.full_name || 'Unknown'}</span>
+                          </div>
+                          {item.notes && <p className="text-xs text-t3 mt-0.5 truncate">{item.notes}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <select
+                            value={item.status}
+                            onChange={e => {
+                              setKTItems(prev => prev.map(k =>
+                                k.id === item.id ? { ...k, status: e.target.value as 'pending' | 'in_progress' | 'completed' } : k
+                              ))
+                              addToast(`Knowledge transfer "${item.area}" updated to ${e.target.value.replace('_', ' ')}`)
+                            }}
+                            className="text-xs bg-canvas border border-border rounded-lg px-2 py-1 text-t1 outline-none focus:border-tempo-600"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                          <Badge variant={
+                            item.status === 'completed' ? 'success' :
+                            item.status === 'in_progress' ? 'info' : 'warning'
+                          }>
+                            {item.status === 'in_progress' ? 'In Progress' : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Add Knowledge Transfer Modal */}
+            <Modal open={showKTModal} onClose={() => setShowKTModal(false)} title="Add Knowledge Transfer Area">
+              <div className="space-y-4">
+                <Select label="Departing Employee" value={ktForm.employee_id} onChange={e => setKTForm(f => ({ ...f, employee_id: e.target.value }))} options={[
+                  { value: '', label: 'Select employee...' },
+                  ...employees.map(e => ({ value: e.id, label: e.profile.full_name })),
+                ]} />
+                <div>
+                  <label className="text-xs font-medium text-t1 block mb-1">Knowledge Area</label>
+                  <input
+                    type="text"
+                    value={ktForm.area}
+                    onChange={e => setKTForm(f => ({ ...f, area: e.target.value }))}
+                    className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+                    placeholder="e.g. Client onboarding process, API documentation..."
+                  />
+                </div>
+                <Select label="Transfer Recipient" value={ktForm.recipient_id} onChange={e => setKTForm(f => ({ ...f, recipient_id: e.target.value }))} options={[
+                  { value: '', label: 'Select recipient...' },
+                  ...employees.filter(e => e.id !== ktForm.employee_id).map(e => ({ value: e.id, label: e.profile.full_name })),
+                ]} />
+                <div>
+                  <label className="text-xs font-medium text-t1 block mb-1">Notes</label>
+                  <textarea
+                    value={ktForm.notes}
+                    onChange={e => setKTForm(f => ({ ...f, notes: e.target.value }))}
+                    className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none resize-none"
+                    rows={3}
+                    placeholder="Additional context or details..."
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!ktForm.employee_id || !ktForm.area || !ktForm.recipient_id) return
+                    const id = `kt-${Date.now()}`
+                    setKTItems(prev => [...prev, {
+                      id,
+                      employee_id: ktForm.employee_id,
+                      area: ktForm.area,
+                      recipient_id: ktForm.recipient_id,
+                      status: 'pending',
+                      notes: ktForm.notes,
+                      created_at: new Date().toISOString(),
+                    }])
+                    addToast(`Knowledge transfer area "${ktForm.area}" created`)
+                    setKTForm({ employee_id: '', area: '', recipient_id: '', notes: '' })
+                    setShowKTModal(false)
+                  }}
+                  disabled={!ktForm.employee_id || !ktForm.area || !ktForm.recipient_id}
+                  className="w-full"
+                >
+                  Create Knowledge Transfer
+                </Button>
+              </div>
+            </Modal>
           </div>
         )}
 
@@ -1111,6 +1315,113 @@ export default function OffboardingPage() {
             <Button variant="ghost" onClick={() => setShowItemModal(false)}>Cancel</Button>
             <Button onClick={handleSaveItem} disabled={!itemForm.title}>
               Add Item
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════════════════════════
+          MODAL: Submit Exit Survey
+      ═══════════════════════════════════════ */}
+      <Modal
+        open={showSurveyModal}
+        onClose={() => setShowSurveyModal(false)}
+        title="Submit Exit Survey"
+        description="Record feedback from a departing employee"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Select
+              label="Employee"
+              value={surveyForm.employee_id}
+              onChange={(e) => setSurveyForm(prev => ({ ...prev, employee_id: e.target.value }))}
+              options={[
+                { value: '', label: 'Select employee...' },
+                ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || 'Unknown' })),
+              ]}
+              className="flex-1"
+            />
+            <label className="flex items-center gap-2 text-xs text-t1 cursor-pointer mt-5">
+              <input
+                type="checkbox"
+                checked={surveyForm.is_anonymous}
+                onChange={(e) => setSurveyForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                className="rounded border-divider text-tempo-600 focus:ring-tempo-600"
+              />
+              Anonymous
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { key: 'overall_satisfaction', label: 'Overall Satisfaction' },
+              { key: 'management_rating', label: 'Management' },
+              { key: 'work_life_balance', label: 'Work-Life Balance' },
+              { key: 'career_growth', label: 'Career Growth' },
+              { key: 'compensation_satisfaction', label: 'Compensation' },
+              { key: 'team_culture', label: 'Team Culture' },
+            ].map(item => (
+              <div key={item.key}>
+                <label className="text-xs text-t2 block mb-1">{item.label}</label>
+                <select
+                  value={String((surveyForm as any)[item.key])}
+                  onChange={(e) => setSurveyForm(prev => ({ ...prev, [item.key]: Number(e.target.value) }))}
+                  className="w-full px-2 py-1.5 text-xs bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+                >
+                  {[1,2,3,4,5].map(v => (
+                    <option key={v} value={v}>{v} / 5</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <Textarea
+            label="Reason for Leaving"
+            value={surveyForm.reason_for_leaving}
+            onChange={(e) => setSurveyForm(prev => ({ ...prev, reason_for_leaving: e.target.value }))}
+            placeholder="What is the primary reason for leaving?"
+            rows={2}
+          />
+          <Textarea
+            label="What Could Improve"
+            value={surveyForm.what_could_improve}
+            onChange={(e) => setSurveyForm(prev => ({ ...prev, what_could_improve: e.target.value }))}
+            placeholder="What could the company do better?"
+            rows={2}
+          />
+          <Textarea
+            label="Best Part of Working Here"
+            value={surveyForm.best_part}
+            onChange={(e) => setSurveyForm(prev => ({ ...prev, best_part: e.target.value }))}
+            placeholder="What did you enjoy most about working here?"
+            rows={2}
+          />
+          <Textarea
+            label="Additional Comments"
+            value={surveyForm.additional_comments}
+            onChange={(e) => setSurveyForm(prev => ({ ...prev, additional_comments: e.target.value }))}
+            placeholder="Any other feedback..."
+            rows={2}
+          />
+          <label className="flex items-center gap-2 text-xs text-t1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={surveyForm.would_recommend}
+              onChange={(e) => setSurveyForm(prev => ({ ...prev, would_recommend: e.target.checked }))}
+              className="rounded border-divider text-tempo-600 focus:ring-tempo-600"
+            />
+            Would recommend this company to others
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setShowSurveyModal(false)}>Cancel</Button>
+            <Button
+              onClick={handleSubmitSurvey}
+              disabled={!surveyForm.employee_id && !surveyForm.is_anonymous}
+            >
+              Submit Survey
             </Button>
           </div>
         </div>

@@ -1850,6 +1850,36 @@ export default function PerformancePage() {
             { value: '2', label: '2 - Needs Improvement' },
             { value: '1', label: '1 - Unsatisfactory' },
           ]} />
+          {/* Budget status indicator */}
+          {meritRecForm.cycle_id && (() => {
+            const cycle = meritCycles.find(c => c.id === meritRecForm.cycle_id)
+            if (!cycle) return null
+            const existingAllocated = meritRecommendations
+              .filter(r => r.cycle_id === meritRecForm.cycle_id)
+              .reduce((sum: number, r: any) => sum + r.increase_amount, 0)
+            const increaseAmount = meritRecForm.proposed_salary > 0 && meritRecForm.current_salary > 0
+              ? meritRecForm.proposed_salary - meritRecForm.current_salary : 0
+            const projectedTotal = existingAllocated + increaseAmount
+            const remaining = cycle.total_budget - projectedTotal
+            const isOverBudget = remaining < 0
+            return (
+              <div className={`p-3 rounded-lg border ${isOverBudget ? 'bg-red-50 border-red-200' : 'bg-surface-secondary border-divider'}`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-t2">Cycle Budget: ${cycle.total_budget.toLocaleString()}</span>
+                  <span className="text-t2">Already Allocated: ${existingAllocated.toLocaleString()}</span>
+                  <span className={`font-medium ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
+                    {isOverBudget ? 'Over budget' : 'Remaining'}: ${Math.abs(remaining).toLocaleString()}
+                  </span>
+                </div>
+                {isOverBudget && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <AlertTriangle size={12} className="text-red-600" />
+                    <span className="text-xs text-red-700">This recommendation will exceed the cycle budget</span>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <Textarea label="Justification" placeholder="Provide detailed justification for this recommendation..." rows={3} value={meritRecForm.justification} onChange={(e) => setMeritRecForm({ ...meritRecForm, justification: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMeritRecModal(false)}>Cancel</Button>
@@ -1857,6 +1887,20 @@ export default function PerformancePage() {
               if (!meritRecForm.employee_id || !meritRecForm.current_salary || !meritRecForm.proposed_salary) return
               const increaseAmount = meritRecForm.proposed_salary - meritRecForm.current_salary
               const increasePercent = (increaseAmount / meritRecForm.current_salary) * 100
+
+              // Budget validation
+              const cycle = meritCycles.find(c => c.id === meritRecForm.cycle_id)
+              if (cycle) {
+                const existingAllocated = meritRecommendations
+                  .filter(r => r.cycle_id === meritRecForm.cycle_id)
+                  .reduce((sum: number, r: any) => sum + r.increase_amount, 0)
+                const newTotal = existingAllocated + increaseAmount
+                if (newTotal > cycle.total_budget) {
+                  const overBy = newTotal - cycle.total_budget
+                  addToast(`Warning: This recommendation exceeds the cycle budget by $${overBy.toLocaleString()}. Total allocated: $${newTotal.toLocaleString()} / Budget: $${cycle.total_budget.toLocaleString()}`, 'error')
+                }
+              }
+
               addMeritRecommendation({
                 cycle_id: meritRecForm.cycle_id,
                 employee_id: meritRecForm.employee_id,
