@@ -102,6 +102,7 @@ interface TempoState {
   contentLibrary: WidenArray<DemoData['demoContentLibrary']>
   learnerBadges: WidenArray<DemoData['demoLearnerBadges']>
   learnerPoints: WidenArray<DemoData['demoLearnerPoints']>
+  certificateTemplates: WidenArray<DemoData['demoCertificateTemplates']>
 
   // Engagement
   surveys: WidenArray<DemoData['demoSurveys']>
@@ -428,6 +429,10 @@ interface TempoState {
 
   // Learner Points
   addLearnerPoints: (data: AnyRecord) => void
+
+  // Certificate Templates
+  addCertificateTemplate: (data: AnyRecord) => void
+  updateCertificateTemplate: (id: string, data: AnyRecord) => void
 
   // Surveys
   addSurvey: (data: AnyRecord) => void
@@ -1241,6 +1246,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [contentLibrary, setContentLibrary] = useState<any[]>([])
   const [learnerBadges, setLearnerBadges] = useState<any[]>([])
   const [learnerPoints, setLearnerPoints] = useState<any[]>([])
+  const [certificateTemplates, setCertificateTemplates] = useState<any[]>([])
   const [surveys, setSurveys] = useState<any[]>([])
   const [engagementScores, setEngagementScores] = useState<any[]>([])
   const [actionPlans, setActionPlans] = useState<any[]>([])
@@ -1515,6 +1521,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).autoEnrollRules) setAutoEnrollRules((data as any).autoEnrollRules)
     if ((data as any).assessmentAttempts) setAssessmentAttempts((data as any).assessmentAttempts)
     if ((data as any).learningAssignments) setLearningAssignments((data as any).learningAssignments)
+    if ((data as any).certificateTemplates) setCertificateTemplates((data as any).certificateTemplates)
     setSurveys(data.surveys as any)
     setEngagementScores(data.engagementScores as any)
     setActionPlans(data.actionPlans as any)
@@ -2601,6 +2608,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- CRUD: Learner Points ----
   const addLearnerPoints = useCallback((data: AnyRecord) => { const id = genId('lp'); setLearnerPoints(prev => [...prev, { id, org_id: orgIdRef.current, earned_at: new Date().toISOString(), ...data }] as typeof prev) }, [])
+
+  // ---- CRUD: Certificate Templates ----
+  const addCertificateTemplate = useCallback((data: AnyRecord) => { const id = genId('cert-tpl'); setCertificateTemplates(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev); logAudit('create', 'certificate_template', id, `Created template: ${data.name}`); addToast('Certificate template created') }, [logAudit, addToast])
+  const updateCertificateTemplate = useCallback((id: string, data: AnyRecord) => { setCertificateTemplates(prev => prev.map(ct => ct.id === id ? { ...ct, ...data } : ct) as typeof prev); logAudit('update', 'certificate_template', id, 'Updated certificate template'); addToast('Certificate template updated') }, [logAudit, addToast])
 
   // ---- CRUD: Survey Templates ----
   const addSurveyTemplate = useCallback((data: AnyRecord) => {
@@ -4897,6 +4908,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     contentLibrary, addContentLibraryItem, updateContentLibraryItem, deleteContentLibraryItem,
     learnerBadges, addLearnerBadge,
     learnerPoints, addLearnerPoints,
+    certificateTemplates, addCertificateTemplate, updateCertificateTemplate,
     addSurvey, updateSurvey,
     addActionPlan, updateActionPlan,
     surveyTemplates, surveySchedules, surveyTriggers, openEndedResponses,

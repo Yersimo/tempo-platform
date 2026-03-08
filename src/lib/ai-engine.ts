@@ -5144,3 +5144,113 @@ export function generateAdaptiveDifficulty(
     confidence: toConfidence(confidenceScore),
   }
 }
+
+// ---- Content Translation (Simulated) ----
+
+const LANG_CONFIG: Record<string, { code: string; name: string; wordMap: Record<string, string> }> = {
+  french:     { code: 'FR', name: 'French',     wordMap: { the: 'le', and: 'et', is: 'est', are: 'sont', of: 'de', to: 'à', in: 'dans', for: 'pour', with: 'avec', this: 'ce', that: 'ce', it: 'il', not: 'pas', on: 'sur', by: 'par', from: 'de', or: 'ou', an: 'un', be: 'être', was: 'était', has: 'a', have: 'ont', will: 'va', can: 'peut', all: 'tout', but: 'mais', new: 'nouveau', your: 'votre', our: 'notre', their: 'leur' } },
+  spanish:    { code: 'ES', name: 'Spanish',    wordMap: { the: 'el', and: 'y', is: 'es', are: 'son', of: 'de', to: 'a', in: 'en', for: 'para', with: 'con', this: 'este', that: 'ese', it: 'ello', not: 'no', on: 'en', by: 'por', from: 'de', or: 'o', an: 'un', be: 'ser', was: 'fue', has: 'tiene', have: 'tienen', will: 'va', can: 'puede', all: 'todo', but: 'pero', new: 'nuevo', your: 'su', our: 'nuestro', their: 'su' } },
+  portuguese: { code: 'PT', name: 'Portuguese', wordMap: { the: 'o', and: 'e', is: 'é', are: 'são', of: 'de', to: 'para', in: 'em', for: 'para', with: 'com', this: 'este', that: 'esse', it: 'ele', not: 'não', on: 'em', by: 'por', from: 'de', or: 'ou', an: 'um', be: 'ser', was: 'foi', has: 'tem', have: 'têm', will: 'vai', can: 'pode', all: 'todo', but: 'mas', new: 'novo', your: 'seu', our: 'nosso', their: 'seu' } },
+  german:     { code: 'DE', name: 'German',     wordMap: { the: 'die', and: 'und', is: 'ist', are: 'sind', of: 'von', to: 'zu', in: 'in', for: 'für', with: 'mit', this: 'dies', that: 'das', it: 'es', not: 'nicht', on: 'auf', by: 'von', from: 'aus', or: 'oder', an: 'ein', be: 'sein', was: 'war', has: 'hat', have: 'haben', will: 'wird', can: 'kann', all: 'alle', but: 'aber', new: 'neu', your: 'Ihr', our: 'unser', their: 'ihr' } },
+  arabic:     { code: 'AR', name: 'Arabic',     wordMap: { the: 'ال', and: 'و', is: 'هو', are: 'هم', of: 'من', to: 'إلى', in: 'في', for: 'ل', with: 'مع', this: 'هذا', that: 'ذلك', it: 'هو', not: 'لا', on: 'على', by: 'ب', from: 'من', or: 'أو', an: 'أ', be: 'يكون', was: 'كان', has: 'لديه', have: 'لديهم', will: 'سوف', can: 'يمكن', all: 'كل', but: 'لكن', new: 'جديد', your: 'لك', our: 'لنا', their: 'لهم' } },
+  swahili:    { code: 'SW', name: 'Swahili',    wordMap: { the: 'ya', and: 'na', is: 'ni', are: 'ni', of: 'ya', to: 'kwa', in: 'katika', for: 'kwa', with: 'na', this: 'hii', that: 'hiyo', it: 'ni', not: 'si', on: 'juu', by: 'na', from: 'kutoka', or: 'au', an: 'moja', be: 'kuwa', was: 'alikuwa', has: 'ana', have: 'wana', will: 'ata', can: 'anaweza', all: 'yote', but: 'lakini', new: 'mpya', your: 'yako', our: 'yetu', their: 'yao' } },
+  chinese:    { code: 'ZH', name: 'Chinese',    wordMap: { the: '该', and: '和', is: '是', are: '是', of: '的', to: '到', in: '在', for: '为', with: '与', this: '这', that: '那', it: '它', not: '不', on: '上', by: '由', from: '从', or: '或', an: '一个', be: '是', was: '是', has: '有', have: '有', will: '将', can: '能', all: '所有', but: '但', new: '新', your: '你的', our: '我们的', their: '他们的' } },
+  japanese:   { code: 'JA', name: 'Japanese',   wordMap: { the: 'その', and: 'と', is: 'です', are: 'です', of: 'の', to: 'へ', in: 'で', for: 'のために', with: 'と', this: 'この', that: 'あの', it: 'それ', not: 'ない', on: 'に', by: 'により', from: 'から', or: 'または', an: '一つの', be: 'である', was: 'でした', has: '持つ', have: '持つ', will: 'だろう', can: 'できる', all: 'すべて', but: 'しかし', new: '新しい', your: 'あなたの', our: '私たちの', their: '彼らの' } },
+  hindi:      { code: 'HI', name: 'Hindi',      wordMap: { the: 'यह', and: 'और', is: 'है', are: 'हैं', of: 'का', to: 'को', in: 'में', for: 'के लिए', with: 'के साथ', this: 'यह', that: 'वह', it: 'यह', not: 'नहीं', on: 'पर', by: 'द्वारा', from: 'से', or: 'या', an: 'एक', be: 'होना', was: 'था', has: 'है', have: 'हैं', will: 'होगा', can: 'कर सकता', all: 'सब', but: 'लेकिन', new: 'नया', your: 'आपका', our: 'हमारा', their: 'उनका' } },
+  korean:     { code: 'KO', name: 'Korean',     wordMap: { the: '그', and: '그리고', is: '이다', are: '이다', of: '의', to: '에', in: '에서', for: '위해', with: '와', this: '이', that: '저', it: '그것', not: '아니', on: '위에', by: '에 의해', from: '에서', or: '또는', an: '하나', be: '되다', was: '였다', has: '가지다', have: '가지다', will: '할 것', can: '할 수 있다', all: '모든', but: '하지만', new: '새로운', your: '당신의', our: '우리의', their: '그들의' } },
+  italian:    { code: 'IT', name: 'Italian',    wordMap: { the: 'il', and: 'e', is: 'è', are: 'sono', of: 'di', to: 'a', in: 'in', for: 'per', with: 'con', this: 'questo', that: 'quello', it: 'esso', not: 'non', on: 'su', by: 'da', from: 'da', or: 'o', an: 'un', be: 'essere', was: 'era', has: 'ha', have: 'hanno', will: 'sarà', can: 'può', all: 'tutto', but: 'ma', new: 'nuovo', your: 'vostro', our: 'nostro', their: 'loro' } },
+  dutch:      { code: 'NL', name: 'Dutch',      wordMap: { the: 'de', and: 'en', is: 'is', are: 'zijn', of: 'van', to: 'naar', in: 'in', for: 'voor', with: 'met', this: 'dit', that: 'dat', it: 'het', not: 'niet', on: 'op', by: 'door', from: 'van', or: 'of', an: 'een', be: 'zijn', was: 'was', has: 'heeft', have: 'hebben', will: 'zal', can: 'kan', all: 'alle', but: 'maar', new: 'nieuw', your: 'uw', our: 'ons', their: 'hun' } },
+  russian:    { code: 'RU', name: 'Russian',    wordMap: { the: '', and: 'и', is: 'это', are: 'являются', of: 'из', to: 'к', in: 'в', for: 'для', with: 'с', this: 'это', that: 'тот', it: 'оно', not: 'не', on: 'на', by: 'по', from: 'от', or: 'или', an: 'один', be: 'быть', was: 'был', has: 'имеет', have: 'имеют', will: 'будет', can: 'может', all: 'все', but: 'но', new: 'новый', your: 'ваш', our: 'наш', their: 'их' } },
+  turkish:    { code: 'TR', name: 'Turkish',    wordMap: { the: '', and: 've', is: 'dir', are: 'dir', of: 'nin', to: 'ye', in: 'de', for: 'için', with: 'ile', this: 'bu', that: 'şu', it: 'o', not: 'değil', on: 'üzerinde', by: 'tarafından', from: 'dan', or: 'veya', an: 'bir', be: 'olmak', was: 'idi', has: 'var', have: 'var', will: 'olacak', can: 'yapabilir', all: 'tüm', but: 'ama', new: 'yeni', your: 'senin', our: 'bizim', their: 'onların' } },
+  thai:       { code: 'TH', name: 'Thai',       wordMap: { the: 'ที่', and: 'และ', is: 'คือ', are: 'เป็น', of: 'ของ', to: 'ถึง', in: 'ใน', for: 'สำหรับ', with: 'กับ', this: 'นี้', that: 'นั้น', it: 'มัน', not: 'ไม่', on: 'บน', by: 'โดย', from: 'จาก', or: 'หรือ', an: 'หนึ่ง', be: 'เป็น', was: 'เป็น', has: 'มี', have: 'มี', will: 'จะ', can: 'สามารถ', all: 'ทั้งหมด', but: 'แต่', new: 'ใหม่', your: 'ของคุณ', our: 'ของเรา', their: 'ของพวกเขา' } },
+  vietnamese: { code: 'VI', name: 'Vietnamese', wordMap: { the: 'các', and: 'và', is: 'là', are: 'là', of: 'của', to: 'đến', in: 'trong', for: 'cho', with: 'với', this: 'này', that: 'đó', it: 'nó', not: 'không', on: 'trên', by: 'bởi', from: 'từ', or: 'hoặc', an: 'một', be: 'là', was: 'đã', has: 'có', have: 'có', will: 'sẽ', can: 'có thể', all: 'tất cả', but: 'nhưng', new: 'mới', your: 'của bạn', our: 'của chúng tôi', their: 'của họ' } },
+  indonesian: { code: 'ID', name: 'Indonesian', wordMap: { the: '', and: 'dan', is: 'adalah', are: 'adalah', of: 'dari', to: 'ke', in: 'di', for: 'untuk', with: 'dengan', this: 'ini', that: 'itu', it: 'itu', not: 'tidak', on: 'pada', by: 'oleh', from: 'dari', or: 'atau', an: 'satu', be: 'menjadi', was: 'adalah', has: 'memiliki', have: 'memiliki', will: 'akan', can: 'bisa', all: 'semua', but: 'tetapi', new: 'baru', your: 'Anda', our: 'kami', their: 'mereka' } },
+  malay:      { code: 'MS', name: 'Malay',      wordMap: { the: '', and: 'dan', is: 'adalah', are: 'adalah', of: 'daripada', to: 'ke', in: 'di', for: 'untuk', with: 'dengan', this: 'ini', that: 'itu', it: 'ia', not: 'tidak', on: 'pada', by: 'oleh', from: 'dari', or: 'atau', an: 'satu', be: 'menjadi', was: 'telah', has: 'mempunyai', have: 'mempunyai', will: 'akan', can: 'boleh', all: 'semua', but: 'tetapi', new: 'baharu', your: 'anda', our: 'kami', their: 'mereka' } },
+  polish:     { code: 'PL', name: 'Polish',     wordMap: { the: '', and: 'i', is: 'jest', are: 'są', of: 'z', to: 'do', in: 'w', for: 'dla', with: 'z', this: 'to', that: 'tamto', it: 'to', not: 'nie', on: 'na', by: 'przez', from: 'od', or: 'lub', an: 'jeden', be: 'być', was: 'był', has: 'ma', have: 'mają', will: 'będzie', can: 'może', all: 'wszystko', but: 'ale', new: 'nowy', your: 'twój', our: 'nasz', their: 'ich' } },
+  czech:      { code: 'CS', name: 'Czech',      wordMap: { the: '', and: 'a', is: 'je', are: 'jsou', of: 'z', to: 'do', in: 'v', for: 'pro', with: 's', this: 'toto', that: 'tamto', it: 'to', not: 'ne', on: 'na', by: 'od', from: 'z', or: 'nebo', an: 'jeden', be: 'být', was: 'byl', has: 'má', have: 'mají', will: 'bude', can: 'může', all: 'vše', but: 'ale', new: 'nový', your: 'váš', our: 'náš', their: 'jejich' } },
+  swedish:    { code: 'SV', name: 'Swedish',    wordMap: { the: 'den', and: 'och', is: 'är', are: 'är', of: 'av', to: 'till', in: 'i', for: 'för', with: 'med', this: 'detta', that: 'det', it: 'det', not: 'inte', on: 'på', by: 'av', from: 'från', or: 'eller', an: 'en', be: 'vara', was: 'var', has: 'har', have: 'har', will: 'kommer', can: 'kan', all: 'alla', but: 'men', new: 'ny', your: 'din', our: 'vår', their: 'deras' } },
+  norwegian:  { code: 'NO', name: 'Norwegian',  wordMap: { the: 'den', and: 'og', is: 'er', are: 'er', of: 'av', to: 'til', in: 'i', for: 'for', with: 'med', this: 'dette', that: 'det', it: 'det', not: 'ikke', on: 'på', by: 'av', from: 'fra', or: 'eller', an: 'en', be: 'være', was: 'var', has: 'har', have: 'har', will: 'vil', can: 'kan', all: 'alle', but: 'men', new: 'ny', your: 'din', our: 'vår', their: 'deres' } },
+  danish:     { code: 'DA', name: 'Danish',     wordMap: { the: 'den', and: 'og', is: 'er', are: 'er', of: 'af', to: 'til', in: 'i', for: 'for', with: 'med', this: 'dette', that: 'det', it: 'det', not: 'ikke', on: 'på', by: 'af', from: 'fra', or: 'eller', an: 'en', be: 'være', was: 'var', has: 'har', have: 'har', will: 'vil', can: 'kan', all: 'alle', but: 'men', new: 'ny', your: 'din', our: 'vores', their: 'deres' } },
+  finnish:    { code: 'FI', name: 'Finnish',    wordMap: { the: '', and: 'ja', is: 'on', are: 'ovat', of: '', to: '', in: '', for: 'varten', with: 'kanssa', this: 'tämä', that: 'tuo', it: 'se', not: 'ei', on: 'päällä', by: '', from: '', or: 'tai', an: 'yksi', be: 'olla', was: 'oli', has: 'on', have: 'on', will: 'tulee', can: 'voi', all: 'kaikki', but: 'mutta', new: 'uusi', your: 'sinun', our: 'meidän', their: 'heidän' } },
+  greek:      { code: 'EL', name: 'Greek',      wordMap: { the: 'το', and: 'και', is: 'είναι', are: 'είναι', of: 'του', to: 'σε', in: 'σε', for: 'για', with: 'με', this: 'αυτό', that: 'εκείνο', it: 'αυτό', not: 'δεν', on: 'πάνω', by: 'από', from: 'από', or: 'ή', an: 'ένα', be: 'είμαι', was: 'ήταν', has: 'έχει', have: 'έχουν', will: 'θα', can: 'μπορεί', all: 'όλα', but: 'αλλά', new: 'νέο', your: 'σας', our: 'μας', their: 'τους' } },
+  hebrew:     { code: 'HE', name: 'Hebrew',     wordMap: { the: 'ה', and: 'ו', is: 'הוא', are: 'הם', of: 'של', to: 'ל', in: 'ב', for: 'עבור', with: 'עם', this: 'זה', that: 'ההוא', it: 'זה', not: 'לא', on: 'על', by: 'על ידי', from: 'מ', or: 'או', an: 'אחד', be: 'להיות', was: 'היה', has: 'יש', have: 'יש', will: 'יהיה', can: 'יכול', all: 'כל', but: 'אבל', new: 'חדש', your: 'שלך', our: 'שלנו', their: 'שלהם' } },
+  romanian:   { code: 'RO', name: 'Romanian',   wordMap: { the: '', and: 'și', is: 'este', are: 'sunt', of: 'din', to: 'la', in: 'în', for: 'pentru', with: 'cu', this: 'acest', that: 'acel', it: 'el', not: 'nu', on: 'pe', by: 'de', from: 'de la', or: 'sau', an: 'un', be: 'fi', was: 'a fost', has: 'are', have: 'au', will: 'va', can: 'poate', all: 'tot', but: 'dar', new: 'nou', your: 'dumneavoastră', our: 'nostru', their: 'lor' } },
+  hungarian:  { code: 'HU', name: 'Hungarian',  wordMap: { the: 'a', and: 'és', is: 'van', are: 'vannak', of: '-nak', to: '-hoz', in: '-ban', for: 'számára', with: '-val', this: 'ez', that: 'az', it: 'az', not: 'nem', on: '-on', by: 'által', from: '-ból', or: 'vagy', an: 'egy', be: 'lenni', was: 'volt', has: 'van', have: 'vannak', will: 'fog', can: 'tud', all: 'minden', but: 'de', new: 'új', your: 'tiéd', our: 'miénk', their: 'övék' } },
+  ukrainian:  { code: 'UK', name: 'Ukrainian',  wordMap: { the: '', and: 'і', is: 'є', are: 'є', of: 'з', to: 'до', in: 'в', for: 'для', with: 'з', this: 'це', that: 'те', it: 'воно', not: 'не', on: 'на', by: 'від', from: 'від', or: 'або', an: 'один', be: 'бути', was: 'був', has: 'має', have: 'мають', will: 'буде', can: 'може', all: 'все', but: 'але', new: 'новий', your: 'ваш', our: 'наш', their: 'їхній' } },
+  amharic:    { code: 'AM', name: 'Amharic',    wordMap: { the: 'ው', and: 'እና', is: 'ነው', are: 'ናቸው', of: 'የ', to: 'ወደ', in: 'በ', for: 'ለ', with: 'ከ', this: 'ይህ', that: 'ያ', it: 'እሱ', not: 'አይደለም', on: 'ላይ', by: 'በ', from: 'ከ', or: 'ወይም', an: 'አንድ', be: 'መሆን', was: 'ነበር', has: 'አለው', have: 'አላቸው', will: 'ይሆናል', can: 'ይችላል', all: 'ሁሉ', but: 'ግን', new: 'አዲስ', your: 'የእርስዎ', our: 'የእኛ', their: 'የእነሱ' } },
+  hausa:      { code: 'HA', name: 'Hausa',      wordMap: { the: '', and: 'da', is: 'ne', are: 'ne', of: 'na', to: 'zuwa', in: 'a', for: 'don', with: 'da', this: 'wannan', that: 'wancan', it: 'shi', not: 'ba', on: 'a', by: 'ta', from: 'daga', or: 'ko', an: 'wani', be: 'kasance', was: 'ya kasance', has: 'yana da', have: 'suna da', will: 'za', can: 'iya', all: 'duka', but: 'amma', new: 'sabon', your: 'naka', our: 'namu', their: 'nasu' } },
+  yoruba:     { code: 'YO', name: 'Yoruba',     wordMap: { the: 'náà', and: 'àti', is: 'ni', are: 'ni', of: 'ti', to: 'sí', in: 'nínú', for: 'fún', with: 'pẹ̀lú', this: 'èyí', that: 'ìyẹn', it: 'ó', not: 'kò', on: 'lórí', by: 'nípasẹ̀', from: 'láti', or: 'tàbí', an: 'kan', be: 'jẹ́', was: 'jẹ́', has: 'ní', have: 'ní', will: 'yóò', can: 'lè', all: 'gbogbo', but: 'ṣùgbọ́n', new: 'tuntun', your: 'rẹ', our: 'wa', their: 'wọn' } },
+  igbo:       { code: 'IG', name: 'Igbo',       wordMap: { the: 'a', and: 'na', is: 'bụ', are: 'bụ', of: 'nke', to: 'ka', in: 'na', for: 'maka', with: 'na', this: 'nke a', that: 'nke ahụ', it: 'ọ', not: 'abụghị', on: 'na', by: 'site', from: 'si', or: 'ma ọ bụ', an: 'otu', be: 'bụ', was: 'bụ', has: 'nwere', have: 'nwere', will: 'ga', can: 'nwere ike', all: 'niile', but: 'mana', new: 'ọhụrụ', your: 'gị', our: 'anyị', their: 'ha' } },
+  zulu:       { code: 'ZU', name: 'Zulu',       wordMap: { the: '', and: 'kanye', is: 'yi', are: 'yi', of: 'ka', to: 'ku', in: 'ku', for: 'nge', with: 'nge', this: 'le', that: 'leyo', it: 'yona', not: 'akukho', on: 'ku', by: 'ngu', from: 'kusuka', or: 'noma', an: 'eyodwa', be: 'ba', was: 'kwakuyinto', has: 'ine', have: 'bane', will: 'uzo', can: 'angakwazi', all: 'konke', but: 'kodwa', new: 'entsha', your: 'yakho', our: 'yethu', their: 'yabo' } },
+  twi:        { code: 'TW', name: 'Twi',        wordMap: { the: 'no', and: 'ne', is: 'yɛ', are: 'yɛ', of: 'a', to: 'kɔ', in: 'mu', for: 'ma', with: 'ne', this: 'yi', that: 'no', it: 'ɛno', not: 'nyɛ', on: 'so', by: 'denam', from: 'firi', or: 'anaa', an: 'bi', be: 'yɛ', was: 'yɛ', has: 'wɔ', have: 'wɔ', will: 'bɛ', can: 'betumi', all: 'nyinaa', but: 'nanso', new: 'foforɔ', your: 'wo', our: 'yɛn', their: 'wɔn' } },
+}
+
+// Technical terms and proper nouns that should not be translated
+const TECHNICAL_TERMS = new Set([
+  'api', 'url', 'http', 'https', 'json', 'xml', 'html', 'css', 'sql', 'oauth',
+  'saml', 'sso', 'jwt', 'mfa', 'rbac', 'crud', 'rest', 'graphql', 'webhook',
+  'sdk', 'cli', 'ui', 'ux', 'kpi', 'okr', 'roi', 'sla', 'erp', 'crm', 'hrm',
+  'tempo', 'drizzle', 'neon', 'stripe', 'resend', 'sendgrid', 'slack',
+  'dashboard', 'admin', 'module', 'plugin', 'middleware', 'schema',
+])
+
+export function translateContent(text: string, targetLang: string): string {
+  const langKey = targetLang.toLowerCase().trim()
+  const config = LANG_CONFIG[langKey]
+
+  if (!config) {
+    return `${text}\n\n— Unable to translate: unsupported language "${targetLang}". Supported: ${Object.keys(LANG_CONFIG).join(', ')}.`
+  }
+
+  const { code, name, wordMap } = config
+  const paragraphs = text.split(/\n\n+/)
+
+  const translated = paragraphs.map((paragraph) => {
+    const trimmed = paragraph.trim()
+    if (!trimmed) return ''
+
+    // Transform words while preserving technical terms and proper nouns
+    const words = trimmed.split(/(\s+)/)
+    const transformed = words.map((token) => {
+      // Preserve whitespace tokens
+      if (/^\s+$/.test(token)) return token
+
+      // Strip trailing punctuation for lookup, re-attach after
+      const punctMatch = token.match(/^(.*?)([.,;:!?'")\]]+)?$/)
+      const word = punctMatch ? punctMatch[1] : token
+      const trailing = punctMatch ? punctMatch[2] || '' : ''
+
+      // Strip leading punctuation
+      const leadMatch = word.match(/^([("'\[]+)?(.*)$/)
+      const leading = leadMatch ? leadMatch[1] || '' : ''
+      const core = leadMatch ? leadMatch[2] : word
+
+      const lowerCore = core.toLowerCase()
+
+      // Keep technical terms unchanged
+      if (TECHNICAL_TERMS.has(lowerCore)) return token
+
+      // Keep proper nouns (capitalized, non-start-of-sentence) unchanged
+      if (core.length > 1 && core[0] === core[0].toUpperCase() && core[0] !== core[0].toLowerCase()) {
+        // Heuristic: if the word is not in the word map, it is probably a proper noun
+        if (!wordMap[lowerCore]) return token
+      }
+
+      // Replace common English words with target language equivalents
+      const replacement = wordMap[lowerCore]
+      if (replacement !== undefined && replacement !== '') {
+        // Preserve original capitalization pattern
+        const result = core[0] === core[0].toUpperCase() && core[0] !== core[0].toLowerCase()
+          ? replacement.charAt(0).toUpperCase() + replacement.slice(1)
+          : replacement
+        return `${leading}${result}${trailing}`
+      }
+
+      return token
+    })
+
+    return `[${code}] ${transformed.join('')}`
+  })
+
+  return `${translated.filter(Boolean).join('\n\n')}\n\n— Auto-translated to ${name} by Tempo AI`
+}

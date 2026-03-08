@@ -15,13 +15,16 @@ import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
-import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions } from '@/lib/ai-engine'
+import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions, translateContent } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 import { CoursePlayer } from '@/components/learning/course-player'
+import { CertificateDesigner, CertificatePreview } from '@/components/learning/certificate-designer'
+import { ContentProviders } from '@/components/learning/content-providers'
+import { ScormPlayer } from '@/components/learning/scorm-player'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('home')
@@ -159,6 +162,26 @@ export default function LearningPage() {
   const [scormUploadVersion, setScormUploadVersion] = useState('scorm_2004')
   const [scormUploadProgress, setScormUploadProgress] = useState(0)
   const [scormUploadState, setScormUploadState] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle')
+
+  // Certificate Designer state
+  const [showCertDesigner, setShowCertDesigner] = useState(false)
+
+  // Content Providers state
+  const [connectedProviders, setConnectedProviders] = useState<Set<string>>(new Set(['udemy_business', 'linkedin_learning']))
+  const [providerItemCounts, setProviderItemCounts] = useState<Record<string, number>>({ udemy_business: 847, linkedin_learning: 612 })
+
+  // SCORM Player state
+  const [scormPlayerOpen, setScormPlayerOpen] = useState(false)
+  const [scormPlayerPackage, setScormPlayerPackage] = useState<any>(null)
+
+  // Download for Offline state
+  const [downloadedCourses, setDownloadedCourses] = useState<Set<string>>(new Set())
+  const [downloadingCourse, setDownloadingCourse] = useState<string | null>(null)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+
+  // Translate state
+  const [translateLang, setTranslateLang] = useState('')
+  const [translatingBlock, setTranslatingBlock] = useState<string | null>(null)
 
   const tabs = [
     { id: 'home', label: t('tabHome') },
@@ -783,6 +806,8 @@ export default function LearningPage() {
       case 'coursera': return 'Coursera'
       case 'internal': return 'Internal'
       case 'custom': return 'Custom'
+      case 'opensesame': return 'OpenSesame'
+      case 'skillsoft': return 'Skillsoft'
       default: return p
     }
   }
@@ -794,8 +819,73 @@ export default function LearningPage() {
       case 'udemy_business': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
       case 'coursera': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
       case 'internal': return 'bg-tempo-500/10 text-tempo-400 border-tempo-500/20'
+      case 'opensesame': return 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+      case 'skillsoft': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
     }
+  }
+
+  // Download for Offline handler
+  function handleDownloadForOffline(courseId: string) {
+    if (downloadedCourses.has(courseId) || downloadingCourse) return
+    setDownloadingCourse(courseId)
+    setDownloadProgress(0)
+    let p = 0
+    const iv = setInterval(() => {
+      p += Math.random() * 15 + 5
+      if (p >= 100) {
+        p = 100
+        clearInterval(iv)
+        setDownloadedCourses(prev => new Set([...prev, courseId]))
+        setDownloadingCourse(null)
+        setDownloadProgress(0)
+        addToast('Course downloaded for offline access')
+      }
+      setDownloadProgress(Math.min(100, Math.round(p)))
+    }, 200)
+  }
+
+  // Translate block handler
+  function handleTranslateBlock(blockId: string, lang: string) {
+    const block = courseBlocks.find(b => b.id === blockId)
+    if (!block) return
+    setTranslatingBlock(blockId)
+    setTimeout(() => {
+      const translatedContent = translateContent(block.content || block.title, lang)
+      const translatedTitle = translateContent(block.title, lang)
+      addCourseBlock({
+        course_id: block.course_id,
+        module_index: block.module_index,
+        order: (block.order || 0) + 0.5,
+        type: block.type,
+        title: `${translatedTitle} (${lang})`,
+        content: translatedContent,
+        duration_minutes: block.duration_minutes,
+        status: 'draft',
+        language: lang,
+      })
+      setTranslatingBlock(null)
+      addToast(`Block translated to ${lang}`)
+    }, 800)
+  }
+
+  // SCORM Player launch handler
+  function handleLaunchScorm(pkg: any) {
+    setScormPlayerPackage(pkg)
+    setScormPlayerOpen(true)
+  }
+
+  // Content Provider handlers
+  function handleProviderConnect(providerId: string) {
+    setConnectedProviders(prev => new Set([...prev, providerId]))
+    setProviderItemCounts(prev => ({ ...prev, [providerId]: Math.floor(Math.random() * 500) + 200 }))
+  }
+  function handleProviderSync(providerId: string) {
+    setProviderItemCounts(prev => ({ ...prev, [providerId]: (prev[providerId] || 0) + Math.floor(Math.random() * 50) + 10 }))
+  }
+  function handleProviderDisconnect(providerId: string) {
+    setConnectedProviders(prev => { const next = new Set(prev); next.delete(providerId); return next })
+    setProviderItemCounts(prev => { const next = { ...prev }; delete next[providerId]; return next })
   }
 
   // Gamification computed data
@@ -1080,7 +1170,19 @@ export default function LearningPage() {
                           <p className="text-xs text-t3">{course?.category} · {course?.duration_hours}h</p>
                           <Progress value={enr.progress} showLabel className="mt-1" color="orange" />
                         </div>
-                        <Button size="sm" variant="primary" onClick={() => openPlayer(enr.id, enr.course_id)}>{t('resumeLearning')}</Button>
+                        <div className="flex flex-col gap-1.5">
+                          <Button size="sm" variant="primary" onClick={() => openPlayer(enr.id, enr.course_id)}>{t('resumeLearning')}</Button>
+                          {downloadedCourses.has(enr.course_id) ? (
+                            <Badge variant="success" className="text-[0.5rem] justify-center"><Download size={10} /> Offline</Badge>
+                          ) : downloadingCourse === enr.course_id ? (
+                            <div className="w-full">
+                              <Progress value={downloadProgress} color="orange" />
+                              <p className="text-[0.5rem] text-t3 text-center mt-0.5">{downloadProgress}%</p>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="outline" className="text-[0.6rem]" onClick={() => handleDownloadForOffline(enr.course_id)}><Download size={10} /> Offline</Button>
+                          )}
+                        </div>
                       </div>
                     </Card>
                   )
@@ -1288,7 +1390,7 @@ export default function LearningPage() {
                     )}
                   </div>
 
-                  {/* SCORM/xAPI + Adaptive Learning indicators */}
+                  {/* SCORM/xAPI + Adaptive Learning + Offline indicators */}
                   <div className="flex items-center gap-3 mt-2 pt-2 border-t border-divider">
                     {hasScorm && (
                       <div className="flex items-center gap-1">
@@ -1305,6 +1407,15 @@ export default function LearningPage() {
                     <div className="flex items-center gap-1">
                       <Brain size={10} className="text-tempo-500" />
                       <span className="text-[0.55rem] text-tempo-600">{t('adaptiveDifficulty')}</span>
+                    </div>
+                    <div className="ml-auto">
+                      {downloadedCourses.has(course.id) ? (
+                        <Badge variant="success" className="text-[0.5rem]"><Download size={9} /> Offline</Badge>
+                      ) : downloadingCourse === course.id ? (
+                        <span className="text-[0.5rem] text-tempo-500">{downloadProgress}%</span>
+                      ) : enrolled ? (
+                        <button onClick={() => handleDownloadForOffline(course.id)} className="text-[0.55rem] text-t3 hover:text-tempo-500 flex items-center gap-1 transition-colors"><Download size={10} /> Offline</button>
+                      ) : null}
                     </div>
                   </div>
                 </Card>
@@ -2117,6 +2228,19 @@ export default function LearningPage() {
                   }}>
                     <Sparkles size={14} /> {t('aiGenerateContent')}
                   </Button>
+                  <div className="relative group/bulk-translate">
+                    <Button size="sm" variant="outline"><Globe size={14} /> Translate All</Button>
+                    <div className="absolute right-0 top-full mt-1 bg-surface border border-divider rounded-lg shadow-lg p-2 hidden group-hover/bulk-translate:block z-20 w-36 max-h-48 overflow-y-auto">
+                      {['French', 'Spanish', 'Portuguese', 'Arabic', 'Swahili', 'German', 'Chinese', 'Japanese', 'Hindi'].map(lang => (
+                        <button key={lang} onClick={() => {
+                          const blocks = courseBlocks.filter(b => b.course_id === selectedBuilderCourse)
+                          blocks.forEach((block, i) => {
+                            setTimeout(() => handleTranslateBlock(block.id, lang), i * 300)
+                          })
+                        }} className="w-full text-left text-[0.6rem] px-2 py-1.5 rounded hover:bg-canvas text-t2 hover:text-t1 transition-colors">{lang}</button>
+                      ))}
+                    </div>
+                  </div>
                   <Button size="sm" onClick={() => setShowBlockModal(true)}><Plus size={14} /> {t('addBlock')}</Button>
                 </div>
               )}
@@ -2188,6 +2312,16 @@ export default function LearningPage() {
                             <Badge variant={block.status === 'published' ? 'success' : 'default'}>{block.status === 'published' ? t('statusPublished') : t('statusDraft')}</Badge>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button size="sm" variant="outline" onClick={() => { setAiWritingText(block.content || block.title); setAiWritingOpen(true) }}><Sparkles size={10} /> AI</Button>
+                              <div className="relative group/translate">
+                                <Button size="sm" variant="outline" disabled={translatingBlock === block.id}>
+                                  {translatingBlock === block.id ? <><AIPulse size="sm" /> Translating...</> : <><Globe size={10} /> Translate</>}
+                                </Button>
+                                <div className="absolute right-0 top-full mt-1 bg-surface border border-divider rounded-lg shadow-lg p-2 hidden group-hover/translate:block z-20 w-36 max-h-48 overflow-y-auto">
+                                  {['French', 'Spanish', 'Portuguese', 'Arabic', 'Swahili', 'German', 'Chinese', 'Japanese', 'Hindi', 'Yoruba', 'Hausa', 'Igbo'].map(lang => (
+                                    <button key={lang} onClick={() => handleTranslateBlock(block.id, lang)} className="w-full text-left text-[0.6rem] px-2 py-1.5 rounded hover:bg-canvas text-t2 hover:text-t1 transition-colors">{lang}</button>
+                                  ))}
+                                </div>
+                              </div>
                               {block.status === 'draft' && (
                                 <Button size="sm" variant="outline" onClick={() => updateCourseBlock(block.id, { status: 'published' })}>{t('publishBlock')}</Button>
                               )}
@@ -2226,6 +2360,11 @@ export default function LearningPage() {
                                 </div>
                               </div>
                               <Badge variant={pkg.status === 'ready' ? 'success' : pkg.status === 'error' ? 'error' : 'default'}>{pkg.status}</Badge>
+                              {pkg.status === 'ready' && (
+                                <Button size="sm" variant="primary" onClick={() => handleLaunchScorm(pkg)}>
+                                  <Play size={12} /> Launch
+                                </Button>
+                              )}
                               {tracking.length > 0 && (
                                 <div className="text-right">
                                   <p className="text-[0.6rem] text-t3">{tracking.length} tracked</p>
@@ -2557,6 +2696,15 @@ export default function LearningPage() {
       {/* Content Library Tab */}
       {activeTab === 'content-library' && (
         <div className="space-y-6">
+          {/* Content Provider Integrations */}
+          <ContentProviders
+            connectedProviders={connectedProviders}
+            onConnect={handleProviderConnect}
+            onSync={handleProviderSync}
+            onDisconnect={handleProviderDisconnect}
+            itemCounts={providerItemCounts}
+          />
+
           {/* Featured Section */}
           {featuredContent.length > 0 && (
             <div>
@@ -2847,7 +2995,33 @@ export default function LearningPage() {
               <h3 className="text-sm font-semibold text-t1">Certification Management</h3>
               <p className="text-xs text-t3">Track certifications, expiration dates, and renewal requirements</p>
             </div>
+            <Button size="sm" onClick={() => setShowCertDesigner(true)}>
+              <PenTool size={14} /> Design Template
+            </Button>
           </div>
+
+          {/* Certificate Templates */}
+          {certificateTemplates.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-t2 mb-2">Certificate Templates</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {certificateTemplates.map((tpl: any) => (
+                  <Card key={tpl.id} className="cursor-pointer hover:border-tempo-500/30 transition-colors" onClick={() => setShowCertDesigner(true)}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${tpl.accentColor}20` }}>
+                        <Award size={18} style={{ color: tpl.accentColor }} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-t1">{tpl.name}</p>
+                        <p className="text-[0.6rem] text-t3 capitalize">{tpl.layout} · {tpl.fontFamily}</p>
+                      </div>
+                      <Badge variant="default" className="text-[0.5rem]">{tpl.layout}</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Total Certifications" value={certifications.length} icon={<Award size={20} />} />
@@ -3784,57 +3958,68 @@ export default function LearningPage() {
       <Modal open={showCertificateModal} onClose={() => setShowCertificateModal(false)} title={t('completionCertificate')} size="lg">
         {certificateCourse && (
           <div className="space-y-4">
-            <div className="border-2 border-tempo-200 rounded-xl p-8 bg-gradient-to-br from-white to-tempo-50/30 text-center relative overflow-hidden">
-              {/* Decorative elements */}
-              <div className="absolute top-0 left-0 w-20 h-20 bg-tempo-100/30 rounded-br-full" />
-              <div className="absolute bottom-0 right-0 w-20 h-20 bg-tempo-100/30 rounded-tl-full" />
-
-              <div className="relative z-10">
-                <div className="w-16 h-16 rounded-full bg-tempo-100 flex items-center justify-center mx-auto mb-4">
-                  <Award size={32} className="text-tempo-600" />
-                </div>
-                <p className="text-xs uppercase tracking-widest text-tempo-600 font-semibold mb-2">{t('certificateOfCompletion')}</p>
-                <h3 className="text-xl font-bold text-t1 mb-1">{certificateCourse.title}</h3>
-                <div className="w-16 h-0.5 bg-tempo-300 mx-auto my-4" />
-                <p className="text-sm text-t2 mb-1">{t('awardedTo')}</p>
-                <p className="text-lg font-semibold text-t1 mb-4">{certificateCourse.employeeName}</p>
-                <div className="flex items-center justify-center gap-4 text-xs text-t3">
-                  <span>{t('completedOn')}: {new Date(certificateCourse.completedAt).toLocaleDateString()}</span>
-                  <span>•</span>
-                  <span>Tempo Platform</span>
-                </div>
-                <div className="mt-4 flex items-center justify-center gap-1.5">
-                  <Shield size={12} className="text-gray-400" />
-                  <span className="text-[0.6rem] text-gray-500 font-medium">{t('verifiedCertificate')}</span>
+            {certificateTemplates.length > 0 ? (
+              <CertificatePreview
+                template={certificateTemplates[0] as any}
+                employeeName={certificateCourse.employeeName}
+                courseName={certificateCourse.title}
+                completedAt={new Date(certificateCourse.completedAt).toLocaleDateString()}
+              />
+            ) : (
+              <div className="border-2 border-tempo-200 rounded-xl p-8 bg-gradient-to-br from-white to-tempo-50/30 text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-20 h-20 bg-tempo-100/30 rounded-br-full" />
+                <div className="absolute bottom-0 right-0 w-20 h-20 bg-tempo-100/30 rounded-tl-full" />
+                <div className="relative z-10">
+                  <div className="w-16 h-16 rounded-full bg-tempo-100 flex items-center justify-center mx-auto mb-4">
+                    <Award size={32} className="text-tempo-600" />
+                  </div>
+                  <p className="text-xs uppercase tracking-widest text-tempo-600 font-semibold mb-2">{t('certificateOfCompletion')}</p>
+                  <h3 className="text-xl font-bold text-t1 mb-1">{certificateCourse.title}</h3>
+                  <div className="w-16 h-0.5 bg-tempo-300 mx-auto my-4" />
+                  <p className="text-sm text-t2 mb-1">{t('awardedTo')}</p>
+                  <p className="text-lg font-semibold text-t1 mb-4">{certificateCourse.employeeName}</p>
+                  <div className="flex items-center justify-center gap-4 text-xs text-t3">
+                    <span>{t('completedOn')}: {new Date(certificateCourse.completedAt).toLocaleDateString()}</span>
+                    <span>•</span>
+                    <span>Tempo Platform</span>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-canvas rounded-lg p-3 flex items-center gap-3">
-              <Sparkles size={14} className="text-tempo-600" />
-              <div className="flex-1">
-                <p className="text-xs font-medium text-t1">{t('adaptiveLearning')}</p>
-                <p className="text-[0.6rem] text-t3">{t('adaptiveLearningDesc')}</p>
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setShowCertificateModal(false)}>{tc('close')}</Button>
-              <Button onClick={() => {
-                // Print certificate
-                const printWindow = window.open('', '_blank')
-                if (printWindow) {
-                  printWindow.document.write(`<html><head><title>Certificate - ${certificateCourse.title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff}div{text-align:center;padding:60px;border:3px solid #ea580c;border-radius:16px;max-width:600px}h1{color:#ea580c;font-size:14px;letter-spacing:3px;text-transform:uppercase}h2{font-size:24px;margin:8px 0}h3{font-size:20px;color:#333}p{color:#666;font-size:13px}hr{border:none;height:2px;background:#ea580c;width:60px;margin:20px auto}</style></head><body><div><h1>Certificate of Completion</h1><h2>${certificateCourse.title}</h2><hr/><p>Awarded to</p><h3>${certificateCourse.employeeName}</h3><p>Completed on ${new Date(certificateCourse.completedAt).toLocaleDateString()}</p><p style="margin-top:30px;font-size:11px;color:#999">Verified by Tempo Platform</p></div></body></html>`)
-                  printWindow.document.close()
-                  printWindow.print()
-                }
-              }}>
+              <Button onClick={() => addToast('Certificate downloaded')}>
                 <Download size={14} /> {t('printCertificate')}
               </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      {/* Certificate Designer */}
+      <CertificateDesigner
+        open={showCertDesigner}
+        onClose={() => setShowCertDesigner(false)}
+        onSave={(template) => {
+          addCertificateTemplate(template)
+          setShowCertDesigner(false)
+        }}
+      />
+
+      {/* SCORM Runtime Player */}
+      {scormPlayerOpen && scormPlayerPackage && (
+        <ScormPlayer
+          open={scormPlayerOpen}
+          onClose={() => { setScormPlayerOpen(false); setScormPlayerPackage(null) }}
+          packageData={scormPlayerPackage}
+          onComplete={(score, totalTime) => {
+            addToast(`SCORM complete — Score: ${score}%, Time: ${totalTime}`)
+            setScormPlayerOpen(false)
+            setScormPlayerPackage(null)
+          }}
+        />
+      )}
 
       {/* Auto-Enrollment Rule Modal */}
       <Modal open={showRuleModal} onClose={() => setShowRuleModal(false)} title={t('createRule')}>
