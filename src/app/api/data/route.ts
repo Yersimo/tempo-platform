@@ -625,6 +625,7 @@ export async function GET(request: NextRequest) {
 
 // Map entity name strings to Drizzle schema tables
 const tables: Record<string, any> = {
+  // Core
   organizations: schema.organizations,
   departments: schema.departments,
   employees: schema.employees,
@@ -654,23 +655,215 @@ const tables: Record<string, any> = {
   invoices: schema.invoices,
   budgets: schema.budgets,
   vendors: schema.vendors,
-  // Phase 3: Project Management
+  // Project Management
   projects: schema.projects,
   milestones: schema.milestones,
   tasks: schema.tasks,
   taskDependencies: schema.taskDependencies,
-  // Phase 3: Strategy Execution
+  // Strategy Execution
   strategicObjectives: schema.strategicObjectives,
   keyResults: schema.keyResults,
   initiatives: schema.initiatives,
   kpiDefinitions: schema.kpiDefinitions,
   kpiMeasurements: schema.kpiMeasurements,
-  // Phase 3: Workflow Studio
+  // Workflow Studio
   workflows: schema.workflows,
   workflowSteps: schema.workflowSteps,
   workflowRuns: schema.workflowRuns,
   workflowTemplates: schema.workflowTemplates,
   auditLog: schema.auditLog,
+  // Onboarding & Offboarding
+  offboardingChecklists: schema.offboardingChecklists,
+  offboarding_checklists: schema.offboardingChecklists,
+  offboardingChecklistItems: schema.offboardingChecklistItems,
+  offboarding_checklist_items: schema.offboardingChecklistItems,
+  offboardingProcesses: schema.offboardingProcesses,
+  offboardingTasks: schema.offboardingTasks,
+  exitSurveys: schema.exitSurveys,
+  buddyAssignments: schema.employees, // buddy data stored on employee
+  preboarding_tasks: schema.offboardingTasks, // reuses task schema
+  offers: schema.applications, // offers stored via application updates
+  // Time & Attendance
+  timeEntries: schema.timeEntries,
+  timeOffPolicies: schema.timeOffPolicies,
+  timeOffBalances: schema.timeOffBalances,
+  overtimeRules: schema.overtimeRules,
+  shifts: schema.shifts,
+  geofenceZones: schema.geofenceZones,
+  // Benefits
+  openEnrollmentPeriods: schema.openEnrollmentPeriods,
+  cobraEvents: schema.cobraEvents,
+  acaTracking: schema.acaTracking,
+  flexBenefitAccounts: schema.flexBenefitAccounts,
+  flexBenefitTransactions: schema.flexBenefitTransactions,
+  benefitDependents: schema.benefitEnrollments, // stored via enrollment
+  lifeEvents: schema.cobraEvents, // life events use cobra schema
+  carrierIntegrations: schema.carrierIntegrations,
+  enrollmentFeeds: schema.enrollmentFeeds,
+  retirementPlans: schema.retirementPlans,
+  retirementEnrollments: schema.retirementEnrollments,
+  retirementContributions: schema.retirementContributions,
+  globalBenefitPlans: schema.globalBenefitPlans,
+  countryBenefitConfigs: schema.countryBenefitConfigs,
+  globalBenefitEnrollments: schema.globalBenefitEnrollments,
+  // Expense Management
+  receiptMatches: schema.receiptMatching,
+  mileageEntries: schema.mileageEntries,
+  advancedExpensePolicies: schema.advancedExpensePolicies,
+  reimbursementBatches: schema.reimbursementBatches,
+  duplicateDetections: schema.duplicateDetection,
+  expensePolicies: schema.expensePolicies,
+  mileageLogs: schema.mileageEntries,
+  // Recruitment
+  backgroundChecks: schema.backgroundChecks,
+  referralProgram: schema.referralPrograms,
+  referrals: schema.referrals,
+  knockoutQuestions: schema.knockoutQuestions,
+  candidateScheduling: schema.candidateScheduling,
+  interviews: schema.applications, // interview data via application
+  talent_pools: schema.applications,
+  score_cards: schema.applications,
+  job_distributions: schema.jobPostings,
+  interviewRecordings: schema.interviewRecordings,
+  videoScreenTemplates: schema.videoScreenTemplates,
+  videoScreenInvites: schema.videoScreenInvites,
+  videoScreenResponses: schema.videoScreenResponses,
+  // Performance
+  competencyRatings: schema.reviews,
+  pips: schema.performanceImprovementPlans,
+  pipCheckIns: schema.pipCheckIns,
+  meritCycles: schema.meritCycles,
+  meritRecommendations: schema.meritRecommendations,
+  reviewTemplates: schema.reviewTemplates,
+  recognitions: schema.feedback,
+  oneOnOnes: schema.feedback,
+  equityGrants: schema.salaryReviews,
+  compPlanningCycles: schema.meritCycles,
+  // Compensation
+  employeePayrollEntries: schema.employeePayrollEntries,
+  contractorPayments: schema.corPayments,
+  payrollSchedules: schema.payrollRuns,
+  taxConfigs: schema.payrollRuns,
+  complianceIssues: schema.complianceRequirements,
+  taxFilings: schema.payrollRuns,
+  // IT & Devices
+  managedDevices: schema.managedDevices,
+  deviceActions: schema.deviceActions,
+  appCatalog: schema.appCatalog,
+  appAssignments: schema.appAssignments,
+  securityPoliciesIT: schema.securityPolicies,
+  deviceInventory: schema.deviceInventory,
+  deploymentProfiles: schema.deploymentProfiles,
+  enrollmentTokens: schema.deviceEnrollmentTokens,
+  deviceStoreCatalog: schema.deviceStoreCatalog,
+  deviceOrders: schema.deviceOrders,
+  buybackRequests: schema.buybackRequests,
+  passwordVaults: schema.passwordVaults,
+  vaultItems: schema.vaultItems,
+  // Learning
+  learning_paths: schema.learningPaths,
+  live_sessions: schema.courses,
+  courseBlocks: schema.courseContent,
+  quizQuestions: schema.quizQuestions,
+  discussions: schema.feedback,
+  studyGroups: schema.dynamicGroups,
+  complianceTraining: schema.courses,
+  autoEnrollRules: schema.autoEnrollRules,
+  coursePrerequisites: schema.coursePrerequisites,
+  scormPackages: schema.scormPackages,
+  scormTracking: schema.scormTracking,
+  contentLibrary: schema.contentLibrary,
+  learnerBadges: schema.learnerBadges,
+  learnerPoints: schema.learnerPoints,
+  certificateTemplates: schema.certificates,
+  assessmentAttempts: schema.assessmentAttempts,
+  learningAssignments: schema.enrollments,
+  // Surveys & Engagement
+  surveyTemplates: schema.surveyTemplates,
+  surveySchedules: schema.surveySchedules,
+  surveyTriggers: schema.surveyTriggers,
+  openEndedResponses: schema.openEndedResponses,
+  action_plans: schema.initiatives,
+  mentoringSessions: schema.mentoringPairs,
+  mentoringGoals: schema.goals,
+  // Automation
+  automationWorkflows: schema.automationWorkflows,
+  automationWorkflowSteps: schema.automationWorkflowSteps,
+  automationWorkflowRuns: schema.automationWorkflowRuns,
+  automationRules: schema.automationWorkflows,
+  // Headcount
+  headcountPlans: schema.headcountPlans,
+  headcountPositions: schema.headcountPositions,
+  headcountBudgetItems: schema.headcountBudgetItems,
+  // Custom Fields
+  customFieldDefinitions: schema.customFieldDefinitions,
+  customFieldValues: schema.customFieldValues,
+  emergencyContacts: schema.emergencyContacts,
+  // Compliance
+  complianceRequirements: schema.complianceRequirements,
+  complianceDocuments: schema.complianceDocuments,
+  complianceAlerts: schema.complianceAlerts,
+  autoDetectionScans: schema.complianceDocuments,
+  shadowITDetections: schema.complianceAlerts,
+  // Documents & E-Signature
+  signatureDocuments: schema.signatureDocuments,
+  signatureTemplates: schema.signatureTemplates,
+  // Identity & SSO
+  idpConfigurations: schema.idpConfigurations,
+  samlApps: schema.samlApps,
+  mfaPolicies: schema.mfaPolicies,
+  scimProviders: schema.idpConfigurations,
+  provisioningRules: schema.idpConfigurations,
+  encryptionPolicies: schema.mfaPolicies,
+  // Chat
+  chatChannels: schema.chatChannels,
+  // Finance
+  corporateCards: schema.corporateCards,
+  cardTransactions: schema.cardTransactions,
+  billPayments: schema.billPayments,
+  billPaySchedules: schema.billPaySchedules,
+  currencyAccounts: schema.currencyAccounts,
+  fxTransactions: schema.fxTransactions,
+  purchaseOrders: schema.purchaseOrders,
+  procurementRequests: schema.procurementRequests,
+  // Travel
+  travelRequests: schema.travelRequests,
+  travelBookings: schema.travelBookings,
+  travelPolicies: schema.travelPolicies,
+  // I9 / E-Verify / PEO
+  i9Forms: schema.employees,
+  eVerifyCases: schema.everifyCases,
+  peoConfigurations: schema.peoConfigurations,
+  coEmploymentRecords: schema.coEmploymentRecords,
+  // Sandbox
+  sandboxEnvironments: schema.sandboxEnvironments,
+  // Notifications
+  notifications: schema.notifications,
+  widgetPreferences: schema.notificationPreferences,
+  // App Studio & RQL
+  customApps: schema.customApps,
+  appPages: schema.appPages,
+  appComponents: schema.appComponents,
+  appDataSources: schema.appDataSources,
+  savedQueries: schema.savedQueries,
+  querySchedules: schema.querySchedules,
+  // EOR
+  eorEntities: schema.eorEntities,
+  eorEmployees: schema.eorEmployees,
+  eorContracts: schema.eorContracts,
+  // Contractor of Record
+  corContractors: schema.corContractors,
+  corContracts: schema.corContracts,
+  corPayments: schema.corPayments,
+  // Workers' Comp
+  workersCompPolicies: schema.workersCompPolicies,
+  workersCompClaims: schema.workersCompClaims,
+  workersCompClassCodes: schema.workersCompClassCodes,
+  workersCompAudits: schema.workersCompAudits,
+  // Groups
+  groups: schema.dynamicGroups,
+  // Employee Documents
+  employeeDocuments: schema.employees,
 }
 
 /**
@@ -754,9 +947,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
     }
 
+    // Demo mode detection: if orgId isn't a valid UUID, we're using demo data
+    // (demo orgs use IDs like 'org-1', 'org-2'). Return success without DB write.
+    const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_FORMAT.test(orgId)) {
+      return NextResponse.json({ success: true, demo: true }, { status: action === 'create' ? 201 : 200 })
+    }
+
     // ─── RBAC: Role-Based Access Control ───────────────────────────────
     const employeeRole = request.headers.get('x-employee-role') || 'employee'
     const employeeId = request.headers.get('x-employee-id') || ''
+    // For audit log: userId column is UUID — validate format before inserting
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const auditUserId = UUID_RE.test(employeeId) ? employeeId : null
 
     // Define write permissions per role
     const ROLE_PERMISSIONS: Record<string, Set<string> | 'all'> = {
@@ -849,7 +1052,7 @@ export async function POST(request: NextRequest) {
       try {
         await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
-          userId: employeeId || null,
+          userId: auditUserId,
           action: 'create',
           entityType: entity,
           entityId: provisionalId,
@@ -910,7 +1113,7 @@ export async function POST(request: NextRequest) {
       try {
         await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
-          userId: employeeId || null,
+          userId: auditUserId,
           action: 'update',
           entityType: entity,
           entityId: id!,
@@ -953,7 +1156,7 @@ export async function POST(request: NextRequest) {
       try {
         await withRetry(() => db.insert(schema.auditLog).values({
           orgId,
-          userId: employeeId || null,
+          userId: auditUserId,
           action: 'delete',
           entityType: entity,
           entityId: id!,
