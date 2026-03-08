@@ -10,12 +10,12 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt } from 'lucide-react'
+import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 export default function TravelManagementPage() {
   const tc = useTranslations('common')
-  const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, ensureModulesLoaded } = useTempo()
+  const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded } = useTempo()
 
   useEffect(() => {
     ensureModulesLoaded?.(['travelRequests', 'travelBookings'])
@@ -30,6 +30,33 @@ export default function TravelManagementPage() {
     end_date: '',
     estimated_cost: '',
     notes: '',
+  })
+
+  // Booking modal state
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null)
+  const [bookingForm, setBookingForm] = useState({
+    type: 'flight',
+    provider: '',
+    confirmation_number: '',
+    check_in_date: '',
+    check_out_date: '',
+    amount: '',
+    status: 'confirmed',
+    travel_request_id: '',
+  })
+
+  // Policy modal state
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null)
+  const [policyForm, setPolicyForm] = useState({
+    name: '',
+    description: '',
+    max_daily_hotel: '',
+    max_flight_cost: '',
+    advance_booking_days: '',
+    requires_approval: 'true',
+    status: 'active',
   })
 
   // Stats
@@ -86,6 +113,113 @@ export default function TravelManagementPage() {
 
   function rejectRequest(id: string) {
     updateTravelRequest(id, { status: 'rejected' })
+  }
+
+  // ---- Booking CRUD ----
+  function openNewBooking() {
+    setEditingBookingId(null)
+    setBookingForm({
+      type: 'flight',
+      provider: '',
+      confirmation_number: '',
+      check_in_date: '',
+      check_out_date: '',
+      amount: '',
+      status: 'confirmed',
+      travel_request_id: '',
+    })
+    setShowBookingModal(true)
+  }
+
+  function openEditBooking(id: string) {
+    const booking = travelBookings.find((b: any) => b.id === id)
+    if (!booking) return
+    setEditingBookingId(id)
+    setBookingForm({
+      type: (booking as any).type || 'flight',
+      provider: (booking as any).provider || '',
+      confirmation_number: (booking as any).confirmation_number || '',
+      check_in_date: (booking as any).details?.check_in || (booking as any).check_in_date || '',
+      check_out_date: (booking as any).details?.check_out || (booking as any).check_out_date || '',
+      amount: String((booking as any).cost || ''),
+      status: (booking as any).status || 'confirmed',
+      travel_request_id: (booking as any).travel_request_id || '',
+    })
+    setShowBookingModal(true)
+  }
+
+  function submitBooking() {
+    if (!bookingForm.provider || !bookingForm.confirmation_number || !bookingForm.amount) return
+    const payload: any = {
+      type: bookingForm.type,
+      provider: bookingForm.provider,
+      confirmation_number: bookingForm.confirmation_number,
+      cost: Number(bookingForm.amount),
+      status: bookingForm.status,
+      travel_request_id: bookingForm.travel_request_id || null,
+      details: {
+        check_in: bookingForm.check_in_date,
+        check_out: bookingForm.check_out_date,
+      },
+    }
+    if (editingBookingId) {
+      updateTravelBooking(editingBookingId, payload)
+    } else {
+      addTravelBooking(payload)
+    }
+    setShowBookingModal(false)
+  }
+
+  // ---- Policy CRUD ----
+  function openNewPolicy() {
+    setEditingPolicyId(null)
+    setPolicyForm({
+      name: '',
+      description: '',
+      max_daily_hotel: '',
+      max_flight_cost: '',
+      advance_booking_days: '',
+      requires_approval: 'true',
+      status: 'active',
+    })
+    setShowPolicyModal(true)
+  }
+
+  function openEditPolicy(id: string) {
+    const policy = travelPolicies.find((p: any) => p.id === id)
+    if (!policy) return
+    setEditingPolicyId(id)
+    setPolicyForm({
+      name: (policy as any).name || '',
+      description: (policy as any).description || '',
+      max_daily_hotel: String((policy as any).rules?.max_hotel_rate || ''),
+      max_flight_cost: String((policy as any).rules?.max_flight_cost || ''),
+      advance_booking_days: String((policy as any).rules?.advance_booking_days || ''),
+      requires_approval: (policy as any).rules?.requires_approval_above ? 'true' : 'false',
+      status: (policy as any).is_active ? 'active' : 'inactive',
+    })
+    setShowPolicyModal(true)
+  }
+
+  function submitPolicy() {
+    if (!policyForm.name) return
+    const payload: any = {
+      name: policyForm.name,
+      description: policyForm.description,
+      is_active: policyForm.status === 'active',
+      rules: {
+        max_hotel_rate: policyForm.max_daily_hotel ? Number(policyForm.max_daily_hotel) : null,
+        max_flight_cost: policyForm.max_flight_cost ? Number(policyForm.max_flight_cost) : null,
+        advance_booking_days: policyForm.advance_booking_days ? Number(policyForm.advance_booking_days) : null,
+        requires_approval_above: policyForm.requires_approval === 'true' ? 0 : null,
+      },
+    }
+    if (editingPolicyId) {
+      updateTravelPolicy(editingPolicyId, payload)
+    } else {
+      addTravelPolicy(payload)
+    }
+    setShowPolicyModal(false)
   }
 
   function getBookingTypeIcon(type: string) {
@@ -230,7 +364,10 @@ export default function TravelManagementPage() {
       {activeTab === 'bookings' && (
         <Card padding="none">
           <CardHeader>
-            <CardTitle>Travel Bookings</CardTitle>
+            <div className="flex items-center justify-between w-full">
+              <CardTitle>Travel Bookings</CardTitle>
+              <Button size="sm" onClick={openNewBooking}><Plus size={14} /> New Booking</Button>
+            </div>
           </CardHeader>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -242,6 +379,7 @@ export default function TravelManagementPage() {
                   <th className="tempo-th text-left px-4 py-3">Details</th>
                   <th className="tempo-th text-right px-4 py-3">Cost</th>
                   <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -268,11 +406,16 @@ export default function TravelManagementPage() {
                         {booking.status}
                       </Badge>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => openEditBooking(booking.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors">
+                        <Pencil size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {travelBookings.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{tc('noResults')}</td>
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{tc('noResults')}</td>
                   </tr>
                 )}
               </tbody>
@@ -284,6 +427,9 @@ export default function TravelManagementPage() {
       {/* Policies Tab */}
       {activeTab === 'policies' && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={openNewPolicy}><Plus size={14} /> Add Policy</Button>
+          </div>
           {travelPolicies.map((policy: any) => (
             <Card key={policy.id}>
               <div className="flex items-start justify-between mb-4">
@@ -294,9 +440,14 @@ export default function TravelManagementPage() {
                   </h3>
                   <p className="text-xs text-t3 mt-1">{policy.description}</p>
                 </div>
-                <Badge variant={policy.is_active ? 'success' : 'default'}>
-                  {policy.is_active ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => openEditPolicy(policy.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors">
+                    <Pencil size={14} />
+                  </button>
+                  <Badge variant={policy.is_active ? 'success' : 'default'}>
+                    {policy.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -517,6 +668,147 @@ export default function TravelManagementPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowRequestModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitRequest}>{tc('submit')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* New / Edit Booking Modal */}
+      <Modal open={showBookingModal} onClose={() => setShowBookingModal(false)} title={editingBookingId ? 'Edit Booking' : 'New Booking'}>
+        <div className="space-y-4">
+          <Select
+            label="Type"
+            value={bookingForm.type}
+            onChange={(e) => setBookingForm({ ...bookingForm, type: e.target.value })}
+            options={[
+              { value: 'flight', label: 'Flight' },
+              { value: 'hotel', label: 'Hotel' },
+              { value: 'car', label: 'Car' },
+            ]}
+          />
+          <Input
+            label="Provider"
+            placeholder="e.g. United Airlines, Marriott"
+            value={bookingForm.provider}
+            onChange={(e) => setBookingForm({ ...bookingForm, provider: e.target.value })}
+          />
+          <Input
+            label="Confirmation Number"
+            placeholder="e.g. ABC123"
+            value={bookingForm.confirmation_number}
+            onChange={(e) => setBookingForm({ ...bookingForm, confirmation_number: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Check-in / Departure Date"
+              type="date"
+              value={bookingForm.check_in_date}
+              onChange={(e) => setBookingForm({ ...bookingForm, check_in_date: e.target.value })}
+            />
+            <Input
+              label="Check-out / Return Date"
+              type="date"
+              value={bookingForm.check_out_date}
+              onChange={(e) => setBookingForm({ ...bookingForm, check_out_date: e.target.value })}
+            />
+          </div>
+          <Input
+            label="Amount (cents)"
+            type="number"
+            placeholder="150000"
+            value={bookingForm.amount}
+            onChange={(e) => setBookingForm({ ...bookingForm, amount: e.target.value })}
+          />
+          <Select
+            label="Status"
+            value={bookingForm.status}
+            onChange={(e) => setBookingForm({ ...bookingForm, status: e.target.value })}
+            options={[
+              { value: 'confirmed', label: 'Confirmed' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+          />
+          <Select
+            label="Linked Travel Request"
+            value={bookingForm.travel_request_id}
+            onChange={(e) => setBookingForm({ ...bookingForm, travel_request_id: e.target.value })}
+            options={[
+              { value: '', label: 'None' },
+              ...travelRequests.map((req: any) => ({
+                value: req.id,
+                label: `${req.destination} — ${getEmployeeName(req.employee_id)}`,
+              })),
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBookingModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitBooking}>{editingBookingId ? tc('save') : tc('submit')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* New / Edit Policy Modal */}
+      <Modal open={showPolicyModal} onClose={() => setShowPolicyModal(false)} title={editingPolicyId ? 'Edit Policy' : 'Add Policy'}>
+        <div className="space-y-4">
+          <Input
+            label="Policy Name"
+            placeholder="e.g. Standard Travel Policy"
+            value={policyForm.name}
+            onChange={(e) => setPolicyForm({ ...policyForm, name: e.target.value })}
+          />
+          <Textarea
+            label="Description"
+            placeholder="Describe the policy scope and rules..."
+            rows={3}
+            value={policyForm.description}
+            onChange={(e) => setPolicyForm({ ...policyForm, description: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Max Daily Hotel Rate (cents)"
+              type="number"
+              placeholder="25000"
+              value={policyForm.max_daily_hotel}
+              onChange={(e) => setPolicyForm({ ...policyForm, max_daily_hotel: e.target.value })}
+            />
+            <Input
+              label="Max Flight Cost (cents)"
+              type="number"
+              placeholder="100000"
+              value={policyForm.max_flight_cost}
+              onChange={(e) => setPolicyForm({ ...policyForm, max_flight_cost: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Advance Booking Days"
+              type="number"
+              placeholder="14"
+              value={policyForm.advance_booking_days}
+              onChange={(e) => setPolicyForm({ ...policyForm, advance_booking_days: e.target.value })}
+            />
+            <Select
+              label="Requires Approval"
+              value={policyForm.requires_approval}
+              onChange={(e) => setPolicyForm({ ...policyForm, requires_approval: e.target.value })}
+              options={[
+                { value: 'true', label: 'Yes' },
+                { value: 'false', label: 'No' },
+              ]}
+            />
+          </div>
+          <Select
+            label="Status"
+            value={policyForm.status}
+            onChange={(e) => setPolicyForm({ ...policyForm, status: e.target.value })}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPolicyModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPolicy}>{editingPolicyId ? tc('save') : tc('submit')}</Button>
           </div>
         </div>
       </Modal>

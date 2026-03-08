@@ -59,8 +59,34 @@ export default function OffboardingPage() {
     addOffboardingChecklistItem, updateOffboardingChecklistItem, deleteOffboardingChecklistItem,
     addOffboardingProcess, updateOffboardingProcess,
     addOffboardingTask, updateOffboardingTask,
-    addExitSurvey, addToast,
+    addExitSurvey, addToast, org,
   } = useTempo()
+
+  // ── Persist KT item to API (best-effort) ──────
+  async function persistKTItem(item: { id: string; employee_id: string; area: string; recipient_id: string; status: string; notes: string; created_at: string }) {
+    try {
+      await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(org?.id ? { 'x-org-id': org.id } : {}) },
+        body: JSON.stringify({
+          entity: 'offboarding_tasks',
+          action: 'upsert',
+          id: item.id,
+          data: {
+            employee_id: item.employee_id,
+            title: item.area,
+            category: 'knowledge_transfer',
+            assigned_to: item.recipient_id,
+            status: item.status,
+            notes: item.notes,
+            created_at: item.created_at,
+          },
+        }),
+      })
+    } catch {
+      // Silently fail – UI state is already updated
+    }
+  }
 
   // ── Knowledge Transfer State ────────────────────
   const [showKTModal, setShowKTModal] = useState(false)
@@ -967,10 +993,12 @@ export default function OffboardingPage() {
                           <select
                             value={item.status}
                             onChange={e => {
+                              const newStatus = e.target.value as 'pending' | 'in_progress' | 'completed'
                               setKTItems(prev => prev.map(k =>
-                                k.id === item.id ? { ...k, status: e.target.value as 'pending' | 'in_progress' | 'completed' } : k
+                                k.id === item.id ? { ...k, status: newStatus } : k
                               ))
-                              addToast(`Knowledge transfer "${item.area}" updated to ${e.target.value.replace('_', ' ')}`)
+                              persistKTItem({ ...item, status: newStatus })
+                              addToast(`Knowledge transfer "${item.area}" updated to ${newStatus.replace('_', ' ')}`)
                             }}
                             className="text-xs bg-canvas border border-border rounded-lg px-2 py-1 text-t1 outline-none focus:border-tempo-600"
                           >
@@ -1027,15 +1055,17 @@ export default function OffboardingPage() {
                   onClick={() => {
                     if (!ktForm.employee_id || !ktForm.area || !ktForm.recipient_id) return
                     const id = `kt-${Date.now()}`
-                    setKTItems(prev => [...prev, {
+                    const newItem = {
                       id,
                       employee_id: ktForm.employee_id,
                       area: ktForm.area,
                       recipient_id: ktForm.recipient_id,
-                      status: 'pending',
+                      status: 'pending' as const,
                       notes: ktForm.notes,
                       created_at: new Date().toISOString(),
-                    }])
+                    }
+                    setKTItems(prev => [...prev, newItem])
+                    persistKTItem(newItem)
                     addToast(`Knowledge transfer area "${ktForm.area}" created`)
                     setKTForm({ employee_id: '', area: '', recipient_id: '', notes: '' })
                     setShowKTModal(false)

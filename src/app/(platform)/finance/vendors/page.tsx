@@ -75,36 +75,54 @@ export default function VendorsPage() {
     setShowContractModal(false)
   }
 
-  const handleSaveContract = () => {
+  const handleSaveContract = async () => {
     if (!contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value) return
     const value = parseFloat(contractForm.annual_value)
     if (isNaN(value)) return
 
     if (editingContractId) {
+      const updatedData = {
+        vendor_id: contractForm.vendor_id,
+        contract_number: contractForm.contract_number,
+        start_date: contractForm.start_date,
+        end_date: contractForm.end_date,
+        annual_value: value,
+        renewal_type: contractForm.renewal_type,
+        status: contractForm.status,
+      }
       setLocalContracts(prev => prev.map(c => c.id === editingContractId ? {
         ...c,
-        vendor_id: contractForm.vendor_id,
-        contract_number: contractForm.contract_number || c.contract_number,
-        start_date: contractForm.start_date,
-        end_date: contractForm.end_date,
-        annual_value: value,
-        renewal_type: contractForm.renewal_type,
-        status: contractForm.status,
+        ...updatedData,
+        contract_number: updatedData.contract_number || c.contract_number,
       } : c))
       addToast('Contract updated successfully', 'success')
+      // Persist to backend
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'vendorContracts', action: 'update', id: editingContractId, data: updatedData }),
+      }).catch(() => {})
     } else {
       const id = `vc-${Date.now()}`
-      setLocalContracts(prev => [...prev, {
+      const contractNumber = contractForm.contract_number || `CNT-${Date.now().toString(36).toUpperCase()}`
+      const newContract = {
         id,
         vendor_id: contractForm.vendor_id,
-        contract_number: contractForm.contract_number || `CNT-${Date.now().toString(36).toUpperCase()}`,
+        contract_number: contractNumber,
         start_date: contractForm.start_date,
         end_date: contractForm.end_date,
         annual_value: value,
         renewal_type: contractForm.renewal_type,
         status: contractForm.status,
-      }])
+      }
+      setLocalContracts(prev => [...prev, newContract])
       addToast('Contract created successfully', 'success')
+      // Persist to backend
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'vendorContracts', action: 'create', data: newContract }),
+      }).catch(() => {})
     }
     resetContractForm()
   }

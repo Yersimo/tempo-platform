@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
-import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList } from 'lucide-react'
+import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList, Edit3 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 const INJURY_TYPES = [
@@ -31,7 +31,10 @@ export default function WorkersCompPage() {
   const {
     employees,
     workersCompPolicies, workersCompClaims, workersCompClassCodes, workersCompAudits,
-    addWorkersCompClaim,
+    addWorkersCompPolicy, updateWorkersCompPolicy,
+    addWorkersCompClaim, updateWorkersCompClaim,
+    addWorkersCompClassCode, updateWorkersCompClassCode,
+    addWorkersCompAudit, updateWorkersCompAudit,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('policies')
@@ -44,6 +47,46 @@ export default function WorkersCompPage() {
     body_part: '',
     reserve_amount: '',
   })
+
+  // Policy modal state
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [editingPolicy, setEditingPolicy] = useState<any>(null)
+  const [policyForm, setPolicyForm] = useState({
+    name: '',
+    carrier: '',
+    policy_number: '',
+    effective_date: '',
+    expiration_date: '',
+    premium: '',
+    status: 'active',
+  })
+
+  // Claim status update modal state
+  const [showClaimStatusModal, setShowClaimStatusModal] = useState(false)
+  const [editingClaim, setEditingClaim] = useState<any>(null)
+  const [claimStatusForm, setClaimStatusForm] = useState({ status: '' })
+
+  // Class code modal state
+  const [showClassCodeModal, setShowClassCodeModal] = useState(false)
+  const [editingClassCode, setEditingClassCode] = useState<any>(null)
+  const [classCodeForm, setClassCodeForm] = useState({
+    code: '',
+    description: '',
+    rate: '',
+    industry: '',
+  })
+
+  // Audit modal state
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [showAuditStatusModal, setShowAuditStatusModal] = useState(false)
+  const [editingAudit, setEditingAudit] = useState<any>(null)
+  const [auditForm, setAuditForm] = useState({
+    audit_type: 'annual',
+    scheduled_date: '',
+    auditor: '',
+    status: 'scheduled',
+  })
+  const [auditStatusForm, setAuditStatusForm] = useState({ status: '' })
 
   // Premium calculator state
   const [calcClassCode, setCalcClassCode] = useState('')
@@ -93,6 +136,145 @@ export default function WorkersCompPage() {
       paid_amount: 0,
     })
     setShowClaimModal(false)
+  }
+
+  // ── Policy Handlers ──
+
+  function openAddPolicyModal() {
+    setEditingPolicy(null)
+    setPolicyForm({
+      name: '',
+      carrier: '',
+      policy_number: '',
+      effective_date: new Date().toISOString().split('T')[0],
+      expiration_date: '',
+      premium: '',
+      status: 'active',
+    })
+    setShowPolicyModal(true)
+  }
+
+  function openEditPolicyModal(policy: any) {
+    setEditingPolicy(policy)
+    setPolicyForm({
+      name: policy.name || '',
+      carrier: policy.carrier || '',
+      policy_number: policy.policy_number || '',
+      effective_date: policy.effective_date || '',
+      expiration_date: policy.expiry_date || policy.expiration_date || '',
+      premium: String((policy.premium || 0) / 100),
+      status: policy.status || 'active',
+    })
+    setShowPolicyModal(true)
+  }
+
+  function submitPolicy() {
+    if (!policyForm.name || !policyForm.carrier || !policyForm.policy_number) return
+    const payload = {
+      name: policyForm.name,
+      carrier: policyForm.carrier,
+      policy_number: policyForm.policy_number,
+      effective_date: policyForm.effective_date,
+      expiry_date: policyForm.expiration_date,
+      premium: Number(policyForm.premium) * 100 || 0,
+      status: policyForm.status,
+      covered_employees: employees.length,
+    }
+    if (editingPolicy) {
+      updateWorkersCompPolicy(editingPolicy.id, payload)
+    } else {
+      addWorkersCompPolicy(payload)
+    }
+    setShowPolicyModal(false)
+  }
+
+  // ── Claim Status Handlers ──
+
+  function openClaimStatusModal(claim: any) {
+    setEditingClaim(claim)
+    setClaimStatusForm({ status: claim.status })
+    setShowClaimStatusModal(true)
+  }
+
+  function submitClaimStatus() {
+    if (!editingClaim || !claimStatusForm.status) return
+    updateWorkersCompClaim(editingClaim.id, { status: claimStatusForm.status })
+    setShowClaimStatusModal(false)
+  }
+
+  // ── Class Code Handlers ──
+
+  function openAddClassCodeModal() {
+    setEditingClassCode(null)
+    setClassCodeForm({ code: '', description: '', rate: '', industry: '' })
+    setShowClassCodeModal(true)
+  }
+
+  function openEditClassCodeModal(cc: any) {
+    setEditingClassCode(cc)
+    setClassCodeForm({
+      code: cc.code || '',
+      description: cc.description || '',
+      rate: String(cc.rate || ''),
+      industry: cc.industry || '',
+    })
+    setShowClassCodeModal(true)
+  }
+
+  function submitClassCode() {
+    if (!classCodeForm.code || !classCodeForm.description || !classCodeForm.rate) return
+    const payload = {
+      code: classCodeForm.code,
+      description: classCodeForm.description,
+      rate: Number(classCodeForm.rate),
+      industry: classCodeForm.industry,
+      employee_count: 0,
+    }
+    if (editingClassCode) {
+      updateWorkersCompClassCode(editingClassCode.id, payload)
+    } else {
+      addWorkersCompClassCode(payload)
+    }
+    setShowClassCodeModal(false)
+  }
+
+  // ── Audit Handlers ──
+
+  function openScheduleAuditModal() {
+    setEditingAudit(null)
+    setAuditForm({
+      audit_type: 'annual',
+      scheduled_date: '',
+      auditor: '',
+      status: 'scheduled',
+    })
+    setShowAuditModal(true)
+  }
+
+  function submitAudit() {
+    if (!auditForm.scheduled_date || !auditForm.auditor) return
+    addWorkersCompAudit({
+      audit_type: auditForm.audit_type,
+      audit_date: auditForm.scheduled_date,
+      period: `${new Date().getFullYear()}`,
+      auditor: auditForm.auditor,
+      status: auditForm.status,
+      findings: '',
+      adjustment_amount: 0,
+    })
+    setShowAuditModal(false)
+  }
+
+  function openAuditStatusModal(audit: any) {
+    setEditingAudit(audit)
+    setAuditStatusForm({ status: audit.status })
+    setShowAuditStatusModal(true)
+  }
+
+  function submitAuditStatus() {
+    if (!editingAudit || !auditStatusForm.status) return
+    updateWorkersCompAudit(editingAudit.id, { status: auditStatusForm.status })
+    setShowAuditStatusModal(false)
   }
 
   function calculatePremium() {
@@ -176,7 +358,7 @@ export default function WorkersCompPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>All Policies</CardTitle>
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" onClick={openAddPolicyModal}>
                 <Plus size={14} /> Add Policy
               </Button>
             </div>
@@ -193,6 +375,7 @@ export default function WorkersCompPage() {
                   <th className="tempo-th text-right px-4 py-3">Premium</th>
                   <th className="tempo-th text-center px-4 py-3">Covered Employees</th>
                   <th className="tempo-th text-center px-4 py-3">{tc('status')}</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -214,6 +397,11 @@ export default function WorkersCompPage() {
                       <Badge variant={getPolicyStatusVariant(policy.status)}>
                         {policy.status}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Button size="sm" variant="ghost" onClick={() => openEditPolicyModal(policy)}>
+                        <Edit3 size={12} /> Edit
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -279,21 +467,9 @@ export default function WorkersCompPage() {
                       <td className="px-4 py-3 text-xs text-t2">{claim.filed_date}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex gap-1 justify-center">
-                          {claim.status === 'open' && (
-                            <>
-                              <Button size="sm" variant="secondary">
-                                <FileText size={12} /> View
-                              </Button>
-                              <Button size="sm" variant="ghost">
-                                <CheckCircle size={12} /> Close
-                              </Button>
-                            </>
-                          )}
-                          {claim.status === 'closed' && (
-                            <Button size="sm" variant="secondary">
-                              <FileText size={12} /> View
-                            </Button>
-                          )}
+                          <Button size="sm" variant="secondary" onClick={() => openClaimStatusModal(claim)}>
+                            <Edit3 size={12} /> Update Status
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -311,9 +487,14 @@ export default function WorkersCompPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>NCCI Class Codes</CardTitle>
-              <div className="flex items-center gap-2 text-xs text-t3">
-                <Briefcase size={14} />
-                <span>{workersCompClassCodes.reduce((sum, c) => sum + c.employee_count, 0)} total employees classified</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-2 text-xs text-t3">
+                  <Briefcase size={14} />
+                  {workersCompClassCodes.reduce((sum, c) => sum + c.employee_count, 0)} total employees classified
+                </span>
+                <Button variant="secondary" size="sm" onClick={openAddClassCodeModal}>
+                  <Plus size={14} /> Add Class Code
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -327,6 +508,7 @@ export default function WorkersCompPage() {
                   <th className="tempo-th text-center px-4 py-3">Employee Count</th>
                   <th className="tempo-th text-right px-4 py-3">Est. Annual Premium</th>
                   <th className="tempo-th text-left px-4 py-3">Risk Level</th>
+                  <th className="tempo-th text-center px-4 py-3">{tc('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -352,6 +534,11 @@ export default function WorkersCompPage() {
                         <Badge variant={riskVariant as any}>
                           {riskLevel}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button size="sm" variant="ghost" onClick={() => openEditClassCodeModal(cc)}>
+                          <Edit3 size={12} /> Edit
+                        </Button>
                       </td>
                     </tr>
                   )
@@ -473,7 +660,7 @@ export default function WorkersCompPage() {
             <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
               <ClipboardList size={18} /> Audit History
             </h3>
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={openScheduleAuditModal}>
               <Plus size={14} /> Schedule Audit
             </Button>
           </div>
@@ -509,21 +696,26 @@ export default function WorkersCompPage() {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  {audit.adjustment_amount !== 0 && (
-                    <div>
-                      <p className="text-xs text-t3">Adjustment</p>
-                      <p className={`text-sm font-semibold ${audit.adjustment_amount < 0 ? 'text-success' : 'text-error'}`}>
-                        {audit.adjustment_amount < 0 ? '-' : '+'}{formatCents(Math.abs(audit.adjustment_amount))}
-                      </p>
-                    </div>
-                  )}
-                  {audit.adjustment_amount === 0 && audit.status === 'completed' && (
-                    <div>
-                      <p className="text-xs text-t3">Adjustment</p>
-                      <p className="text-sm font-semibold text-success">No adjustment</p>
-                    </div>
-                  )}
+                <div className="flex items-start gap-3">
+                  <div className="text-right">
+                    {audit.adjustment_amount !== 0 && (
+                      <div>
+                        <p className="text-xs text-t3">Adjustment</p>
+                        <p className={`text-sm font-semibold ${audit.adjustment_amount < 0 ? 'text-success' : 'text-error'}`}>
+                          {audit.adjustment_amount < 0 ? '-' : '+'}{formatCents(Math.abs(audit.adjustment_amount))}
+                        </p>
+                      </div>
+                    )}
+                    {audit.adjustment_amount === 0 && audit.status === 'completed' && (
+                      <div>
+                        <p className="text-xs text-t3">Adjustment</p>
+                        <p className="text-sm font-semibold text-success">No adjustment</p>
+                      </div>
+                    )}
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => openAuditStatusModal(audit)}>
+                    <Edit3 size={12} /> Update
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -606,6 +798,211 @@ export default function WorkersCompPage() {
             <Button variant="secondary" onClick={() => setShowClaimModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitClaim}>
               <ShieldCheck size={14} /> Submit Claim
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Policy Modal (Add / Edit) ── */}
+      <Modal open={showPolicyModal} onClose={() => setShowPolicyModal(false)} title={editingPolicy ? 'Edit Policy' : 'Add Policy'}>
+        <div className="space-y-4">
+          <Input
+            label="Policy Name"
+            placeholder="e.g. General Liability - 2026"
+            value={policyForm.name}
+            onChange={(e) => setPolicyForm({ ...policyForm, name: e.target.value })}
+          />
+          <Input
+            label="Carrier"
+            placeholder="e.g. Hartford, Travelers"
+            value={policyForm.carrier}
+            onChange={(e) => setPolicyForm({ ...policyForm, carrier: e.target.value })}
+          />
+          <Input
+            label="Policy Number"
+            placeholder="e.g. WC-2026-001"
+            value={policyForm.policy_number}
+            onChange={(e) => setPolicyForm({ ...policyForm, policy_number: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Effective Date"
+              type="date"
+              value={policyForm.effective_date}
+              onChange={(e) => setPolicyForm({ ...policyForm, effective_date: e.target.value })}
+            />
+            <Input
+              label="Expiration Date"
+              type="date"
+              value={policyForm.expiration_date}
+              onChange={(e) => setPolicyForm({ ...policyForm, expiration_date: e.target.value })}
+            />
+          </div>
+          <Input
+            label="Annual Premium ($)"
+            type="number"
+            placeholder="e.g. 25000"
+            value={policyForm.premium}
+            onChange={(e) => setPolicyForm({ ...policyForm, premium: e.target.value })}
+          />
+          <Select
+            label="Status"
+            value={policyForm.status}
+            onChange={(e) => setPolicyForm({ ...policyForm, status: e.target.value })}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'expired', label: 'Expired' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPolicyModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPolicy}>
+              <ShieldCheck size={14} /> {editingPolicy ? 'Update Policy' : 'Add Policy'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Claim Status Update Modal ── */}
+      <Modal open={showClaimStatusModal} onClose={() => setShowClaimStatusModal(false)} title="Update Claim Status">
+        <div className="space-y-4">
+          {editingClaim && (
+            <div className="p-3 bg-canvas rounded-lg border border-divider">
+              <p className="text-xs text-t3 mb-1">Claim for</p>
+              <p className="text-sm font-semibold text-t1">{editingClaim.employee_name}</p>
+              <p className="text-xs text-t3 mt-1">Incident: {editingClaim.incident_date}</p>
+            </div>
+          )}
+          <Select
+            label="New Status"
+            value={claimStatusForm.status}
+            onChange={(e) => setClaimStatusForm({ status: e.target.value })}
+            options={[
+              { value: 'open', label: 'Open' },
+              { value: 'investigating', label: 'Investigating' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'denied', label: 'Denied' },
+              { value: 'closed', label: 'Closed' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowClaimStatusModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitClaimStatus}>
+              <CheckCircle size={14} /> Update Status
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Class Code Modal (Add / Edit) ── */}
+      <Modal open={showClassCodeModal} onClose={() => setShowClassCodeModal(false)} title={editingClassCode ? 'Edit Class Code' : 'Add Class Code'}>
+        <div className="space-y-4">
+          <Input
+            label="Code"
+            placeholder="e.g. 8810"
+            value={classCodeForm.code}
+            onChange={(e) => setClassCodeForm({ ...classCodeForm, code: e.target.value })}
+          />
+          <Input
+            label="Description"
+            placeholder="e.g. Clerical Office Employees"
+            value={classCodeForm.description}
+            onChange={(e) => setClassCodeForm({ ...classCodeForm, description: e.target.value })}
+          />
+          <Input
+            label="Rate per $100 Payroll"
+            type="number"
+            step="0.01"
+            placeholder="e.g. 0.25"
+            value={classCodeForm.rate}
+            onChange={(e) => setClassCodeForm({ ...classCodeForm, rate: e.target.value })}
+          />
+          <Input
+            label="Industry"
+            placeholder="e.g. Office/Clerical, Construction, Healthcare"
+            value={classCodeForm.industry}
+            onChange={(e) => setClassCodeForm({ ...classCodeForm, industry: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowClassCodeModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitClassCode}>
+              <Plus size={14} /> {editingClassCode ? 'Update Class Code' : 'Add Class Code'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Schedule Audit Modal ── */}
+      <Modal open={showAuditModal} onClose={() => setShowAuditModal(false)} title="Schedule Audit">
+        <div className="space-y-4">
+          <Select
+            label="Audit Type"
+            value={auditForm.audit_type}
+            onChange={(e) => setAuditForm({ ...auditForm, audit_type: e.target.value })}
+            options={[
+              { value: 'annual', label: 'Annual Premium Audit' },
+              { value: 'interim', label: 'Interim Audit' },
+              { value: 'final', label: 'Final Audit' },
+              { value: 'payroll', label: 'Payroll Verification' },
+            ]}
+          />
+          <Input
+            label="Scheduled Date"
+            type="date"
+            value={auditForm.scheduled_date}
+            onChange={(e) => setAuditForm({ ...auditForm, scheduled_date: e.target.value })}
+          />
+          <Input
+            label="Auditor"
+            placeholder="e.g. Smith & Associates"
+            value={auditForm.auditor}
+            onChange={(e) => setAuditForm({ ...auditForm, auditor: e.target.value })}
+          />
+          <Select
+            label="Status"
+            value={auditForm.status}
+            onChange={(e) => setAuditForm({ ...auditForm, status: e.target.value })}
+            options={[
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'in_progress', label: 'In Progress' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAuditModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitAudit}>
+              <ClipboardList size={14} /> Schedule Audit
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Audit Status Update Modal ── */}
+      <Modal open={showAuditStatusModal} onClose={() => setShowAuditStatusModal(false)} title="Update Audit Status">
+        <div className="space-y-4">
+          {editingAudit && (
+            <div className="p-3 bg-canvas rounded-lg border border-divider">
+              <p className="text-xs text-t3 mb-1">Audit</p>
+              <p className="text-sm font-semibold text-t1">Annual Premium Audit</p>
+              <p className="text-xs text-t3 mt-1">Auditor: {editingAudit.auditor} | Date: {editingAudit.audit_date}</p>
+            </div>
+          )}
+          <Select
+            label="New Status"
+            value={auditStatusForm.status}
+            onChange={(e) => setAuditStatusForm({ status: e.target.value })}
+            options={[
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'in_progress', label: 'In Progress' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAuditStatusModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitAuditStatus}>
+              <CheckCircle size={14} /> Update Status
             </Button>
           </div>
         </div>

@@ -42,6 +42,14 @@ export default function DocumentsPage() {
 
   const [activeTab, setActiveTab] = useState<'documents' | 'templates' | 'audit'>('documents')
   const [showNewDocModal, setShowNewDocModal] = useState(false)
+  const [showEditTemplateModal, setShowEditTemplateModal] = useState(false)
+  const [editTemplateForm, setEditTemplateForm] = useState({
+    id: '',
+    name: '',
+    description: '',
+    signing_flow: 'sequential' as 'sequential' | 'parallel',
+    signer_roles: [] as { order: number; role: string }[],
+  })
   const [docForm, setDocForm] = useState({
     title: '',
     template_id: '',
@@ -243,6 +251,57 @@ export default function DocumentsPage() {
       deleteSignatureDocument(docId)
       addToast(`Document removed locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
     }
+  }
+
+  function openEditTemplate(template: any) {
+    setEditTemplateForm({
+      id: template.id,
+      name: template.name || '',
+      description: template.description || '',
+      signing_flow: template.signing_flow || 'sequential',
+      signer_roles: template.signer_roles?.map((r: any, idx: number) => ({ order: r.order ?? idx + 1, role: r.role })) || [],
+    })
+    setShowEditTemplateModal(true)
+  }
+
+  function addSignerRole() {
+    setEditTemplateForm(prev => ({
+      ...prev,
+      signer_roles: [...prev.signer_roles, { order: prev.signer_roles.length + 1, role: '' }],
+    }))
+  }
+
+  function removeSignerRole(index: number) {
+    if (editTemplateForm.signer_roles.length <= 1) return
+    setEditTemplateForm(prev => ({
+      ...prev,
+      signer_roles: prev.signer_roles.filter((_, i) => i !== index).map((r, i) => ({ ...r, order: i + 1 })),
+    }))
+  }
+
+  function updateSignerRole(index: number, value: string) {
+    setEditTemplateForm(prev => ({
+      ...prev,
+      signer_roles: prev.signer_roles.map((r, i) => i === index ? { ...r, role: value } : r),
+    }))
+  }
+
+  async function submitEditTemplate() {
+    if (!editTemplateForm.name || editTemplateForm.signer_roles.some(r => !r.role)) return
+    const updatedData = {
+      name: editTemplateForm.name,
+      description: editTemplateForm.description,
+      signing_flow: editTemplateForm.signing_flow,
+      signer_roles: editTemplateForm.signer_roles,
+    }
+    try {
+      await esigAPI('POST', 'update-template', { templateId: editTemplateForm.id, ...updatedData })
+      updateSignatureTemplate(editTemplateForm.id, updatedData)
+    } catch (err: any) {
+      updateSignatureTemplate(editTemplateForm.id, updatedData)
+      addToast(`Template saved locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
+    }
+    setShowEditTemplateModal(false)
   }
 
   function getStatusBadge(status: string) {
@@ -469,7 +528,7 @@ export default function DocumentsPage() {
                   <Button size="sm" className="flex-1" onClick={() => useTemplate(template.id)}>
                     <ArrowRight size={12} /> Use Template
                   </Button>
-                  <Button size="sm" variant="secondary">
+                  <Button size="sm" variant="secondary" onClick={() => openEditTemplate(template)}>
                     <Edit size={12} /> Edit
                   </Button>
                 </div>
@@ -541,6 +600,73 @@ export default function DocumentsPage() {
           </div>
         </Card>
       )}
+
+      {/* Edit Template Modal */}
+      <Modal open={showEditTemplateModal} onClose={() => setShowEditTemplateModal(false)} title="Edit Template">
+        <div className="space-y-4">
+          <Input
+            label="Template Name"
+            placeholder="e.g., Employment Agreement"
+            value={editTemplateForm.name}
+            onChange={(e) => setEditTemplateForm(prev => ({ ...prev, name: e.target.value }))}
+          />
+
+          <Textarea
+            label="Description"
+            placeholder="Describe this template..."
+            value={editTemplateForm.description}
+            onChange={(e) => setEditTemplateForm(prev => ({ ...prev, description: e.target.value }))}
+          />
+
+          <Select
+            label="Signing Flow"
+            value={editTemplateForm.signing_flow}
+            onChange={(e) => setEditTemplateForm(prev => ({ ...prev, signing_flow: e.target.value as 'sequential' | 'parallel' }))}
+            options={[
+              { value: 'sequential', label: 'Sequential - one after another' },
+              { value: 'parallel', label: 'Parallel - all at once' },
+            ]}
+          />
+
+          {/* Signer Roles */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-t1 flex items-center gap-1">
+                <Users size={14} /> Signer Roles
+              </label>
+              <Button size="sm" variant="secondary" onClick={addSignerRole}>
+                <Plus size={12} /> Add Role
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {editTemplateForm.signer_roles.map((role, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <span className="text-xs text-t3 w-6 text-center shrink-0">{role.order}.</span>
+                  <div className="flex-1">
+                    <Input
+                      placeholder="e.g., Employee, Manager, HR"
+                      value={role.role}
+                      onChange={(e) => updateSignerRole(idx, e.target.value)}
+                    />
+                  </div>
+                  {editTemplateForm.signer_roles.length > 1 && (
+                    <Button size="sm" variant="ghost" onClick={() => removeSignerRole(idx)}>
+                      <Trash2 size={12} />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowEditTemplateModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitEditTemplate}>
+              <Edit size={14} /> Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* New Document Modal */}
       <Modal open={showNewDocModal} onClose={() => setShowNewDocModal(false)} title="New Document">

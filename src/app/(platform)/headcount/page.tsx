@@ -103,9 +103,21 @@ export default function HeadcountPage() {
   const [approvalPositionId, setApprovalPositionId] = useState('')
   const [approvalComment, setApprovalComment] = useState('')
 
+  // Plan modal
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [planForm, setPlanForm] = useState({
+    name: '',
+    fiscal_year: new Date().getFullYear().toString(),
+    department_id: '',
+    total_headcount: 0,
+    total_budget: 0,
+    status: 'draft' as string,
+  })
+
   // Budget item modal
   const [showBudgetModal, setShowBudgetModal] = useState(false)
   const [budgetPositionId, setBudgetPositionId] = useState('')
+  const [editingBudgetItemId, setEditingBudgetItemId] = useState<string | null>(null)
   const [budgetForm, setBudgetForm] = useState({
     category: 'base_salary' as string,
     amount: 0,
@@ -393,15 +405,62 @@ export default function HeadcountPage() {
 
   function submitBudgetItem() {
     if (!budgetPositionId || !budgetForm.amount) return
-    addHeadcountBudgetItem({
-      position_id: budgetPositionId,
-      category: budgetForm.category,
-      amount: Number(budgetForm.amount),
-      currency: budgetForm.currency,
-      notes: budgetForm.notes || null,
-    })
+    if (editingBudgetItemId) {
+      updateHeadcountBudgetItem(editingBudgetItemId, {
+        category: budgetForm.category,
+        amount: Number(budgetForm.amount),
+        currency: budgetForm.currency,
+        notes: budgetForm.notes || null,
+      })
+    } else {
+      addHeadcountBudgetItem({
+        position_id: budgetPositionId,
+        category: budgetForm.category,
+        amount: Number(budgetForm.amount),
+        currency: budgetForm.currency,
+        notes: budgetForm.notes || null,
+      })
+    }
     setShowBudgetModal(false)
-    addToast('Budget item added')
+    setEditingBudgetItemId(null)
+  }
+
+  function openEditBudgetItem(bi: any) {
+    setBudgetPositionId(bi.position_id)
+    setEditingBudgetItemId(bi.id)
+    setBudgetForm({
+      category: bi.category,
+      amount: bi.amount,
+      currency: bi.currency || 'USD',
+      notes: bi.notes || '',
+    })
+    setShowBudgetModal(true)
+  }
+
+  // ---- Plan CRUD ----
+  function openNewPlan() {
+    setPlanForm({
+      name: '',
+      fiscal_year: new Date().getFullYear().toString(),
+      department_id: '',
+      total_headcount: 0,
+      total_budget: 0,
+      status: 'draft',
+    })
+    setShowPlanModal(true)
+  }
+
+  function submitPlan() {
+    if (!planForm.name || !planForm.fiscal_year) return
+    addHeadcountPlan({
+      name: planForm.name,
+      fiscal_year: planForm.fiscal_year,
+      department_id: planForm.department_id || null,
+      total_headcount: Number(planForm.total_headcount) || 0,
+      total_budget: Number(planForm.total_budget) || 0,
+      status: planForm.status,
+    })
+    setShowPlanModal(false)
   }
 
   // ---- Status change ----
@@ -422,6 +481,10 @@ export default function HeadcountPage() {
               options={headcountPlans.map(p => ({ value: p.id, label: `${p.name} (${p.fiscal_year})` }))}
               className="w-56"
             />
+            <Button size="sm" variant="secondary" onClick={openNewPlan}>
+              <Plus size={14} />
+              New Plan
+            </Button>
             <Button size="sm" onClick={openNewPosition}>
               <Plus size={14} />
               {t('addPosition')}
@@ -685,9 +748,25 @@ export default function HeadcountPage() {
                                   {posBudgetItems.length > 0 && (
                                     <div className="mt-1 space-y-0.5">
                                       {posBudgetItems.map(bi => (
-                                        <div key={bi.id} className="flex items-center justify-between text-xs">
+                                        <div key={bi.id} className="flex items-center justify-between text-xs group">
                                           <span className="text-t2">{BUDGET_CATEGORY_LABELS[bi.category] || bi.category}</span>
-                                          <span className="text-t1 tabular-nums">{fmt(bi.amount)}</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-t1 tabular-nums">{fmt(bi.amount)}</span>
+                                            <button
+                                              onClick={() => openEditBudgetItem(bi)}
+                                              className="p-0.5 text-t3 hover:text-t1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              title="Edit"
+                                            >
+                                              <Pencil size={10} />
+                                            </button>
+                                            <button
+                                              onClick={() => deleteHeadcountBudgetItem(bi.id)}
+                                              className="p-0.5 text-t3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+                                              title="Delete"
+                                            >
+                                              <Trash2 size={10} />
+                                            </button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1225,8 +1304,8 @@ export default function HeadcountPage() {
       {/* Budget Item Modal */}
       <Modal
         open={showBudgetModal}
-        onClose={() => setShowBudgetModal(false)}
-        title="Add Budget Item"
+        onClose={() => { setShowBudgetModal(false); setEditingBudgetItemId(null) }}
+        title={editingBudgetItemId ? 'Edit Budget Item' : 'Add Budget Item'}
         size="sm"
       >
         <div className="space-y-4">
@@ -1256,8 +1335,70 @@ export default function HeadcountPage() {
             placeholder="Optional notes..."
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowBudgetModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitBudgetItem}>Add Item</Button>
+            <Button variant="secondary" onClick={() => { setShowBudgetModal(false); setEditingBudgetItemId(null) }}>{tc('cancel')}</Button>
+            <Button onClick={submitBudgetItem}>{editingBudgetItemId ? tc('save') : 'Add Item'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* New Plan Modal */}
+      <Modal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        title="New Headcount Plan"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Plan Name"
+            value={planForm.name}
+            onChange={e => setPlanForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="e.g. FY2026 Engineering Growth Plan"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Fiscal Year"
+              value={planForm.fiscal_year}
+              onChange={e => setPlanForm(f => ({ ...f, fiscal_year: e.target.value }))}
+              placeholder="e.g. 2026"
+            />
+            <Select
+              label={t('department')}
+              value={planForm.department_id}
+              onChange={e => setPlanForm(f => ({ ...f, department_id: e.target.value }))}
+              options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Total Headcount"
+              type="number"
+              value={planForm.total_headcount || ''}
+              onChange={e => setPlanForm(f => ({ ...f, total_headcount: Number(e.target.value) }))}
+              placeholder="e.g. 25"
+            />
+            <Input
+              label="Total Budget ($)"
+              type="number"
+              value={planForm.total_budget || ''}
+              onChange={e => setPlanForm(f => ({ ...f, total_budget: Number(e.target.value) }))}
+              placeholder="e.g. 2500000"
+            />
+          </div>
+          <Select
+            label={t('status')}
+            value={planForm.status}
+            onChange={e => setPlanForm(f => ({ ...f, status: e.target.value }))}
+            options={[
+              { value: 'draft', label: 'Draft' },
+              { value: 'active', label: 'Active' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'closed', label: 'Closed' },
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitPlan} disabled={!planForm.name || !planForm.fiscal_year}>Create Plan</Button>
           </div>
         </div>
       </Modal>

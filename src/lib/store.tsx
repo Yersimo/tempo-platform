@@ -1926,7 +1926,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [departments])
 
   const logAudit = useCallback((action: string, entity_type: string, entity_id: string, details: string) => {
-    setAuditLog(prev => [{
+    const entry = {
       id: genId('audit'),
       user: currentUser?.full_name || 'Unknown User',
       action,
@@ -1934,7 +1934,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       entity_id,
       details,
       timestamp: new Date().toISOString(),
-    }, ...prev])
+    }
+    setAuditLog(prev => [entry, ...prev])
+    apiPost('auditLog', 'create', entry)
   }, [currentUser])
 
   // ---- Toasts ----
@@ -2870,18 +2872,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     const id = genId('hcbi')
     setHeadcountBudgetItems(prev => [...prev, { id, ...data }] as typeof prev)
     logAudit('create', 'headcount_budget_item', id, `Created budget item: ${data.category}`)
+    addToast('Budget item added')
     apiPost('headcountBudgetItems', 'create', data)
-  }, [logAudit])
+  }, [logAudit, addToast])
   const updateHeadcountBudgetItem = useCallback((id: string, data: AnyRecord) => {
     setHeadcountBudgetItems(prev => prev.map(b => b.id === id ? { ...b, ...data } : b) as typeof prev)
     logAudit('update', 'headcount_budget_item', id, 'Updated budget item')
+    addToast('Budget item updated')
     apiPost('headcountBudgetItems', 'update', data, id)
-  }, [logAudit])
+  }, [logAudit, addToast])
   const deleteHeadcountBudgetItem = useCallback((id: string) => {
     setHeadcountBudgetItems(prev => prev.filter(b => b.id !== id) as typeof prev)
     logAudit('delete', 'headcount_budget_item', id, 'Deleted budget item')
+    addToast('Budget item deleted')
     apiPost('headcountBudgetItems', 'delete', undefined, id)
-  }, [logAudit])
+  }, [logAudit, addToast])
 
   // ---- CRUD: Custom Field Definitions ----
   const addCustomFieldDefinition = useCallback((data: AnyRecord) => {
@@ -2985,16 +2990,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const addComplianceAlert = useCallback((data: AnyRecord) => {
     const id = genId('calert')
     setComplianceAlerts(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'compliance_alert', id, `Created compliance alert: ${data.title || 'Alert'}`)
+    addToast('Compliance alert created', 'info')
     apiPost('complianceAlerts', 'create', data)
-  }, [])
+  }, [logAudit, addToast])
   const updateComplianceAlert = useCallback((id: string, data: AnyRecord) => {
     setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a) as typeof prev)
+    logAudit('update', 'compliance_alert', id, 'Updated compliance alert')
     apiPost('complianceAlerts', 'update', data, id)
-  }, [])
+  }, [logAudit])
   const dismissComplianceAlert = useCallback((id: string) => {
     setComplianceAlerts(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a) as typeof prev)
+    logAudit('update', 'compliance_alert', id, 'Dismissed compliance alert')
+    addToast('Alert dismissed')
     apiPost('complianceAlerts', 'update', { is_read: true }, id)
-  }, [])
+  }, [logAudit, addToast])
 
   // ---- Journeys ----
   const updateJourneyStep = useCallback((journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => {
@@ -3018,9 +3028,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- Widget Preferences ----
   const updateWidgetPreferences = useCallback((data: AnyRecord) => {
     setWidgetPreferences((prev: any) => ({ ...prev, ...data }))
+    logAudit('update', 'widget_preferences', 'prefs', 'Updated dashboard layout')
     addToast('Dashboard layout updated')
     apiPost('widgetPreferences', 'update', data)
-  }, [addToast])
+  }, [logAudit, addToast])
 
   // ---- CRUD: Goals ----
   const addGoal = useCallback((data: AnyRecord) => {
@@ -4068,10 +4079,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // ---- Notifications ----
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n) as typeof prev)
+    apiPost('notifications', 'update', { is_read: true }, id)
   }, [])
 
   const markAllNotificationsRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })) as typeof prev)
+    apiPost('notifications', 'update', { is_read: true, bulk: true })
   }, [])
 
   const unreadNotificationCount = notifications.filter(n => !n.is_read).length
@@ -4683,14 +4696,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [logAudit, addToast])
   const updateAppPage = useCallback((id: string, data: AnyRecord) => {
     setAppPages(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
-  }, [])
+    logAudit('update', 'app_page', id, `Updated app page`)
+    addToast('App page updated')
+    apiPost('appPages', 'update', data, id)
+  }, [logAudit, addToast])
   const addAppComponent = useCallback((data: AnyRecord) => {
     const id = genId('comp')
     setAppComponents(prev => [...prev, { id, ...data }])
-  }, [])
+    logAudit('create', 'app_component', id, `Added component: ${data.name || 'Component'}`)
+    addToast('Component added')
+    apiPost('appComponents', 'create', data)
+  }, [logAudit, addToast])
   const updateAppComponent = useCallback((id: string, data: AnyRecord) => {
     setAppComponents(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
-  }, [])
+    logAudit('update', 'app_component', id, `Updated component`)
+    addToast('Component updated')
+    apiPost('appComponents', 'update', data, id)
+  }, [logAudit, addToast])
   const addAppDataSource = useCallback((data: AnyRecord) => {
     const id = genId('ds')
     setAppDataSources(prev => [...prev, { id, created_at: new Date().toISOString(), ...data }])
@@ -4700,7 +4722,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [logAudit, addToast])
   const updateAppDataSource = useCallback((id: string, data: AnyRecord) => {
     setAppDataSources(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
-  }, [])
+    logAudit('update', 'app_data_source', id, `Updated data source`)
+    addToast('Data source updated')
+    apiPost('appDataSources', 'update', data, id)
+  }, [logAudit, addToast])
 
   // ---- RQL / Custom Query Language ----
   const addSavedQuery = useCallback((data: AnyRecord) => {
