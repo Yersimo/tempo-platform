@@ -4,6 +4,7 @@ import { uuid, periodString, currencyCode, positiveAmount } from './common'
 export const processPayrollBody = z.object({
   action: z.literal('process'),
   period: periodString,
+  country: z.string().min(2).max(3).optional(), // Fix 5: country filter
   overtime: z.record(z.string(), z.object({
     hours: z.number().min(0),
     rate: z.number().min(1).optional(),
@@ -34,6 +35,38 @@ export const approvePayrollBody = z.object({
   approverRole: z.string(),
 })
 
+// Fix 2: New submit action
+export const submitPayrollBody = z.object({
+  action: z.literal('submit'),
+  payrollRunId: uuid,
+  submitterId: uuid,
+})
+
+// Fix 2: HR approve
+export const approveHRBody = z.object({
+  action: z.literal('approve-hr'),
+  payrollRunId: uuid,
+  approverId: uuid,
+  comment: z.string().optional(),
+})
+
+// Fix 2: Finance approve
+export const approveFinanceBody = z.object({
+  action: z.literal('approve-finance'),
+  payrollRunId: uuid,
+  approverId: uuid,
+  comment: z.string().optional(),
+})
+
+// Fix 2: Reject
+export const rejectPayrollBody = z.object({
+  action: z.literal('reject'),
+  payrollRunId: uuid,
+  rejectorId: uuid,
+  rejectorRole: z.string(),
+  reason: z.string().min(1, 'Rejection reason is required'),
+})
+
 export const markProcessingBody = z.object({
   action: z.literal('mark-processing'),
   payrollRunId: uuid,
@@ -51,13 +84,30 @@ export const cancelPayrollBody = z.object({
   reason: z.string().min(1),
 })
 
+export const updateTaxConfigBody = z.object({
+  action: z.literal('update-tax-config'),
+  configId: z.string().optional(),  // existing config to supersede
+  country: z.string().min(2),
+  taxType: z.string().min(1),
+  rate: z.number().min(0),
+  description: z.string().optional(),
+  employerContribution: z.number().min(0).optional(),
+  employeeContribution: z.number().min(0).optional(),
+  effectiveDate: z.string().optional(),
+})
+
 export const payrollPostBody = z.discriminatedUnion('action', [
   processPayrollBody,
   generatePayStubBody,
   approvePayrollBody,
+  submitPayrollBody,
+  approveHRBody,
+  approveFinanceBody,
+  rejectPayrollBody,
   markProcessingBody,
   markPaidBody,
   cancelPayrollBody,
+  updateTaxConfigBody,
 ])
 
 // GET query param validation

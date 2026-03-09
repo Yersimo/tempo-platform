@@ -6,7 +6,7 @@
  */
 
 import { db, schema } from '@/lib/db'
-import { eq, and, desc, sql, count, sum, avg } from 'drizzle-orm'
+import { eq, and, or, desc, sql, count, sum, avg } from 'drizzle-orm'
 import {
   calculateTax as calculateTaxFromRegistry,
   type SupportedCountry,
@@ -23,7 +23,10 @@ import {
   getMinimumWage,
   getOvertimeRules,
   getMandatoryBonuses,
+  getMaternityPaternityRules,
 } from '@/lib/payroll/labor-law-registry'
+import { logPayrollAudit } from '@/lib/payroll/audit'
+import { getTaxCalculatorOverrides } from '@/lib/payroll/tax-config-cache'
 
 // ============================================================
 // TYPES & INTERFACES
@@ -51,9 +54,21 @@ export interface GarnishmentInput {
 }
 
 export interface ProcessPayrollOptions {
+  country?: string // ISO country code — filters to employees in this country only
   overtime?: Record<string, OvertimeInput> // employeeId → overtime data
   bonuses?: Record<string, BonusInput[]>  // employeeId → bonus array
   garnishments?: Record<string, GarnishmentInput[]> // employeeId → garnishment array
+}
+
+// Country → default currency mapping (Fix 6)
+export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  GH: 'GHS', NG: 'NGN', KE: 'KES', ZA: 'ZAR', TZ: 'TZS', UG: 'UGX', RW: 'RWF',
+  ET: 'ETB', EG: 'EGP', MA: 'MAD', MZ: 'MZN', ZM: 'ZMW', ZW: 'USD', MW: 'MWK',
+  CI: 'XOF', SN: 'XOF', TG: 'XOF', BJ: 'XOF', BF: 'XOF', NE: 'XOF', ML: 'XOF',
+  GW: 'XOF', CM: 'XAF', GA: 'XAF', CG: 'XAF', CD: 'CDF', TD: 'XAF', CF: 'XAF',
+  GQ: 'XAF', GN: 'GNF', GM: 'GMD', SL: 'SLL', LR: 'LRD', CV: 'CVE', MR: 'MRU',
+  ST: 'STN', BI: 'BIF', SS: 'SSP',
+  US: 'USD', UK: 'GBP', DE: 'EUR', FR: 'EUR', CA: 'CAD', AU: 'AUD',
 }
 
 export interface EmployeePayrollEntry {
@@ -79,6 +94,12 @@ export interface EmployeePayrollEntry {
   totalDeductions: number
   netPay: number
   currency: CurrencyCode
+  // Pro-rata & leave tracking
+  payType?: string
+  unpaidLeaveDays?: number
+  leaveType?: string | null
+  workingDaysInMonth?: number
+  workingDaysEmployed?: number
 }
 
 export interface PayrollRunSummary {
@@ -86,12 +107,14 @@ export interface PayrollRunSummary {
   orgId: string
   period: string
   status: string
+  country?: string
   employeeCount: number
   totalGross: number
   totalDeductions: number
   totalNet: number
   currency: string
   entries: EmployeePayrollEntry[]
+  skippedEmployees: Array<{ id: string; name: string; reason: string }>
   createdAt: Date
 }
 
@@ -484,26 +507,7 @@ const EXCHANGE_RATES: Partial<Record<CurrencyCode, number>> = {
   DJF: 177.7,     // Djiboutian Franc
 }
 
-const COUNTRY_CURRENCY_MAP: Partial<Record<SupportedCountry, CurrencyCode>> = {
-  // Original 6
-  US: 'USD', UK: 'GBP', DE: 'EUR', FR: 'EUR', CA: 'CAD', AU: 'AUD',
-  // Ecobank African countries (33)
-  NG: 'NGN', GH: 'GHS', KE: 'KES', ZA: 'ZAR',
-  CI: 'XOF', SN: 'XOF', TG: 'XOF', BJ: 'XOF', BF: 'XOF', NE: 'XOF', ML: 'XOF', GW: 'XOF',
-  CM: 'XAF', GA: 'XAF', CG: 'XAF', TD: 'XAF', CF: 'XAF', GQ: 'XAF',
-  CD: 'CDF', TZ: 'TZS', UG: 'UGX', RW: 'RWF', ET: 'ETB',
-  MZ: 'MZN', ZM: 'ZMW', ZW: 'ZWL', AO: 'AOA',
-  SL: 'SLL', GN: 'GNF', GM: 'GMD', LR: 'LRD',
-  CV: 'CVE', MR: 'MRU', ST: 'STN', BI: 'BIF',
-  // North Africa
-  EG: 'EGP', MA: 'MAD', TN: 'TND', DZ: 'DZD',
-  // East Africa
-  DJ: 'DJF', ER: 'ERN', SO: 'SOS', SS: 'SSP', SD: 'SDG',
-  // Southern Africa
-  BW: 'BWP', MU: 'MUR', NA: 'NAD', MW: 'MWK', MG: 'MGA',
-  SZ: 'SZL', LS: 'LSL', SC: 'SCR', KM: 'KMF',
-  LY: 'LYD',
-}
+// (COUNTRY_CURRENCY_MAP is exported at the top of this file)
 
 /**
  * Convert an amount from one currency to another using stored exchange rates.
@@ -970,51 +974,259 @@ async function getEmployeeSalary(employeeId: string, orgId: string): Promise<{ s
 
   const review = latestReview[0]
   // Use proposedSalary if approved, otherwise currentSalary
-  const salary = review.status === 'approved' ? review.proposedSalary : review.currentSalary
+  // DB stores salary in cents (integer) — convert to dollars for calculation
+  const salaryInCents = review.status === 'approved' ? review.proposedSalary : review.currentSalary
+  const salary = salaryInCents / 100
   const currency = (review.currency || 'USD') as CurrencyCode
 
   return { salary, currency }
 }
 
+// ============================================================
+// PRO-RATA HELPERS
+// ============================================================
+
+/** Count Mon-Fri working days in a given month. */
+function getWorkingDaysInMonth(year: number, month: number): number {
+  let count = 0
+  const daysInMonth = new Date(year, month, 0).getDate()
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dow = new Date(year, month - 1, day).getDay()
+    if (dow !== 0 && dow !== 6) count++ // Mon-Fri
+  }
+  return count
+}
+
+/** Calculate pro-rata pay details for an employee. */
+function calculateProRata(params: {
+  hireDate: string | null
+  terminationDate: string | null
+  isActive: boolean
+  periodYear: number
+  periodMonth: number
+  monthlyFullPay: number
+}): {
+  adjustedPay: number
+  payType: string
+  workingDaysInMonth: number
+  workingDaysEmployed: number
+} {
+  const { hireDate, terminationDate, periodYear, periodMonth, monthlyFullPay } = params
+  const totalWorkingDays = getWorkingDaysInMonth(periodYear, periodMonth)
+  const periodStart = new Date(periodYear, periodMonth - 1, 1)
+  const periodEnd = new Date(periodYear, periodMonth, 0) // last day of month
+
+  let employeeStart = periodStart
+  let employeeEnd = periodEnd
+  let payType = 'full_month'
+
+  // If hired during this period
+  if (hireDate) {
+    const hd = new Date(hireDate)
+    if (hd > periodStart && hd <= periodEnd) {
+      employeeStart = hd
+      payType = 'pro_rata_new'
+    }
+  }
+
+  // If terminated during this period
+  if (terminationDate) {
+    const td = new Date(terminationDate)
+    if (td >= periodStart && td < periodEnd) {
+      employeeEnd = td
+      payType = payType === 'pro_rata_new' ? 'pro_rata_new' : 'pro_rata_exit'
+      if (!params.isActive) payType = 'final_pay'
+    }
+  }
+
+  // Count working days employed in the period
+  let workingDaysEmployed = 0
+  const daysInMonth = new Date(periodYear, periodMonth, 0).getDate()
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(periodYear, periodMonth - 1, day)
+    const dow = d.getDay()
+    if (dow === 0 || dow === 6) continue
+    if (d >= employeeStart && d <= employeeEnd) {
+      workingDaysEmployed++
+    }
+  }
+
+  // Pro-rata calculation
+  const adjustedPay = payType === 'full_month'
+    ? monthlyFullPay
+    : Math.round((monthlyFullPay / totalWorkingDays) * workingDaysEmployed * 100) / 100
+
+  return { adjustedPay, payType, workingDaysInMonth: totalWorkingDays, workingDaysEmployed }
+}
+
 /**
  * Process payroll for all active employees in an organization for a given period.
  * Creates a payroll run record, persists individual employee entries, and returns a complete summary.
- * Supports overtime, bonuses, and garnishments.
+ * Supports overtime, bonuses, garnishments, pro-rata for mid-month starters/leavers, and leave deductions.
  */
 export async function processPayroll(
   orgId: string,
   period: string,
   options: ProcessPayrollOptions = {},
 ): Promise<PayrollRunSummary> {
-  // Fetch all active employees
-  const activeEmployees = await db
-    .select()
-    .from(schema.employees)
+  // --- Fix 3: Period locking — prevent duplicate runs for same org+period ---
+  const existingRuns = await db
+    .select({ id: schema.payrollRuns.id, status: schema.payrollRuns.status })
+    .from(schema.payrollRuns)
     .where(
       and(
-        eq(schema.employees.orgId, orgId),
-        eq(schema.employees.isActive, true)
+        eq(schema.payrollRuns.orgId, orgId),
+        eq(schema.payrollRuns.period, period),
       )
     )
+  const nonCancelledRun = existingRuns.find(r => r.status !== 'cancelled')
+  if (nonCancelledRun) {
+    throw new Error(`A payroll run for "${period}" already exists (status: ${nonCancelledRun.status}). You must cancel the existing run before creating a new one.`)
+  }
 
-  if (activeEmployees.length === 0) {
-    throw new Error('No active employees found for this organization')
+  // --- Fix 5: Country auto-filter — server-side filtering by country ---
+  const countryFilter = options.country ? resolveCountryCode(options.country) : null
+
+  // Parse period for pro-rata calculations
+  const [periodYear, periodMonth] = period.split('-').map(Number)
+  const periodStartDate = new Date(periodYear, periodMonth - 1, 1)
+  const periodEndDate = new Date(periodYear, periodMonth, 0)
+
+  // Query active employees + terminated employees whose termination falls in this period
+  const allActiveEmployees = await db
+    .select()
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+    ))
+
+  // Also include terminated employees with termination_date in the current period
+  const terminatedInPeriod = await db
+    .select()
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, false),
+      sql`${schema.employees.terminationDate} IS NOT NULL
+          AND ${schema.employees.terminationDate} >= ${periodStartDate.toISOString().split('T')[0]}
+          AND ${schema.employees.terminationDate} <= ${periodEndDate.toISOString().split('T')[0]}`,
+    ))
+
+  // Merge: active + terminated in period (deduplicate by id)
+  const employeeMap = new Map<string, typeof allActiveEmployees[0]>()
+  for (const e of allActiveEmployees) employeeMap.set(e.id, e)
+  for (const e of terminatedInPeriod) employeeMap.set(e.id, e)
+  const allEligibleEmployees = Array.from(employeeMap.values())
+
+  // Post-query filter by country code — handles DB storing "United States" vs "US"
+  const eligibleEmployees = countryFilter
+    ? allEligibleEmployees.filter(e => resolveCountryCode(e.country) === countryFilter)
+    : allEligibleEmployees
+
+  if (eligibleEmployees.length === 0) {
+    throw new Error(countryFilter
+      ? `No active employees found for country "${countryFilter}" in this organization`
+      : 'No active employees found for this organization')
+  }
+
+  // --- Fix 6: Currency auto-selection based on country ---
+  const runCurrency: CurrencyCode = (countryFilter
+    ? (COUNTRY_CURRENCY_MAP[countryFilter] || 'USD')
+    : 'USD') as CurrencyCode
+
+  // Query leave requests overlapping with this period for leave deductions
+  const leaveRequests = await db
+    .select()
+    .from(schema.leaveRequests)
+    .where(and(
+      eq(schema.leaveRequests.orgId, orgId),
+      sql`${schema.leaveRequests.status} = 'approved'
+          AND ${schema.leaveRequests.startDate} <= ${periodEndDate.toISOString().split('T')[0]}
+          AND ${schema.leaveRequests.endDate} >= ${periodStartDate.toISOString().split('T')[0]}`,
+    ))
+
+  // Pre-fetch DB-backed tax rate overrides for this org (keyed by country)
+  const taxOverrideCache = new Map<string, { socialSecurityRateOverride?: number; medicareRateOverride?: number } | null>()
+  async function getOverridesForCountry(cc: string) {
+    if (!taxOverrideCache.has(cc)) {
+      taxOverrideCache.set(cc, await getTaxCalculatorOverrides(orgId, cc))
+    }
+    return taxOverrideCache.get(cc) ?? null
   }
 
   const entries: EmployeePayrollEntry[] = []
+  const skippedEmployees: Array<{ id: string; name: string; reason: string }> = []
   let totalGross = 0
   let totalDeductions = 0
   let totalNet = 0
 
-  for (const employee of activeEmployees) {
+  for (const employee of eligibleEmployees) {
     const countryCode = resolveCountryCode(employee.country)
     const { salary: annualSalary, currency } = await getEmployeeSalary(employee.id, orgId)
 
-    // Calculate monthly base pay (annual / 12)
-    const monthlyBase = Math.round((annualSalary / 12) * 100) / 100
+    // Calculate monthly base pay with pro-rata adjustment
+    const monthlyFull = Math.round((annualSalary / 12) * 100) / 100
+    const proRata = calculateProRata({
+      hireDate: employee.hireDate,
+      terminationDate: employee.terminationDate,
+      isActive: employee.isActive,
+      periodYear,
+      periodMonth,
+      monthlyFullPay: monthlyFull,
+    })
+
+    // Check for unpaid leave in this period
+    const empLeaves = leaveRequests.filter(lr => lr.employeeId === employee.id)
+    let unpaidLeaveDays = 0
+    let leaveType: string | null = null
+    let leavePayRate = 1.0
+
+    for (const lr of empLeaves) {
+      const lrType = lr.type || ''
+      if (lrType === 'unpaid') {
+        // Count weekdays in the leave period that overlap with this pay period
+        const lStart = new Date(Math.max(new Date(lr.startDate).getTime(), periodStartDate.getTime()))
+        const lEnd = new Date(Math.min(new Date(lr.endDate).getTime(), periodEndDate.getTime()))
+        let days = 0
+        for (let d = new Date(lStart); d <= lEnd; d.setDate(d.getDate() + 1)) {
+          const dow = d.getDay()
+          if (dow !== 0 && dow !== 6) days++
+        }
+        unpaidLeaveDays += days
+        leaveType = 'unpaid'
+      } else if (lrType === 'maternity' || lrType === 'paternity') {
+        const rules = getMaternityPaternityRules(countryCode)
+        if (rules) {
+          leavePayRate = lrType === 'maternity' ? rules.maternityPayRate : rules.paternityPayRate
+          leaveType = lrType
+        }
+      }
+    }
+
+    // Apply leave deductions to pro-rata pay
+    let monthlyBase = proRata.adjustedPay
+    if (unpaidLeaveDays > 0 && proRata.workingDaysInMonth > 0) {
+      const deduction = (monthlyBase / proRata.workingDaysInMonth) * unpaidLeaveDays
+      monthlyBase = Math.round((monthlyBase - deduction) * 100) / 100
+    }
+    if (leavePayRate < 1.0) {
+      monthlyBase = Math.round(monthlyBase * leavePayRate * 100) / 100
+    }
+
+    // Determine final pay type
+    let payType = proRata.payType
+    if (leaveType === 'maternity') payType = 'maternity'
+    if (leaveType === 'paternity') payType = 'paternity'
+    if (leaveType === 'unpaid' && payType === 'full_month') payType = 'full_month'
 
     if (monthlyBase === 0) {
-      // Skip employees with no salary record
+      // Track skipped employees for reporting
+      skippedEmployees.push({
+        id: employee.id,
+        name: employee.fullName,
+        reason: 'No salary record found',
+      })
       continue
     }
 
@@ -1053,8 +1265,13 @@ export async function processPayroll(
     const monthlyGross = Math.round((monthlyBase + overtimePay + bonusPay) * 100) / 100
 
     // Calculate taxes on annualized total (base annualized + overtime*12 + bonus*12)
+    // Uses DB-backed rate overrides when available (e.g., org-specific SSNIT rate)
     const annualizedGross = monthlyGross * 12
-    const annualTax = calculateTax(countryCode, annualizedGross)
+    const dbOverrides = await getOverridesForCountry(countryCode)
+    const annualTax = calculateTax(countryCode, annualizedGross, dbOverrides ? {
+      socialSecurityRateOverride: dbOverrides.socialSecurityRateOverride,
+      medicareRateOverride: dbOverrides.medicareRateOverride,
+    } : {})
     const monthlyFederal = Math.round((annualTax.federalTax / 12) * 100) / 100
     const monthlyState = Math.round((annualTax.stateOrProvincialTax / 12) * 100) / 100
     const monthlySS = Math.round((annualTax.socialSecurity / 12) * 100) / 100
@@ -1120,13 +1337,18 @@ export async function processPayroll(
       totalDeductions: monthlyTotalDeductions,
       netPay: monthlyNet,
       currency,
+      payType,
+      unpaidLeaveDays,
+      leaveType,
+      workingDaysInMonth: proRata.workingDaysInMonth,
+      workingDaysEmployed: proRata.workingDaysEmployed,
     })
   }
 
-  // Round aggregated totals (stored as integers in cents in the DB)
-  const roundedTotalGross = Math.round(totalGross)
-  const roundedTotalDeductions = Math.round(totalDeductions)
-  const roundedTotalNet = Math.round(totalNet)
+  // Round aggregated totals — convert dollars to cents for DB storage (integer columns)
+  const roundedTotalGross = Math.round(totalGross * 100)
+  const roundedTotalDeductions = Math.round(totalDeductions * 100)
+  const roundedTotalNet = Math.round(totalNet * 100)
 
   // Create payroll run record
   const [payrollRun] = await db
@@ -1135,10 +1357,11 @@ export async function processPayroll(
       orgId,
       period,
       status: 'draft',
+      country: countryFilter, // Fix 5: store which country this run is for
       totalGross: roundedTotalGross,
       totalNet: roundedTotalNet,
       totalDeductions: roundedTotalDeductions,
-      currency: 'USD',
+      currency: runCurrency, // Fix 6: auto-selected currency
       employeeCount: entries.length,
       runDate: new Date(),
     })
@@ -1170,24 +1393,94 @@ export async function processPayroll(
       netPay: Math.round(entry.netPay * 100),
       currency: entry.currency,
       country: resolveCountryCode(entry.country),
+      payType: entry.payType || 'full_month',
+      unpaidLeaveDays: entry.unpaidLeaveDays || 0,
+      leaveType: entry.leaveType || null,
+      workingDaysInMonth: entry.workingDaysInMonth || null,
+      workingDaysEmployed: entry.workingDaysEmployed || null,
     }))
 
     await db.insert(schema.employeePayrollEntries).values(entryRows)
   }
+
+  // Audit trail: created — use first active admin as actor (fallback to 'system')
+  const [adminForAudit] = await db.select({ id: schema.employees.id })
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+      sql`${schema.employees.role} IN ('admin', 'owner')`,
+    ))
+    .limit(1)
+  await logPayrollAudit({
+    orgId,
+    payrollRunId: payrollRun.id,
+    action: 'created',
+    actorId: adminForAudit?.id || 'system',
+    newValue: {
+      period,
+      country: countryFilter || 'all',
+      employeeCount: entries.length,
+      totalGross: roundedTotalGross,
+      currency: runCurrency,
+    },
+  })
 
   return {
     payrollRunId: payrollRun.id,
     orgId,
     period,
     status: payrollRun.status,
+    country: countryFilter || undefined,
     employeeCount: entries.length,
     totalGross: roundedTotalGross,
     totalDeductions: roundedTotalDeductions,
     totalNet: roundedTotalNet,
-    currency: 'USD',
+    currency: runCurrency,
     entries,
+    skippedEmployees,
     createdAt: payrollRun.createdAt,
   }
+}
+
+/**
+ * Validate a payroll run before processing.
+ * Returns eligible and ineligible employees so the UI can warn payroll officers.
+ */
+export async function validatePayrollRun(
+  orgId: string,
+  options: { country?: string } = {},
+): Promise<{
+  eligible: Array<{ id: string; name: string; salary: number; currency: string }>
+  ineligible: Array<{ id: string; name: string; reason: string }>
+}> {
+  const countryFilter = options.country ? resolveCountryCode(options.country) : null
+
+  const allActiveEmployees = await db
+    .select()
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+    ))
+
+  const activeEmployees = countryFilter
+    ? allActiveEmployees.filter(e => resolveCountryCode(e.country) === countryFilter)
+    : allActiveEmployees
+
+  const eligible: Array<{ id: string; name: string; salary: number; currency: string }> = []
+  const ineligible: Array<{ id: string; name: string; reason: string }> = []
+
+  for (const emp of activeEmployees) {
+    const { salary, currency } = await getEmployeeSalary(emp.id, orgId)
+    if (salary === 0) {
+      ineligible.push({ id: emp.id, name: emp.fullName, reason: 'No salary record found' })
+    } else {
+      eligible.push({ id: emp.id, name: emp.fullName, salary, currency })
+    }
+  }
+
+  return { eligible, ineligible }
 }
 
 // ============================================================
@@ -1234,11 +1527,278 @@ export async function getEmployeePayrollHistory(orgId: string, employeeId: strin
 }
 
 // ============================================================
-// 2C. PAYROLL STATUS TRANSITIONS
+// 2C. PAYROLL STATUS TRANSITIONS (Multi-level approval chain)
 // ============================================================
 
+import { sendNotification, sendBulkNotifications } from '@/lib/notifications'
+
 /**
- * Approve a payroll run. Requires admin/owner role and entries to exist.
+ * Submit payroll for HR approval (draft → pending_hr).
+ */
+export async function submitPayrollForApproval(
+  orgId: string, payrollRunId: string, submitterId: string
+) {
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'draft') throw new Error(`Cannot submit payroll in '${run.status}' status`)
+  if (run.employeeCount === 0) throw new Error('Cannot submit payroll with no entries')
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'pending_hr', rejectionReason: null, rejectedBy: null })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+
+  // Audit trail: submitted
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'submitted',
+    actorId: submitterId,
+    oldValue: { status: 'draft' },
+    newValue: { status: 'pending_hr' },
+  })
+
+  // Fix 4: Notify HR approvers
+  const hrApprovers = await db.select({ id: schema.employees.id })
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+      sql`${schema.employees.role} IN ('admin', 'owner', 'hrbp')`,
+    ))
+  if (hrApprovers.length > 0) {
+    await sendBulkNotifications(
+      hrApprovers.map(a => a.id),
+      {
+        orgId,
+        senderId: submitterId,
+        type: 'approval',
+        channel: 'both',
+        title: `Payroll Approval Required`,
+        message: `Payroll run for ${run.period} is awaiting your HR approval.`,
+        link: '/payroll',
+        entityType: 'payroll_run',
+        entityId: payrollRunId,
+      }
+    )
+  }
+
+  return updated
+}
+
+/**
+ * HR approves payroll (pending_hr → pending_finance).
+ */
+export async function approvePayrollHR(
+  orgId: string, payrollRunId: string, approverId: string, comment?: string
+) {
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'pending_hr') throw new Error(`Cannot HR-approve payroll in '${run.status}' status`)
+
+  // Record approval
+  await db.insert(schema.payrollApprovals).values({
+    payrollRunId,
+    approverId,
+    level: 1,
+    role: 'hr',
+    decision: 'approved',
+    comment: comment || null,
+    decidedAt: new Date(),
+  })
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'pending_finance' })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+
+  // Audit trail: approved_hr
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'approved_hr',
+    actorId: approverId,
+    oldValue: { status: 'pending_hr' },
+    newValue: { status: 'pending_finance' },
+    reason: comment || undefined,
+  })
+
+  // Fix 4: Notify Finance approvers
+  const financeApprovers = await db.select({ id: schema.employees.id })
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+      sql`${schema.employees.role} IN ('admin', 'owner')`,
+    ))
+  const approverName = await getEmployeeName(approverId)
+  if (financeApprovers.length > 0) {
+    await sendBulkNotifications(
+      financeApprovers.map(a => a.id),
+      {
+        orgId,
+        senderId: approverId,
+        type: 'approval',
+        channel: 'both',
+        title: `Payroll Awaiting Finance Approval`,
+        message: `Payroll run for ${run.period} has been approved by HR (${approverName}) and is awaiting Finance approval.`,
+        link: '/payroll',
+        entityType: 'payroll_run',
+        entityId: payrollRunId,
+      }
+    )
+  }
+
+  return updated
+}
+
+/**
+ * Finance approves payroll (pending_finance → approved).
+ */
+export async function approvePayrollFinance(
+  orgId: string, payrollRunId: string, approverId: string, comment?: string
+) {
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (run.status !== 'pending_finance') throw new Error(`Cannot Finance-approve payroll in '${run.status}' status`)
+
+  // Record approval
+  await db.insert(schema.payrollApprovals).values({
+    payrollRunId,
+    approverId,
+    level: 2,
+    role: 'finance',
+    decision: 'approved',
+    comment: comment || null,
+    decidedAt: new Date(),
+  })
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'approved', approvedBy: approverId, approvedAt: new Date() })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+
+  // Audit trail: approved_finance
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'approved_finance',
+    actorId: approverId,
+    oldValue: { status: 'pending_finance' },
+    newValue: { status: 'approved' },
+    reason: comment || undefined,
+  })
+
+  // Fix 4: Notify payroll officer + finance team that run is fully approved
+  const allAdmins = await db.select({ id: schema.employees.id })
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+      sql`${schema.employees.role} IN ('admin', 'owner', 'hrbp')`,
+    ))
+  if (allAdmins.length > 0) {
+    await sendBulkNotifications(
+      allAdmins.map(a => a.id),
+      {
+        orgId,
+        senderId: approverId,
+        type: 'success',
+        channel: 'in_app',
+        title: `Payroll Fully Approved`,
+        message: `Payroll run for ${run.period} is approved and ready for payment processing.`,
+        link: '/payroll',
+        entityType: 'payroll_run',
+        entityId: payrollRunId,
+      }
+    )
+  }
+
+  return updated
+}
+
+/**
+ * Reject payroll (pending_hr/pending_finance → draft) with mandatory comment.
+ */
+export async function rejectPayrollRun(
+  orgId: string, payrollRunId: string, rejectorId: string, rejectorRole: string, reason: string
+) {
+  if (!reason || reason.trim() === '') throw new Error('Rejection reason is required')
+  const [run] = await db.select().from(schema.payrollRuns)
+    .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
+    .limit(1)
+  if (!run) throw new Error('Payroll run not found')
+  if (!['pending_hr', 'pending_finance'].includes(run.status)) {
+    throw new Error(`Cannot reject payroll in '${run.status}' status`)
+  }
+
+  const level = run.status === 'pending_hr' ? 1 : 2
+  const role = run.status === 'pending_hr' ? 'hr' : 'finance'
+
+  // Record rejection
+  await db.insert(schema.payrollApprovals).values({
+    payrollRunId,
+    approverId: rejectorId,
+    level,
+    role,
+    decision: 'rejected',
+    comment: reason,
+    decidedAt: new Date(),
+  })
+
+  const [updated] = await db.update(schema.payrollRuns)
+    .set({ status: 'draft', rejectedBy: rejectorId, rejectionReason: reason })
+    .where(eq(schema.payrollRuns.id, payrollRunId))
+    .returning()
+
+  // Audit trail: rejected
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'rejected',
+    actorId: rejectorId,
+    oldValue: { status: run.status },
+    newValue: { status: 'draft' },
+    reason,
+  })
+
+  // Fix 4: Notify payroll officer of rejection
+  const rejectorName = await getEmployeeName(rejectorId)
+  const allAdmins = await db.select({ id: schema.employees.id })
+    .from(schema.employees)
+    .where(and(
+      eq(schema.employees.orgId, orgId),
+      eq(schema.employees.isActive, true),
+      sql`${schema.employees.role} IN ('admin', 'owner', 'hrbp')`,
+    ))
+  if (allAdmins.length > 0) {
+    await sendBulkNotifications(
+      allAdmins.map(a => a.id),
+      {
+        orgId,
+        senderId: rejectorId,
+        type: 'warning',
+        channel: 'both',
+        title: `Payroll Rejected`,
+        message: `Payroll run for ${run.period} was rejected by ${rejectorName} (${role.toUpperCase()}). Reason: ${reason}`,
+        link: '/payroll',
+        entityType: 'payroll_run',
+        entityId: payrollRunId,
+      }
+    )
+  }
+
+  return updated
+}
+
+/**
+ * Legacy approve for backward compatibility — routes to HR or Finance based on status.
  */
 export async function approvePayrollRun(
   orgId: string, payrollRunId: string, approverId: string, approverRole: string
@@ -1247,15 +1807,13 @@ export async function approvePayrollRun(
     .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
     .limit(1)
   if (!run) throw new Error('Payroll run not found')
-  if (run.status !== 'draft') throw new Error(`Cannot approve payroll in '${run.status}' status`)
-  if (!['owner', 'admin'].includes(approverRole)) throw new Error('Only owner or admin can approve payroll')
-  if (run.employeeCount === 0) throw new Error('Cannot approve payroll with no entries')
 
-  const [updated] = await db.update(schema.payrollRuns)
-    .set({ status: 'approved', approvedBy: approverId, approvedAt: new Date() })
-    .where(eq(schema.payrollRuns.id, payrollRunId))
-    .returning()
-  return updated
+  // Route based on current status
+  if (run.status === 'draft') return submitPayrollForApproval(orgId, payrollRunId, approverId)
+  if (run.status === 'pending_hr') return approvePayrollHR(orgId, payrollRunId, approverId)
+  if (run.status === 'pending_finance') return approvePayrollFinance(orgId, payrollRunId, approverId)
+
+  throw new Error(`Cannot approve payroll in '${run.status}' status`)
 }
 
 /**
@@ -1272,11 +1830,23 @@ export async function markPayrollProcessing(orgId: string, payrollRunId: string)
     .set({ status: 'processing' })
     .where(eq(schema.payrollRuns.id, payrollRunId))
     .returning()
+
+  // Audit trail: processing
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'processing',
+    actorId: run.approvedBy || 'system',
+    oldValue: { status: 'approved' },
+    newValue: { status: 'processing' },
+  })
+
   return updated
 }
 
 /**
  * Mark payroll as paid with a payment reference.
+ * Fix 4: Notify all employees in the run that payslips are available.
  */
 export async function markPayrollPaid(orgId: string, payrollRunId: string, paymentReference: string) {
   if (!paymentReference) throw new Error('Payment reference is required')
@@ -1290,6 +1860,37 @@ export async function markPayrollPaid(orgId: string, payrollRunId: string, payme
     .set({ status: 'paid', paymentReference })
     .where(eq(schema.payrollRuns.id, payrollRunId))
     .returning()
+
+  // Audit trail: paid
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'paid',
+    actorId: run.approvedBy || 'system',
+    oldValue: { status: 'processing' },
+    newValue: { status: 'paid', paymentReference },
+  })
+
+  // Fix 4: Notify all employees in this run that their payslip is available
+  const entries = await db.select({ employeeId: schema.employeePayrollEntries.employeeId })
+    .from(schema.employeePayrollEntries)
+    .where(eq(schema.employeePayrollEntries.payrollRunId, payrollRunId))
+  if (entries.length > 0) {
+    await sendBulkNotifications(
+      entries.map(e => e.employeeId),
+      {
+        orgId,
+        type: 'success',
+        channel: 'in_app',
+        title: `Payslip Available`,
+        message: `Your payslip for ${run.period} is now available.`,
+        link: '/payroll',
+        entityType: 'payroll_run',
+        entityId: payrollRunId,
+      }
+    )
+  }
+
   return updated
 }
 
@@ -1302,13 +1903,36 @@ export async function cancelPayrollRun(orgId: string, payrollRunId: string, reas
     .where(and(eq(schema.payrollRuns.id, payrollRunId), eq(schema.payrollRuns.orgId, orgId)))
     .limit(1)
   if (!run) throw new Error('Payroll run not found')
-  if (!['draft', 'approved'].includes(run.status)) throw new Error(`Cannot cancel payroll in '${run.status}' status`)
+  if (!['draft', 'pending_hr', 'pending_finance', 'approved'].includes(run.status)) {
+    throw new Error(`Cannot cancel payroll in '${run.status}' status`)
+  }
 
   const [updated] = await db.update(schema.payrollRuns)
     .set({ status: 'cancelled', cancellationReason: reason })
     .where(eq(schema.payrollRuns.id, payrollRunId))
     .returning()
+
+  // Audit trail: cancelled
+  await logPayrollAudit({
+    orgId,
+    payrollRunId,
+    action: 'cancelled',
+    actorId: run.approvedBy || 'system',
+    oldValue: { status: run.status },
+    newValue: { status: 'cancelled' },
+    reason,
+  })
+
   return updated
+}
+
+/** Helper to get employee name for notifications */
+async function getEmployeeName(employeeId: string): Promise<string> {
+  const [emp] = await db.select({ fullName: schema.employees.fullName })
+    .from(schema.employees)
+    .where(eq(schema.employees.id, employeeId))
+    .limit(1)
+  return emp?.fullName || 'Unknown'
 }
 
 // ============================================================
@@ -1371,7 +1995,12 @@ export async function generatePayStub(
   const { salary: annualSalary, currency } = await getEmployeeSalary(employeeId, orgId)
   const monthlyGross = Math.round((annualSalary / 12) * 100) / 100
 
-  const annualTax = calculateTax(countryCode, annualSalary)
+  // Use DB-backed rate overrides when available
+  const stubDbOverrides = await getTaxCalculatorOverrides(orgId, countryCode)
+  const annualTax = calculateTax(countryCode, annualSalary, stubDbOverrides ? {
+    socialSecurityRateOverride: stubDbOverrides.socialSecurityRateOverride,
+    medicareRateOverride: stubDbOverrides.medicareRateOverride,
+  } : {})
 
   const monthlyFederal = Math.round((annualTax.federalTax / 12) * 100) / 100
   const monthlyState = Math.round((annualTax.stateOrProvincialTax / 12) * 100) / 100
@@ -1791,12 +2420,20 @@ export async function getPayrollAnalytics(orgId: string): Promise<PayrollAnalyti
       : Math.round(sortedSalaries[Math.floor(sortedSalaries.length / 2)])
     : 0
 
-  // Estimated total tax burden
+  // Estimated total tax burden (using DB-backed rate overrides)
   let totalTaxBurden = 0
+  const analyticsOverrideCache = new Map<string, { socialSecurityRateOverride?: number; medicareRateOverride?: number } | null>()
   for (const emp of salariesInUSD) {
     const countryCode = resolveCountryCode(emp.country)
-    const tax = calculateTax(countryCode, emp.salary)
-    const taxCurrency = COUNTRY_CURRENCY_MAP[countryCode] || tax.currency || 'USD'
+    if (!analyticsOverrideCache.has(countryCode)) {
+      analyticsOverrideCache.set(countryCode, await getTaxCalculatorOverrides(orgId, countryCode))
+    }
+    const empOverrides = analyticsOverrideCache.get(countryCode)
+    const tax = calculateTax(countryCode, emp.salary, empOverrides ? {
+      socialSecurityRateOverride: empOverrides.socialSecurityRateOverride,
+      medicareRateOverride: empOverrides.medicareRateOverride,
+    } : {})
+    const taxCurrency = (COUNTRY_CURRENCY_MAP[countryCode] || tax.currency || 'USD') as CurrencyCode
     const taxInUSD = convertCurrency(tax.totalTax, taxCurrency, 'USD')
     totalTaxBurden += taxInUSD
   }

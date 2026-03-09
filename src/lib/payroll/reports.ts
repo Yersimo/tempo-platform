@@ -503,7 +503,7 @@ export async function generateTaxCertificateData(
     .filter(e => yearRuns.has(e.payrollRunId))
     .sort((a, b) => (periodMap.get(a.payrollRunId) || '').localeCompare(periodMap.get(b.payrollRunId) || ''))
 
-  const statutoryResult = calculateStatutoryDeductions(country, summary.totalGross)
+  const statutoryResult = await calculateStatutoryDeductions(country, summary.totalGross, { orgId })
   const normalizedCountry = country.toUpperCase().trim()
 
   switch (normalizedCountry) {
@@ -544,14 +544,14 @@ export async function generateTaxCertificateData(
         month: periodMap.get(e.payrollRunId) || 'unknown',
         amount: Math.round(Number(e.pension || 0) * 100) / 100,
       }))
-      const nhifPerMonth = yearEntries.map(e => {
+      const nhifPerMonth = await Promise.all(yearEntries.map(async e => {
         const monthGross = Number(e.grossPay || 0)
-        const result = calculateStatutoryDeductions('KE', monthGross * 12)
+        const result = await calculateStatutoryDeductions('KE', monthGross * 12, { orgId })
         return {
           month: periodMap.get(e.payrollRunId) || 'unknown',
           amount: Math.round(result.deductions.filter(d => d.type === 'health').reduce((s, d) => s + d.employeeAmount, 0) / 12 * 100) / 100,
         }
-      })
+      }))
 
       return {
         country: 'KE', year, employeeId,
@@ -727,7 +727,7 @@ export async function generatePayrollJournalEntries(
     for (const entry of runEntries) {
       const emp = empMap.get(entry.employeeId)
       const countryCode = emp?.country || 'US'
-      const statutoryResult = calculateStatutoryDeductions(countryCode, Number(entry.grossPay || 0) * 12)
+      const statutoryResult = await calculateStatutoryDeductions(countryCode, Number(entry.grossPay || 0) * 12, { orgId })
       totalEmployerContributions += Math.round((statutoryResult.totalEmployerContributions / 12) * 100) / 100
     }
     if (totalEmployerContributions > 0) {

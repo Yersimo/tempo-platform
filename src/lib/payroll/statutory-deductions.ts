@@ -4,7 +4,12 @@
  * Calculates mandatory employer and employee contributions for
  * pension, health insurance, and social insurance across 33 African countries.
  * This complements the income tax calculations in tax-calculator.ts.
+ *
+ * When orgId is provided, rates are loaded from the tax_configs DB table
+ * with hardcoded STATUTORY_REGISTRY as fallback.
  */
+
+import { getStatutoryDeductionOverrides } from './tax-config-cache'
 
 export interface StatutoryDeduction {
   name: string // e.g., "NHIF", "SSNIT", "Pension Fund"
@@ -691,19 +696,24 @@ const STATUTORY_REGISTRY: Record<string, StatutoryDeduction[]> = {
 /**
  * Calculate all statutory deductions for an employee in a given country.
  *
+ * When orgId is provided, rates are loaded from the tax_configs DB table
+ * (matched by deduction type and position within type). If no DB configs
+ * exist for the country, hardcoded STATUTORY_REGISTRY rates are used as fallback.
+ *
  * @param country - ISO 3166-1 alpha-2 country code
  * @param annualGrossSalary - Annual gross salary in local currency
  * @param options - Optional overrides
  * @returns Detailed breakdown of all statutory deductions
  */
-export function calculateStatutoryDeductions(
+export async function calculateStatutoryDeductions(
   country: string,
   annualGrossSalary: number,
   options?: {
     includeOptional?: boolean // include non-mandatory deductions (default true)
     employerOnly?: boolean // only calculate employer side
+    orgId?: string // if provided, use DB-backed rates with hardcoded fallback
   }
-): StatutoryResult {
+): Promise<StatutoryResult> {
   const deductions = STATUTORY_REGISTRY[country]
   if (!deductions) {
     // Country not in registry - return zero deductions
@@ -718,10 +728,35 @@ export function calculateStatutoryDeductions(
     }
   }
 
+  // Fetch DB rate overrides if orgId is provided
+  let dbOverrides: Map<string, { employeeRate: number; employerRate: number }> | null = null
+  if (options?.orgId) {
+    dbOverrides = await getStatutoryDeductionOverrides(options.orgId, country)
+  }
+
+  // Build a type-counter to match hardcoded entries to DB entries by (type, position)
+  const typeCounter = new Map<string, number>()
+
   const includeOptional = options?.includeOptional !== false
   const filtered = deductions.filter((d) => d.mandatory || includeOptional)
 
   const results = filtered.map((deduction) => {
+    // Track position within type for DB matching
+    const typeIdx = typeCounter.get(deduction.type) || 0
+    typeCounter.set(deduction.type, typeIdx + 1)
+
+    // Use DB rate if available, otherwise use hardcoded rate
+    let employeeRate = deduction.employeeRate
+    let employerRate = deduction.employerRate
+    if (dbOverrides) {
+      const overrideKey = `${deduction.type}:${typeIdx}`
+      const override = dbOverrides.get(overrideKey)
+      if (override) {
+        employeeRate = override.employeeRate
+        employerRate = override.employerRate
+      }
+    }
+
     const applicableSalary = deduction.cap
       ? Math.min(annualGrossSalary, deduction.cap)
       : annualGrossSalary
@@ -731,14 +766,14 @@ export function calculateStatutoryDeductions(
 
     if (deduction.fixedAmount !== undefined) {
       // Fixed amount per period (e.g., Kenya NITA levy)
-      employeeAmount = deduction.employeeRate > 0 ? deduction.fixedAmount : 0
-      employerAmount = deduction.employerRate > 0 ? deduction.fixedAmount : 0
+      employeeAmount = employeeRate > 0 ? deduction.fixedAmount : 0
+      employerAmount = employerRate > 0 ? deduction.fixedAmount : 0
     } else {
       employeeAmount = options?.employerOnly
         ? 0
-        : Math.round(applicableSalary * deduction.employeeRate * 100) / 100
+        : Math.round(applicableSalary * employeeRate * 100) / 100
       employerAmount =
-        Math.round(applicableSalary * deduction.employerRate * 100) / 100
+        Math.round(applicableSalary * employerRate * 100) / 100
     }
 
     return {
@@ -784,16 +819,17 @@ export function getSupportedCountries(): string[] {
  * Calculate total employer cost (salary + employer contributions).
  * This is the TRUE cost of an employee, not just their gross salary.
  */
-export function calculateTotalEmployerCost(
+export async function calculateTotalEmployerCost(
   country: string,
-  annualGrossSalary: number
-): {
+  annualGrossSalary: number,
+  orgId?: string
+): Promise<{
   grossSalary: number
   employerContributions: number
   totalCost: number
   costMultiplier: number // e.g., 1.22 means employer pays 22% above gross
-} {
-  const result = calculateStatutoryDeductions(country, annualGrossSalary)
+}> {
+  const result = await calculateStatutoryDeductions(country, annualGrossSalary, { orgId })
   const totalCost = annualGrossSalary + result.totalEmployerContributions
   return {
     grossSalary: annualGrossSalary,

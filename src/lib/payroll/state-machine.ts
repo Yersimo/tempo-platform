@@ -1,7 +1,8 @@
 // Payroll State Machine
 // Enforces valid status transitions with guard conditions
+// Updated: multi-level approval chain (HR → Finance)
 
-export type PayrollStatus = 'draft' | 'approved' | 'processing' | 'paid' | 'cancelled'
+export type PayrollStatus = 'draft' | 'pending_hr' | 'pending_finance' | 'approved' | 'processing' | 'paid' | 'cancelled'
 
 export interface PayrollRun {
   payrollRunId: string
@@ -16,9 +17,10 @@ export interface PayrollRun {
 
 export interface TransitionContext {
   approverId?: string
-  approverRole?: 'owner' | 'admin' | 'hrbp' | 'manager' | 'employee'
+  approverRole?: 'owner' | 'admin' | 'hrbp' | 'manager' | 'employee' | 'hr' | 'finance'
   paymentReference?: string
   cancellationReason?: string
+  rejectionReason?: string
   processingTimestamp?: Date
 }
 
@@ -50,26 +52,43 @@ interface TransitionDef {
   guards: GuardFn[]
 }
 
-const FINANCE_ROLES: TransitionContext['approverRole'][] = ['owner', 'admin']
+const FINANCE_ROLES: TransitionContext['approverRole'][] = ['owner', 'admin', 'finance']
+const HR_ROLES: TransitionContext['approverRole'][] = ['owner', 'admin', 'hrbp', 'hr']
 
 // Guard: all entries must be calculated (entryCount > 0)
 function requireEntries(run: PayrollRun, _ctx: TransitionContext): string | null {
   if (run.entryCount <= 0) {
-    return 'Cannot approve a payroll run with no calculated entries'
+    return 'Cannot submit a payroll run with no calculated entries'
   }
   return null
 }
 
-// Guard: approver must have a finance-level role (owner or admin)
-function requireFinanceApprover(_run: PayrollRun, ctx: TransitionContext): string | null {
+// Guard: submitter/approver ID must be present
+function requireApproverId(_run: PayrollRun, ctx: TransitionContext): string | null {
   if (!ctx.approverId) {
     return 'Approver ID is required'
   }
+  return null
+}
+
+// Guard: approver must have an HR-level role
+function requireHRApprover(_run: PayrollRun, ctx: TransitionContext): string | null {
+  if (!ctx.approverRole) {
+    return 'Approver role is required'
+  }
+  if (!HR_ROLES.includes(ctx.approverRole)) {
+    return `Approver role '${ctx.approverRole}' is not authorised for HR approval. Required: ${HR_ROLES.join(' or ')}`
+  }
+  return null
+}
+
+// Guard: approver must have a finance-level role (owner or admin or finance)
+function requireFinanceApprover(_run: PayrollRun, ctx: TransitionContext): string | null {
   if (!ctx.approverRole) {
     return 'Approver role is required'
   }
   if (!FINANCE_ROLES.includes(ctx.approverRole)) {
-    return `Approver role '${ctx.approverRole}' is not authorised to approve payroll runs. Required: ${FINANCE_ROLES.join(' or ')}`
+    return `Approver role '${ctx.approverRole}' is not authorised for Finance approval. Required: ${FINANCE_ROLES.join(' or ')}`
   }
   return null
 }
@@ -98,28 +117,64 @@ function requireCancellationReason(_run: PayrollRun, ctx: TransitionContext): st
   return null
 }
 
+// Guard: a rejection reason must be provided
+function requireRejectionReason(_run: PayrollRun, ctx: TransitionContext): string | null {
+  if (!ctx.rejectionReason || ctx.rejectionReason.trim() === '') {
+    return 'A rejection reason is required'
+  }
+  return null
+}
+
 // ---------------------------------------------------------------------------
-// Transition map
+// Transition map — multi-level approval chain
 // ---------------------------------------------------------------------------
 
 const TRANSITIONS: TransitionDef[] = [
+  // Payroll officer submits for HR approval
   {
     from: ['draft'],
-    to: 'approved',
-    guards: [requireEntries, requireFinanceApprover],
+    to: 'pending_hr',
+    guards: [requireEntries, requireApproverId],
   },
+  // HR approves → moves to Finance
+  {
+    from: ['pending_hr'],
+    to: 'pending_finance',
+    guards: [requireApproverId, requireHRApprover],
+  },
+  // HR rejects → back to draft
+  {
+    from: ['pending_hr'],
+    to: 'draft',
+    guards: [requireApproverId, requireHRApprover, requireRejectionReason],
+  },
+  // Finance approves → fully approved
+  {
+    from: ['pending_finance'],
+    to: 'approved',
+    guards: [requireApproverId, requireFinanceApprover],
+  },
+  // Finance rejects → back to draft
+  {
+    from: ['pending_finance'],
+    to: 'draft',
+    guards: [requireApproverId, requireFinanceApprover, requireRejectionReason],
+  },
+  // Processing transition
   {
     from: ['approved'],
     to: 'processing',
     guards: [requireProcessingTimestamp],
   },
+  // Mark as paid
   {
     from: ['processing'],
     to: 'paid',
     guards: [requirePaymentReference],
   },
+  // Cancellation (from any pre-paid state)
   {
-    from: ['draft', 'approved'],
+    from: ['draft', 'pending_hr', 'pending_finance', 'approved'],
     to: 'cancelled',
     guards: [requireCancellationReason],
   },

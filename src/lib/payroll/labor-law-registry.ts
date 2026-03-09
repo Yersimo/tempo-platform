@@ -501,6 +501,46 @@ export function generateCountryLeavePolicy(countryCode: string): {
 }
 
 /**
+ * Get maternity/paternity statutory pay rules for a country.
+ * Returns weeks and pay rate (as a fraction of normal salary).
+ */
+export interface MaternityPaternityRules {
+  maternityWeeks: number
+  maternityPayRate: number   // 1.0 = full pay, 0.67 = 2/3 pay
+  paternityDays: number
+  paternityPayRate: number
+}
+
+const MATERNITY_PAY_OVERRIDES: Record<string, { maternityPayRate: number; paternityPayRate: number }> = {
+  KE: { maternityPayRate: 1.0, paternityPayRate: 1.0 },        // 3 months full pay
+  NG: { maternityPayRate: 1.0, paternityPayRate: 1.0 },        // 12 weeks full pay
+  GH: { maternityPayRate: 1.0, paternityPayRate: 1.0 },        // 12 weeks full pay
+  ZA: { maternityPayRate: 0.67, paternityPayRate: 1.0 },       // UIF covers ~67%
+  TZ: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  UG: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  RW: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  ET: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  EG: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  CM: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  CI: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  SN: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+  FR: { maternityPayRate: 1.0, paternityPayRate: 1.0 },
+}
+
+export function getMaternityPaternityRules(countryCode: string): MaternityPaternityRules | null {
+  const law = LABOR_LAW_REGISTRY[countryCode]
+  if (!law) return null
+
+  const overrides = MATERNITY_PAY_OVERRIDES[countryCode]
+  return {
+    maternityWeeks: law.leave.maternityLeaveWeeks,
+    maternityPayRate: overrides?.maternityPayRate ?? 1.0,
+    paternityDays: law.leave.paternityLeaveDays,
+    paternityPayRate: overrides?.paternityPayRate ?? 1.0,
+  }
+}
+
+/**
  * Get all country codes in the labor law registry.
  */
 export function getAllLaborLawCountries(): string[] {

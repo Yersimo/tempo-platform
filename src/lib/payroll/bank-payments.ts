@@ -155,6 +155,7 @@ export function generateACHFile(
   originatorName: string,      // company name (max 16 chars)
   originatorBankRouting: string, // 9-digit ABA routing
   batchReference: string,
+  originatorBankName?: string, // human-readable bank name for Destination Name field
 ): PaymentFileResult {
   const now = new Date()
   const dateStr = now.toISOString().slice(2, 10).replace(/-/g, '')  // YYMMDD
@@ -173,7 +174,7 @@ export function generateACHFile(
     '094',                                         // Record Size
     '10',                                          // Blocking Factor
     '1',                                           // Format Code
-    originatorBankRouting.padEnd(23, ' '),          // Destination Name
+    (originatorBankName || originatorBankRouting).padEnd(23, ' '), // Destination Name
     originatorName.padEnd(23, ' '),                 // Origin Name
     batchReference.padEnd(8, ' '),                  // Reference Code
   ].join('')
@@ -288,6 +289,7 @@ export function generatePaymentFile(
   batchReference: string,
   originatorId?: string,
   originatorName?: string,
+  senderBankName?: string,
 ): PaymentFileResult {
   switch (country) {
     case 'NG':
@@ -303,6 +305,7 @@ export function generatePaymentFile(
         originatorName || 'TEMPO PAYROLL',
         senderBankCode,
         batchReference,
+        senderBankName,
       )
     default:
       return generateGenericCSV(instructions, batchReference)

@@ -55,6 +55,10 @@ export interface TaxCalculationOptions {
   additionalDeductions?: number
   pensionContributionRate?: number
   isAnnual?: boolean
+  // DB-backed rate overrides (used by payroll engine when org has custom tax configs)
+  socialSecurityRateOverride?: number
+  pensionRateOverride?: number
+  medicareRateOverride?: number
 }
 
 export interface TaxBreakdown {
@@ -1585,21 +1589,24 @@ function calculateGenericTax(
   // 2. Progressive income tax brackets
   const federalTax = applyBrackets(taxableIncome, config.incomeTaxBrackets)
 
-  // 3. Social security (flat rate with optional cap)
+  // 3. Social security (flat rate with optional cap) — DB override if available
+  const ssRate = options.socialSecurityRateOverride ?? config.socialSecurityRate
   const ssBase = config.socialSecurityCap
     ? Math.min(grossSalary, config.socialSecurityCap)
     : grossSalary
-  const socialSecurity = Math.round(ssBase * config.socialSecurityRate * 100) / 100
+  const socialSecurity = Math.round(ssBase * ssRate * 100) / 100
 
-  // 4. Pension (flat rate with optional cap)
+  // 4. Pension (flat rate with optional cap) — DB override if available
+  const penRate = options.pensionRateOverride ?? config.pensionRate
   const pensionBase = config.pensionCap
     ? Math.min(grossSalary, config.pensionCap)
     : grossSalary
-  const pension = Math.round(pensionBase * config.pensionRate * 100) / 100
+  const pension = Math.round(pensionBase * penRate * 100) / 100
 
-  // 5. Medicare/health levy (flat rate)
-  const medicare = config.medicareRate
-    ? Math.round(grossSalary * config.medicareRate * 100) / 100
+  // 5. Medicare/health levy (flat rate) — DB override if available
+  const medRate = options.medicareRateOverride ?? config.medicareRate
+  const medicare = medRate
+    ? Math.round(grossSalary * medRate * 100) / 100
     : 0
 
   // 6. Additional taxes (flat rates)

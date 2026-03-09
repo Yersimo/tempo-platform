@@ -18,8 +18,8 @@ describe('Statutory Deductions Engine', () => {
   })
 
   describe('Nigeria (NG)', () => {
-    it('calculates all Nigerian statutory deductions', () => {
-      const result = calculateStatutoryDeductions('NG', 5000000)
+    it('calculates all Nigerian statutory deductions', async () => {
+      const result = await calculateStatutoryDeductions('NG', 5000000)
       expect(result.country).toBe('NG')
       expect(result.currency).toBe('NGN')
       expect(result.deductions.length).toBeGreaterThanOrEqual(4) // PFA, NHF, NHIS, ITF, NSITF
@@ -27,16 +27,16 @@ describe('Statutory Deductions Engine', () => {
       expect(result.totalEmployerContributions).toBeGreaterThan(0)
     })
 
-    it('includes pension at 8% employee + 10% employer', () => {
-      const result = calculateStatutoryDeductions('NG', 5000000)
+    it('includes pension at 8% employee + 10% employer', async () => {
+      const result = await calculateStatutoryDeductions('NG', 5000000)
       const pension = result.deductions.find(d => d.name.includes('Pension'))
       expect(pension).toBeDefined()
       expect(pension!.employeeAmount).toBeCloseTo(400000, -2) // 8% of 5M
       expect(pension!.employerAmount).toBeCloseTo(500000, -2) // 10% of 5M
     })
 
-    it('includes NHF at 2.5% employee', () => {
-      const result = calculateStatutoryDeductions('NG', 5000000)
+    it('includes NHF at 2.5% employee', async () => {
+      const result = await calculateStatutoryDeductions('NG', 5000000)
       const nhf = result.deductions.find(d => d.name.includes('NHF'))
       expect(nhf).toBeDefined()
       expect(nhf!.employeeAmount).toBeCloseTo(125000, -2) // 2.5% of 5M
@@ -44,8 +44,8 @@ describe('Statutory Deductions Engine', () => {
   })
 
   describe('Ghana (GH)', () => {
-    it('calculates SSNIT and tier 2 pension', () => {
-      const result = calculateStatutoryDeductions('GH', 120000)
+    it('calculates SSNIT and tier 2 pension', async () => {
+      const result = await calculateStatutoryDeductions('GH', 120000)
       expect(result.country).toBe('GH')
       expect(result.currency).toBe('GHS')
       const ssnit = result.deductions.find(d => d.name.includes('SSNIT'))
@@ -56,16 +56,16 @@ describe('Statutory Deductions Engine', () => {
   })
 
   describe('Kenya (KE)', () => {
-    it('calculates NSSF with cap', () => {
-      const result = calculateStatutoryDeductions('KE', 2400000)
+    it('calculates NSSF with cap', async () => {
+      const result = await calculateStatutoryDeductions('KE', 2400000)
       const nssf = result.deductions.find(d => d.name.includes('NSSF'))
       expect(nssf).toBeDefined()
       // Cap at 216,000 KES
       expect(nssf!.employeeAmount).toBeCloseTo(12960, -2) // 6% of 216K cap
     })
 
-    it('includes housing levy at 1.5%', () => {
-      const result = calculateStatutoryDeductions('KE', 2400000)
+    it('includes housing levy at 1.5%', async () => {
+      const result = await calculateStatutoryDeductions('KE', 2400000)
       const housing = result.deductions.find(d => d.name.includes('Housing'))
       expect(housing).toBeDefined()
       expect(housing!.employeeAmount).toBeCloseTo(36000, -2) // 1.5%
@@ -73,8 +73,8 @@ describe('Statutory Deductions Engine', () => {
   })
 
   describe('South Africa (ZA)', () => {
-    it('calculates UIF with cap', () => {
-      const result = calculateStatutoryDeductions('ZA', 600000)
+    it('calculates UIF with cap', async () => {
+      const result = await calculateStatutoryDeductions('ZA', 600000)
       const uif = result.deductions.find(d => d.name.includes('UIF'))
       expect(uif).toBeDefined()
       // Cap at 177,120 ZAR
@@ -83,16 +83,16 @@ describe('Statutory Deductions Engine', () => {
   })
 
   describe('Employer cost calculation', () => {
-    it('calculates total employer cost for Nigeria', () => {
-      const result = calculateTotalEmployerCost('NG', 5000000)
+    it('calculates total employer cost for Nigeria', async () => {
+      const result = await calculateTotalEmployerCost('NG', 5000000)
       expect(result.grossSalary).toBe(5000000)
       expect(result.employerContributions).toBeGreaterThan(0)
       expect(result.totalCost).toBeGreaterThan(5000000)
       expect(result.costMultiplier).toBeGreaterThan(1)
     })
 
-    it('returns 1.0 multiplier for unsupported countries', () => {
-      const result = calculateTotalEmployerCost('XX', 100000)
+    it('returns 1.0 multiplier for unsupported countries', async () => {
+      const result = await calculateTotalEmployerCost('XX', 100000)
       expect(result.costMultiplier).toBe(1)
       expect(result.employerContributions).toBe(0)
     })
@@ -100,9 +100,9 @@ describe('Statutory Deductions Engine', () => {
 
   describe('All Ecobank countries smoke test', () => {
     const countries = getSupportedCountries()
-    
-    it.each(countries)('calculates deductions for %s without throwing', (country) => {
-      const result = calculateStatutoryDeductions(country, 1000000)
+
+    it.each(countries)('calculates deductions for %s without throwing', async (country) => {
+      const result = await calculateStatutoryDeductions(country, 1000000)
       expect(result.country).toBe(country)
       expect(result.totalEmployeeDeductions).toBeGreaterThanOrEqual(0)
       expect(result.totalEmployerContributions).toBeGreaterThanOrEqual(0)
