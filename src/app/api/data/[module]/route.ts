@@ -76,6 +76,8 @@ const MODULE_CONFIG: Record<string, {
   'workers-comp-claims':   { table: schema.workersCompClaims, hasOrgId: true, defaultLimit: 50 },
   'workers-comp-class-codes': { table: schema.workersCompClassCodes, hasOrgId: true, defaultLimit: 50 },
   'workers-comp-audits':   { table: schema.workersCompAudits, hasOrgId: true, defaultLimit: 20 },
+  // Equity Grants
+  'equity-grants':         { table: schema.equityGrants, hasOrgId: true, defaultLimit: 50 },
   // Groups
   'dynamic-groups':        { table: schema.dynamicGroups, hasOrgId: true, defaultLimit: 50 },
   // Password Manager
@@ -85,6 +87,38 @@ const MODULE_CONFIG: Record<string, {
   'bill-pay-schedules':    { table: schema.billPaySchedules, hasOrgId: true, defaultLimit: 20 },
   // Travel Policies
   'travel-policies':       { table: schema.travelPolicies, hasOrgId: true, defaultLimit: 10 },
+  // Payroll
+  'employee-payroll-entries': { table: schema.employeePayrollEntries, hasOrgId: true, defaultLimit: 100 },
+  'contractor-payments':   { table: schema.contractorPayments, hasOrgId: true, defaultLimit: 50 },
+  'payroll-schedules':     { table: schema.payrollSchedules, hasOrgId: true, defaultLimit: 20 },
+  'tax-configs':           { table: schema.taxConfigs, hasOrgId: true, defaultLimit: 20 },
+  'tax-filings':           { table: schema.taxFilings, hasOrgId: true, defaultLimit: 50 },
+  'payroll-approvals':     { table: schema.payrollApprovals, hasOrgId: false, defaultLimit: 50 },
+  'payroll-approval-config': { table: schema.payrollApprovalConfig, hasOrgId: true, defaultLimit: 10 },
+  'payroll-audit-log':     { table: schema.payrollAuditLog, hasOrgId: true, defaultLimit: 100 },
+  // Benefits (extended)
+  'benefit-dependents':    { table: schema.benefitDependents, hasOrgId: true, defaultLimit: 50 },
+  'life-events':           { table: schema.lifeEvents, hasOrgId: true, defaultLimit: 50 },
+  'open-enrollment-periods': { table: schema.openEnrollmentPeriods, hasOrgId: true, defaultLimit: 20 },
+  'cobra-events':          { table: schema.cobraEvents, hasOrgId: true, defaultLimit: 50 },
+  'aca-tracking':          { table: schema.acaTracking, hasOrgId: true, defaultLimit: 50 },
+  'flex-benefit-accounts': { table: schema.flexBenefitAccounts, hasOrgId: true, defaultLimit: 50 },
+  'flex-benefit-transactions': { table: schema.flexBenefitTransactions, hasOrgId: true, defaultLimit: 100 },
+  // Compliance
+  'compliance-requirements': { table: schema.complianceRequirements, hasOrgId: true, defaultLimit: 50 },
+  'compliance-documents':  { table: schema.complianceDocuments, hasOrgId: true, defaultLimit: 50 },
+  'compliance-alerts':     { table: schema.complianceAlerts, hasOrgId: true, defaultLimit: 50 },
+  // Offboarding
+  'offboarding-checklists': { table: schema.offboardingChecklists, hasOrgId: true, defaultLimit: 20 },
+  'offboarding-processes': { table: schema.offboardingProcesses, hasOrgId: true, defaultLimit: 50 },
+  'offboarding-tasks':     { table: schema.offboardingTasks, hasOrgId: false, defaultLimit: 100 },
+  'exit-surveys':          { table: schema.exitSurveys, hasOrgId: true, defaultLimit: 50 },
+  // Time & Attendance
+  'time-entries':          { table: schema.timeEntries, hasOrgId: true, defaultLimit: 100 },
+  'time-off-policies':     { table: schema.timeOffPolicies, hasOrgId: true, defaultLimit: 20 },
+  'time-off-balances':     { table: schema.timeOffBalances, hasOrgId: true, defaultLimit: 100 },
+  'overtime-rules':        { table: schema.overtimeRules, hasOrgId: true, defaultLimit: 20 },
+  'shifts':                { table: schema.shifts, hasOrgId: true, defaultLimit: 100 },
 }
 
 export async function GET(
@@ -135,7 +169,7 @@ export async function GET(
       .then((r: any[]) => r)
 
     // Set cache headers for immutable data modules
-    const cacheableModules = ['departments', 'comp-bands', 'benefit-plans', 'courses']
+    const cacheableModules = ['departments', 'comp-bands', 'courses']
     const cacheControl = cacheableModules.includes(module)
       ? 'private, max-age=60, stale-while-revalidate=300'
       : 'private, no-cache'

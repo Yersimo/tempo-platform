@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +24,10 @@ import { ContentProviders } from '@/components/learning/content-providers'
 import { ScormPlayer } from '@/components/learning/scorm-player'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, addToast } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, addToast, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['courses', 'enrollments']) }, [ensureModulesLoaded])
+
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('home')

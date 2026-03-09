@@ -48,7 +48,7 @@ export function Sidebar() {
   // Employee self-service: only show modules employees need
   const EMPLOYEE_ALLOWED_HREFS = new Set([
     '/dashboard', '/people', '/performance', '/learning',
-    '/engagement', '/payroll', '/time-attendance', '/benefits',
+    '/engagement', '/payslips', '/time-attendance', '/benefits',
     '/expense', '/mentoring', '/chat', '/documents', '/travel',
   ])
 
@@ -77,6 +77,7 @@ export function Sidebar() {
       title: t('operations'),
       items: [
         { label: t('payroll'), href: '/payroll', icon: <Wallet size={18} /> },
+        { label: 'My Payslips', href: '/payslips', icon: <FileText size={18} /> },
         { label: t('timeAttendance'), href: '/time-attendance', icon: <Clock size={18} />, badge: 2 },
         { label: t('benefits'), href: '/benefits', icon: <Shield size={18} /> },
         { label: t('expense'), href: '/expense', icon: <Receipt size={18} />, badge: 3 },

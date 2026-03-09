@@ -26,7 +26,7 @@ export const surveyStatusEnum = pgEnum('survey_status', ['draft', 'active', 'clo
 export const mentoringTypeEnum = pgEnum('mentoring_type', ['one_on_one', 'group', 'reverse', 'peer'])
 export const mentoringStatusEnum = pgEnum('mentoring_status', ['draft', 'active', 'completed', 'paused'])
 export const pairStatusEnum = pgEnum('pair_status', ['pending', 'active', 'completed', 'cancelled'])
-export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'approved', 'processing', 'paid', 'cancelled'])
+export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'pending_hr', 'pending_finance', 'approved', 'processing', 'paid', 'cancelled'])
 export const leaveTypeEnum = pgEnum('leave_type', ['annual', 'sick', 'personal', 'maternity', 'paternity', 'unpaid', 'compassionate'])
 export const leaveStatusEnum = pgEnum('leave_status', ['pending', 'approved', 'rejected', 'cancelled'])
 export const benefitTypeEnum = pgEnum('benefit_type', ['medical', 'dental', 'vision', 'retirement', 'life', 'disability', 'wellness', 'hsa', 'fsa', 'commuter', 'voluntary', 'other'])
@@ -96,6 +96,17 @@ export const employees = pgTable('employees', {
   invitedBy: uuid('invited_by'), // FK to employees, managed at DB level
   invitationToken: varchar('invitation_token', { length: 500 }),
   invitationExpiresAt: timestamp('invitation_expires_at'),
+  // Banking Details (for payroll disbursement)
+  bankName: varchar('bank_name', { length: 255 }),
+  bankCode: varchar('bank_code', { length: 50 }), // sort code, routing number, NIBSS bank code
+  bankAccountNumber: varchar('bank_account_number', { length: 100 }), // encrypted at rest via DB-level encryption
+  bankAccountName: varchar('bank_account_name', { length: 255 }), // account holder name as registered with bank
+  bankCountry: varchar('bank_country', { length: 100 }), // may differ from work country for expatriates
+  mobileMoneyProvider: varchar('mobile_money_provider', { length: 100 }), // MTN, Vodafone Cash, M-Pesa, etc.
+  mobileMoneyNumber: varchar('mobile_money_number', { length: 50 }),
+  // Tax & Employment Lifecycle
+  taxIdNumber: varchar('tax_id_number', { length: 100 }), // TIN / KRA PIN / SSNIT number for tax forms
+  terminationDate: date('termination_date'), // For pro-rata final pay calculations
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -393,6 +404,7 @@ export const payrollRuns = pgTable('payroll_runs', {
   orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
   period: varchar('period', { length: 100 }).notNull(),
   status: payrollStatusEnum('status').default('draft').notNull(),
+  country: varchar('country', { length: 10 }), // ISO country code — filters employees in this run
   totalGross: integer('total_gross').notNull(),
   totalNet: integer('total_net').notNull(),
   totalDeductions: integer('total_deductions').notNull(),
@@ -400,9 +412,50 @@ export const payrollRuns = pgTable('payroll_runs', {
   employeeCount: integer('employee_count').notNull(),
   approvedBy: uuid('approved_by').references(() => employees.id),
   approvedAt: timestamp('approved_at'),
+  rejectedBy: uuid('rejected_by').references(() => employees.id),
+  rejectionReason: text('rejection_reason'),
   paymentReference: varchar('payment_reference', { length: 255 }),
   cancellationReason: text('cancellation_reason'),
   runDate: timestamp('run_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Payroll approval chain records (multi-level)
+export const payrollApprovals = pgTable('payroll_approvals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  payrollRunId: uuid('payroll_run_id').references(() => payrollRuns.id, { onDelete: 'cascade' }).notNull(),
+  approverId: uuid('approver_id').references(() => employees.id).notNull(),
+  level: integer('level').notNull(), // 1 = HR, 2 = Finance
+  role: varchar('role', { length: 50 }).notNull(), // 'hr' | 'finance'
+  decision: varchar('decision', { length: 20 }).default('pending').notNull(), // 'approved' | 'rejected' | 'pending'
+  comment: text('comment'),
+  decidedAt: timestamp('decided_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Per-org approval chain configuration
+export const payrollApprovalConfig = pgTable('payroll_approval_config', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  level: integer('level').notNull(), // 1 or 2
+  requiredRole: varchar('required_role', { length: 50 }).notNull(), // 'hr' | 'finance' | 'owner' | 'admin'
+  isRequired: boolean('is_required').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// PAYROLL AUDIT LOG (immutable — UPDATE and DELETE blocked by DB rules)
+export const payrollAuditLog = pgTable('payroll_audit_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  payrollRunId: uuid('payroll_run_id').references(() => payrollRuns.id, { onDelete: 'cascade' }),
+  employeePayrollEntryId: uuid('employee_payroll_entry_id'),
+  action: varchar('action', { length: 100 }).notNull(), // created | submitted | approved_hr | approved_finance | rejected | processing | paid | cancelled | entry_modified
+  actorId: uuid('actor_id').notNull(),
+  actorName: varchar('actor_name', { length: 255 }).notNull(),
+  oldValue: jsonb('old_value'),
+  newValue: jsonb('new_value'),
+  reason: text('reason'),
+  ipAddress: varchar('ip_address', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -431,6 +484,105 @@ export const employeePayrollEntries = pgTable('employee_payroll_entries', {
   netPay: integer('net_pay').notNull(),
   currency: varchar('currency', { length: 10 }).notNull(),
   country: varchar('country', { length: 10 }).notNull(),
+  // Pro-rata & leave tracking
+  payType: varchar('pay_type', { length: 50 }).default('full_month'), // full_month | pro_rata_new | pro_rata_exit | final_pay | maternity | paternity | unpaid_leave
+  unpaidLeaveDays: real('unpaid_leave_days').default(0),
+  leaveType: varchar('leave_type', { length: 50 }), // maternity | paternity | null
+  workingDaysInMonth: integer('working_days_in_month'),
+  workingDaysEmployed: integer('working_days_employed'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// CONTRACTOR PAYMENTS
+export const contractorPayments = pgTable('contractor_payments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  contractorName: varchar('contractor_name', { length: 255 }).notNull(),
+  company: varchar('company', { length: 255 }),
+  serviceType: varchar('service_type', { length: 255 }),
+  invoiceNumber: varchar('invoice_number', { length: 100 }),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  status: varchar('status', { length: 50 }).default('pending').notNull(),
+  dueDate: date('due_date'),
+  paidDate: date('paid_date'),
+  paymentMethod: varchar('payment_method', { length: 50 }),
+  taxForm: varchar('tax_form', { length: 50 }),
+  country: varchar('country', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// PAYROLL SCHEDULES
+export const payrollSchedules = pgTable('payroll_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  frequency: varchar('frequency', { length: 50 }).notNull(),
+  nextRunDate: date('next_run_date'),
+  employeeGroup: varchar('employee_group', { length: 255 }),
+  autoApprove: boolean('auto_approve').default(false).notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  status: varchar('status', { length: 50 }).default('active').notNull(),
+  lastRunDate: date('last_run_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// TAX CONFIGURATIONS
+export const taxConfigs = pgTable('tax_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  taxType: varchar('tax_type', { length: 255 }).notNull(),
+  rate: real('rate').notNull(),
+  description: text('description'),
+  employerContribution: real('employer_contribution').default(0),
+  employeeContribution: real('employee_contribution').default(0),
+  effectiveDate: date('effective_date'),
+  status: varchar('status', { length: 50 }).default('active').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// TAX FILINGS
+export const taxFilings = pgTable('tax_filings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  country: varchar('country', { length: 100 }).notNull(),
+  formName: varchar('form_name', { length: 255 }).notNull(),
+  description: text('description'),
+  deadline: date('deadline'),
+  frequency: varchar('frequency', { length: 50 }),
+  status: varchar('status', { length: 50 }).default('upcoming').notNull(),
+  filedDate: date('filed_date'),
+  filingPeriod: varchar('filing_period', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// BENEFIT DEPENDENTS
+export const benefitDependents = pgTable('benefit_dependents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  firstName: varchar('first_name', { length: 255 }).notNull(),
+  lastName: varchar('last_name', { length: 255 }).notNull(),
+  relationship: varchar('relationship', { length: 50 }).notNull(),
+  dateOfBirth: date('date_of_birth'),
+  gender: varchar('gender', { length: 20 }),
+  planIds: jsonb('plan_ids'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// LIFE EVENTS
+export const lifeEvents = pgTable('life_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  eventDate: date('event_date').notNull(),
+  reportedDate: date('reported_date'),
+  deadline: date('deadline'),
+  status: varchar('status', { length: 50 }).default('pending').notNull(),
+  notes: text('notes'),
+  benefitChanges: jsonb('benefit_changes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -2668,6 +2820,7 @@ export const currencyAccounts = pgTable('currency_accounts', {
   accountName: varchar('account_name', { length: 255 }),
   bankName: varchar('bank_name', { length: 255 }),
   bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  routingNumber: varchar('routing_number', { length: 20 }),
   iban: varchar('iban', { length: 50 }),
   swiftCode: varchar('swift_code', { length: 20 }),
   isDefault: boolean('is_default').default(false).notNull(),
@@ -3483,6 +3636,28 @@ export const workersCompAudits = pgTable('workers_comp_audits', {
   status: varchar('status', { length: 20 }).default('pending').notNull(),
   findings: text('findings'),
   adjustmentAmount: integer('adjustment_amount'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// EQUITY GRANTS
+// ============================================================
+
+export const equityGrantTypeEnum = pgEnum('equity_grant_type', ['RSU', 'stock_option', 'phantom', 'SAR', 'ESPP'])
+export const equityGrantStatusEnum = pgEnum('equity_grant_status', ['active', 'fully_vested', 'cancelled', 'expired'])
+
+export const equityGrants = pgTable('equity_grants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id, { onDelete: 'cascade' }),
+  grantType: equityGrantTypeEnum('grant_type').default('RSU').notNull(),
+  shares: integer('shares').default(0).notNull(),
+  strikePrice: real('strike_price').default(0),
+  vestingSchedule: varchar('vesting_schedule', { length: 255 }),
+  vestedShares: integer('vested_shares').default(0),
+  currentValue: integer('current_value').default(0),
+  grantDate: date('grant_date'),
+  status: equityGrantStatusEnum('status').default('active').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

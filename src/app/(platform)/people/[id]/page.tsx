@@ -16,7 +16,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import {
   Pencil, ArrowLeft, Mail, Phone, MapPin, Building2, Briefcase,
   Plus, Star, Trash2, Save, X, Link as LinkIcon, Hash, Calendar,
-  ToggleLeft, List, Users, Heart, Check,
+  ToggleLeft, List, Users, Heart, Check, Landmark, Smartphone,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIInsightPanel, AIScoreBadge, AIEnhancingIndicator } from '@/components/ai'
@@ -64,6 +64,13 @@ export default function EmployeeDetailPage() {
   // Custom Field editing state
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editFieldValue, setEditFieldValue] = useState('')
+
+  // Banking Details state
+  const [showBankingModal, setShowBankingModal] = useState(false)
+  const [bankingForm, setBankingForm] = useState({
+    bank_name: '', bank_code: '', bank_account_number: '', bank_account_name: '',
+    bank_country: '', mobile_money_provider: '', mobile_money_number: '',
+  })
 
   if (!emp) {
     return (
@@ -125,6 +132,7 @@ export default function EmployeeDetailPage() {
     { id: 'overview', label: t('tabOverview') },
     { id: 'custom_fields', label: 'Custom Fields' },
     { id: 'emergency', label: 'Emergency', count: empContacts.length },
+    { id: 'banking', label: 'Banking' },
     { id: 'performance', label: t('tabPerformance'), count: empGoals.length },
     { id: 'learning', label: t('tabLearning'), count: empEnrollments.length },
     { id: 'time', label: t('tabTimeOff'), count: empLeave.length },
@@ -210,6 +218,39 @@ export default function EmployeeDetailPage() {
     }
     setShowContactModal(false)
   }
+
+  // Banking details helpers
+  function openEditBanking() {
+    if (!emp) return
+    const e = emp as any
+    setBankingForm({
+      bank_name: e.bank_name || '',
+      bank_code: e.bank_code || '',
+      bank_account_number: e.bank_account_number || '',
+      bank_account_name: e.bank_account_name || '',
+      bank_country: e.bank_country || emp.country || '',
+      mobile_money_provider: e.mobile_money_provider || '',
+      mobile_money_number: e.mobile_money_number || '',
+    })
+    setShowBankingModal(true)
+  }
+
+  function submitBanking() {
+    if (!emp) return
+    updateEmployee(id, {
+      bank_name: bankingForm.bank_name,
+      bank_code: bankingForm.bank_code,
+      bank_account_number: bankingForm.bank_account_number,
+      bank_account_name: bankingForm.bank_account_name,
+      bank_country: bankingForm.bank_country,
+      mobile_money_provider: bankingForm.mobile_money_provider,
+      mobile_money_number: bankingForm.mobile_money_number,
+    })
+    setShowBankingModal(false)
+  }
+
+  const empAny = emp as any
+  const hasBankingDetails = emp && (empAny?.bank_account_number || empAny?.mobile_money_number)
 
   // Render field input based on type
   function renderFieldInput(def: typeof empFieldDefs[0]) {
@@ -592,6 +633,103 @@ export default function EmployeeDetailPage() {
             </div>
           )}
 
+          {/* Banking Details Tab */}
+          {activeTab === 'banking' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-t1">Banking Details</h3>
+                <Button size="sm" onClick={openEditBanking}>
+                  <Pencil size={14} /> {hasBankingDetails ? 'Edit' : 'Add'} Banking Details
+                </Button>
+              </div>
+              {!hasBankingDetails ? (
+                <Card>
+                  <div className="text-center py-8">
+                    <Landmark size={32} className="mx-auto text-t3 mb-3" />
+                    <p className="text-sm text-t3">No banking details on file</p>
+                    <p className="text-xs text-t3 mt-1">Add bank account or mobile money details for payroll payments</p>
+                    <Button size="sm" className="mt-4" onClick={openEditBanking}><Plus size={14} /> Add Banking Details</Button>
+                  </div>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Bank Account Card */}
+                  {empAny.bank_account_number && (
+                    <Card>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Landmark size={16} className="text-tempo-500" />
+                          <h4 className="text-sm font-semibold text-t1">Bank Account</h4>
+                          <Badge variant="success">Active</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Bank Name</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.bank_name || '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Bank Code</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.bank_code || '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Account Number</span>
+                            <span className="text-xs text-t1 font-medium">
+                              {'•'.repeat(Math.max(0, (empAny.bank_account_number || '').length - 4))}{(empAny.bank_account_number || '').slice(-4)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Account Name</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.bank_account_name || '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Country</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.bank_country || '—'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                  {/* Mobile Money Card */}
+                  {empAny.mobile_money_number && (
+                    <Card>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Smartphone size={16} className="text-green-500" />
+                          <h4 className="text-sm font-semibold text-t1">Mobile Money</h4>
+                          <Badge variant="success">Active</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Provider</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.mobile_money_provider || '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-xs text-t3">Mobile Number</span>
+                            <span className="text-xs text-t1 font-medium">{empAny.mobile_money_number}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              {/* Tax ID Number */}
+              <div className="mt-4">
+                <Card>
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-t1">Tax Identification</h4>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-t3">Tax ID Number (TIN)</span>
+                      <span className="text-xs text-t1 font-medium font-mono">{empAny.tax_id_number || 'Not set'}</span>
+                    </div>
+                    <p className="text-[10px] text-t3">Used for year-end statutory tax forms (P9, H1, PAYE returns).</p>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'performance' && (
             <Card padding="none">
               <CardHeader><CardTitle>{t('goalsCardTitle')}</CardTitle></CardHeader>
@@ -718,6 +856,34 @@ export default function EmployeeDetailPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitEdit}>{tc('saveChanges')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Banking Details Modal */}
+      <Modal open={showBankingModal} onClose={() => setShowBankingModal(false)} title="Banking Details" size="lg">
+        <div className="space-y-4">
+          <p className="text-xs text-t3 bg-canvas p-3 rounded">Bank account details are used for payroll payments. Ensure accuracy to avoid payment delays.</p>
+          <h4 className="text-xs font-semibold text-t2 uppercase tracking-wider">Bank Account</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Bank Name" placeholder="e.g. First Bank, Standard Chartered" value={bankingForm.bank_name} onChange={(e) => setBankingForm({ ...bankingForm, bank_name: e.target.value })} />
+            <Input label="Bank Code / Sort Code" placeholder="e.g. 011, 058" value={bankingForm.bank_code} onChange={(e) => setBankingForm({ ...bankingForm, bank_code: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Account Number" placeholder="e.g. 0123456789" value={bankingForm.bank_account_number} onChange={(e) => setBankingForm({ ...bankingForm, bank_account_number: e.target.value })} />
+            <Input label="Account Holder Name" placeholder="Name as registered with bank" value={bankingForm.bank_account_name} onChange={(e) => setBankingForm({ ...bankingForm, bank_account_name: e.target.value })} />
+          </div>
+          <Input label="Bank Country" placeholder="e.g. Nigeria, Ghana, Kenya" value={bankingForm.bank_country} onChange={(e) => setBankingForm({ ...bankingForm, bank_country: e.target.value })} />
+          <h4 className="text-xs font-semibold text-t2 uppercase tracking-wider pt-2">Mobile Money (Optional)</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Provider" placeholder="e.g. MTN, M-Pesa, Vodafone Cash" value={bankingForm.mobile_money_provider} onChange={(e) => setBankingForm({ ...bankingForm, mobile_money_provider: e.target.value })} />
+            <Input label="Mobile Number" placeholder="e.g. +233 24 123 4567" value={bankingForm.mobile_money_number} onChange={(e) => setBankingForm({ ...bankingForm, mobile_money_number: e.target.value })} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBankingModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitBanking}>
+              <Save size={14} /> Save Banking Details
+            </Button>
           </div>
         </div>
       </Modal>

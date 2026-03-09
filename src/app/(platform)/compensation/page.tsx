@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +26,11 @@ export default function CompensationPage() {
     equityGrants, addEquityGrant, updateEquityGrant,
     compPlanningCycles, addCompPlanningCycle, updateCompPlanningCycle,
     marketBenchmarks,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['compBands', 'salaryReviews', 'equityGrants']) }, [ensureModulesLoaded])
+
   const t = useTranslations('compensation')
   const tc = useTranslations('common')
 

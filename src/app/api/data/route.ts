@@ -696,8 +696,8 @@ const tables: Record<string, any> = {
   acaTracking: schema.acaTracking,
   flexBenefitAccounts: schema.flexBenefitAccounts,
   flexBenefitTransactions: schema.flexBenefitTransactions,
-  benefitDependents: schema.benefitEnrollments, // stored via enrollment
-  lifeEvents: schema.cobraEvents, // life events use cobra schema
+  benefitDependents: schema.benefitDependents,
+  lifeEvents: schema.lifeEvents,
   carrierIntegrations: schema.carrierIntegrations,
   enrollmentFeeds: schema.enrollmentFeeds,
   retirementPlans: schema.retirementPlans,
@@ -737,15 +737,17 @@ const tables: Record<string, any> = {
   reviewTemplates: schema.reviewTemplates,
   recognitions: schema.feedback,
   oneOnOnes: schema.feedback,
-  equityGrants: schema.salaryReviews,
+  equityGrants: schema.equityGrants,
   compPlanningCycles: schema.meritCycles,
   // Compensation
   employeePayrollEntries: schema.employeePayrollEntries,
-  contractorPayments: schema.corPayments,
-  payrollSchedules: schema.payrollRuns,
-  taxConfigs: schema.payrollRuns,
+  contractorPayments: schema.contractorPayments,
+  payrollSchedules: schema.payrollSchedules,
+  taxConfigs: schema.taxConfigs,
   complianceIssues: schema.complianceRequirements,
-  taxFilings: schema.payrollRuns,
+  taxFilings: schema.taxFilings,
+  payrollApprovals: schema.payrollApprovals,
+  payrollApprovalConfig: schema.payrollApprovalConfig,
   // IT & Devices
   managedDevices: schema.managedDevices,
   deviceActions: schema.deviceActions,
@@ -887,13 +889,26 @@ function keysToCamel(obj: Record<string, any>): Record<string, any> {
 
 /**
  * Coerce ISO date strings to Date objects for Drizzle timestamp columns.
- * Matches camelCase keys ending in At/Date (e.g. runDate, createdAt, submittedAt).
+ * Matches camelCase keys ending in At/Date (e.g. runDate, createdAt, submittedAt)
+ * and the literal key 'timestamp' (used by audit_log).
  */
 function coerceDates(obj: Record<string, any>): Record<string, any> {
+  const dateKeyPattern = /(?:At|Date)$|^timestamp$/
   const out: Record<string, any> = {}
   for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string' && /(?:At|Date)$/.test(key) && !isNaN(Date.parse(value))) {
-      out[key] = new Date(value)
+    if (value == null) {
+      out[key] = value // pass through null/undefined
+    } else if (dateKeyPattern.test(key)) {
+      // For timestamp columns, ensure value is a valid Date or null
+      if (value instanceof Date) {
+        out[key] = value
+      } else if (typeof value === 'string' && !isNaN(Date.parse(value))) {
+        out[key] = new Date(value)
+      } else if (typeof value === 'number' && value > 0) {
+        out[key] = new Date(value)
+      } else {
+        out[key] = null // strip invalid date values to prevent toISOString crashes
+      }
     } else {
       out[key] = value
     }
@@ -918,10 +933,24 @@ function prepareData(entity: string, data: Record<string, any>): Record<string, 
       avatar_url: profile.avatar_url ?? profile.avatarUrl,
       phone: profile.phone,
     }
-    return coerceDates(keysToCamel(flattened))
+    return sanitizeUuids(coerceDates(keysToCamel(flattened)))
   }
 
-  return coerceDates(keysToCamel(data))
+  return sanitizeUuids(coerceDates(keysToCamel(data)))
+}
+
+/** Convert empty strings to null for UUID columns (Id/To/By suffixes + 'orgId') */
+function sanitizeUuids(obj: Record<string, any>): Record<string, any> {
+  const uuidKeyPattern = /(?:Id|To|By)$/
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  for (const [key, value] of Object.entries(obj)) {
+    if (uuidKeyPattern.test(key) && typeof value === 'string' && value !== '' && !UUID_RE.test(value)) {
+      obj[key] = null
+    } else if (uuidKeyPattern.test(key) && value === '') {
+      obj[key] = null
+    }
+  }
+  return obj
 }
 
 export async function POST(request: NextRequest) {
@@ -1041,6 +1070,11 @@ export async function POST(request: NextRequest) {
       }
 
       const prepared = prepareData(entity, data)
+      // Strip non-UUID id values so the DB generates proper UUIDs via defaultRandom()
+      // (Store-generated IDs like "audit-12345-abc" are only for local state)
+      if (prepared.id && !UUID_FORMAT.test(prepared.id)) {
+        delete prepared.id
+      }
       // Ensure orgId is set for tables that have it (everything except expenseItems)
       if (entity !== 'expenseItems' && !prepared.orgId) {
         prepared.orgId = orgId

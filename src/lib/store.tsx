@@ -123,11 +123,15 @@ interface TempoState {
   // Payroll
   payrollRuns: WidenArray<DemoData['demoPayrollRuns']>
   employeePayrollEntries: WidenArray<DemoData['demoEmployeePayrollEntries']>
+  setPayrollRuns: (fn: (prev: any[]) => any[]) => void
+  setEmployeePayrollEntries: (fn: (prev: any[]) => any[]) => void
   contractorPayments: WidenArray<DemoData['demoContractorPayments']>
   payrollSchedules: WidenArray<DemoData['demoPayrollSchedules']>
   taxConfigs: WidenArray<DemoData['demoTaxConfigs']>
   complianceIssues: WidenArray<DemoData['demoComplianceIssues']>
   taxFilings: WidenArray<DemoData['demoTaxFilings']>
+  payrollApprovals: any[]
+  payrollApprovalConfig: any[]
 
   // Time & Attendance
   leaveRequests: WidenArray<DemoData['demoLeaveRequests']>
@@ -947,6 +951,7 @@ interface TempoState {
   fxTransactions: AnyRecord[]
   addCurrencyAccount: (data: AnyRecord) => void
   updateCurrencyAccount: (id: string, data: AnyRecord) => void
+  deleteCurrencyAccount: (id: string) => void
   addFxTransaction: (data: AnyRecord) => void
 
   // 401(k) Administration
@@ -1266,6 +1271,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [taxConfigs, setTaxConfigs] = useState<any[]>([])
   const [complianceIssues, setComplianceIssues] = useState<any[]>([])
   const [taxFilings, setTaxFilings] = useState<any[]>([])
+  const [payrollApprovals, setPayrollApprovals] = useState<any[]>([])
+  const [payrollApprovalConfig, setPayrollApprovalConfig] = useState<any[]>([])
   const [leaveRequests, setLeaveRequests] = useState<any[]>([])
   const [timeEntries, setTimeEntries] = useState<any[]>([])
   const [timeOffPolicies, setTimeOffPolicies] = useState<any[]>([])
@@ -1784,6 +1791,45 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       // Documents
       signatureDocuments: (d) => setSignatureDocuments(d),
       signatureTemplates: (d) => setSignatureTemplates(d),
+      // Workers' Compensation
+      workersCompPolicies: (d) => setWorkersCompPolicies(d),
+      workersCompClaims: (d) => setWorkersCompClaims(d),
+      workersCompClassCodes: (d) => setWorkersCompClassCodes(d),
+      workersCompAudits: (d) => setWorkersCompAudits(d),
+      // Equity Grants
+      equityGrants: (d) => setEquityGrants(d),
+      // Payroll
+      employeePayrollEntries: (d) => setEmployeePayrollEntries(d),
+      contractorPayments: (d) => setContractorPayments(d),
+      payrollSchedules: (d) => setPayrollSchedules(d),
+      taxConfigs: (d) => setTaxConfigs(d),
+      taxFilings: (d) => setTaxFilings(d),
+      payrollApprovals: (d) => setPayrollApprovals(d),
+      payrollApprovalConfig: (d) => setPayrollApprovalConfig(d),
+      // Benefits (extended)
+      benefitDependents: (d) => setBenefitDependents(d),
+      lifeEvents: (d) => setLifeEvents(d),
+      openEnrollmentPeriods: (d) => setOpenEnrollmentPeriods(d),
+      cobraEvents: (d) => setCobraEvents(d),
+      acaTracking: (d) => setAcaTracking(d),
+      flexBenefitAccounts: (d) => setFlexBenefitAccounts(d),
+      flexBenefitTransactions: (d) => setFlexBenefitTransactions(d),
+      // Compliance
+      complianceRequirements: (d) => setComplianceRequirements(d),
+      complianceDocuments: (d) => setComplianceDocuments(d),
+      complianceAlerts: (d) => setComplianceAlerts(d),
+      // Offboarding
+      offboardingChecklists: (d) => setOffboardingChecklists(d),
+      offboardingChecklistItems: (d) => setOffboardingChecklistItems(d),
+      offboardingProcesses: (d) => setOffboardingProcesses(d),
+      offboardingTasks: (d) => setOffboardingTasks(d),
+      exitSurveys: (d) => setExitSurveys(d),
+      // Time & Attendance
+      timeEntries: (d) => setTimeEntries(d),
+      timeOffPolicies: (d) => setTimeOffPolicies(d),
+      timeOffBalances: (d) => setTimeOffBalances(d),
+      overtimeRules: (d) => setOvertimeRules(d),
+      shifts: (d) => setShiftsData(d),
     }
   }
 
@@ -4435,6 +4481,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast('Currency account updated')
     apiPost('currencyAccounts', 'update', data, id)
   }, [logAudit, addToast])
+  const deleteCurrencyAccount = useCallback((id: string) => {
+    setCurrencyAccounts(prev => prev.filter(a => a.id !== id))
+    logAudit('delete', 'currency_account', id, 'Deleted currency account')
+    addToast('Currency account deleted')
+    apiPost('currencyAccounts', 'delete', undefined, id)
+  }, [logAudit, addToast])
   const addFxTransaction = useCallback((data: AnyRecord) => {
     const id = genId('fx')
     setFxTransactions(prev => [...prev, { id, org_id: orgIdRef.current, executed_at: new Date().toISOString(), ...data }])
@@ -5184,7 +5236,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments,
     surveys, engagementScores, actionPlans, surveyResponses,
     mentoringPrograms, mentoringPairs, mentoringSessions, mentoringGoals,
-    payrollRuns, employeePayrollEntries, contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings,
+    payrollRuns, employeePayrollEntries, setPayrollRuns: (fn: (prev: any[]) => any[]) => setPayrollRuns(fn as any), setEmployeePayrollEntries: (fn: (prev: any[]) => any[]) => setEmployeePayrollEntries(fn as any), contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings, payrollApprovals, payrollApprovalConfig,
     leaveRequests,
     benefitPlans, benefitEnrollments, benefitDependents, lifeEvents, expenseReports, expensePolicies, mileageLogs,
     jobPostings, applications, careerSiteConfig, jobDistributions,
@@ -5372,7 +5424,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     purchaseOrders, purchaseOrderItems, procurementRequests,
     addPurchaseOrder, updatePurchaseOrder, addProcurementRequest, updateProcurementRequest,
     currencyAccounts, fxTransactions,
-    addCurrencyAccount, updateCurrencyAccount, addFxTransaction,
+    addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, addFxTransaction,
     retirementPlans, retirementEnrollments, retirementContributions,
     addRetirementPlan, updateRetirementPlan, addRetirementEnrollment, updateRetirementEnrollment, addRetirementContribution,
     carrierIntegrations, enrollmentFeeds,

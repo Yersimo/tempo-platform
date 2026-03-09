@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,7 +39,10 @@ export default function RecruitingPage() {
     knockoutQuestions, addKnockoutQuestion, updateKnockoutQuestion, deleteKnockoutQuestion,
     candidateScheduling, addCandidateScheduling, updateCandidateScheduling,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['jobPostings', 'applications']) }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('postings')
 

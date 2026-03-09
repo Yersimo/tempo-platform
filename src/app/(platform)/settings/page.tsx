@@ -17,7 +17,7 @@ import {
   CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff,
   CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle,
   Download, FileText, BarChart3, Activity, ArrowUpRight, Receipt,
-  TrendingUp, CalendarDays, CircleDot, Minus
+  TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const ti = useTranslations('integrations')
   const tc = useTranslations('common')
   const searchParams = useSearchParams()
-  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName } = useTempo()
+  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, ensureModulesLoaded } = useTempo()
   const initialTab = searchParams.get('tab') || 'general'
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showOrgModal, setShowOrgModal] = useState(false)
@@ -144,6 +144,15 @@ export default function SettingsPage() {
   const [billingActionLoading, setBillingActionLoading] = useState<string | null>(null)
   const [billingDemo, setBillingDemo] = useState(false)
   const [billingLoaded, setBillingLoaded] = useState(false)
+
+  // Bank accounts state
+  const [showBankAccountModal, setShowBankAccountModal] = useState(false)
+  const [editingBankAccount, setEditingBankAccount] = useState<string | null>(null)
+  const [bankAccountForm, setBankAccountForm] = useState({
+    account_name: '', bank_name: '', routing_number: '', bank_account_number: '',
+    iban: '', swift_code: '', currency: 'USD', is_default: false,
+  })
+  const [bankAccountsLoaded, setBankAccountsLoaded] = useState(false)
 
   // Load billing data
   const loadBilling = useCallback(async () => {
@@ -252,6 +261,13 @@ export default function SettingsPage() {
     }
   }, [initialTab, integrationsLoaded, loadIntegrations])
 
+  // Load bank accounts on mount if tab is bank-accounts
+  useEffect(() => {
+    if (initialTab === 'bank-accounts' && !bankAccountsLoaded) {
+      ensureModulesLoaded?.(['currencyAccounts']).then(() => setBankAccountsLoaded(true))
+    }
+  }, [initialTab, bankAccountsLoaded, ensureModulesLoaded])
+
   // Load integrations when tab is activated
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab)
@@ -261,7 +277,10 @@ export default function SettingsPage() {
     if (tab === 'billing' && !billingLoaded && !billingLoading) {
       loadBilling()
     }
-  }, [integrationsLoaded, loadIntegrations, billingLoaded, billingLoading, loadBilling])
+    if (tab === 'bank-accounts' && !bankAccountsLoaded) {
+      ensureModulesLoaded?.(['currencyAccounts']).then(() => setBankAccountsLoaded(true))
+    }
+  }, [integrationsLoaded, loadIntegrations, billingLoaded, billingLoading, loadBilling, bankAccountsLoaded, ensureModulesLoaded])
 
   // Get connector config schema
   const getConfigSchema = (providerId: string): ConfigField[] => {
@@ -424,6 +443,7 @@ export default function SettingsPage() {
     { id: 'team', label: t('tabTeam'), count: employees.length },
     { id: 'departments', label: t('tabDepartments'), count: departments.length },
     { id: 'billing', label: 'Billing' },
+    { id: 'bank-accounts', label: 'Bank Accounts' },
     { id: 'integrations', label: ti('title') },
     { id: 'audit', label: t('tabAuditLog'), count: auditLog.length },
     { id: 'security', label: t('tabSecurity') },
@@ -474,6 +494,48 @@ export default function SettingsPage() {
     addDepartment({ name: deptForm.name, parent_id: deptForm.parent_id, head_id: deptForm.head_id || null })
     setShowDeptModal(false)
     setDeptForm({ name: '', parent_id: null, head_id: '' })
+  }
+
+  // Bank account helpers
+  function openAddBankAccount() {
+    setEditingBankAccount(null)
+    setBankAccountForm({ account_name: '', bank_name: '', routing_number: '', bank_account_number: '', iban: '', swift_code: '', currency: 'USD', is_default: false })
+    setShowBankAccountModal(true)
+  }
+  function openEditBankAccount(account: any) {
+    setEditingBankAccount(account.id)
+    setBankAccountForm({
+      account_name: account.account_name || account.accountName || '',
+      bank_name: account.bank_name || account.bankName || '',
+      routing_number: account.routing_number || account.routingNumber || '',
+      bank_account_number: account.bank_account_number || account.bankAccountNumber || '',
+      iban: account.iban || '', swift_code: account.swift_code || account.swiftCode || '',
+      currency: account.currency || 'USD', is_default: account.is_default ?? account.isDefault ?? false,
+    })
+    setShowBankAccountModal(true)
+  }
+  function submitBankAccount() {
+    if (!bankAccountForm.account_name || !bankAccountForm.bank_name) {
+      addToast('Account name and bank name are required')
+      return
+    }
+    const payload = {
+      account_name: bankAccountForm.account_name, bank_name: bankAccountForm.bank_name,
+      routing_number: bankAccountForm.routing_number, bank_account_number: bankAccountForm.bank_account_number,
+      iban: bankAccountForm.iban, swift_code: bankAccountForm.swift_code,
+      currency: bankAccountForm.currency, is_default: bankAccountForm.is_default, is_active: true,
+    }
+    if (editingBankAccount) {
+      updateCurrencyAccount(editingBankAccount, payload)
+    } else {
+      addCurrencyAccount(payload)
+    }
+    setShowBankAccountModal(false)
+  }
+  function handleDeleteBankAccount(account: any) {
+    const isDefault = account.is_default ?? account.isDefault
+    if (isDefault) { addToast('Cannot delete the default account'); return }
+    deleteCurrencyAccount(account.id)
   }
 
   // Billing helpers
@@ -1182,6 +1244,66 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'bank-accounts' && (
+        <div className="space-y-4">
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600"><Landmark size={20} /></div>
+                <div>
+                  <h3 className="text-sm font-semibold text-t1">Company Bank Accounts</h3>
+                  <p className="text-xs text-t3">Manage bank accounts used for payroll and payments</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={openAddBankAccount}><Plus size={14} /> Add Account</Button>
+            </div>
+            {currencyAccounts.length === 0 ? (
+              <div className="text-center py-8">
+                <Landmark size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm text-t3">No bank accounts configured</p>
+                <p className="text-xs text-t3 mt-1">Add a bank account to enable payroll file generation</p>
+                <Button size="sm" className="mt-4" onClick={openAddBankAccount}><Plus size={14} /> Add Bank Account</Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {currencyAccounts.filter((a: any) => (a.is_active ?? a.isActive) !== false).map((account: any) => {
+                  const isDefault = account.is_default ?? account.isDefault
+                  const acctNum = account.bank_account_number || account.bankAccountNumber || ''
+                  const routing = account.routing_number || account.routingNumber || ''
+                  const name = account.account_name || account.accountName || 'Unnamed'
+                  const bank = account.bank_name || account.bankName || '—'
+                  const ibanVal = account.iban || ''
+                  return (
+                    <div key={account.id} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Landmark size={16} className="text-tempo-500" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-t1">{name}</span>
+                            {isDefault && <Badge variant="success">Default</Badge>}
+                            <Badge>{account.currency}</Badge>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs text-t3">{bank}</span>
+                            {routing && <span className="text-xs text-t3">Routing: {routing}</span>}
+                            {acctNum && <span className="text-xs text-t3">Acct: ****{acctNum.slice(-4)}</span>}
+                            {ibanVal && <span className="text-xs text-t3">IBAN: ****{ibanVal.slice(-4)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => openEditBankAccount(account)}><Pencil size={12} /></Button>
+                        {!isDefault && <Button size="sm" variant="secondary" onClick={() => handleDeleteBankAccount(account)}><Trash2 size={12} /></Button>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       {activeTab === 'integrations' && (
         <div>
           {/* Integration Stats */}
@@ -1523,6 +1645,50 @@ export default function SettingsPage() {
               </div>
             ))
           )}
+        </div>
+      </Modal>
+
+      {/* Bank Account Modal */}
+      <Modal open={showBankAccountModal} onClose={() => setShowBankAccountModal(false)} title={editingBankAccount ? 'Edit Bank Account' : 'Add Bank Account'} size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Account Name *" placeholder="e.g. Operating Account" value={bankAccountForm.account_name}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, account_name: e.target.value })} />
+            <Input label="Bank Name *" placeholder="e.g. Chase Bank" value={bankAccountForm.bank_name}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, bank_name: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Routing Number" placeholder="e.g. 021000021" value={bankAccountForm.routing_number}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, routing_number: e.target.value })} />
+            <Input label="Account Number" placeholder="e.g. 987654321" value={bankAccountForm.bank_account_number}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, bank_account_number: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="IBAN" placeholder="e.g. GB82WEST12345698765432" value={bankAccountForm.iban}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, iban: e.target.value })} />
+            <Input label="SWIFT Code" placeholder="e.g. CHASUS33" value={bankAccountForm.swift_code}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, swift_code: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Currency" value={bankAccountForm.currency}
+              onChange={(e) => setBankAccountForm({ ...bankAccountForm, currency: e.target.value })}
+              options={[
+                { value: 'USD', label: 'USD - US Dollar' }, { value: 'EUR', label: 'EUR - Euro' },
+                { value: 'GBP', label: 'GBP - British Pound' }, { value: 'NGN', label: 'NGN - Nigerian Naira' },
+                { value: 'GHS', label: 'GHS - Ghanaian Cedi' }, { value: 'KES', label: 'KES - Kenyan Shilling' },
+              ]}
+            />
+            <div className="flex items-center gap-2 pt-6">
+              <input type="checkbox" id="bank_is_default" checked={bankAccountForm.is_default}
+                onChange={(e) => setBankAccountForm({ ...bankAccountForm, is_default: e.target.checked })}
+                className="rounded border-divider" />
+              <label htmlFor="bank_is_default" className="text-xs font-medium text-t1">Set as default account</label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBankAccountModal(false)}>Cancel</Button>
+            <Button onClick={submitBankAccount}><Save size={14} /> {editingBankAccount ? 'Update' : 'Add'} Account</Button>
+          </div>
         </div>
       </Modal>
     </>

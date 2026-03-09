@@ -58,8 +58,13 @@ export default function TimeAttendancePage() {
     addLeaveRequest, updateLeaveRequest,
     getEmployeeName, getDepartmentName, currentEmployeeId,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
   const shifts = _shifts as any[]
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['timeEntries', 'timeOffPolicies', 'timeOffBalances', 'overtimeRules', 'shifts', 'leaveRequests', 'employees'])
+  }, [ensureModulesLoaded])
 
   // ---- Tabs ----
   const [activeTab, setActiveTab] = useState('time-clock')

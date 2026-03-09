@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -60,7 +60,12 @@ export default function OffboardingPage() {
     addOffboardingProcess, updateOffboardingProcess,
     addOffboardingTask, updateOffboardingTask,
     addExitSurvey, addToast, org,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['offboardingChecklists', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])
+  }, [ensureModulesLoaded])
 
   // ── Persist KT item to API (best-effort) ──────
   async function persistKTItem(item: { id: string; employee_id: string; area: string; recipient_id: string; status: string; notes: string; created_at: string }) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -100,7 +100,12 @@ export default function BenefitsPage() {
     flexBenefitAccounts, addFlexBenefitAccount, updateFlexBenefitAccount,
     flexBenefitTransactions, addFlexBenefitTransaction, updateFlexBenefitTransaction,
     getEmployeeName, getDepartmentName, addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['benefitPlans', 'benefitEnrollments', 'benefitDependents', 'lifeEvents', 'openEnrollmentPeriods', 'cobraEvents', 'acaTracking', 'flexBenefitAccounts', 'flexBenefitTransactions', 'employees', 'departments'])
+  }, [ensureModulesLoaded])
 
   async function carrierAPI(action: string, data: Record<string, any> = {}) {
     const res = await fetch('/api/carrier-integrations', {

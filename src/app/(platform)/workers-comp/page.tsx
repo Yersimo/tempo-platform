@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,7 +35,12 @@ export default function WorkersCompPage() {
     addWorkersCompClaim, updateWorkersCompClaim,
     addWorkersCompClassCode, updateWorkersCompClassCode,
     addWorkersCompAudit, updateWorkersCompAudit,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['workersCompPolicies', 'workersCompClaims', 'workersCompClassCodes', 'workersCompAudits'])
+  }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('policies')
   const [showClaimModal, setShowClaimModal] = useState(false)

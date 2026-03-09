@@ -64,6 +64,8 @@ export const MODULE_SLUGS: Record<string, string> = {
   // Documents
   signatureDocuments: 'signature-documents',
   signatureTemplates: 'signature-templates',
+  // Equity Grants
+  equityGrants: 'equity-grants',
   // Workers' Compensation
   workersCompPolicies: 'workers-comp-policies',
   workersCompClaims: 'workers-comp-claims',
@@ -77,6 +79,38 @@ export const MODULE_SLUGS: Record<string, string> = {
   // Bill Pay Schedules & Travel Policies
   billPaySchedules: 'bill-pay-schedules',
   travelPolicies: 'travel-policies',
+  // Payroll
+  employeePayrollEntries: 'employee-payroll-entries',
+  contractorPayments: 'contractor-payments',
+  payrollSchedules: 'payroll-schedules',
+  taxConfigs: 'tax-configs',
+  taxFilings: 'tax-filings',
+  payrollApprovals: 'payroll-approvals',
+  payrollApprovalConfig: 'payroll-approval-config',
+  payrollAuditLog: 'payroll-audit-log',
+  // Benefits (extended)
+  benefitDependents: 'benefit-dependents',
+  lifeEvents: 'life-events',
+  openEnrollmentPeriods: 'open-enrollment-periods',
+  cobraEvents: 'cobra-events',
+  acaTracking: 'aca-tracking',
+  flexBenefitAccounts: 'flex-benefit-accounts',
+  flexBenefitTransactions: 'flex-benefit-transactions',
+  // Compliance
+  complianceRequirements: 'compliance-requirements',
+  complianceDocuments: 'compliance-documents',
+  complianceAlerts: 'compliance-alerts',
+  // Offboarding
+  offboardingChecklists: 'offboarding-checklists',
+  offboardingProcesses: 'offboarding-processes',
+  offboardingTasks: 'offboarding-tasks',
+  exitSurveys: 'exit-surveys',
+  // Time & Attendance
+  timeEntries: 'time-entries',
+  timeOffPolicies: 'time-off-policies',
+  timeOffBalances: 'time-off-balances',
+  overtimeRules: 'overtime-rules',
+  shifts: 'shifts',
 }
 
 // ---------------------------------------------------------------------------
