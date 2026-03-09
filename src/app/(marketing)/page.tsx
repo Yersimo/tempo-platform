@@ -808,7 +808,7 @@ export default function LandingPage() {
           <div className="l-trust-card l-reveal-scale" style={{ transitionDelay: '.15s' }} ref={trustRef}>
             <div>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,.4)', fontWeight: 300, lineHeight: 1.7, marginBottom: 16 }}>
-                Tempo was born inside a pan-African bank operating across 33 countries, 4 regulatory frameworks, and 3 languages. It handles multi-currency compensation, board-level governance reporting, and incentive calculations that satisfy regulators from Lagos to London to Sao Paulo.
+                Tempo was born from a simple quest to build an AI-native HR, Finance and IT platform that powers companies from as small as start-ups to those operating around the world, across several regulatory frameworks, and over 20 languages. It handles multi-currency compensation, board-level governance reporting, and incentive calculations that satisfy regulators from London to Johannesburg, from Lagos to São Paulo, and from Abidjan to New York. Whether it is Learning, Performance, Projects, Expense Management, Talent Review or Budgeting — Tempo is all you need.
               </p>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,.4)', fontWeight: 300, lineHeight: 1.7 }}>
                 That complexity is the product. Whether you&apos;re a multinational running performance reviews across 80 countries, a bank calibrating compensation across regulatory zones, or a scaling company that wants one platform instead of twelve, Tempo was built for you.
@@ -816,7 +816,7 @@ export default function LandingPage() {
             </div>
             <div className="l-trust-stats">
               <div className="l-trust-stat"><div className="l-trust-stat-val" data-final="80+">80+</div><div className="l-trust-stat-label">Countries Supported</div></div>
-              <div className="l-trust-stat"><div className="l-trust-stat-val" data-final="6">6</div><div className="l-trust-stat-label">Integrated Modules</div></div>
+              <div className="l-trust-stat"><div className="l-trust-stat-val" data-final="40+">40+</div><div className="l-trust-stat-label">Integrated Modules</div></div>
               <div className="l-trust-stat"><div className="l-trust-stat-val" data-final="23">23</div><div className="l-trust-stat-label">Languages</div></div>
               <div className="l-trust-stat"><div className="l-trust-stat-val" data-final="100%">100%</div><div className="l-trust-stat-label">Audit Coverage</div></div>
             </div>
