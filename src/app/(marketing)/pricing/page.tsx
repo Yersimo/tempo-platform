@@ -181,7 +181,7 @@ const featureCategories = [
       { name: 'Webhook Integrations', free: false, starter: false, pro: true, enterprise: true },
       { name: 'Custom Integrations', free: false, starter: false, pro: false, enterprise: true },
       { name: 'Workflow Studio', free: false, starter: false, pro: false, enterprise: true },
-      { name: 'SOC 2 Type II', free: true, starter: true, pro: true, enterprise: true },
+      { name: 'SOC 2 Type II (Q2 2026)', free: true, starter: true, pro: true, enterprise: true },
       { name: 'GDPR Compliant', free: true, starter: true, pro: true, enterprise: true },
       { name: 'SLA Guarantee', free: false, starter: false, pro: '99.9%', enterprise: '99.99%' },
     ],
@@ -242,7 +242,7 @@ const faqs = [
   },
   {
     q: 'Is Tempo compliant with data protection regulations?',
-    a: 'Tempo is SOC 2 Type II certified, GDPR compliant, and follows ISO 27001 security practices. We offer data residency options for Enterprise customers. Our infrastructure is hosted on AWS with encryption at rest and in transit.',
+    a: 'Tempo is GDPR compliant and pursuing SOC 2 Type II certification (expected Q2 2026), with security practices aligned to ISO 27001 standards. Our infrastructure is hosted on Vercel and Neon PostgreSQL with AES-256 encryption at rest and TLS 1.3 in transit.',
   },
 ]
 
@@ -478,12 +478,12 @@ export default function PricingPage() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: Shield, title: 'SOC 2 Type II', desc: 'Annually audited security controls verified by independent assessors' },
-            { icon: Globe, title: 'GDPR Compliant', desc: 'Full compliance with EU data protection regulations and data residency options' },
+            { icon: Shield, title: 'SOC 2 Type II', desc: 'Independent security audit in progress — expected Q2 2026' },
+            { icon: Globe, title: 'GDPR Compliant', desc: 'Full compliance with EU data protection regulations. Data residency available on request.' },
             { icon: Lock, title: 'Encryption', desc: 'AES-256 encryption at rest and TLS 1.3 in transit for all data' },
             { icon: Server, title: '99.99% SLA', desc: 'Enterprise-grade uptime guarantee with redundant infrastructure' },
             { icon: Users, title: 'SSO & SCIM', desc: 'SAML 2.0, OIDC single sign-on with automated user provisioning' },
-            { icon: Zap, title: 'ISO 27001', desc: 'Information security management system aligned with ISO 27001 standards' },
+            { icon: Zap, title: 'ISO 27001', desc: 'Security practices aligned to ISO 27001 — certification planned H2 2026' },
           ].map((item) => (
             <div key={item.title} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all">
               <item.icon size={24} className="text-orange-500 mb-4" />

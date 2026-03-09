@@ -327,7 +327,7 @@ export default function LandingPage() {
           Set the standard.<br />Rise to <em>meet it.</em>
         </h1>
         <p className="l-hero-sub l-fade-up l-d2">
-          Performance, compensation, and talent in one platform. One employee record. Six integrated modules. Built for the complexity of global enterprise.
+          Performance, compensation, and talent in one platform. One employee record. 40+ integrated modules. Built for the complexity of global enterprise.
         </p>
         <div className="l-hero-ctas l-fade-up l-d3">
           <a href="#demo" className="l-btn-primary" onClick={(e) => handleAnchorClick(e, 'demo')}>Request a Demo</a>
@@ -751,9 +751,9 @@ export default function LandingPage() {
       <section className="l-section l-section-alt" id="modules">
         <div className="l-section-inner">
           <div className="l-section-tag l-reveal">Platform</div>
-          <div className="l-section-title l-reveal" style={{ transitionDelay: '.05s' }}>Six modules. One platform.</div>
+          <div className="l-section-title l-reveal" style={{ transitionDelay: '.05s' }}>40+ modules. One platform.</div>
           <div className="l-section-desc l-reveal" style={{ transitionDelay: '.1s' }}>
-            Every module shares one employee graph, one permissions engine, one data layer.
+            Every module shares one employee graph, one permissions engine, one data layer. Here are six to explore.
           </div>
           <div className="l-mod-tabs l-reveal" style={{ transitionDelay: '.15s' }}>
             {moduleData.map((m, i) => (
@@ -837,8 +837,8 @@ export default function LandingPage() {
             <div className="l-sec-item"><h4>Role-Based Access</h4><p>Dynamic permissions based on role, region, and attribute. Enforced across every screen, every export, every API call.</p></div>
             <div className="l-sec-item"><h4>Full Audit Trail</h4><p>Every action is logged with user, timestamp, before/after state, and IP. Immutable. Regulator-ready.</p></div>
             <div className="l-sec-item"><h4>SSO &amp; SCIM</h4><p>SAML 2.0, Active Directory, Okta, Azure AD. Automatic provisioning and deprovisioning.</p></div>
-            <div className="l-sec-item"><h4>Data Residency</h4><p>Choose where your data lives. Regional deployments for regulatory compliance.</p></div>
-            <div className="l-sec-item"><h4>SOC 2 Type II</h4><p>Annual third-party audits. Continuous monitoring. Penetration testing.</p></div>
+            <div className="l-sec-item"><h4>Data Residency</h4><p>Regional deployment options available for Enterprise customers on request.</p></div>
+            <div className="l-sec-item"><h4>SOC 2 Type II</h4><p>Independent security audit in progress (Q2 2026). Continuous monitoring. Penetration testing.</p></div>
           </div>
         </div>
       </section>
