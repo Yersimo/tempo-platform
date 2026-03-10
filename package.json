@@ -19,6 +19,7 @@
     "@sentry/nextjs": "^10.40.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
+    "@swc/helpers": "^0.5.19",
     "@tailwindcss/postcss": "^4.2.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.3",
