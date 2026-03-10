@@ -79,7 +79,7 @@ export default function ITCloudPage() {
 
   // ---- Lazy-load IT modules on mount ----
   useEffect(() => {
-    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests'])
+    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'managedDevices', 'securityPoliciesIT', 'deviceActions', 'appCatalog', 'appAssignments', 'deviceInventory', 'provisioningRules', 'encryptionPolicies'])
   }, [ensureModulesLoaded])
 
   // ---- Provisioning Rules Type ----

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,7 +49,9 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
 
 export default function GroupsPage() {
   const tc = useTranslations('common')
-  const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup } = useTempo()
+  const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['groups', 'employees']) }, [])
   const [activeTab, setActiveTab] = useState<'groups' | 'rules' | 'modules'>('groups')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)

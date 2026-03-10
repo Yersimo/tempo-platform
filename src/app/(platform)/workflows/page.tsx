@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -141,7 +141,10 @@ export default function WorkflowsPage() {
     addAutomationWorkflowRun,
     getEmployeeName, currentEmployeeId,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['automationWorkflows', 'automationWorkflowSteps', 'automationWorkflowRuns']) }, [])
 
   const [activeTab, setActiveTab] = useState('list')
   const [searchQuery, setSearchQuery] = useState('')

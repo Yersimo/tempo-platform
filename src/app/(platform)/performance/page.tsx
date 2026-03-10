@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,7 +31,10 @@ export default function PerformancePage() {
     addPIP, updatePIP, deletePIP, addPIPCheckIn,
     addMeritCycle, updateMeritCycle, addMeritRecommendation, updateMeritRecommendation,
     addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments']) }, [])
 
   const t = useTranslations('performance')
   const tc = useTranslations('common')

@@ -54,7 +54,7 @@ export default function CompliancePage() {
   } = useTempo()
 
   useEffect(() => {
-    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'autoDetectionScans'])
+    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees'])
   }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('overview')

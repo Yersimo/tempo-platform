@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, Fragment } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
@@ -20,7 +20,9 @@ import { demoBudgetForecast, demoRollingForecast, demoMultiYearPlan } from '@/li
 export default function BudgetsPage() {
   const t = useTranslations('budgets')
   const tc = useTranslations('common')
-  const { budgets, departments, addBudget, updateBudget, getDepartmentName } = useTempo()
+  const { budgets, departments, addBudget, updateBudget, getDepartmentName, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['budgets', 'departments']) }, [])
 
   const burnRateInsights = useMemo(() => calculateBurnRate(budgets), [budgets])
 

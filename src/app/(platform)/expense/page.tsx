@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,7 +58,10 @@ export default function ExpensePage() {
     duplicateDetections, addDuplicateDetection, updateDuplicateDetection,
     payrollRuns,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['expenseReports', 'expensePolicies', 'mileageLogs', 'receiptMatches', 'mileageEntries', 'advancedExpensePolicies', 'reimbursementBatches', 'duplicateDetections']) }, [])
 
   // ---- Tab State ----
   const tabs = [

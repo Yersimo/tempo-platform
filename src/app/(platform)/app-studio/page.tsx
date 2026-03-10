@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,7 +15,9 @@ import { useTempo } from '@/lib/store'
 
 export default function AppStudioPage() {
   const tc = useTranslations('common')
-  const { customApps, appPages, employees, departments, invoices, leaveRequests, addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage, addToast } = useTempo()
+  const { customApps, appPages, employees, departments, invoices, leaveRequests, addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage, addToast, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['customApps', 'appPages', 'employees', 'departments']) }, [])
 
   const [activeTab, setActiveTab] = useState<'apps' | 'templates' | 'datasources'>('apps')
   const [editingAppId, setEditingAppId] = useState<string | null>(null)

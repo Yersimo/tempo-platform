@@ -138,6 +138,48 @@ export const MODULE_SLUGS: Record<string, string> = {
   deviceOrders: 'device-orders',
   // KPI Measurements
   kpiMeasurements: 'kpi-measurements',
+  // Offboarding (extended)
+  offboardingChecklistItems: 'offboarding-checklist-items',
+  // Identity (extended)
+  scimProviders: 'scim-providers',
+  // IT Cloud (extended)
+  managedDevices: 'managed-devices',
+  securityPoliciesIT: 'security-policies',
+  provisioningRules: 'provisioning-rules',
+  encryptionPolicies: 'encryption-policies',
+  // Expense (extended)
+  expensePolicies: 'expense-policies',
+  mileageLogs: 'mileage-logs',
+  mileageEntries: 'mileage-entries',
+  receiptMatches: 'receipt-matches',
+  advancedExpensePolicies: 'advanced-expense-policies',
+  reimbursementBatches: 'reimbursement-batches',
+  duplicateDetections: 'duplicate-detections',
+  // Global Workforce (EOR/COR/PEO)
+  eorEntities: 'eor-entities',
+  eorEmployees: 'eor-employees',
+  eorContracts: 'eor-contracts',
+  corContractors: 'cor-contractors',
+  corContracts: 'cor-contracts',
+  corPayments: 'cor-payments',
+  peoConfigurations: 'peo-configurations',
+  coEmploymentRecords: 'co-employment-records',
+  globalBenefitPlans: 'global-benefit-plans',
+  countryBenefitConfigs: 'country-benefit-configs',
+  // Workflow Studio (extended)
+  workflowSteps: 'workflow-steps',
+  workflowRuns: 'workflow-runs',
+  // Automation Workflows
+  automationWorkflows: 'automation-workflows',
+  automationWorkflowSteps: 'automation-workflow-steps',
+  automationWorkflowRuns: 'automation-workflow-runs',
+  // App Studio
+  customApps: 'custom-apps',
+  appPages: 'app-pages',
+  appComponents: 'app-components',
+  appDataSources: 'app-data-sources',
+  // Sandbox
+  sandboxEnvironments: 'sandbox-environments',
 }
 
 // ---------------------------------------------------------------------------

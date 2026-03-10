@@ -148,6 +148,46 @@ const MODULE_CONFIG: Record<string, {
   'device-orders':         { table: schema.deviceOrders, hasOrgId: true, defaultLimit: 50 },
   // KPI Measurements
   'kpi-measurements':      { table: schema.kpiMeasurements, hasOrgId: true, defaultLimit: 100 },
+  // Identity (extended)
+  'scim-providers':        { table: schema.idpConfigurations, hasOrgId: true, defaultLimit: 20 },
+  // IT Cloud (extended)
+  'managed-devices':       { table: schema.managedDevices, hasOrgId: true, defaultLimit: 50 },
+  'security-policies':     { table: schema.securityPolicies, hasOrgId: true, defaultLimit: 20 },
+  'provisioning-rules':    { table: schema.idpConfigurations, hasOrgId: true, defaultLimit: 20 },
+  'encryption-policies':   { table: schema.mfaPolicies, hasOrgId: true, defaultLimit: 20 },
+  // Expense (extended)
+  'expense-policies':      { table: schema.expensePolicies, hasOrgId: true, defaultLimit: 20 },
+  'mileage-logs':          { table: schema.mileageEntries, hasOrgId: true, defaultLimit: 50 },
+  'mileage-entries':       { table: schema.mileageEntries, hasOrgId: true, defaultLimit: 50 },
+  'receipt-matches':       { table: schema.receiptMatching, hasOrgId: true, defaultLimit: 50 },
+  'advanced-expense-policies': { table: schema.advancedExpensePolicies, hasOrgId: true, defaultLimit: 20 },
+  'reimbursement-batches': { table: schema.reimbursementBatches, hasOrgId: true, defaultLimit: 50 },
+  'duplicate-detections':  { table: schema.duplicateDetection, hasOrgId: true, defaultLimit: 50 },
+  // Global Workforce (EOR/COR/PEO)
+  'eor-entities':          { table: schema.eorEntities, hasOrgId: true, defaultLimit: 20 },
+  'eor-employees':         { table: schema.eorEmployees, hasOrgId: true, defaultLimit: 50 },
+  'eor-contracts':         { table: schema.eorContracts, hasOrgId: true, defaultLimit: 50 },
+  'cor-contractors':       { table: schema.corContractors, hasOrgId: true, defaultLimit: 50 },
+  'cor-contracts':         { table: schema.corContracts, hasOrgId: true, defaultLimit: 50 },
+  'cor-payments':          { table: schema.corPayments, hasOrgId: true, defaultLimit: 50 },
+  'peo-configurations':    { table: schema.peoConfigurations, hasOrgId: true, defaultLimit: 20 },
+  'co-employment-records': { table: schema.coEmploymentRecords, hasOrgId: true, defaultLimit: 50 },
+  'global-benefit-plans':  { table: schema.globalBenefitPlans, hasOrgId: true, defaultLimit: 20 },
+  'country-benefit-configs': { table: schema.countryBenefitConfigs, hasOrgId: true, defaultLimit: 50 },
+  // Workflow Studio (extended)
+  'workflow-steps':        { table: schema.workflowSteps, hasOrgId: false, defaultLimit: 100 },
+  'workflow-runs':         { table: schema.workflowRuns, hasOrgId: true, defaultLimit: 50 },
+  // Automation Workflows
+  'automation-workflows':       { table: schema.automationWorkflows, hasOrgId: true, defaultLimit: 20 },
+  'automation-workflow-steps':  { table: schema.automationWorkflowSteps, hasOrgId: false, defaultLimit: 100 },
+  'automation-workflow-runs':   { table: schema.automationWorkflowRuns, hasOrgId: true, defaultLimit: 50 },
+  // App Studio
+  'custom-apps':           { table: schema.customApps, hasOrgId: true, defaultLimit: 20 },
+  'app-pages':             { table: schema.appPages, hasOrgId: false, defaultLimit: 50 },
+  'app-components':        { table: schema.appComponents, hasOrgId: false, defaultLimit: 50 },
+  'app-data-sources':      { table: schema.appDataSources, hasOrgId: false, defaultLimit: 50 },
+  // Sandbox
+  'sandbox-environments':  { table: schema.sandboxEnvironments, hasOrgId: true, defaultLimit: 20 },
 }
 
 export async function GET(

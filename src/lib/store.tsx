@@ -1857,6 +1857,55 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       timeOffBalances: (d) => setTimeOffBalances(d),
       overtimeRules: (d) => setOvertimeRules(d),
       shifts: (d) => setShiftsData(d),
+      // Password Manager
+      passwordVaults: (d) => setPasswordVaults(d),
+      vaultItems: (d) => setVaultItems(d),
+      // Bill Pay Schedules
+      billPaySchedules: (d) => setBillPaySchedules(d),
+      // Travel Policies
+      travelPolicies: (d) => setTravelPolicies(d),
+      // Groups
+      groups: (d) => setGroups(d),
+      // Identity (extended)
+      scimProviders: (d) => setScimProviders(d),
+      // IT Cloud (extended)
+      managedDevices: (d) => setManagedDevices(d),
+      securityPoliciesIT: (d) => setSecurityPoliciesIT(d),
+      provisioningRules: (d) => setProvisioningRules(d),
+      encryptionPolicies: (d) => setEncryptionPolicies(d),
+      // Expense (extended)
+      expensePolicies: (d) => setExpensePolicies(d),
+      mileageLogs: (d) => setMileageLogs(d),
+      mileageEntries: (d) => setMileageEntries(d),
+      receiptMatches: (d) => setReceiptMatches(d),
+      advancedExpensePolicies: (d) => setAdvancedExpensePolicies(d),
+      reimbursementBatches: (d) => setReimbursementBatches(d),
+      duplicateDetections: (d) => setDuplicateDetections(d),
+      // Global Workforce (EOR/COR/PEO)
+      eorEntities: (d) => setEorEntities(d),
+      eorEmployees: (d) => setEorEmployees(d),
+      eorContracts: (d) => setEorContracts(d),
+      corContractors: (d) => setCorContractors(d),
+      corContracts: (d) => setCorContracts(d),
+      corPayments: (d) => setCorPayments(d),
+      peoConfigurations: (d) => setPeoConfigurations(d),
+      coEmploymentRecords: (d) => setCoEmploymentRecords(d),
+      globalBenefitPlans: (d) => setGlobalBenefitPlans(d),
+      countryBenefitConfigs: (d) => setCountryBenefitConfigs(d),
+      // Workflow Studio (extended)
+      workflowSteps: (d) => setWorkflowSteps(d),
+      workflowRuns: (d) => setWorkflowRuns(d),
+      // Automation Workflows
+      automationWorkflows: (d) => setAutomationWorkflows(d),
+      automationWorkflowSteps: (d) => setAutomationWorkflowSteps(d),
+      automationWorkflowRuns: (d) => setAutomationWorkflowRuns(d),
+      // App Studio
+      customApps: (d) => setCustomApps(d),
+      appPages: (d) => setAppPages(d),
+      appComponents: (d) => setAppComponents(d),
+      appDataSources: (d) => setAppDataSources(d),
+      // Sandbox
+      sandboxEnvironments: (d) => setSandboxEnvironments(d),
     }
   }
 

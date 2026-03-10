@@ -24,7 +24,7 @@ export default function BillPayPage() {
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
-    ensureModulesLoaded?.(['billPayments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    ensureModulesLoaded?.(['billPayments', 'billPaySchedules', 'vendors'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
     const t = setTimeout(() => setPageLoading(false), 2000)
     return () => clearTimeout(t)
   }, [ensureModulesLoaded])

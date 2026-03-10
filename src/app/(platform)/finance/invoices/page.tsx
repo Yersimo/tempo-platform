@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,9 @@ import { demoVendorContracts, demoSpendByCategory } from '@/lib/demo-data'
 export default function InvoicesPage() {
   const t = useTranslations('invoices')
   const tc = useTranslations('common')
-  const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice } = useTempo()
+  const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['invoices', 'vendors', 'softwareLicenses']) }, [])
 
   const cashFlowInsight = useMemo(() => forecastCashFlow(invoices, []), [invoices])
   const vendorInsights = useMemo(() => assessVendorConcentration(invoices, vendors), [invoices, vendors])

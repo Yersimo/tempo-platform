@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,7 +15,9 @@ import { useTempo } from '@/lib/store'
 
 export default function SandboxPage() {
   const tc = useTranslations('common')
-  const { sandboxEnvironments, employees, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment, addToast } = useTempo()
+  const { sandboxEnvironments, employees, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment, addToast, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['sandboxEnvironments', 'employees']) }, [])
 
   const [showEnvDetailModal, setShowEnvDetailModal] = useState(false)
   const [detailEnv, setDetailEnv] = useState<any>(null)

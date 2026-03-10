@@ -18,7 +18,7 @@ export default function TravelManagementPage() {
   const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded } = useTempo()
 
   useEffect(() => {
-    ensureModulesLoaded?.(['travelRequests', 'travelBookings'])
+    ensureModulesLoaded?.(['travelRequests', 'travelBookings', 'travelPolicies'])
   }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState<'requests' | 'bookings' | 'policies' | 'expenses'>('requests')

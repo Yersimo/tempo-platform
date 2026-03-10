@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
@@ -24,8 +24,10 @@ export default function AnalyticsPage() {
     employees, departments, goals, reviews, enrollments,
     engagementScores, mentoringPairs, expenseReports,
     jobPostings, leaveRequests, payrollRuns, salaryReviews,
-    compBands, courses, getDepartmentName,
+    compBands, courses, getDepartmentName, ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments', 'goals', 'reviews', 'enrollments', 'engagementScores', 'mentoringPairs', 'expenseReports', 'jobPostings', 'leaveRequests', 'payrollRuns', 'salaryReviews', 'compBands', 'courses']) }, [])
 
   const [activeTab, setActiveTab] = useState('workforce')
   const [deptFilter, setDeptFilter] = useState('all')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +28,10 @@ export default function WorkflowStudioPage() {
     addWorkflowStep, updateWorkflowStep, deleteWorkflowStep,
     addWorkflowRun, updateWorkflowRun,
     getEmployeeName, currentEmployeeId,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['workflows', 'workflowSteps', 'workflowRuns', 'workflowTemplates']) }, [])
 
   const t = useTranslations('workflowStudio')
   const tc = useTranslations('common')

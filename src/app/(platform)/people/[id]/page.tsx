@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { useTranslations } from 'next-intl'
 import { useParams, useRouter } from 'next/navigation'
@@ -44,7 +44,10 @@ export default function EmployeeDetailPage() {
     addCustomFieldValue, updateCustomFieldValue,
     emergencyContacts,
     addEmergencyContact, updateEmergencyContact, deleteEmergencyContact,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments']) }, [])
 
   const emp = employees.find(e => e.id === id)
   const [activeTab, setActiveTab] = useState('overview')

@@ -65,7 +65,7 @@ export default function GlobalWorkforcePage() {
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
-    ensureModulesLoaded?.(['eorEntities', 'eorEmployees', 'corContractors', 'peoConfigurations', 'globalBenefitPlans'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    ensureModulesLoaded?.(['eorEntities', 'eorEmployees', 'eorContracts', 'corContractors', 'corContracts', 'corPayments', 'peoConfigurations', 'coEmploymentRecords', 'globalBenefitPlans', 'countryBenefitConfigs', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
     const t = setTimeout(() => setPageLoading(false), 2000)
     return () => clearTimeout(t)
   }, [ensureModulesLoaded])
