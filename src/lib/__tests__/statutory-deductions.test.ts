@@ -1,4 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// Mock the DB module so tests don't require a live DATABASE_URL
+vi.mock('@/lib/db', () => ({
+  db: {},
+  default: {},
+}))
+
 import {
   calculateStatutoryDeductions,
   getStatutoryRequirements,

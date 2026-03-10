@@ -26,13 +26,67 @@ function makeCtx(overrides: Partial<TransitionContext> = {}): TransitionContext 
 describe('Payroll State Machine', () => {
   describe('transitionPayrollStatus', () => {
     // ---------------------------------------------------------------
-    // Draft -> Approved
+    // Draft -> Pending HR (multi-level approval chain)
     // ---------------------------------------------------------------
-    it('allows draft -> approved with valid context', () => {
+    it('allows draft -> pending_hr with valid context', () => {
       const run = makeRun({ status: 'draft', entryCount: 5 })
       const ctx = makeCtx({
         approverId: '550e8400-e29b-41d4-a716-446655440001',
-        approverRole: 'owner',
+      })
+      const result = transitionPayrollStatus(run, 'pending_hr', ctx)
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.newStatus).toBe('pending_hr')
+      }
+    })
+
+    it('rejects draft -> pending_hr with zero entries', () => {
+      const run = makeRun({ status: 'draft', entryCount: 0 })
+      const ctx = makeCtx({
+        approverId: '550e8400-e29b-41d4-a716-446655440001',
+      })
+      const result = transitionPayrollStatus(run, 'pending_hr', ctx)
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects draft -> pending_hr without approverId', () => {
+      const run = makeRun({ status: 'draft', entryCount: 5 })
+      const ctx = makeCtx()
+      const result = transitionPayrollStatus(run, 'pending_hr', ctx)
+      expect(result.success).toBe(false)
+    })
+
+    // ---------------------------------------------------------------
+    // Pending HR -> Pending Finance
+    // ---------------------------------------------------------------
+    it('allows pending_hr -> pending_finance with HR role', () => {
+      const run = makeRun({ status: 'pending_hr', entryCount: 5 })
+      const ctx = makeCtx({
+        approverId: '550e8400-e29b-41d4-a716-446655440001',
+        approverRole: 'hr',
+      })
+      const result = transitionPayrollStatus(run, 'pending_finance', ctx)
+      expect(result.success).toBe(true)
+    })
+
+    it('rejects pending_hr -> pending_finance with employee role', () => {
+      const run = makeRun({ status: 'pending_hr', entryCount: 5 })
+      const ctx = makeCtx({
+        approverId: '550e8400-e29b-41d4-a716-446655440001',
+        approverRole: 'employee',
+      })
+      const result = transitionPayrollStatus(run, 'pending_finance', ctx)
+      expect(result.success).toBe(false)
+    })
+
+    // ---------------------------------------------------------------
+    // Pending Finance -> Approved
+    // ---------------------------------------------------------------
+    it('allows pending_finance -> approved with finance role', () => {
+      const run = makeRun({ status: 'pending_finance', entryCount: 5 })
+      const ctx = makeCtx({
+        approverId: '550e8400-e29b-41d4-a716-446655440001',
+        approverRole: 'finance',
       })
       const result = transitionPayrollStatus(run, 'approved', ctx)
       expect(result.success).toBe(true)
@@ -41,31 +95,18 @@ describe('Payroll State Machine', () => {
       }
     })
 
-    it('allows draft -> approved with admin role', () => {
-      const run = makeRun({ status: 'draft', entryCount: 3 })
+    it('allows pending_finance -> approved with owner role', () => {
+      const run = makeRun({ status: 'pending_finance', entryCount: 5 })
       const ctx = makeCtx({
         approverId: '550e8400-e29b-41d4-a716-446655440001',
-        approverRole: 'admin',
+        approverRole: 'owner',
       })
       const result = transitionPayrollStatus(run, 'approved', ctx)
       expect(result.success).toBe(true)
     })
 
-    it('rejects draft -> approved without owner/admin role', () => {
-      const run = makeRun({ status: 'draft', entryCount: 5 })
-      const ctx = makeCtx({
-        approverId: '550e8400-e29b-41d4-a716-446655440001',
-        approverRole: 'employee',
-      })
-      const result = transitionPayrollStatus(run, 'approved', ctx)
-      expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error).toBeDefined()
-      }
-    })
-
-    it('rejects draft -> approved with manager role', () => {
-      const run = makeRun({ status: 'draft', entryCount: 5 })
+    it('rejects pending_finance -> approved with manager role', () => {
+      const run = makeRun({ status: 'pending_finance', entryCount: 5 })
       const ctx = makeCtx({
         approverId: '550e8400-e29b-41d4-a716-446655440001',
         approverRole: 'manager',
@@ -74,26 +115,12 @@ describe('Payroll State Machine', () => {
       expect(result.success).toBe(false)
     })
 
-    it('rejects draft -> approved with zero entries', () => {
-      const run = makeRun({ status: 'draft', entryCount: 0 })
+    it('rejects draft -> approved directly (must go through approval chain)', () => {
+      const run = makeRun({ status: 'draft', entryCount: 5 })
       const ctx = makeCtx({
         approverId: '550e8400-e29b-41d4-a716-446655440001',
         approverRole: 'owner',
       })
-      const result = transitionPayrollStatus(run, 'approved', ctx)
-      expect(result.success).toBe(false)
-    })
-
-    it('rejects draft -> approved without approverId', () => {
-      const run = makeRun({ status: 'draft', entryCount: 5 })
-      const ctx = makeCtx({ approverRole: 'owner' })
-      const result = transitionPayrollStatus(run, 'approved', ctx)
-      expect(result.success).toBe(false)
-    })
-
-    it('rejects draft -> approved without approverRole', () => {
-      const run = makeRun({ status: 'draft', entryCount: 5 })
-      const ctx = makeCtx({ approverId: '550e8400-e29b-41d4-a716-446655440001' })
       const result = transitionPayrollStatus(run, 'approved', ctx)
       expect(result.success).toBe(false)
     })
@@ -259,10 +286,11 @@ describe('Payroll State Machine', () => {
   })
 
   describe('getAvailableTransitions', () => {
-    it('returns approved and cancelled for draft', () => {
+    it('returns pending_hr and cancelled for draft', () => {
       const transitions = getAvailableTransitions('draft')
-      expect(transitions).toContain('approved')
+      expect(transitions).toContain('pending_hr')
       expect(transitions).toContain('cancelled')
+      expect(transitions).not.toContain('approved')
       expect(transitions).not.toContain('processing')
       expect(transitions).not.toContain('paid')
     })
