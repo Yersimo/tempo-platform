@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,7 +69,12 @@ export default function HeadcountPage() {
     addHeadcountBudgetItem, updateHeadcountBudgetItem, deleteHeadcountBudgetItem,
     getEmployeeName, getDepartmentName,
     addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['headcountPlans', 'headcountPositions', 'headcountBudgetItems', 'employees', 'departments'])
+  }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedPlanId, setSelectedPlanId] = useState(headcountPlans.find(p => p.status === 'active')?.id || headcountPlans[0]?.id || '')

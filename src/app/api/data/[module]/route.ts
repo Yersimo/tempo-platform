@@ -119,6 +119,35 @@ const MODULE_CONFIG: Record<string, {
   'time-off-balances':     { table: schema.timeOffBalances, hasOrgId: true, defaultLimit: 100 },
   'overtime-rules':        { table: schema.overtimeRules, hasOrgId: true, defaultLimit: 20 },
   'shifts':                { table: schema.shifts, hasOrgId: true, defaultLimit: 100 },
+  // Engagement (extended)
+  'action-plans':          { table: schema.initiatives, hasOrgId: true, defaultLimit: 50 },
+  'survey-templates':      { table: schema.surveyTemplates, hasOrgId: true, defaultLimit: 20 },
+  'survey-schedules':      { table: schema.surveySchedules, hasOrgId: true, defaultLimit: 20 },
+  'survey-triggers':       { table: schema.surveyTriggers, hasOrgId: true, defaultLimit: 20 },
+  'open-ended-responses':  { table: schema.openEndedResponses, hasOrgId: true, defaultLimit: 100 },
+  // Headcount Planning
+  'headcount-plans':       { table: schema.headcountPlans, hasOrgId: true, defaultLimit: 20 },
+  'headcount-positions':   { table: schema.headcountPositions, hasOrgId: true, defaultLimit: 50 },
+  'headcount-budget-items':{ table: schema.headcountBudgetItems, hasOrgId: true, defaultLimit: 100 },
+  // Onboarding
+  'buddy-assignments':     { table: schema.buddyAssignments, hasOrgId: true, defaultLimit: 50 },
+  'preboarding-tasks':     { table: schema.preboardingTasks, hasOrgId: true, defaultLimit: 50 },
+  // Compensation Planning
+  'comp-planning-cycles':  { table: schema.meritCycles, hasOrgId: true, defaultLimit: 20 },
+  // Offboarding (extended)
+  'offboarding-checklist-items': { table: schema.offboardingChecklistItems, hasOrgId: false, defaultLimit: 100 },
+  // Mentoring (extended)
+  'mentoring-sessions':    { table: schema.mentoringSessions, hasOrgId: true, defaultLimit: 50 },
+  'mentoring-goals':       { table: schema.mentoringGoals, hasOrgId: true, defaultLimit: 50 },
+  // IT Devices (extended)
+  'device-actions':        { table: schema.deviceActions, hasOrgId: true, defaultLimit: 50 },
+  'app-catalog':           { table: schema.appCatalog, hasOrgId: true, defaultLimit: 50 },
+  'app-assignments':       { table: schema.appAssignments, hasOrgId: true, defaultLimit: 50 },
+  'device-inventory':      { table: schema.deviceInventory, hasOrgId: true, defaultLimit: 50 },
+  'device-store-catalog':  { table: schema.deviceStoreCatalog, hasOrgId: true, defaultLimit: 50 },
+  'device-orders':         { table: schema.deviceOrders, hasOrgId: true, defaultLimit: 50 },
+  // KPI Measurements
+  'kpi-measurements':      { table: schema.kpiMeasurements, hasOrgId: true, defaultLimit: 100 },
 }
 
 export async function GET(

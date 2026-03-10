@@ -111,6 +111,33 @@ export const MODULE_SLUGS: Record<string, string> = {
   timeOffBalances: 'time-off-balances',
   overtimeRules: 'overtime-rules',
   shifts: 'shifts',
+  // Engagement (extended)
+  actionPlans: 'action-plans',
+  surveyTemplates: 'survey-templates',
+  surveySchedules: 'survey-schedules',
+  surveyTriggers: 'survey-triggers',
+  openEndedResponses: 'open-ended-responses',
+  // Headcount Planning
+  headcountPlans: 'headcount-plans',
+  headcountPositions: 'headcount-positions',
+  headcountBudgetItems: 'headcount-budget-items',
+  // Onboarding
+  buddyAssignments: 'buddy-assignments',
+  preboardingTasks: 'preboarding-tasks',
+  // Compensation Planning
+  compPlanningCycles: 'comp-planning-cycles',
+  // Mentoring (extended)
+  mentoringSessions: 'mentoring-sessions',
+  mentoringGoals: 'mentoring-goals',
+  // IT Devices (extended)
+  deviceActions: 'device-actions',
+  appCatalog: 'app-catalog',
+  appAssignments: 'app-assignments',
+  deviceInventory: 'device-inventory',
+  deviceStoreCatalog: 'device-store-catalog',
+  deviceOrders: 'device-orders',
+  // KPI Measurements
+  kpiMeasurements: 'kpi-measurements',
 }
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ export default function CompensationPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['compBands', 'salaryReviews', 'equityGrants']) }, [ensureModulesLoaded])
+  useEffect(() => { ensureModulesLoaded?.(['compBands', 'salaryReviews', 'equityGrants', 'compPlanningCycles', 'employees']) }, [ensureModulesLoaded])
 
   const t = useTranslations('compensation')
   const tc = useTranslations('common')

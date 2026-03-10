@@ -1818,6 +1818,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       complianceRequirements: (d) => setComplianceRequirements(d),
       complianceDocuments: (d) => setComplianceDocuments(d),
       complianceAlerts: (d) => setComplianceAlerts(d),
+      // Engagement (extended)
+      actionPlans: (d) => setActionPlans(d),
+      surveyTemplates: (d) => setSurveyTemplates(d),
+      surveySchedules: (d) => setSurveySchedules(d),
+      surveyTriggers: (d) => setSurveyTriggers(d),
+      openEndedResponses: (d) => setOpenEndedResponses(d),
+      // Headcount Planning
+      headcountPlans: (d) => setHeadcountPlans(d),
+      headcountPositions: (d) => setHeadcountPositions(d),
+      headcountBudgetItems: (d) => setHeadcountBudgetItems(d),
+      // Compensation Planning
+      compPlanningCycles: (d) => setCompPlanningCycles(d),
+      // Mentoring (extended)
+      mentoringSessions: (d) => setMentoringSessions(d),
+      mentoringGoals: (d) => setMentoringGoals(d),
+      // IT Devices (extended)
+      deviceActions: (d) => setDeviceActions(d),
+      appCatalog: (d) => setAppCatalog(d),
+      appAssignments: (d) => setAppAssignments(d),
+      deviceInventory: (d) => setDeviceInventory(d),
+      deviceStoreCatalog: (d) => setDeviceStoreCatalog(d),
+      deviceOrders: (d) => setDeviceOrders(d),
+      // KPI Measurements
+      kpiMeasurements: (d) => setKPIMeasurements(d),
+      // Onboarding
+      buddyAssignments: (d) => setBuddyAssignments(d),
+      preboardingTasks: (d) => setPreboardingTasks(d),
       // Offboarding
       offboardingChecklists: (d) => setOffboardingChecklists(d),
       offboardingChecklistItems: (d) => setOffboardingChecklistItems(d),

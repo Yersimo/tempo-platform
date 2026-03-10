@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,7 +21,11 @@ import { demoComplianceFrameworks, demoSecurityPosture, demoProvisioningEvents }
 export default function DevicesPage() {
   const t = useTranslations('devices')
   const tc = useTranslations('common')
-  const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests } = useTempo()
+  const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests, ensureModulesLoaded } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['devices', 'deviceActions', 'deviceInventory', 'deviceStoreCatalog', 'deviceOrders', 'employees', 'departments'])
+  }, [ensureModulesLoaded])
 
   const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
   const securityScore = useMemo(() => scoreSecurityPosture(devices), [devices])

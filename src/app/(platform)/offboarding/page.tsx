@@ -64,7 +64,7 @@ export default function OffboardingPage() {
   } = useTempo()
 
   useEffect(() => {
-    ensureModulesLoaded?.(['offboardingChecklists', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])
+    ensureModulesLoaded?.(['offboardingChecklists', 'offboardingChecklistItems', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])
   }, [ensureModulesLoaded])
 
   // ── Persist KT item to API (best-effort) ──────

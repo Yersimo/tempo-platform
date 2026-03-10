@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, type ReactNode } from 'react'
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,7 +29,12 @@ export default function EngagementPage() {
     addSurveyTemplate, updateSurveyTemplate, deleteSurveyTemplate,
     addSurveySchedule, updateSurveySchedule, deleteSurveySchedule,
     addSurveyTrigger, updateSurveyTrigger, deleteSurveyTrigger,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['surveys', 'engagementScores', 'actionPlans', 'surveyTemplates', 'surveySchedules', 'surveyTriggers', 'openEndedResponses', 'employees', 'departments'])
+  }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('surveys')
   const [showSurveyModal, setShowSurveyModal] = useState(false)

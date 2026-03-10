@@ -109,7 +109,12 @@ export default function OnboardingPage() {
     addBuddyAssignment, updateBuddyAssignment,
     addPreboardingTask, updatePreboardingTask,
     getEmployeeName, getDepartmentName, addToast,
+    ensureModulesLoaded,
   } = useTempo()
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['employees', 'departments', 'buddyAssignments', 'preboardingTasks'])
+  }, [ensureModulesLoaded])
 
   // ─── Wizard State ────────────────────────────────────────────────
   const [showSetupWizard, setShowSetupWizard] = useState(false)
@@ -1255,10 +1260,12 @@ export default function OnboardingPage() {
               buddyAssignments.map(assignment => {
                 const newHire = employees.find(e => e.id === assignment.new_hire_id)
                 const buddy = employees.find(e => e.id === assignment.buddy_id)
-                const checklistDone = assignment.checklist.filter(c => c.done).length
-                const checklistTotal = assignment.checklist.length
-                const meetingsDone = assignment.meetings.filter(m => m.completed).length
-                const meetingsTotal = assignment.meetings.length
+                const checklist = assignment.checklist || []
+                const meetings = assignment.meetings || []
+                const checklistDone = checklist.filter((c: any) => c.done).length
+                const checklistTotal = checklist.length
+                const meetingsDone = meetings.filter((m: any) => m.completed).length
+                const meetingsTotal = meetings.length
 
                 return (
                   <Card key={assignment.id}>
@@ -1299,11 +1306,11 @@ export default function OnboardingPage() {
                           </div>
                           <Progress value={checklistDone} max={checklistTotal} size="sm" showLabel />
                           <div className="mt-2 space-y-1">
-                            {assignment.checklist.map((item, i) => (
+                            {checklist.map((item: any, i: number) => (
                               <div key={i} className="flex items-center gap-2">
                                 <button
                                   onClick={() => {
-                                    const updated = [...assignment.checklist]
+                                    const updated = [...checklist]
                                     updated[i] = { ...updated[i], done: !updated[i].done }
                                     updateBuddyAssignment(assignment.id, { checklist: updated })
                                   }}
@@ -1323,7 +1330,7 @@ export default function OnboardingPage() {
                         <div>
                           <p className="text-xs font-medium text-t1 mb-2">{t('meetingSchedule')}</p>
                           <div className="space-y-2">
-                            {assignment.meetings.map((meeting, i) => (
+                            {meetings.map((meeting: any, i: number) => (
                               <div key={i} className="flex items-center gap-3 p-2 bg-canvas border border-border rounded-lg">
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                                   meeting.completed ? 'bg-green-100 text-green-600' : 'bg-tempo-50 text-tempo-600'
@@ -1337,7 +1344,7 @@ export default function OnboardingPage() {
                                 {!meeting.completed && (
                                   <button
                                     onClick={() => {
-                                      const updated = [...assignment.meetings]
+                                      const updated = [...meetings]
                                       updated[i] = { ...updated[i], completed: true }
                                       updateBuddyAssignment(assignment.id, { meetings: updated })
                                     }}

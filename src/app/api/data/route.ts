@@ -680,8 +680,8 @@ const tables: Record<string, any> = {
   offboardingProcesses: schema.offboardingProcesses,
   offboardingTasks: schema.offboardingTasks,
   exitSurveys: schema.exitSurveys,
-  buddyAssignments: schema.employees, // buddy data stored on employee
-  preboarding_tasks: schema.offboardingTasks, // reuses task schema
+  buddyAssignments: schema.buddyAssignments,
+  preboarding_tasks: schema.preboardingTasks,
   offers: schema.applications, // offers stored via application updates
   // Time & Attendance
   timeEntries: schema.timeEntries,
@@ -786,8 +786,8 @@ const tables: Record<string, any> = {
   surveyTriggers: schema.surveyTriggers,
   openEndedResponses: schema.openEndedResponses,
   action_plans: schema.initiatives,
-  mentoringSessions: schema.mentoringPairs,
-  mentoringGoals: schema.goals,
+  mentoringSessions: schema.mentoringSessions,
+  mentoringGoals: schema.mentoringGoals,
   // Automation
   automationWorkflows: schema.automationWorkflows,
   automationWorkflowSteps: schema.automationWorkflowSteps,
@@ -934,6 +934,50 @@ function prepareData(entity: string, data: Record<string, any>): Record<string, 
       phone: profile.phone,
     }
     return sanitizeUuids(coerceDates(keysToCamel(flattened)))
+  }
+
+  // For mentoring sessions, map UI field names → DB column names
+  if (entity === 'mentoringSessions') {
+    const mapped: Record<string, any> = { ...data }
+    if ('date' in mapped) { mapped.scheduled_at = mapped.date; delete mapped.date }
+    if ('duration_minutes' in mapped) { mapped.duration = mapped.duration_minutes; delete mapped.duration_minutes }
+    if ('topic' in mapped) { mapped.topics = mapped.topic; delete mapped.topic }
+    // Remove fields that don't exist in the DB table
+    delete mapped.type
+    return sanitizeUuids(coerceDates(keysToCamel(mapped)))
+  }
+
+  // For headcount plans, strip fields that don't exist in the DB table
+  // and ensure a valid ID is generated (table uses text PK with no default)
+  if (entity === 'headcountPlans') {
+    const mapped: Record<string, any> = { ...data }
+    delete mapped.total_headcount
+    delete mapped.totalHeadcount
+    delete mapped.department_id
+    delete mapped.departmentId
+    // Generate a UUID id since the table uses text('id') with no default
+    if (!mapped.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mapped.id)) {
+      mapped.id = crypto.randomUUID()
+    }
+    return sanitizeUuids(coerceDates(keysToCamel(mapped)))
+  }
+
+  // For headcount positions, ensure a valid ID (table uses text PK with no default)
+  if (entity === 'headcountPositions') {
+    const mapped: Record<string, any> = { ...data }
+    if (!mapped.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mapped.id)) {
+      mapped.id = crypto.randomUUID()
+    }
+    return sanitizeUuids(coerceDates(keysToCamel(mapped)))
+  }
+
+  // For headcount budget items, ensure a valid ID (table uses text PK with no default)
+  if (entity === 'headcountBudgetItems') {
+    const mapped: Record<string, any> = { ...data }
+    if (!mapped.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mapped.id)) {
+      mapped.id = crypto.randomUUID()
+    }
+    return sanitizeUuids(coerceDates(keysToCamel(mapped)))
   }
 
   return sanitizeUuids(coerceDates(keysToCamel(data)))

@@ -28,7 +28,7 @@ export default function AppsPage() {
   } = useTempo()
 
   useEffect(() => {
-    ensureModulesLoaded?.(['devices', 'softwareLicenses'])
+    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'appCatalog', 'appAssignments'])
   }, [ensureModulesLoaded])
 
   const t = useTranslations('apps')

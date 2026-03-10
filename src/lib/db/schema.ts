@@ -395,6 +395,36 @@ export const mentoringPairs = pgTable('mentoring_pairs', {
   completedAt: timestamp('completed_at'),
 })
 
+// MENTORING: Sessions, Goals
+export const mentoringSessionStatusEnum = pgEnum('mentoring_session_status', ['scheduled', 'completed', 'cancelled', 'no_show'])
+export const mentoringGoalStatusEnum = pgEnum('mentoring_goal_status', ['not_started', 'in_progress', 'completed', 'deferred'])
+
+export const mentoringSessions = pgTable('mentoring_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  pairId: uuid('pair_id').references(() => mentoringPairs.id, { onDelete: 'cascade' }).notNull(),
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  duration: integer('duration').default(60), // minutes
+  status: mentoringSessionStatusEnum('status').default('scheduled').notNull(),
+  notes: text('notes'),
+  topics: text('topics'),
+  rating: integer('rating'), // 1-5
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const mentoringGoals = pgTable('mentoring_goals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  pairId: uuid('pair_id').references(() => mentoringPairs.id, { onDelete: 'cascade' }).notNull(),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  status: mentoringGoalStatusEnum('status').default('not_started').notNull(),
+  targetDate: date('target_date'),
+  completedAt: timestamp('completed_at'),
+  progress: integer('progress').default(0), // 0-100
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ============================================================
 // PAYROLL
 // ============================================================
@@ -1235,6 +1265,35 @@ export const impersonationLog = pgTable('impersonation_log', {
   reason: text('reason'),
   startedAt: timestamp('started_at').defaultNow().notNull(),
   endedAt: timestamp('ended_at'),
+})
+
+// ONBOARDING: Buddy Assignments, Preboarding Tasks
+// ============================================================
+
+export const buddyAssignments = pgTable('buddy_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  newHireId: uuid('new_hire_id').references(() => employees.id).notNull(),
+  buddyId: uuid('buddy_id').references(() => employees.id).notNull(),
+  status: varchar('status', { length: 50 }).default('active').notNull(),
+  matchScore: integer('match_score'),
+  assignedDate: date('assigned_date').defaultNow(),
+  completedDate: date('completed_date'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const preboardingTasks = pgTable('preboarding_tasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  category: varchar('category', { length: 100 }).default('general'),
+  status: varchar('status', { length: 50 }).default('pending').notNull(),
+  assigneeId: uuid('assignee_id').references(() => employees.id),
+  dueDate: date('due_date'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // Offboarding
