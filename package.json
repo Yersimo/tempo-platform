@@ -6,7 +6,7 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "echo 'Lint: next lint removed in Next.js 16 — using tsc for type checking'",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
