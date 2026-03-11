@@ -444,7 +444,7 @@ export const payrollRuns = pgTable('payroll_runs', {
   approvedAt: timestamp('approved_at'),
   rejectedBy: uuid('rejected_by').references(() => employees.id),
   rejectionReason: text('rejection_reason'),
-  rejectionCount: integer('rejection_count').default(0),
+  // rejectionCount lives in optimistic state only (column not in DB yet)
   paymentReference: varchar('payment_reference', { length: 255 }),
   cancellationReason: text('cancellation_reason'),
   runDate: timestamp('run_date'),

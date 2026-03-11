@@ -333,7 +333,7 @@ export default function OffboardingPage() {
   // T5 #36: Detect probation status
   function isProbationEmployee(employeeId: string) {
     const emp = employees.find(e => e.id === employeeId) as any
-    return emp?.employment_status === 'probation' || emp?.status === 'probation' || emp?.probation === true
+    return emp?.employment_status === 'probation' || emp?.employmentStatus === 'probation' || emp?.status === 'probation' || emp?.probation === true
   }
 
   function handleNewProcess() {
