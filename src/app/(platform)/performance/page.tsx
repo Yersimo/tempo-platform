@@ -308,6 +308,12 @@ export default function PerformancePage() {
     setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
   }
 
+  // ---- Review Acknowledgment ----
+  function acknowledgeReview(reviewId: string) {
+    updateReview(reviewId, { acknowledged_at: new Date().toISOString(), status: 'completed' })
+    addToast('Review acknowledged')
+  }
+
   // ---- Review ----
   function submitReview() {
     if (!reviewForm.employee_id || !reviewForm.cycle_id) return
@@ -535,6 +541,7 @@ export default function PerformancePage() {
                   <th className="tempo-th text-left px-4 py-3">Comments</th>
                   <th className="tempo-th text-center px-4 py-3">Status</th>
                   <th className="tempo-th text-left px-4 py-3">Date</th>
+                  <th className="tempo-th text-center px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -552,16 +559,25 @@ export default function PerformancePage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-t2 max-w-xs truncate">{review.comments || '—'}</td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant={review.status === 'submitted' ? 'success' : review.status === 'in_progress' ? 'warning' : 'default'}>
-                          {review.status.replace(/_/g, ' ')}
+                        <Badge variant={review.status === 'completed' ? 'success' : review.status === 'submitted' ? 'info' : review.status === 'in_progress' ? 'warning' : 'default'}>
+                          {(review as any).acknowledged_at ? 'acknowledged' : review.status.replace(/_/g, ' ')}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-xs text-t3">{review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {review.status === 'submitted' && !(review as any).acknowledged_at ? (
+                          <Button size="sm" onClick={() => acknowledgeReview(review.id)}>Acknowledge</Button>
+                        ) : (review as any).acknowledged_at ? (
+                          <Badge variant="success">Acknowledged</Badge>
+                        ) : (
+                          <span className="text-xs text-t3">—</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
                 {myReviews.length === 0 && (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">No reviews found for you yet</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-t3">No reviews found for you yet</td></tr>
                 )}
               </tbody>
             </table>
@@ -670,7 +686,7 @@ export default function PerformancePage() {
                   <p className="text-xs font-semibold text-t1 mb-1">{box.label}</p>
                   <p className="text-[0.6rem] text-t3 mb-2">{box.pos}</p>
                   <div className="flex flex-wrap gap-1">
-                    {boxAssignments[i].map(e => <Avatar key={e.id} name={e.profile?.full_name || ''} size="xs" />)}
+                    {boxAssignments[i].map(e => <Avatar key={e.id} name={e.profile?.full_name || ''} size="sm" />)}
                   </div>
                 </div>
               ))}
@@ -879,7 +895,7 @@ export default function PerformancePage() {
                       </div>
                       <div className="ml-11">
                         <div className="flex items-center gap-2 mb-1">
-                          <Avatar name={getEmployeeName(rec.to_id)} size="xs" />
+                          <Avatar name={getEmployeeName(rec.to_id)} size="sm" />
                           <span className="text-sm font-medium text-t1">{getEmployeeName(rec.to_id)}</span>
                         </div>
                         <p className="text-sm text-t2">{rec.message}</p>

@@ -60,6 +60,7 @@ export default function OffboardingPage() {
     addOffboardingProcess, updateOffboardingProcess,
     addOffboardingTask, updateOffboardingTask,
     addExitSurvey, addToast, org,
+    currentUser, currentEmployeeId,
     ensureModulesLoaded,
   } = useTempo()
 
@@ -276,35 +277,48 @@ export default function OffboardingPage() {
     return Math.round((done / tasks.length) * 100)
   }
 
+  const canApproveOffboarding = currentUser?.role === 'hrbp' || currentUser?.role === 'admin' || currentUser?.role === 'owner'
+
   function handleNewProcess() {
     if (!processForm.employee_id || !processForm.last_working_date) return
     const checklistId = processForm.checklist_id || offboardingChecklists[0]?.id
-    const newProcessId = `ob-proc-${Date.now()}`
 
     addOffboardingProcess({
-      id: newProcessId,
       employee_id: processForm.employee_id,
-      initiated_by: 'emp-17',
+      initiated_by: currentEmployeeId,
       status: 'pending',
       checklist_id: checklistId,
       last_working_date: processForm.last_working_date,
       reason: processForm.reason,
       notes: processForm.notes,
     })
+    // Tasks are NOT created here — must wait for approval
 
-    // Auto-generate tasks from checklist
-    const items = offboardingChecklistItems.filter(i => i.checklist_id === checklistId)
-    items.forEach(item => {
+    setShowNewProcessModal(false)
+    setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
+    addToast('Offboarding submitted for approval')
+  }
+
+  function approveOffboarding(processId: string) {
+    const process = offboardingProcesses.find((p: any) => p.id === processId)
+    if (!process) return
+    updateOffboardingProcess(processId, { status: 'in_progress', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
+    // Now auto-generate tasks from checklist
+    const items = offboardingChecklistItems.filter((i: any) => i.checklist_id === process.checklist_id)
+    items.forEach((item: any) => {
       addOffboardingTask({
-        process_id: newProcessId,
+        process_id: processId,
         checklist_item_id: item.id,
         assignee_id: null,
         status: 'pending',
       })
     })
+    addToast('Offboarding approved — tasks created')
+  }
 
-    setShowNewProcessModal(false)
-    setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
+  function rejectOffboarding(processId: string) {
+    updateOffboardingProcess(processId, { status: 'cancelled' })
+    addToast('Offboarding rejected')
   }
 
   function handleToggleTask(taskId: string, currentStatus: string) {
@@ -561,9 +575,14 @@ export default function OffboardingPage() {
 
                 {/* Process actions */}
                 <div className="flex gap-2 mt-4">
-                  {selectedProcess.status === 'pending' && (
-                    <Button onClick={() => updateOffboardingProcess(selectedProcess.id, { status: 'in_progress' })}>
-                      Start Process
+                  {selectedProcess.status === 'pending' && canApproveOffboarding && (
+                    <Button onClick={() => approveOffboarding(selectedProcess.id)}>
+                      <Check size={14} className="mr-1" /> Approve & Start
+                    </Button>
+                  )}
+                  {selectedProcess.status === 'pending' && canApproveOffboarding && (
+                    <Button variant="ghost" onClick={() => rejectOffboarding(selectedProcess.id)}>
+                      <X size={14} className="mr-1" /> Reject
                     </Button>
                   )}
                   {selectedProcess.status === 'in_progress' && getProcessProgress(selectedProcess.id) === 100 && (
@@ -645,14 +664,27 @@ export default function OffboardingPage() {
                                 <span>&middot;</span>
                                 <span>Last day: {process.last_working_date}</span>
                               </div>
-                              <div className="mt-2 flex items-center gap-3">
-                                <div className="flex-1">
-                                  <Progress value={progress} size="sm" color={progress === 100 ? 'success' : 'orange'} />
+                              {process.status === 'pending' && taskCount === 0 ? (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <Badge variant="warning" className="text-[10px]">Awaiting Approval</Badge>
+                                  <span className="text-[0.65rem] text-t3">Tasks will be created after approval</span>
                                 </div>
-                                <span className="text-[0.65rem] text-t3 whitespace-nowrap">
-                                  {completedCount}/{taskCount} tasks
-                                </span>
-                              </div>
+                              ) : (
+                                <div className="mt-2 flex items-center gap-3">
+                                  <div className="flex-1">
+                                    <Progress value={progress} size="sm" color={progress === 100 ? 'success' : 'orange'} />
+                                  </div>
+                                  <span className="text-[0.65rem] text-t3 whitespace-nowrap">
+                                    {completedCount}/{taskCount} tasks
+                                  </span>
+                                </div>
+                              )}
+                              {process.status === 'pending' && canApproveOffboarding && (
+                                <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <Button size="sm" onClick={(e) => { e.stopPropagation(); approveOffboarding(process.id) }}>Approve</Button>
+                                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); rejectOffboarding(process.id) }}>Reject</Button>
+                                </div>
+                              )}
                             </div>
                             <ChevronRight size={16} className="text-t3 shrink-0" />
                           </div>

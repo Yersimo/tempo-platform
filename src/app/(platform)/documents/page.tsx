@@ -17,7 +17,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 
 export default function DocumentsPage() {
   const tc = useTranslations('common')
-  const { signatureDocuments, signatureTemplates, employees, addSignatureDocument, updateSignatureDocument, deleteSignatureDocument, addSignatureTemplate, updateSignatureTemplate, ensureModulesLoaded, org, addToast } = useTempo()
+  const { signatureDocuments, signatureTemplates, employees, addSignatureDocument, updateSignatureDocument, deleteSignatureDocument, addSignatureTemplate, updateSignatureTemplate, ensureModulesLoaded, org, addToast, currentUser, currentEmployeeId } = useTempo()
 
   async function esigAPI(method: string, action: string, data: Record<string, any> = {}) {
     const url = method === 'GET'
@@ -56,7 +56,7 @@ export default function DocumentsPage() {
     title: '',
     template_id: '',
     signing_flow: 'sequential' as 'sequential' | 'parallel',
-    signers: [{ name: '', email: '' }],
+    signers: [{ name: '', email: '', role: 'signer' as string, order: 1 }],
   })
 
   // Stats
@@ -134,7 +134,7 @@ export default function DocumentsPage() {
       title: '',
       template_id: '',
       signing_flow: 'sequential',
-      signers: [{ name: '', email: '' }],
+      signers: [{ name: '', email: '', role: 'signer', order: 1 }],
     })
     setShowNewDocModal(true)
   }
@@ -142,7 +142,7 @@ export default function DocumentsPage() {
   function addSigner() {
     setDocForm(prev => ({
       ...prev,
-      signers: [...prev.signers, { name: '', email: '' }],
+      signers: [...prev.signers, { name: '', email: '', role: 'signer', order: prev.signers.length + 1 }],
     }))
   }
 
@@ -154,7 +154,7 @@ export default function DocumentsPage() {
     }))
   }
 
-  function updateSigner(index: number, field: 'name' | 'email', value: string) {
+  function updateSigner(index: number, field: string, value: string) {
     setDocForm(prev => ({
       ...prev,
       signers: prev.signers.map((s, i) => i === index ? { ...s, [field]: value } : s),
@@ -168,15 +168,15 @@ export default function DocumentsPage() {
         ...prev,
         template_id: templateId,
         signing_flow: template.signing_flow,
-        signers: template.signer_roles.map((r: any) => ({ name: r.role, email: '' })),
+        signers: template.signer_roles.map((r: any, i: number) => ({ name: r.role, email: '', role: i === 0 ? 'signer' : 'countersigner', order: r.order || i + 1 })),
       }))
     }
   }
 
   async function submitDocument() {
     if (!docForm.title || docForm.signers.some(s => !s.name || !s.email)) return
-    const signers = docForm.signers.map(s => ({ ...s, status: 'pending' }))
-    const createdBy = employees[0]?.id || 'unknown'
+    const signers = docForm.signers.map((s, i) => ({ ...s, status: 'pending', signing_order: s.order || i + 1, role: s.role || 'signer' }))
+    const createdBy = currentEmployeeId || employees[0]?.id || 'unknown'
     try {
       const result = await esigAPI('POST', 'create', {
         title: docForm.title,
@@ -239,10 +239,42 @@ export default function DocumentsPage() {
       title: '',
       template_id: templateId,
       signing_flow: template.signing_flow,
-      signers: template.signer_roles.map((r: any) => ({ name: r.role, email: '' })),
+      signers: template.signer_roles.map((r: any, i: number) => ({ name: r.role, email: '', role: i === 0 ? 'signer' : 'countersigner', order: r.order || i + 1 })),
     })
     setShowNewDocModal(true)
   }
+
+  // Countersigning helpers
+  function canSignNow(doc: any, signerIdx: number) {
+    if (doc.signing_flow === 'parallel') return true
+    // Sequential: all prior signers must have signed
+    return (doc.signers || []).slice(0, signerIdx).every((s: any) => s.status === 'signed')
+  }
+
+  function handleSign(docId: string, signerIdx: number) {
+    const doc = signatureDocuments.find((d: any) => d.id === docId)
+    if (!doc) return
+    const updatedSigners = (doc.signers || []).map((s: any, i: number) =>
+      i === signerIdx ? { ...s, status: 'signed', signed_at: new Date().toISOString() } : s
+    )
+    const allSigned = updatedSigners.every((s: any) => s.status === 'signed')
+    updateSignatureDocument(docId, { signers: updatedSigners, status: allSigned ? 'completed' : 'in_progress' })
+    addToast(allSigned ? 'Document fully signed!' : 'Document signed successfully', 'success')
+  }
+
+  // Seed employment letter templates if none exist
+  const [templateSeeded, setTemplateSeeded] = useState(false)
+  useEffect(() => {
+    if (!templateSeeded && signatureTemplates.length === 0 && !pageLoading) {
+      const templates = [
+        { name: 'Employment Offer Letter', description: 'Standard employment offer with terms and conditions', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
+        { name: 'Employment Confirmation Letter', description: 'Confirmation of employment for bank/visa purposes', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
+        { name: 'NDA — Non-Disclosure Agreement', description: 'Confidentiality agreement for employees and contractors', signing_flow: 'parallel', signer_roles: [{ order: 1, role: 'Employee' }, { order: 2, role: 'Legal Counsel' }] },
+      ]
+      templates.forEach(t => addSignatureTemplate(t))
+      setTemplateSeeded(true)
+    }
+  }, [templateSeeded, signatureTemplates.length, pageLoading])
 
   async function handleDelete(docId: string) {
     try {
@@ -447,7 +479,13 @@ export default function DocumentsPage() {
                         {doc.signers?.map((signer: any, idx: number) => (
                           <div key={idx} className="flex items-center gap-1 bg-canvas rounded px-1.5 py-0.5">
                             <span className="text-xs text-t2">{signer.name}</span>
+                            {signer.role && signer.role !== 'signer' && <span className="text-[9px] text-t3">({signer.role})</span>}
                             {getSignerStatusBadge(signer.status)}
+                            {signer.status === 'pending' && canSignNow(doc, idx) && (
+                              <Button size="sm" className="ml-1 text-[10px] py-0 px-1.5 h-5" onClick={(e) => { e.stopPropagation(); handleSign(doc.id, idx) }}>
+                                {signer.role === 'countersigner' ? 'Countersign' : 'Sign'}
+                              </Button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -790,27 +828,41 @@ export default function DocumentsPage() {
             </div>
             <div className="space-y-2">
               {docForm.signers.map((signer, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Signer name"
-                      value={signer.name}
-                      onChange={(e) => updateSigner(idx, 'name', e.target.value)}
-                    />
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex gap-2 items-start">
+                    <div className="w-8 h-8 rounded-full bg-canvas flex items-center justify-center text-xs font-medium text-t3 shrink-0 mt-1">{idx + 1}</div>
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Signer name"
+                        value={signer.name}
+                        onChange={(e) => updateSigner(idx, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        placeholder="email@example.com"
+                        type="email"
+                        value={signer.email}
+                        onChange={(e) => updateSigner(idx, 'email', e.target.value)}
+                      />
+                    </div>
+                    <div className="w-36">
+                      <Select
+                        value={signer.role}
+                        onChange={(e) => updateSigner(idx, 'role', e.target.value)}
+                        options={[
+                          { value: 'signer', label: 'Primary Signer' },
+                          { value: 'countersigner', label: 'Countersigner' },
+                          { value: 'witness', label: 'Witness' },
+                        ]}
+                      />
+                    </div>
+                    {docForm.signers.length > 1 && (
+                      <Button size="sm" variant="ghost" onClick={() => removeSigner(idx)} className="mt-0.5">
+                        <Trash2 size={12} />
+                      </Button>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <Input
-                      placeholder="email@example.com"
-                      type="email"
-                      value={signer.email}
-                      onChange={(e) => updateSigner(idx, 'email', e.target.value)}
-                    />
-                  </div>
-                  {docForm.signers.length > 1 && (
-                    <Button size="sm" variant="ghost" onClick={() => removeSigner(idx)} className="mt-0.5">
-                      <Trash2 size={12} />
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>

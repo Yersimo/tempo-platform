@@ -315,6 +315,20 @@ export default function TimeAttendancePage() {
       .sort((a, b) => b.hours - a.hours)
   }, [employees, timeEntries, weekDates, getDepartmentName])
 
+  // Pending overtime entries for approval
+  const pendingOTEntries = useMemo(() =>
+    timeEntries.filter(e => (e.overtime_hours || 0) > 0 && e.status === 'pending'),
+  [timeEntries])
+
+  function approveOvertimeEntry(entryId: string) {
+    updateTimeEntry(entryId, { status: 'approved', approved_by: currentEmployeeId })
+    addToast('Overtime approved')
+  }
+  function rejectOvertimeEntry(entryId: string) {
+    updateTimeEntry(entryId, { status: 'rejected', approved_by: currentEmployeeId })
+    addToast('Overtime rejected')
+  }
+
   // Employees approaching overtime threshold
   const approachingOT = useMemo(() => {
     return employees.map(emp => {
@@ -362,7 +376,7 @@ export default function TimeAttendancePage() {
 
   // ---- Leave Request State ----
   const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
-  const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '' })
+  const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
 
   function submitLeaveRequest() {
     if (!leaveForm.start_date || !leaveForm.end_date) return
@@ -375,12 +389,12 @@ export default function TimeAttendancePage() {
       start_date: leaveForm.start_date,
       end_date: leaveForm.end_date,
       days,
-      reason: leaveForm.reason,
+      reason: leaveForm.type === 'work_from_home' ? `WFH: ${leaveForm.reason || 'Remote work'}${leaveForm.location ? ` — Location: ${leaveForm.location}` : ''}` : leaveForm.reason,
       status: 'pending',
     })
     setShowLeaveRequestModal(false)
-    setLeaveForm({ type: 'annual', start_date: '', end_date: '', reason: '' })
-    addToast('Leave request submitted')
+    setLeaveForm({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
+    addToast(leaveForm.type === 'work_from_home' ? 'WFH request submitted' : 'Leave request submitted')
   }
 
   function submitPTOPolicy() {
@@ -887,6 +901,47 @@ export default function TimeAttendancePage() {
             </Card>
           </div>
 
+          {/* Pending Overtime Approvals */}
+          {canApproveLeave && pendingOTEntries.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Pending Overtime Approvals</CardTitle>
+                  <Badge variant="warning">{pendingOTEntries.length} pending</Badge>
+                </div>
+              </CardHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-divider bg-canvas">
+                      <th className="tempo-th text-left px-6 py-3">Employee</th>
+                      <th className="tempo-th text-center px-4 py-3">Date</th>
+                      <th className="tempo-th text-center px-4 py-3">OT Hours</th>
+                      <th className="tempo-th text-center px-4 py-3">Total Hours</th>
+                      <th className="tempo-th text-center px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {pendingOTEntries.map(entry => (
+                      <tr key={entry.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3 text-sm text-t1">{getEmployeeName(entry.employee_id)}</td>
+                        <td className="px-4 py-3 text-sm text-center text-t2">{entry.date}</td>
+                        <td className="px-4 py-3 text-sm text-center font-medium text-orange-500">{formatHours(entry.overtime_hours || 0)}h</td>
+                        <td className="px-4 py-3 text-sm text-center text-t2">{formatHours(entry.total_hours || 0)}h</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex gap-2 justify-center">
+                            <Button size="sm" onClick={() => approveOvertimeEntry(entry.id)}>Approve</Button>
+                            <Button size="sm" variant="ghost" onClick={() => rejectOvertimeEntry(entry.id)}>Reject</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
           {/* Overtime Rules Management */}
           <Card>
             <CardHeader>
@@ -1335,13 +1390,17 @@ export default function TimeAttendancePage() {
               { value: 'paternity', label: 'Paternity Leave' },
               { value: 'unpaid', label: 'Unpaid Leave' },
               { value: 'compassionate', label: 'Compassionate Leave' },
+              { value: 'work_from_home', label: 'Work From Home' },
             ]}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input label="Start Date" type="date" value={leaveForm.start_date} onChange={e => setLeaveForm(f => ({ ...f, start_date: e.target.value }))} />
             <Input label="End Date" type="date" value={leaveForm.end_date} onChange={e => setLeaveForm(f => ({ ...f, end_date: e.target.value }))} />
           </div>
-          <Textarea label="Reason (optional)" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} placeholder="Brief reason for leave..." />
+          <Textarea label="Reason (optional)" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} placeholder={leaveForm.type === 'work_from_home' ? 'Brief description of work planned...' : 'Brief reason for leave...'} />
+          {leaveForm.type === 'work_from_home' && (
+            <Input label="Work Location" value={leaveForm.location} onChange={e => setLeaveForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Home, Co-working space" />
+          )}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowLeaveRequestModal(false)}>Cancel</Button>
             <Button onClick={submitLeaveRequest} disabled={!leaveForm.start_date || !leaveForm.end_date}>Submit Request</Button>

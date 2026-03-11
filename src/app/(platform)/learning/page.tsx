@@ -24,7 +24,7 @@ import { ContentProviders } from '@/components/learning/content-providers'
 import { ScormPlayer } from '@/components/learning/scorm-player'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, addToast, ensureModulesLoaded } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded } = useTempo()
 
   useEffect(() => { ensureModulesLoaded?.(['courses', 'enrollments']) }, [ensureModulesLoaded])
 
@@ -186,6 +186,31 @@ export default function LearningPage() {
   const [translateLang, setTranslateLang] = useState('')
   const [translatingBlock, setTranslatingBlock] = useState<string | null>(null)
 
+  // External Training Request state
+  const [showExtReqModal, setShowExtReqModal] = useState(false)
+  const [extRequests, setExtRequests] = useState<any[]>([])
+  const [extReqForm, setExtReqForm] = useState({ title: '', provider: '', url: '', cost: '', justification: '', format: 'online' as string })
+  const canApproveTraining = currentUser?.role === 'manager' || currentUser?.role === 'hrbp' || currentUser?.role === 'admin' || currentUser?.role === 'owner'
+
+  // Seed quiz questions for demo
+  const [quizSeeded, setQuizSeeded] = useState(false)
+  useEffect(() => {
+    if (!quizSeeded && quizQuestions.length === 0 && courses.length > 0) {
+      const amlCourse = courses.find((c: any) => c.title?.toLowerCase().includes('aml')) || courses[0]
+      if (amlCourse) {
+        const questions = [
+          { course_id: amlCourse.id, question: 'What does AML stand for?', options: JSON.stringify(['Anti-Money Laundering', 'Asset Management Liability', 'Annual Monetary Limit', 'Automated Money Ledger']), correct_answer: 0, points: 10, order_index: 1 },
+          { course_id: amlCourse.id, question: 'Which is a red flag for money laundering?', options: JSON.stringify(['Regular payroll deposits', 'Structuring deposits below reporting thresholds', 'Paying utility bills', 'Receiving a tax refund']), correct_answer: 1, points: 10, order_index: 2 },
+          { course_id: amlCourse.id, question: 'What is the primary purpose of KYC?', options: JSON.stringify(['Marketing to customers', 'Verifying customer identity and assessing risk', 'Setting interest rates', 'Processing loan applications']), correct_answer: 1, points: 10, order_index: 3 },
+          { course_id: amlCourse.id, question: 'Which body sets global AML standards?', options: JSON.stringify(['World Bank', 'IMF', 'FATF', 'WTO']), correct_answer: 2, points: 10, order_index: 4 },
+          { course_id: amlCourse.id, question: 'What is a Suspicious Activity Report (SAR)?', options: JSON.stringify(['Employee performance review', 'Report filed when transactions appear suspicious', 'Customer complaint form', 'Internal audit report']), correct_answer: 1, points: 10, order_index: 5 },
+        ]
+        questions.forEach(q => addQuizQuestion(q))
+        setQuizSeeded(true)
+      }
+    }
+  }, [quizSeeded, quizQuestions.length, courses.length])
+
   const tabs = [
     { id: 'home', label: t('tabHome') },
     { id: 'catalog', label: t('tabCourseCatalog'), count: courses.length },
@@ -206,6 +231,7 @@ export default function LearningPage() {
     { id: 'certifications', label: 'Certifications' },
     { id: 'adaptive', label: 'Adaptive Learning' },
     { id: 'transcript', label: 'Transcript' },
+    { id: 'external-training', label: 'External Training', count: extRequests.length },
   ]
 
   // SeamlessHR-inspired: Certification tracking with expiration
@@ -296,6 +322,38 @@ export default function LearningPage() {
 
   function handleEnroll(courseId: string) {
     addEnrollment({ employee_id: currentEmployeeId, course_id: courseId, status: 'enrolled', progress: 0 })
+  }
+
+  // External Training Request handlers
+  function submitExtRequest() {
+    if (!extReqForm.title || !extReqForm.provider) return
+    setExtRequests(prev => [...prev, {
+      id: crypto.randomUUID(),
+      employee_id: currentEmployeeId,
+      employee_name: getEmployeeName(currentEmployeeId),
+      ...extReqForm,
+      cost: extReqForm.cost ? Number(extReqForm.cost) : 0,
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+    }])
+    setShowExtReqModal(false)
+    setExtReqForm({ title: '', provider: '', url: '', cost: '', justification: '', format: 'online' })
+    addToast('External training request submitted')
+  }
+  function approveExtRequest(id: string, nextStatus: string) {
+    setExtRequests(prev => prev.map(r => {
+      if (r.id !== id) return r
+      if (nextStatus === 'approved') {
+        addCourse({ title: r.title, description: `External: ${r.provider}`, category: 'External', duration_hours: 8, format: r.format, level: 'intermediate', is_mandatory: false })
+        addEnrollment({ employee_id: r.employee_id, course_id: crypto.randomUUID(), status: 'enrolled', progress: 0 })
+        addToast(`Course "${r.title}" created and employee enrolled`)
+      }
+      return { ...r, status: nextStatus, [`${nextStatus}_at`]: new Date().toISOString() }
+    }))
+  }
+  function rejectExtRequest(id: string) {
+    setExtRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' } : r))
+    addToast('External training request rejected')
   }
 
   function handleStartEnrollment(enrollmentId: string) {
@@ -3351,6 +3409,118 @@ export default function LearningPage() {
         </div>
       )}
 
+      {/* External Training Tab */}
+      {activeTab === 'external-training' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-t1">External Training Requests</h2>
+              <p className="text-xs text-t3">Request approval for external courses, certifications, and conferences</p>
+            </div>
+            <Button size="sm" onClick={() => setShowExtReqModal(true)}><Plus size={14} /> Request External Training</Button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Total Requests" value={extRequests.length} icon={<Briefcase size={20} />} />
+            <StatCard label="Pending" value={extRequests.filter(r => r.status === 'pending' || r.status === 'manager_approved').length} icon={<Clock size={20} />} change="Awaiting approval" changeType="neutral" />
+            <StatCard label="Approved" value={extRequests.filter(r => r.status === 'approved').length} icon={<CheckCircle size={20} />} change="Enrolled" changeType="positive" />
+            <StatCard label="Total Cost" value={`GHS ${extRequests.filter(r => r.status !== 'rejected').reduce((s, r) => s + (r.cost || 0), 0).toLocaleString()}`} icon={<TrendingUp size={20} />} />
+          </div>
+
+          {/* Requests Table */}
+          <Card padding="none">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>All Requests</CardTitle>
+                <Badge variant="info">{extRequests.length} total</Badge>
+              </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="tempo-th text-left px-6 py-3">Course / Program</th>
+                    <th className="tempo-th text-left px-4 py-3">Provider</th>
+                    <th className="tempo-th text-left px-4 py-3">Requested By</th>
+                    <th className="tempo-th text-center px-4 py-3">Cost</th>
+                    <th className="tempo-th text-center px-4 py-3">Format</th>
+                    <th className="tempo-th text-center px-4 py-3">Status</th>
+                    <th className="tempo-th text-left px-4 py-3">Submitted</th>
+                    {canApproveTraining && <th className="tempo-th text-center px-4 py-3">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {extRequests.map(req => (
+                    <tr key={req.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3">
+                        <div>
+                          <p className="text-xs font-medium text-t1">{req.title}</p>
+                          {req.url && <a href={req.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-tempo-400 hover:underline">{req.url}</a>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t2">{req.provider}</td>
+                      <td className="px-4 py-3 text-xs text-t2">{req.employee_name}</td>
+                      <td className="px-4 py-3 text-xs text-center text-t1 font-medium">{req.cost > 0 ? `GHS ${req.cost.toLocaleString()}` : 'Free'}</td>
+                      <td className="px-4 py-3 text-center"><Badge variant="info" className="text-[10px] capitalize">{req.format}</Badge></td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : req.status === 'manager_approved' ? 'info' : 'warning'}>
+                          {req.status === 'manager_approved' ? 'Manager Approved' : req.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t3">{new Date(req.submitted_at).toLocaleDateString()}</td>
+                      {canApproveTraining && (
+                        <td className="px-4 py-3 text-center">
+                          {req.status === 'pending' && req.employee_id !== currentEmployeeId && (
+                            <div className="flex gap-1.5 justify-center">
+                              <Button size="sm" onClick={() => approveExtRequest(req.id, 'manager_approved')}>Approve</Button>
+                              <Button size="sm" variant="ghost" onClick={() => rejectExtRequest(req.id)}>Reject</Button>
+                            </div>
+                          )}
+                          {req.status === 'manager_approved' && (
+                            <div className="flex gap-1.5 justify-center">
+                              <Button size="sm" onClick={() => approveExtRequest(req.id, 'approved')}>Final Approve</Button>
+                              <Button size="sm" variant="ghost" onClick={() => rejectExtRequest(req.id)}>Reject</Button>
+                            </div>
+                          )}
+                          {(req.status === 'approved' || req.status === 'rejected') && <span className="text-xs text-t3">—</span>}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {extRequests.length === 0 && (
+                    <tr><td colSpan={canApproveTraining ? 8 : 7} className="px-6 py-12 text-center text-sm text-t3">No external training requests yet. Click &quot;Request External Training&quot; to submit one.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* External Training Request Modal */}
+      <Modal open={showExtReqModal} onClose={() => setShowExtReqModal(false)} title="Request External Training">
+        <div className="space-y-4">
+          <Input label="Course / Program Title" value={extReqForm.title} onChange={e => setExtReqForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. AWS Solutions Architect Certification" />
+          <Input label="Training Provider" value={extReqForm.provider} onChange={e => setExtReqForm(f => ({ ...f, provider: e.target.value }))} placeholder="e.g. Coursera, Udemy, KNUST" />
+          <Input label="Course URL (optional)" value={extReqForm.url} onChange={e => setExtReqForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Estimated Cost (GHS)" type="number" value={extReqForm.cost} onChange={e => setExtReqForm(f => ({ ...f, cost: e.target.value }))} placeholder="0" />
+            <Select label="Format" value={extReqForm.format} onChange={e => setExtReqForm(f => ({ ...f, format: e.target.value }))} options={[
+              { value: 'online', label: 'Online' },
+              { value: 'in_person', label: 'In Person' },
+              { value: 'blended', label: 'Blended' },
+              { value: 'conference', label: 'Conference' },
+            ]} />
+          </div>
+          <Textarea label="Business Justification" value={extReqForm.justification} onChange={e => setExtReqForm(f => ({ ...f, justification: e.target.value }))} placeholder="Explain how this training aligns with your role and development goals..." rows={3} />
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="ghost" onClick={() => setShowExtReqModal(false)}>Cancel</Button>
+            <Button onClick={submitExtRequest} disabled={!extReqForm.title || !extReqForm.provider}>Submit Request</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Content Detail Modal */}
       <Modal open={showContentDetailModal} onClose={() => setShowContentDetailModal(false)} title="Content Details" size="lg">
         {selectedContentItem && (
@@ -3566,7 +3736,7 @@ export default function LearningPage() {
                     <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
                       {enrollTargetEmployees.map(emp => (
                         <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
-                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <Avatar name={emp.profile?.full_name || ''} size="sm" />
                           <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
                           <span className="text-xs text-t3 ml-auto">{emp.job_title} · {emp.country}</span>
                         </div>
@@ -3595,7 +3765,7 @@ export default function LearningPage() {
                     <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
                       {enrollTargetEmployees.map(emp => (
                         <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
-                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <Avatar name={emp.profile?.full_name || ''} size="sm" />
                           <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
                           <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} · {emp.level}</span>
                         </div>
@@ -3624,7 +3794,7 @@ export default function LearningPage() {
                     <div className="max-h-48 overflow-y-auto border border-divider rounded-lg divide-y divide-divider">
                       {enrollTargetEmployees.map(emp => (
                         <div key={emp.id} className="flex items-center gap-3 px-4 py-2">
-                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
+                          <Avatar name={emp.profile?.full_name || ''} size="sm" />
                           <span className="text-xs font-medium text-t1">{emp.profile?.full_name}</span>
                           <span className="text-xs text-t3 ml-auto">{getDepartmentName(emp.department_id)} · {emp.country}</span>
                         </div>
