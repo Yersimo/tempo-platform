@@ -24,6 +24,7 @@ import {
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import Link from 'next/link'
+import OrgChart from '@/components/org-chart'
 
 const ITEMS_PER_PAGE = 10
 
@@ -565,84 +566,9 @@ export default function PeoplePage() {
       {/* TAB 2: ORG CHART */}
       {/* ============================================================ */}
       {activeTab === 'org-chart' && (
-        <>
-          <div className="mb-4">
-            <p className="text-sm text-t3">{t('orgChartDescription')}</p>
-          </div>
-          <div className="space-y-6">
-            {orgChartData.map(({ department, executives, managers, ics, total }) => (
-              <Card key={department.id}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center">
-                      <Building2 size={20} className="text-tempo-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-t1">{department.name}</h3>
-                      <p className="text-xs text-t3">{total} {t('members')}</p>
-                    </div>
-                  </div>
-                  <Badge variant="info">{total} {t('people')}</Badge>
-                </div>
-
-                {/* Executive / Director Level */}
-                {executives.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-2">{t('leadership')}</p>
-                    <div className="flex flex-wrap gap-3">
-                      {executives.map(emp => (
-                        <Link key={emp.id} href={`/people/${emp.id}`} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-tempo-200 bg-tempo-50/50 hover:bg-tempo-50 transition-colors">
-                          <Avatar name={emp.profile?.full_name || ''} size="sm" />
-                          <div>
-                            <p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p>
-                            <p className="text-xs text-t3">{emp.job_title}</p>
-                          </div>
-                          <Badge variant="orange" className="ml-2">{emp.level}</Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Manager Level */}
-                {managers.length > 0 && (
-                  <div className="mb-4 ml-6 border-l-2 border-tempo-200 pl-4">
-                    <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-2">{t('management')}</p>
-                    <div className="flex flex-wrap gap-3">
-                      {managers.map(emp => (
-                        <Link key={emp.id} href={`/people/${emp.id}`} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-gray-100 transition-colors">
-                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
-                          <div>
-                            <p className="text-sm font-medium text-t1">{emp.profile?.full_name}</p>
-                            <p className="text-xs text-t3">{emp.job_title}</p>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Individual Contributors */}
-                {ics.length > 0 && (
-                  <div className="ml-12 border-l-2 border-border pl-4">
-                    <p className="text-xs font-semibold text-t3 uppercase tracking-wider mb-2">{t('individualContributors')} ({ics.length})</p>
-                    <div className="flex flex-wrap gap-2">
-                      {ics.map(emp => (
-                        <Link key={emp.id} href={`/people/${emp.id}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-canvas hover:bg-white transition-colors">
-                          <Avatar name={emp.profile?.full_name || ''} size="xs" />
-                          <div>
-                            <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
-                            <p className="text-[0.65rem] text-t3">{emp.job_title} · {emp.country}</p>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        </>
+        <div className="-mx-4 -mb-4 sm:-mx-6 sm:-mb-6 lg:-mx-8 lg:-mb-8">
+          <OrgChart />
+        </div>
       )}
 
       {/* ============================================================ */}
