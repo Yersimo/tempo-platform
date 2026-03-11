@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -229,7 +229,10 @@ export default function PeoplePage() {
   const [transferForm, setTransferForm] = useState({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
 
   // ---- Handlers ----
+  const addSubmittingRef = useRef(false)
+
   function submitAdd() {
+    if (addSubmittingRef.current) return
     if (!form.full_name || !form.email) return
 
     // T5 #38: Check for duplicate employee
@@ -247,6 +250,7 @@ export default function PeoplePage() {
       }
     }
 
+    addSubmittingRef.current = true
     addEmployee({
       department_id: form.department_id || departments[0]?.id,
       job_title: form.job_title || 'Employee',
@@ -258,6 +262,7 @@ export default function PeoplePage() {
     setShowAddModal(false)
     setDupEmpConfirmed(false)
     setForm({ full_name: '', email: '', phone: '', job_title: '', level: 'Mid', department_id: '', country: 'Nigeria', role: 'employee' })
+    setTimeout(() => { addSubmittingRef.current = false }, 0)
   }
 
   // T5 #33: Country transfer

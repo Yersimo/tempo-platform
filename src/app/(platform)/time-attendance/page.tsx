@@ -401,9 +401,12 @@ export default function TimeAttendancePage() {
   // ---- Leave Request State ----
   const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
   const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
+  const leaveSubmittingRef = useRef(false)
 
   function submitLeaveRequest() {
+    if (leaveSubmittingRef.current) return
     if (!leaveForm.start_date || !leaveForm.end_date) return
+    leaveSubmittingRef.current = true
     const start = new Date(leaveForm.start_date)
     const end = new Date(leaveForm.end_date)
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -419,6 +422,7 @@ export default function TimeAttendancePage() {
     setShowLeaveRequestModal(false)
     setLeaveForm({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
     addToast(leaveForm.type === 'work_from_home' ? 'WFH request submitted' : 'Leave request submitted')
+    setTimeout(() => { leaveSubmittingRef.current = false }, 0)
   }
 
   function submitPTOPolicy() {

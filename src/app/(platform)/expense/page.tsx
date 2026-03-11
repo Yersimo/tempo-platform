@@ -417,8 +417,10 @@ export default function ExpensePage() {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
   const [duplicateMatch, setDuplicateMatch] = useState<any>(null)
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false)
+  const reportSubmittingRef = useRef(false)
 
   function submitReport() {
+    if (reportSubmittingRef.current) return
     if (!reportForm.employee_id || !reportForm.title) return
     const validItems = reportForm.items.filter(item => item.description && item.amount > 0)
     if (validItems.length === 0) return
@@ -439,6 +441,7 @@ export default function ExpensePage() {
       }
     }
 
+    reportSubmittingRef.current = true
     addExpenseReport({
       employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
       status: 'submitted', submitted_at: new Date().toISOString(),
@@ -446,6 +449,7 @@ export default function ExpensePage() {
     })
     setShowReportModal(false)
     setDuplicateConfirmed(false)
+    setTimeout(() => { reportSubmittingRef.current = false }, 0)
   }
 
   function approveReport(id: string) { updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
