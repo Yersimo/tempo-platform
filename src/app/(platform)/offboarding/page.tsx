@@ -279,9 +279,45 @@ export default function OffboardingPage() {
 
   const canApproveOffboarding = currentUser?.role === 'hrbp' || currentUser?.role === 'admin' || currentUser?.role === 'owner'
 
+  // T5 #44: Contract expiry monitor
+  const expiringContracts = useMemo(() => {
+    const now = new Date()
+    const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    return employees.filter(e => {
+      const endDate = (e as any).contract_end_date || (e as any).contractEndDate
+      if (!endDate) return false
+      const d = new Date(endDate)
+      return d >= now && d <= thirtyDays
+    }).map(e => ({
+      ...e,
+      contract_end_date: (e as any).contract_end_date || (e as any).contractEndDate,
+      has_active_process: offboardingProcesses.some(p => p.employee_id === e.id && p.status !== 'completed' && p.status !== 'cancelled'),
+    }))
+  }, [employees, offboardingProcesses])
+
+  // T5 #42: Manager departure — detect orphaned direct reports
+  function checkOrphanedReports(employeeId: string) {
+    const directReports = employees.filter(e => (e as any).manager_id === employeeId || (e as any).managerId === employeeId)
+    return directReports
+  }
+
+  // T5 #36: Detect probation status
+  function isProbationEmployee(employeeId: string) {
+    const emp = employees.find(e => e.id === employeeId) as any
+    return emp?.employment_status === 'probation' || emp?.status === 'probation' || emp?.probation === true
+  }
+
   function handleNewProcess() {
     if (!processForm.employee_id || !processForm.last_working_date) return
     const checklistId = processForm.checklist_id || offboardingChecklists[0]?.id
+
+    // T5 #36: Apply probation-specific rules
+    const isProbation = isProbationEmployee(processForm.employee_id)
+    const probationNotes = isProbation ? `[PROBATION] Shorter notice period applies (1 week). No leave payout. ` : ''
+
+    // T5 #42: Check for orphaned direct reports
+    const orphanedReports = checkOrphanedReports(processForm.employee_id)
+    const orphanWarning = orphanedReports.length > 0 ? `[WARNING] ${orphanedReports.length} direct report(s) need reassignment: ${orphanedReports.map(e => e.profile?.full_name).join(', ')}. ` : ''
 
     addOffboardingProcess({
       employee_id: processForm.employee_id,
@@ -290,13 +326,17 @@ export default function OffboardingPage() {
       checklist_id: checklistId,
       last_working_date: processForm.last_working_date,
       reason: processForm.reason,
-      notes: processForm.notes,
+      notes: `${probationNotes}${orphanWarning}${processForm.notes || ''}`.trim(),
     })
-    // Tasks are NOT created here — must wait for approval
+
+    if (orphanedReports.length > 0) {
+      addToast(`Offboarding submitted — ${orphanedReports.length} direct report(s) need reassignment`, 'info')
+    } else {
+      addToast('Offboarding submitted for approval')
+    }
 
     setShowNewProcessModal(false)
     setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
-    addToast('Offboarding submitted for approval')
   }
 
   function approveOffboarding(processId: string) {
@@ -446,6 +486,31 @@ export default function OffboardingPage() {
         ═══════════════════════════════════════ */}
         {activeTab === 'processes' && (
           <div>
+            {/* T5 #44: Contract Expiry Alerts */}
+            {expiringContracts.length > 0 && !selectedProcess && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">{expiringContracts.length} contract(s) expiring within 30 days</p>
+                    <div className="mt-2 space-y-1">
+                      {expiringContracts.map(emp => (
+                        <div key={emp.id} className="flex items-center justify-between text-xs">
+                          <span className="text-amber-700">{emp.profile?.full_name} — expires {(emp as any).contract_end_date}</span>
+                          {(emp as any).has_active_process ? (
+                            <Badge variant="success">Offboarding initiated</Badge>
+                          ) : (
+                            <Button size="sm" onClick={() => { setProcessForm(f => ({ ...f, employee_id: emp.id, reason: 'end_of_contract', last_working_date: (emp as any).contract_end_date || '' })); setShowNewProcessModal(true) }}>
+                              Initiate Offboarding
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {selectedProcess ? (
               // ── Process Detail View ─────────
               <div>

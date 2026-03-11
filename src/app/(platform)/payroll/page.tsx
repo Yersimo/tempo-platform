@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
-import { Input, Select } from '@/components/ui/input'
+import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban } from 'lucide-react'
 import { useTempo } from '@/lib/store'
@@ -105,6 +105,7 @@ export default function PayrollPage() {
     addToast, currentUser, currentEmployeeId,
     ensureModulesLoaded,
     setPayrollRuns, setEmployeePayrollEntries,
+    leaveRequests,
   } = useTempo()
 
   const role = currentUser?.role
@@ -192,6 +193,23 @@ export default function PayrollPage() {
   const [adjustmentForm, setAdjustmentForm] = useState({ employee_id: '', type: 'bonus', amount: 0, reason: '' })
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // T5: Maternity leave detection for payroll
+  const maternityLeaves = useMemo(() => {
+    if (!leaveRequests) return []
+    return (leaveRequests as any[]).filter(lr =>
+      (lr.type === 'maternity' || lr.type === 'paternity') && lr.status === 'approved'
+    )
+  }, [leaveRequests])
+
+  // T5: Missing bank details preflight
+  const [showBankDetailWarning, setShowBankDetailWarning] = useState(false)
+  const [missingBankEmployees, setMissingBankEmployees] = useState<any[]>([])
+
+  // T5: Escalation tracking — count rejections per payroll run
+  const [showEscalationModal, setShowEscalationModal] = useState(false)
+  const [escalationRunId, setEscalationRunId] = useState<string | null>(null)
+  const [escalationNote, setEscalationNote] = useState('')
   const [filterDept, setFilterDept] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
 
@@ -276,6 +294,23 @@ export default function PayrollPage() {
       addToast('Please select a country and period')
       return
     }
+
+    // T5 #37: Bank details preflight check
+    const countryEmps = employees.filter(e => {
+      const empCountry = (e.country || '').toLowerCase()
+      const formCountry = payRunForm.country.toLowerCase()
+      return empCountry.includes(formCountry) || formCountry.includes(empCountry)
+    })
+    const noBankDetails = countryEmps.filter(e => {
+      const bank = (e as any).bank_account_number || (e as any).bankAccountNumber || (e as any).bank_details
+      return !bank
+    })
+    if (noBankDetails.length > 0 && !showBankDetailWarning) {
+      setMissingBankEmployees(noBankDetails)
+      setShowBankDetailWarning(true)
+      return
+    }
+
     setIsProcessing(true)
     setProcessError(null)
     try {
@@ -427,13 +462,38 @@ export default function PayrollPage() {
         addToast(result.error || 'Rejection failed')
         return
       }
-      updatePayrollRun(runId, { status: 'draft', rejection_reason: rejectReason })
+
+      // T5 #45: Track rejection count and escalate after 3
+      const run = payrollRuns.find(r => r.id === runId) as any
+      const prevCount = (run?.rejection_count || 0) + 1
+      if (prevCount >= 3) {
+        updatePayrollRun(runId, { status: 'escalated', rejection_reason: rejectReason, rejection_count: prevCount, escalated_at: new Date().toISOString() })
+        setEscalationRunId(runId)
+        setShowEscalationModal(true)
+        addToast('Payroll rejected 3 times — escalated to CEO/CFO', 'error')
+      } else {
+        updatePayrollRun(runId, { status: 'draft', rejection_reason: rejectReason, rejection_count: prevCount })
+        addToast(`Payroll run rejected (${prevCount}/3 before escalation)`)
+      }
+
       setShowRejectModal(null)
       setRejectReason('')
-      addToast('Payroll run rejected and returned to draft')
     } catch (err) {
       addToast('Network error')
     }
+  }
+
+  // T5 #45: Resolve escalation
+  function resolveEscalation() {
+    if (!escalationRunId || !escalationNote.trim()) {
+      addToast('Resolution note required')
+      return
+    }
+    updatePayrollRun(escalationRunId, { status: 'draft', escalation_resolved_at: new Date().toISOString(), escalation_note: escalationNote, rejection_count: 0 })
+    setShowEscalationModal(false)
+    setEscalationRunId(null)
+    setEscalationNote('')
+    addToast('Escalation resolved — payroll returned to draft')
   }
 
   // Bank file export — two-phase: preview first, warn if employees excluded, then download
@@ -553,6 +613,11 @@ export default function PayrollPage() {
         {status === 'paid' && (
           <Button size="sm" variant="ghost" onClick={() => addToast(`Pay stubs generated for ${run.period}`)}>
             {t('generatePayStubs')}
+          </Button>
+        )}
+        {status === 'escalated' && (
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { setEscalationRunId(run.id); setShowEscalationModal(true) }}>
+            <AlertTriangle size={12} /> Resolve Escalation
           </Button>
         )}
       </div>
@@ -697,8 +762,44 @@ export default function PayrollPage() {
             {expandedRunId && (() => {
               const runEntries = employeePayrollEntries.filter(e => (e as any).payroll_run_id === expandedRunId)
               if (runEntries.length === 0) return null
+              // T5 #31: Detect maternity leaves overlapping this pay period
+              const expandedRun = payrollRuns.find(r => r.id === expandedRunId) as any
+              const runPeriod = expandedRun?.period || ''
+              const maternityInPeriod = maternityLeaves.filter((lr: any) => {
+                if (!lr.start_date || !lr.end_date || !runPeriod) return false
+                return lr.start_date <= runPeriod + '-31' && lr.end_date >= runPeriod + '-01'
+              })
+              // T5 #32: Detect mid-month salary changes (pro-rata)
+              const proRataEntries = runEntries.filter((e: any) => e.pay_type === 'pro_rata_new' || (e as any).notes?.includes?.('pro-rata'))
               return (
                 <div className="border-t border-divider bg-canvas/50 p-4">
+                  {/* T5 #31: Maternity Leave Banner */}
+                  {maternityInPeriod.length > 0 && (
+                    <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+                      <span className="text-pink-600 mt-0.5 shrink-0 text-sm">&#x1F930;</span>
+                      <div>
+                        <p className="text-sm font-medium text-pink-800">{maternityInPeriod.length} employee(s) on maternity/paternity leave this period</p>
+                        <div className="mt-1 space-y-0.5">
+                          {maternityInPeriod.map((lr: any) => {
+                            const empName = employees.find(e => e.id === lr.employee_id)?.profile?.full_name || lr.employee_id
+                            const country = employees.find(e => e.id === lr.employee_id)?.country || ''
+                            const maternityRate = country === 'Ghana' ? '100% (12 weeks)' : country === 'Nigeria' ? '50% (12 weeks)' : country === 'Kenya' ? '100% (3 months)' : country === 'South Africa' ? 'UIF rate (4 months)' : '100%'
+                            return <p key={lr.id} className="text-xs text-pink-700">{empName}: {lr.type} leave ({lr.start_date} to {lr.end_date}) — Statutory pay: {maternityRate}</p>
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* T5 #32: Pro-Rata Salary Change Banner */}
+                  {proRataEntries.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+                      <AlertTriangle size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">{proRataEntries.length} employee(s) with mid-month salary changes (pro-rata split applied)</p>
+                        <p className="text-xs text-blue-700 mt-1">Days at old salary and days at new salary have been calculated separately.</p>
+                      </div>
+                    </div>
+                  )}
                   <h4 className="text-sm font-semibold text-t1 mb-3">{t('employeeBreakdown')} ({runEntries.length})</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
@@ -1618,6 +1719,25 @@ export default function PayrollPage() {
                       value={taxEditForm.effectiveDate}
                       onChange={e => setTaxEditForm(p => ({ ...p, effectiveDate: e.target.value }))} />
                   </div>
+                  {/* T5 #40: Impact warning for tax rate change */}
+                  {taxEditForm.effectiveDate && (taxEditForm.employeeContribution !== showTaxEditModal.employeeContribution || taxEditForm.employerContribution !== showTaxEditModal.employerContribution) && (() => {
+                    const affectedCount = employees.filter(e => {
+                      const empCountry = (e.country || '').toLowerCase()
+                      return taxConfigCountry ? empCountry.includes(taxConfigCountry.toLowerCase()) : true
+                    }).length
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-amber-800">This change will affect ~{affectedCount} employee(s) in the next payroll run.</p>
+                            <p className="text-xs text-amber-700 mt-1">Payroll runs already completed will not be recalculated. Change takes effect from {taxEditForm.effectiveDate}.</p>
+                            <p className="text-xs text-amber-700 mt-1">Estimated change: Employee rate {showTaxEditModal.employeeContribution !== taxEditForm.employeeContribution ? `${(showTaxEditModal.employeeContribution * 100).toFixed(1)}% → ${(taxEditForm.employeeContribution * 100).toFixed(1)}%` : 'no change'}, Employer rate {showTaxEditModal.employerContribution !== taxEditForm.employerContribution ? `${(showTaxEditModal.employerContribution * 100).toFixed(1)}% → ${(taxEditForm.employerContribution * 100).toFixed(1)}%` : 'no change'}.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="secondary" onClick={() => setShowTaxEditModal(null)}>Cancel</Button>
                     <Button onClick={handleUpdateRate}>Save &amp; Supersede Old Rate</Button>
@@ -1972,6 +2092,55 @@ export default function PayrollPage() {
             <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => pendingBankExportRunId && executeBankFileDownload(pendingBankExportRunId)}>
               <Download size={14} /> Download Anyway
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* T5 #37: Missing Bank Details Warning Modal */}
+      <Modal open={showBankDetailWarning} onClose={() => setShowBankDetailWarning(false)} title="Missing Bank Details">
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">{missingBankEmployees.length} employee(s) are missing bank account details</p>
+              <p className="text-xs text-amber-700 mt-1">These employees will be excluded from the bank payment file.</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-48 overflow-y-auto border border-border rounded-lg">
+            <table className="w-full text-xs">
+              <thead><tr className="border-b border-divider bg-canvas sticky top-0">
+                <th className="text-left px-3 py-2 font-medium text-t3">Employee</th>
+                <th className="text-left px-3 py-2 font-medium text-t3">Department</th>
+              </tr></thead>
+              <tbody className="divide-y divide-border">
+                {missingBankEmployees.map(emp => (
+                  <tr key={emp.id}><td className="px-3 py-2 text-t1">{emp.profile?.full_name || emp.id}</td>
+                  <td className="px-3 py-2 text-t3">{emp.department_id}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowBankDetailWarning(false)}>Pause &amp; Collect Details</Button>
+            <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => { setShowBankDetailWarning(false); submitPayRun() }}>Proceed Anyway</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* T5 #45: Escalation Modal */}
+      <Modal open={showEscalationModal} onClose={() => setShowEscalationModal(false)} title="Payroll Escalated — CEO/CFO Review Required">
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={16} className="text-red-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">This payroll run has been rejected 3 times by Finance</p>
+              <p className="text-xs text-red-700 mt-1">CEO and Group CFO have been notified. A written resolution note is required before resubmission.</p>
+            </div>
+          </div>
+          <Textarea label="Resolution Note (required)" value={escalationNote} onChange={e => setEscalationNote(e.target.value)} placeholder="Describe the resolution agreed upon by CEO/CFO..." />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowEscalationModal(false)}>Close</Button>
+            <Button onClick={resolveEscalation} disabled={!escalationNote.trim()}>Resolve &amp; Return to Draft</Button>
           </div>
         </div>
       </Modal>

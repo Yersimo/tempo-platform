@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const ti = useTranslations('integrations')
   const tc = useTranslations('common')
   const searchParams = useSearchParams()
-  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, ensureModulesLoaded } = useTempo()
+  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded } = useTempo()
   const initialTab = searchParams.get('tab') || 'general'
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showOrgModal, setShowOrgModal] = useState(false)
@@ -136,6 +136,48 @@ export default function SettingsPage() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [integrationLogs, setIntegrationLogs] = useState<IntegrationLog[]>([])
   const [integrationsLoaded, setIntegrationsLoaded] = useState(false)
+
+  // Country Wizard state
+  const [wizardStep, setWizardStep] = useState(1)
+  const COUNTRY_PRESETS: Record<string, { currency: string; currencyCode: string; taxes: { type: string; rate: number; employerRate: number; employeeRate: number }[]; benefits: string[] }> = {
+    'Ghana': { currency: 'GHS', currencyCode: 'GH', taxes: [{ type: 'PAYE (Income Tax)', rate: 0, employerRate: 0, employeeRate: 25 }, { type: 'SSNIT (Pension)', rate: 18.5, employerRate: 13, employeeRate: 5.5 }, { type: 'Tier 2 Pension', rate: 5, employerRate: 0, employeeRate: 5 }, { type: 'GETFund Levy', rate: 2.5, employerRate: 2.5, employeeRate: 0 }], benefits: ['SSNIT Pension', 'NHIS Health Insurance', 'Tier 2 Mandatory Pension', 'Maternity Leave (12 weeks)'] },
+    'Nigeria': { currency: 'NGN', currencyCode: 'NG', taxes: [{ type: 'PAYE (Income Tax)', rate: 0, employerRate: 0, employeeRate: 24 }, { type: 'Pension Fund', rate: 18, employerRate: 10, employeeRate: 8 }, { type: 'NHF (Housing)', rate: 2.5, employerRate: 0, employeeRate: 2.5 }, { type: 'NHIS (Health)', rate: 15, employerRate: 10, employeeRate: 5 }], benefits: ['Pension Fund Administration', 'NHIS Health Insurance', 'National Housing Fund', 'Maternity Leave (12 weeks)'] },
+    'Kenya': { currency: 'KES', currencyCode: 'KE', taxes: [{ type: 'PAYE (Income Tax)', rate: 0, employerRate: 0, employeeRate: 30 }, { type: 'NSSF (Pension)', rate: 12, employerRate: 6, employeeRate: 6 }, { type: 'NHIF (Health)', rate: 0, employerRate: 0, employeeRate: 1.5 }, { type: 'Housing Levy', rate: 3, employerRate: 1.5, employeeRate: 1.5 }], benefits: ['NSSF Pension', 'NHIF Health Insurance', 'Affordable Housing Levy', 'Maternity Leave (3 months)'] },
+    'South Africa': { currency: 'ZAR', currencyCode: 'ZA', taxes: [{ type: 'PAYE (Income Tax)', rate: 0, employerRate: 0, employeeRate: 45 }, { type: 'UIF (Unemployment)', rate: 2, employerRate: 1, employeeRate: 1 }, { type: 'SDL (Skills Levy)', rate: 1, employerRate: 1, employeeRate: 0 }, { type: 'COIDA (Workers Comp)', rate: 0.5, employerRate: 0.5, employeeRate: 0 }], benefits: ['UIF Unemployment Insurance', 'COIDA Workers Compensation', 'Skills Development Levy', 'Maternity Leave (4 months)'] },
+  }
+  const [wizardCountry, setWizardCountry] = useState('')
+  const [wizardTaxes, setWizardTaxes] = useState<{ type: string; rate: number; employerRate: number; employeeRate: number }[]>([])
+  const [wizardCurrency, setWizardCurrency] = useState({ code: '', bankName: '', accountName: '' })
+  const [wizardCompleted, setWizardCompleted] = useState(false)
+
+  function selectWizardCountry(country: string) {
+    setWizardCountry(country)
+    const preset = COUNTRY_PRESETS[country]
+    if (preset) {
+      setWizardTaxes(preset.taxes)
+      setWizardCurrency(prev => ({ ...prev, code: preset.currency }))
+    }
+    setWizardStep(2)
+  }
+
+  function completeCountryWizard() {
+    if (!wizardCountry) return
+    const preset = COUNTRY_PRESETS[wizardCountry]
+    // Create tax configs
+    wizardTaxes.forEach(tax => {
+      addTaxConfig({ country: wizardCountry, tax_type: tax.type, rate: tax.employeeRate, employer_contribution: tax.employerRate, employee_contribution: tax.employeeRate, status: 'active', effective_date: new Date().toISOString().split('T')[0] })
+    })
+    // Create currency account
+    if (wizardCurrency.code) {
+      addCurrencyAccount({ currency: wizardCurrency.code, account_name: `${wizardCountry} Payroll Account`, bank_name: wizardCurrency.bankName || `${wizardCountry} National Bank`, balance: 0, is_default: currencyAccounts.length === 0, is_active: true })
+    }
+    // Create country benefit config
+    if (preset) {
+      addCountryBenefitConfig({ country: wizardCountry, country_code: preset.currencyCode, mandatory_benefits: preset.benefits.map(b => ({ name: b, category: 'statutory', description: b })), compliance_notes: `Statutory benefits for ${wizardCountry}` })
+    }
+    setWizardCompleted(true)
+    addToast(`${wizardCountry} configured successfully!`)
+  }
 
   // Billing state
   const [billingSubscription, setBillingSubscription] = useState<BillingSubscription | null>(null)
@@ -447,6 +489,7 @@ export default function SettingsPage() {
     { id: 'integrations', label: ti('title') },
     { id: 'audit', label: t('tabAuditLog'), count: auditLog.length },
     { id: 'security', label: t('tabSecurity') },
+    { id: 'country-wizard', label: 'Add Country' },
   ]
 
   const admins = employees.filter(e => e.role === 'admin' || e.role === 'owner')
@@ -1512,6 +1555,166 @@ export default function SettingsPage() {
               ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Country Onboarding Wizard */}
+      {activeTab === 'country-wizard' && (
+        <div className="space-y-6">
+          {/* Step indicator */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              {[
+                { step: 1, label: 'Select Country' },
+                { step: 2, label: 'Statutory Taxes' },
+                { step: 3, label: 'Confirm Rates' },
+                { step: 4, label: 'Currency Account' },
+                { step: 5, label: 'Complete' },
+              ].map(({ step, label }) => (
+                <div key={step} className="flex items-center gap-2 flex-1">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    wizardCompleted || wizardStep > step ? 'bg-green-500 text-white' :
+                    wizardStep === step ? 'bg-tempo-600 text-white' : 'bg-gray-200 text-t3'
+                  }`}>
+                    {wizardCompleted || wizardStep > step ? <Check size={14} /> : step}
+                  </div>
+                  <span className={`text-xs truncate ${wizardStep === step ? 'text-t1 font-medium' : 'text-t3'}`}>{label}</span>
+                  {step < 5 && <div className={`h-px flex-1 ${wizardStep > step ? 'bg-green-400' : 'bg-gray-200'}`} />}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Step 1: Select Country */}
+          {wizardStep === 1 && !wizardCompleted && (
+            <Card>
+              <CardHeader><CardTitle>Select Country to Onboard</CardTitle></CardHeader>
+              <p className="text-sm text-t3 mb-6">Choose a country to configure statutory taxes, pension, social security, and currency.</p>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(COUNTRY_PRESETS).map(([country, preset]) => (
+                  <div key={country} className="border border-border rounded-xl p-5 cursor-pointer hover:border-tempo-400 hover:bg-tempo-50/30 transition-all" onClick={() => selectWizardCountry(country)}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-base font-semibold text-t1">{country}</h3>
+                      <Badge>{preset.currency}</Badge>
+                    </div>
+                    <p className="text-xs text-t3 mb-2">{preset.taxes.length} statutory taxes &middot; {preset.benefits.length} mandatory benefits</p>
+                    <div className="flex flex-wrap gap-1">
+                      {preset.taxes.map(t => (
+                        <span key={t.type} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded">{t.type}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Step 2-3: Review & Confirm Tax Rates */}
+          {(wizardStep === 2 || wizardStep === 3) && !wizardCompleted && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{wizardStep === 2 ? 'Statutory Tax Configuration' : 'Confirm Tax Rates'} — {wizardCountry}</CardTitle>
+                  <Badge variant="info">{COUNTRY_PRESETS[wizardCountry]?.currency}</Badge>
+                </div>
+              </CardHeader>
+              <p className="text-sm text-t3 mb-4">
+                {wizardStep === 2 ? 'Review the pre-populated statutory tax rates below. Click Next to confirm or edit rates.' : 'Adjust rates if needed, then proceed to currency setup.'}
+              </p>
+              <table className="w-full mb-6">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas">
+                    <th className="text-left px-4 py-2 text-xs font-medium text-t3">Tax / Contribution</th>
+                    <th className="text-center px-4 py-2 text-xs font-medium text-t3">Employer Rate (%)</th>
+                    <th className="text-center px-4 py-2 text-xs font-medium text-t3">Employee Rate (%)</th>
+                    <th className="text-center px-4 py-2 text-xs font-medium text-t3">Total (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {wizardTaxes.map((tax, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-3 text-sm font-medium text-t1">{tax.type}</td>
+                      <td className="px-4 py-3 text-center">
+                        {wizardStep === 3 ? (
+                          <input type="number" className="w-20 text-center text-sm border border-border rounded px-2 py-1" value={tax.employerRate}
+                            onChange={e => setWizardTaxes(prev => prev.map((t, j) => j === i ? { ...t, employerRate: Number(e.target.value) } : t))} />
+                        ) : (
+                          <span className="text-sm">{tax.employerRate}%</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {wizardStep === 3 ? (
+                          <input type="number" className="w-20 text-center text-sm border border-border rounded px-2 py-1" value={tax.employeeRate}
+                            onChange={e => setWizardTaxes(prev => prev.map((t, j) => j === i ? { ...t, employeeRate: Number(e.target.value) } : t))} />
+                        ) : (
+                          <span className="text-sm">{tax.employeeRate}%</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm font-medium text-tempo-600">{(tax.employerRate + tax.employeeRate).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <h4 className="text-sm font-semibold text-t1 mb-2">Mandatory Benefits</h4>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {COUNTRY_PRESETS[wizardCountry]?.benefits.map(b => (
+                  <Badge key={b} variant="success">{b}</Badge>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <Button variant="secondary" onClick={() => { setWizardStep(1); setWizardCountry(''); setWizardTaxes([]) }}>Back</Button>
+                <Button onClick={() => setWizardStep(wizardStep === 2 ? 3 : 4)}>{wizardStep === 2 ? 'Next: Confirm Rates' : 'Next: Currency Setup'}</Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Step 4: Currency Account */}
+          {wizardStep === 4 && !wizardCompleted && (
+            <Card>
+              <CardHeader><CardTitle>Currency Account — {wizardCountry}</CardTitle></CardHeader>
+              <p className="text-sm text-t3 mb-4">Set up a payroll currency account for {COUNTRY_PRESETS[wizardCountry]?.currency} transactions.</p>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <Input label="Currency Code" value={wizardCurrency.code} onChange={e => setWizardCurrency(prev => ({ ...prev, code: e.target.value }))} />
+                <Input label="Account Name" value={wizardCurrency.accountName || `${wizardCountry} Payroll Account`}
+                  onChange={e => setWizardCurrency(prev => ({ ...prev, accountName: e.target.value }))} />
+                <Input label="Bank Name" value={wizardCurrency.bankName} onChange={e => setWizardCurrency(prev => ({ ...prev, bankName: e.target.value }))} placeholder={`${wizardCountry} National Bank`} />
+              </div>
+              <div className="flex justify-between">
+                <Button variant="secondary" onClick={() => setWizardStep(3)}>Back</Button>
+                <Button onClick={() => { completeCountryWizard(); setWizardStep(5) }}>Activate Country</Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Step 5: Complete */}
+          {(wizardStep === 5 || wizardCompleted) && (
+            <Card>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={32} className="text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-t1 mb-2">{wizardCountry} Successfully Configured</h3>
+                <p className="text-sm text-t3 mb-6">All statutory taxes, benefits, and currency account have been set up.</p>
+                <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="text-lg font-bold text-tempo-600">{wizardTaxes.length}</div>
+                    <div className="text-xs text-t3">Tax Configs</div>
+                  </div>
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="text-lg font-bold text-tempo-600">{COUNTRY_PRESETS[wizardCountry]?.benefits.length || 0}</div>
+                    <div className="text-xs text-t3">Benefits</div>
+                  </div>
+                  <div className="bg-canvas rounded-lg p-3">
+                    <div className="text-lg font-bold text-tempo-600">1</div>
+                    <div className="text-xs text-t3">Currency Acct</div>
+                  </div>
+                </div>
+                <Button onClick={() => { setWizardStep(1); setWizardCountry(''); setWizardTaxes([]); setWizardCompleted(false) }}>
+                  Add Another Country
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 

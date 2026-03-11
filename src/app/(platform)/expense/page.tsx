@@ -413,17 +413,39 @@ export default function ExpensePage() {
     setReportForm({ ...reportForm, items: reportForm.items.filter((_, i) => i !== index) })
   }
 
+  // T5 #35: Duplicate expense detection state
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+  const [duplicateMatch, setDuplicateMatch] = useState<any>(null)
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false)
+
   function submitReport() {
     if (!reportForm.employee_id || !reportForm.title) return
     const validItems = reportForm.items.filter(item => item.description && item.amount > 0)
     if (validItems.length === 0) return
     const totalAmount = validItems.reduce((a, item) => a + Number(item.amount), 0)
+
+    // T5 #35: Check for duplicate submissions within 7 days
+    if (!duplicateConfirmed) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const possibleDup = expenseReports.find((r: any) =>
+        r.employee_id === reportForm.employee_id &&
+        r.total_amount === totalAmount &&
+        r.submitted_at && r.submitted_at > sevenDaysAgo
+      )
+      if (possibleDup) {
+        setDuplicateMatch(possibleDup)
+        setShowDuplicateWarning(true)
+        return
+      }
+    }
+
     addExpenseReport({
       employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
       status: 'submitted', submitted_at: new Date().toISOString(),
       items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
     })
     setShowReportModal(false)
+    setDuplicateConfirmed(false)
   }
 
   function approveReport(id: string) { updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
@@ -1887,6 +1909,28 @@ export default function ExpensePage() {
       {/* ============================================================ */}
 
       {/* New Expense Report Modal */}
+      {/* T5 #35: Duplicate Expense Warning */}
+      <Modal open={showDuplicateWarning} onClose={() => setShowDuplicateWarning(false)} title="Possible Duplicate Expense">
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">You submitted a similar expense recently</p>
+              {duplicateMatch && (
+                <p className="text-xs text-amber-700 mt-1">
+                  &quot;{duplicateMatch.title}&quot; for {duplicateMatch.currency} {duplicateMatch.total_amount?.toLocaleString()} on {duplicateMatch.submitted_at?.split('T')[0]}
+                </p>
+              )}
+              <p className="text-xs text-amber-700 mt-1">Are you sure this is a different expense?</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => { setShowDuplicateWarning(false); setDuplicateConfirmed(false) }}>Cancel</Button>
+            <Button onClick={() => { setShowDuplicateWarning(false); setDuplicateConfirmed(true); submitReport() }}>Yes, Submit Anyway</Button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal open={showReportModal} onClose={() => setShowReportModal(false)} title={t('newReportModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

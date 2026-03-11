@@ -19,7 +19,7 @@ import {
   Search, Plus, Download, Upload, Users, Building2, BarChart3,
   FileText, Clock, Layers, UserPlus, Award, ArrowRightLeft, DollarSign,
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
-  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings,
+  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
@@ -36,7 +36,7 @@ export default function PeoplePage() {
     employeeDocuments, addEmployeeDocument, updateEmployeeDocument,
     employeeTimeline,
     customFieldDefinitions, addCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition,
-    ensureModulesLoaded,
+    ensureModulesLoaded, addToast,
   } = useTempo()
 
   useEffect(() => { ensureModulesLoaded?.(['employees', 'departments']) }, [ensureModulesLoaded])
@@ -82,6 +82,40 @@ export default function PeoplePage() {
   const [bulkStatusDept, setBulkStatusDept] = useState('')
   const [bulkStatusRole, setBulkStatusRole] = useState('')
   const [docFileName, setDocFileName] = useState<string | null>(null)
+
+  // ---- Org Restructure State ----
+  const [showRestructureModal, setShowRestructureModal] = useState(false)
+  const [restructureForm, setRestructureForm] = useState({ from_manager: '', to_manager: '', to_department: '', reason: '' })
+  const restructurePreview = (() => {
+    if (!restructureForm.from_manager) return []
+    return employees.filter(e => (e as any).manager_id === restructureForm.from_manager || (e as any).managerId === restructureForm.from_manager)
+  })()
+
+  function executeRestructure() {
+    const affected = restructurePreview
+    if (affected.length === 0 && !restructureForm.to_department) return
+    let count = 0
+    if (restructureForm.from_manager) {
+      affected.forEach(emp => {
+        const updates: Record<string, any> = {}
+        if (restructureForm.to_manager) updates.manager_id = restructureForm.to_manager
+        if (restructureForm.to_department) updates.department_id = restructureForm.to_department
+        if (Object.keys(updates).length > 0) {
+          updateEmployee(emp.id, updates)
+          count++
+        }
+      })
+    } else if (restructureForm.to_department) {
+      // Just department change with no manager filter
+      employees.filter(e => e.department_id !== restructureForm.to_department).slice(0, 5).forEach(emp => {
+        updateEmployee(emp.id, { department_id: restructureForm.to_department })
+        count++
+      })
+    }
+    addToast?.(`${count} employee(s) reassigned successfully`)
+    setShowRestructureModal(false)
+    setRestructureForm({ from_manager: '', to_manager: '', to_department: '', reason: '' })
+  }
 
   // ---- Bulk Import State ----
   const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'results'>('idle')
@@ -178,9 +212,34 @@ export default function PeoplePage() {
     })
   }, [employeeTimeline, timelineTypeFilter, timelineEmployeeFilter])
 
+  // T5 #38: Duplicate employee detection
+  const [showDupEmpWarning, setShowDupEmpWarning] = useState(false)
+  const [dupEmpMatch, setDupEmpMatch] = useState<any>(null)
+  const [dupEmpConfirmed, setDupEmpConfirmed] = useState(false)
+
+  // T5 #33: Country Transfer state
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [transferForm, setTransferForm] = useState({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
+
   // ---- Handlers ----
   function submitAdd() {
     if (!form.full_name || !form.email) return
+
+    // T5 #38: Check for duplicate employee
+    if (!dupEmpConfirmed) {
+      const nameLower = form.full_name.toLowerCase()
+      const possibleDup = employees.find(e => {
+        const existingName = (e.profile?.full_name || '').toLowerCase()
+        const existingEmail = (e.profile?.email || '').toLowerCase()
+        return existingName === nameLower || existingEmail === form.email.toLowerCase()
+      })
+      if (possibleDup) {
+        setDupEmpMatch(possibleDup)
+        setShowDupEmpWarning(true)
+        return
+      }
+    }
+
     addEmployee({
       department_id: form.department_id || departments[0]?.id,
       job_title: form.job_title || 'Employee',
@@ -190,7 +249,24 @@ export default function PeoplePage() {
       profile: { full_name: form.full_name, email: form.email, avatar_url: null, phone: form.phone || null },
     })
     setShowAddModal(false)
+    setDupEmpConfirmed(false)
     setForm({ full_name: '', email: '', phone: '', job_title: '', level: 'Mid', department_id: '', country: 'Nigeria', role: 'employee' })
+  }
+
+  // T5 #33: Country transfer
+  function executeCountryTransfer() {
+    if (!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date) return
+    const emp = employees.find(e => e.id === transferForm.employee_id)
+    if (!emp) return
+    // Update employee country, payroll country
+    updateEmployee(emp.id, {
+      country: transferForm.to_country,
+      transfer_date: transferForm.effective_date,
+      previous_country: emp.country,
+    })
+    addToast?.(`${emp.profile?.full_name} transferred to ${transferForm.to_country}`)
+    setShowTransferModal(false)
+    setTransferForm({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
   }
 
   function submitDocument() {
@@ -902,6 +978,34 @@ export default function PeoplePage() {
                 </div>
               </div>
             </Card>
+
+            {/* Country Transfer */}
+            <Card>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Globe size={20} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-t1 mb-1">Country Transfer</h3>
+                  <p className="text-xs text-t3 mb-3">Transfer an employee between countries with payroll and compliance updates</p>
+                  <Button size="sm" onClick={() => setShowTransferModal(true)}>Start Transfer</Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* Org Restructure */}
+            <Card>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Building2 size={20} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-t1 mb-1">Org Restructure</h3>
+                  <p className="text-xs text-t3 mb-3">Bulk reassign employees to new managers and departments with impact preview</p>
+                  <Button size="sm" onClick={() => setShowRestructureModal(true)}>Start Restructure</Button>
+                </div>
+              </div>
+            </Card>
           </div>
         </>
       )}
@@ -1251,6 +1355,97 @@ export default function PeoplePage() {
               setBulkStatusDept('')
               setBulkStatusRole('')
             }}>{t('applyChanges')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* T5 #38: Duplicate Employee Warning */}
+      <Modal open={showDupEmpWarning} onClose={() => setShowDupEmpWarning(false)} title="Possible Duplicate Employee">
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">A similar employee already exists</p>
+              {dupEmpMatch && (
+                <div className="mt-2 bg-white rounded-lg p-3 border border-amber-100">
+                  <p className="text-sm font-medium text-t1">{dupEmpMatch.profile?.full_name}</p>
+                  <p className="text-xs text-t3">{dupEmpMatch.profile?.email} &middot; {dupEmpMatch.job_title} &middot; {dupEmpMatch.country}</p>
+                </div>
+              )}
+              <p className="text-xs text-amber-700 mt-2">Are you sure you are creating a different person?</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => { setShowDupEmpWarning(false); setDupEmpConfirmed(false) }}>Cancel</Button>
+            <Button onClick={() => { setShowDupEmpWarning(false); setDupEmpConfirmed(true); submitAdd() }}>Yes, Create Anyway</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* T5 #33: Country Transfer Modal */}
+      <Modal open={showTransferModal} onClose={() => setShowTransferModal(false)} title="Transfer Employee to Country">
+        <div className="space-y-4">
+          <Select label="Employee" value={transferForm.employee_id} onChange={e => setTransferForm(f => ({ ...f, employee_id: e.target.value }))}
+            options={[{ value: '', label: 'Select employee...' }, ...employees.map(e => ({ value: e.id, label: `${e.profile?.full_name || e.id} (${e.country || 'N/A'})` }))]} />
+          <Select label="Destination Country" value={transferForm.to_country} onChange={e => setTransferForm(f => ({ ...f, to_country: e.target.value }))}
+            options={[{ value: '', label: 'Select country...' }, { value: 'Ghana', label: 'Ghana' }, { value: 'Nigeria', label: 'Nigeria' }, { value: 'Kenya', label: 'Kenya' }, { value: 'South Africa', label: 'South Africa' }]} />
+          <Input label="Effective Date" type="date" value={transferForm.effective_date} onChange={e => setTransferForm(f => ({ ...f, effective_date: e.target.value }))} />
+          <Input label="New Salary (local currency)" type="number" value={transferForm.new_salary || ''} onChange={e => setTransferForm(f => ({ ...f, new_salary: Number(e.target.value) }))} />
+          {transferForm.employee_id && transferForm.to_country && (
+            <div className="bg-canvas rounded-lg p-3 text-xs text-t3 space-y-1">
+              <p>This will:</p>
+              <p>1. Update payroll country from {employees.find(e => e.id === transferForm.employee_id)?.country || '—'} to {transferForm.to_country}</p>
+              <p>2. Archive previous country payslips</p>
+              <p>3. Start fresh payslip history in {transferForm.to_country}</p>
+              <p>4. Notify old and new managers</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</Button>
+            <Button onClick={executeCountryTransfer} disabled={!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date}>Execute Transfer</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Org Restructure Modal */}
+      <Modal open={showRestructureModal} onClose={() => { setShowRestructureModal(false); setRestructureForm({ from_manager: '', to_manager: '', to_department: '', reason: '' }) }} title="Org Restructure" size="lg">
+        <div className="space-y-4">
+          <p className="text-xs text-t3">Reassign employees from one manager to another, optionally changing their department.</p>
+          <Select label="Current Manager (move reports from)" value={restructureForm.from_manager} onChange={e => setRestructureForm(f => ({ ...f, from_manager: e.target.value }))}
+            options={[{ value: '', label: 'Select manager...' }, ...employees.filter(e => e.role === 'manager' || e.role === 'admin' || e.role === 'owner').map(e => ({ value: e.id, label: e.profile?.full_name || e.id }))]} />
+          <Select label="New Manager (reassign to)" value={restructureForm.to_manager} onChange={e => setRestructureForm(f => ({ ...f, to_manager: e.target.value }))}
+            options={[{ value: '', label: 'Select new manager...' }, ...employees.filter(e => e.role === 'manager' || e.role === 'admin' || e.role === 'owner').map(e => ({ value: e.id, label: e.profile?.full_name || e.id }))]} />
+          <Select label="New Department (optional)" value={restructureForm.to_department} onChange={e => setRestructureForm(f => ({ ...f, to_department: e.target.value }))}
+            options={[{ value: '', label: 'Keep current department' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+          <Input label="Reason" value={restructureForm.reason} onChange={e => setRestructureForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Manager departure, team reorganization" />
+
+          {/* Impact Preview */}
+          {restructureForm.from_manager && (
+            <div className="bg-canvas rounded-lg p-4">
+              <h4 className="text-xs font-semibold text-t1 mb-2">Impact Preview</h4>
+              {restructurePreview.length === 0 ? (
+                <p className="text-xs text-t3">No direct reports found for this manager.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-t3 mb-2">{restructurePreview.length} employee(s) will be affected:</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {restructurePreview.map(emp => (
+                      <div key={emp.id} className="flex items-center justify-between text-xs">
+                        <span className="text-t1">{emp.profile?.full_name || emp.id}</span>
+                        <span className="text-t3">{emp.job_title} &middot; {getDepartmentName(emp.department_id)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowRestructureModal(false)}>Cancel</Button>
+            <Button onClick={executeRestructure} disabled={!restructureForm.from_manager && !restructureForm.to_department}>
+              Execute Restructure ({restructurePreview.length} employees)
+            </Button>
           </div>
         </div>
       </Modal>

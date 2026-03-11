@@ -113,6 +113,36 @@ export default function LearningPage() {
   const [activeAssessment, setActiveAssessment] = useState<{ courseId: string; questionIndex: number; answers: Record<string, string>; startedAt: string } | null>(null)
   const [showAssessmentResult, setShowAssessmentResult] = useState<{ score: number; passed: boolean; correct: number; total: number } | null>(null)
 
+  // T5 #39: Course exemption state
+  const [showExemptionModal, setShowExemptionModal] = useState(false)
+  const [exemptions, setExemptions] = useState<{ id: string; course_id: string; criteria_type: string; criteria_value: string; reason: string }[]>([])
+  const [exemptionForm, setExemptionForm] = useState({ course_id: '', criteria_type: 'role' as string, criteria_value: '', reason: '' })
+
+  function addExemption() {
+    if (!exemptionForm.course_id || !exemptionForm.criteria_value) return
+    setExemptions(prev => [...prev, { id: crypto.randomUUID(), ...exemptionForm }])
+    setExemptionForm({ course_id: '', criteria_type: 'role', criteria_value: '', reason: '' })
+    setShowExemptionModal(false)
+    addToast('Exemption added')
+  }
+
+  function isExempt(employeeId: string, courseId: string) {
+    const emp = employees.find(e => e.id === employeeId)
+    if (!emp) return false
+    return exemptions.some(ex => {
+      if (ex.course_id !== courseId) return false
+      if (ex.criteria_type === 'role' && emp.role === ex.criteria_value) return true
+      if (ex.criteria_type === 'country' && emp.country === ex.criteria_value) return true
+      if (ex.criteria_type === 'level' && emp.level === ex.criteria_value) return true
+      return false
+    })
+  }
+
+  function removeExemption(id: string) {
+    setExemptions(prev => prev.filter(e => e.id !== id))
+    addToast('Exemption removed')
+  }
+
   // Admin state
   const [showRuleModal, setShowRuleModal] = useState(false)
   const [ruleForm, setRuleForm] = useState({ name: '', condition_type: 'department_join' as string, condition_value: '', action_type: 'enroll_course' as string, action_target_id: '', action_target_name: '', is_active: true })
@@ -2319,6 +2349,50 @@ export default function LearningPage() {
               })}
             </div>
           </Card>
+
+          {/* T5 #39: Mandatory Course Exemptions */}
+          <div className="flex items-center justify-between mt-8">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">Course Exemptions</h3>
+              <p className="text-xs text-t3">Define which roles, countries, or levels are exempt from mandatory courses</p>
+            </div>
+            <Button size="sm" onClick={() => setShowExemptionModal(true)}><Plus size={14} /> Add Exemption</Button>
+          </div>
+          {exemptions.length > 0 ? (
+            <Card padding="none">
+              <div className="divide-y divide-divider">
+                {exemptions.map(ex => {
+                  const course = courses.find(c => c.id === ex.course_id)
+                  return (
+                    <div key={ex.id} className="px-6 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-t1">{course?.title || 'Unknown course'}</p>
+                        <p className="text-xs text-t3">Exempt: {ex.criteria_type} = {ex.criteria_value} {ex.reason ? `— ${ex.reason}` : ''}</p>
+                      </div>
+                      <button onClick={() => removeExemption(ex.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          ) : (
+            <Card><p className="text-sm text-t3 text-center py-4">No exemptions defined. All employees must complete mandatory courses.</p></Card>
+          )}
+
+          <Modal open={showExemptionModal} onClose={() => setShowExemptionModal(false)} title="Add Course Exemption">
+            <div className="space-y-4">
+              <Select label="Mandatory Course" value={exemptionForm.course_id} onChange={e => setExemptionForm(f => ({ ...f, course_id: e.target.value }))}
+                options={[{ value: '', label: 'Select course...' }, ...courses.filter(c => c.is_mandatory).map(c => ({ value: c.id, label: c.title }))]} />
+              <Select label="Exemption Criteria" value={exemptionForm.criteria_type} onChange={e => setExemptionForm(f => ({ ...f, criteria_type: e.target.value }))}
+                options={[{ value: 'role', label: 'By Role' }, { value: 'country', label: 'By Country' }, { value: 'level', label: 'By Level' }]} />
+              <Input label="Criteria Value" value={exemptionForm.criteria_value} onChange={e => setExemptionForm(f => ({ ...f, criteria_value: e.target.value }))} placeholder={exemptionForm.criteria_type === 'role' ? 'e.g. manager' : exemptionForm.criteria_type === 'country' ? 'e.g. Ghana' : 'e.g. Senior'} />
+              <Input label="Reason (optional)" value={exemptionForm.reason} onChange={e => setExemptionForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Already certified externally" />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setShowExemptionModal(false)}>Cancel</Button>
+                <Button onClick={addExemption} disabled={!exemptionForm.course_id || !exemptionForm.criteria_value}>Add Exemption</Button>
+              </div>
+            </div>
+          </Modal>
         </div>
       )}
 

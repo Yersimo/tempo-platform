@@ -314,6 +314,31 @@ export default function PerformancePage() {
     addToast('Review acknowledged')
   }
 
+  // T5 #41: Rating Dispute
+  const [showDisputeModal, setShowDisputeModal] = useState(false)
+  const [disputeReviewId, setDisputeReviewId] = useState<string | null>(null)
+  const [disputeConcern, setDisputeConcern] = useState('')
+
+  function raiseDispute() {
+    if (!disputeReviewId || !disputeConcern.trim()) { addToast('Please describe your concern'); return }
+    updateReview(disputeReviewId, {
+      dispute: { concern: disputeConcern, raised_at: new Date().toISOString(), raised_by: currentEmployeeId, status: 'open' },
+    })
+    addToast('Concern raised — HR BP has been notified')
+    setShowDisputeModal(false)
+    setDisputeReviewId(null)
+    setDisputeConcern('')
+  }
+
+  function resolveDispute(reviewId: string, resolution: string, updatedRating?: number) {
+    const updates: Record<string, any> = {
+      dispute: { concern: (reviews.find(r => r.id === reviewId) as any)?.dispute?.concern, raised_at: (reviews.find(r => r.id === reviewId) as any)?.dispute?.raised_at, status: 'resolved', resolution, resolved_at: new Date().toISOString(), resolved_by: currentEmployeeId },
+    }
+    if (updatedRating) updates.overall_rating = updatedRating
+    updateReview(reviewId, updates)
+    addToast('Dispute resolved')
+  }
+
   // ---- Review ----
   function submitReview() {
     if (!reviewForm.employee_id || !reviewForm.cycle_id) return
@@ -565,13 +590,26 @@ export default function PerformancePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-t3">{review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : '—'}</td>
                       <td className="px-4 py-3 text-center">
-                        {review.status === 'submitted' && !(review as any).acknowledged_at ? (
-                          <Button size="sm" onClick={() => acknowledgeReview(review.id)}>Acknowledge</Button>
-                        ) : (review as any).acknowledged_at ? (
-                          <Badge variant="success">Acknowledged</Badge>
-                        ) : (
-                          <span className="text-xs text-t3">—</span>
-                        )}
+                        <div className="flex items-center gap-1 justify-center flex-wrap">
+                          {review.status === 'submitted' && !(review as any).acknowledged_at ? (
+                            <Button size="sm" onClick={() => acknowledgeReview(review.id)}>Acknowledge</Button>
+                          ) : (review as any).acknowledged_at ? (
+                            <Badge variant="success">Acknowledged</Badge>
+                          ) : (
+                            <span className="text-xs text-t3">—</span>
+                          )}
+                          {/* T5 #41: Raise Concern button after acknowledgment */}
+                          {(review as any).acknowledged_at && !(review as any).dispute && (
+                            <Button size="sm" variant="ghost" className="text-amber-600" onClick={() => { setDisputeReviewId(review.id); setShowDisputeModal(true) }}>
+                              <AlertTriangle size={12} /> Raise Concern
+                            </Button>
+                          )}
+                          {(review as any).dispute && (
+                            <Badge variant={(review as any).dispute.status === 'resolved' ? 'success' : 'warning'}>
+                              {(review as any).dispute.status === 'resolved' ? 'Dispute Resolved' : 'Dispute Open'}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1747,6 +1785,27 @@ export default function PerformancePage() {
       )}
 
       {/* ---- MODALS ---- */}
+
+      {/* T5 #41: Rating Dispute Modal */}
+      <Modal open={showDisputeModal} onClose={() => { setShowDisputeModal(false); setDisputeReviewId(null); setDisputeConcern('') }} title="Raise a Concern About Your Review">
+        <div className="space-y-4">
+          <p className="text-sm text-t3">Your concern will be visible to HR BP. They may schedule a three-way conversation or update the rating with a documented reason.</p>
+          <Textarea label="Describe Your Concern" value={disputeConcern} onChange={e => setDisputeConcern(e.target.value)} placeholder="Explain what you disagree with and why..." />
+          <div className="bg-canvas rounded-lg p-3 text-xs text-t3">
+            <p>What happens next:</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>HR BP reviews both the manager assessment and your concern</li>
+              <li>A three-way conversation may be scheduled</li>
+              <li>Rating may be updated with documented justification</li>
+              <li>The dispute and resolution are permanently recorded</li>
+            </ul>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => { setShowDisputeModal(false); setDisputeReviewId(null); setDisputeConcern('') }}>Cancel</Button>
+            <Button onClick={raiseDispute} disabled={!disputeConcern.trim()}>Submit Concern</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create PIP */}
       <Modal open={showPIPModal} onClose={() => setShowPIPModal(false)} title="Create Performance Improvement Plan" size="xl">

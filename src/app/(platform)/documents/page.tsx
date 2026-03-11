@@ -40,7 +40,7 @@ export default function DocumentsPage() {
     return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
-  const [activeTab, setActiveTab] = useState<'documents' | 'templates' | 'audit'>('documents')
+  const [activeTab, setActiveTab] = useState<'documents' | 'templates' | 'bulk-send' | 'audit'>('documents')
   const [showNewDocModal, setShowNewDocModal] = useState(false)
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -58,6 +58,46 @@ export default function DocumentsPage() {
     signing_flow: 'sequential' as 'sequential' | 'parallel',
     signers: [{ name: '', email: '', role: 'signer' as string, order: 1 }],
   })
+
+  // Bulk Policy Send state
+  const [showBulkSendModal, setShowBulkSendModal] = useState(false)
+  const [bulkPolicyTitle, setBulkPolicyTitle] = useState('')
+  const [bulkDeptFilter, setBulkDeptFilter] = useState('')
+  const [bulkCountryFilter, setBulkCountryFilter] = useState('')
+  const [bulkSendResults, setBulkSendResults] = useState<{ sent: number; total: number } | null>(null)
+
+  const departments = [...new Set(employees.map(e => e.department_id).filter(Boolean))]
+  const countries = [...new Set(employees.map(e => e.country).filter(Boolean))]
+
+  const bulkRecipients = employees.filter(e => {
+    if (bulkDeptFilter && e.department_id !== bulkDeptFilter) return false
+    if (bulkCountryFilter && e.country !== bulkCountryFilter) return false
+    return e.profile?.email
+  })
+
+  function executeBulkSend() {
+    if (!bulkPolicyTitle || bulkRecipients.length === 0) return
+    let sentCount = 0
+    bulkRecipients.forEach(emp => {
+      addSignatureDocument({
+        title: `${bulkPolicyTitle}`,
+        status: 'pending',
+        signing_flow: 'parallel',
+        created_by: currentEmployeeId || employees[0]?.id || 'unknown',
+        document_url: '/docs/policy-document.pdf',
+        signers: [{
+          name: emp.profile?.full_name || '',
+          email: emp.profile?.email || '',
+          role: 'signer',
+          status: 'pending',
+          signing_order: 1,
+        }],
+      })
+      sentCount++
+    })
+    setBulkSendResults({ sent: sentCount, total: bulkRecipients.length })
+    addToast(`Policy sent to ${sentCount} employee(s)`, 'success')
+  }
 
   // Stats
   const completedCount = signatureDocuments.filter(d => d.status === 'completed').length
@@ -382,9 +422,19 @@ export default function DocumentsPage() {
     addToast('Document downloaded', 'success')
   }
 
+  // Bulk send acknowledgment tracking
+  const bulkPolicyStats = (() => {
+    if (!bulkPolicyTitle) return null
+    const policyDocs = signatureDocuments.filter(d => d.title === bulkPolicyTitle)
+    if (policyDocs.length === 0) return null
+    const acked = policyDocs.filter(d => d.status === 'completed').length
+    return { total: policyDocs.length, acknowledged: acked, rate: Math.round((acked / policyDocs.length) * 100) }
+  })()
+
   const tabs = [
     { key: 'documents' as const, label: 'Documents', icon: <FileText size={14} /> },
     { key: 'templates' as const, label: 'Templates', icon: <Copy size={14} /> },
+    { key: 'bulk-send' as const, label: 'Bulk Policy Send', icon: <Send size={14} /> },
     { key: 'audit' as const, label: 'Audit Trail', icon: <History size={14} /> },
   ]
 
@@ -603,6 +653,96 @@ export default function DocumentsPage() {
               </Card>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Bulk Policy Send Tab */}
+      {activeTab === 'bulk-send' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Bulk Policy Send</CardTitle>
+                <Button size="sm" onClick={() => { setShowBulkSendModal(true); setBulkSendResults(null) }}>
+                  <Send size={14} /> Send Policy to Employees
+                </Button>
+              </div>
+            </CardHeader>
+            <p className="text-sm text-t3 mb-4">Send a policy document to an entire department or country population. Track acknowledgment rates and follow up on pending signatures.</p>
+
+            {/* Acknowledgment tracking for recent bulk sends */}
+            {bulkPolicyStats && (
+              <div className="bg-canvas rounded-xl p-4 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-t1">Latest: {bulkPolicyTitle}</h4>
+                  <Badge variant={bulkPolicyStats.rate >= 80 ? 'success' : bulkPolicyStats.rate >= 50 ? 'warning' : 'error'}>
+                    {bulkPolicyStats.rate}% acknowledged
+                  </Badge>
+                </div>
+                <Progress value={bulkPolicyStats.rate} className="mb-2" />
+                <div className="flex gap-4 text-xs text-t3">
+                  <span>Sent: {bulkPolicyStats.total}</span>
+                  <span>Acknowledged: {bulkPolicyStats.acknowledged}</span>
+                  <span>Pending: {bulkPolicyStats.total - bulkPolicyStats.acknowledged}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Policy documents overview */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-tempo-600">{signatureDocuments.length}</div>
+                <div className="text-xs text-t3 mt-1">Total Documents</div>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">{completedCount}</div>
+                <div className="text-xs text-t3 mt-1">Fully Signed</div>
+              </div>
+              <div className="bg-canvas rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-orange-500">{awaitingCount}</div>
+                <div className="text-xs text-t3 mt-1">Awaiting Signature</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Bulk Send Modal */}
+          <Modal open={showBulkSendModal} onClose={() => setShowBulkSendModal(false)} title="Send Policy to Employees" size="lg">
+            <div className="space-y-4">
+              {!bulkSendResults ? (
+                <>
+                  <Input label="Policy Document Title" value={bulkPolicyTitle} onChange={e => setBulkPolicyTitle(e.target.value)} placeholder="e.g. Code of Conduct 2026, Anti-Bribery Policy" />
+                  <Select label="Filter by Department (optional)" value={bulkDeptFilter} onChange={e => setBulkDeptFilter(e.target.value)}
+                    options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d as string, label: d as string }))]} />
+                  <Select label="Filter by Country (optional)" value={bulkCountryFilter} onChange={e => setBulkCountryFilter(e.target.value)}
+                    options={[{ value: '', label: 'All Countries' }, ...countries.map(c => ({ value: c as string, label: c as string }))]} />
+                  <div className="bg-canvas rounded-lg p-3">
+                    <p className="text-sm font-medium text-t1 mb-1">{bulkRecipients.length} recipient(s) selected</p>
+                    <p className="text-xs text-t3">Each employee will receive an individual document for signing.</p>
+                    {bulkRecipients.length > 0 && bulkRecipients.length <= 10 && (
+                      <div className="mt-2 space-y-1">
+                        {bulkRecipients.map(emp => (
+                          <div key={emp.id} className="text-xs text-t2">{emp.profile?.full_name} — {emp.profile?.email}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="secondary" onClick={() => setShowBulkSendModal(false)}>Cancel</Button>
+                    <Button onClick={executeBulkSend} disabled={!bulkPolicyTitle || bulkRecipients.length === 0}>
+                      <Send size={14} /> Send to {bulkRecipients.length} Employee(s)
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold text-t1 mb-1">Policy Sent Successfully</h3>
+                  <p className="text-sm text-t3 mb-4">{bulkSendResults.sent} document(s) created and sent for signing.</p>
+                  <Button onClick={() => { setShowBulkSendModal(false); setBulkSendResults(null) }}>Done</Button>
+                </div>
+              )}
+            </div>
+          </Modal>
         </div>
       )}
 

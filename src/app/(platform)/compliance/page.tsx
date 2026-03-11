@@ -50,12 +50,101 @@ export default function CompliancePage() {
     dismissComplianceAlert,
     autoDetectionScans, addAutoDetectionScan, updateAutoDetectionScan,
     employees, getEmployeeName,
-    ensureModulesLoaded,
+    ensureModulesLoaded, addToast,
+    courses, enrollments, signatureDocuments, payrollRuns,
   } = useTempo()
 
   useEffect(() => {
-    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees'])
+    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'courses', 'enrollments', 'signatureDocuments', 'payrollRuns'])
   }, [ensureModulesLoaded])
+
+  // Compliance Audit Report Export
+  function exportAuditReport() {
+    const now = new Date().toISOString().split('T')[0]
+    const sections: string[] = []
+
+    // Section 1: Executive Summary
+    sections.push('COMPLIANCE AUDIT REPORT')
+    sections.push(`Generated: ${now}`)
+    sections.push(`Organization: Africa Bank Group`)
+    sections.push('')
+    sections.push('=== EXECUTIVE SUMMARY ===')
+    sections.push(`Total Requirements: ${complianceRequirements.length}`)
+    sections.push(`Compliant: ${complianceRequirements.filter(r => r.status === 'compliant').length}`)
+    sections.push(`At Risk: ${complianceRequirements.filter(r => r.status === 'at_risk').length}`)
+    sections.push(`Non-Compliant: ${complianceRequirements.filter(r => r.status === 'non_compliant').length}`)
+    sections.push(`Compliance Score: ${totalReqs > 0 ? Math.round((compliantCount / totalReqs) * 100) : 0}%`)
+    sections.push(`Active Alerts: ${complianceAlerts.filter(a => !a.is_read).length}`)
+    sections.push(`Critical Alerts: ${complianceAlerts.filter(a => a.severity === 'critical' && !a.is_read).length}`)
+    sections.push('')
+
+    // Section 2: Training Completion
+    sections.push('=== TRAINING COMPLETION ===')
+    const mandatoryCourses = (courses || []).filter((c: any) => c.is_mandatory)
+    sections.push(`Total Courses: ${(courses || []).length}`)
+    sections.push(`Mandatory Courses: ${mandatoryCourses.length}`)
+    const completedEnrollments = (enrollments || []).filter((e: any) => e.status === 'completed')
+    sections.push(`Completed Enrollments: ${completedEnrollments.length}`)
+    sections.push(`Total Enrollments: ${(enrollments || []).length}`)
+    const completionRate = (enrollments || []).length > 0 ? Math.round((completedEnrollments.length / (enrollments || []).length) * 100) : 0
+    sections.push(`Completion Rate: ${completionRate}%`)
+    // Overdue employees
+    const overdueEnrollments = (enrollments || []).filter((e: any) => e.status !== 'completed' && e.due_date && new Date(e.due_date) < new Date())
+    sections.push(`Overdue Enrollments: ${overdueEnrollments.length}`)
+    if (overdueEnrollments.length > 0) {
+      sections.push('Overdue Details:')
+      overdueEnrollments.slice(0, 20).forEach((e: any) => {
+        const name = getEmployeeName(e.employee_id) || e.employee_id
+        const course = (courses || []).find((c: any) => c.id === e.course_id)
+        sections.push(`  - ${name}: ${course?.title || 'Unknown course'} (due: ${e.due_date})`)
+      })
+    }
+    sections.push('')
+
+    // Section 3: Policy Acknowledgment
+    sections.push('=== POLICY ACKNOWLEDGMENT ===')
+    const totalPolicies = (signatureDocuments || []).length
+    const completedPolicies = (signatureDocuments || []).filter((d: any) => d.status === 'completed').length
+    const pendingPolicies = (signatureDocuments || []).filter((d: any) => d.status === 'pending' || d.status === 'in_progress').length
+    sections.push(`Total Documents Sent: ${totalPolicies}`)
+    sections.push(`Fully Signed: ${completedPolicies}`)
+    sections.push(`Pending Signatures: ${pendingPolicies}`)
+    sections.push(`Acknowledgment Rate: ${totalPolicies > 0 ? Math.round((completedPolicies / totalPolicies) * 100) : 0}%`)
+    sections.push('')
+
+    // Section 4: Payroll Audit
+    sections.push('=== PAYROLL AUDIT ===')
+    const recentRuns = (payrollRuns || []).slice(0, 12)
+    sections.push(`Payroll Runs (recent): ${recentRuns.length}`)
+    recentRuns.forEach((run: any) => {
+      sections.push(`  - Period: ${run.period || 'N/A'} | Status: ${run.status || 'N/A'} | Employees: ${run.employee_count || 0} | Gross: ${((run.total_gross || 0) / 100).toFixed(2)}`)
+    })
+    sections.push('')
+
+    // Section 5: Compliance Requirements Detail
+    sections.push('=== REQUIREMENTS DETAIL ===')
+    sections.push('Category,Requirement,Country,Status,Frequency,Next Due')
+    complianceRequirements.forEach(r => {
+      sections.push(`${CATEGORY_LABELS[r.category] || r.category},${r.name},${r.country || 'Global'},${r.status},${r.frequency || ''},${r.next_due || ''}`)
+    })
+    sections.push('')
+
+    // Section 6: Active Alerts
+    sections.push('=== ACTIVE ALERTS ===')
+    complianceAlerts.filter(a => !a.is_read).forEach(a => {
+      sections.push(`[${(a.severity || '').toUpperCase()}] ${(a as any).title || a.message || 'Alert'} — ${a.type || ''} (${a.created_at?.split('T')[0] || ''})`)
+    })
+
+    const content = sections.join('\n')
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `compliance-audit-report-${now}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    addToast('Compliance audit report exported')
+  }
 
   const [activeTab, setActiveTab] = useState('overview')
   const [reqPage, setReqPage] = useState(1)
@@ -272,6 +361,9 @@ export default function CompliancePage() {
           <p className="text-sm text-t3 mt-1">Monitor regulatory compliance across all regions</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={exportAuditReport}>
+            <Download size={14} /> Export Report
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowAddDocModal(true)}>
             <Upload size={14} /> Upload Document
           </Button>
