@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe, Store, Truck, RotateCcw, Trash2, Package, ShieldCheck, Leaf, FileWarning } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
@@ -23,9 +24,12 @@ export default function DevicesPage() {
   const tc = useTranslations('common')
   const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests, ensureModulesLoaded } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['devices', 'deviceActions', 'deviceInventory', 'deviceStoreCatalog', 'deviceOrders', 'employees', 'departments'])
+    ensureModulesLoaded?.(['devices', 'deviceActions', 'deviceInventory', 'deviceStoreCatalog', 'deviceOrders', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const deviceInsights = useMemo(() => predictDeviceRefresh(devices), [devices])
   const securityScore = useMemo(() => scoreSecurityPosture(devices), [devices])
@@ -210,6 +214,15 @@ export default function DevicesPage() {
 
   function setAvailable(deviceId: string) {
     updateDevice(deviceId, { assigned_to: null, status: 'available' })
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} actions={<div className="flex gap-2"><Button size="sm" variant="secondary" disabled><Users size={14} /> {t('bulkAssign')}</Button><Button size="sm" disabled><Plus size={14} /> {t('addDevice')}</Button></div>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

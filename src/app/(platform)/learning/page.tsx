@@ -18,6 +18,7 @@ import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
 import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions, translateContent } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { CoursePlayer } from '@/components/learning/course-player'
 import { CertificateDesigner, CertificatePreview } from '@/components/learning/certificate-designer'
 import { ContentProviders } from '@/components/learning/content-providers'
@@ -26,7 +27,13 @@ import { ScormPlayer } from '@/components/learning/scorm-player'
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['courses', 'enrollments', 'complianceRequirements']) }, [ensureModulesLoaded])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['courses', 'enrollments', 'complianceRequirements'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
+  }, [ensureModulesLoaded])
 
   const t = useTranslations('learning')
   const tc = useTranslations('common')
@@ -1236,6 +1243,15 @@ export default function LearningPage() {
     if (!selectedQuizCourse) return quizQuestions
     return quizQuestions.filter(q => q.course_id === selectedQuizCourse)
   }, [quizQuestions, selectedQuizCourse])
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

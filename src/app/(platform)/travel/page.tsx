@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
@@ -17,9 +18,12 @@ export default function TravelManagementPage() {
   const tc = useTranslations('common')
   const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['travelRequests', 'travelBookings', 'travelPolicies'])
+    ensureModulesLoaded?.(['travelRequests', 'travelBookings', 'travelPolicies'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState<'requests' | 'bookings' | 'policies' | 'expenses'>('requests')
   const [showRequestModal, setShowRequestModal] = useState(false)
@@ -247,6 +251,15 @@ export default function TravelManagementPage() {
     { key: 'policies' as const, label: 'Policies', icon: <Shield size={14} /> },
     { key: 'expenses' as const, label: 'Expense Integration', icon: <Receipt size={14} /> },
   ]
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="Travel Management" subtitle="Book travel, manage policies & track expenses" actions={<Button size="sm" disabled><Plus size={14} /> New Request</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

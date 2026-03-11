@@ -14,6 +14,7 @@ import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SER
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { detectPayrollAnomalies, forecastAnnualPayroll, scorePayrollHealth, recommendTaxOptimizations, analyzePayrollTrends, predictComplianceRisks, scoreContractorRisk } from '@/lib/ai-engine'
 import { calculateTax } from '@/lib/tax-calculator'
@@ -118,8 +119,12 @@ export default function PayrollPage() {
     }
   }, [role, router])
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['payrollRuns', 'leaveRequests', 'employeePayrollEntries', 'contractorPayments', 'payrollSchedules', 'taxConfigs', 'taxFilings'])
+    ensureModulesLoaded?.(['payrollRuns', 'leaveRequests', 'employeePayrollEntries', 'contractorPayments', 'payrollSchedules', 'taxConfigs', 'taxFilings'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
   }, [ensureModulesLoaded])
 
   // T5 #32: Seed pro-rata salary change entry
@@ -682,6 +687,15 @@ export default function PayrollPage() {
 
   // Employee redirect is handled by useEffect above — show nothing while redirecting
   if (role === 'employee') return null
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

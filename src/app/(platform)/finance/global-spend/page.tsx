@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Globe, DollarSign, TrendingUp, ArrowRightLeft, Building2, Plus, Landmark, MapPin, Wallet, CheckCircle, Clock, Users } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
@@ -44,9 +45,12 @@ export default function GlobalSpendPage() {
   const tc = useTranslations('common')
   const { currencyAccounts, fxTransactions, invoices, billPayments, employees, ensureModulesLoaded, org, addToast, addFxTransaction } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['currencyAccounts', 'fxTransactions', 'invoices', 'billPayments'])
+    ensureModulesLoaded?.(['currencyAccounts', 'fxTransactions', 'invoices', 'billPayments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [showTransferModal, setShowTransferModal] = useState(false)
@@ -175,6 +179,15 @@ export default function GlobalSpendPage() {
     { key: 'transactions', label: 'FX Transactions' },
     { key: 'region', label: 'By Region' },
   ]
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="Global Spend" subtitle="Multi-entity spend overview across currencies" actions={<Button size="sm" disabled><Plus size={14} /> New FX Transfer</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

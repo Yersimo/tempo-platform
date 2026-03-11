@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown, Building2, Search, Users } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightPanel, AIAlertBanner } from '@/components/ai'
 import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact, generateTotalRewardsBreakdown, modelCompScenario, analyzeEquityDistribution, analyzeMarketPosition } from '@/lib/ai-engine'
 
@@ -29,7 +30,11 @@ export default function CompensationPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['compBands', 'salaryReviews', 'equityGrants', 'compPlanningCycles', 'employees']) }, [ensureModulesLoaded])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['compBands', 'salaryReviews', 'equityGrants', 'compPlanningCycles', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const t = useTranslations('compensation')
   const tc = useTranslations('common')
@@ -241,6 +246,17 @@ export default function CompensationPage() {
     })
     addToast(`Created ${created} salary review${created !== 1 ? 's' : ''} successfully`)
     resetBulkSalary()
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')}
+          actions={<div className="flex gap-2"><Button size="sm" variant="outline" disabled><Plus size={14} /> {t('addBand')}</Button><Button size="sm" variant="outline" disabled><Users size={14} /> Bulk Review</Button><Button size="sm" disabled><Plus size={14} /> {t('proposeReview')}</Button></div>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

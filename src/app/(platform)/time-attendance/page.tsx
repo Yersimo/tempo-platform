@@ -17,6 +17,7 @@ import {
   Timer, Coffee, Filter, ChevronLeft, ChevronRight, AlertTriangle, Users, Search,
   Settings, Download, TrendingUp, MapPin, Briefcase, ArrowRightLeft, Pause, Play,
 } from 'lucide-react'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
 
 // ---- Helpers ----
@@ -66,8 +67,12 @@ export default function TimeAttendancePage() {
   const canApproveLeave = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
   const shifts = _shifts as any[]
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['timeEntries', 'timeOffPolicies', 'timeOffBalances', 'overtimeRules', 'shifts', 'leaveRequests', 'employees'])
+    ensureModulesLoaded?.(['timeEntries', 'timeOffPolicies', 'timeOffBalances', 'overtimeRules', 'shifts', 'leaveRequests', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
   }, [ensureModulesLoaded])
 
   // T5 #20: Seed pending overtime entries for Ghana employees
@@ -491,6 +496,15 @@ export default function TimeAttendancePage() {
   const approvedToday = timeEntries.filter(e => e.date === today && e.status === 'approved').length
   const totalOTWeek = timeEntries.filter(e => weekDates.includes(e.date)).reduce((s, e) => s + (e.overtime_hours || 0), 0)
   const activeEmployeesToday = new Set(timeEntries.filter(e => e.date === today).map(e => e.employee_id)).size
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="Time & Attendance" subtitle="Track hours, manage schedules, and oversee time-off" />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

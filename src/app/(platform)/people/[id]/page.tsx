@@ -19,6 +19,7 @@ import {
   ToggleLeft, List, Users, Heart, Check, Landmark, Smartphone,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightPanel, AIScoreBadge, AIEnhancingIndicator } from '@/components/ai'
 import { generateEmployeeInsight, calculateRetentionRisk, suggestCareerPath } from '@/lib/ai-engine'
 import Link from 'next/link'
@@ -47,7 +48,13 @@ export default function EmployeeDetailPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
+  }, [])
 
   const emp = employees.find(e => e.id === id)
   const [activeTab, setActiveTab] = useState('overview')
@@ -74,6 +81,12 @@ export default function EmployeeDetailPage() {
     bank_name: '', bank_code: '', bank_account_number: '', bank_account_name: '',
     bank_country: '', mobile_money_provider: '', mobile_money_number: '',
   })
+
+  if (pageLoading) {
+    return (
+      <div className="p-6"><PageSkeleton /></div>
+    )
+  }
 
   if (!emp) {
     return (

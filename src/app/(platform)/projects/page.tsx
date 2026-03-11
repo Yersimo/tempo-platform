@@ -18,6 +18,7 @@ import {
   Zap, Play, Pause, CheckCircle2, XCircle, ArrowRight, Lightbulb
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { scoreProjectHealth, predictTimelineRisk, detectResourceBottlenecks, suggestAutomationRules } from '@/lib/ai-engine'
 import { demoAutomationLog } from '@/lib/demo-data'
@@ -35,8 +36,12 @@ export default function ProjectsPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['projects', 'milestones', 'tasks', 'employees', 'departments'])
+    ensureModulesLoaded?.(['projects', 'milestones', 'tasks', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
   const t = useTranslations('projects')
@@ -363,8 +368,22 @@ export default function ProjectsPage() {
   const taskStatusColor = (s: string) =>
     s === 'done' ? 'success' : s === 'in_progress' ? 'info' : s === 'review' ? 'warning' : 'default'
 
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('newProject')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
+
   return (
     <>
+      {/* Header */}
       <Header
         title={t('title')}
         subtitle={t('subtitle')}

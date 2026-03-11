@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const STATUS_BADGE: Record<string, { variant: 'default' | 'success' | 'warning' | 'error' | 'info' | 'orange'; label: string }> = {
   planned: { variant: 'info', label: 'Planned' },
@@ -72,8 +73,12 @@ export default function HeadcountPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['headcountPlans', 'headcountPositions', 'headcountBudgetItems', 'employees', 'departments'])
+    ensureModulesLoaded?.(['headcountPlans', 'headcountPositions', 'headcountBudgetItems', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState('overview')
@@ -471,6 +476,19 @@ export default function HeadcountPage() {
   // ---- Status change ----
   function changeStatus(posId: string, newStatus: string) {
     updateHeadcountPosition(posId, { status: newStatus })
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('newPosition')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

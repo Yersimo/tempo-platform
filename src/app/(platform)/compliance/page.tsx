@@ -16,6 +16,8 @@ import {
   ChevronRight, Download, Star, ArrowUpRight, Radar, Play, RotateCcw,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { Header } from '@/components/layout/header'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const ITEMS_PER_PAGE = 8
 
@@ -54,9 +56,13 @@ export default function CompliancePage() {
     courses, enrollments, signatureDocuments, payrollRuns,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'courses', 'enrollments', 'signatureDocuments', 'payrollRuns'])
+    ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'courses', 'enrollments', 'signatureDocuments', 'payrollRuns'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   // Compliance Audit Report Export
   function exportAuditReport() {
@@ -351,6 +357,19 @@ export default function CompliancePage() {
     { id: 'countries', label: 'Countries', count: countries.length },
     { id: 'auto_detection', label: 'Auto-Detection', count: adPendingReview },
   ]
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title="Compliance Dashboard"
+          subtitle="Monitor regulatory compliance across all regions"
+          actions={<div className="flex gap-2"><Button variant="secondary" size="sm" disabled><Download size={14} /> Export Report</Button><Button variant="secondary" size="sm" disabled><Upload size={14} /> Upload Document</Button><Button size="sm" disabled><Plus size={14} /> Add Requirement</Button></div>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <div className="space-y-6">

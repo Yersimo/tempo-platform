@@ -21,6 +21,7 @@ import {
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
   Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe,
 } from 'lucide-react'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import Link from 'next/link'
@@ -40,7 +41,13 @@ export default function PeoplePage() {
     ensureModulesLoaded, addToast, currentEmployeeId,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments']) }, [ensureModulesLoaded])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
+  }, [ensureModulesLoaded])
 
   // ---- Tab State ----
   const [activeTab, setActiveTab] = useState('directory')
@@ -450,6 +457,15 @@ export default function PeoplePage() {
       case 'pending_review': return <Badge variant="warning">{t('docPendingReview')}</Badge>
       default: return <Badge variant="default">{status}</Badge>
     }
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle', { employeeCount: 0, departmentCount: 0 })} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

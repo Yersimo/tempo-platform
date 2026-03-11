@@ -16,6 +16,7 @@ import {
   Pencil, Trash2, ChevronRight, ArrowUpRight
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { scoreOKRQuality, analyzeStrategyAlignment, forecastKPITrend } from '@/lib/ai-engine'
 import { useAI } from '@/lib/use-ai'
@@ -32,8 +33,12 @@ export default function StrategyPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['strategicObjectives', 'keyResults', 'initiatives', 'kpiDefinitions', 'kpiMeasurements', 'employees', 'departments'])
+    ensureModulesLoaded?.(['strategicObjectives', 'keyResults', 'initiatives', 'kpiDefinitions', 'kpiMeasurements', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
   const t = useTranslations('strategy')
@@ -239,6 +244,19 @@ export default function StrategyPage() {
     s === 'active' ? 'success' : s === 'completed' ? 'info' : s === 'at_risk' ? 'warning' : 'default'
   const initStatusColor = (s: string) =>
     s === 'in_progress' ? 'info' : s === 'completed' ? 'success' : s === 'on_hold' ? 'warning' : s === 'cancelled' ? 'error' : 'default'
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('newObjective')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

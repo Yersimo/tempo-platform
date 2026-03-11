@@ -12,12 +12,19 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Blocks, Layout, Code, Database, Plus, Settings, Eye, Trash2, Globe, Lock, Monitor, Users, Folder, FileText, ArrowLeft, Home, GripVertical, Layers, BookOpen, CalendarDays, ClipboardList } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function AppStudioPage() {
   const tc = useTranslations('common')
   const { customApps, appPages, employees, departments, invoices, leaveRequests, addCustomApp, updateCustomApp, deleteCustomApp, addAppPage, updateAppPage, addToast, ensureModulesLoaded } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['customApps', 'appPages', 'employees', 'departments']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['customApps', 'appPages', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
+  }, [])
 
   const [activeTab, setActiveTab] = useState<'apps' | 'templates' | 'datasources'>('apps')
   const [editingAppId, setEditingAppId] = useState<string | null>(null)
@@ -170,6 +177,19 @@ export default function AppStudioPage() {
     })
     addToast(`Page "${configPageForm.name}" updated`, 'success')
     setShowConfigPageModal(false)
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title="App Studio"
+          subtitle="Build custom apps for your organization"
+          actions={<Button size="sm" disabled><Plus size={14} /> Create App</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   // ─── App Detail View ───

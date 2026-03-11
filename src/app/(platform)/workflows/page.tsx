@@ -20,6 +20,7 @@ import {
   CircleDot, ArrowDown, Loader2, X,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 // ============================================================
 // CONSTANTS
@@ -144,7 +145,13 @@ export default function WorkflowsPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['automationWorkflows', 'automationWorkflowSteps', 'automationWorkflowRuns']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['automationWorkflows', 'automationWorkflowSteps', 'automationWorkflowRuns'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
+  }, [])
 
   const [activeTab, setActiveTab] = useState('list')
   const [searchQuery, setSearchQuery] = useState('')
@@ -522,6 +529,19 @@ export default function WorkflowsPage() {
   // ============================================================
   // RENDER
   // ============================================================
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title="Workflow Automation"
+          subtitle="Design, build, and automate HR workflows with conditional logic and integrations"
+          actions={<Button size="sm" disabled><Plus size={14} /> New Workflow</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

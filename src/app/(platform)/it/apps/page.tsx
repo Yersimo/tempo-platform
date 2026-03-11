@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign, Search, Users, Building2, Globe, ShieldCheck, ShieldX } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
@@ -27,9 +28,12 @@ export default function AppsPage() {
     shadowITDetections, updateShadowITDetection: storeUpdateShadowIT,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'appCatalog', 'appAssignments'])
+    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'appCatalog', 'appAssignments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const t = useTranslations('apps')
   const tc = useTranslations('common')
@@ -221,6 +225,15 @@ export default function AppsPage() {
   function daysUntilRenewal(dateStr: string): number {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
     return Math.max(0, Math.round(diff / 86400000))
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} actions={<div className="flex gap-2"><Button size="sm" variant="secondary" disabled><Users size={14} /> Bulk Provision</Button><Button size="sm" variant="secondary" disabled><Plus size={14} /> {t('itRequest')}</Button><Button size="sm" disabled><Plus size={14} /> {t('addLicense')}</Button></div>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

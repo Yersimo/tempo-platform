@@ -13,6 +13,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
 import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList, Edit3 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const INJURY_TYPES = [
   { value: 'sprain_strain', label: 'Sprain/Strain' },
@@ -38,9 +39,13 @@ export default function WorkersCompPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['workersCompPolicies', 'workersCompClaims', 'workersCompClassCodes', 'workersCompAudits'])
+    ensureModulesLoaded?.(['workersCompPolicies', 'workersCompClaims', 'workersCompClassCodes', 'workersCompAudits'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState('policies')
   const [showClaimModal, setShowClaimModal] = useState(false)
@@ -313,6 +318,19 @@ export default function WorkersCompPage() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title="Workers' Compensation"
+          subtitle="Policies, claims & class codes"
+          actions={<Button size="sm" disabled><Plus size={14} /> File Claim</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

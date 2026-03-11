@@ -19,6 +19,7 @@ import {
   FileText, Search, X, ArrowUpDown, Calendar, User,
   CheckCircle2, Circle, SkipForward, GripVertical,
 } from 'lucide-react'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
 
 // ─── Category config ──────────────────────────────────────────
@@ -64,8 +65,12 @@ export default function OffboardingPage() {
     ensureModulesLoaded, updateEmployee,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['offboardingChecklists', 'offboardingChecklistItems', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])
+    ensureModulesLoaded?.(['offboardingChecklists', 'offboardingChecklistItems', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
   }, [ensureModulesLoaded])
 
   // T5 #44 + #36: Seed contract expiry and probation data for Ghana employees
@@ -497,6 +502,15 @@ export default function OffboardingPage() {
   // ═══════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="Offboarding" subtitle="Manage employee departures, checklists, and exit surveys" />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <div>

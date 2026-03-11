@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Network, Users, Plus, Settings, Filter, RefreshCw, Trash2, Edit, Eye, CheckCircle, AlertTriangle, Layers, Shield, BookOpen, Briefcase, Clock, DollarSign } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
@@ -51,7 +52,11 @@ export default function GroupsPage() {
   const tc = useTranslations('common')
   const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup, ensureModulesLoaded } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['groups', 'employees']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['groups', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
+
   const [activeTab, setActiveTab] = useState<'groups' | 'rules' | 'modules'>('groups')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -177,6 +182,15 @@ export default function GroupsPage() {
   }, [selectedGroup, employees])
 
   const currentFieldDef = RULE_FIELDS.find(f => f.value === groupForm.rule_field)
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="Groups" subtitle="Dynamic supergroups with rule-based membership" actions={<Button size="sm" disabled><Plus size={14} /> Create Group</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

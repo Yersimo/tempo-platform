@@ -15,6 +15,7 @@ import { Input, Textarea, Select } from '@/components/ui/input'
 import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
 
@@ -35,7 +36,13 @@ export default function PerformancePage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
+  }, [])
 
   // T5 #41: Seed acknowledged reviews so dispute button appears
   const ackSeededRef = useRef(false)
@@ -466,6 +473,15 @@ export default function PerformancePage() {
     'Integrity': 'warning',
     'Excellence': 'orange',
     'Customer Focus': 'default',
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

@@ -16,6 +16,7 @@ import {
   GitBranch, Bell, Timer, Shield, Loader2, Eye, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIRecommendationList, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { analyzeWorkflowEfficiency, suggestWorkflowOptimizations, predictWorkflowFailure } from '@/lib/ai-engine'
 import { useAI } from '@/lib/use-ai'
@@ -31,7 +32,10 @@ export default function WorkflowStudioPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['workflows', 'workflowSteps', 'workflowRuns', 'workflowTemplates']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['workflows', 'workflowSteps', 'workflowRuns', 'workflowTemplates'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const t = useTranslations('workflowStudio')
   const tc = useTranslations('common')
@@ -269,6 +273,15 @@ export default function WorkflowStudioPage() {
     if (ms < 60_000) return `${Math.round(ms / 1000)}s`
     if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`
     return `${(ms / 3_600_000).toFixed(1)}h`
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} actions={<Button size="sm" disabled><Plus size={14} /> {t('newWorkflow')}</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

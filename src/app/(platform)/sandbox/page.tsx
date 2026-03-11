@@ -12,12 +12,19 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { FlaskConical, Copy, RefreshCw, Trash2, Play, Pause, Shield, Database, Clock, Plus, Settings, Calendar, AlertTriangle, ExternalLink, CheckCircle2, XCircle, Activity } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function SandboxPage() {
   const tc = useTranslations('common')
   const { sandboxEnvironments, employees, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment, addToast, ensureModulesLoaded } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['sandboxEnvironments', 'employees']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['sandboxEnvironments', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
+  }, [])
 
   const [showEnvDetailModal, setShowEnvDetailModal] = useState(false)
   const [detailEnv, setDetailEnv] = useState<any>(null)
@@ -181,6 +188,19 @@ export default function SandboxPage() {
       case 'extended': return 'Extended'
       default: return action
     }
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title="Sandbox Environments"
+          subtitle="Test configurations safely before deploying to production"
+          actions={<Button size="sm" disabled><Plus size={14} /> Create Sandbox</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

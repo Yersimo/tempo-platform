@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { cn } from '@/lib/utils/cn'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import {
@@ -103,9 +104,13 @@ export default function BenefitsPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['benefitPlans', 'benefitEnrollments', 'benefitDependents', 'lifeEvents', 'openEnrollmentPeriods', 'cobraEvents', 'acaTracking', 'flexBenefitAccounts', 'flexBenefitTransactions', 'employees', 'departments'])
+    ensureModulesLoaded?.(['benefitPlans', 'benefitEnrollments', 'benefitDependents', 'lifeEvents', 'openEnrollmentPeriods', 'cobraEvents', 'acaTracking', 'flexBenefitAccounts', 'flexBenefitTransactions', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   async function carrierAPI(action: string, data: Record<string, any> = {}) {
     const res = await fetch('/api/carrier-integrations', {
@@ -513,6 +518,19 @@ export default function BenefitsPage() {
   // ---- Helper: dependents per employee ----
   function getEmployeeDependentCount(empId: string) {
     return benefitDependents.filter(d => (d as any).employee_id === empId).length
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<div className="flex gap-2"><Button size="sm" variant="secondary" disabled><Users size={14} /> Bulk Enroll</Button><Button size="sm" disabled><Plus size={14} /> {t('addPlan')}</Button></div>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

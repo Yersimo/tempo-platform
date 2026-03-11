@@ -20,6 +20,7 @@ import {
   TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
 import { MFASettings } from '@/components/settings/mfa-settings'
 
@@ -116,7 +117,12 @@ export default function SettingsPage() {
   const searchParams = useSearchParams()
   const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded } = useTempo()
   const initialTab = searchParams.get('tab') || 'general'
+  const [pageLoading, setPageLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(initialTab)
+
+  useEffect(() => { setPageLoading(false) }, [])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
   const [showOrgModal, setShowOrgModal] = useState(false)
   const [showDeptModal, setShowDeptModal] = useState(false)
   const [orgForm, setOrgForm] = useState({ name: org.name, industry: org.industry, size: org.size, country: org.country })
@@ -605,6 +611,15 @@ export default function SettingsPage() {
   const trialProgressPercent = billingSubscription?.trialEnd
     ? Math.max(0, Math.min(100, Math.round(((trialTotalDays - trialDaysRemaining) / trialTotalDays) * 100)))
     : 0
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

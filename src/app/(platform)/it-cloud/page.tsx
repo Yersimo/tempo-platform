@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoDonutChart, TempoBarChart, CHART_COLORS } from '@/components/ui/charts'
 import {
@@ -77,10 +78,13 @@ export default function ITCloudPage() {
     deleteEncryptionPolicy: storeDeleteEncryptionPolicy,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   // ---- Lazy-load IT modules on mount ----
   useEffect(() => {
-    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'managedDevices', 'securityPoliciesIT', 'deviceActions', 'appCatalog', 'appAssignments', 'deviceInventory', 'provisioningRules', 'encryptionPolicies'])
+    ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'managedDevices', 'securityPoliciesIT', 'deviceActions', 'appCatalog', 'appAssignments', 'deviceInventory', 'provisioningRules', 'encryptionPolicies'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   // ---- Provisioning Rules Type ----
   type ProvisioningRule = {
@@ -421,6 +425,15 @@ export default function ITCloudPage() {
   }, [employees, appAssignments, appCatalog])
 
   // ────────────────────────────── RENDER ──────────────────────────────────────
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title="IT Cloud" subtitle="Device management, application catalog, security policies and asset inventory" />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

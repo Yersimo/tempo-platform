@@ -15,6 +15,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard } from '@/components/ai'
 import { suggestOnboardingBuddy, generateOnboardingPlan } from '@/lib/ai-engine'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
@@ -112,8 +113,12 @@ export default function OnboardingPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['employees', 'departments', 'buddyAssignments', 'preboardingTasks'])
+    ensureModulesLoaded?.(['employees', 'departments', 'buddyAssignments', 'preboardingTasks'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
   }, [ensureModulesLoaded])
 
   // ─── Wizard State ────────────────────────────────────────────────
@@ -1058,6 +1063,15 @@ export default function OnboardingPage() {
   }
 
   // ─── Employee Onboarding Module ────────────────────────────────────
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">

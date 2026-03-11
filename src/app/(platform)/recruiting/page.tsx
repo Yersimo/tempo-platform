@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
 import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards, generateInterviewQuestions, analyzeDiversityPipeline, scoreInterviewPanel, generateOfferPackage } from '@/lib/ai-engine'
 import { Progress } from '@/components/ui/progress'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
 
@@ -42,7 +43,11 @@ export default function RecruitingPage() {
     ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['jobPostings', 'applications']) }, [ensureModulesLoaded])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['jobPostings', 'applications'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState('postings')
 
@@ -531,6 +536,19 @@ export default function RecruitingPage() {
     })
     addToast(`${bulkPipeMovableApps.length} candidate${bulkPipeMovableApps.length !== 1 ? 's' : ''} moved to ${bulkPipeTargetStage}`)
     resetBulkPipeline()
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('postJob')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

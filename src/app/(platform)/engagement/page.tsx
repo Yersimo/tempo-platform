@@ -14,6 +14,7 @@ import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, ChartLegend, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2, Search, Users, Building2, Globe, Send, FileText, Calendar, Zap, MessageSquareText, Copy, Eye, GripVertical, GitBranch, Trash2, Power, Clock, AlertTriangle, Sparkles, ThumbsUp, ThumbsDown, MinusCircle, Hash, Star, ListChecks, LayoutGrid } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard, AIAlertBanner, AIRecommendationList } from '@/components/ai'
 import { identifyEngagementDrivers, analyzeSurveyResponses, suggestActionPlans, predictEngagementTrend } from '@/lib/ai-engine'
@@ -32,9 +33,13 @@ export default function EngagementPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['surveys', 'engagementScores', 'actionPlans', 'surveyTemplates', 'surveySchedules', 'surveyTriggers', 'openEndedResponses', 'employees', 'departments'])
+    ensureModulesLoaded?.(['surveys', 'engagementScores', 'actionPlans', 'surveyTemplates', 'surveySchedules', 'surveyTriggers', 'openEndedResponses', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState('surveys')
   const [showSurveyModal, setShowSurveyModal] = useState(false)
@@ -397,6 +402,17 @@ export default function EngagementPage() {
   const questionTypeIcons: Record<string, ReactNode> = {
     rating: <Star size={14} />, text: <FileText size={14} />, multiple_choice: <ListChecks size={14} />,
     nps: <Hash size={14} />, matrix: <LayoutGrid size={14} />,
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')}
+          actions={<div className="flex gap-2"><Button size="sm" variant="outline" disabled><Send size={14} /> Distribute Survey</Button><Button size="sm" disabled><Plus size={14} /> {t('newSurvey')}</Button></div>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

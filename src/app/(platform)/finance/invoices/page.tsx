@@ -10,6 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard, Star, TrendingUp, TrendingDown, Minus, Building2, Brain, PieChart } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { exportToCSV } from '@/lib/export-import'
@@ -22,7 +23,10 @@ export default function InvoicesPage() {
   const tc = useTranslations('common')
   const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice, ensureModulesLoaded } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['invoices', 'vendors', 'softwareLicenses']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['invoices', 'vendors', 'softwareLicenses'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const cashFlowInsight = useMemo(() => forecastCashFlow(invoices, []), [invoices])
   const vendorInsights = useMemo(() => assessVendorConcentration(invoices, vendors), [invoices, vendors])
@@ -99,6 +103,15 @@ export default function InvoicesPage() {
   function getVendorName(vendorId: string) {
     const vendor = vendors.find(v => v.id === vendorId)
     return vendor?.name || tc('unknown')
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} actions={<Button size="sm" disabled><Plus size={14} /> {t('newInvoice')}</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

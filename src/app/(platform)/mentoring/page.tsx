@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { UserCheck, Users, Plus, Sparkles, BookOpen, Target, BarChart3, Video, Phone, MapPin, Star, Calendar, Clock, Search, Building2 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { calculateMentorMatch, analyzeMentoringEffectiveness, suggestSessionTopics, predictPairSuccess } from '@/lib/ai-engine'
 
@@ -31,8 +32,12 @@ export default function MentoringPage() {
     ensureModulesLoaded,
   } = useTempo()
 
+  const [pageLoading, setPageLoading] = useState(true)
+
   useEffect(() => {
-    ensureModulesLoaded?.(['mentoringPrograms', 'mentoringPairs', 'mentoringSessions', 'mentoringGoals', 'employees', 'departments'])
+    ensureModulesLoaded?.(['mentoringPrograms', 'mentoringPairs', 'mentoringSessions', 'mentoringGoals', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
   // ---- Tab State ----
@@ -239,6 +244,17 @@ export default function MentoringPage() {
     })
     addToast(`${bulkMatchSuggestedPairs.length} mentoring pairs created successfully`)
     resetBulkMatch()
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('newProgram')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

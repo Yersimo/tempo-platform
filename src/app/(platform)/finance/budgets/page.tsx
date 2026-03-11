@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, ChartLegend, CHART_COLORS } from '@/components/ui/charts'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { PieChart, Plus, DollarSign, Pencil, BarChart3, TrendingUp, TrendingDown, Minus, Users, Building2, ArrowRightLeft, Lightbulb, Calendar, Target, Layers } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIAlertBanner, AIScoreBadge, AIInsightCard } from '@/components/ai'
@@ -22,7 +23,10 @@ export default function BudgetsPage() {
   const tc = useTranslations('common')
   const { budgets, departments, addBudget, updateBudget, getDepartmentName, ensureModulesLoaded } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['budgets', 'departments']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['budgets', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const burnRateInsights = useMemo(() => calculateBurnRate(budgets), [budgets])
 
@@ -136,6 +140,15 @@ export default function BudgetsPage() {
 
   function reactivateBudget(id: string) {
     updateBudget(id, { status: 'active' })
+  }
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} actions={<Button size="sm" disabled><Plus size={14} /> {t('newBudget')}</Button>} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
   }
 
   return (

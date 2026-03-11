@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk } from '@/lib/ai-engine'
 import { exportToPrint } from '@/lib/export-import'
@@ -27,7 +28,11 @@ export default function AnalyticsPage() {
     compBands, courses, getDepartmentName, ensureModulesLoaded,
   } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments', 'goals', 'reviews', 'enrollments', 'engagementScores', 'mentoringPairs', 'expenseReports', 'jobPostings', 'leaveRequests', 'payrollRuns', 'salaryReviews', 'compBands', 'courses']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => { ensureModulesLoaded?.(['employees', 'departments', 'goals', 'reviews', 'enrollments', 'engagementScores', 'mentoringPairs', 'expenseReports', 'jobPostings', 'leaveRequests', 'payrollRuns', 'salaryReviews', 'compBands', 'courses'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
+
+  useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
   const [activeTab, setActiveTab] = useState('workforce')
   const [deptFilter, setDeptFilter] = useState('all')
@@ -154,6 +159,17 @@ export default function AnalyticsPage() {
 
   // Average goal progress
   const avgProgress = goals.length > 0 ? Math.round(goals.reduce((a, g) => a + g.progress, 0) / goals.length) : 0
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')}
+          actions={<Button size="sm" disabled><FileText size={14} /> {t('generateReport')}</Button>}
+        />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>

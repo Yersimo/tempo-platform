@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
 
@@ -65,7 +66,13 @@ export default function ExpensePage() {
   const role = currentUser?.role
   const canApproveExpenses = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
 
-  useEffect(() => { ensureModulesLoaded?.(['expenseReports', 'expensePolicies', 'mileageLogs', 'receiptMatches', 'mileageEntries', 'advancedExpensePolicies', 'reimbursementBatches', 'duplicateDetections']) }, [])
+  const [pageLoading, setPageLoading] = useState(true)
+
+  useEffect(() => {
+    ensureModulesLoaded?.(['expenseReports', 'expensePolicies', 'mileageLogs', 'receiptMatches', 'mileageEntries', 'advancedExpensePolicies', 'reimbursementBatches', 'duplicateDetections'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    const _t = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(_t)
+  }, [])
 
   // ---- Tab State ----
   const tabs = [
@@ -599,6 +606,15 @@ export default function ExpensePage() {
     confidenceScore: spendingForecast.confidence,
     suggestedAction: 'Review spending policies and approval thresholds', module: 'expense',
   }), [spendingForecast, t])
+
+  if (pageLoading) {
+    return (
+      <>
+        <Header title={t('title')} subtitle={t('subtitle')} />
+        <div className="p-6"><PageSkeleton /></div>
+      </>
+    )
+  }
 
   return (
     <>
