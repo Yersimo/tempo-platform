@@ -140,9 +140,13 @@ export default function PayrollPage() {
         old_salary: 700000,
         new_salary: 850000,
         basic_salary: 775000,
+        base_pay: 775000,
         gross_pay: 775000,
+        federal_tax: 155000,
+        total_deductions: 155000,
         net_pay: 620000,
-        tax: 155000,
+        currency: 'GHS',
+        country: 'GH',
         notes: 'Mid-month salary adjustment — pro-rata calculation applied',
       })
     }
@@ -298,16 +302,42 @@ export default function PayrollPage() {
   }), [forecast, payrollRuns.length, t])
 
   // Filtered employee entries
+  // Merge payroll entries with employees: ensures every employee appears in the list
+  const mergedEntries = useMemo(() => {
+    const entryMap = new Map<string, any>()
+    // Add real payroll entries first (keyed by employee_id)
+    employeePayrollEntries.forEach(e => {
+      const eid = (e as any).employee_id || (e as any).employeeId
+      if (eid) entryMap.set(eid, e)
+    })
+    // For employees without a payroll entry, generate a placeholder from their profile
+    const LEVEL_SALARY: Record<string, number> = { Executive: 16000, Director: 14000, 'Senior Manager': 10000, Manager: 7500, Senior: 7000, Mid: 4500, Associate: 3300, Junior: 2900 }
+    employees.forEach(emp => {
+      if (!entryMap.has(emp.id)) {
+        const base = LEVEL_SALARY[emp.level] || 5000
+        const fedTax = Math.round(base * 0.15)
+        const totalDed = Math.round(base * 0.36)
+        entryMap.set(emp.id, {
+          id: `gen-${emp.id}`, employee_id: emp.id, employee_name: emp.profile?.full_name || '',
+          department: '', country: emp.country, base_pay: base, gross_pay: base,
+          federal_tax: fedTax, total_deductions: totalDed, net_pay: base - totalDed,
+          currency: 'USD', pay_date: '2026-01-28',
+        })
+      }
+    })
+    return Array.from(entryMap.values())
+  }, [employeePayrollEntries, employees])
+
   const filteredEntries = useMemo(() => {
-    let entries = [...employeePayrollEntries]
+    let entries = [...mergedEntries]
     if (searchQuery) entries = entries.filter(e => resolveEmployeeName(employees, (e as any).employee_id, (e as any).employee_name).toLowerCase().includes(searchQuery.toLowerCase()))
     if (filterDept) entries = entries.filter(e => (e as any).department === filterDept)
     if (filterCountry) entries = entries.filter(e => (e as any).country === filterCountry)
     return entries
-  }, [employeePayrollEntries, searchQuery, filterDept, filterCountry])
+  }, [mergedEntries, employees, searchQuery, filterDept, filterCountry])
 
-  const departments = useMemo(() => [...new Set(employeePayrollEntries.map(e => (e as any).department).filter(Boolean))], [employeePayrollEntries])
-  const countries = useMemo(() => [...new Set(employeePayrollEntries.map(e => (e as any).country).filter(Boolean))], [employeePayrollEntries])
+  const departments = useMemo(() => [...new Set(mergedEntries.map(e => (e as any).department).filter(Boolean))], [mergedEntries])
+  const countries = useMemo(() => [...new Set(mergedEntries.map(e => (e as any).country).filter(Boolean))], [mergedEntries])
 
   // Fix 2: Pending approval runs
   const pendingHRRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_hr'), [payrollRuns])
@@ -955,10 +985,10 @@ export default function PayrollPage() {
       {activeTab === 'employee-payroll' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('totalLaborCost')} value={`$${(employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('avgSalary')} value={`$${employeePayrollEntries.length > 0 ? (employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / employeePayrollEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
-            <StatCard label={t('taxBurden')} value={`${employeePayrollEntries.length > 0 ? Math.round(employeePayrollEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
-            <StatCard label={tc('employees')} value={employeePayrollEntries.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label={t('totalLaborCost')} value={`$${(mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('avgSalary')} value={`$${mergedEntries.length > 0 ? (mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / mergedEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label={t('taxBurden')} value={`${mergedEntries.length > 0 ? Math.round(mergedEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / Math.max(1, mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0)) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
+            <StatCard label={tc('employees')} value={mergedEntries.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} />
           </div>
 
           {/* Search & Filters */}
@@ -2230,14 +2260,17 @@ export default function PayrollPage() {
               if (!emp) return
               addEmployeePayrollEntry({
                 payroll_run_id: lastRun?.id || '', employee_id: emp.id, employee_name: emp.profile.full_name,
-                department: '', country: emp.country, gross_pay: adjustmentForm.type === 'deduction' ? 0 : adjustmentForm.amount,
+                department: '', country: emp.country,
+                base_pay: adjustmentForm.type === 'deduction' ? 0 : adjustmentForm.amount,
+                gross_pay: adjustmentForm.type === 'deduction' ? 0 : adjustmentForm.amount,
                 federal_tax: 0, state_tax: 0, social_security: 0, medicare: 0, pension: 0, health_insurance: 0,
                 bonus: adjustmentForm.type === 'bonus' ? adjustmentForm.amount : 0,
                 overtime: adjustmentForm.type === 'overtime' ? adjustmentForm.amount : 0,
                 other_deductions: adjustmentForm.type === 'deduction' ? adjustmentForm.amount : 0,
                 total_deductions: adjustmentForm.type === 'deduction' ? adjustmentForm.amount : 0,
                 net_pay: adjustmentForm.type === 'deduction' ? -adjustmentForm.amount : adjustmentForm.amount,
-                currency: 'USD', pay_date: new Date().toISOString().split('T')[0],
+                currency: emp.country === 'Ghana' ? 'GHS' : emp.country === 'Nigeria' ? 'NGN' : emp.country === 'Kenya' ? 'KES' : emp.country === "Cote d'Ivoire" || emp.country === 'Senegal' ? 'XOF' : 'USD',
+                pay_date: new Date().toISOString().split('T')[0],
               })
               setShowAdjustmentModal(false)
               setAdjustmentForm({ employee_id: '', type: 'bonus', amount: 0, reason: '' })

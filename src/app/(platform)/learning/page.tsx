@@ -241,11 +241,11 @@ export default function LearningPage() {
       const amlCourse = courses.find((c: any) => c.title?.toLowerCase().includes('aml')) || courses[0]
       if (amlCourse) {
         const questions = [
-          { course_id: amlCourse.id, question: 'What does AML stand for?', options: JSON.stringify(['Anti-Money Laundering', 'Asset Management Liability', 'Annual Monetary Limit', 'Automated Money Ledger']), correct_answer: 0, points: 10, order_index: 1 },
-          { course_id: amlCourse.id, question: 'Which is a red flag for money laundering?', options: JSON.stringify(['Regular payroll deposits', 'Structuring deposits below reporting thresholds', 'Paying utility bills', 'Receiving a tax refund']), correct_answer: 1, points: 10, order_index: 2 },
-          { course_id: amlCourse.id, question: 'What is the primary purpose of KYC?', options: JSON.stringify(['Marketing to customers', 'Verifying customer identity and assessing risk', 'Setting interest rates', 'Processing loan applications']), correct_answer: 1, points: 10, order_index: 3 },
-          { course_id: amlCourse.id, question: 'Which body sets global AML standards?', options: JSON.stringify(['World Bank', 'IMF', 'FATF', 'WTO']), correct_answer: 2, points: 10, order_index: 4 },
-          { course_id: amlCourse.id, question: 'What is a Suspicious Activity Report (SAR)?', options: JSON.stringify(['Employee performance review', 'Report filed when transactions appear suspicious', 'Customer complaint form', 'Internal audit report']), correct_answer: 1, points: 10, order_index: 5 },
+          { course_id: amlCourse.id, question: 'What does AML stand for?', options: JSON.stringify(['Anti-Money Laundering', 'Asset Management Liability', 'Annual Monetary Limit', 'Automated Money Ledger']), correct_answer: 'Anti-Money Laundering', points: 10, position: 1 },
+          { course_id: amlCourse.id, question: 'Which is a red flag for money laundering?', options: JSON.stringify(['Regular payroll deposits', 'Structuring deposits below reporting thresholds', 'Paying utility bills', 'Receiving a tax refund']), correct_answer: 'Structuring deposits below reporting thresholds', points: 10, position: 2 },
+          { course_id: amlCourse.id, question: 'What is the primary purpose of KYC?', options: JSON.stringify(['Marketing to customers', 'Verifying customer identity and assessing risk', 'Setting interest rates', 'Processing loan applications']), correct_answer: 'Verifying customer identity and assessing risk', points: 10, position: 3 },
+          { course_id: amlCourse.id, question: 'Which body sets global AML standards?', options: JSON.stringify(['World Bank', 'IMF', 'FATF', 'WTO']), correct_answer: 'FATF', points: 10, position: 4 },
+          { course_id: amlCourse.id, question: 'What is a Suspicious Activity Report (SAR)?', options: JSON.stringify(['Employee performance review', 'Report filed when transactions appear suspicious', 'Customer complaint form', 'Internal audit report']), correct_answer: 'Report filed when transactions appear suspicious', points: 10, position: 5 },
         ]
         questions.forEach(q => addQuizQuestion(q))
         setQuizSeeded(true)

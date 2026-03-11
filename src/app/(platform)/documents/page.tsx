@@ -302,18 +302,26 @@ export default function DocumentsPage() {
     addToast(allSigned ? 'Document fully signed!' : 'Document signed successfully', 'success')
   }
 
-  // Seed employment letter templates if none exist
+  // Seed employment letter templates — add any missing from the canonical list
+  // Wait until real data loads (signatureTemplates.length > 0) before checking for missing templates
   const [templateSeeded, setTemplateSeeded] = useState(false)
   useEffect(() => {
-    if (!templateSeeded && signatureTemplates.length === 0 && !pageLoading) {
-      const templates = [
-        { name: 'Employment Offer Letter', description: 'Standard employment offer with terms and conditions', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
-        { name: 'Employment Confirmation Letter', description: 'Confirmation of employment for bank/visa purposes', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
-        { name: 'NDA — Non-Disclosure Agreement', description: 'Confidentiality agreement for employees and contractors', signing_flow: 'parallel', signer_roles: [{ order: 1, role: 'Employee' }, { order: 2, role: 'Legal Counsel' }] },
-      ]
-      templates.forEach(t => addSignatureTemplate(t))
-      setTemplateSeeded(true)
+    if (templateSeeded || pageLoading) return
+    // Don't seed until real templates have loaded from DB — avoids race condition
+    // where optimistic inserts get overwritten by subsequent API load
+    if (signatureTemplates.length === 0) return
+    const allTemplates = [
+      { name: 'Employment Offer Letter', description: 'Standard employment offer with terms and conditions', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
+      { name: 'Employment Confirmation Letter', description: 'Confirmation of employment for bank/visa purposes', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Employee' }] },
+      { name: 'NDA — Non-Disclosure Agreement', description: 'Confidentiality agreement for employees and contractors', signing_flow: 'parallel', signer_roles: [{ order: 1, role: 'Employee' }, { order: 2, role: 'Legal Counsel' }] },
+      { name: 'Salary Review Letter', description: 'Notification of salary adjustment with current salary, new salary, effective date, and role details', signing_flow: 'sequential', signer_roles: [{ order: 1, role: 'HR Manager' }, { order: 2, role: 'Department Head' }, { order: 3, role: 'Employee' }] },
+    ]
+    const existingNames = new Set(signatureTemplates.map((t: any) => t.name))
+    const missing = allTemplates.filter(t => !existingNames.has(t.name))
+    if (missing.length > 0) {
+      missing.forEach(t => addSignatureTemplate(t))
     }
+    setTemplateSeeded(true)
   }, [templateSeeded, signatureTemplates.length, pageLoading])
 
   async function handleDelete(docId: string) {

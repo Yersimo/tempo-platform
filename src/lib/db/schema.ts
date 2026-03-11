@@ -154,6 +154,7 @@ export const reviews = pgTable('reviews', {
   ratings: jsonb('ratings'), // { leadership: 4, execution: 5, ... }
   comments: text('comments'),
   submittedAt: timestamp('submitted_at'),
+  acknowledgedAt: timestamp('acknowledged_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -268,7 +269,8 @@ export const courseContent = pgTable('course_content', {
 
 export const quizQuestions = pgTable('quiz_questions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  courseContentId: uuid('course_content_id').references(() => courseContent.id, { onDelete: 'cascade' }).notNull(),
+  courseContentId: uuid('course_content_id').references(() => courseContent.id, { onDelete: 'cascade' }),
+  courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }),
   question: text('question').notNull(),
   options: jsonb('options').notNull(), // { label: string, value: string }[]
   correctAnswer: varchar('correct_answer', { length: 255 }).notNull(),
