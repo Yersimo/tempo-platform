@@ -1051,11 +1051,13 @@ export async function POST(request: NextRequest) {
       ]),
       manager: new Set([
         'goals', 'reviews', 'feedback', 'enrollments', 'leaveRequests',
+        'expenseReports', 'expenseItems',
         'tasks', 'milestones', 'taskDependencies',
         'kpiMeasurements', 'workflowRuns',
       ]),
       employee: new Set([
         'goals', 'feedback', 'enrollments', 'leaveRequests', 'tasks',
+        'expenseReports', 'expenseItems',
       ]),
     }
 

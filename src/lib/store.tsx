@@ -27,8 +27,8 @@ export interface Toast {
   type: 'success' | 'error' | 'info'
 }
 
-function genId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+function genId(_prefix?: string) {
+  return crypto.randomUUID()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1215,6 +1215,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [org, setOrg] = useState<any>({ id: '', name: '', slug: '', logo_url: null, plan: 'enterprise', industry: '', size: '', country: '', created_at: '', updated_at: '' })
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
+  const [employeeDirectory, setEmployeeDirectory] = useState<Map<string, string>>(new Map())
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => getStoredUser())
   const [goals, setGoals] = useState<any[]>([])
   const [reviewCycles, setReviewCycles] = useState<any[]>([])
@@ -2005,6 +2006,24 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           } catch (err) {
             console.warn('Failed to load core data from DB, using demo data:', err)
           }
+
+          // Load lightweight employee directory for name resolution across ALL employees
+          // The main employees fetch is paginated (limit 50), but directory returns all {id, name} pairs
+          try {
+            const dirRes = await fetch('/api/employees/directory')
+            if (dirRes.ok) {
+              const dirJson = await dirRes.json()
+              if (dirJson.data?.length) {
+                const dirMap = new Map<string, string>()
+                for (const entry of dirJson.data) {
+                  dirMap.set(entry.id, entry.name)
+                }
+                setEmployeeDirectory(dirMap)
+              }
+            }
+          } catch {
+            console.warn('Failed to load employee directory')
+          }
         }
       } catch (err) {
         console.warn('Failed to initialize session:', err)
@@ -2038,9 +2057,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Helpers ----
   const getEmployeeName = useCallback((id: string) => {
+    // Fast path: check loaded employees array first (paginated, usually 50)
     const emp = employees.find(e => e.id === id)
-    return emp?.profile.full_name || 'Unknown'
-  }, [employees])
+    if (emp?.profile?.full_name) return emp.profile.full_name
+    // Fallback: check lightweight directory (covers ALL employees in org)
+    return employeeDirectory.get(id) || 'Unknown'
+  }, [employees, employeeDirectory])
 
   const getDepartmentName = useCallback((id: string) => {
     const dept = departments.find(d => d.id === id)
@@ -2086,6 +2108,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'employee', id, `Added employee: ${data.profile?.full_name || 'New Employee'}`)
     addToast(`Employee ${data.profile?.full_name || ''} added`)
     apiPost('employees', 'create', data)
+
+    // Auto-create onboarding preboarding tasks for the new employee
+    const employeeName = data.profile?.full_name || 'New Employee'
+    const onboardingTasks = [
+      { title: `Welcome packet for ${employeeName}`, category: 'documentation', status: 'pending', employee_id: id, due_days_before: 7 },
+      { title: `IT equipment setup for ${employeeName}`, category: 'it_setup', status: 'pending', employee_id: id, due_days_before: 3 },
+      { title: `Schedule orientation for ${employeeName}`, category: 'orientation', status: 'pending', employee_id: id, due_days_before: 1 },
+    ]
+    for (const task of onboardingTasks) {
+      const taskId = genId('pbt')
+      setPreboardingTasks(prev => [...prev, { id: taskId, org_id: orgIdRef.current, ...task }] as typeof prev)
+      apiPost('preboarding_tasks', 'create', task)
+    }
   }, [logAudit, addToast])
 
   const updateEmployee = useCallback((id: string, data: AnyRecord) => {

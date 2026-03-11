@@ -25,6 +25,7 @@ export default function PerformancePage() {
     addGoal, updateGoal, deleteGoal,
     addReviewCycle, addReview, updateReview,
     addFeedback, getEmployeeName, currentEmployeeId,
+    currentUser,
     addOneOnOne, updateOneOnOne, addRecognition, addCompetencyRating, updateCompetencyRating,
     careerTracks, getDepartmentName, addToast,
     pips, pipCheckIns, meritCycles, meritRecommendations, reviewTemplates,
@@ -38,6 +39,19 @@ export default function PerformancePage() {
 
   const t = useTranslations('performance')
   const tc = useTranslations('common')
+
+  const role = currentUser?.role
+  const isHRBPOrAbove = role === 'hrbp' || role === 'admin' || role === 'owner'
+  const isManager = role === 'manager'
+
+  // Filter reviews based on role
+  const visibleReviews = useMemo(() => {
+    if (isHRBPOrAbove) return reviews // HRBP/admin/owner see all reviews
+    if (isManager) return reviews.filter(r => r.reviewer_id === currentEmployeeId || r.employee_id === currentEmployeeId)
+    return reviews.filter(r => r.employee_id === currentEmployeeId) // Employees see reviews about them
+  }, [reviews, isHRBPOrAbove, isManager, currentEmployeeId])
+
+  const myReviews = useMemo(() => reviews.filter(r => r.employee_id === currentEmployeeId), [reviews, currentEmployeeId])
 
   const [activeTab, setActiveTab] = useState('goals')
 
@@ -119,7 +133,8 @@ export default function PerformancePage() {
 
   const tabs = [
     { id: 'goals', label: t('tabGoals'), count: goals.length },
-    { id: 'reviews', label: t('tabReviews'), count: reviews.length },
+    { id: 'my-reviews', label: 'My Reviews', count: myReviews.length },
+    { id: 'reviews', label: t('tabReviews'), count: visibleReviews.length },
     { id: 'calibration', label: t('tabCalibration') },
     { id: 'feedback', label: t('tabFeedback'), count: feedback.length },
     { id: 'one-on-ones', label: t('tabOneOnOnes'), count: oneOnOnes.length },
@@ -419,10 +434,10 @@ export default function PerformancePage() {
         actions={
           <div className="flex gap-2">
             {activeTab === 'goals' && <Button size="sm" onClick={openNewGoal}><Plus size={14} /> {t('newGoal')}</Button>}
-            {activeTab === 'reviews' && (
+            {activeTab === 'reviews' && (isHRBPOrAbove || isManager) && (
               <>
-                <Button size="sm" variant="secondary" onClick={() => { resetBulkReview(); setShowBulkReviewModal(true) }}><Users size={14} /> Bulk Assign Reviews</Button>
-                <Button size="sm" variant="secondary" onClick={() => setShowCycleModal(true)}><Plus size={14} /> {t('newCycle')}</Button>
+                {isHRBPOrAbove && <Button size="sm" variant="secondary" onClick={() => { resetBulkReview(); setShowBulkReviewModal(true) }}><Users size={14} /> Bulk Assign Reviews</Button>}
+                {isHRBPOrAbove && <Button size="sm" variant="secondary" onClick={() => setShowCycleModal(true)}><Plus size={14} /> {t('newCycle')}</Button>}
                 <Button size="sm" onClick={() => { setReviewForm({ employee_id: '', cycle_id: reviewCycles[0]?.id || '', overall_rating: 0, comments: '' }); setShowReviewModal(true) }}><Plus size={14} /> {t('newReview')}</Button>
               </>
             )}
@@ -501,6 +516,59 @@ export default function PerformancePage() {
         </Card>
       )}
 
+      {/* My Reviews Tab */}
+      {activeTab === 'my-reviews' && (
+        <Card padding="none">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>My Performance Reviews</CardTitle>
+              <Badge variant="info">{myReviews.length} review{myReviews.length !== 1 ? 's' : ''}</Badge>
+            </div>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-divider bg-canvas">
+                  <th className="tempo-th text-left px-6 py-3">Review Cycle</th>
+                  <th className="tempo-th text-left px-4 py-3">Reviewer</th>
+                  <th className="tempo-th text-center px-4 py-3">Rating</th>
+                  <th className="tempo-th text-left px-4 py-3">Comments</th>
+                  <th className="tempo-th text-center px-4 py-3">Status</th>
+                  <th className="tempo-th text-left px-4 py-3">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {myReviews.map(review => {
+                  const cycle = reviewCycles.find(c => c.id === review.cycle_id)
+                  return (
+                    <tr key={review.id} className="hover:bg-canvas/50">
+                      <td className="px-6 py-3 text-sm text-t1">{cycle?.title || 'Unknown Cycle'}</td>
+                      <td className="px-4 py-3 text-sm text-t2">{getEmployeeName(review.reviewer_id)}</td>
+                      <td className="px-4 py-3 text-center">
+                        {review.overall_rating
+                          ? <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span>
+                          : <span className="text-xs text-t3">Pending</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-sm text-t2 max-w-xs truncate">{review.comments || '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={review.status === 'submitted' ? 'success' : review.status === 'in_progress' ? 'warning' : 'default'}>
+                          {review.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-t3">{review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  )
+                })}
+                {myReviews.length === 0 && (
+                  <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-t3">No reviews found for you yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Reviews Tab */}
       {activeTab === 'reviews' && (
         <div className="space-y-4">
@@ -531,7 +599,7 @@ export default function PerformancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {reviews.map(review => (
+                  {visibleReviews.map(review => (
                     <tr key={review.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
@@ -550,7 +618,7 @@ export default function PerformancePage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        {review.status !== 'submitted' && (
+                        {review.status !== 'submitted' && (isHRBPOrAbove || isManager || review.reviewer_id === currentEmployeeId) && (
                           <Button size="sm" variant="secondary" onClick={() => updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') })}>
                             {t('completeReview')}
                           </Button>

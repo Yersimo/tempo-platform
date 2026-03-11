@@ -57,9 +57,13 @@ export default function TimeAttendancePage() {
     addShift, updateShift, deleteShift,
     addLeaveRequest, updateLeaveRequest,
     getEmployeeName, getDepartmentName, currentEmployeeId,
+    currentUser,
     addToast,
     ensureModulesLoaded,
   } = useTempo()
+
+  const role = currentUser?.role
+  const canApproveLeave = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
   const shifts = _shifts as any[]
 
   useEffect(() => {
@@ -355,6 +359,29 @@ export default function TimeAttendancePage() {
       .sort((a, b) => a.start_date.localeCompare(b.start_date))
       .slice(0, 10),
   [leaveRequests, today])
+
+  // ---- Leave Request State ----
+  const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
+  const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '' })
+
+  function submitLeaveRequest() {
+    if (!leaveForm.start_date || !leaveForm.end_date) return
+    const start = new Date(leaveForm.start_date)
+    const end = new Date(leaveForm.end_date)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    addLeaveRequest({
+      employee_id: currentEmployeeId,
+      type: leaveForm.type,
+      start_date: leaveForm.start_date,
+      end_date: leaveForm.end_date,
+      days,
+      reason: leaveForm.reason,
+      status: 'pending',
+    })
+    setShowLeaveRequestModal(false)
+    setLeaveForm({ type: 'annual', start_date: '', end_date: '', reason: '' })
+    addToast('Leave request submitted')
+  }
 
   function submitPTOPolicy() {
     if (!ptoPolicyForm.name) return
@@ -933,6 +960,67 @@ export default function TimeAttendancePage() {
             <StatCard label="Upcoming Time Off" value={upcomingLeaves.length} change="approved" changeType="neutral" icon={<Calendar size={20} />} />
           </div>
 
+          {/* Request Leave Button */}
+          <div className="flex justify-end mb-4">
+            <Button size="sm" onClick={() => setShowLeaveRequestModal(true)}>
+              <Plus size={14} className="mr-1" /> Request Leave
+            </Button>
+          </div>
+
+          {/* Pending Leave Requests */}
+          {leaveRequests.filter(l => l.status === 'pending').length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Pending Leave Requests</CardTitle>
+                  <Badge variant="warning">{leaveRequests.filter(l => l.status === 'pending').length} pending</Badge>
+                </div>
+              </CardHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-divider bg-canvas">
+                      <th className="tempo-th text-left px-4 py-3">Employee</th>
+                      <th className="tempo-th text-left px-3 py-3">Type</th>
+                      <th className="tempo-th text-left px-3 py-3">Dates</th>
+                      <th className="tempo-th text-center px-3 py-3">Days</th>
+                      <th className="tempo-th text-left px-3 py-3">Reason</th>
+                      {canApproveLeave && <th className="tempo-th text-center px-3 py-3">Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {leaveRequests.filter(l => l.status === 'pending').map(leave => (
+                      <tr key={leave.id} className="hover:bg-canvas/50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={getEmployeeName(leave.employee_id)} size="sm" />
+                            <span className="text-sm font-medium text-t1">{getEmployeeName(leave.employee_id)}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3"><Badge className="capitalize">{leave.type}</Badge></td>
+                        <td className="px-3 py-3 text-xs text-t2">{leave.start_date} — {leave.end_date}</td>
+                        <td className="px-3 py-3 text-xs text-t1 text-center">{leave.days}d</td>
+                        <td className="px-3 py-3 text-xs text-t2 max-w-[200px] truncate">{leave.reason || '—'}</td>
+                        {canApproveLeave && (
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex gap-1 justify-center">
+                              <Button size="sm" variant="primary" onClick={() => { updateLeaveRequest(leave.id, { status: 'approved', approved_by: currentEmployeeId }); addToast('Leave approved') }}>
+                                <CheckCircle size={12} className="mr-1" /> Approve
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => { updateLeaveRequest(leave.id, { status: 'rejected', approved_by: currentEmployeeId }); addToast('Leave rejected') }}>
+                                <XCircle size={12} className="mr-1" /> Reject
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* PTO Policies */}
             <Card className="lg:col-span-2">
@@ -1231,6 +1319,32 @@ export default function TimeAttendancePage() {
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => { setShowPTOPolicyModal(false); setEditingPolicy(null) }}>Cancel</Button>
             <Button onClick={submitPTOPolicy}>{editingPolicy ? 'Update Policy' : 'Create Policy'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Request Leave Modal */}
+      <Modal open={showLeaveRequestModal} onClose={() => setShowLeaveRequestModal(false)} title="Request Leave">
+        <div className="space-y-4">
+          <Select label="Leave Type" value={leaveForm.type} onChange={e => setLeaveForm(f => ({ ...f, type: e.target.value }))}
+            options={[
+              { value: 'annual', label: 'Annual Leave' },
+              { value: 'sick', label: 'Sick Leave' },
+              { value: 'personal', label: 'Personal Leave' },
+              { value: 'maternity', label: 'Maternity Leave' },
+              { value: 'paternity', label: 'Paternity Leave' },
+              { value: 'unpaid', label: 'Unpaid Leave' },
+              { value: 'compassionate', label: 'Compassionate Leave' },
+            ]}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Start Date" type="date" value={leaveForm.start_date} onChange={e => setLeaveForm(f => ({ ...f, start_date: e.target.value }))} />
+            <Input label="End Date" type="date" value={leaveForm.end_date} onChange={e => setLeaveForm(f => ({ ...f, end_date: e.target.value }))} />
+          </div>
+          <Textarea label="Reason (optional)" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} placeholder="Brief reason for leave..." />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowLeaveRequestModal(false)}>Cancel</Button>
+            <Button onClick={submitLeaveRequest} disabled={!leaveForm.start_date || !leaveForm.end_date}>Submit Request</Button>
           </div>
         </div>
       </Modal>

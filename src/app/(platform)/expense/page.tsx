@@ -49,6 +49,7 @@ export default function ExpensePage() {
     expenseReports, employees, departments, budgets,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
     getEmployeeName, getDepartmentName, currentEmployeeId,
+    currentUser,
     expensePolicies, addExpensePolicy, updateExpensePolicy,
     mileageLogs, addMileageLog, updateMileageLog,
     receiptMatches, addReceiptMatch, updateReceiptMatch,
@@ -60,6 +61,9 @@ export default function ExpensePage() {
     addToast,
     ensureModulesLoaded,
   } = useTempo()
+
+  const role = currentUser?.role
+  const canApproveExpenses = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
 
   useEffect(() => { ensureModulesLoaded?.(['expenseReports', 'expensePolicies', 'mileageLogs', 'receiptMatches', 'mileageEntries', 'advancedExpensePolicies', 'reimbursementBatches', 'duplicateDetections']) }, [])
 
@@ -97,6 +101,13 @@ export default function ExpensePage() {
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterTeamOnly, setFilterTeamOnly] = useState(false)
+
+  // Compute direct reports for team-only filter
+  const directReportIds = useMemo(() => {
+    if (!canApproveExpenses) return new Set<string>()
+    return new Set(employees.filter((e: any) => e.manager_id === currentEmployeeId).map((e: any) => e.id))
+  }, [employees, currentEmployeeId, canApproveExpenses])
 
   // ---- Forms ----
   const [reportForm, setReportForm] = useState({
@@ -177,8 +188,9 @@ export default function ExpensePage() {
     let reports = [...expenseReports]
     if (searchQuery) reports = reports.filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase()) || getEmployeeName(r.employee_id).toLowerCase().includes(searchQuery.toLowerCase()))
     if (filterStatus) reports = reports.filter(r => r.status === filterStatus)
+    if (filterTeamOnly && canApproveExpenses) reports = reports.filter(r => directReportIds.has(r.employee_id))
     return reports
-  }, [expenseReports, searchQuery, filterStatus, getEmployeeName])
+  }, [expenseReports, searchQuery, filterStatus, getEmployeeName, filterTeamOnly, canApproveExpenses, directReportIds])
 
   // AI Data
   const spendingInsights = useMemo(() => analyzeSpendingTrends(expenseReports), [expenseReports])
@@ -409,7 +421,7 @@ export default function ExpensePage() {
     addExpenseReport({
       employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
       status: 'submitted', submitted_at: new Date().toISOString(),
-      items: validItems.map((item, i) => ({ id: `item-${Date.now()}-${i}`, description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
+      items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
     })
     setShowReportModal(false)
   }
@@ -610,6 +622,12 @@ export default function ExpensePage() {
               <option value="rejected">Rejected</option>
               <option value="reimbursed">Reimbursed</option>
             </select>
+            {canApproveExpenses && (
+              <label className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-surface cursor-pointer whitespace-nowrap">
+                <input type="checkbox" checked={filterTeamOnly} onChange={e => setFilterTeamOnly(e.target.checked)} className="accent-tempo-500" />
+                <Users size={14} /> My Team
+              </label>
+            )}
           </div>
 
           <Card padding="none">
@@ -648,7 +666,7 @@ export default function ExpensePage() {
                         report.status === 'rejected' ? 'error' : report.status === 'submitted' || report.status === 'pending_approval' ? 'warning' : 'default'
                       }>{report.status.replace(/_/g, ' ')}</Badge>
                       <div className="flex gap-1">
-                        {(report.status === 'submitted' || report.status === 'pending_approval') && (
+                        {(report.status === 'submitted' || report.status === 'pending_approval') && canApproveExpenses && report.employee_id !== currentEmployeeId && (
                           <>
                             <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
                             <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>{tc('reject')}</Button>
