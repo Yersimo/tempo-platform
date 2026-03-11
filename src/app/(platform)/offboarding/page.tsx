@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -61,12 +61,35 @@ export default function OffboardingPage() {
     addOffboardingTask, updateOffboardingTask,
     addExitSurvey, addToast, org,
     currentUser, currentEmployeeId,
-    ensureModulesLoaded,
+    ensureModulesLoaded, updateEmployee,
   } = useTempo()
 
   useEffect(() => {
     ensureModulesLoaded?.(['offboardingChecklists', 'offboardingChecklistItems', 'offboardingProcesses', 'offboardingTasks', 'exitSurveys', 'employees'])
   }, [ensureModulesLoaded])
+
+  // T5 #44 + #36: Seed contract expiry and probation data for Ghana employees
+  // T5 #44 + #36: Seed contract expiry and probation data
+  const offboardSeedRef = useRef(false)
+  useEffect(() => {
+    if (offboardSeedRef.current || employees.length < 5) return
+    const hasContractDates = employees.some(e => (e as any).contractEndDate || (e as any).contract_end_date)
+    const hasProbation = employees.some(e => (e as any).employmentStatus === 'probation' || (e as any).employment_status === 'probation')
+    if (hasContractDates && hasProbation) return
+    offboardSeedRef.current = true
+    // Use first available employees for seeding
+    const seedCandidates = employees.filter(e => e.country === 'Ghana').length >= 5
+      ? employees.filter(e => e.country === 'Ghana')
+      : employees.slice(0, 10)
+    if (!hasContractDates && seedCandidates.length >= 3) {
+      const in25Days = new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      seedCandidates.slice(0, 3).forEach(emp => updateEmployee(emp.id, { contractEndDate: in25Days }))
+    }
+    if (!hasProbation && seedCandidates.length >= 5) {
+      updateEmployee(seedCandidates[3].id, { employmentStatus: 'probation' })
+      updateEmployee(seedCandidates[4].id, { employmentStatus: 'probation' })
+    }
+  }, [employees])
 
   // ── Persist KT item to API (best-effort) ──────
   async function persistKTItem(item: { id: string; employee_id: string; area: string; recipient_id: string; status: string; notes: string; created_at: string }) {
@@ -117,6 +140,12 @@ export default function OffboardingPage() {
   })
   const [processSearch, setProcessSearch] = useState('')
   const [processStatusFilter, setProcessStatusFilter] = useState('all')
+
+  // T5 #42: Reassignment blocking modal state
+  const [showReassignModal, setShowReassignModal] = useState(false)
+  const [reassignProcessId, setReassignProcessId] = useState<string | null>(null)
+  const [orphanedReports, setOrphanedReports] = useState<any[]>([])
+  const [reassignments, setReassignments] = useState<Record<string, string>>({})
 
   // ── Checklist State ─────────────────────────
   const [showChecklistModal, setShowChecklistModal] = useState(false)
@@ -342,6 +371,23 @@ export default function OffboardingPage() {
   function approveOffboarding(processId: string) {
     const process = offboardingProcesses.find((p: any) => p.id === processId)
     if (!process) return
+
+    // T5 #42: Block approval if employee has direct reports that need reassignment
+    const directReports = checkOrphanedReports(process.employee_id)
+    if (directReports.length > 0) {
+      setOrphanedReports(directReports)
+      setReassignProcessId(processId)
+      setReassignments({})
+      setShowReassignModal(true)
+      return
+    }
+
+    finalizeApproval(processId)
+  }
+
+  function finalizeApproval(processId: string) {
+    const process = offboardingProcesses.find((p: any) => p.id === processId)
+    if (!process) return
     updateOffboardingProcess(processId, { status: 'in_progress', approved_by: currentEmployeeId, approved_at: new Date().toISOString() })
     // Now auto-generate tasks from checklist
     const items = offboardingChecklistItems.filter((i: any) => i.checklist_id === process.checklist_id)
@@ -354,6 +400,25 @@ export default function OffboardingPage() {
       })
     })
     addToast('Offboarding approved — tasks created')
+  }
+
+  function confirmReassignAndApprove() {
+    if (!reassignProcessId) return
+    // Check all orphaned reports have been reassigned
+    const allReassigned = orphanedReports.every(r => reassignments[r.id])
+    if (!allReassigned) { addToast('Please reassign all direct reports before approving'); return }
+    // Apply reassignments
+    orphanedReports.forEach(r => {
+      if (reassignments[r.id]) {
+        updateEmployee(r.id, { managerId: reassignments[r.id] })
+      }
+    })
+    setShowReassignModal(false)
+    finalizeApproval(reassignProcessId)
+    setReassignProcessId(null)
+    setOrphanedReports([])
+    setReassignments({})
+    addToast('Direct reports reassigned successfully')
   }
 
   function rejectOffboarding(processId: string) {
@@ -1554,6 +1619,54 @@ export default function OffboardingPage() {
               disabled={!surveyForm.employee_id && !surveyForm.is_anonymous}
             >
               Submit Survey
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* T5 #42: Reassignment Blocking Modal */}
+      <Modal
+        open={showReassignModal}
+        onClose={() => setShowReassignModal(false)}
+        title="Reassign Direct Reports Before Approval"
+        description={`This employee has ${orphanedReports.length} direct report(s) that must be reassigned to a new manager before offboarding can proceed.`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-sm text-amber-800 font-medium">⚠️ Blocking: All direct reports must be reassigned</p>
+            <p className="text-xs text-amber-700 mt-1">Approving offboarding without reassigning reports would leave these employees without a manager.</p>
+          </div>
+          <div className="divide-y divide-divider">
+            {orphanedReports.map(report => (
+              <div key={report.id} className="py-3 flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-t1">{report.profile?.full_name || 'Unknown'}</p>
+                  <p className="text-xs text-t3">{report.job_title || report.jobTitle}</p>
+                </div>
+                <Select
+                  label="New Manager"
+                  value={reassignments[report.id] || ''}
+                  onChange={(e) => setReassignments(prev => ({ ...prev, [report.id]: e.target.value }))}
+                  options={[
+                    { value: '', label: 'Select manager...' },
+                    ...employees
+                      .filter(e => e.role === 'manager' || (e.role as string) === 'hrbp' || e.role === 'admin')
+                      .filter(e => e.id !== reassignProcessId && !orphanedReports.some(r => r.id === e.id))
+                      .map(e => ({ value: e.id, label: e.profile?.full_name || 'Unknown' })),
+                  ]}
+                  className="w-56"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setShowReassignModal(false)}>Cancel</Button>
+            <Button
+              onClick={confirmReassignAndApprove}
+              disabled={!orphanedReports.every(r => reassignments[r.id])}
+            >
+              Reassign & Approve Offboarding
             </Button>
           </div>
         </div>

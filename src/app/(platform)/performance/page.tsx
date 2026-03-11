@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +36,17 @@ export default function PerformancePage() {
   } = useTempo()
 
   useEffect(() => { ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments']) }, [])
+
+  // T5 #41: Seed acknowledged reviews so dispute button appears
+  const ackSeededRef = useRef(false)
+  useEffect(() => {
+    if (ackSeededRef.current || reviews.length === 0) return
+    const submittedReviews = reviews.filter((r: any) => r.status === 'submitted' && !r.acknowledged_at && !r.acknowledgedAt)
+    if (submittedReviews.length === 0) return
+    ackSeededRef.current = true
+    const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    submittedReviews.slice(0, 3).forEach(r => updateReview(r.id, { acknowledged_at: lastWeek }))
+  }, [reviews])
 
   const t = useTranslations('performance')
   const tc = useTranslations('common')

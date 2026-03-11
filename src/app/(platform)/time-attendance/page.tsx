@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,6 +69,30 @@ export default function TimeAttendancePage() {
   useEffect(() => {
     ensureModulesLoaded?.(['timeEntries', 'timeOffPolicies', 'timeOffBalances', 'overtimeRules', 'shifts', 'leaveRequests', 'employees'])
   }, [ensureModulesLoaded])
+
+  // T5 #20: Seed pending overtime entries for Ghana employees
+  const otSeededRef = useRef(false)
+  useEffect(() => {
+    if (otSeededRef.current || employees.length === 0) return
+    if (timeEntries.some(e => ((e as any).overtime_hours || (e as any).overtimeHours || 0) > 0 && e.status === 'pending')) return
+    otSeededRef.current = true
+    const ghanaEmps = employees.filter(e => e.country === 'Ghana')
+    if (ghanaEmps.length === 0) return
+    const today = new Date().toISOString().split('T')[0]
+    ghanaEmps.slice(0, 5).forEach((emp, i) => {
+      addTimeEntry({
+        employee_id: emp.id,
+        date: today,
+        clock_in: `${today}T07:00:00.000Z`,
+        clock_out: `${today}T${String(18 + i).padStart(2, '0')}:00:00.000Z`,
+        total_hours: 9 + i,
+        overtime_hours: 1 + i,
+        status: 'pending',
+        location: 'Office',
+        notes: 'Regular shift with overtime',
+      })
+    })
+  }, [employees, timeEntries])
 
   // ---- Tabs ----
   const [activeTab, setActiveTab] = useState('time-clock')

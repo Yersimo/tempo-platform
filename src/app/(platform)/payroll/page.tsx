@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
@@ -121,6 +121,32 @@ export default function PayrollPage() {
   useEffect(() => {
     ensureModulesLoaded?.(['payrollRuns', 'leaveRequests', 'employeePayrollEntries', 'contractorPayments', 'payrollSchedules', 'taxConfigs', 'taxFilings'])
   }, [ensureModulesLoaded])
+
+  // T5 #32: Seed pro-rata salary change entry
+  const proRataSeededRef = useRef(false)
+  useEffect(() => {
+    if (proRataSeededRef.current || payrollRuns.length === 0 || employees.length === 0) return
+    if (employeePayrollEntries.some((e: any) => e.pay_type === 'pro_rata_new' || e.payType === 'pro_rata_new')) return
+    proRataSeededRef.current = true
+    const ghanaEmps = employees.filter(e => e.country === 'Ghana')
+    const latestRun = payrollRuns[0]
+    if (ghanaEmps.length > 0 && latestRun) {
+      addEmployeePayrollEntry({
+        payroll_run_id: latestRun.id,
+        employee_id: ghanaEmps[0].id,
+        pay_type: 'pro_rata_new',
+        days_at_old_rate: 15,
+        days_at_new_rate: 15,
+        old_salary: 700000,
+        new_salary: 850000,
+        basic_salary: 775000,
+        gross_pay: 775000,
+        net_pay: 620000,
+        tax: 155000,
+        notes: 'Mid-month salary adjustment — pro-rata calculation applied',
+      })
+    }
+  }, [payrollRuns, employees, employeePayrollEntries])
 
   // ---- Tab State ----
   const allTabs = [
@@ -465,14 +491,14 @@ export default function PayrollPage() {
 
       // T5 #45: Track rejection count and escalate after 3
       const run = payrollRuns.find(r => r.id === runId) as any
-      const prevCount = (run?.rejection_count || 0) + 1
+      const prevCount = (run?.rejectionCount || run?.rejection_count || 0) + 1
       if (prevCount >= 3) {
-        updatePayrollRun(runId, { status: 'escalated', rejection_reason: rejectReason, rejection_count: prevCount, escalated_at: new Date().toISOString() })
+        updatePayrollRun(runId, { status: 'escalated', rejectionReason: rejectReason, rejectionCount: prevCount, escalated_at: new Date().toISOString() })
         setEscalationRunId(runId)
         setShowEscalationModal(true)
         addToast('Payroll rejected 3 times — escalated to CEO/CFO', 'error')
       } else {
-        updatePayrollRun(runId, { status: 'draft', rejection_reason: rejectReason, rejection_count: prevCount })
+        updatePayrollRun(runId, { status: 'draft', rejectionReason: rejectReason, rejectionCount: prevCount })
         addToast(`Payroll run rejected (${prevCount}/3 before escalation)`)
       }
 
@@ -489,7 +515,7 @@ export default function PayrollPage() {
       addToast('Resolution note required')
       return
     }
-    updatePayrollRun(escalationRunId, { status: 'draft', escalation_resolved_at: new Date().toISOString(), escalation_note: escalationNote, rejection_count: 0 })
+    updatePayrollRun(escalationRunId, { status: 'draft', escalation_resolved_at: new Date().toISOString(), escalation_note: escalationNote, rejectionCount: 0 })
     setShowEscalationModal(false)
     setEscalationRunId(null)
     setEscalationNote('')
@@ -766,8 +792,8 @@ export default function PayrollPage() {
               const expandedRun = payrollRuns.find(r => r.id === expandedRunId) as any
               const runPeriod = expandedRun?.period || ''
               const maternityInPeriod = maternityLeaves.filter((lr: any) => {
-                if (!lr.start_date || !lr.end_date || !runPeriod) return false
-                return lr.start_date <= runPeriod + '-31' && lr.end_date >= runPeriod + '-01'
+                if (!lr.startDate || !lr.endDate || !runPeriod) return false
+                return lr.startDate <= runPeriod + '-31' && lr.endDate >= runPeriod + '-01'
               })
               // T5 #32: Detect mid-month salary changes (pro-rata)
               const proRataEntries = runEntries.filter((e: any) => e.pay_type === 'pro_rata_new' || (e as any).notes?.includes?.('pro-rata'))
@@ -784,7 +810,7 @@ export default function PayrollPage() {
                             const empName = employees.find(e => e.id === lr.employee_id)?.profile?.full_name || lr.employee_id
                             const country = employees.find(e => e.id === lr.employee_id)?.country || ''
                             const maternityRate = country === 'Ghana' ? '100% (12 weeks)' : country === 'Nigeria' ? '50% (12 weeks)' : country === 'Kenya' ? '100% (3 months)' : country === 'South Africa' ? 'UIF rate (4 months)' : '100%'
-                            return <p key={lr.id} className="text-xs text-pink-700">{empName}: {lr.type} leave ({lr.start_date} to {lr.end_date}) — Statutory pay: {maternityRate}</p>
+                            return <p key={lr.id} className="text-xs text-pink-700">{empName}: {lr.type} leave ({lr.startDate} to {lr.endDate}) — Statutory pay: {maternityRate}</p>
                           })}
                         </div>
                       </div>

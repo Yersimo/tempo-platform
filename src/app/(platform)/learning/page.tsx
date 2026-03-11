@@ -24,9 +24,9 @@ import { ContentProviders } from '@/components/learning/content-providers'
 import { ScormPlayer } from '@/components/learning/scorm-player'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
 
-  useEffect(() => { ensureModulesLoaded?.(['courses', 'enrollments']) }, [ensureModulesLoaded])
+  useEffect(() => { ensureModulesLoaded?.(['courses', 'enrollments', 'complianceRequirements']) }, [ensureModulesLoaded])
 
   const t = useTranslations('learning')
   const tc = useTranslations('common')
@@ -113,14 +113,23 @@ export default function LearningPage() {
   const [activeAssessment, setActiveAssessment] = useState<{ courseId: string; questionIndex: number; answers: Record<string, string>; startedAt: string } | null>(null)
   const [showAssessmentResult, setShowAssessmentResult] = useState<{ score: number; passed: boolean; correct: number; total: number } | null>(null)
 
-  // T5 #39: Course exemption state
+  // T5 #39: Course exemption state — persisted via compliance_requirements store
   const [showExemptionModal, setShowExemptionModal] = useState(false)
-  const [exemptions, setExemptions] = useState<{ id: string; course_id: string; criteria_type: string; criteria_value: string; reason: string }[]>([])
+  const exemptions = useMemo(() => complianceRequirements.filter((r: any) => r.type === 'course_exemption' || r.requirementType === 'course_exemption'), [complianceRequirements])
   const [exemptionForm, setExemptionForm] = useState({ course_id: '', criteria_type: 'role' as string, criteria_value: '', reason: '' })
 
   function addExemption() {
     if (!exemptionForm.course_id || !exemptionForm.criteria_value) return
-    setExemptions(prev => [...prev, { id: crypto.randomUUID(), ...exemptionForm }])
+    addComplianceRequirement({
+      type: 'course_exemption',
+      requirementType: 'course_exemption',
+      course_id: exemptionForm.course_id,
+      criteria_type: exemptionForm.criteria_type,
+      criteria_value: exemptionForm.criteria_value,
+      reason: exemptionForm.reason,
+      name: `Exempt ${exemptionForm.criteria_type}: ${exemptionForm.criteria_value}`,
+      status: 'active',
+    })
     setExemptionForm({ course_id: '', criteria_type: 'role', criteria_value: '', reason: '' })
     setShowExemptionModal(false)
     addToast('Exemption added')
@@ -129,17 +138,20 @@ export default function LearningPage() {
   function isExempt(employeeId: string, courseId: string) {
     const emp = employees.find(e => e.id === employeeId)
     if (!emp) return false
-    return exemptions.some(ex => {
-      if (ex.course_id !== courseId) return false
-      if (ex.criteria_type === 'role' && emp.role === ex.criteria_value) return true
-      if (ex.criteria_type === 'country' && emp.country === ex.criteria_value) return true
-      if (ex.criteria_type === 'level' && emp.level === ex.criteria_value) return true
+    return exemptions.some((ex: any) => {
+      const exCourseId = ex.course_id || ex.courseId
+      if (exCourseId !== courseId) return false
+      const cType = ex.criteria_type || ex.criteriaType
+      const cValue = ex.criteria_value || ex.criteriaValue
+      if (cType === 'role' && emp.role === cValue) return true
+      if (cType === 'country' && emp.country === cValue) return true
+      if (cType === 'level' && emp.level === cValue) return true
       return false
     })
   }
 
   function removeExemption(id: string) {
-    setExemptions(prev => prev.filter(e => e.id !== id))
+    deleteComplianceRequirement(id)
     addToast('Exemption removed')
   }
 
@@ -2361,13 +2373,13 @@ export default function LearningPage() {
           {exemptions.length > 0 ? (
             <Card padding="none">
               <div className="divide-y divide-divider">
-                {exemptions.map(ex => {
-                  const course = courses.find(c => c.id === ex.course_id)
+                {exemptions.map((ex: any) => {
+                  const course = courses.find(c => c.id === (ex.course_id || ex.courseId))
                   return (
                     <div key={ex.id} className="px-6 py-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-t1">{course?.title || 'Unknown course'}</p>
-                        <p className="text-xs text-t3">Exempt: {ex.criteria_type} = {ex.criteria_value} {ex.reason ? `— ${ex.reason}` : ''}</p>
+                        <p className="text-xs text-t3">Exempt: {ex.criteria_type || ex.criteriaType} = {ex.criteria_value || ex.criteriaValue} {(ex.reason) ? `— ${ex.reason}` : ''}</p>
                       </div>
                       <button onClick={() => removeExemption(ex.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
                     </div>

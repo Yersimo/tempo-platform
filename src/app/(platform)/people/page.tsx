@@ -36,7 +36,7 @@ export default function PeoplePage() {
     employeeDocuments, addEmployeeDocument, updateEmployeeDocument,
     employeeTimeline,
     customFieldDefinitions, addCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition,
-    ensureModulesLoaded, addToast,
+    ensureModulesLoaded, addToast, currentEmployeeId,
   } = useTempo()
 
   useEffect(() => { ensureModulesLoaded?.(['employees', 'departments']) }, [ensureModulesLoaded])
@@ -98,7 +98,7 @@ export default function PeoplePage() {
     if (restructureForm.from_manager) {
       affected.forEach(emp => {
         const updates: Record<string, any> = {}
-        if (restructureForm.to_manager) updates.manager_id = restructureForm.to_manager
+        if (restructureForm.to_manager) updates.managerId = restructureForm.to_manager
         if (restructureForm.to_department) updates.department_id = restructureForm.to_department
         if (Object.keys(updates).length > 0) {
           updateEmployee(emp.id, updates)
@@ -111,6 +111,13 @@ export default function PeoplePage() {
         updateEmployee(emp.id, { department_id: restructureForm.to_department })
         count++
       })
+    }
+    // T4-I: Show restructure summary with notifications
+    if (count > 0) {
+      const newMgrName = restructureForm.to_manager ? getEmployeeName(restructureForm.to_manager) : null
+      const newDeptName = restructureForm.to_department ? getDepartmentName(restructureForm.to_department) : null
+      const detail = [newMgrName ? `new manager: ${newMgrName}` : '', newDeptName ? `new dept: ${newDeptName}` : ''].filter(Boolean).join(', ')
+      addToast?.(`Restructure complete — ${count} employee(s) updated (${detail})`)
     }
     addToast?.(`${count} employee(s) reassigned successfully`)
     setShowRestructureModal(false)
@@ -258,13 +265,27 @@ export default function PeoplePage() {
     if (!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date) return
     const emp = employees.find(e => e.id === transferForm.employee_id)
     if (!emp) return
-    // Update employee country, payroll country
+    const fromCountry = emp.country || 'Unknown'
+    // Update employee country and add transfer metadata for payroll exclusion
     updateEmployee(emp.id, {
       country: transferForm.to_country,
-      transfer_date: transferForm.effective_date,
-      previous_country: emp.country,
+      transferDate: transferForm.effective_date,
+      previousCountry: fromCountry,
+      // Exclude from old country payroll runs after transfer date
+      payrollCountryExclude: fromCountry,
+      payrollCountryExcludeDate: transferForm.effective_date,
     })
-    addToast?.(`${emp.profile?.full_name} transferred to ${transferForm.to_country}`)
+    // Create employment timeline event for audit trail
+    addEmployeeDocument({
+      employee_id: emp.id,
+      document_type: 'transfer_record',
+      name: `Country Transfer: ${fromCountry} → ${transferForm.to_country}`,
+      status: 'approved',
+      expiry_date: null,
+      file_size: '—',
+      notes: `Effective ${transferForm.effective_date}. Previous: ${fromCountry}. New salary: ${transferForm.new_currency} ${transferForm.new_salary?.toLocaleString() || 'TBD'}.`,
+    })
+    addToast?.(`${emp.profile?.full_name} transferred from ${fromCountry} to ${transferForm.to_country} effective ${transferForm.effective_date}`)
     setShowTransferModal(false)
     setTransferForm({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
   }

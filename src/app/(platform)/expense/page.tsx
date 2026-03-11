@@ -429,8 +429,8 @@ export default function ExpensePage() {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
       const possibleDup = expenseReports.find((r: any) =>
         r.employee_id === reportForm.employee_id &&
-        r.total_amount === totalAmount &&
-        r.submitted_at && r.submitted_at > sevenDaysAgo
+        (r.totalAmount || r.total_amount) === totalAmount &&
+        (r.submittedAt || r.submitted_at) && (r.submittedAt || r.submitted_at) > sevenDaysAgo
       )
       if (possibleDup) {
         setDuplicateMatch(possibleDup)
@@ -1918,7 +1918,7 @@ export default function ExpensePage() {
               <p className="text-sm font-medium text-amber-800">You submitted a similar expense recently</p>
               {duplicateMatch && (
                 <p className="text-xs text-amber-700 mt-1">
-                  &quot;{duplicateMatch.title}&quot; for {duplicateMatch.currency} {duplicateMatch.total_amount?.toLocaleString()} on {duplicateMatch.submitted_at?.split('T')[0]}
+                  &quot;{duplicateMatch.title}&quot; for {duplicateMatch.currency} {(duplicateMatch.totalAmount || duplicateMatch.total_amount)?.toLocaleString()} on {(duplicateMatch.submittedAt || duplicateMatch.submitted_at)?.split('T')[0]}
                 </p>
               )}
               <p className="text-xs text-amber-700 mt-1">Are you sure this is a different expense?</p>
