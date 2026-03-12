@@ -4,6 +4,7 @@
 
 import { db, schema } from '@/lib/db'
 import { eq, and, desc, sql, count, gte, lte, inArray } from 'drizzle-orm'
+import Anthropic from '@anthropic-ai/sdk'
 
 // ============================================================
 // Types & Interfaces
@@ -564,12 +565,116 @@ export async function distributeToJobBoards(
 }
 
 // ============================================================
-// 2. AI Resume Screening
+// 2. AI Resume Screening (Claude Vision + Simulation Fallback)
 // ============================================================
+
+// ---- Claude client (lazy init, same pattern as receipt-ocr.ts) ----
+
+let _anthropicClient: Anthropic | null = null
+
+function getAnthropicClient(): Anthropic | null {
+  if (!_anthropicClient && process.env.ANTHROPIC_API_KEY) {
+    _anthropicClient = new Anthropic()
+  }
+  return _anthropicClient
+}
+
+interface AIResumeExtraction {
+  skills: string[]
+  experienceYears: number
+  education: { degree: string; institution: string } | null
+  jobTitles: string[]
+  languages: string[]
+  summary: string
+}
+
+const RESUME_EXTRACTION_PROMPT = `You are a resume screening system. Analyze this resume and extract structured data.
+
+Return ONLY a JSON object (no markdown, no explanation):
+{
+  "skills": ["skill1", "skill2", ...],
+  "experienceYears": 5,
+  "education": { "degree": "B.S. Computer Science", "institution": "MIT" },
+  "jobTitles": ["Senior Engineer", "Software Developer"],
+  "languages": ["English", "French"],
+  "summary": "Brief 1-sentence summary of the candidate"
+}
+
+Rules:
+- "skills" should include technical skills, tools, frameworks, methodologies, and soft skills
+- "experienceYears" is total professional experience (integer)
+- "education" is highest degree; null if not found
+- "jobTitles" is list of all roles held
+- "languages" is spoken/written languages
+- If a field cannot be determined, use empty array or null`
+
+/**
+ * Attempts to extract resume data using Claude Vision API.
+ * Returns null if no API key, no resume URL, or if the call fails.
+ */
+async function extractResumeWithAI(resumeUrl: string): Promise<AIResumeExtraction | null> {
+  const client = getAnthropicClient()
+  if (!client) return null
+
+  try {
+    // Fetch the resume file
+    const response = await fetch(resumeUrl)
+    if (!response.ok) return null
+
+    const contentType = response.headers.get('content-type') || ''
+    const buffer = await response.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString('base64')
+
+    // Determine media type for Claude Vision
+    let mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp' | 'application/pdf' = 'application/pdf'
+    if (contentType.includes('png')) mediaType = 'image/png'
+    else if (contentType.includes('jpeg') || contentType.includes('jpg')) mediaType = 'image/jpeg'
+    else if (contentType.includes('webp')) mediaType = 'image/webp'
+
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: mediaType === 'application/pdf' ? 'document' : 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64,
+              },
+            } as any,
+            { type: 'text', text: RESUME_EXTRACTION_PROMPT },
+          ],
+        },
+      ],
+    })
+
+    const text = msg.content.find(b => b.type === 'text')?.text || ''
+    // Parse JSON from response (strip any markdown fences if present)
+    const jsonStr = text.replace(/```json?\n?/g, '').replace(/```\n?/g, '').trim()
+    const parsed = JSON.parse(jsonStr) as AIResumeExtraction
+
+    return {
+      skills: Array.isArray(parsed.skills) ? parsed.skills.map(s => s.toLowerCase()) : [],
+      experienceYears: typeof parsed.experienceYears === 'number' ? parsed.experienceYears : 0,
+      education: parsed.education || null,
+      jobTitles: Array.isArray(parsed.jobTitles) ? parsed.jobTitles : [],
+      languages: Array.isArray(parsed.languages) ? parsed.languages : [],
+      summary: parsed.summary || '',
+    }
+  } catch (error) {
+    console.error('[screenResume] AI extraction failed, falling back to simulation:', error)
+    return null
+  }
+}
 
 /**
  * Performs AI-based resume screening against job requirements.
- * Analyzes skill match, experience alignment, and generates a structured recommendation.
+ * Uses Claude Vision API when a resume URL exists and ANTHROPIC_API_KEY is set.
+ * Falls back to heuristic-based simulation otherwise.
  */
 export async function screenResume(
   orgId: string,
@@ -601,30 +706,44 @@ export async function screenResume(
   const jobText = `${job.title} ${job.description ?? ''} ${job.requirements ?? ''}`
   const requiredSkills = extractSkillsFromText(jobText)
 
-  // Simulate resume content analysis
-  // In production, this would parse the resume PDF/document at application.resumeUrl
-  const candidateText = `${application.candidateName} ${application.notes ?? ''} ${application.stage ?? ''}`
-  const candidateSkills = extractSkillsFromText(candidateText)
+  // ── Try Claude Vision AI extraction first ──
+  let candidateSkills: string[] = []
+  let experienceYearsEstimate: number
+  let educationMatch: boolean
+  let aiPowered = false
 
-  // If no skills extracted from limited text, generate realistic simulated skills
-  // based on the job requirements (simulating what a parsed resume would reveal)
-  const simulatedCandidateSkills = candidateSkills.length > 0
-    ? candidateSkills
-    : generateSimulatedSkills(requiredSkills)
+  const aiResult = application.resumeUrl
+    ? await extractResumeWithAI(application.resumeUrl)
+    : null
 
-  const matchedSkills = requiredSkills.filter(skill => simulatedCandidateSkills.includes(skill))
-  const missingSkills = requiredSkills.filter(skill => !simulatedCandidateSkills.includes(skill))
+  if (aiResult && aiResult.skills.length > 0) {
+    // Real AI-extracted data
+    aiPowered = true
+    candidateSkills = aiResult.skills
+    experienceYearsEstimate = aiResult.experienceYears
+    educationMatch = aiResult.education !== null
+  } else {
+    // ── Fallback: heuristic simulation ──
+    const candidateText = `${application.candidateName} ${application.notes ?? ''} ${application.stage ?? ''}`
+    const extractedSkills = extractSkillsFromText(candidateText)
+    candidateSkills = extractedSkills.length > 0
+      ? extractedSkills
+      : generateSimulatedSkills(requiredSkills)
+    experienceYearsEstimate = estimateExperience(application, job)
+    educationMatch = false
+  }
+
+  const matchedSkills = requiredSkills.filter(skill => candidateSkills.includes(skill))
+  const missingSkills = requiredSkills.filter(skill => !candidateSkills.includes(skill))
 
   // Calculate keyword match rate
   const keywordMatchRate = requiredSkills.length > 0
     ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
     : 50
 
-  // Estimate experience based on available signals
-  const experienceYearsEstimate = estimateExperience(application, job)
-
-  // Education match heuristic
-  const educationMatch = keywordMatchRate > 40 || experienceYearsEstimate >= 3
+  if (!aiResult) {
+    educationMatch = keywordMatchRate > 40 || experienceYearsEstimate >= 3
+  }
 
   // Calculate overall score using weighted factors
   const skillScore = keywordMatchRate
@@ -645,9 +764,13 @@ export async function screenResume(
   const recommendation = getScreeningRecommendation(overallScore)
 
   // Generate analysis summaries
-  const strengthSummary = buildStrengthSummary(matchedSkills, experienceYearsEstimate, educationMatch)
+  const strengthSummary = aiPowered && aiResult
+    ? `AI-analyzed resume: ${aiResult.summary || 'Profile reviewed'}. ${buildStrengthSummary(matchedSkills, experienceYearsEstimate, educationMatch)}`
+    : buildStrengthSummary(matchedSkills, experienceYearsEstimate, educationMatch)
   const concernSummary = buildConcernSummary(missingSkills, experienceYearsEstimate, application)
-  const cultureFitIndicators = deriveCultureFitIndicators(application, job)
+  const cultureFitIndicators = aiPowered && aiResult?.languages?.length
+    ? [...deriveCultureFitIndicators(application, job), `Multilingual: ${aiResult.languages.join(', ')}`]
+    : deriveCultureFitIndicators(application, job)
 
   return {
     applicationId,

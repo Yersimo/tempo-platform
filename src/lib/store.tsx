@@ -1210,6 +1210,25 @@ async function apiPost(entity: string, action: 'create' | 'update' | 'delete', d
   }
 }
 
+// ---------------------------------------------------------------------------
+// Fire-and-forget notification dispatch (called after state changes)
+// ---------------------------------------------------------------------------
+function notifyEvent(
+  event: string,
+  entityId: string,
+  entityType: string,
+  metadata?: Record<string, unknown>
+) {
+  // Fire-and-forget — don't await, don't block UI
+  fetch('/api/notifications/dispatch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, entityId, entityType, metadata }),
+  }).catch(() => {
+    // Silently ignore — notification failure should never affect UX
+  })
+}
+
 export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Initialize with demo data as fallback, but will be overwritten by DB data
   const [org, setOrg] = useState<any>({ id: '', name: '', slug: '', logo_url: null, plan: 'enterprise', industry: '', size: '', country: '', created_at: '', updated_at: '' })
@@ -3227,6 +3246,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'review', id, `Updated review`)
     addToast('Review updated')
     apiPost('reviews', 'update', data, id)
+    // Notify the employee when a review is assigned to them
+    if (data.status === 'assigned' || data.status === 'in_progress') notifyEvent('review_assigned', id, 'review')
   }, [logAudit, addToast])
 
   // ---- CRUD: Review Cycles ----
@@ -3566,6 +3587,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'payroll_run', id, 'Updated payroll run')
     addToast('Payroll run updated')
     apiPost('payrollRuns', 'update', data, id)
+    // Notify org when payroll is approved or paid
+    if (data.status === 'approved') notifyEvent('payroll_approved', id, 'payroll_run')
+    if (data.status === 'paid') notifyEvent('payroll_paid', id, 'payroll_run')
   }, [logAudit, addToast])
 
   const addEmployeePayrollEntry = useCallback((data: AnyRecord) => {
@@ -3650,6 +3674,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'leave_request', id, `${action} leave request`)
     addToast(`Leave request ${action.toLowerCase()}`)
     apiPost('leaveRequests', 'update', data, id)
+    // Notify the employee when their leave is approved/rejected
+    if (data.status === 'approved') notifyEvent('leave_approved', id, 'leave_request')
+    if (data.status === 'rejected') notifyEvent('leave_rejected', id, 'leave_request')
   }, [logAudit, addToast])
 
   // ---- CRUD: Benefits ----
@@ -3731,6 +3758,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'expense_report', id, `${action} expense report`)
     addToast(`Expense report ${action.toLowerCase()}`)
     apiPost('expenseReports', 'update', data, id)
+    // Notify the employee when their expense is approved/rejected
+    if (data.status === 'approved') notifyEvent('expense_approved', id, 'expense_report')
+    if (data.status === 'rejected') notifyEvent('expense_rejected', id, 'expense_report', { reason: data.rejection_reason || data.reason || '' })
   }, [logAudit, addToast])
 
   const deleteExpenseReport = useCallback((id: string) => {

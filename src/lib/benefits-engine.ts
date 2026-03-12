@@ -1,6 +1,9 @@
 // Benefits Comparison & Quoting Engine
 // Plan comparison tool with carrier data, cost modeling, and recommendations
 
+import { db, schema } from '@/lib/db'
+import { eq, and } from 'drizzle-orm'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -351,7 +354,42 @@ const enrollments = new Map<string, Map<string, { planId: string; tier: PlanTier
 // Plan Browsing & Comparison
 // ---------------------------------------------------------------------------
 
+/**
+ * Converts a DB benefit_plan row into the full BenefitsPlan shape.
+ * The DB table stores simplified data, so we fill defaults for detailed fields.
+ */
+function dbPlanToBenefitsPlan(row: typeof schema.benefitPlans.$inferSelect): BenefitsPlan {
+  const empCost = Math.round((row.costEmployee || 0) / 100) // DB stores cents
+  const emplrCost = Math.round((row.costEmployer || 0) / 100)
+  const total = empCost + emplrCost
+
+  return {
+    id: row.id,
+    carrier: row.provider || 'Custom Plan',
+    carrierLogo: row.type === 'dental' ? '🦷' : row.type === 'vision' ? '👓' : row.type === 'life' || row.type === 'disability' ? '🛡️' : '🏥',
+    name: row.name,
+    category: row.type as PlanCategory,
+    network: 'ppo',
+    tiers: [
+      { tier: 'employee_only', employeeCost: empCost, employerCost: emplrCost, totalPremium: total },
+      { tier: 'employee_spouse', employeeCost: Math.round(empCost * 1.9), employerCost: Math.round(emplrCost * 1.8), totalPremium: Math.round(total * 1.85) },
+      { tier: 'employee_children', employeeCost: Math.round(empCost * 1.7), employerCost: Math.round(emplrCost * 1.6), totalPremium: Math.round(total * 1.65) },
+      { tier: 'family', employeeCost: Math.round(empCost * 2.8), employerCost: Math.round(emplrCost * 2.5), totalPremium: Math.round(total * 2.6) },
+    ],
+    deductible: { individual: 500, family: 1000 },
+    outOfPocketMax: { individual: 5000, family: 10000 },
+    coinsurance: 20,
+    copay: { primaryCare: 25, specialist: 50, urgentCare: 75, er: 250 },
+    prescription: { generic: 10, brandPreferred: 35, brandNonPreferred: 70, specialty: 150 },
+    features: row.description ? [row.description] : ['Standard coverage'],
+    hsaEligible: false,
+    rating: 4.0,
+    stateAvailability: ['CA', 'NY', 'TX', 'FL', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI'],
+  }
+}
+
 export async function getAvailablePlans(filters?: {
+  orgId?: string
   category?: PlanCategory
   network?: NetworkType
   state?: string
@@ -359,7 +397,32 @@ export async function getAvailablePlans(filters?: {
   hsaEligible?: boolean
   maxEmployeeCost?: number
 }): Promise<BenefitsPlan[]> {
-  let plans = [...PLANS_DATABASE]
+  // Try loading from DB for real orgs
+  let plans: BenefitsPlan[] = []
+
+  if (filters?.orgId) {
+    try {
+      const dbPlans = await db
+        .select()
+        .from(schema.benefitPlans)
+        .where(
+          and(
+            eq(schema.benefitPlans.orgId, filters.orgId),
+            eq(schema.benefitPlans.isActive, true)
+          )
+        )
+      if (dbPlans.length > 0) {
+        plans = dbPlans.map(dbPlanToBenefitsPlan)
+      }
+    } catch {
+      // DB unavailable — fall through to hardcoded
+    }
+  }
+
+  // Fall back to marketplace plans if no DB results
+  if (plans.length === 0) {
+    plans = [...PLANS_DATABASE]
+  }
 
   if (filters?.category) plans = plans.filter(p => p.category === filters.category)
   if (filters?.network) plans = plans.filter(p => p.network === filters.network)

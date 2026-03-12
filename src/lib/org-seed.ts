@@ -40,34 +40,112 @@ export async function seedNewOrg(orgId: string, industry?: string): Promise<void
     )
 
     // ----------------------------------------------------------------
-    // 2. Default benefit plan templates
+    // 2. Default benefit plan templates (comprehensive carrier plans)
     // ----------------------------------------------------------------
     await db.insert(schema.benefitPlans).values([
+      // Medical Plans
       {
         orgId,
-        name: 'Medical',
+        name: 'Aetna Gold PPO',
         type: 'medical' as const,
-        provider: 'Default Medical Provider',
-        costEmployee: 15000, // $150.00 / month
-        costEmployer: 45000, // $450.00 / month
+        provider: 'Aetna',
+        costEmployee: 18500,
+        costEmployer: 46500,
+        description: 'Large national PPO network, no referrals needed, telehealth included',
         isActive: true,
       },
       {
         orgId,
-        name: 'Dental',
+        name: 'Cigna Silver HMO',
+        type: 'medical' as const,
+        provider: 'Cigna',
+        costEmployee: 14000,
+        costEmployer: 36000,
+        description: 'Lower premiums, PCP coordination, wellness programs',
+        isActive: true,
+      },
+      {
+        orgId,
+        name: 'UHC Choice Plus HDHP',
+        type: 'medical' as const,
+        provider: 'UnitedHealthcare',
+        costEmployee: 9500,
+        costEmployer: 30500,
+        description: 'Lowest premiums, HSA eligible, employer HSA contribution',
+        isActive: true,
+      },
+      {
+        orgId,
+        name: 'BCBS Platinum PPO',
+        type: 'medical' as const,
+        provider: 'Blue Cross Blue Shield',
+        costEmployee: 24500,
+        costEmployer: 60500,
+        description: 'Largest network nationwide, lowest out-of-pocket, fertility coverage',
+        isActive: true,
+      },
+      {
+        orgId,
+        name: 'Kaiser Gold HMO',
+        type: 'medical' as const,
+        provider: 'Kaiser Permanente',
+        costEmployee: 16000,
+        costEmployer: 44000,
+        description: 'No deductible, integrated care system, pharmacy included',
+        isActive: true,
+      },
+      // Dental
+      {
+        orgId,
+        name: 'Delta Dental PPO Plus',
         type: 'dental' as const,
-        provider: 'Default Dental Provider',
-        costEmployee: 3500, // $35.00 / month
-        costEmployer: 7500, // $75.00 / month
+        provider: 'Delta Dental',
+        costEmployee: 1800,
+        costEmployer: 3200,
+        description: 'Preventive 100% covered, orthodontia 50%, $1,500 annual max',
         isActive: true,
       },
       {
         orgId,
-        name: 'Vision',
+        name: 'Guardian DentalGuard Preferred',
+        type: 'dental' as const,
+        provider: 'Guardian',
+        costEmployee: 1500,
+        costEmployer: 2800,
+        description: 'Preventive 100% covered, major 60%, $2,000 annual max',
+        isActive: true,
+      },
+      // Vision
+      {
+        orgId,
+        name: 'VSP Choice',
         type: 'vision' as const,
-        provider: 'Default Vision Provider',
-        costEmployee: 1500, // $15.00 / month
-        costEmployer: 3500, // $35.00 / month
+        provider: 'VSP',
+        costEmployee: 600,
+        costEmployer: 900,
+        description: 'Exam every 12 months, $150 frame allowance, laser vision discount',
+        isActive: true,
+      },
+      // Life Insurance
+      {
+        orgId,
+        name: 'MetLife Group Term Life',
+        type: 'life' as const,
+        provider: 'MetLife',
+        costEmployee: 800,
+        costEmployer: 1200,
+        description: '1x annual salary employer-paid, supplemental up to 5x, AD&D included',
+        isActive: true,
+      },
+      // Disability
+      {
+        orgId,
+        name: 'Lincoln STD + LTD',
+        type: 'disability' as const,
+        provider: 'Lincoln Financial',
+        costEmployee: 1200,
+        costEmployer: 1800,
+        description: 'STD 60% salary 14-day wait, LTD 60% salary 90-day wait to age 65',
         isActive: true,
       },
     ])
