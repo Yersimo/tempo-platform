@@ -307,6 +307,29 @@ export default function PayrollPage() {
     suggestedAction: 'Review budget allocation for upcoming quarters', module: 'payroll',
   }), [forecast, payrollRuns.length, t])
 
+  // Changes Since Last Run diff
+  const payrollDiff = useMemo(() => {
+    const sortedRuns = [...payrollRuns].sort((a, b) =>
+      new Date(b.created_at || (b as any).period_end || '').getTime() - new Date(a.created_at || (a as any).period_end || '').getTime()
+    )
+    if (sortedRuns.length < 2) return null
+    const current = sortedRuns[0]
+    const previous = sortedRuns[1]
+    const diff = (curr: number, prev: number) => {
+      const delta = curr - prev
+      const pct = prev > 0 ? Math.round((delta / prev) * 100) : 0
+      return { delta, pct, direction: (delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat') as 'up' | 'down' | 'flat' }
+    }
+    return {
+      current,
+      previous,
+      gross: diff(current.total_gross || 0, previous.total_gross || 0),
+      deductions: diff(current.total_deductions || 0, previous.total_deductions || 0),
+      net: diff(current.total_net || 0, previous.total_net || 0),
+      headcount: diff(current.employee_count || 0, previous.employee_count || 0),
+    }
+  }, [payrollRuns])
+
   // Filtered employee entries
   // Merge payroll entries with employees: ensures every employee appears in the list
   const mergedEntries = useMemo(() => {
@@ -793,6 +816,49 @@ export default function PayrollPage() {
 
           {payrollInsights.length > 0 && <AIAlertBanner insights={payrollInsights} className="mb-4" />}
           {payrollRuns.length > 0 && <div className="mb-6"><AIInsightCard insight={forecastInsight} compact /></div>}
+
+          {payrollDiff && (
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Changes Since Last Run</CardTitle>
+                  <span className="text-xs text-t3">
+                    {(payrollDiff.previous as any).period_start || (payrollDiff.previous as any).period || 'Previous'} → {(payrollDiff.current as any).period_start || (payrollDiff.current as any).period || 'Current'}
+                  </span>
+                </div>
+              </CardHeader>
+              <div className="px-5 pb-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Gross Pay', data: payrollDiff.gross, fmt: (v: number) => `${(v / 100).toLocaleString()}` },
+                    { label: 'Deductions', data: payrollDiff.deductions, fmt: (v: number) => `${(v / 100).toLocaleString()}` },
+                    { label: 'Net Pay', data: payrollDiff.net, fmt: (v: number) => `${(v / 100).toLocaleString()}` },
+                    { label: 'Headcount', data: payrollDiff.headcount, fmt: (v: number) => `${v}` },
+                  ].map(item => (
+                    <div key={item.label} className="p-3 bg-canvas border border-border rounded-lg">
+                      <p className="text-xs text-t3 mb-1">{item.label}</p>
+                      <div className="flex items-center gap-2">
+                        {item.data.direction === 'up' && <span className="text-green-600 text-xs">▲</span>}
+                        {item.data.direction === 'down' && <span className="text-red-600 text-xs">▼</span>}
+                        {item.data.direction === 'flat' && <span className="text-t3 text-xs">—</span>}
+                        <span className={`text-sm font-semibold ${
+                          item.data.direction === 'up' ? 'text-green-600' :
+                          item.data.direction === 'down' ? 'text-red-600' : 'text-t1'
+                        }`}>
+                          {item.data.direction !== 'flat' ? (item.data.delta > 0 ? '+' : '') + item.fmt(item.data.delta) : 'No change'}
+                        </span>
+                      </div>
+                      {item.data.pct !== 0 && (
+                        <p className={`text-[0.6rem] mt-0.5 ${item.data.pct > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {item.data.pct > 0 ? '+' : ''}{item.data.pct}% vs previous
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
 
           <Card padding="none">
             <CardHeader>
