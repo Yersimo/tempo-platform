@@ -17,6 +17,9 @@ import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { isEvaluatorAccount, getEvaluatorConfig, ghanaEvaluatorEmployees, getPayrollGroupScenarios, SAMUEL_PAYROLL_GROUP, MEISSA_PAYROLL_GROUP, ghanaEmployeeSalaries, ghanaEmployeeBankDetails } from '@/lib/evaluator-demo-data'
+import { EvaluatorWalkthrough, ResumeWalkthroughButton } from '@/components/payroll/evaluator-walkthrough'
+import { PayrollCompletionSummary } from '@/components/payroll/evaluator-completion'
 import { detectPayrollAnomalies, forecastAnnualPayroll, scorePayrollHealth, recommendTaxOptimizations, analyzePayrollTrends, predictComplianceRisks, scoreContractorRisk } from '@/lib/ai-engine'
 import { calculateTax } from '@/lib/tax-calculator'
 import type { SupportedCountry } from '@/lib/tax-calculator'
@@ -230,6 +233,69 @@ export default function PayrollPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Evaluator walkthrough state
+  const isEvaluator = !!(currentUser?.email && isEvaluatorAccount(currentUser.email as string))
+  const evaluatorConfig = isEvaluator ? getEvaluatorConfig(currentUser?.email as string) : null
+  const [walkthroughDismissed, setWalkthroughDismissed] = useState(false)
+  const [walkthroughCompletedSteps, setWalkthroughCompletedSteps] = useState<Set<number>>(new Set())
+  const [walkthroughCurrentStep, setWalkthroughCurrentStep] = useState(1)
+  const [showCompletionSummary, setShowCompletionSummary] = useState(false)
+
+  // Evaluator: merged employee list (includes Ghana evaluator employees for name resolution)
+  const mergedEmployees = useMemo(() => {
+    if (!isEvaluator) return employees
+    const existingIds = new Set(employees.map((e: any) => e.id))
+    const extra = ghanaEvaluatorEmployees.filter(e => !existingIds.has(e.id))
+    return extra.length > 0 ? [...employees, ...extra] as typeof employees : employees
+  }, [employees, isEvaluator])
+
+  // Evaluator: payroll group and scenarios
+  const evaluatorPayrollGroup = useMemo(() => {
+    if (!evaluatorConfig) return null
+    return evaluatorConfig.email === 's.mireku@ecobank-demo.com' ? SAMUEL_PAYROLL_GROUP : MEISSA_PAYROLL_GROUP
+  }, [evaluatorConfig])
+  const evaluatorScenarios = useMemo(() => {
+    if (!evaluatorConfig) return null
+    return getPayrollGroupScenarios(evaluatorConfig.payrollGroupId)
+  }, [evaluatorConfig])
+
+  // Evaluator: AI anomaly insights (3 flags per evaluator group)
+  const evaluatorAnomalyInsights = useMemo(() => {
+    if (!isEvaluator || !evaluatorScenarios) return []
+    const scenarios = evaluatorScenarios
+    const ghEmps = ghanaEvaluatorEmployees
+    const findName = (id: string) => ghEmps.find(e => e.id === id)?.profile.full_name || id
+    return [
+      {
+        id: 'eval-anomaly-salary-variance',
+        type: 'anomaly' as const,
+        severity: 'warning' as const,
+        confidence: 'high' as const,
+        title: 'Salary Variance Detected',
+        description: `${findName(scenarios.anomalyFlags.salaryVariance)} has an ${scenarios.proRataDetails[scenarios.anomalyFlags.salaryVariance]?.increasePercent || 18}% mid-month salary increase. Verify approval documentation and pro-rata calculation.`,
+        suggestedAction: 'Review salary change approval',
+      },
+      {
+        id: 'eval-anomaly-duplicate-bank',
+        type: 'anomaly' as const,
+        severity: 'critical' as const,
+        confidence: 'high' as const,
+        title: 'Duplicate Bank Account',
+        description: `${findName(scenarios.anomalyFlags.duplicateBankAccount[0])} and ${findName(scenarios.anomalyFlags.duplicateBankAccount[1])} share the same bank account number. This requires immediate investigation before payment.`,
+        suggestedAction: 'Investigate duplicate account',
+      },
+      {
+        id: 'eval-anomaly-missing-ssnit',
+        type: 'anomaly' as const,
+        severity: 'warning' as const,
+        confidence: 'high' as const,
+        title: 'Missing SSNIT Number',
+        description: `${findName(scenarios.anomalyFlags.missingSsnit)} has no SSNIT number on file. SSNIT contributions cannot be remitted without a valid number. Contact employee to provide documentation.`,
+        suggestedAction: 'Request SSNIT documentation',
+      },
+    ]
+  }, [isEvaluator, evaluatorScenarios])
+
   // T5: Maternity leave detection for payroll
   const maternityLeaves = useMemo(() => {
     if (!leaveRequests) return []
@@ -291,7 +357,12 @@ export default function PayrollPage() {
   const lastRun = payrollRuns.length > 0 ? payrollRuns[payrollRuns.length - 1] : null
   const totalDeductions = lastRun ? lastRun.total_deductions : 0
 
-  const payrollInsights = useMemo(() => detectPayrollAnomalies(payrollRuns), [payrollRuns])
+  const basePayrollInsights = useMemo(() => detectPayrollAnomalies(payrollRuns), [payrollRuns])
+  // Merge evaluator anomaly flags into payroll insights
+  const payrollInsights = useMemo(() => {
+    if (!isEvaluator || evaluatorAnomalyInsights.length === 0) return basePayrollInsights
+    return [...evaluatorAnomalyInsights, ...basePayrollInsights] as typeof basePayrollInsights
+  }, [basePayrollInsights, isEvaluator, evaluatorAnomalyInsights])
   const forecast = useMemo(() => forecastAnnualPayroll(payrollRuns), [payrollRuns])
   const healthScore = useMemo(() => scorePayrollHealth(payrollRuns as any, complianceIssues as any, taxFilings as any), [payrollRuns, complianceIssues, taxFilings])
   const taxOpts = useMemo(() => recommendTaxOptimizations(taxConfigs as any, employees as any), [taxConfigs, employees])
@@ -359,7 +430,7 @@ export default function PayrollPage() {
 
   const filteredEntries = useMemo(() => {
     let entries = [...mergedEntries]
-    if (searchQuery) entries = entries.filter(e => resolveEmployeeName(employees, (e as any).employee_id, (e as any).employee_name).toLowerCase().includes(searchQuery.toLowerCase()))
+    if (searchQuery) entries = entries.filter(e => resolveEmployeeName(mergedEmployees, (e as any).employee_id, (e as any).employee_name).toLowerCase().includes(searchQuery.toLowerCase()))
     if (filterDept) entries = entries.filter(e => (e as any).department === filterDept)
     if (filterCountry) entries = entries.filter(e => (e as any).country === filterCountry)
     return entries
@@ -746,6 +817,52 @@ export default function PayrollPage() {
         actions={!isReadOnly ? <Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> {t('newPayRun')}</Button> : undefined}
       />
 
+      {/* Evaluator Walkthrough */}
+      {isEvaluator && !walkthroughDismissed && (
+        <EvaluatorWalkthrough
+          evaluatorName={evaluatorConfig?.firstName || 'Evaluator'}
+          payrollGroupName={evaluatorConfig?.payrollGroupName || 'Ghana Evaluation Group'}
+          currentStep={walkthroughCurrentStep}
+          completedSteps={walkthroughCompletedSteps}
+          onDismiss={() => setWalkthroughDismissed(true)}
+          className="mb-6"
+        />
+      )}
+      {isEvaluator && walkthroughDismissed && (
+        <ResumeWalkthroughButton onClick={() => setWalkthroughDismissed(false)} />
+      )}
+
+      {/* Evaluator: Post-payroll completion summary */}
+      {isEvaluator && showCompletionSummary && evaluatorPayrollGroup && evaluatorScenarios && (
+        <PayrollCompletionSummary
+          payrollGroupName={evaluatorPayrollGroup.name}
+          period={evaluatorPayrollGroup.payPeriod}
+          employeesPaid={evaluatorPayrollGroup.employeeIds.length}
+          totalGross={evaluatorPayrollGroup.employeeIds.reduce((sum, id) => sum + (ghanaEmployeeSalaries[id]?.monthlySalaryGHS || 0), 0)}
+          totalNet={evaluatorPayrollGroup.employeeIds.reduce((sum, id) => {
+            const salary = ghanaEmployeeSalaries[id]?.monthlySalaryGHS || 0
+            const ssnit = salary * 0.055
+            return sum + (salary - ssnit - salary * 0.15) // rough net estimate
+          }, 0)}
+          totalSsnitEmployer={evaluatorPayrollGroup.employeeIds.reduce((sum, id) => sum + ((ghanaEmployeeSalaries[id]?.monthlySalaryGHS || 0) * 0.13), 0)}
+          totalPaye={evaluatorPayrollGroup.employeeIds.reduce((sum, id) => sum + ((ghanaEmployeeSalaries[id]?.monthlySalaryGHS || 0) * 0.15), 0)}
+          confidenceScore={96}
+          processingTimeSeconds={2.4}
+          reconciliation={{
+            previousPeriod: 'March 2026',
+            headcountChange: 0,
+            grossVariance: evaluatorScenarios.bonusAmount + (evaluatorScenarios.proRataDetails[evaluatorScenarios.proRataEmployees[0]]?.newSalary || 0) - (evaluatorScenarios.proRataDetails[evaluatorScenarios.proRataEmployees[0]]?.oldSalary || 0),
+            employeesWithChanges: 4,
+            changes: [
+              { employeeName: ghanaEvaluatorEmployees.find(e => e.id === evaluatorScenarios.proRataEmployees[0])?.profile.full_name || '', reason: 'Mid-month salary increase (pro-rata)', amount: (evaluatorScenarios.proRataDetails[evaluatorScenarios.proRataEmployees[0]]?.newSalary || 0) - (evaluatorScenarios.proRataDetails[evaluatorScenarios.proRataEmployees[0]]?.oldSalary || 0) },
+              { employeeName: ghanaEvaluatorEmployees.find(e => e.id === evaluatorScenarios.bonusEmployee)?.profile.full_name || '', reason: 'Performance bonus', amount: evaluatorScenarios.bonusAmount },
+              { employeeName: ghanaEvaluatorEmployees.find(e => e.id === evaluatorScenarios.loanEmployee)?.profile.full_name || '', reason: 'Staff loan deduction', amount: -evaluatorScenarios.loanAmount },
+            ],
+          }}
+          className="mb-6"
+        />
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
         {tabs.map(tab => {
@@ -989,7 +1106,7 @@ export default function PayrollPage() {
                           const hasBankDetails = emp && (emp as any).bank_account_number
                           return (
                             <tr key={e.id} className="hover:bg-white/50">
-                              <td className="px-3 py-2 text-t1 font-medium">{resolveEmployeeName(employees, e.employee_id, e.employee_name)}</td>
+                              <td className="px-3 py-2 text-t1 font-medium">{resolveEmployeeName(mergedEmployees, e.employee_id, e.employee_name)}</td>
                               <td className="px-3 py-2 text-t2">{e.department}</td>
                               <td className="px-3 py-2">
                                 {(() => {
@@ -1139,7 +1256,7 @@ export default function PayrollPage() {
                     return (
                       <tr key={e.id} className="hover:bg-canvas/50">
                         <td className="px-6 py-3">
-                          <p className="text-xs font-medium text-t1">{resolveEmployeeName(employees, e.employee_id, e.employee_name)}</p>
+                          <p className="text-xs font-medium text-t1">{resolveEmployeeName(mergedEmployees, e.employee_id, e.employee_name)}</p>
                           <p className="text-xs text-t3">{e.employee_id}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-t2">{e.department}</td>
@@ -2109,7 +2226,7 @@ export default function PayrollPage() {
               <div className="bg-canvas rounded-lg p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <p className="text-sm font-semibold text-t1">{resolveEmployeeName(employees, s.employee_id, s.employee_name)}</p>
+                    <p className="text-sm font-semibold text-t1">{resolveEmployeeName(mergedEmployees, s.employee_id, s.employee_name)}</p>
                     <p className="text-xs text-t3">{s.department} · {s.country}</p>
                   </div>
                   <div className="text-right">

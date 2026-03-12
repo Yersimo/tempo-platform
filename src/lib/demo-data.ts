@@ -76,6 +76,9 @@ export const demoEmployees = [
   { id: 'emp-28', org_id: 'org-1', department_id: 'dept-8', job_title: 'Digital Marketing Lead', level: 'Senior', country: 'Kenya', role: 'employee' as const, profile: { full_name: 'Peter Njoroge', email: 'p.njoroge@ecobank.com', avatar_url: null, phone: '+254 755 678 901' } },
   { id: 'emp-29', org_id: 'org-1', department_id: 'dept-8', job_title: 'Brand Designer', level: 'Mid', country: 'Nigeria', role: 'employee' as const, profile: { full_name: 'Tunde Bakare', email: 't.bakare@ecobank.com', avatar_url: null, phone: '+234 811 234 5678' } },
   { id: 'emp-30', org_id: 'org-1', department_id: 'dept-8', job_title: 'Content Writer', level: 'Junior', country: 'Senegal', role: 'employee' as const, profile: { full_name: 'Aminata Diop', email: 'a.diop@ecobank.com', avatar_url: null, phone: '+221 77 456 78 90' } },
+  // ── Evaluator Accounts ──────────────────────────────────
+  { id: 'emp-eval-samuel', org_id: 'org-1', department_id: 'dept-5', job_title: 'Head of Compensation & Benefits', level: 'Director', country: 'Ghana', role: 'admin' as const, profile: { full_name: 'Samuel Mireku', email: 's.mireku@ecobank-demo.com', avatar_url: null, phone: '+233 24 100 0847' } },
+  { id: 'emp-eval-meissa', org_id: 'org-1', department_id: 'dept-5', job_title: 'Head of Compensation & Benefits', level: 'Director', country: 'Senegal', role: 'admin' as const, profile: { full_name: 'Meissa Fall', email: 'm.fall@ecobank-demo.com', avatar_url: null, phone: '+221 77 100 0923' } },
 ]
 
 // Performance - Goals
@@ -205,6 +208,9 @@ export const demoSalaryReviews = [
   { id: 'sr-2', org_id: 'org-1', employee_id: 'emp-6', proposed_by: 'emp-5', current_salary: 65000, proposed_salary: 72000, currency: 'USD', justification: 'Top performer. Promoted to lead analyst role with expanded scope.', status: 'approved' as const, approved_by: 'emp-17', cycle: '2026 Annual', created_at: '2026-02-10T00:00:00Z' },
   { id: 'sr-3', org_id: 'org-1', employee_id: 'emp-14', proposed_by: 'emp-13', current_salary: 85000, proposed_salary: 95000, currency: 'USD', justification: 'Critical talent retention. Market rate for senior engineers has increased significantly.', status: 'pending_approval' as const, approved_by: null, cycle: '2026 Annual', created_at: '2026-02-12T00:00:00Z' },
   { id: 'sr-4', org_id: 'org-1', employee_id: 'emp-10', proposed_by: 'emp-9', current_salary: 35000, proposed_salary: 38000, currency: 'USD', justification: 'Completed probation successfully. Annual adjustment.', status: 'approved' as const, approved_by: 'emp-17', cycle: '2026 Annual', created_at: '2026-02-08T00:00:00Z' },
+  // Evaluator personal salary data
+  { id: 'sr-eval-samuel', org_id: 'org-1', employee_id: 'emp-eval-samuel', proposed_by: 'emp-17', current_salary: 28500, proposed_salary: 28500, currency: 'GHS', justification: 'Current salary — Head of C&B', status: 'approved' as const, approved_by: 'emp-17', cycle: '2026 Annual', created_at: '2026-01-05T00:00:00Z' },
+  { id: 'sr-eval-meissa', org_id: 'org-1', employee_id: 'emp-eval-meissa', proposed_by: 'emp-17', current_salary: 26500, proposed_salary: 26500, currency: 'GHS', justification: 'Current salary — Head of C&B', status: 'approved' as const, approved_by: 'emp-17', cycle: '2026 Annual', created_at: '2026-01-05T00:00:00Z' },
 ]
 
 // Equity Grants
@@ -331,6 +337,8 @@ export const demoMentoringGoals = [
 export const demoPayrollRuns = [
   { id: 'pr-1', org_id: 'org-1', period: 'January 2026', status: 'paid' as const, total_gross: 2450000, total_net: 1890000, total_deductions: 560000, currency: 'USD', employee_count: 30, run_date: '2026-01-28T00:00:00Z', created_at: '2026-01-25T00:00:00Z' },
   { id: 'pr-2', org_id: 'org-1', period: 'February 2026', status: 'approved' as const, total_gross: 2480000, total_net: 1910000, total_deductions: 570000, currency: 'USD', employee_count: 30, run_date: '2026-02-25T00:00:00Z', created_at: '2026-02-22T00:00:00Z' },
+  // Evaluator Ghana payroll run
+  { id: 'pr-march-gh', org_id: 'org-1', period: 'March 2026', status: 'paid' as const, total_gross: 28500 + 26500, total_net: 19749.50 + 18459.50, total_deductions: (28500 - 19749.50) + (26500 - 18459.50), currency: 'GHS', employee_count: 2, run_date: '2026-03-31T00:00:00Z', created_at: '2026-03-28T00:00:00Z' },
 ]
 
 // Employee Payroll Entries (individual pay stubs for January 2026 run — all 30 employees)
@@ -373,6 +381,10 @@ export const demoEmployeePayrollEntries = [
   { id: 'epe-15', org_id: 'org-1', payroll_run_id: 'pr-1', employee_id: 'emp-28', employee_name: 'Peter Njoroge', department: 'Marketing', country: 'Kenya', base_pay: 5417, gross_pay: 5417, federal_tax: 813, state_tax: 271, social_security: 336, medicare: 79, pension: 271, health_insurance: 500, bonus: 0, overtime: 0, other_deductions: 0, total_deductions: 2270, net_pay: 3147, currency: 'USD', pay_date: '2026-01-28' },
   { id: 'epe-29', org_id: 'org-1', payroll_run_id: 'pr-1', employee_id: 'emp-29', employee_name: 'Tunde Bakare', department: 'Marketing', country: 'Nigeria', base_pay: 4583, gross_pay: 4583, federal_tax: 688, state_tax: 229, social_security: 284, medicare: 66, pension: 229, health_insurance: 500, bonus: 0, overtime: 0, other_deductions: 0, total_deductions: 1996, net_pay: 2587, currency: 'USD', pay_date: '2026-01-28' },
   { id: 'epe-30', org_id: 'org-1', payroll_run_id: 'pr-1', employee_id: 'emp-30', employee_name: 'Aminata Diop', department: 'Marketing', country: 'Senegal', base_pay: 2917, gross_pay: 2917, federal_tax: 438, state_tax: 146, social_security: 181, medicare: 42, pension: 146, health_insurance: 500, bonus: 0, overtime: 0, other_deductions: 0, total_deductions: 1453, net_pay: 1464, currency: 'USD', pay_date: '2026-01-28' },
+  // Samuel Mireku March 2026 payslip
+  { id: 'epe-eval-samuel', org_id: 'org-1', payroll_run_id: 'pr-march-gh', employee_id: 'emp-eval-samuel', employee_name: 'Samuel Mireku', department: 'Human Resources', country: 'Ghana', base_pay: 28500, gross_pay: 28500, federal_tax: 7183, state_tax: 0, social_security: 1567.50, medicare: 0, pension: 0, health_insurance: 0, bonus: 0, overtime: 0, other_deductions: 0, total_deductions: 8750.50, net_pay: 19749.50, currency: 'GHS', pay_date: '2026-03-31' },
+  // Meissa Fall March 2026 payslip
+  { id: 'epe-eval-meissa', org_id: 'org-1', payroll_run_id: 'pr-march-gh', employee_id: 'emp-eval-meissa', employee_name: 'Meissa Fall', department: 'Human Resources', country: 'Ghana', base_pay: 26500, gross_pay: 26500, federal_tax: 6583, state_tax: 0, social_security: 1457.50, medicare: 0, pension: 0, health_insurance: 0, bonus: 0, overtime: 0, other_deductions: 0, total_deductions: 8040.50, net_pay: 18459.50, currency: 'GHS', pay_date: '2026-03-31' },
 ]
 
 // Contractor Payments

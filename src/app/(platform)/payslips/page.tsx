@@ -9,11 +9,19 @@ import { Modal } from '@/components/ui/modal'
 import { StatCard } from '@/components/ui/stat-card'
 import { FileText, Download, Eye, Wallet, DollarSign, Calendar, AlertTriangle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+import { isEvaluatorAccount, getEvaluatorConfig, evaluatorPayslips } from '@/lib/evaluator-demo-data'
 
 /** Format a cents integer (from DB) as a dollar string */
 function fmtCents(cents: number | null | undefined): string {
   if (cents == null) return '$0.00'
   return '$' + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Format a currency amount with proper symbol */
+function fmtCurrency(amount: number | null | undefined, currency: string = 'USD'): string {
+  if (amount == null) return currency === 'GHS' ? 'GH₵0.00' : '$0.00'
+  const prefix = currency === 'GHS' ? 'GH₵' : '$'
+  return prefix + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 interface Payslip {
@@ -26,6 +34,8 @@ interface Payslip {
   period: string
   status: string
   runDate: string
+  /** When true, amounts are in actual currency (not cents) */
+  _rawAmounts?: boolean
 }
 
 interface PayStubDetail {
@@ -41,8 +51,10 @@ interface PayStubDetail {
   }
   deductions: {
     federalTax: number
+    federalTaxLabel?: string
     stateOrProvincialTax: number
     socialSecurity: number
+    socialSecurityLabel?: string
     medicare: number
     pension: number
     healthInsurance: number
@@ -69,11 +81,52 @@ export default function PayslipsPage() {
   const [loadingStub, setLoadingStub] = useState(false)
 
   const employeeId = currentEmployeeId || currentUser?.id
+  const userEmail = currentUser?.email || ''
+  const isEvaluator = isEvaluatorAccount(userEmail)
+  const evaluatorConfig = isEvaluator ? getEvaluatorConfig(userEmail) : null
 
-  // Fetch payslips on mount
+  // Determine which evaluator payslip data to use
+  const evalPayslip = evaluatorConfig?.email === 's.mireku@ecobank-demo.com'
+    ? evaluatorPayslips.samuel
+    : evaluatorConfig?.email === 'm.fall@ecobank-demo.com'
+      ? evaluatorPayslips.meissa
+      : null
+
+  // Fetch payslips on mount — evaluators get demo data, others fetch from API
   useEffect(() => {
     if (!employeeId) return
     setLoading(true)
+
+    // Check evaluator status inline using the email
+    const email = userEmail
+    const isEval = email ? isEvaluatorAccount(email) : false
+    const evalCfg = isEval ? getEvaluatorConfig(email) : null
+    const evalSlip = evalCfg?.email === 's.mireku@ecobank-demo.com'
+      ? evaluatorPayslips.samuel
+      : evalCfg?.email === 'm.fall@ecobank-demo.com'
+        ? evaluatorPayslips.meissa
+        : null
+
+    if (isEval && evalSlip) {
+      // Evaluator: use demo payslip data directly (no API call)
+      const demoPayslip: Payslip = {
+        entryId: evalSlip.id,
+        payrollRunId: evalSlip.payroll_run_id,
+        netPay: evalSlip.net_pay,
+        grossPay: evalSlip.gross_pay,
+        totalDeductions: evalSlip.total_deductions,
+        currency: evalSlip.currency,
+        period: evalSlip.pay_period,
+        status: 'paid',
+        runDate: evalSlip.pay_date,
+        _rawAmounts: true,
+      }
+      setPayslips([demoPayslip])
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     fetch(`/api/payroll?action=my-payslips&employeeId=${employeeId}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load payslips')
@@ -85,10 +138,42 @@ export default function PayslipsPage() {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
-  }, [employeeId])
+  }, [employeeId, userEmail])
 
   // View pay stub detail
   async function viewPayStub(payslip: Payslip) {
+    // Evaluator: build stub from demo data directly
+    if (isEvaluator && evalPayslip) {
+      const stub: PayStubDetail = {
+        employeeName: evalPayslip.employee_name,
+        period: evalPayslip.pay_period,
+        country: evalPayslip.country,
+        currency: evalPayslip.currency,
+        earnings: {
+          baseSalary: evalPayslip.base_pay,
+          overtime: evalPayslip.overtime || 0,
+          bonuses: evalPayslip.bonus || 0,
+          totalEarnings: evalPayslip.gross_pay,
+        },
+        deductions: {
+          federalTax: evalPayslip.paye,
+          federalTaxLabel: 'PAYE (Income Tax)',
+          stateOrProvincialTax: 0,
+          socialSecurity: evalPayslip.ssnit_employee,
+          socialSecurityLabel: 'SSNIT (Employee 5.5%)',
+          medicare: 0,
+          pension: 0,
+          healthInsurance: 0,
+          otherDeductions: evalPayslip.loan_deduction || 0,
+          totalDeductions: evalPayslip.total_deductions,
+        },
+        netPay: evalPayslip.net_pay,
+      }
+      setSelectedStub(stub)
+      setShowStubModal(true)
+      return
+    }
+
     setLoadingStub(true)
     try {
       const res = await fetch('/api/payroll', {
@@ -141,6 +226,21 @@ export default function PayslipsPage() {
   const totalNet = payslips.reduce((sum, p) => sum + (p.netPay || 0), 0)
   const totalDeductions = payslips.reduce((sum, p) => sum + (p.totalDeductions || 0), 0)
 
+  // Determine format function — evaluators use raw GHS, others use cents
+  const hasRawAmounts = payslips.some(p => p._rawAmounts)
+  const payslipCurrency = payslips[0]?.currency || 'USD'
+  const fmtAmount = hasRawAmounts
+    ? (amount: number | null | undefined) => fmtCurrency(amount, payslipCurrency)
+    : fmtCents
+
+  // Stub formatting — currency-aware
+  const stubCurrency = selectedStub?.currency || 'USD'
+  const fmtStubAmount = (amount: number | null | undefined) => {
+    if (amount == null || amount === 0) return stubCurrency === 'GHS' ? 'GH₵0.00' : '$0.00'
+    const prefix = stubCurrency === 'GHS' ? 'GH₵' : '$'
+    return prefix + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
   return (
     <>
       <Header title="My Payslips" subtitle="View and download your pay stubs" />
@@ -148,9 +248,9 @@ export default function PayslipsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Payslips" value={payslips.length} change="Paid periods" changeType="neutral" icon={<FileText size={20} />} />
-        <StatCard label="Total Gross" value={fmtCents(totalEarnings)} change="All time" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label="Total Net" value={fmtCents(totalNet)} change="Take home" changeType="neutral" icon={<Wallet size={20} />} />
-        <StatCard label="Total Deductions" value={fmtCents(totalDeductions)} change="Taxes & benefits" changeType="neutral" icon={<Calendar size={20} />} />
+        <StatCard label="Total Gross" value={fmtAmount(totalEarnings)} change="All time" changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label="Total Net" value={fmtAmount(totalNet)} change="Take home" changeType="neutral" icon={<Wallet size={20} />} />
+        <StatCard label="Total Deductions" value={fmtAmount(totalDeductions)} change="Taxes & benefits" changeType="neutral" icon={<Calendar size={20} />} />
       </div>
 
       {/* Loading / Error states */}
@@ -206,9 +306,9 @@ export default function PayslipsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-t2">{payslip.currency || 'USD'}</td>
-                    <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{fmtCents(payslip.grossPay)}</td>
-                    <td className="px-4 py-3 text-xs text-error text-right">-{fmtCents(payslip.totalDeductions)}</td>
-                    <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{fmtCents(payslip.netPay)}</td>
+                    <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{payslip._rawAmounts ? fmtCurrency(payslip.grossPay, payslip.currency) : fmtCents(payslip.grossPay)}</td>
+                    <td className="px-4 py-3 text-xs text-error text-right">-{payslip._rawAmounts ? fmtCurrency(payslip.totalDeductions, payslip.currency) : fmtCents(payslip.totalDeductions)}</td>
+                    <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{payslip._rawAmounts ? fmtCurrency(payslip.netPay, payslip.currency) : fmtCents(payslip.netPay)}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant="success">Paid</Badge>
                     </td>
@@ -250,30 +350,39 @@ export default function PayslipsPage() {
             <div>
               <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Earnings</h4>
               <div className="space-y-1">
-                <div className="flex justify-between text-sm"><span className="text-t2">Base Salary</span><span className="text-t1">{fmtDollars(selectedStub.earnings.baseSalary)}</span></div>
-                {selectedStub.earnings.overtime > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Overtime</span><span className="text-t1">{fmtDollars(selectedStub.earnings.overtime)}</span></div>}
-                {selectedStub.earnings.bonuses > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Bonus</span><span className="text-t1">{fmtDollars(selectedStub.earnings.bonuses)}</span></div>}
-                <div className="flex justify-between text-sm font-semibold border-t border-divider pt-1"><span className="text-t1">Gross Pay</span><span className="text-t1">{fmtDollars(selectedStub.earnings.totalEarnings)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-t2">Base Salary</span><span className="text-t1">{fmtStubAmount(selectedStub.earnings.baseSalary)}</span></div>
+                {selectedStub.earnings.overtime > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Overtime</span><span className="text-t1">{fmtStubAmount(selectedStub.earnings.overtime)}</span></div>}
+                {selectedStub.earnings.bonuses > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Bonus</span><span className="text-t1">{fmtStubAmount(selectedStub.earnings.bonuses)}</span></div>}
+                <div className="flex justify-between text-sm font-semibold border-t border-divider pt-1"><span className="text-t1">Gross Pay</span><span className="text-t1">{fmtStubAmount(selectedStub.earnings.totalEarnings)}</span></div>
               </div>
             </div>
 
             <div>
               <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Deductions</h4>
               <div className="space-y-1">
-                <div className="flex justify-between text-sm"><span className="text-t2">Federal Tax</span><span className="text-error">-{fmtDollars(selectedStub.deductions.federalTax)}</span></div>
-                {selectedStub.deductions.stateOrProvincialTax > 0 && <div className="flex justify-between text-sm"><span className="text-t2">State Tax</span><span className="text-error">-{fmtDollars(selectedStub.deductions.stateOrProvincialTax)}</span></div>}
-                <div className="flex justify-between text-sm"><span className="text-t2">Social Security</span><span className="text-error">-{fmtDollars(selectedStub.deductions.socialSecurity)}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-t2">Medicare</span><span className="text-error">-{fmtDollars(selectedStub.deductions.medicare)}</span></div>
-                {selectedStub.deductions.pension > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Pension</span><span className="text-error">-{fmtDollars(selectedStub.deductions.pension)}</span></div>}
-                {selectedStub.deductions.healthInsurance > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Health Insurance</span><span className="text-error">-{fmtDollars(selectedStub.deductions.healthInsurance)}</span></div>}
-                <div className="flex justify-between text-sm font-semibold border-t border-divider pt-1"><span className="text-t1">Total Deductions</span><span className="text-error">-{fmtDollars(selectedStub.deductions.totalDeductions)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-t2">{selectedStub.deductions.federalTaxLabel || 'Federal Tax'}</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.federalTax)}</span></div>
+                {selectedStub.deductions.stateOrProvincialTax > 0 && <div className="flex justify-between text-sm"><span className="text-t2">State Tax</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.stateOrProvincialTax)}</span></div>}
+                <div className="flex justify-between text-sm"><span className="text-t2">{selectedStub.deductions.socialSecurityLabel || 'Social Security'}</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.socialSecurity)}</span></div>
+                {selectedStub.deductions.medicare > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Medicare</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.medicare)}</span></div>}
+                {selectedStub.deductions.pension > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Pension</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.pension)}</span></div>}
+                {selectedStub.deductions.healthInsurance > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Health Insurance</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.healthInsurance)}</span></div>}
+                {(selectedStub.deductions.otherDeductions || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-t2">Other Deductions</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.otherDeductions)}</span></div>}
+                <div className="flex justify-between text-sm font-semibold border-t border-divider pt-1"><span className="text-t1">Total Deductions</span><span className="text-error">-{fmtStubAmount(selectedStub.deductions.totalDeductions)}</span></div>
               </div>
             </div>
 
             <div className="bg-tempo-50 rounded-lg p-4 flex justify-between items-center">
               <span className="text-sm font-semibold text-t1">Net Pay</span>
-              <span className="text-xl font-bold text-tempo-700">{fmtDollars(selectedStub.netPay)}</span>
+              <span className="text-xl font-bold text-tempo-700">{fmtStubAmount(selectedStub.netPay)}</span>
             </div>
+
+            {/* SSNIT employer contribution note for Ghana payslips */}
+            {selectedStub.currency === 'GHS' && isEvaluator && evalPayslip && (
+              <div className="bg-gray-50 rounded-lg p-3 text-xs text-t3 space-y-1">
+                <p className="font-medium text-t2">Employer Contributions (not deducted from pay)</p>
+                <div className="flex justify-between"><span>SSNIT Employer (13%)</span><span className="text-t2">GH₵{(evalPayslip.ssnit_employer).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

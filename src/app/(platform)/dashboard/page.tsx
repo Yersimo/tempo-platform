@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
 import { EmployeeDashboard } from '@/components/employee-dashboard'
 import { OrgTab } from '@/components/dashboard/org-tab'
 import { MyOverviewTab } from '@/components/dashboard/my-overview-tab'
@@ -81,6 +83,11 @@ export default function DashboardPage() {
 
   const firstName = currentUser?.full_name?.split(' ')[0] || 'Amara'
 
+  // Evaluator account detection
+  const userEmail = currentUser?.email || ''
+  const isEvaluator = isEvaluatorAccount(userEmail)
+  const evaluatorConfig = isEvaluator ? getEvaluatorConfig(userEmail) : null
+
   // Time-of-day greeting (Oracle Fusion-inspired)
   const timeGreeting = (() => {
     const h = new Date().getHours()
@@ -114,6 +121,46 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      {/* Evaluator Dashboard Banner */}
+      {isEvaluator && evaluatorConfig && (
+        <div className="rounded-2xl border border-border/80 bg-white p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-t1">Welcome, {evaluatorConfig.firstName}</h2>
+              <p className="text-sm text-t3 mt-1">Ghana Payroll Evaluation Environment — Ecobank Transnational</p>
+            </div>
+            <Link href="/payroll">
+              <button className="px-5 py-2.5 bg-tempo-600 text-white text-sm font-medium rounded-xl hover:bg-tempo-700 transition-colors">
+                Start Payroll Demo →
+              </button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl bg-gray-50">
+              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Payroll Cost (This Month)</p>
+              <p className="text-2xl font-semibold text-t1 mt-1">GH₵ 847,500</p>
+              <p className="text-xs text-t3">Ghana • Nigeria • Kenya</p>
+            </div>
+            <div className="p-4 rounded-xl bg-gray-50">
+              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Compa Ratio</p>
+              <p className="text-2xl font-semibold text-t1 mt-1">0.96</p>
+              <p className="text-xs text-t3">Within 4% of market P50</p>
+            </div>
+            <div className="p-4 rounded-xl bg-gray-50">
+              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Benefits Enrollment</p>
+              <p className="text-2xl font-semibold text-t1 mt-1">87%</p>
+              <p className="text-xs text-emerald-600">+3% vs Q4</p>
+            </div>
+            <div className="p-4 rounded-xl bg-gray-50">
+              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Pending Approvals</p>
+              <p className="text-2xl font-semibold text-tempo-600 mt-1">1</p>
+              <p className="text-xs text-t3">April payroll ready</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Oracle Fusion-style Me / My Team / Organization tabs */}
       <Tabs

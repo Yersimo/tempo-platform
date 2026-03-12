@@ -17,6 +17,7 @@ import {
   ArrowLeftRight, X, Building2,
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
+import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/search'
@@ -44,6 +45,7 @@ export function Sidebar() {
 
   const role = currentUser?.role || 'owner'
   const isEmployee = role === 'employee'
+  const isEvaluator = !!(currentUser?.email && isEvaluatorAccount(currentUser.email))
 
   // Employee self-service: only show modules employees need
   const EMPLOYEE_ALLOWED_HREFS = new Set([
@@ -122,14 +124,24 @@ export function Sidebar() {
   ]
 
   // Filter nav groups for employee role
-  const navGroups: NavGroup[] = isEmployee
-    ? allNavGroups
-        .map(group => ({
-          ...group,
-          items: group.items.filter(item => EMPLOYEE_ALLOWED_HREFS.has(item.href)),
-        }))
-        .filter(group => group.items.length > 0)
-    : allNavGroups
+  // Filter nav groups for evaluator accounts (restricted module list)
+  const filterNavGroups = (groups: NavGroup[], allowed: Set<string>, prefixMatch = false): NavGroup[] =>
+    groups
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          prefixMatch
+            ? allowed.has(item.href) || Array.from(allowed).some(p => item.href.startsWith(p + '/'))
+            : allowed.has(item.href)
+        ),
+      }))
+      .filter(group => group.items.length > 0)
+
+  const navGroups: NavGroup[] = isEvaluator
+    ? filterNavGroups(allNavGroups, EVALUATOR_SIDEBAR_ALLOWED, true)
+    : isEmployee
+      ? filterNavGroups(allNavGroups, EMPLOYEE_ALLOWED_HREFS)
+      : allNavGroups
 
   const displayName = currentUser?.full_name || 'Amara Kone'
   const displayTitle = currentUser?.job_title || 'CHRO'

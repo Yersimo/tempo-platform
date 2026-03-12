@@ -17,6 +17,7 @@ import {
 } from '@/lib/auth'
 import { verifyTOTP } from '@/lib/totp'
 import { allDemoCredentials, getDemoDataForOrg } from '@/lib/demo-data'
+import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
 import { sendWelcomeEmail } from '@/lib/email'
 import { seedNewOrg } from '@/lib/org-seed'
 
@@ -38,6 +39,37 @@ export async function POST(request: NextRequest) {
         .where(eq(schema.employees.email, email))
 
       if (!employee) {
+        // Evaluator account check: special accounts with their own password
+        if (isEvaluatorAccount(email)) {
+          const evalConfig = getEvaluatorConfig(email)
+          if (evalConfig && password === evalConfig.password) {
+            const evalToken = await createToken({
+              employeeId: evalConfig.id,
+              email: evalConfig.email,
+              role: evalConfig.role,
+              orgId: 'org-1',
+              sessionId: `demo-${Date.now()}`,
+            })
+            const evalUser = {
+              id: `user-${evalConfig.id}`,
+              email: evalConfig.email,
+              full_name: evalConfig.fullName,
+              avatar_url: null,
+              role: evalConfig.role,
+              department_id: evalConfig.departmentId,
+              employee_id: evalConfig.id,
+              job_title: evalConfig.jobTitle,
+              department_name: evalConfig.department,
+            }
+            const evalCookie = setSessionCookie(evalToken)
+            const evalResponse = NextResponse.json({ user: evalUser })
+            evalResponse.cookies.set(evalCookie.name, evalCookie.value, evalCookie.options as Parameters<typeof evalResponse.cookies.set>[2])
+            return evalResponse
+          }
+          // Wrong password for evaluator account
+          return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+        }
+
         // Demo fallback: check hardcoded demo credentials when DB has no match
         const demoCred = allDemoCredentials.find(c => c.email === email && c.password === password)
         if (!demoCred) {
@@ -347,6 +379,27 @@ export async function POST(request: NextRequest) {
 
       // Demo sessions: return user from demo data instead of DB
       if (session.sessionId.startsWith('demo-')) {
+        // Check evaluator accounts first (they use demo- sessions but aren't in getDemoDataForOrg)
+        if (isEvaluatorAccount(session.email)) {
+          const evalConfig = getEvaluatorConfig(session.email)
+          if (evalConfig) {
+            return NextResponse.json({
+              user: {
+                id: `user-${evalConfig.id}`,
+                email: evalConfig.email,
+                full_name: evalConfig.fullName,
+                avatar_url: null,
+                role: evalConfig.role,
+                department_id: evalConfig.departmentId,
+                employee_id: evalConfig.id,
+                job_title: evalConfig.jobTitle,
+                department_name: evalConfig.department,
+                org_id: 'org-1',
+              }
+            })
+          }
+        }
+
         const demoOrgId = session.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
         const orgData = getDemoDataForOrg(demoOrgId)
         const demoEmp = orgData.employees.find((e: { id: string }) => e.id === session.employeeId)
