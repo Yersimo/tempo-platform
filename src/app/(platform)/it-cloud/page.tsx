@@ -37,11 +37,11 @@ function timeAgo(dateStr: string | null) {
 
 function platformIcon(platform: string) {
   switch (platform) {
-    case 'macos': case 'ios': return <Laptop size={14} className="text-gray-400" />
+    case 'macos': case 'ios': return <Laptop size={14} className="text-t2" />
     case 'windows': return <Monitor size={14} className="text-blue-400" />
     case 'android': return <Smartphone size={14} className="text-green-400" />
     case 'linux': return <Server size={14} className="text-orange-400" />
-    default: return <HardDrive size={14} className="text-gray-400" />
+    default: return <HardDrive size={14} className="text-t2" />
   }
 }
 
@@ -454,14 +454,14 @@ export default function ITCloudPage() {
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-[#111] border-white/10">
-                <CardHeader><CardTitle className="text-white text-sm">Device Health Overview</CardTitle></CardHeader>
+              <Card className="bg-card border-border">
+                <CardHeader><CardTitle className="text-t1 text-sm">Device Health Overview</CardTitle></CardHeader>
                 <div className="p-4 pt-0">
                   <TempoDonutChart data={deviceHealth} colors={['#22c55e', '#ef4444', '#6b7280']} height={220} />
                 </div>
               </Card>
-              <Card className="bg-[#111] border-white/10">
-                <CardHeader><CardTitle className="text-white text-sm">OS Distribution</CardTitle></CardHeader>
+              <Card className="bg-card border-border">
+                <CardHeader><CardTitle className="text-t1 text-sm">OS Distribution</CardTitle></CardHeader>
                 <div className="p-4 pt-0">
                   <TempoBarChart data={osDistribution} bars={[{ dataKey: 'value', name: 'Devices', color: CHART_COLORS.primary }]} xKey="name" height={220} />
                 </div>
@@ -470,14 +470,14 @@ export default function ITCloudPage() {
 
             {/* Recent Actions + Alerts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-[#111] border-white/10">
-                <CardHeader><CardTitle className="text-white text-sm">Recent Device Actions</CardTitle></CardHeader>
+              <Card className="bg-card border-border">
+                <CardHeader><CardTitle className="text-t1 text-sm">Recent Device Actions</CardTitle></CardHeader>
                 <div className="p-4 pt-0 space-y-2 max-h-80 overflow-y-auto">
-                  {recentActions.length === 0 && <p className="text-sm text-gray-500">No recent actions</p>}
+                  {recentActions.length === 0 && <p className="text-sm text-t3">No recent actions</p>}
                   {recentActions.map(action => {
                     const device = managedDevices.find(d => d.id === action.deviceId)
                     return (
-                      <div key={action.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                      <div key={action.id} className="flex items-center justify-between py-2 border-b border-divider last:border-0">
                         <div className="flex items-center gap-3">
                           <div className={cn('w-2 h-2 rounded-full',
                             action.status === 'completed' ? 'bg-green-500' :
@@ -485,25 +485,25 @@ export default function ITCloudPage() {
                             action.status === 'in_progress' ? 'bg-blue-500' : 'bg-yellow-500'
                           )} />
                           <div>
-                            <p className="text-sm text-white">{action.actionType.replace(/_/g, ' ')} — {device?.name || 'Unknown'}</p>
-                            <p className="text-xs text-gray-500">{action.notes?.slice(0, 60)}</p>
+                            <p className="text-sm text-t1">{action.actionType.replace(/_/g, ' ')} — {device?.name || 'Unknown'}</p>
+                            <p className="text-xs text-t3">{action.notes?.slice(0, 60)}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <Badge variant={action.status === 'completed' ? 'success' : action.status === 'failed' ? 'error' : 'info'} className="text-xs">
                             {action.status}
                           </Badge>
-                          <p className="text-xs text-gray-500 mt-1">{timeAgo(action.createdAt)}</p>
+                          <p className="text-xs text-t3 mt-1">{timeAgo(action.createdAt)}</p>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               </Card>
-              <Card className="bg-[#111] border-white/10">
-                <CardHeader><CardTitle className="text-white text-sm">Alerts</CardTitle></CardHeader>
+              <Card className="bg-card border-border">
+                <CardHeader><CardTitle className="text-t1 text-sm">Alerts</CardTitle></CardHeader>
                 <div className="p-4 pt-0 space-y-3">
-                  {alerts.length === 0 && <p className="text-sm text-gray-500">No active alerts</p>}
+                  {alerts.length === 0 && <p className="text-sm text-t3">No active alerts</p>}
                   {alerts.map((alert, i) => (
                     <div key={i} className={cn('flex items-start gap-3 p-3 rounded-lg border',
                       alert.severity === 'error' ? 'border-red-500/30 bg-red-500/5' :
@@ -513,7 +513,7 @@ export default function ITCloudPage() {
                       {alert.severity === 'error' ? <XCircle size={16} className="text-red-400 mt-0.5" /> :
                        alert.severity === 'warning' ? <AlertTriangle size={16} className="text-yellow-400 mt-0.5" /> :
                        <Clock size={16} className="text-blue-400 mt-0.5" />}
-                      <p className="text-sm text-gray-300">{alert.message}</p>
+                      <p className="text-sm text-t2">{alert.message}</p>
                     </div>
                   ))}
                 </div>
@@ -528,7 +528,7 @@ export default function ITCloudPage() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px]">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
                 <Input placeholder="Search devices..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
               </div>
               <Select value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} options={[
@@ -545,11 +545,11 @@ export default function ITCloudPage() {
             </div>
 
             {/* Device Table */}
-            <Card className="bg-[#111] border-white/10 overflow-hidden">
+            <Card className="bg-card border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 text-gray-400">
+                    <tr className="border-b border-border text-t2">
                       <th className="text-left p-3 font-medium">Device</th>
                       <th className="text-left p-3 font-medium">Employee</th>
                       <th className="text-left p-3 font-medium">Platform</th>
@@ -562,13 +562,13 @@ export default function ITCloudPage() {
                   </thead>
                   <tbody>
                     {filteredDevices.map(device => (
-                      <tr key={device.id} className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer" onClick={() => setShowDeviceDetail(device.id)}>
+                      <tr key={device.id} className="border-b border-divider hover:bg-canvas cursor-pointer" onClick={() => setShowDeviceDetail(device.id)}>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             {deviceTypeIcon(device.type)}
                             <div>
-                              <p className="text-white font-medium">{device.name}</p>
-                              <p className="text-xs text-gray-500">{device.manufacturer} {device.model}</p>
+                              <p className="text-t1 font-medium">{device.name}</p>
+                              <p className="text-xs text-t3">{device.manufacturer} {device.model}</p>
                             </div>
                           </div>
                         </td>
@@ -576,19 +576,19 @@ export default function ITCloudPage() {
                           {device.employee_id ? (
                             <div className="flex items-center gap-2">
                               <Avatar name={getEmployeeName(device.employee_id)} size="xs" />
-                              <span className="text-gray-300">{getEmployeeName(device.employee_id)}</span>
+                              <span className="text-t2">{getEmployeeName(device.employee_id)}</span>
                             </div>
                           ) : (
-                            <span className="text-gray-500">Unassigned</span>
+                            <span className="text-t3">Unassigned</span>
                           )}
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-1.5">
                             {platformIcon(device.platform)}
-                            <span className="text-gray-300 capitalize">{device.platform}</span>
+                            <span className="text-t2 capitalize">{device.platform}</span>
                           </div>
                         </td>
-                        <td className="p-3 text-gray-300">{device.osVersion || '—'}</td>
+                        <td className="p-3 text-t2">{device.osVersion || '—'}</td>
                         <td className="p-3">
                           <span className={cn('text-xs', device.lastSeen && (Date.now() - new Date(device.lastSeen).getTime()) < 86400000 ? 'text-green-400' : 'text-yellow-400')}>
                             {timeAgo(device.lastSeen)}
@@ -608,14 +608,14 @@ export default function ITCloudPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            <button className="p-1 rounded hover:bg-white/10" title="Lock" onClick={() => { setActionDeviceId(device.id); setActionType('lock'); setShowDeviceActionModal(true) }}>
-                              <Lock size={14} className="text-gray-400" />
+                            <button className="p-1 rounded hover:bg-canvas" title="Lock" onClick={() => { setActionDeviceId(device.id); setActionType('lock'); setShowDeviceActionModal(true) }}>
+                              <Lock size={14} className="text-t2" />
                             </button>
-                            <button className="p-1 rounded hover:bg-white/10" title="Restart" onClick={() => { setActionDeviceId(device.id); setActionType('restart'); setShowDeviceActionModal(true) }}>
-                              <RotateCcw size={14} className="text-gray-400" />
+                            <button className="p-1 rounded hover:bg-canvas" title="Restart" onClick={() => { setActionDeviceId(device.id); setActionType('restart'); setShowDeviceActionModal(true) }}>
+                              <RotateCcw size={14} className="text-t2" />
                             </button>
-                            <button className="p-1 rounded hover:bg-white/10" title="Push Update" onClick={() => { setActionDeviceId(device.id); setActionType('update_os'); setShowDeviceActionModal(true) }}>
-                              <Download size={14} className="text-gray-400" />
+                            <button className="p-1 rounded hover:bg-canvas" title="Push Update" onClick={() => { setActionDeviceId(device.id); setActionType('update_os'); setShowDeviceActionModal(true) }}>
+                              <Download size={14} className="text-t2" />
                             </button>
                           </div>
                         </td>
@@ -625,7 +625,7 @@ export default function ITCloudPage() {
                 </table>
               </div>
               {filteredDevices.length === 0 && (
-                <p className="text-center text-gray-500 py-8 text-sm">No devices match your filters</p>
+                <p className="text-center text-t3 py-8 text-sm">No devices match your filters</p>
               )}
             </Card>
 
@@ -636,42 +636,42 @@ export default function ITCloudPage() {
                   {/* Device Info */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-gray-500">Manufacturer</p>
-                      <p className="text-sm text-white">{selectedDevice.manufacturer} {selectedDevice.model}</p>
+                      <p className="text-xs text-t3">Manufacturer</p>
+                      <p className="text-sm text-t1">{selectedDevice.manufacturer} {selectedDevice.model}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Serial Number</p>
-                      <p className="text-sm text-white font-mono">{selectedDevice.serialNumber}</p>
+                      <p className="text-xs text-t3">Serial Number</p>
+                      <p className="text-sm text-t1 font-mono">{selectedDevice.serialNumber}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Platform</p>
-                      <p className="text-sm text-white capitalize">{selectedDevice.platform} — {selectedDevice.osVersion}</p>
+                      <p className="text-xs text-t3">Platform</p>
+                      <p className="text-sm text-t1 capitalize">{selectedDevice.platform} — {selectedDevice.osVersion}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Storage</p>
-                      <p className="text-sm text-white">{selectedDevice.storageCapacityGb} GB</p>
+                      <p className="text-xs text-t3">Storage</p>
+                      <p className="text-sm text-t1">{selectedDevice.storageCapacityGb} GB</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Enrolled</p>
-                      <p className="text-sm text-white">{new Date(selectedDevice.enrolledAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-t3">Enrolled</p>
+                      <p className="text-sm text-t1">{new Date(selectedDevice.enrolledAt).toLocaleDateString()}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Last Seen</p>
-                      <p className="text-sm text-white">{timeAgo(selectedDevice.lastSeen)}</p>
+                      <p className="text-xs text-t3">Last Seen</p>
+                      <p className="text-sm text-t1">{timeAgo(selectedDevice.lastSeen)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Status</p>
+                      <p className="text-xs text-t3">Status</p>
                       <Badge variant={selectedDevice.status === 'active' ? 'success' : 'info'}>{selectedDevice.status}</Badge>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">MDM Profile</p>
+                      <p className="text-xs text-t3">MDM Profile</p>
                       <p className="text-sm">{selectedDevice.mdmProfileInstalled ? <span className="text-green-400">Installed</span> : <span className="text-red-400">Not Installed</span>}</p>
                     </div>
                   </div>
 
                   {/* Quick Actions */}
                   <div>
-                    <p className="text-xs text-gray-500 mb-2">Quick Actions</p>
+                    <p className="text-xs text-t3 mb-2">Quick Actions</p>
                     <div className="flex flex-wrap gap-2">
                       {['lock', 'wipe', 'restart', 'update_os', 'install_app', 'push_config'].map(at => (
                         <Button key={at} variant="outline" size="sm" onClick={() => { setActionDeviceId(selectedDevice.id); setActionType(at); setShowDeviceActionModal(true); setShowDeviceDetail(null) }}>
@@ -689,16 +689,16 @@ export default function ITCloudPage() {
 
                   {/* Action History */}
                   <div>
-                    <p className="text-xs text-gray-500 mb-2">Action History</p>
+                    <p className="text-xs text-t3 mb-2">Action History</p>
                     {selectedDeviceActions.length === 0 ? (
-                      <p className="text-sm text-gray-500">No actions recorded</p>
+                      <p className="text-sm text-t3">No actions recorded</p>
                     ) : (
                       <div className="space-y-2">
                         {selectedDeviceActions.map(action => (
-                          <div key={action.id} className="flex items-center justify-between p-2 rounded bg-white/5">
+                          <div key={action.id} className="flex items-center justify-between p-2 rounded bg-canvas">
                             <div>
-                              <p className="text-sm text-white capitalize">{action.actionType.replace(/_/g, ' ')}</p>
-                              <p className="text-xs text-gray-500">{action.notes?.slice(0, 80)}</p>
+                              <p className="text-sm text-t1 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
+                              <p className="text-xs text-t3">{action.notes?.slice(0, 80)}</p>
                             </div>
                             <Badge variant={action.status === 'completed' ? 'success' : action.status === 'failed' ? 'error' : 'info'} className="text-xs">{action.status}</Badge>
                           </div>
@@ -709,9 +709,9 @@ export default function ITCloudPage() {
 
                   {/* Installed Apps */}
                   <div>
-                    <p className="text-xs text-gray-500 mb-2">Installed Apps</p>
+                    <p className="text-xs text-t3 mb-2">Installed Apps</p>
                     {selectedDeviceApps.length === 0 ? (
-                      <p className="text-sm text-gray-500">No apps tracked for this user</p>
+                      <p className="text-sm text-t3">No apps tracked for this user</p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {selectedDeviceApps.map(a => (
@@ -732,7 +732,7 @@ export default function ITCloudPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
                   <Input placeholder="Search apps..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
                 </div>
                 <Select value={filterAppCategory} onChange={e => setFilterAppCategory(e.target.value)} options={[
@@ -756,15 +756,15 @@ export default function ITCloudPage() {
                 const utilPct = app.licenseCount > 0 ? Math.round((app.assignedCount / app.licenseCount) * 100) : 0
                 const monthlyCost = app.licenseCost * app.assignedCount
                 return (
-                  <Card key={app.id} className="bg-[#111] border-white/10 p-4">
+                  <Card key={app.id} className="bg-card border-border p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                          <AppWindow size={20} className="text-gray-400" />
+                        <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center">
+                          <AppWindow size={20} className="text-t2" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{app.name}</p>
-                          <p className="text-xs text-gray-500">{app.vendor} &middot; v{app.version}</p>
+                          <p className="text-t1 font-medium">{app.name}</p>
+                          <p className="text-xs text-t3">{app.vendor} &middot; v{app.version}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -775,16 +775,16 @@ export default function ITCloudPage() {
 
                     <div className="space-y-2 mb-3">
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">License Utilization</span>
-                        <span className="text-gray-300">{app.assignedCount}/{app.licenseCount}</span>
+                        <span className="text-t3">License Utilization</span>
+                        <span className="text-t2">{app.assignedCount}/{app.licenseCount}</span>
                       </div>
                       <Progress value={utilPct} className="h-1.5" />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-gray-500">Monthly Cost</p>
-                        <p className="text-sm text-white font-medium">{app.licenseType === 'free' ? 'Free' : `$${monthlyCost.toLocaleString()}`}</p>
+                        <p className="text-xs text-t3">Monthly Cost</p>
+                        <p className="text-sm text-t1 font-medium">{app.licenseType === 'free' ? 'Free' : `$${monthlyCost.toLocaleString()}`}</p>
                       </div>
                       <div className="flex gap-1">
                         <Button variant="outline" size="sm" onClick={() => { setAssignAppId(app.id); setShowAssignAppModal(true) }}>
@@ -804,8 +804,8 @@ export default function ITCloudPage() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Security Policies</h3>
-                <p className="text-sm text-gray-500">Manage endpoint security enforcement</p>
+                <h3 className="text-t1 font-medium">Security Policies</h3>
+                <p className="text-sm text-t3">Manage endpoint security enforcement</p>
               </div>
               <Button onClick={() => { setEditPolicyId(null); setPolicyForm({ name: '', type: 'password', appliesTo: 'all', isActive: true, settings: {} }); setShowPolicyModal(true) }}>
                 <Plus size={16} className="mr-1" /> Create Policy
@@ -813,11 +813,11 @@ export default function ITCloudPage() {
             </div>
 
             {/* Security Score Card */}
-            <Card className="bg-[#111] border-white/10 p-6">
+            <Card className="bg-card border-border p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Overall Security Score</p>
-                  <p className="text-4xl font-bold text-white">{securityScore}<span className="text-lg text-gray-500">/100</span></p>
+                  <p className="text-sm text-t3">Overall Security Score</p>
+                  <p className="text-4xl font-bold text-t1">{securityScore}<span className="text-lg text-t3">/100</span></p>
                 </div>
                 <div className="w-20 h-20 rounded-full border-4 flex items-center justify-center" style={{ borderColor: securityScore >= 80 ? '#22c55e' : securityScore >= 60 ? '#eab308' : '#ef4444' }}>
                   <ShieldCheck size={32} style={{ color: securityScore >= 80 ? '#22c55e' : securityScore >= 60 ? '#eab308' : '#ef4444' }} />
@@ -825,20 +825,20 @@ export default function ITCloudPage() {
               </div>
               <div className="grid grid-cols-4 gap-4 mt-6">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{encryptedDevices.length}/{managedDevices.length}</p>
-                  <p className="text-xs text-gray-500">Encrypted</p>
+                  <p className="text-2xl font-bold text-t1">{encryptedDevices.length}/{managedDevices.length}</p>
+                  <p className="text-xs text-t3">Encrypted</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{compliantDevices.length}/{managedDevices.length}</p>
-                  <p className="text-xs text-gray-500">Compliant</p>
+                  <p className="text-2xl font-bold text-t1">{compliantDevices.length}/{managedDevices.length}</p>
+                  <p className="text-xs text-t3">Compliant</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{managedDevices.filter(d => d.mdmProfileInstalled).length}/{managedDevices.length}</p>
-                  <p className="text-xs text-gray-500">MDM Installed</p>
+                  <p className="text-2xl font-bold text-t1">{managedDevices.filter(d => d.mdmProfileInstalled).length}/{managedDevices.length}</p>
+                  <p className="text-xs text-t3">MDM Installed</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{securityPoliciesIT.filter(p => p.isActive).length}/{securityPoliciesIT.length}</p>
-                  <p className="text-xs text-gray-500">Policies Active</p>
+                  <p className="text-2xl font-bold text-t1">{securityPoliciesIT.filter(p => p.isActive).length}/{securityPoliciesIT.length}</p>
+                  <p className="text-xs text-t3">Policies Active</p>
                 </div>
               </div>
             </Card>
@@ -866,26 +866,26 @@ export default function ITCloudPage() {
                 })
 
                 return (
-                  <Card key={policy.id} className="bg-[#111] border-white/10 p-4">
+                  <Card key={policy.id} className="bg-card border-border p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', policy.isActive ? 'bg-green-500/10' : 'bg-gray-500/10')}>
-                          <ShieldCheck size={20} className={policy.isActive ? 'text-green-400' : 'text-gray-500'} />
+                          <ShieldCheck size={20} className={policy.isActive ? 'text-green-400' : 'text-t3'} />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{policy.name}</p>
-                          <p className="text-xs text-gray-500 capitalize">{policy.type.replace(/_/g, ' ')} &middot; Applies to {policy.appliesTo}</p>
+                          <p className="text-t1 font-medium">{policy.name}</p>
+                          <p className="text-xs text-t3 capitalize">{policy.type.replace(/_/g, ' ')} &middot; Applies to {policy.appliesTo}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateSecurityPolicyIT(policy.id, { isActive: !policy.isActive })}
-                          className="p-1 rounded hover:bg-white/10"
+                          className="p-1 rounded hover:bg-canvas"
                           title={policy.isActive ? 'Disable' : 'Enable'}
                         >
                           {policy.isActive
                             ? <ToggleRight size={24} className="text-green-400" />
-                            : <ToggleLeft size={24} className="text-gray-500" />
+                            : <ToggleLeft size={24} className="text-t3" />
                           }
                         </button>
                         <Button variant="ghost" size="sm" onClick={() => {
@@ -899,14 +899,14 @@ export default function ITCloudPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">Compliance</span>
+                        <span className="text-t3">Compliance</span>
                         <span className={policyPct >= 90 ? 'text-green-400' : policyPct >= 70 ? 'text-yellow-400' : 'text-red-400'}>{policyPct}% ({policyCompliantCount}/{policyTotalCount})</span>
                       </div>
                       <Progress value={policyPct} className="h-1.5" />
                     </div>
                     {nonCompliantDevices.length > 0 && policy.isActive && (
-                      <div className="mt-3 pt-3 border-t border-white/5">
-                        <p className="text-xs text-gray-500 mb-2">Non-compliant devices:</p>
+                      <div className="mt-3 pt-3 border-t border-divider">
+                        <p className="text-xs text-t3 mb-2">Non-compliant devices:</p>
                         <div className="flex flex-wrap gap-1">
                           {nonCompliantDevices.slice(0, 5).map(d => (
                             <Badge key={d.id} variant="error" className="text-[10px] cursor-pointer" onClick={() => { setActiveTab('devices'); setShowDeviceDetail(d.id) }}>
@@ -929,8 +929,8 @@ export default function ITCloudPage() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Asset Inventory</h3>
-                <p className="text-sm text-gray-500">Track device lifecycle from purchase to retirement</p>
+                <h3 className="text-t1 font-medium">Asset Inventory</h3>
+                <p className="text-sm text-t3">Track device lifecycle from purchase to retirement</p>
               </div>
               <Button onClick={() => setShowInventoryModal(true)}><Plus size={16} className="mr-1" /> Add Asset</Button>
             </div>
@@ -942,11 +942,11 @@ export default function ITCloudPage() {
               <StatCard label="Total Asset Value" value={`$${inventoryStats.totalValue.toLocaleString()}`} icon={<Box size={20} />} change={`${deviceInventory.length} items`} />
             </div>
 
-            <Card className="bg-[#111] border-white/10 overflow-hidden">
+            <Card className="bg-card border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 text-gray-400">
+                    <tr className="border-b border-border text-t2">
                       <th className="text-left p-3 font-medium">Asset</th>
                       <th className="text-left p-3 font-medium">Serial Number</th>
                       <th className="text-left p-3 font-medium">Status</th>
@@ -962,17 +962,17 @@ export default function ITCloudPage() {
                     {deviceInventory.map(item => {
                       const warrantyExpired = item.warrantyExpiry && new Date(item.warrantyExpiry) < new Date()
                       return (
-                        <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <tr key={item.id} className="border-b border-divider hover:bg-canvas">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               {deviceTypeIcon(item.type)}
                               <div>
-                                <p className="text-white">{item.name}</p>
-                                <p className="text-xs text-gray-500 capitalize">{item.platform}</p>
+                                <p className="text-t1">{item.name}</p>
+                                <p className="text-xs text-t3 capitalize">{item.platform}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 text-gray-300 font-mono text-xs">{item.serialNumber}</td>
+                          <td className="p-3 text-t2 font-mono text-xs">{item.serialNumber}</td>
                           <td className="p-3">
                             <Badge
                               variant={item.status === 'assigned' ? 'success' : item.status === 'in_warehouse' ? 'info' : item.status === 'in_transit' ? 'default' : 'error'}
@@ -986,17 +986,17 @@ export default function ITCloudPage() {
                               {item.condition}
                             </Badge>
                           </td>
-                          <td className="p-3 text-gray-300">{item.assignedTo ? getEmployeeName(item.assignedTo) : '—'}</td>
-                          <td className="p-3 text-gray-300">{item.purchaseDate || '—'}</td>
-                          <td className="p-3 text-gray-300">{item.purchaseCost ? `$${item.purchaseCost.toLocaleString()}` : '—'}</td>
+                          <td className="p-3 text-t2">{item.assignedTo ? getEmployeeName(item.assignedTo) : '—'}</td>
+                          <td className="p-3 text-t2">{item.purchaseDate || '—'}</td>
+                          <td className="p-3 text-t2">{item.purchaseCost ? `$${item.purchaseCost.toLocaleString()}` : '—'}</td>
                           <td className="p-3">
                             {item.warrantyExpiry ? (
-                              <span className={cn('text-xs', warrantyExpired ? 'text-red-400' : 'text-gray-300')}>
+                              <span className={cn('text-xs', warrantyExpired ? 'text-red-400' : 'text-t2')}>
                                 {item.warrantyExpiry} {warrantyExpired && '(expired)'}
                               </span>
                             ) : '—'}
                           </td>
-                          <td className="p-3 text-gray-300 text-xs">{item.warehouseLocation || '—'}</td>
+                          <td className="p-3 text-t2 text-xs">{item.warehouseLocation || '—'}</td>
                         </tr>
                       )
                     })}
@@ -1012,8 +1012,8 @@ export default function ITCloudPage() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Provisioning Rules</h3>
-                <p className="text-sm text-gray-500">Auto-assign apps when employees join, change departments, or get promoted</p>
+                <h3 className="text-t1 font-medium">Provisioning Rules</h3>
+                <p className="text-sm text-t3">Auto-assign apps when employees join, change departments, or get promoted</p>
               </div>
               <Button onClick={openProvRuleCreate}><Plus size={16} className="mr-1" /> New Rule</Button>
             </div>
@@ -1030,16 +1030,16 @@ export default function ITCloudPage() {
             <div className="space-y-3">
               {provisioningRules.map(rule => {
                 const triggerLabel = { on_hire: 'On Hire', department_change: 'Department Change', role_change: 'Role Change', on_offboard: 'On Offboard' }[rule.trigger] || rule.trigger
-                const triggerColor = { on_hire: 'text-green-400 bg-green-500/10', department_change: 'text-blue-400 bg-blue-500/10', role_change: 'text-purple-400 bg-purple-500/10', on_offboard: 'text-red-400 bg-red-500/10' }[rule.trigger] || 'text-gray-400 bg-gray-500/10'
+                const triggerColor = { on_hire: 'text-green-400 bg-green-500/10', department_change: 'text-blue-400 bg-blue-500/10', role_change: 'text-purple-400 bg-purple-500/10', on_offboard: 'text-red-400 bg-red-500/10' }[rule.trigger] || 'text-t2 bg-gray-500/10'
                 return (
-                  <Card key={rule.id} className="bg-[#111] border-white/10 p-4">
+                  <Card key={rule.id} className="bg-card border-border p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', triggerColor.split(' ').slice(1).join(' '))}>
                           <Zap size={20} className={triggerColor.split(' ')[0]} />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{rule.name}</p>
+                          <p className="text-t1 font-medium">{rule.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant="default" className="text-[10px]">{triggerLabel}</Badge>
                             {rule.department && <Badge variant="info" className="text-[10px]">Dept: {rule.department}</Badge>}
@@ -1050,12 +1050,12 @@ export default function ITCloudPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => toggleProvRule(rule.id)}
-                          className="p-1 rounded hover:bg-white/10"
+                          className="p-1 rounded hover:bg-canvas"
                           title={rule.isActive ? 'Disable' : 'Enable'}
                         >
                           {rule.isActive
                             ? <ToggleRight size={24} className="text-green-400" />
-                            : <ToggleLeft size={24} className="text-gray-500" />
+                            : <ToggleLeft size={24} className="text-t3" />
                           }
                         </button>
                         <Button variant="ghost" size="sm" onClick={() => openProvRuleEdit(rule)}>
@@ -1069,7 +1069,7 @@ export default function ITCloudPage() {
 
                     {/* Apps list */}
                     <div className="mt-2">
-                      <p className="text-xs text-gray-500 mb-1.5">Apps auto-assigned:</p>
+                      <p className="text-xs text-t3 mb-1.5">Apps auto-assigned:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {rule.apps.map((app, i) => (
                           <Badge key={i} variant="default" className="text-[10px]">{app}</Badge>
@@ -1077,18 +1077,18 @@ export default function ITCloudPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                      <p className="text-xs text-gray-500">Created {rule.createdAt}</p>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-divider">
+                      <p className="text-xs text-t3">Created {rule.createdAt}</p>
                       <Badge variant={rule.isActive ? 'success' : 'error'} className="text-xs">{rule.isActive ? 'Active' : 'Disabled'}</Badge>
                     </div>
                   </Card>
                 )
               })}
               {provisioningRules.length === 0 && (
-                <Card className="bg-[#111] border-white/10 p-8 text-center">
-                  <Zap size={32} className="mx-auto text-gray-600 mb-3" />
-                  <p className="text-gray-400">No provisioning rules yet</p>
-                  <p className="text-sm text-gray-500 mt-1">Create rules to auto-assign apps based on department, role, or employee lifecycle events.</p>
+                <Card className="bg-card border-border p-8 text-center">
+                  <Zap size={32} className="mx-auto text-t3 mb-3" />
+                  <p className="text-t2">No provisioning rules yet</p>
+                  <p className="text-sm text-t3 mt-1">Create rules to auto-assign apps based on department, role, or employee lifecycle events.</p>
                   <Button className="mt-4" onClick={openProvRuleCreate}><Plus size={16} className="mr-1" /> Create First Rule</Button>
                 </Card>
               )}
@@ -1101,8 +1101,8 @@ export default function ITCloudPage() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Encryption Enforcement</h3>
-                <p className="text-sm text-gray-500">Manage device encryption policies across platforms</p>
+                <h3 className="text-t1 font-medium">Encryption Enforcement</h3>
+                <p className="text-sm text-t3">Manage device encryption policies across platforms</p>
               </div>
               <Button onClick={openEncryptionCreate}><Plus size={16} className="mr-1" /> New Policy</Button>
             </div>
@@ -1116,18 +1116,18 @@ export default function ITCloudPage() {
             </div>
 
             {/* Overall Compliance Bar */}
-            <Card className="bg-[#111] border-white/10 p-6">
+            <Card className="bg-card border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm text-gray-500">Overall Encryption Compliance</p>
-                  <p className="text-3xl font-bold text-white">{encryptionStats.overallPct}%</p>
+                  <p className="text-sm text-t3">Overall Encryption Compliance</p>
+                  <p className="text-3xl font-bold text-t1">{encryptionStats.overallPct}%</p>
                 </div>
                 <div className="w-16 h-16 rounded-full border-4 flex items-center justify-center" style={{ borderColor: encryptionStats.overallPct >= 90 ? '#22c55e' : encryptionStats.overallPct >= 70 ? '#eab308' : '#ef4444' }}>
                   <Lock size={24} style={{ color: encryptionStats.overallPct >= 90 ? '#22c55e' : encryptionStats.overallPct >= 70 ? '#eab308' : '#ef4444' }} />
                 </div>
               </div>
               <Progress value={encryptionStats.overallPct} className="h-2" />
-              <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <div className="flex justify-between mt-2 text-xs text-t3">
                 <span>{encryptionStats.totalCompliant} encrypted</span>
                 <span>{encryptionStats.totalDevices - encryptionStats.totalCompliant} unencrypted</span>
               </div>
@@ -1140,17 +1140,17 @@ export default function ITCloudPage() {
                 const platformLabel = { macos: 'macOS', windows: 'Windows', linux: 'Linux', all: 'All Platforms' }[policy.platform]
                 const platformBg = { macos: 'bg-gray-500/10', windows: 'bg-blue-500/10', linux: 'bg-orange-500/10', all: 'bg-purple-500/10' }[policy.platform]
                 return (
-                  <Card key={policy.id} className="bg-[#111] border-white/10 p-4">
+                  <Card key={policy.id} className="bg-card border-border p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', platformBg)}>
-                          {policy.platform === 'macos' ? <Laptop size={20} className="text-gray-400" /> :
+                          {policy.platform === 'macos' ? <Laptop size={20} className="text-t2" /> :
                            policy.platform === 'windows' ? <Monitor size={20} className="text-blue-400" /> :
                            policy.platform === 'linux' ? <Server size={20} className="text-orange-400" /> :
                            <Globe size={20} className="text-purple-400" />}
                         </div>
                         <div>
-                          <p className="text-white font-medium">{policy.name}</p>
+                          <p className="text-t1 font-medium">{policy.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant="default" className="text-[10px]">{platformLabel}</Badge>
                             <Badge variant="default" className="text-[10px]">{policy.encryptionType}</Badge>
@@ -1161,12 +1161,12 @@ export default function ITCloudPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => toggleEncryptionEnforced(policy.id)}
-                          className="p-1 rounded hover:bg-white/10"
+                          className="p-1 rounded hover:bg-canvas"
                           title={policy.enforced ? 'Stop Enforcing' : 'Start Enforcing'}
                         >
                           {policy.enforced
                             ? <ToggleRight size={24} className="text-green-400" />
-                            : <ToggleLeft size={24} className="text-gray-500" />
+                            : <ToggleLeft size={24} className="text-t3" />
                           }
                         </button>
                         <Button variant="ghost" size="sm" onClick={() => openEncryptionEdit(policy)}>
@@ -1181,7 +1181,7 @@ export default function ITCloudPage() {
                     {/* Compliance progress */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">Compliance</span>
+                        <span className="text-t3">Compliance</span>
                         <span className={compPct >= 90 ? 'text-green-400' : compPct >= 70 ? 'text-yellow-400' : 'text-red-400'}>
                           {compPct}% ({policy.compliantCount}/{policy.totalCount} devices)
                         </span>
@@ -1189,22 +1189,22 @@ export default function ITCloudPage() {
                       <Progress value={compPct} className="h-1.5" />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-white/5">
+                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-divider">
                       <div>
-                        <p className="text-xs text-gray-500">Grace Period</p>
-                        <p className="text-sm text-white">{policy.gracePeriodHours}h</p>
+                        <p className="text-xs text-t3">Grace Period</p>
+                        <p className="text-sm text-t1">{policy.gracePeriodHours}h</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Applies To</p>
-                        <p className="text-sm text-white">{policy.appliesTo}</p>
+                        <p className="text-xs text-t3">Applies To</p>
+                        <p className="text-sm text-t1">{policy.appliesTo}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-gray-500">Last Updated</p>
-                        <p className="text-sm text-white">{policy.lastUpdated}</p>
+                        <p className="text-xs text-t3">Last Updated</p>
+                        <p className="text-sm text-t1">{policy.lastUpdated}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-divider">
                       <Badge variant={policy.enforced ? 'success' : 'error'} className="text-xs">{policy.enforced ? 'Enforced' : 'Not Enforced'}</Badge>
                       {!policy.enforced && (
                         <p className="text-xs text-yellow-400">Encryption recommended but not required</p>
@@ -1214,10 +1214,10 @@ export default function ITCloudPage() {
                 )
               })}
               {encryptionPolicies.length === 0 && (
-                <Card className="bg-[#111] border-white/10 p-8 text-center">
-                  <Lock size={32} className="mx-auto text-gray-600 mb-3" />
-                  <p className="text-gray-400">No encryption policies configured</p>
-                  <p className="text-sm text-gray-500 mt-1">Create policies to enforce disk encryption across your device fleet.</p>
+                <Card className="bg-card border-border p-8 text-center">
+                  <Lock size={32} className="mx-auto text-t3 mb-3" />
+                  <p className="text-t2">No encryption policies configured</p>
+                  <p className="text-sm text-t3 mt-1">Create policies to enforce disk encryption across your device fleet.</p>
                   <Button className="mt-4" onClick={openEncryptionCreate}><Plus size={16} className="mr-1" /> Create First Policy</Button>
                 </Card>
               )}
@@ -1235,45 +1235,45 @@ export default function ITCloudPage() {
             </div>
 
             {/* Auto-Provision Rules */}
-            <Card className="bg-[#111] border-white/10 p-4">
-              <CardHeader className="p-0 pb-4"><CardTitle className="text-white text-sm">Auto-Provisioning Rules</CardTitle></CardHeader>
+            <Card className="bg-card border-border p-4">
+              <CardHeader className="p-0 pb-4"><CardTitle className="text-t1 text-sm">Auto-Provisioning Rules</CardTitle></CardHeader>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-divider bg-canvas">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center"><CheckCircle size={16} className="text-green-400" /></div>
                     <div>
-                      <p className="text-sm text-white">On Hire — Auto-assign core apps</p>
-                      <p className="text-xs text-gray-500">Slack, Zoom, 1Password, Chrome, Microsoft 365, CrowdStrike</p>
+                      <p className="text-sm text-t1">On Hire — Auto-assign core apps</p>
+                      <p className="text-xs text-t3">Slack, Zoom, 1Password, Chrome, Microsoft 365, CrowdStrike</p>
                     </div>
                   </div>
                   <Badge variant="success" className="text-xs">Active</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-divider bg-canvas">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center"><CheckCircle size={16} className="text-green-400" /></div>
                     <div>
-                      <p className="text-sm text-white">Engineering Dept — Dev tools</p>
-                      <p className="text-xs text-gray-500">VS Code, GitHub Enterprise, Postman</p>
+                      <p className="text-sm text-t1">Engineering Dept — Dev tools</p>
+                      <p className="text-xs text-t3">VS Code, GitHub Enterprise, Postman</p>
                     </div>
                   </div>
                   <Badge variant="success" className="text-xs">Active</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-divider bg-canvas">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center"><CheckCircle size={16} className="text-green-400" /></div>
                     <div>
-                      <p className="text-sm text-white">Design Dept — Design tools</p>
-                      <p className="text-xs text-gray-500">Figma</p>
+                      <p className="text-sm text-t1">Design Dept — Design tools</p>
+                      <p className="text-xs text-t3">Figma</p>
                     </div>
                   </div>
                   <Badge variant="success" className="text-xs">Active</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-divider bg-canvas">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center"><XCircle size={16} className="text-red-400" /></div>
                     <div>
-                      <p className="text-sm text-white">On Offboard — Revoke all access</p>
-                      <p className="text-xs text-gray-500">Remove all app assignments, wipe device, disable accounts</p>
+                      <p className="text-sm text-t1">On Offboard — Revoke all access</p>
+                      <p className="text-xs text-t3">Remove all app assignments, wipe device, disable accounts</p>
                     </div>
                   </div>
                   <Badge variant="success" className="text-xs">Active</Badge>
@@ -1282,12 +1282,12 @@ export default function ITCloudPage() {
             </Card>
 
             {/* User Access Review */}
-            <Card className="bg-[#111] border-white/10 overflow-hidden">
-              <CardHeader><CardTitle className="text-white text-sm">User Access Review</CardTitle></CardHeader>
+            <Card className="bg-card border-border overflow-hidden">
+              <CardHeader><CardTitle className="text-t1 text-sm">User Access Review</CardTitle></CardHeader>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 text-gray-400">
+                    <tr className="border-b border-border text-t2">
                       <th className="text-left p-3 font-medium">Employee</th>
                       <th className="text-left p-3 font-medium">Role</th>
                       <th className="text-left p-3 font-medium">Apps Assigned</th>
@@ -1296,22 +1296,22 @@ export default function ITCloudPage() {
                   </thead>
                   <tbody>
                     {employeeAppAccess.map(emp => (
-                      <tr key={emp.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <tr key={emp.id} className="border-b border-divider hover:bg-canvas">
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <Avatar name={emp.profile?.full_name || 'Unknown'} size="xs" />
-                            <span className="text-gray-300">{emp.profile?.full_name || 'Unknown'}</span>
+                            <span className="text-t2">{emp.profile?.full_name || 'Unknown'}</span>
                           </div>
                         </td>
-                        <td className="p-3 text-gray-300 capitalize">{emp.job_title || '—'}</td>
-                        <td className="p-3 text-gray-300">{emp.appCount}</td>
+                        <td className="p-3 text-t2 capitalize">{emp.job_title || '—'}</td>
+                        <td className="p-3 text-t2">{emp.appCount}</td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-1">
                             {emp.apps.slice(0, 5).map((name, i) => (
                               <Badge key={i} variant="default" className="text-[10px]">{name}</Badge>
                             ))}
                             {emp.apps.length > 5 && <Badge variant="info" className="text-[10px]">+{emp.apps.length - 5}</Badge>}
-                            {emp.apps.length === 0 && <span className="text-xs text-gray-500">None</span>}
+                            {emp.apps.length === 0 && <span className="text-xs text-t3">None</span>}
                           </div>
                         </td>
                       </tr>
@@ -1329,8 +1329,8 @@ export default function ITCloudPage() {
       <Modal open={showDeviceActionModal} onClose={() => setShowDeviceActionModal(false)} title="Execute Device Action">
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Device</p>
-            <p className="text-sm text-white">{managedDevices.find(d => d.id === actionDeviceId)?.name || '—'}</p>
+            <p className="text-xs text-t3 mb-1">Device</p>
+            <p className="text-sm text-t1">{managedDevices.find(d => d.id === actionDeviceId)?.name || '—'}</p>
           </div>
           <Select label="Action Type" value={actionType} onChange={e => setActionType(e.target.value)} options={[
             { value: 'lock', label: 'Lock Device' }, { value: 'wipe', label: 'Remote Wipe' }, { value: 'restart', label: 'Restart' },
@@ -1373,11 +1373,11 @@ export default function ITCloudPage() {
           </div>
           <Input label="Version" value={appForm.version} onChange={e => setAppForm({ ...appForm, version: e.target.value })} placeholder="e.g. 1.0.0" />
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-t2">
               <input type="checkbox" checked={appForm.isRequired} onChange={e => setAppForm({ ...appForm, isRequired: e.target.checked })} className="rounded" />
               Required for all users
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-t2">
               <input type="checkbox" checked={appForm.autoInstall} onChange={e => setAppForm({ ...appForm, autoInstall: e.target.checked })} className="rounded" />
               Auto-install on enrollment
             </label>
@@ -1392,12 +1392,12 @@ export default function ITCloudPage() {
       {/* Assign App Modal */}
       <Modal open={showAssignAppModal} onClose={() => { setShowAssignAppModal(false); setAssignEmployeeIds(new Set()) }} title={`Assign ${appCatalog.find(a => a.id === assignAppId)?.name || 'App'}`} size="lg">
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">Select employees to assign this app to:</p>
-          <div className="max-h-[400px] overflow-y-auto space-y-1 border border-white/10 rounded-lg p-2">
+          <p className="text-sm text-t2">Select employees to assign this app to:</p>
+          <div className="max-h-[400px] overflow-y-auto space-y-1 border border-border rounded-lg p-2">
             {employees.map(emp => {
               const alreadyAssigned = appAssignments.some(a => a.appId === assignAppId && a.employeeId === emp.id)
               return (
-                <label key={emp.id} className={cn('flex items-center gap-3 p-2 rounded hover:bg-white/5 cursor-pointer', alreadyAssigned && 'opacity-50')}>
+                <label key={emp.id} className={cn('flex items-center gap-3 p-2 rounded hover:bg-canvas cursor-pointer', alreadyAssigned && 'opacity-50')}>
                   <input
                     type="checkbox"
                     disabled={alreadyAssigned}
@@ -1411,8 +1411,8 @@ export default function ITCloudPage() {
                   />
                   <Avatar name={emp.profile?.full_name || 'Unknown'} size="xs" />
                   <div>
-                    <p className="text-sm text-white">{emp.profile?.full_name || 'Unknown'}</p>
-                    <p className="text-xs text-gray-500">{emp.job_title}</p>
+                    <p className="text-sm text-t1">{emp.profile?.full_name || 'Unknown'}</p>
+                    <p className="text-xs text-t3">{emp.job_title}</p>
                   </div>
                   {alreadyAssigned && <Badge variant="info" className="text-[10px] ml-auto">Already assigned</Badge>}
                 </label>
@@ -1420,7 +1420,7 @@ export default function ITCloudPage() {
             })}
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">{assignEmployeeIds.size} selected</p>
+            <p className="text-sm text-t2">{assignEmployeeIds.size} selected</p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setShowAssignAppModal(false); setAssignEmployeeIds(new Set()) }}>Cancel</Button>
               <Button onClick={submitAssignApp} disabled={assignEmployeeIds.size === 0}>Assign to {assignEmployeeIds.size} Employee{assignEmployeeIds.size !== 1 ? 's' : ''}</Button>
@@ -1441,7 +1441,7 @@ export default function ITCloudPage() {
           <Select label="Applies To" value={policyForm.appliesTo} onChange={e => setPolicyForm({ ...policyForm, appliesTo: e.target.value })} options={[
             { value: 'all', label: 'All Devices' }, { value: 'department', label: 'Department' }, { value: 'role', label: 'Role' },
           ]} />
-          <label className="flex items-center gap-2 text-sm text-gray-300">
+          <label className="flex items-center gap-2 text-sm text-t2">
             <input type="checkbox" checked={policyForm.isActive} onChange={e => setPolicyForm({ ...policyForm, isActive: e.target.checked })} className="rounded" />
             Policy Active
           </label>
@@ -1502,7 +1502,7 @@ export default function ITCloudPage() {
             <Input label="Role (optional)" value={provRuleForm.role} onChange={e => setProvRuleForm({ ...provRuleForm, role: e.target.value })} placeholder="e.g. Manager" />
           </div>
           <Textarea label="Apps (comma-separated)" value={provRuleForm.apps} onChange={e => setProvRuleForm({ ...provRuleForm, apps: e.target.value })} placeholder="e.g. Slack, Zoom, GitHub Enterprise" rows={3} />
-          <label className="flex items-center gap-2 text-sm text-gray-300">
+          <label className="flex items-center gap-2 text-sm text-t2">
             <input type="checkbox" checked={provRuleForm.isActive} onChange={e => setProvRuleForm({ ...provRuleForm, isActive: e.target.checked })} className="rounded" />
             Rule Active
           </label>
@@ -1534,11 +1534,11 @@ export default function ITCloudPage() {
           <Input label="Applies To" value={encryptionForm.appliesTo} onChange={e => setEncryptionForm({ ...encryptionForm, appliesTo: e.target.value })} placeholder="e.g. All macOS Devices" />
           <Input label="Grace Period (hours)" type="number" value={String(encryptionForm.gracePeriodHours)} onChange={e => setEncryptionForm({ ...encryptionForm, gracePeriodHours: Number(e.target.value) })} />
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-t2">
               <input type="checkbox" checked={encryptionForm.enforced} onChange={e => setEncryptionForm({ ...encryptionForm, enforced: e.target.checked })} className="rounded" />
               Enforce Encryption
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-t2">
               <input type="checkbox" checked={encryptionForm.recoveryKeyEscrowed} onChange={e => setEncryptionForm({ ...encryptionForm, recoveryKeyEscrowed: e.target.checked })} className="rounded" />
               Escrow Recovery Key
             </label>
