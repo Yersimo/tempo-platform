@@ -154,7 +154,7 @@ export default function OnboardingPage() {
     addBuddyAssignment, updateBuddyAssignment,
     addPreboardingTask, updatePreboardingTask,
     getEmployeeName, getDepartmentName, addToast,
-    ensureModulesLoaded,
+    ensureModulesLoaded, currentUser, currentEmployeeId,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -327,8 +327,9 @@ export default function OnboardingPage() {
   }, [csvData, csvColumnMap])
 
   // ─── Module Tab State ──────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('welcome-portal')
+  const [activeTab, setActiveTab] = useState('my-onboarding')
   const tabs = [
+    { id: 'my-onboarding', label: 'My Onboarding' },
     { id: 'welcome-portal', label: t('welcomePortal') },
     { id: 'buddy-system', label: t('buddySystem'), count: buddyAssignments.filter(b => b.status === 'active').length },
     { id: 'preboarding', label: t('preboarding'), count: preboardingTasks.length },
@@ -1136,6 +1137,191 @@ export default function OnboardingPage() {
       />
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
+
+      {/* ═══════════════════ MY ONBOARDING TAB ═══════════════════ */}
+      {activeTab === 'my-onboarding' && (
+        <div className="space-y-6">
+          {/* My Progress Overview */}
+          {(() => {
+            const myTasks = preboardingTasks.filter(t => t.employee_id === currentEmployeeId)
+            const myCompleted = myTasks.filter(t => t.status === 'completed').length
+            const myTotal = myTasks.length
+            const myPct = myTotal > 0 ? Math.round((myCompleted / myTotal) * 100) : 0
+            const myBuddy = buddyAssignments.find(b => b.new_hire_id === currentEmployeeId && b.status === 'active')
+            const buddyEmp = myBuddy ? employees.find(e => e.id === myBuddy.buddy_id) : null
+
+            return (
+              <>
+                {/* Progress Card */}
+                <Card>
+                  <div className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-tempo-50 flex items-center justify-center text-tempo-600 shrink-0">
+                        <Rocket size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-sm font-semibold text-t1 mb-1">Welcome to your onboarding journey!</h2>
+                        <p className="text-sm text-t2 mb-4">Complete your tasks below to get set up and ready to go.</p>
+                        <div className="flex items-center gap-3">
+                          <Progress value={myPct} size="md" className="flex-1" />
+                          <span className="text-sm font-semibold text-tempo-600 shrink-0">{myPct}%</span>
+                        </div>
+                        <p className="text-xs text-t3 mt-1">{myCompleted} of {myTotal} tasks completed</p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatCard label="My Tasks" value={myTotal} icon={<FileText size={18} />} />
+                  <StatCard label="Completed" value={myCompleted} icon={<CheckCircle size={18} />} />
+                  <StatCard label="In Progress" value={myTasks.filter(t => t.status === 'in_progress').length} icon={<Clock size={18} />} />
+                  <StatCard label="Pending" value={myTasks.filter(t => t.status === 'pending').length} icon={<Timer size={18} />} />
+                </div>
+
+                {/* My Buddy */}
+                {myBuddy && buddyEmp && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Your Onboarding Buddy</CardTitle>
+                    </CardHeader>
+                    <div className="px-5 pb-5">
+                      <div className="flex items-center gap-4 p-4 bg-canvas border border-border rounded-lg">
+                        <Avatar name={buddyEmp.profile.full_name} size="lg" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-t1">{buddyEmp.profile.full_name}</p>
+                          <p className="text-xs text-t3">{buddyEmp.job_title} · {getDepartmentName(buddyEmp.department_id)}</p>
+                          {buddyEmp.profile?.email && (
+                            <p className="text-xs text-tempo-600 mt-1">{buddyEmp.profile.email}</p>
+                          )}
+                        </div>
+                        <Badge variant="success">Active Buddy</Badge>
+                      </div>
+                      {/* Buddy checklist */}
+                      {(myBuddy.checklist || []).length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs font-medium text-t1">Buddy Checklist</p>
+                          {(myBuddy.checklist || []).map((item: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${item.done ? 'bg-tempo-600 border-tempo-600 text-white' : 'border-border'}`}>
+                                {item.done && <Check size={10} />}
+                              </div>
+                              <span className={`text-xs ${item.done ? 'text-t3 line-through' : 'text-t1'}`}>{item.task}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {/* My Tasks */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">My Onboarding Tasks</CardTitle>
+                  </CardHeader>
+                  <div className="px-5 pb-5">
+                    {myTasks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckCircle size={40} className="text-t3 mx-auto mb-3" />
+                        <p className="text-sm text-t3">No onboarding tasks assigned yet.</p>
+                        <p className="text-xs text-t3 mt-1">Your HR team will assign tasks as part of your onboarding.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {myTasks.map(task => (
+                          <div key={task.id} className="flex items-center gap-4 p-3 bg-canvas border border-border rounded-lg">
+                            <button
+                              onClick={() => {
+                                if (task.status === 'completed') return
+                                const newStatus = task.status === 'pending' ? 'in_progress' : 'completed'
+                                updatePreboardingTask(task.id, {
+                                  status: newStatus,
+                                  completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null,
+                                })
+                              }}
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                task.status === 'completed' ? 'bg-green-500 border-green-500 text-white' :
+                                task.status === 'in_progress' ? 'border-amber-400 bg-amber-50' :
+                                'border-border hover:border-tempo-400'
+                              }`}
+                            >
+                              {task.status === 'completed' && <Check size={12} />}
+                              {task.status === 'in_progress' && <Clock size={10} className="text-amber-500" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium ${task.status === 'completed' ? 'text-t3 line-through' : 'text-t1'}`}>{task.title}</p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-xs text-t3 flex items-center gap-1">
+                                  {categoryIcons[task.category] || <FileText size={12} />}
+                                  {task.category}
+                                </span>
+                                {task.due_date && <span className="text-xs text-t3">Due: {task.due_date}</span>}
+                              </div>
+                            </div>
+                            <Badge variant={task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : 'default'}>
+                              {task.status === 'completed' ? 'Done' : task.status === 'in_progress' ? 'In Progress' : 'To Do'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* First Week Schedule */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Your First Week</CardTitle>
+                  </CardHeader>
+                  <div className="px-5 pb-5">
+                    <div className="space-y-3">
+                      {(welcomeContent.first_week_schedule || []).map((day, i) => (
+                        <div key={i} className="flex gap-4">
+                          <div className="w-24 shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600 mb-1">
+                              <Calendar size={16} />
+                            </div>
+                            <p className="text-xs font-semibold text-t1">{day.day}</p>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            {day.items.map((item, j) => (
+                              <div key={j} className="flex items-center gap-2 text-xs text-t2">
+                                <ChevronRight size={12} className="text-t3 shrink-0" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Key Contacts */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Key Contacts</CardTitle>
+                  </CardHeader>
+                  <div className="px-5 pb-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {employees.slice(0, 5).map(emp => (
+                        <div key={emp.id} className="p-3 bg-canvas border border-border rounded-lg text-center">
+                          <Avatar name={emp.profile.full_name} size="md" className="mx-auto mb-2" />
+                          <p className="text-xs font-medium text-t1 truncate">{emp.profile.full_name}</p>
+                          <p className="text-[0.6rem] text-t3 truncate">{emp.job_title}</p>
+                          <Badge variant="default" className="mt-1 text-[0.5rem]">{getDepartmentName(emp.department_id)}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </>
+            )
+          })()}
+        </div>
+      )}
 
       {/* ═══════════════════ WELCOME PORTAL TAB ═══════════════════ */}
       {activeTab === 'welcome-portal' && (
