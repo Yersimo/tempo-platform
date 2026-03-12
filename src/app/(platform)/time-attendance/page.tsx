@@ -506,6 +506,11 @@ export default function TimeAttendancePage() {
   const totalOTWeek = timeEntries.filter(e => weekDates.includes(e.date)).reduce((s, e) => s + (e.overtime_hours || 0), 0)
   const activeEmployeesToday = new Set(timeEntries.filter(e => e.date === today).map(e => e.employee_id)).size
 
+  // Who's In Today — all employees with a time entry for today
+  const whosInTodayEntries = useMemo(() => {
+    return timeEntries.filter(e => e.date === today || (e.clock_in && e.clock_in.startsWith(today)))
+  }, [timeEntries, today])
+
   if (pageLoading) {
     return (
       <>
@@ -558,6 +563,41 @@ export default function TimeAttendancePage() {
             <StatCard label="Weekly Overtime" value={`${formatHours(totalOTWeek)}h`} change="this week" changeType={totalOTWeek > 20 ? 'negative' : 'neutral'} icon={<TrendingUp size={20} />} />
             <StatCard label="Approved Today" value={approvedToday} change="entries" changeType="positive" icon={<CheckCircle size={20} />} />
           </div>
+
+          {/* Who's In Today */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <CardTitle>Who&apos;s In Today</CardTitle>
+                </div>
+                <Badge variant="success">{whosInTodayEntries.length} checked in</Badge>
+              </div>
+            </CardHeader>
+            <div className="px-5 pb-5">
+              {whosInTodayEntries.length === 0 ? (
+                <p className="text-sm text-t3 text-center py-4">No clock-ins recorded for today</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {whosInTodayEntries.slice(0, 8).map(entry => (
+                    <div key={entry.id} className="flex items-center gap-3 p-3 bg-canvas border border-border rounded-lg">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${entry.clock_out ? 'bg-gray-400' : 'bg-green-500'}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-t1 truncate">{getEmployeeName(entry.employee_id)}</p>
+                        <p className="text-[0.6rem] text-t3">{entry.clock_in ? new Date(entry.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}{entry.clock_out ? ` — ${new Date(entry.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' — Still in'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {whosInTodayEntries.length > 8 && (
+                    <div className="flex items-center justify-center p-3 bg-canvas border border-border rounded-lg">
+                      <p className="text-xs text-t3">+{whosInTodayEntries.length - 8} more</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Clock In/Out Panel */}
