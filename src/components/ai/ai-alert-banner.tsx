@@ -31,16 +31,11 @@ export function AIAlertBanner({ insights, onDismiss, maxVisible = 3, className }
       {visible.map(insight => (
         <div
           key={insight.id}
-          className={cn(
-            'flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs border-l-[3px] bg-white border border-border/60',
-            insight.severity === 'critical'
-              ? 'border-l-red-400'
-              : 'border-l-amber-400'
-          )}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs bg-gray-50/60"
         >
           <div className={cn(
-            'w-[6px] h-[6px] rounded-full shrink-0',
-            insight.severity === 'critical' ? 'bg-red-400' : 'bg-amber-400'
+            'w-[5px] h-[5px] rounded-full shrink-0',
+            insight.severity === 'critical' ? 'bg-red-300' : 'bg-amber-300'
           )} />
           <div className="flex-1 min-w-0">
             <span className="font-semibold text-t1">{insight.title}:</span>{' '}

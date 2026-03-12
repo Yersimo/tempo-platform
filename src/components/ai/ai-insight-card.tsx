@@ -35,20 +35,20 @@ function ConfidenceDots({ level }: { level: 'high' | 'medium' | 'low' }) {
   )
 }
 
-const SEVERITY_ACCENT = {
-  critical: 'border-l-red-400',
-  warning: 'border-l-amber-400',
-  positive: 'border-l-emerald-400',
-  info: 'border-l-tempo-400',
+const SEVERITY_DOT = {
+  critical: 'bg-red-300',
+  warning: 'bg-amber-300',
+  positive: 'bg-emerald-300',
+  info: 'bg-gray-300',
 } as const
 
 export function AIInsightCard({ insight, onDismiss, onAction, compact = false, className }: AIInsightCardProps) {
-  const accent = SEVERITY_ACCENT[insight.severity as keyof typeof SEVERITY_ACCENT] || SEVERITY_ACCENT.info
+  const dot = SEVERITY_DOT[insight.severity as keyof typeof SEVERITY_DOT] || SEVERITY_DOT.info
 
   if (compact) {
     return (
-      <div className={cn('flex items-start gap-2.5 py-2 px-3 rounded-xl bg-white/60 border-l-[3px]', accent, className)}>
-        <AIIcon size={12} className="text-tempo-500 mt-0.5 shrink-0" />
+      <div className={cn('flex items-start gap-2.5 py-2 px-3 rounded-xl bg-gray-50/50', className)}>
+        <div className={cn('w-[5px] h-[5px] rounded-full mt-[5px] shrink-0', dot)} />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-t1 font-medium truncate">{insight.title}</p>
           <p className="text-[0.6rem] text-t3 truncate">{insight.description}</p>
@@ -65,14 +65,13 @@ export function AIInsightCard({ insight, onDismiss, onAction, compact = false, c
 
   return (
     <div className={cn(
-      'bg-white border border-border/80 rounded-2xl overflow-hidden border-l-[3px]',
-      accent,
+      'bg-white border border-border/40 rounded-2xl overflow-hidden',
       className
     )}>
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
-            <AIIcon size={14} className="text-tempo-500" />
+            <div className={cn('w-[5px] h-[5px] rounded-full shrink-0', dot)} />
             <h4 className="text-[13px] font-semibold text-t1 tracking-[-0.01em]">{insight.title}</h4>
           </div>
           <div className="flex items-center gap-2">

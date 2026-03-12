@@ -11,28 +11,20 @@ import type { AIInsight, AIAnomaly, AIRecommendation, AIScore } from '@/lib/ai-e
 
 const SEVERITY_STYLES = {
   critical: {
-    accent: 'border-l-red-400',
-    dot: 'bg-red-400',
+    dot: 'bg-red-300',
     text: 'text-red-500',
-    bg: 'bg-white',
   },
   warning: {
-    accent: 'border-l-amber-400',
-    dot: 'bg-amber-400',
+    dot: 'bg-amber-300',
     text: 'text-amber-500',
-    bg: 'bg-white',
   },
   positive: {
-    accent: 'border-l-emerald-400',
-    dot: 'bg-emerald-400',
+    dot: 'bg-emerald-300',
     text: 'text-emerald-500',
-    bg: 'bg-white',
   },
   info: {
-    accent: 'border-l-blue-400',
-    dot: 'bg-blue-400',
-    text: 'text-blue-500',
-    bg: 'bg-white',
+    dot: 'bg-gray-300',
+    text: 'text-gray-500',
   },
 } as const
 
@@ -45,11 +37,9 @@ function getSeverity(severity: string) {
 function InsightItem({ insight }: { insight: AIInsight }) {
   const s = getSeverity(insight.severity)
   return (
-    <div className={cn(
-      'px-4 py-3 rounded-xl border border-border/60 border-l-[3px]',
-      s.accent, s.bg,
-    )}>
-      <div className="flex items-start justify-between gap-3">
+    <div className="px-4 py-3 rounded-xl bg-gray-50/50">
+      <div className="flex items-start gap-2.5">
+        <div className={cn('w-[5px] h-[5px] rounded-full mt-[7px] shrink-0', s.dot)} />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-t1 leading-snug">{insight.title}</p>
           <p className="text-[11px] text-t3 mt-1 leading-relaxed">{insight.description}</p>
@@ -59,7 +49,6 @@ function InsightItem({ insight }: { insight: AIInsight }) {
             </p>
           )}
         </div>
-        <div className={cn('w-[6px] h-[6px] rounded-full mt-1 shrink-0', s.dot)} />
       </div>
     </div>
   )
@@ -70,11 +59,9 @@ function InsightItem({ insight }: { insight: AIInsight }) {
 function AnomalyItem({ anomaly }: { anomaly: AIAnomaly }) {
   const s = getSeverity(anomaly.severity)
   return (
-    <div className={cn(
-      'px-4 py-3 rounded-xl border border-border/60 border-l-[3px]',
-      s.accent, s.bg,
-    )}>
-      <div className="flex items-start justify-between gap-3">
+    <div className="px-4 py-3 rounded-xl bg-gray-50/50">
+      <div className="flex items-start gap-2.5">
+        <div className={cn('w-[5px] h-[5px] rounded-full mt-[7px] shrink-0', s.dot)} />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-t1">{anomaly.metric}</p>
           <p className="text-[11px] text-t3 mt-1 leading-relaxed">{anomaly.explanation}</p>
@@ -90,7 +77,6 @@ function AnomalyItem({ anomaly }: { anomaly: AIAnomaly }) {
             </span>
           </div>
         </div>
-        <div className={cn('w-[6px] h-[6px] rounded-full mt-1 shrink-0', s.dot)} />
       </div>
     </div>
   )
@@ -100,7 +86,7 @@ function AnomalyItem({ anomaly }: { anomaly: AIAnomaly }) {
 
 function RecommendationItem({ rec }: { rec: AIRecommendation }) {
   return (
-    <div className="px-4 py-3 rounded-xl border border-border/60 border-l-[3px] border-l-tempo-400 bg-white">
+    <div className="px-4 py-3 rounded-xl bg-gray-50/50">
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-t1">{rec.title}</p>
         <p className="text-[11px] text-t3 mt-1 leading-relaxed">{rec.rationale}</p>
