@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { AIInsightCard } from './ai-insight-card'
 import { AIScoreBadge } from './ai-score-badge'
@@ -41,17 +41,22 @@ export function AIInsightPanel({
   if (totalItems === 0) return null
 
   return (
-    <div className={cn('rounded-[var(--radius-card)] border border-border bg-white overflow-hidden', className)}>
+    <div className={cn('rounded-2xl border border-border/80 bg-white overflow-hidden', className)}>
       <button
         onClick={() => collapsible && setExpanded(!expanded)}
         className={cn(
-          'flex items-center gap-2 w-full px-4 py-3 text-left',
+          'flex items-center gap-2.5 w-full px-5 py-3.5 text-left',
           collapsible && 'hover:bg-canvas/50 transition-colors cursor-pointer',
           !collapsible && 'cursor-default'
         )}
       >
-        <Sparkles size={14} className="text-tempo-500" />
-        <span className="text-xs font-semibold text-t1 flex-1">{title ?? t('insightsTitle')}</span>
+        <div className="w-7 h-7 rounded-[10px] bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+          </svg>
+        </div>
+        <span className="text-[13px] font-semibold text-t1 flex-1 tracking-[-0.01em]">{title ?? t('insightsTitle')}</span>
         {!expanded && (
           <span className="text-[0.55rem] text-t3 bg-canvas px-2 py-0.5 rounded-[var(--radius-pill)]">
             {totalItems !== 1 ? t('insightCountPlural', { count: totalItems }) : t('insightCount', { count: totalItems })}

@@ -1,76 +1,119 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
-import { Sparkles, AlertTriangle, TrendingUp, Info, CheckCircle, ChevronRight, Lightbulb, ArrowRight } from 'lucide-react'
+import { TrendingUp, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import type { AIInsight, AIAnomaly, AIRecommendation, AIScore } from '@/lib/ai-engine'
 
-// ---- Insight Item ----
+// ─── Jony Ive–inspired AI severity system ───────────────────────────
+// No cliché icons. Severity communicated through subtle accent lines
+// and restrained color. The insight is the content, not the chrome.
 
-function severityConfig(severity: string) {
-  switch (severity) {
-    case 'critical': return { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', dot: 'bg-red-500' }
-    case 'warning': return { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-500' }
-    case 'positive': return { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', dot: 'bg-green-500' }
-    default: return { icon: Info, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', dot: 'bg-blue-500' }
-  }
+const SEVERITY_STYLES = {
+  critical: {
+    accent: 'border-l-red-400',
+    dot: 'bg-red-400',
+    text: 'text-red-500',
+    bg: 'bg-white',
+  },
+  warning: {
+    accent: 'border-l-amber-400',
+    dot: 'bg-amber-400',
+    text: 'text-amber-500',
+    bg: 'bg-white',
+  },
+  positive: {
+    accent: 'border-l-emerald-400',
+    dot: 'bg-emerald-400',
+    text: 'text-emerald-500',
+    bg: 'bg-white',
+  },
+  info: {
+    accent: 'border-l-blue-400',
+    dot: 'bg-blue-400',
+    text: 'text-blue-500',
+    bg: 'bg-white',
+  },
+} as const
+
+function getSeverity(severity: string) {
+  return SEVERITY_STYLES[severity as keyof typeof SEVERITY_STYLES] || SEVERITY_STYLES.info
 }
+
+// ─── Insight Item ───────────────────────────────────────────────────
 
 function InsightItem({ insight }: { insight: AIInsight }) {
-  const cfg = severityConfig(insight.severity)
-  const Icon = cfg.icon
+  const s = getSeverity(insight.severity)
   return (
-    <div className={cn('flex items-start gap-3 p-3 rounded-lg border', cfg.bg, cfg.border)}>
-      <div className={cn('mt-0.5 shrink-0', cfg.color)}><Icon size={14} /></div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-t1 leading-snug">{insight.title}</p>
-        <p className="text-[11px] text-t3 mt-0.5 leading-relaxed">{insight.description}</p>
-        {insight.suggestedAction && (
-          <p className="text-[11px] text-tempo-600 mt-1.5 flex items-center gap-1 font-medium">
-            <Lightbulb size={10} /> {insight.suggestedAction}
-          </p>
-        )}
+    <div className={cn(
+      'px-4 py-3 rounded-xl border border-border/60 border-l-[3px]',
+      s.accent, s.bg,
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-t1 leading-snug">{insight.title}</p>
+          <p className="text-[11px] text-t3 mt-1 leading-relaxed">{insight.description}</p>
+          {insight.suggestedAction && (
+            <p className="text-[11px] text-tempo-600 mt-2 font-medium tracking-[-0.01em]">
+              {insight.suggestedAction}
+            </p>
+          )}
+        </div>
+        <div className={cn('w-[6px] h-[6px] rounded-full mt-1 shrink-0', s.dot)} />
       </div>
-      <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0', cfg.dot)} />
     </div>
   )
 }
 
-// ---- Anomaly Item ----
+// ─── Anomaly Item ───────────────────────────────────────────────────
 
 function AnomalyItem({ anomaly }: { anomaly: AIAnomaly }) {
-  const cfg = severityConfig(anomaly.severity)
+  const s = getSeverity(anomaly.severity)
   return (
-    <div className={cn('flex items-start gap-3 p-3 rounded-lg border', cfg.bg, cfg.border)}>
-      <div className={cn('mt-0.5 shrink-0', cfg.color)}><AlertTriangle size={14} /></div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-t1">{anomaly.metric}</p>
-        <p className="text-[11px] text-t3 mt-0.5">{anomaly.explanation}</p>
-        <div className="flex gap-3 mt-1.5">
-          <span className="text-[10px] text-t3">Expected: {typeof anomaly.expectedValue === 'number' ? anomaly.expectedValue.toLocaleString() : anomaly.expectedValue}</span>
-          <span className="text-[10px] font-medium text-red-600">Actual: {typeof anomaly.currentValue === 'number' ? anomaly.currentValue.toLocaleString() : anomaly.currentValue}</span>
-          <span className="text-[10px] text-amber-600">({anomaly.deviationPercent > 0 ? '+' : ''}{anomaly.deviationPercent.toFixed(0)}%)</span>
+    <div className={cn(
+      'px-4 py-3 rounded-xl border border-border/60 border-l-[3px]',
+      s.accent, s.bg,
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-t1">{anomaly.metric}</p>
+          <p className="text-[11px] text-t3 mt-1 leading-relaxed">{anomaly.explanation}</p>
+          <div className="flex items-center gap-4 mt-2">
+            <span className="text-[10px] text-t3 tracking-wide">
+              Expected <span className="font-medium text-t2">{typeof anomaly.expectedValue === 'number' ? anomaly.expectedValue.toLocaleString() : anomaly.expectedValue}</span>
+            </span>
+            <span className="text-[10px] tracking-wide">
+              Actual <span className={cn('font-semibold', s.text)}>{typeof anomaly.currentValue === 'number' ? anomaly.currentValue.toLocaleString() : anomaly.currentValue}</span>
+            </span>
+            <span className={cn('text-[10px] font-medium', anomaly.deviationPercent > 0 ? 'text-red-500' : 'text-emerald-500')}>
+              {anomaly.deviationPercent > 0 ? '+' : ''}{anomaly.deviationPercent.toFixed(0)}%
+            </span>
+          </div>
         </div>
+        <div className={cn('w-[6px] h-[6px] rounded-full mt-1 shrink-0', s.dot)} />
       </div>
     </div>
   )
 }
 
-// ---- Recommendation Item ----
+// ─── Recommendation Item ────────────────────────────────────────────
 
 function RecommendationItem({ rec }: { rec: AIRecommendation }) {
-  const impactColors = { high: 'text-green-600 bg-green-50', medium: 'text-amber-600 bg-amber-50', low: 'text-gray-600 bg-gray-50' }
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-tempo-200 bg-tempo-50/50">
-      <div className="mt-0.5 shrink-0 text-tempo-600"><Lightbulb size={14} /></div>
+    <div className="px-4 py-3 rounded-xl border border-border/60 border-l-[3px] border-l-tempo-400 bg-white">
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-t1">{rec.title}</p>
-        <p className="text-[11px] text-t3 mt-0.5 leading-relaxed">{rec.rationale}</p>
-        <div className="flex gap-2 mt-1.5">
-          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', impactColors[rec.impact])}>
+        <p className="text-[13px] font-medium text-t1">{rec.title}</p>
+        <p className="text-[11px] text-t3 mt-1 leading-relaxed">{rec.rationale}</p>
+        <div className="flex items-center gap-3 mt-2">
+          <span className={cn(
+            'text-[10px] px-2 py-[2px] rounded-full font-medium tracking-wide',
+            rec.impact === 'high' ? 'bg-emerald-50 text-emerald-600' :
+            rec.impact === 'medium' ? 'bg-amber-50 text-amber-600' :
+            'bg-gray-50 text-gray-500'
+          )}>
             {rec.impact} impact
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+          <span className="text-[10px] px-2 py-[2px] rounded-full bg-gray-50 text-gray-500 font-medium tracking-wide">
             {rec.effort} effort
           </span>
         </div>
@@ -79,29 +122,34 @@ function RecommendationItem({ rec }: { rec: AIRecommendation }) {
   )
 }
 
-// ---- Score Ring ----
+// ─── Score Ring ──────────────────────────────────────────────────────
+// Clean, monochrome ring. Color is an accent, not a statement.
 
 export function AIScoreRing({ score, label, size = 48 }: { score: AIScore; label?: string; size?: number }) {
   const val = Math.round(score.value)
   const r = (size - 6) / 2
   const circ = 2 * Math.PI * r
   const offset = circ - (val / 100) * circ
-  const color = val >= 75 ? '#16a34a' : val >= 50 ? '#d97706' : '#dc2626'
+  // Ive approach: single brand color at varying opacity instead of traffic lights
+  const color = val >= 75 ? 'var(--color-tempo-600, #e16b3a)' : val >= 50 ? 'var(--color-tempo-500, #e8845a)' : 'var(--color-tempo-400, #edaa8a)'
   return (
     <div className="flex items-center gap-3">
       <svg width={size} height={size} className="shrink-0">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={3} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={3}
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={2.5} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={2.5}
           strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`} className="transition-all duration-700" />
         <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central"
-          className="text-xs font-bold" fill={color}>{val}</text>
+          className="text-[11px] font-semibold" fill="#1a1a1a">{val}</text>
       </svg>
       <div>
         <p className="text-xs font-medium text-t1">{label || score.label}</p>
         {score.trend && (
-          <p className={cn('text-[10px] flex items-center gap-0.5', score.trend === 'up' ? 'text-green-600' : score.trend === 'down' ? 'text-red-600' : 'text-gray-500')}>
-            <TrendingUp size={10} className={score.trend === 'down' ? 'rotate-180' : score.trend === 'stable' ? 'rotate-0' : ''} />
+          <p className={cn('text-[10px] flex items-center gap-0.5 text-t3')}>
+            <TrendingUp size={10} className={cn(
+              score.trend === 'down' ? 'rotate-180' : '',
+              score.trend === 'up' ? 'text-emerald-500' : score.trend === 'down' ? 'text-red-400' : ''
+            )} />
             {score.trend === 'up' ? 'Trending up' : score.trend === 'down' ? 'Trending down' : 'Stable'}
           </p>
         )}
@@ -110,7 +158,9 @@ export function AIScoreRing({ score, label, size = 48 }: { score: AIScore; label
   )
 }
 
-// ---- Main Card ----
+// ─── Main Card ──────────────────────────────────────────────────────
+// Clean container. The gradient is barely perceptible — a whisper of
+// brand color, not a shout. Header uses spacing and weight, not chrome.
 
 interface AIInsightsCardProps {
   insights?: AIInsight[]
@@ -146,23 +196,23 @@ export function AIInsightsCard({
 
   return (
     <div className={cn(
-      'rounded-[var(--radius-card)] border border-tempo-200 bg-gradient-to-br from-tempo-50/80 via-white to-purple-50/40 overflow-hidden',
+      'rounded-2xl border border-border/80 bg-white overflow-hidden',
       className
     )}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-tempo-100">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-tempo-500 to-purple-600 flex items-center justify-center">
-            <Sparkles size={12} className="text-white" />
+      {/* Header — clean, typographic, no gradient noise */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-[10px] bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
           </div>
-          <h3 className="text-xs font-semibold text-t1">{title}</h3>
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-tempo-100 text-tempo-700 font-semibold tracking-wide uppercase">AI</span>
+          <h3 className="text-[13px] font-semibold text-t1 tracking-[-0.01em]">{title}</h3>
+          <span className="text-[9px] px-1.5 py-[2px] rounded-md bg-tempo-50 text-tempo-600 font-semibold tracking-widest uppercase">AI</span>
         </div>
         {totalItems > 0 && (
-          <span className="text-[10px] text-t3">
-            {insights.filter(i => i.severity === 'critical').length > 0 && (
-              <span className="text-red-600 font-medium mr-2">{insights.filter(i => i.severity === 'critical').length} critical</span>
-            )}
+          <span className="text-[11px] text-t3 tabular-nums">
             {totalItems} insight{totalItems !== 1 ? 's' : ''}
           </span>
         )}
@@ -170,7 +220,7 @@ export function AIInsightsCard({
 
       {/* Scores row */}
       {scores.length > 0 && (
-        <div className="flex items-center gap-6 px-4 py-3 border-b border-tempo-100 overflow-x-auto">
+        <div className="flex items-center gap-6 px-5 py-3 border-b border-border/60 overflow-x-auto">
           {scores.map((s, i) => (
             <AIScoreRing key={i} score={s.score} label={s.label} />
           ))}
@@ -178,7 +228,7 @@ export function AIInsightsCard({
       )}
 
       {/* Items */}
-      <div className="p-3 space-y-2">
+      <div className="p-4 space-y-2">
         {visibleInsights.map(insight => <InsightItem key={insight.id} insight={insight} />)}
         {visibleAnomalies.map(anomaly => <AnomalyItem key={anomaly.id} anomaly={anomaly} />)}
         {visibleRecs.map(rec => <RecommendationItem key={rec.id} rec={rec} />)}
@@ -188,7 +238,7 @@ export function AIInsightsCard({
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full px-4 py-2 text-[11px] font-medium text-tempo-600 hover:bg-tempo-50 transition-colors flex items-center justify-center gap-1 border-t border-tempo-100"
+          className="w-full px-5 py-2.5 text-[11px] font-medium text-tempo-600 hover:bg-tempo-50/50 transition-colors flex items-center justify-center gap-1 border-t border-border/60"
         >
           {expanded ? 'Show less' : `Show all ${totalItems} insights`}
           <ChevronRight size={12} className={cn('transition-transform', expanded && 'rotate-90')} />

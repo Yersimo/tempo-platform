@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, AlertCircle, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { AIInsight } from '@/lib/ai-engine'
 
@@ -27,26 +27,26 @@ export function AIAlertBanner({ insights, onDismiss, maxVisible = 3, className }
   }
 
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('space-y-1.5', className)}>
       {visible.map(insight => (
         <div
           key={insight.id}
           className={cn(
-            'flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-card)] text-xs',
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs border-l-[3px] bg-white border border-border/60',
             insight.severity === 'critical'
-              ? 'bg-red-50 text-error border border-red-100'
-              : 'bg-amber-50 text-warning border border-amber-100'
+              ? 'border-l-red-400'
+              : 'border-l-amber-400'
           )}
         >
-          {insight.severity === 'critical'
-            ? <AlertCircle size={14} className="shrink-0" />
-            : <AlertTriangle size={14} className="shrink-0" />
-          }
+          <div className={cn(
+            'w-[6px] h-[6px] rounded-full shrink-0',
+            insight.severity === 'critical' ? 'bg-red-400' : 'bg-amber-400'
+          )} />
           <div className="flex-1 min-w-0">
-            <span className="font-semibold">{insight.title}:</span>{' '}
-            <span className="opacity-90">{insight.description}</span>
+            <span className="font-semibold text-t1">{insight.title}:</span>{' '}
+            <span className="text-t2">{insight.description}</span>
           </div>
-          <button onClick={() => handleDismiss(insight.id)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+          <button onClick={() => handleDismiss(insight.id)} className="shrink-0 text-t3 hover:text-t1 transition-colors">
             <X size={12} />
           </button>
         </div>
