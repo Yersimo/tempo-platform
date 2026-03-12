@@ -500,6 +500,50 @@ export default function OffboardingPage() {
   }
 
   // ═══════════════════════════════════════════════
+  //  FINAL PAY COMPUTATION
+  // ═══════════════════════════════════════════════
+
+  function computeFinalPay(process: any) {
+    const employee = employees.find(e => e.id === process.employee_id) as any
+    if (!employee) return null
+
+    const lastDate = new Date(process.last_working_date || Date.now())
+    const daysInMonth = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 0).getDate()
+    const daysWorked = lastDate.getDate()
+
+    // Use employee salary from compensation or default (amounts in cents)
+    const annualSalary = employee.salary || employee.base_salary || employee.compensation?.base_salary || 6000000 // fallback $60k
+    const monthlySalary = Math.round(annualSalary / 12)
+    const proRatedSalary = Math.round((monthlySalary * daysWorked) / daysInMonth)
+
+    // Outstanding leave (estimate 5 days at daily rate)
+    const dailyRate = Math.round(monthlySalary / daysInMonth)
+    const leaveBalance = employee.leave_balance || employee.leaveBalance || 5 // days
+    const leavePayout = dailyRate * leaveBalance
+
+    // Severance (if applicable) - 1 month per year of service
+    const startDate = new Date(employee.start_date || employee.hire_date || employee.startDate || employee.hireDate || '2023-01-01')
+    const yearsOfService = Math.max(1, Math.round((lastDate.getTime() - startDate.getTime()) / (365.25 * 86400000)))
+    const severance = process.reason === 'layoff' || process.reason === 'redundancy' || process.reason === 'restructuring' ? monthlySalary * yearsOfService : 0
+
+    const totalFinalPay = proRatedSalary + leavePayout + severance
+
+    return {
+      monthlySalary,
+      proRatedSalary,
+      daysWorked,
+      daysInMonth,
+      dailyRate,
+      leaveBalance,
+      leavePayout,
+      severance,
+      yearsOfService,
+      totalFinalPay,
+      lastDate: lastDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    }
+  }
+
+  // ═══════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════
 
@@ -716,6 +760,49 @@ export default function OffboardingPage() {
                     </Card>
                   )
                 })}
+
+                {/* Final Pay Computation */}
+                {(() => {
+                  const fp = computeFinalPay(selectedProcess)
+                  if (!fp) return null
+                  return (
+                    <Card className="mt-4">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle>Final Pay Computation</CardTitle>
+                          <Badge variant="warning">Estimate</Badge>
+                        </div>
+                      </CardHeader>
+                      <div className="px-5 pb-5">
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-t2">Monthly salary</span>
+                            <span className="font-medium text-t1">${(fp.monthlySalary / 100).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-t2">Pro-rated salary ({fp.daysWorked}/{fp.daysInMonth} days)</span>
+                            <span className="font-medium text-t1">${(fp.proRatedSalary / 100).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-t2">Leave payout ({fp.leaveBalance} days @ ${(fp.dailyRate / 100).toLocaleString()}/day)</span>
+                            <span className="font-medium text-t1">${(fp.leavePayout / 100).toLocaleString()}</span>
+                          </div>
+                          {fp.severance > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-t2">Severance ({fp.yearsOfService} yr{fp.yearsOfService > 1 ? 's' : ''} of service)</span>
+                              <span className="font-medium text-t1">${(fp.severance / 100).toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="border-t border-divider pt-3 flex justify-between">
+                            <span className="text-sm font-semibold text-t1">Total Final Pay</span>
+                            <span className="text-sm font-bold text-tempo-600">${(fp.totalFinalPay / 100).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <p className="text-[0.6rem] text-t3 mt-3">* Estimated as of {fp.lastDate}. Actual amounts will be confirmed by payroll after processing deductions, taxes, and final adjustments.</p>
+                      </div>
+                    </Card>
+                  )
+                })()}
 
                 {/* Process actions */}
                 <div className="flex gap-2 mt-4">
