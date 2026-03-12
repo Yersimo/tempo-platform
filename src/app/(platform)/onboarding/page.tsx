@@ -100,6 +100,50 @@ const categoryIcons: Record<string, React.ReactNode> = {
   accounts: <Laptop size={14} />,
 }
 
+function Confetti() {
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; color: string; delay: number; duration: number }>>([])
+
+  useEffect(() => {
+    const colors = ['#f97316', '#8b5cf6', '#22c55e', '#3b82f6', '#eab308', '#ec4899']
+    const p = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      delay: Math.random() * 0.5,
+      duration: 1.5 + Math.random() * 2,
+    }))
+    setParticles(p)
+  }, [])
+
+  return (
+    <>
+      <style>{`
+        @keyframes confetti-fall {
+          0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti-particle {
+          animation: confetti-fall linear forwards;
+        }
+      `}</style>
+      <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+        {particles.map(p => (
+          <div
+            key={p.id}
+            className="absolute w-2 h-2 rounded-full confetti-particle"
+            style={{
+              left: `${p.x}%`,
+              backgroundColor: p.color,
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+            }}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function OnboardingPage() {
   const router = useRouter()
   const t = useTranslations('onboarding')
@@ -991,6 +1035,7 @@ export default function OnboardingPage() {
 
               {step.id === 'complete' && (
                 <div className="space-y-4 max-w-md mx-auto text-center">
+                  <Confetti />
                   <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto">
                     <CheckCircle size={40} className="text-green-600" />
                   </div>

@@ -485,6 +485,9 @@ export default function PayrollPage() {
         if (targetStatus) {
           updatePayrollRun(runId, { status: targetStatus })
           addToast(`Payroll ${action.replace(/-/g, ' ')} (local)`)
+          if (action === 'mark-paid') {
+            addToast(`Payslips are now available! Employees can view and download them from My Payslips.`, 'success')
+          }
         } else {
           addToast(result.error || `${action} failed`)
         }
@@ -493,12 +496,18 @@ export default function PayrollPage() {
       // Update local state with the new status from DB
       updatePayrollRun(runId, { status: result.status })
       addToast('Payroll run updated')
+      if (action === 'mark-paid') {
+        addToast(`Payslips are now available! Employees can view and download them from My Payslips.`, 'success')
+      }
     } catch (err) {
       // Fallback for network errors: update local state optimistically
       const targetStatus = STATUS_ACTION_MAP[action]
       if (targetStatus) {
         updatePayrollRun(runId, { status: targetStatus })
         addToast(`Payroll ${action.replace(/-/g, ' ')} (offline)`)
+        if (action === 'mark-paid') {
+          addToast(`Payslips are now available! Employees can view and download them from My Payslips.`, 'success')
+        }
       } else {
         addToast('Network error')
       }
