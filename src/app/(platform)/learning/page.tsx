@@ -15,7 +15,9 @@ import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
-import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions, translateContent } from '@/lib/ai-engine'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions, translateContent, calculateLearningROI } from '@/lib/ai-engine'
+import type { AIInsight } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -338,6 +340,65 @@ export default function LearningPage() {
     suggestedAction: t('skillCoverageAction'),
     module: 'learning',
   }), [skillGaps])
+
+  const aiLearningInsights = useMemo((): AIInsight[] => {
+    const roi = calculateLearningROI(enrollments, employees, reviews)
+    const insights: AIInsight[] = []
+    if (roi.performanceImprovementPct !== 0) {
+      insights.push({
+        id: 'ai-lrn-perf',
+        category: 'trend',
+        severity: roi.performanceImprovementPct > 5 ? 'positive' : roi.performanceImprovementPct < 0 ? 'warning' : 'info',
+        title: `Performance ${roi.performanceImprovementPct > 0 ? 'Improvement' : 'Gap'}: ${roi.performanceImprovementPct > 0 ? '+' : ''}${roi.performanceImprovementPct}%`,
+        description: roi.breakdown.find(b => b.metric === 'Performance Improvement')?.explanation || 'Learners show different performance ratings compared to non-learners.',
+        confidence: roi.confidence,
+        confidenceScore: roi.confidence === 'high' ? 85 : roi.confidence === 'medium' ? 65 : 40,
+        suggestedAction: roi.performanceImprovementPct < 5 ? 'Increase course completion rates to improve ROI' : undefined,
+        module: 'learning',
+      })
+    }
+    if (roi.retentionImpactPct > 0) {
+      insights.push({
+        id: 'ai-lrn-retention',
+        category: 'prediction',
+        severity: roi.retentionImpactPct >= 10 ? 'positive' : 'info',
+        title: `Retention Impact: +${roi.retentionImpactPct}%`,
+        description: roi.breakdown.find(b => b.metric === 'Retention Impact')?.explanation || 'Training completion correlates with higher retention.',
+        confidence: roi.confidence,
+        confidenceScore: roi.confidence === 'high' ? 80 : roi.confidence === 'medium' ? 60 : 35,
+        module: 'learning',
+      })
+    }
+    if (roi.costPerLearner > 0) {
+      insights.push({
+        id: 'ai-lrn-cost',
+        category: 'score',
+        severity: roi.costPerLearner > 1000 ? 'warning' : 'info',
+        title: `Cost per Learner: $${roi.costPerLearner.toLocaleString()}`,
+        description: roi.breakdown.find(b => b.metric === 'Cost per Learner')?.explanation || 'Estimated training cost per active learner.',
+        confidence: roi.confidence,
+        confidenceScore: roi.confidence === 'high' ? 75 : roi.confidence === 'medium' ? 55 : 35,
+        suggestedAction: roi.costPerLearner > 1000 ? 'Consider blended learning to reduce per-learner costs' : undefined,
+        module: 'learning',
+      })
+    }
+    // Add skill gap insights
+    const lowCoverageGaps = skillGaps.filter(g => g.coverage < 50)
+    if (lowCoverageGaps.length > 0) {
+      insights.push({
+        id: 'ai-lrn-gaps',
+        category: 'alert',
+        severity: lowCoverageGaps.length >= 3 ? 'warning' : 'info',
+        title: `${lowCoverageGaps.length} Skill ${lowCoverageGaps.length === 1 ? 'Area' : 'Areas'} Below 50% Coverage`,
+        description: `Categories with low coverage: ${lowCoverageGaps.slice(0, 3).map(g => g.category).join(', ')}. Consider adding more courses in these areas.`,
+        confidence: 'high',
+        confidenceScore: 90,
+        suggestedAction: 'Create courses for underserved skill categories',
+        module: 'learning',
+      })
+    }
+    return insights
+  }, [enrollments, employees, reviews, skillGaps])
 
   function submitCourse() {
     if (!courseForm.title) return
@@ -1271,6 +1332,16 @@ export default function LearningPage() {
         <StatCard label={t('liveSessions')} value={liveSessions.filter(s => s.status === 'upcoming').length} icon={<Radio size={20} />} />
         <StatCard label={t('totalPaths')} value={learningPaths.length} icon={<Route size={20} />} />
       </div>
+
+      {/* AI Insights Card */}
+      {aiLearningInsights.length > 0 && (
+        <AIInsightsCard
+          insights={aiLearningInsights}
+          title="Learning AI Insights"
+          maxVisible={3}
+          className="mb-6"
+        />
+      )}
 
       {/* AI Skill Coverage Insight */}
       <div className="mb-6">

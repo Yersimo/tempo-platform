@@ -16,6 +16,7 @@ import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { detectPayrollAnomalies, forecastAnnualPayroll, scorePayrollHealth, recommendTaxOptimizations, analyzePayrollTrends, predictComplianceRisks, scoreContractorRisk } from '@/lib/ai-engine'
 import { calculateTax } from '@/lib/tax-calculator'
 import type { SupportedCountry } from '@/lib/tax-calculator'
@@ -730,6 +731,14 @@ export default function PayrollPage() {
             <StatCard label={tc('employees')} value={lastRun?.employee_count || employees.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} href="/people" />
             <StatCard label={t('deductions')} value={`$${(totalDeductions / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
           </div>
+
+          <AIInsightsCard
+            insights={payrollInsights}
+            scores={[{ score: healthScore, label: 'Payroll Health' }]}
+            title="Tempo AI — Payroll Intelligence"
+            maxVisible={3}
+            className="mb-6"
+          />
 
           {/* Currency Breakdown */}
           {payrollRuns.length > 0 && (() => {

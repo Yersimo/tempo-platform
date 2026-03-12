@@ -17,6 +17,7 @@ import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard, AIAlertBanner, AIRecommendationList } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { identifyEngagementDrivers, analyzeSurveyResponses, suggestActionPlans, predictEngagementTrend } from '@/lib/ai-engine'
 
 export default function EngagementPage() {
@@ -431,6 +432,16 @@ export default function EngagementPage() {
         <StatCard label={t('responseRate')} value={`${avgResponse}%`} change={t('aboveTarget')} changeType="positive" />
         <StatCard label={t('activeSurveys')} value={activeSurveys} icon={<BarChart3 size={20} />} />
       </div>
+
+      {/* AI Insights Card */}
+      {(driverInsights.length > 0 || trendRaw.insights.length > 0) && (
+        <AIInsightsCard
+          insights={[...driverInsights, ...trendRaw.insights]}
+          title="Engagement AI Insights"
+          maxVisible={3}
+          className="mb-6"
+        />
+      )}
 
       {/* AI Alert Banner */}
       {driverInsights.length > 0 && <AIAlertBanner insights={driverInsights} className="mb-4" />}

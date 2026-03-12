@@ -15,7 +15,8 @@ import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Sear
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
-import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk } from '@/lib/ai-engine'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import { exportToPrint } from '@/lib/export-import'
 
 export default function AnalyticsPage() {
@@ -43,6 +44,17 @@ export default function AnalyticsPage() {
 
   // AI-powered analytics
   const boardNarrative = useMemo(() => generateBoardNarrative({ employees: employees || [], goals: goals || [], reviews: reviews || [], engagementScores: engagementScores || [], jobPostings: jobPostings || [], payrollRuns: payrollRuns || [], salaryReviews: salaryReviews || [] }), [employees, goals, reviews, salaryReviews])
+
+  // AI cross-module anomaly detection
+  const aiAnalyticsInsights = useMemo(() => detectCrossModuleAnomalies({
+    employees: employees || [],
+    reviews: reviews || [],
+    engagementScores: engagementScores || [],
+    salaryReviews: salaryReviews || [],
+    goals: goals || [],
+    mentoringPairs: mentoringPairs || [],
+    leaveRequests: leaveRequests || [],
+  }), [employees, reviews, engagementScores, salaryReviews, goals, mentoringPairs, leaveRequests])
 
   // Claude AI enhancement - board narrative
   const { result: enhancedNarrative, isLoading: narrativeLoading } = useAI({
@@ -226,6 +238,13 @@ export default function AnalyticsPage() {
         <StatCard label={t('staffCost')} value={lastPayroll ? `$${(lastPayroll.total_gross / 1000).toFixed(0)}K/mo` : '-'} icon={<DollarSign size={20} />} href="/payroll" />
         <StatCard label={t('openPositions')} value={openPositions} icon={<BarChart3 size={20} />} href="/recruiting" />
       </div>
+
+      {/* AI Cross-Module Insights */}
+      <AIInsightsCard
+        insights={aiAnalyticsInsights}
+        title="Cross-Module AI Insights"
+        className="mb-6"
+      />
 
       {/* AI Board Narrative */}
       {enhancedNarrative && (

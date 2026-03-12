@@ -18,6 +18,8 @@ import {
   Settings, Download, TrendingUp, MapPin, Briefcase, ArrowRightLeft, Pause, Play,
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { analyzeAttendancePatterns, predictAbsenteeism } from '@/lib/ai-engine'
 import { useTempo } from '@/lib/store'
 
 // ---- Helpers ----
@@ -195,6 +197,13 @@ export default function TimeAttendancePage() {
   const todayEntries = useMemo(() =>
     timeEntries.filter(e => e.date === today && e.employee_id === selectedEmployee),
   [timeEntries, today, selectedEmployee])
+
+  // AI Insights
+  const aiTimeInsights = useMemo(() => {
+    const patterns = analyzeAttendancePatterns(timeEntries || [], shifts || [], employees || [])
+    const absenteeism = predictAbsenteeism(leaveRequests || [], employees || [])
+    return [...(patterns.insights || []), ...absenteeism]
+  }, [timeEntries, shifts, employees, leaveRequests])
 
   // Weekly summary for current employee
   const weeklyHoursByDay = useMemo(() => {
@@ -530,6 +539,13 @@ export default function TimeAttendancePage() {
           )
         })}
       </div>
+
+      {/* AI Insights */}
+      <AIInsightsCard
+        insights={aiTimeInsights}
+        title="Time & Attendance AI Insights"
+        className="mb-6"
+      />
 
       {/* ============================================================ */}
       {/* TAB 1: TIME CLOCK */}

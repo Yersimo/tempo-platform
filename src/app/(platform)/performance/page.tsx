@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
 
 export default function PerformancePage() {
@@ -173,6 +174,11 @@ export default function PerformancePage() {
   const feedbackSentiment = useMemo(() => analyzeFeedbackSentiment(feedback), [feedback])
   const recognitionInsights = useMemo(() => analyzeRecognitionPatterns(recognitions, employees), [recognitions, employees])
   const competencyGapInsights = useMemo(() => identifyCompetencyGaps(competencyRatings, competencyFramework, employees), [competencyRatings, competencyFramework, employees])
+
+  const aiPerformanceInsights = useMemo(() => {
+    const bias = detectRatingBias(reviews || [], employees || [])
+    return bias
+  }, [reviews, employees])
 
   // Claude AI enhancement - bias detection
   const { result: enhancedBias, isLoading: biasLoading } = useAI({
@@ -531,6 +537,13 @@ export default function PerformancePage() {
           <AIInsightCard insight={{ id: 'ai-feedback-sentiment', category: 'trend', severity: 'info', title: t('feedbackSentimentTitle'), description: t('sentimentBreakdown', { positive: enhancedSentiment.positive, neutral: enhancedSentiment.neutral, negative: enhancedSentiment.negative }), confidence: 'high', confidenceScore: 85, suggestedAction: enhancedSentiment.negative > 30 ? t('sentimentNeedsReview') : t('sentimentHealthy'), module: 'performance' }} className="mb-4" />
         </div>
       )}
+
+      <AIInsightsCard
+        insights={aiPerformanceInsights}
+        title="Tempo AI — Performance Intelligence"
+        maxVisible={3}
+        className="mb-6"
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 

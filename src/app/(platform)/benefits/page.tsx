@@ -24,6 +24,7 @@ import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { cn } from '@/lib/utils/cn'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import {
   recommendBenefitPlan, optimizeBenefitsCost,
   analyzeBenefitEnrollmentTrends, predictLifeEventImpact, scoreBenefitsCompetitiveness,
@@ -548,6 +549,13 @@ export default function BenefitsPage() {
             </Button>
           </div>
         }
+      />
+
+      {/* AI Insights */}
+      <AIInsightsCard
+        insights={enrollTrends.insights || []}
+        title="Benefits AI Insights"
+        className="mb-6"
       />
 
       {/* Tabs */}

@@ -20,6 +20,8 @@ import {
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { analyzeHeadcountTrends } from '@/lib/ai-engine'
 
 const STATUS_BADGE: Record<string, { variant: 'default' | 'success' | 'warning' | 'error' | 'info' | 'orange'; label: string }> = {
   planned: { variant: 'info', label: 'Planned' },
@@ -224,6 +226,12 @@ export default function HeadcountPage() {
       value: amount,
     })).sort((a, b) => b.value - a.value)
   }, [activePositions, headcountBudgetItems])
+
+  // AI Insights
+  const aiHeadcountInsights = useMemo(() => analyzeHeadcountTrends(
+    employees || [],
+    departments || [],
+  ).insights || [], [employees, departments])
 
   // Pending approvals (planned positions needing approval)
   const pendingApprovals = useMemo(() =>
@@ -528,6 +536,13 @@ export default function HeadcountPage() {
       )}
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+
+      {/* AI Insights */}
+      <AIInsightsCard
+        insights={aiHeadcountInsights}
+        title="Headcount AI Insights"
+        className="mt-6"
+      />
 
       <div className="mt-6">
         {/* ═══════════════════════════ OVERVIEW TAB ═══════════════════════════ */}

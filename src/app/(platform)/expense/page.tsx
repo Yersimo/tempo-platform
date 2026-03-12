@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
 
 // Per diem rates (static reference data)
@@ -205,6 +206,10 @@ export default function ExpensePage() {
   const categoryData = categoryAnalysis.categoryBreakdown
   const policyViolations = useMemo(() => detectPolicyViolations(expenseReports, expensePolicies as any[]), [expenseReports, expensePolicies])
   const spendingForecast = useMemo(() => forecastMonthlySpending(expenseReports), [expenseReports])
+
+  const aiExpenseInsights = useMemo(() => {
+    return [...(categoryAnalysis.insights || []), ...spendingInsights]
+  }, [categoryAnalysis.insights, spendingInsights])
 
   // Top spenders
   const topSpenders = useMemo(() => {
@@ -646,6 +651,16 @@ export default function ExpensePage() {
             <StatCard label={t('approvedReimbursed')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
             <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
           </div>
+
+          {/* AI Insights Card */}
+          {aiExpenseInsights.length > 0 && (
+            <AIInsightsCard
+              insights={aiExpenseInsights}
+              title="Expense AI Insights"
+              maxVisible={3}
+              className="mb-6"
+            />
+          )}
 
           {spendingInsights.length > 0 && <AIAlertBanner insights={spendingInsights} className="mb-4" />}
 

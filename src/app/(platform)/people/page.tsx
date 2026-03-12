@@ -14,6 +14,7 @@ import { TempoBarChart, TempoDonutChart, CHART_COLORS, CHART_SERIES } from '@/co
 import { Avatar } from '@/components/ui/avatar'
 import { Pagination } from '@/components/ui/pagination'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { analyzeHeadcountTrends, predictAttritionRisk, detectOrgBottlenecks } from '@/lib/ai-engine'
 import {
   Search, Plus, Download, Upload, Users, Building2, BarChart3,
@@ -483,6 +484,13 @@ export default function PeoplePage() {
         <StatCard label={t('documentsOnFile')} value={employeeDocuments.length} change={`${employeeDocuments.filter(d => d.status === 'expired').length} ${t('expired')}`} changeType={employeeDocuments.filter(d => d.status === 'expired').length > 0 ? 'negative' : 'positive'} icon={<FileText size={20} />} />
         <StatCard label={t('attritionAlerts')} value={highRiskCount} change={t('highRiskEmployees')} changeType={highRiskCount > 3 ? 'negative' : 'neutral'} icon={<AlertTriangle size={20} />} />
       </div>
+
+      <AIInsightsCard
+        insights={bottlenecks}
+        title="Tempo AI — Workforce Insights"
+        maxVisible={3}
+        className="mb-6"
+      />
 
       {/* Tabs */}
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />

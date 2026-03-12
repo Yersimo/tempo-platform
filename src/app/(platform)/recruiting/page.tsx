@@ -14,6 +14,7 @@ import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, A
 import { useTempo } from '@/lib/store'
 import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards, generateInterviewQuestions, analyzeDiversityPipeline, scoreInterviewPanel, generateOfferPackage } from '@/lib/ai-engine'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -203,6 +204,7 @@ export default function RecruitingPage() {
   ]
 
   const pipelineInsights = useMemo(() => analyzePipelineHealth(applications, jobPostings), [applications, jobPostings])
+  const aiRecruitingInsights = useMemo(() => analyzePipelineHealth(applications || [], jobPostings || []), [applications, jobPostings])
   const careerSiteScore = useMemo(() => scoreCareerSiteEffectiveness(careerForm), [careerForm])
   const deiData = useMemo(() => analyzeDiversityPipeline(applications, jobPostings), [applications, jobPostings])
   const panelData = useMemo(() => scoreInterviewPanel(interviews), [interviews])
@@ -643,6 +645,13 @@ export default function RecruitingPage() {
       {pipelineInsights.length > 0 && (
         <AIAlertBanner insights={pipelineInsights} className="mb-4" />
       )}
+
+      <AIInsightsCard
+        insights={aiRecruitingInsights}
+        title="Tempo AI — Recruiting Intelligence"
+        maxVisible={3}
+        className="mb-6"
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 

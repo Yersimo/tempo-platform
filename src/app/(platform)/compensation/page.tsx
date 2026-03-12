@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightPanel, AIAlertBanner } from '@/components/ai'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact, generateTotalRewardsBreakdown, modelCompScenario, analyzeEquityDistribution, analyzeMarketPosition } from '@/lib/ai-engine'
 
 export default function CompensationPage() {
@@ -285,6 +286,14 @@ export default function CompensationPage() {
         <AIInsightPanel title={t('payEquityAnalysis')} insights={equityInsights} />
         <AIInsightPanel title={t('budgetImpactModeling')} narrative={{ summary: t('budgetImpactSummary', { count: budgetImpact.count, totalImpact: Math.round(budgetImpact.totalAnnualImpact).toLocaleString(), avgIncrease: Math.round(budgetImpact.avgIncrease).toLocaleString() }), bulletPoints: [t('budgetImpactReviewCount', { count: budgetImpact.count }), t('budgetImpactTotal', { amount: Math.round(budgetImpact.totalAnnualImpact).toLocaleString() }), t('budgetImpactAvg', { amount: Math.round(budgetImpact.avgIncrease).toLocaleString() })] }} />
       </div>
+
+      <AIInsightsCard
+        insights={equityInsights}
+        anomalies={compAnomaliesRaw}
+        title="Tempo AI — Compensation Intelligence"
+        maxVisible={3}
+        className="mb-6"
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
@@ -17,12 +17,54 @@ import { OrgTab } from '@/components/dashboard/org-tab'
 import { MyOverviewTab } from '@/components/dashboard/my-overview-tab'
 import { MyTeamTab } from '@/components/dashboard/my-team-tab'
 import { useSortable } from '@/lib/use-drag-drop'
+import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { generateExecutiveSummary, identifyNextBestActions } from '@/lib/ai-engine'
 
 export default function DashboardPage() {
   const {
     currentUser,
     widgetPreferences, updateWidgetPreferences,
+    employees, departments, goals, leaveRequests,
+    reviews, salaryReviews, surveys, engagementScores,
+    expenseReports, jobPostings, applications, payrollRuns, mentoringPairs,
   } = useTempo()
+
+  const executiveSummary = useMemo(() => generateExecutiveSummary({
+    employees: employees || [],
+    goals: goals || [],
+    reviews: reviews || [],
+    reviewCycles: [],
+    salaryReviews: salaryReviews || [],
+    surveys: surveys || [],
+    engagementScores: engagementScores || [],
+    expenseReports: expenseReports || [],
+    leaveRequests: leaveRequests || [],
+    jobPostings: jobPostings || [],
+    applications: applications || [],
+    payrollRuns: payrollRuns || [],
+    mentoringPairs: mentoringPairs || [],
+  }), [employees, goals, reviews, salaryReviews, surveys, engagementScores, expenseReports, leaveRequests, jobPostings, applications, payrollRuns, mentoringPairs])
+
+  const nextActions = useMemo(() => identifyNextBestActions({
+    reviews: reviews || [],
+    leaveRequests: leaveRequests || [],
+    expenseReports: expenseReports || [],
+    salaryReviews: salaryReviews || [],
+    goals: goals || [],
+    jobPostings: jobPostings || [],
+    applications: applications || [],
+  }), [reviews, leaveRequests, expenseReports, salaryReviews, goals, jobPostings, applications])
+
+  const summaryInsights = useMemo(() => [{
+    id: 'exec-summary',
+    category: 'narrative' as const,
+    severity: 'info' as const,
+    title: 'Executive Summary',
+    description: executiveSummary.summary,
+    confidence: 'high' as const,
+    confidenceScore: 85,
+    module: 'dashboard',
+  }], [executiveSummary])
 
   const router = useRouter()
   const t = useTranslations('dashboard')
@@ -78,6 +120,14 @@ export default function DashboardPage() {
         tabs={dashboardTabs}
         active={dashboardTab}
         onChange={setDashboardTab}
+        className="mb-6"
+      />
+
+      <AIInsightsCard
+        insights={summaryInsights}
+        recommendations={nextActions}
+        title="Tempo AI — Executive Summary"
+        maxVisible={4}
         className="mb-6"
       />
 
