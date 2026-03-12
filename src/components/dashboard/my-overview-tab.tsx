@@ -25,6 +25,8 @@ export function MyOverviewTab() {
     enrollments,
     courses,
     leaveRequests,
+    expenseReports,
+    timeEntries,
     employeePayrollEntries,
     payrollRuns,
     benefitPlans,
@@ -134,6 +136,13 @@ export function MyOverviewTab() {
     { label: 'My Learning', icon: <BookOpen size={20} />, href: '/learning' },
   ]
 
+  // ---- Pending approvals for managers ----
+
+  const role = currentUser?.role || 'employee'
+  const pendingLeaveCount = (leaveRequests || []).filter((l: any) => l.status === 'pending').length
+  const pendingExpenseCount = (expenseReports || []).filter((e: any) => e.status === 'submitted' || e.status === 'pending_approval').length
+  const pendingTimesheetCount = (timeEntries || []).filter((t: any) => t.status === 'pending').length
+
   // ---- Status helpers ----
 
   function goalStatusVariant(status: string): 'success' | 'warning' | 'error' | 'default' {
@@ -226,6 +235,29 @@ export function MyOverviewTab() {
 
   return (
     <div className="space-y-6">
+      {/* ---- Pending Approvals (managers/hrbp/admin only) ---- */}
+      {(role === 'manager' || role === 'hrbp' || role === 'admin') && (
+        <div className="mb-6 rounded-[var(--radius-card)] border border-amber-200 bg-amber-50/50 p-4">
+          <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+            <Clock size={16} className="text-amber-600" /> Pending Approvals
+          </h4>
+          <div className="grid grid-cols-3 gap-3">
+            <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+              <p className="text-lg font-bold text-amber-700">{pendingLeaveCount}</p>
+              <p className="text-[11px] text-t3">Leave Requests</p>
+            </a>
+            <a href="/expense" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+              <p className="text-lg font-bold text-amber-700">{pendingExpenseCount}</p>
+              <p className="text-[11px] text-t3">Expense Reports</p>
+            </a>
+            <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+              <p className="text-lg font-bold text-amber-700">{pendingTimesheetCount}</p>
+              <p className="text-[11px] text-t3">Timesheets</p>
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* ---- Stat Cards ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

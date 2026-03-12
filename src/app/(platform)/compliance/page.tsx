@@ -177,6 +177,11 @@ export default function CompliancePage() {
     requirement_id: '', name: '', file_url: '', expires_at: '',
   })
 
+  // Remediation Actions state
+  const [remediationActions, setRemediationActions] = useState<any[]>([])
+  const [showRemediationModal, setShowRemediationModal] = useState(false)
+  const [remediationForm, setRemediationForm] = useState({ requirement_id: '', title: '', assignee: '', due_date: '', priority: 'medium', notes: '' })
+
   // Auto-Detection state
   const [scanPage, setScanPage] = useState(1)
 
@@ -346,6 +351,19 @@ export default function CompliancePage() {
     setDocForm({ requirement_id: '', name: '', file_url: '', expires_at: '' })
   }
 
+  function submitRemediation() {
+    if (!remediationForm.title || !remediationForm.due_date) return
+    setRemediationActions(prev => [...prev, {
+      id: crypto.randomUUID(),
+      ...remediationForm,
+      status: 'open',
+      created_at: new Date().toISOString(),
+    }])
+    setShowRemediationModal(false)
+    setRemediationForm({ requirement_id: '', title: '', assignee: '', due_date: '', priority: 'medium', notes: '' })
+    addToast('Remediation action created')
+  }
+
   const detailReq = showReqDetail ? complianceRequirements.find(r => r.id === showReqDetail) : null
   const detailDocs = showReqDetail ? complianceDocuments.filter(d => d.requirement_id === showReqDetail) : []
 
@@ -498,6 +516,34 @@ export default function CompliancePage() {
               <p className="text-xs text-t3 text-center py-4">No upcoming deadlines in the next 30 days</p>
             )}
           </Card>
+
+          {/* Remediation Actions Section */}
+          {remediationActions.length > 0 && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Remediation Actions</CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-4 space-y-2">
+                {remediationActions.map(action => (
+                  <div key={action.id} className="flex items-center justify-between p-3 rounded-lg border border-divider">
+                    <div>
+                      <p className="text-sm font-medium text-t1">{action.title}</p>
+                      <p className="text-xs text-t3">Due: {action.due_date} | Priority: {action.priority}{action.assignee ? ` | Assignee: ${action.assignee}` : ''}</p>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      {action.status === 'open' && (
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          setRemediationActions(prev => prev.map(a => a.id === action.id ? { ...a, status: 'completed', completed_at: new Date().toISOString() } : a))
+                          addToast('Action marked complete')
+                        }}>Complete</Button>
+                      )}
+                      <Badge variant={action.status === 'completed' ? 'success' : 'warning'}>{action.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -607,6 +653,14 @@ export default function CompliancePage() {
                           >
                             <Eye size={14} />
                           </button>
+                          {(req.status === 'non_compliant' || req.status === 'at_risk') && (
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setRemediationForm(f => ({ ...f, requirement_id: req.id, title: `Remediate: ${req.name}` }))
+                              setShowRemediationModal(true)
+                            }}>
+                              Create Action
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1108,6 +1162,51 @@ export default function CompliancePage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Remediation Action Modal */}
+      <Modal open={showRemediationModal} onClose={() => setShowRemediationModal(false)} title="Create Remediation Action">
+        <div className="space-y-4">
+          <Input
+            label="Title"
+            value={remediationForm.title}
+            onChange={(e) => setRemediationForm(f => ({ ...f, title: e.target.value }))}
+            placeholder="Remediation action title"
+          />
+          <Input
+            label="Assignee"
+            value={remediationForm.assignee}
+            onChange={(e) => setRemediationForm(f => ({ ...f, assignee: e.target.value }))}
+            placeholder="Person responsible"
+          />
+          <Input
+            label="Due Date"
+            type="date"
+            value={remediationForm.due_date}
+            onChange={(e) => setRemediationForm(f => ({ ...f, due_date: e.target.value }))}
+          />
+          <Select
+            label="Priority"
+            value={remediationForm.priority}
+            onChange={(e) => setRemediationForm(f => ({ ...f, priority: e.target.value }))}
+            options={[
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'critical', label: 'Critical' },
+            ]}
+          />
+          <Textarea
+            label="Notes"
+            value={remediationForm.notes}
+            onChange={(e) => setRemediationForm(f => ({ ...f, notes: e.target.value }))}
+            placeholder="Additional notes or context"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" size="sm" onClick={() => setShowRemediationModal(false)}>Cancel</Button>
+            <Button size="sm" onClick={submitRemediation}>Create Action</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

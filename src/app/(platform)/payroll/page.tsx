@@ -673,9 +673,19 @@ export default function PayrollPage() {
           </Button>
         )}
         {status === 'paid' && (
-          <Button size="sm" variant="ghost" onClick={() => addToast(`Pay stubs generated for ${run.period}`)}>
-            {t('generatePayStubs')}
-          </Button>
+          <>
+            <Button size="sm" variant="ghost" onClick={() => {
+              const runEntries = employeePayrollEntries.filter((e: any) => e.payroll_run_id === run.id)
+              const count = runEntries.length || run.employee_count || employees.length
+              updatePayrollRun(run.id, { stubs_generated: true, stubs_generated_at: new Date().toISOString() })
+              addToast(`${count} pay stubs generated for ${run.period}. Employees can view them in My Payslips.`, 'success')
+            }}>
+              {t('generatePayStubs')}
+            </Button>
+            {(run as any).stubs_generated && (
+              <Badge variant="success">Stubs Generated</Badge>
+            )}
+          </>
         )}
         {status === 'escalated' && (
           <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { setEscalationRunId(run.id); setShowEscalationModal(true) }}>
