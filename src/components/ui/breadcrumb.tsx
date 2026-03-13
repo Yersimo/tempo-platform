@@ -29,6 +29,7 @@ const routeLabels: Record<string, string> = {
   workflows: 'Workflow Automation',
   analytics: 'Analytics',
   settings: 'Settings',
+  help: 'Help Center',
 }
 
 export function Breadcrumb() {

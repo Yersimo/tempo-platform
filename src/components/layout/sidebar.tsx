@@ -14,7 +14,7 @@ import {
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
   CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
   KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
-  ArrowLeftRight, X, Building2,
+  ArrowLeftRight, X, Building2, BookOpen,
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
 import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
@@ -52,6 +52,7 @@ export function Sidebar() {
     '/dashboard', '/people', '/performance', '/learning',
     '/engagement', '/payslips', '/time-attendance', '/benefits',
     '/expense', '/mentoring', '/chat', '/documents', '/travel',
+    '/help',
   ])
 
   const allNavGroups: NavGroup[] = [
@@ -254,6 +255,18 @@ export function Sidebar() {
         {/* User section */}
         {!collapsed && (
           <div className="border-t border-dark-border px-3 py-3 space-y-1">
+            <Link
+              href="/help"
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors',
+                pathname.startsWith('/help')
+                  ? 'bg-tempo-600/12 text-tempo-400 font-medium'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
+              )}
+            >
+              <BookOpen size={18} />
+              <span className="flex-1">Help Center</span>
+            </Link>
             <Link
               href="/settings"
               className={cn(
