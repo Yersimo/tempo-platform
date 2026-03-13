@@ -33,10 +33,25 @@ import { payrollPostBody, calculateTaxParams, convertCurrencyParams } from '@/li
 import { formatZodError } from '@/lib/validations/common'
 
 // GET /api/payroll - Analytics, compliance, tax info, currency conversion, bank file export
+// Demo mode detection: demo orgs use IDs like 'org-1', not UUIDs
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isDemoOrg(orgId: string): boolean {
+  return !UUID_FORMAT.test(orgId)
+}
+
 export async function GET(request: NextRequest) {
   try {
     const orgId = request.headers.get('x-org-id')
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Demo orgs cannot query the real DB — return empty results
+    if (isDemoOrg(orgId)) {
+      const url = new URL(request.url)
+      const action = url.searchParams.get('action')
+      if (action === 'validate-run') return NextResponse.json({ eligible: [], ineligible: [] })
+      if (action === 'analytics') return NextResponse.json({ totalPayroll: 0, avgSalary: 0, headcount: 0, byDepartment: [], byCurrency: [] })
+      return NextResponse.json([])
+    }
 
     const url = new URL(request.url)
     const action = url.searchParams.get('action') || 'analytics'
@@ -465,6 +480,14 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = request.headers.get('x-org-id')
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Demo orgs cannot write to the real DB — return simulated success
+    if (isDemoOrg(orgId)) {
+      return NextResponse.json({
+        error: 'Payroll processing requires a real account. Please sign up to run payroll for your organization.',
+        demo: true,
+      }, { status: 403 })
+    }
 
     const body = await request.json()
     const parsed = payrollPostBody.safeParse(body)

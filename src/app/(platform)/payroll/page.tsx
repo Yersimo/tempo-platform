@@ -103,7 +103,7 @@ export default function PayrollPage() {
   const t = useTranslations('payroll')
   const tc = useTranslations('common')
   const {
-    payrollRuns, employees, addPayrollRun, updatePayrollRun,
+    payrollRuns, employees, departments, addPayrollRun, updatePayrollRun,
     employeePayrollEntries, contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings,
     addContractorPayment, updateContractorPayment, addPayrollSchedule, updatePayrollSchedule,
     addTaxConfig, updateTaxConfig, resolveComplianceIssue, updateTaxFiling, addEmployeePayrollEntry,
@@ -112,6 +112,13 @@ export default function PayrollPage() {
     setPayrollRuns, setEmployeePayrollEntries,
     leaveRequests,
   } = useTempo()
+
+  // Department name lookup helper
+  const deptName = useCallback((deptId: string | null | undefined) => {
+    if (!deptId) return '—'
+    const dept = (departments || []).find((d: any) => d.id === deptId)
+    return dept?.name || deptId
+  }, [departments])
 
   const role = currentUser?.role
   const isReadOnly = role === 'manager'
@@ -436,7 +443,7 @@ export default function PayrollPage() {
     return entries
   }, [mergedEntries, employees, searchQuery, filterDept, filterCountry])
 
-  const departments = useMemo(() => [...new Set(mergedEntries.map(e => (e as any).department).filter(Boolean))], [mergedEntries])
+  const entryDepartments = useMemo(() => [...new Set(mergedEntries.map(e => (e as any).department).filter(Boolean))], [mergedEntries])
   const countries = useMemo(() => [...new Set(mergedEntries.map(e => (e as any).country).filter(Boolean))], [mergedEntries])
 
   // Fix 2: Pending approval runs
@@ -451,11 +458,10 @@ export default function PayrollPage() {
       return
     }
 
-    // T5 #37: Bank details preflight check
+    // T5 #37: Bank details preflight check — use resolveCountryCode for consistent matching
+    const formCode = resolveCountryCode(payRunForm.country)
     const countryEmps = employees.filter(e => {
-      const empCountry = (e.country || '').toLowerCase()
-      const formCountry = payRunForm.country.toLowerCase()
-      return empCountry.includes(formCountry) || formCountry.includes(empCountry)
+      return resolveCountryCode(e.country || '') === formCode
     })
     const noBankDetails = countryEmps.filter(e => {
       const bank = (e as any).bank_account_number || (e as any).bankAccountNumber || (e as any).bank_details
@@ -1225,7 +1231,7 @@ export default function PayrollPage() {
             </div>
             <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
               <option value="">{t('allDepartments')}</option>
-              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              {entryDepartments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
               <option value="">{t('allCountries')}</option>
@@ -2186,7 +2192,7 @@ export default function PayrollPage() {
             </select>
             {payRunForm.country && (
               <p className="text-xs text-t3 mt-1">
-                {employees.filter(e => e.country === payRunForm.country && (e as any).is_active !== false).length} active employees in {payRunForm.country} · Currency: {payRunForm.currency}
+                {employees.filter(e => resolveCountryCode(e.country || '') === resolveCountryCode(payRunForm.country) && (e as any).is_active !== false).length} active employees in {payRunForm.country} · Currency: {payRunForm.currency}
               </p>
             )}
           </div>
@@ -2238,7 +2244,11 @@ export default function PayrollPage() {
               <div>
                 <h4 className="text-xs font-semibold text-t2 uppercase mb-2">{t('earnings')}</h4>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-sm"><span className="text-t2">{t('baseSalary')}</span><span className="text-t1">{fmtCents(s.gross_pay)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-t2">{t('baseSalary')}</span><span className="text-t1">{fmtCents(s.base_pay || s.gross_pay)}</span></div>
+                  {(s.housing_allowance > 0 || s.allowances?.housing > 0) && <div className="flex justify-between text-sm"><span className="text-t2">Housing Allowance</span><span className="text-t1">{fmtCents(s.housing_allowance || s.allowances?.housing)}</span></div>}
+                  {(s.transport_allowance > 0 || s.allowances?.transport > 0) && <div className="flex justify-between text-sm"><span className="text-t2">Transport Allowance</span><span className="text-t1">{fmtCents(s.transport_allowance || s.allowances?.transport)}</span></div>}
+                  {(s.meal_allowance > 0 || s.allowances?.meal > 0) && <div className="flex justify-between text-sm"><span className="text-t2">Meal Allowance</span><span className="text-t1">{fmtCents(s.meal_allowance || s.allowances?.meal)}</span></div>}
+                  {(s.other_allowances > 0 || s.allowances?.other > 0) && <div className="flex justify-between text-sm"><span className="text-t2">Other Allowances</span><span className="text-t1">{fmtCents(s.other_allowances || s.allowances?.other)}</span></div>}
                   {s.bonus > 0 && <div className="flex justify-between text-sm"><span className="text-t2">{t('bonus')}</span><span className="text-t1">{fmtCents(s.bonus)}</span></div>}
                   {s.overtime > 0 && <div className="flex justify-between text-sm"><span className="text-t2">{t('overtime')}</span><span className="text-t1">{fmtCents(s.overtime)}</span></div>}
                   <div className="flex justify-between text-sm font-semibold border-t border-divider pt-1"><span className="text-t1">{t('grossPay')}</span><span className="text-t1">{fmtCents(s.gross_pay)}</span></div>
@@ -2396,7 +2406,7 @@ export default function PayrollPage() {
               <tbody className="divide-y divide-border">
                 {missingBankEmployees.map(emp => (
                   <tr key={emp.id}><td className="px-3 py-2 text-t1">{emp.profile?.full_name || emp.id}</td>
-                  <td className="px-3 py-2 text-t3">{emp.department_id}</td></tr>
+                  <td className="px-3 py-2 text-t3">{deptName(emp.department_id)}</td></tr>
                 ))}
               </tbody>
             </table>
