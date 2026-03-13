@@ -261,6 +261,30 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-org-id', payload.orgId as string)
     requestHeaders.set('x-session-id', payload.sessionId as string)
 
+    // ─── Demo Org Guard ────────────────────────────────────────────────
+    // Demo orgs use IDs like 'org-1' (not valid UUIDs). If a demo org
+    // hits any /api/ route that queries the DB, PostgreSQL will crash with
+    // "invalid input syntax for type uuid". Intercept here so NO demo org
+    // request ever reaches a DB query.
+    const orgId = payload.orgId as string
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const isDemoOrg = !UUID_RE.test(orgId)
+
+    if (isDemoOrg) {
+      requestHeaders.set('x-demo-mode', 'true')
+
+      // For API routes (except auth, which handles demo internally),
+      // return empty JSON to prevent DB crashes
+      if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/admin')) {
+        // Routes that already handle demo mode internally — let them through
+        const DEMO_AWARE_ROUTES = ['/api/data', '/api/payroll', '/api/chat']
+        const isDemoAware = DEMO_AWARE_ROUTES.some(r => pathname.startsWith(r))
+        if (!isDemoAware) {
+          return NextResponse.json([], { status: 200 })
+        }
+      }
+    }
+
     return NextResponse.next({
       request: { headers: requestHeaders },
     })

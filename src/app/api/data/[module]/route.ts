@@ -200,6 +200,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized: no org context' }, { status: 401 })
     }
 
+    // Demo orgs (non-UUID IDs like 'org-1') → return empty results to avoid DB crash
+    const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_FORMAT.test(orgId)) {
+      return NextResponse.json({ data: [], total: 0, page: 1, limit: 50, hasMore: false })
+    }
+
     const { module } = await params
     const config = MODULE_CONFIG[module]
     if (!config) {
