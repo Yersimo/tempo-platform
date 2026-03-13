@@ -1,0 +1,167 @@
+import { PDFDocument, StandardFonts } from 'pdf-lib'
+import type { ModuleDoc } from '../types'
+import { DocPdfBuilder } from './doc-pdf-builder'
+import { drawCoverPage } from './cover-page'
+
+// ─── Module PDF Generator ───────────────────────────────────────────────────
+// Orchestrates the full PDF generation pipeline for a single module's
+// documentation. Produces an enterprise-grade user guide with cover page,
+// table of contents, workflows, tips, permissions, and FAQs.
+//
+// Usage:
+//   const pdfBytes = await generateModulePdf(moduleDoc)
+
+export async function generateModulePdf(moduleDoc: ModuleDoc): Promise<Uint8Array> {
+  // ── 1. Create document and embed fonts ──────────────────────────────────
+  const doc = await PDFDocument.create()
+
+  doc.setTitle(`${moduleDoc.title} - User Guide`)
+  doc.setAuthor('Tempo Platform')
+  doc.setSubject(moduleDoc.subtitle)
+  doc.setCreator('Tempo Help Center PDF Engine')
+  doc.setProducer('pdf-lib')
+  doc.setCreationDate(new Date())
+
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+
+  // ── 2. Initialize builder ───────────────────────────────────────────────
+  const builder = new DocPdfBuilder(doc, font, bold)
+
+  // ── 3. Cover page ──────────────────────────────────────────────────────
+  drawCoverPage(builder, moduleDoc)
+
+  // ── 4. Overview section ────────────────────────────────────────────────
+  builder.addPage()
+  builder.drawH1('Overview')
+  builder.drawBody(moduleDoc.overview.description)
+  builder.drawSpacer(8)
+
+  if (moduleDoc.overview.keyFeatures.length > 0) {
+    builder.drawH2('Key Features')
+    for (const feature of moduleDoc.overview.keyFeatures) {
+      builder.drawBullet(feature)
+    }
+    builder.drawSpacer(8)
+  }
+
+  builder.drawHr()
+
+  // ── 5. Workflows ──────────────────────────────────────────────────────
+  if (moduleDoc.workflows.length > 0) {
+    builder.drawSpacer(4)
+    builder.drawH1('Workflows')
+
+    for (let w = 0; w < moduleDoc.workflows.length; w++) {
+      const workflow = moduleDoc.workflows[w]
+
+      builder.drawSpacer(4)
+      builder.drawH2(`${w + 1}. ${workflow.title}`)
+      builder.drawBody(workflow.description)
+
+      // Metadata line (estimated time, roles)
+      const metaParts: string[] = []
+      if (workflow.estimatedTime) {
+        metaParts.push(`Estimated time: ${workflow.estimatedTime}`)
+      }
+      if (workflow.roles && workflow.roles.length > 0) {
+        metaParts.push(`Roles: ${workflow.roles.join(', ')}`)
+      }
+      if (metaParts.length > 0) {
+        builder.drawSpacer(2)
+        builder.drawBody(metaParts.join('  |  '))
+      }
+
+      // Prerequisites
+      if (workflow.prerequisites && workflow.prerequisites.length > 0) {
+        builder.drawSpacer(4)
+        builder.drawH3('Prerequisites')
+        for (const prereq of workflow.prerequisites) {
+          builder.drawBullet(prereq)
+        }
+      }
+
+      // Steps
+      builder.drawSpacer(6)
+      builder.drawH3('Steps')
+      for (const step of workflow.steps) {
+        builder.drawNumberedItem(step.number, step.title, step.description)
+
+        // Inline tip for the step
+        if (step.tip) {
+          builder.drawTipBox(step.tip)
+        }
+      }
+
+      // Divider between workflows (not after the last one)
+      if (w < moduleDoc.workflows.length - 1) {
+        builder.drawSpacer(6)
+        builder.drawHr()
+      }
+    }
+
+    builder.drawSpacer(8)
+    builder.drawHr()
+  }
+
+  // ── 6. Tips section ───────────────────────────────────────────────────
+  if (moduleDoc.tips.length > 0) {
+    builder.drawSpacer(4)
+    builder.drawH1('Tips & Best Practices')
+
+    for (const tip of moduleDoc.tips) {
+      builder.drawBullet(tip)
+    }
+
+    builder.drawSpacer(8)
+    builder.drawHr()
+  }
+
+  // ── 7. Permissions table ──────────────────────────────────────────────
+  if (moduleDoc.permissions.length > 0) {
+    builder.drawSpacer(4)
+    builder.drawH1('Permissions')
+    builder.drawBody(
+      'The following table describes the capabilities available to each role within this module.',
+    )
+    builder.drawSpacer(6)
+
+    const headers = ['Role', 'Capabilities']
+    const rows = moduleDoc.permissions.map((perm) => [
+      perm.role,
+      perm.capabilities.join(', '),
+    ])
+
+    builder.drawTable(headers, rows)
+    builder.drawSpacer(8)
+    builder.drawHr()
+  }
+
+  // ── 8. FAQs section ──────────────────────────────────────────────────
+  if (moduleDoc.faqs.length > 0) {
+    builder.drawSpacer(4)
+    builder.drawH1('Frequently Asked Questions')
+
+    for (let i = 0; i < moduleDoc.faqs.length; i++) {
+      const faq = moduleDoc.faqs[i]
+
+      builder.drawH3(`Q: ${faq.question}`)
+      builder.drawBody(faq.answer)
+
+      if (i < moduleDoc.faqs.length - 1) {
+        builder.drawSpacer(6)
+      }
+    }
+  }
+
+  // ── 9. End matter ─────────────────────────────────────────────────────
+  builder.drawSpacer(20)
+  builder.drawHr()
+  builder.drawBody(
+    `This document was automatically generated by the Tempo Help Center documentation system. ` +
+    `For the most current version, visit the Help Center within the Tempo Platform.`,
+  )
+
+  // ── 10. Build and return ───────────────────────────────────────────────
+  return builder.build()
+}
