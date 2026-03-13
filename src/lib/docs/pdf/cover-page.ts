@@ -111,16 +111,13 @@ export function drawCoverPage(builder: DocPdfBuilder, moduleDoc: ModuleDoc): voi
     color: COLORS.ACCENT,
   })
 
-  // Diamond accent in center
+  // Diamond accent in center — draw as a small filled circle
   const diamondX = PAGE_WIDTH / 2
-  const ds = 3 // diamond size
-  page.drawRectangle({
-    x: diamondX - ds,
-    y: y - ds,
-    width: ds * 2,
-    height: ds * 2,
+  page.drawCircle({
+    x: diamondX,
+    y,
+    size: 3,
     color: COLORS.ACCENT,
-    rotate: { type: 0 as any, angle: 45 } as any,
   })
 
   // ── User Guide label ──────────────────────────────────────────────────
