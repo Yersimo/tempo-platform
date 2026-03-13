@@ -39,6 +39,46 @@ function isDemoOrg(orgId: string): boolean {
   return !UUID_FORMAT.test(orgId)
 }
 
+/** Return simulated success for demo org POST actions so the demo flows naturally. */
+function handleDemoPost(body: any): NextResponse {
+  const action = body?.action
+  const now = new Date().toISOString()
+  const demoRunId = `demo-run-${Date.now()}`
+
+  switch (action) {
+    case 'process':
+      return NextResponse.json({
+        payrollRunId: demoRunId,
+        orgId: 'org-1',
+        period: body.period || 'April 2026',
+        status: 'draft',
+        country: body.country || 'NG',
+        totalGross: 4250000,
+        totalNet: 3187500,
+        totalDeductions: 1062500,
+        currency: body.country === 'GH' ? 'GHS' : body.country === 'KE' ? 'KES' : 'NGN',
+        employeeCount: body.country === 'GH' ? 7 : body.country === 'KE' ? 3 : 11,
+        createdAt: now,
+        demo: true,
+      })
+    case 'submit':
+    case 'approve-hr':
+    case 'approve-finance':
+    case 'approve':
+    case 'mark-processing':
+    case 'mark-paid':
+    case 'cancel':
+    case 'reject':
+      return NextResponse.json({ success: true, payrollRunId: body.payrollRunId || demoRunId, demo: true })
+    case 'pay-stub':
+      return NextResponse.json({ employeeName: 'Demo Employee', period: 'April 2026', grossPay: 500000, netPay: 375000, deductions: 125000, demo: true })
+    case 'update-tax-config':
+      return NextResponse.json({ success: true, configId: `demo-config-${Date.now()}`, demo: true })
+    default:
+      return NextResponse.json({ success: true, demo: true })
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const orgId = request.headers.get('x-org-id')
@@ -481,15 +521,12 @@ export async function POST(request: NextRequest) {
     const orgId = request.headers.get('x-org-id')
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const body = await request.json()
+
     // Demo orgs cannot write to the real DB — return simulated success
     if (isDemoOrg(orgId)) {
-      return NextResponse.json({
-        error: 'Payroll processing requires a real account. Please sign up to run payroll for your organization.',
-        demo: true,
-      }, { status: 403 })
+      return handleDemoPost(body)
     }
-
-    const body = await request.json()
     const parsed = payrollPostBody.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })
