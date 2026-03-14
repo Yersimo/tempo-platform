@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
-import { Lock, Key, Shield, ShieldCheck, Plus, Eye, EyeOff, Copy, Trash2, Users, AlertTriangle, RefreshCw, CheckCircle, Clock, Globe } from 'lucide-react'
+import { Lock, Key, Shield, ShieldCheck, Plus, Eye, EyeOff, Copy, Trash2, Users, AlertTriangle, RefreshCw, CheckCircle, Clock, Globe, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -75,6 +75,7 @@ export default function PasswordManagerPage() {
   }
 
   const [activeTab, setActiveTab] = useState<TabKey>('vaults')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null)
   const [showCreateVault, setShowCreateVault] = useState(false)
   const [vaultForm, setVaultForm] = useState({ name: '', description: '' })
@@ -97,6 +98,20 @@ export default function PasswordManagerPage() {
   const now = new Date()
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
   const expiringItems = vaultItems.filter((i: any) => i.expires_at && new Date(i.expires_at) < thirtyDaysFromNow)
+
+  const filteredVaults = useMemo(() => {
+    if (!searchQuery.trim()) return passwordVaults
+    const q = searchQuery.toLowerCase()
+    return passwordVaults.filter((v: any) => (v.name || '').toLowerCase().includes(q))
+  }, [passwordVaults, searchQuery])
+
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return vaultItems
+    const q = searchQuery.toLowerCase()
+    return vaultItems.filter((i: any) =>
+      (i.name || '').toLowerCase().includes(q) || (i.username || '').toLowerCase().includes(q) || (i.url || '').toLowerCase().includes(q)
+    )
+  }, [vaultItems, searchQuery])
 
   // Selected vault items
   const selectedVaultItems = useMemo(() => {
@@ -252,10 +267,25 @@ export default function PasswordManagerPage() {
         ))}
       </div>
 
+      {/* ── Search Bar ── */}
+      {(activeTab === 'vaults' || activeTab === 'items') && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder={activeTab === 'vaults' ? 'Search vaults by name...' : 'Search items by name...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Vaults Tab ── */}
       {activeTab === 'vaults' && !selectedVaultId && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {passwordVaults.map((vault: any) => (
+          {filteredVaults.map((vault: any) => (
             <Card key={vault.id}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -283,7 +313,7 @@ export default function PasswordManagerPage() {
               </Button>
             </Card>
           ))}
-          {passwordVaults.length === 0 && (
+          {filteredVaults.length === 0 && (
             <Card>
               <div className="text-center py-8">
                 <Lock size={32} className="mx-auto text-t3 mb-2" />
@@ -400,7 +430,7 @@ export default function PasswordManagerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {vaultItems.map((item: any) => (
+                {filteredItems.map((item: any) => (
                   <tr key={item.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -450,9 +480,9 @@ export default function PasswordManagerPage() {
                     </td>
                   </tr>
                 ))}
-                {vaultItems.length === 0 && (
+                {filteredItems.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-xs text-t3">No credentials stored yet</td>
+                    <td colSpan={8} className="px-6 py-8 text-center text-xs text-t3">{searchQuery ? 'No matching credentials' : 'No credentials stored yet'}</td>
                   </tr>
                 )}
               </tbody>

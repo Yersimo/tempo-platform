@@ -101,36 +101,42 @@ export default function PeoplePage() {
   })()
 
   function executeRestructure() {
+    if (!restructureForm.from_manager && !restructureForm.to_department) { addToast?.('Please select a manager or department', 'error'); return }
     const affected = restructurePreview
-    if (affected.length === 0 && !restructureForm.to_department) return
-    let count = 0
-    if (restructureForm.from_manager) {
-      affected.forEach(emp => {
-        const updates: Record<string, any> = {}
-        if (restructureForm.to_manager) updates.managerId = restructureForm.to_manager
-        if (restructureForm.to_department) updates.department_id = restructureForm.to_department
-        if (Object.keys(updates).length > 0) {
-          updateEmployee(emp.id, updates)
+    if (affected.length === 0 && !restructureForm.to_department) { addToast?.('No employees will be affected by this restructure', 'error'); return }
+    setSaving(true)
+    try {
+      let count = 0
+      if (restructureForm.from_manager) {
+        affected.forEach(emp => {
+          const updates: Record<string, any> = {}
+          if (restructureForm.to_manager) updates.managerId = restructureForm.to_manager
+          if (restructureForm.to_department) updates.department_id = restructureForm.to_department
+          if (Object.keys(updates).length > 0) {
+            updateEmployee(emp.id, updates)
+            count++
+          }
+        })
+      } else if (restructureForm.to_department) {
+        // Just department change with no manager filter
+        employees.filter(e => e.department_id !== restructureForm.to_department).slice(0, 5).forEach(emp => {
+          updateEmployee(emp.id, { department_id: restructureForm.to_department })
           count++
-        }
-      })
-    } else if (restructureForm.to_department) {
-      // Just department change with no manager filter
-      employees.filter(e => e.department_id !== restructureForm.to_department).slice(0, 5).forEach(emp => {
-        updateEmployee(emp.id, { department_id: restructureForm.to_department })
-        count++
-      })
+        })
+      }
+      // T4-I: Show restructure summary with notifications
+      if (count > 0) {
+        const newMgrName = restructureForm.to_manager ? getEmployeeName(restructureForm.to_manager) : null
+        const newDeptName = restructureForm.to_department ? getDepartmentName(restructureForm.to_department) : null
+        const detail = [newMgrName ? `new manager: ${newMgrName}` : '', newDeptName ? `new dept: ${newDeptName}` : ''].filter(Boolean).join(', ')
+        addToast?.(`Restructure complete — ${count} employee(s) updated (${detail})`)
+      }
+      addToast?.(`${count} employee(s) reassigned successfully`)
+      setShowRestructureModal(false)
+      setRestructureForm({ from_manager: '', to_manager: '', to_department: '', reason: '' })
+    } finally {
+      setSaving(false)
     }
-    // T4-I: Show restructure summary with notifications
-    if (count > 0) {
-      const newMgrName = restructureForm.to_manager ? getEmployeeName(restructureForm.to_manager) : null
-      const newDeptName = restructureForm.to_department ? getDepartmentName(restructureForm.to_department) : null
-      const detail = [newMgrName ? `new manager: ${newMgrName}` : '', newDeptName ? `new dept: ${newDeptName}` : ''].filter(Boolean).join(', ')
-      addToast?.(`Restructure complete — ${count} employee(s) updated (${detail})`)
-    }
-    addToast?.(`${count} employee(s) reassigned successfully`)
-    setShowRestructureModal(false)
-    setRestructureForm({ from_manager: '', to_manager: '', to_department: '', reason: '' })
   }
 
   // ---- Bulk Import State ----
@@ -150,6 +156,10 @@ export default function PeoplePage() {
     name: '', field_type: 'text' as string, entity_type: 'employee' as string,
     description: '', options: '' as string, is_required: false, is_visible: true, group_name: '',
   })
+
+  // ---- Saving & Confirmation State ----
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   // ---- Computed: Countries & Levels ----
   const countries = useMemo(() => [...new Set(employees.map(e => e.country))].sort(), [employees])
@@ -241,8 +251,10 @@ export default function PeoplePage() {
   const addSubmittingRef = useRef(false)
 
   function submitAdd() {
-    if (addSubmittingRef.current) return
-    if (!form.full_name || !form.email) return
+    if (addSubmittingRef.current || saving) return
+    if (!form.full_name.trim()) { addToast?.('Full name is required', 'error'); return }
+    if (!form.email.trim()) { addToast?.('Email is required', 'error'); return }
+    if (!/\S+@\S+\.\S+/.test(form.email)) { addToast?.('Please enter a valid email address', 'error'); return }
 
     // T5 #38: Check for duplicate employee
     if (!dupEmpConfirmed) {
@@ -260,63 +272,81 @@ export default function PeoplePage() {
     }
 
     addSubmittingRef.current = true
-    addEmployee({
-      department_id: form.department_id || departments[0]?.id,
-      job_title: form.job_title || 'Employee',
-      level: form.level,
-      country: form.country,
-      role: form.role,
-      profile: { full_name: form.full_name, email: form.email, avatar_url: null, phone: form.phone || null },
-    })
-    setShowAddModal(false)
-    setDupEmpConfirmed(false)
-    setForm({ full_name: '', email: '', phone: '', job_title: '', level: 'Mid', department_id: '', country: 'Nigeria', role: 'employee' })
-    setTimeout(() => { addSubmittingRef.current = false }, 0)
+    setSaving(true)
+    try {
+      addEmployee({
+        department_id: form.department_id || departments[0]?.id,
+        job_title: form.job_title || 'Employee',
+        level: form.level,
+        country: form.country,
+        role: form.role,
+        profile: { full_name: form.full_name, email: form.email, avatar_url: null, phone: form.phone || null },
+      })
+      setShowAddModal(false)
+      setDupEmpConfirmed(false)
+      setForm({ full_name: '', email: '', phone: '', job_title: '', level: 'Mid', department_id: '', country: 'Nigeria', role: 'employee' })
+    } finally {
+      setSaving(false)
+      setTimeout(() => { addSubmittingRef.current = false }, 0)
+    }
   }
 
   // T5 #33: Country transfer
   function executeCountryTransfer() {
-    if (!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date) return
+    if (!transferForm.employee_id) { addToast?.('Please select an employee', 'error'); return }
+    if (!transferForm.to_country) { addToast?.('Please select a destination country', 'error'); return }
+    if (!transferForm.effective_date) { addToast?.('Please set an effective date', 'error'); return }
     const emp = employees.find(e => e.id === transferForm.employee_id)
     if (!emp) return
     const fromCountry = emp.country || 'Unknown'
-    // Update employee country and add transfer metadata for payroll exclusion
-    updateEmployee(emp.id, {
-      country: transferForm.to_country,
-      transferDate: transferForm.effective_date,
-      previousCountry: fromCountry,
-      // Exclude from old country payroll runs after transfer date
-      payrollCountryExclude: fromCountry,
-      payrollCountryExcludeDate: transferForm.effective_date,
-    })
-    // Create employment timeline event for audit trail
-    addEmployeeDocument({
-      employee_id: emp.id,
-      document_type: 'transfer_record',
-      name: `Country Transfer: ${fromCountry} → ${transferForm.to_country}`,
-      status: 'approved',
-      expiry_date: null,
-      file_size: '—',
-      notes: `Effective ${transferForm.effective_date}. Previous: ${fromCountry}. New salary: ${transferForm.new_currency} ${transferForm.new_salary?.toLocaleString() || 'TBD'}.`,
-    })
-    addToast?.(`${emp.profile?.full_name} transferred from ${fromCountry} to ${transferForm.to_country} effective ${transferForm.effective_date}`)
-    setShowTransferModal(false)
-    setTransferForm({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
+    setSaving(true)
+    try {
+      // Update employee country and add transfer metadata for payroll exclusion
+      updateEmployee(emp.id, {
+        country: transferForm.to_country,
+        transferDate: transferForm.effective_date,
+        previousCountry: fromCountry,
+        // Exclude from old country payroll runs after transfer date
+        payrollCountryExclude: fromCountry,
+        payrollCountryExcludeDate: transferForm.effective_date,
+      })
+      // Create employment timeline event for audit trail
+      addEmployeeDocument({
+        employee_id: emp.id,
+        document_type: 'transfer_record',
+        name: `Country Transfer: ${fromCountry} → ${transferForm.to_country}`,
+        status: 'approved',
+        expiry_date: null,
+        file_size: '—',
+        notes: `Effective ${transferForm.effective_date}. Previous: ${fromCountry}. New salary: ${transferForm.new_currency} ${transferForm.new_salary?.toLocaleString() || 'TBD'}.`,
+      })
+      addToast?.(`${emp.profile?.full_name} transferred from ${fromCountry} to ${transferForm.to_country} effective ${transferForm.effective_date}`)
+      setShowTransferModal(false)
+      setTransferForm({ employee_id: '', to_country: '', new_salary: 0, effective_date: '', new_currency: 'NGN' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   function submitDocument() {
-    if (!docForm.employee_id || !docForm.name) return
-    addEmployeeDocument({
-      employee_id: docForm.employee_id,
-      document_type: docForm.document_type,
-      name: docForm.name,
-      status: 'pending_review',
-      expiry_date: docForm.expiry_date || null,
-      file_size: `${Math.floor(Math.random() * 900 + 100)} KB`,
-    })
-    setShowDocModal(false)
-    setDocForm({ employee_id: '', document_type: 'contract', name: '', expiry_date: '' })
-    setDocFileName(null)
+    if (!docForm.employee_id) { addToast?.('Please select an employee', 'error'); return }
+    if (!docForm.name.trim()) { addToast?.('Document name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addEmployeeDocument({
+        employee_id: docForm.employee_id,
+        document_type: docForm.document_type,
+        name: docForm.name,
+        status: 'pending_review',
+        expiry_date: docForm.expiry_date || null,
+        file_size: `${Math.floor(Math.random() * 900 + 100)} KB`,
+      })
+      setShowDocModal(false)
+      setDocForm({ employee_id: '', document_type: 'contract', name: '', expiry_date: '' })
+      setDocFileName(null)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // ---- Bulk Import Handlers ----
@@ -1069,7 +1099,7 @@ export default function PeoplePage() {
                             <Pencil size={14} />
                           </button>
                           <button
-                            onClick={() => deleteCustomFieldDefinition(def.id)}
+                            onClick={() => setConfirmAction({ title: 'Delete Custom Field', message: `Are you sure you want to delete the field "${def.name}"? This cannot be undone.`, onConfirm: () => { deleteCustomFieldDefinition(def.id); setConfirmAction(null) } })}
                             className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
                           >
                             <Trash2 size={14} />
@@ -1165,27 +1195,34 @@ export default function PeoplePage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCFModal(false)}>{tc('cancel')}</Button>
             <Button onClick={() => {
-              const payload = {
-                name: cfForm.name,
-                field_type: cfForm.field_type,
-                entity_type: cfForm.entity_type,
-                description: cfForm.description || null,
-                options: (cfForm.field_type === 'select' || cfForm.field_type === 'multi_select') && cfForm.options
-                  ? cfForm.options.split(',').map(o => o.trim()).filter(Boolean)
-                  : null,
-                is_required: cfForm.is_required,
-                is_visible: cfForm.is_visible,
-                group_name: cfForm.group_name || null,
-                order_index: customFieldDefinitions.length,
+              if (!cfForm.name.trim()) { addToast?.('Field name is required', 'error'); return }
+              if ((cfForm.field_type === 'select' || cfForm.field_type === 'multi_select') && !cfForm.options.trim()) { addToast?.('Options are required for select fields', 'error'); return }
+              setSaving(true)
+              try {
+                const payload = {
+                  name: cfForm.name,
+                  field_type: cfForm.field_type,
+                  entity_type: cfForm.entity_type,
+                  description: cfForm.description || null,
+                  options: (cfForm.field_type === 'select' || cfForm.field_type === 'multi_select') && cfForm.options
+                    ? cfForm.options.split(',').map(o => o.trim()).filter(Boolean)
+                    : null,
+                  is_required: cfForm.is_required,
+                  is_visible: cfForm.is_visible,
+                  group_name: cfForm.group_name || null,
+                  order_index: customFieldDefinitions.length,
+                }
+                if (editingCF) {
+                  updateCustomFieldDefinition(editingCF, payload)
+                } else {
+                  addCustomFieldDefinition(payload)
+                }
+                setShowCFModal(false)
+              } finally {
+                setSaving(false)
               }
-              if (editingCF) {
-                updateCustomFieldDefinition(editingCF, payload)
-              } else {
-                addCustomFieldDefinition(payload)
-              }
-              setShowCFModal(false)
-            }} disabled={!cfForm.name}>
-              {editingCF ? 'Update Field' : 'Add Field'}
+            }} disabled={!cfForm.name || saving}>
+              {saving ? 'Saving...' : editingCF ? 'Update Field' : 'Add Field'}
             </Button>
           </div>
         </div>
@@ -1222,7 +1259,7 @@ export default function PeoplePage() {
           ]} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitAdd}>{t('addEmployee')}</Button>
+            <Button onClick={submitAdd} disabled={saving}>{saving ? 'Saving...' : t('addEmployee')}</Button>
           </div>
         </div>
       </Modal>
@@ -1267,7 +1304,7 @@ export default function PeoplePage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => { setShowDocModal(false); setDocFileName(null) }}>{tc('cancel')}</Button>
-            <Button onClick={submitDocument}>{t('uploadDocument')}</Button>
+            <Button onClick={submitDocument} disabled={saving}>{saving ? 'Saving...' : t('uploadDocument')}</Button>
           </div>
         </div>
       </Modal>
@@ -1291,13 +1328,23 @@ export default function PeoplePage() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowBulkTransferModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={() => {
-              if (!bulkTransferForm.from_department || !bulkTransferForm.to_department) return
-              const toTransfer = employees.filter(e => e.department_id === bulkTransferForm.from_department)
-              toTransfer.forEach(emp => updateEmployee(emp.id, { department_id: bulkTransferForm.to_department }))
-              setShowBulkTransferModal(false)
-              setBulkTransferForm({ from_department: '', to_department: '', reason: '' })
-            }}>{t('executeTransfer')}</Button>
+            <Button disabled={saving} onClick={() => {
+              if (!bulkTransferForm.from_department) { addToast?.('Please select a source department', 'error'); return }
+              if (!bulkTransferForm.to_department) { addToast?.('Please select a destination department', 'error'); return }
+              if (bulkTransferForm.from_department === bulkTransferForm.to_department) { addToast?.('Source and destination departments must be different', 'error'); return }
+              const count = employees.filter(e => e.department_id === bulkTransferForm.from_department).length
+              setConfirmAction({ title: 'Confirm Bulk Transfer', message: `This will transfer ${count} employee(s) from ${getDepartmentName(bulkTransferForm.from_department)} to ${getDepartmentName(bulkTransferForm.to_department)}. Continue?`, onConfirm: () => {
+                setSaving(true)
+                try {
+                  const toTransfer = employees.filter(e => e.department_id === bulkTransferForm.from_department)
+                  toTransfer.forEach(emp => updateEmployee(emp.id, { department_id: bulkTransferForm.to_department }))
+                  setShowBulkTransferModal(false)
+                  setBulkTransferForm({ from_department: '', to_department: '', reason: '' })
+                  addToast?.(`${toTransfer.length} employee(s) transferred successfully`)
+                } finally { setSaving(false) }
+                setConfirmAction(null)
+              }})
+            }}>{saving ? 'Saving...' : t('executeTransfer')}</Button>
           </div>
         </div>
       </Modal>
@@ -1323,14 +1370,23 @@ export default function PeoplePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => { setShowBulkStatusModal(false); setBulkStatusDept(''); setBulkStatusRole('') }}>{tc('cancel')}</Button>
-            <Button onClick={() => {
-              if (!bulkStatusDept || !bulkStatusRole) return
-              const toUpdate = employees.filter(e => e.department_id === bulkStatusDept)
-              toUpdate.forEach(emp => updateEmployee(emp.id, { role: bulkStatusRole }))
-              setShowBulkStatusModal(false)
-              setBulkStatusDept('')
-              setBulkStatusRole('')
-            }}>{t('applyChanges')}</Button>
+            <Button disabled={saving} onClick={() => {
+              if (!bulkStatusDept) { addToast?.('Please select a department', 'error'); return }
+              if (!bulkStatusRole) { addToast?.('Please select a new role', 'error'); return }
+              const count = employees.filter(e => e.department_id === bulkStatusDept).length
+              setConfirmAction({ title: 'Confirm Bulk Status Change', message: `This will change the role of ${count} employee(s) in ${getDepartmentName(bulkStatusDept)} to "${bulkStatusRole}". Continue?`, onConfirm: () => {
+                setSaving(true)
+                try {
+                  const toUpdate = employees.filter(e => e.department_id === bulkStatusDept)
+                  toUpdate.forEach(emp => updateEmployee(emp.id, { role: bulkStatusRole }))
+                  setShowBulkStatusModal(false)
+                  setBulkStatusDept('')
+                  setBulkStatusRole('')
+                  addToast?.(`${toUpdate.length} employee(s) updated successfully`)
+                } finally { setSaving(false) }
+                setConfirmAction(null)
+              }})
+            }}>{saving ? 'Saving...' : t('applyChanges')}</Button>
           </div>
         </div>
       </Modal>
@@ -1378,7 +1434,7 @@ export default function PeoplePage() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</Button>
-            <Button onClick={executeCountryTransfer} disabled={!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date}>Execute Transfer</Button>
+            <Button onClick={executeCountryTransfer} disabled={!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date || saving}>{saving ? 'Saving...' : 'Execute Transfer'}</Button>
           </div>
         </div>
       </Modal>
@@ -1419,9 +1475,22 @@ export default function PeoplePage() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowRestructureModal(false)}>Cancel</Button>
-            <Button onClick={executeRestructure} disabled={!restructureForm.from_manager && !restructureForm.to_department}>
-              Execute Restructure ({restructurePreview.length} employees)
+            <Button onClick={() => {
+              setConfirmAction({ title: 'Confirm Org Restructure', message: `This will reassign ${restructurePreview.length || 'up to 5'} employee(s). This action cannot be undone. Continue?`, onConfirm: () => { executeRestructure(); setConfirmAction(null) } })
+            }} disabled={(!restructureForm.from_manager && !restructureForm.to_department) || saving}>
+              {saving ? 'Saving...' : `Execute Restructure (${restructurePreview.length} employees)`}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.title || 'Confirm Action'}>
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.message}</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button onClick={() => confirmAction?.onConfirm()}>Confirm</Button>
           </div>
         </div>
       </Modal>

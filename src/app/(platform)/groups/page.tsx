@@ -261,6 +261,15 @@ export default function GroupsPage() {
           </div>
 
           {/* Group Cards Grid */}
+          {filteredGroups.length === 0 && (
+            <div className="text-center py-12">
+              <Network size={40} className="mx-auto mb-3 text-t3/50" />
+              <p className="text-sm font-medium text-t1 mb-1">No groups yet</p>
+              <p className="text-xs text-t3 mb-4">Create dynamic or static groups to organize employees and assign module access automatically.</p>
+              <Button size="sm" onClick={openCreate}><Plus size={14} /> Create Group</Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredGroups.map(group => (
               <Card key={group.id}>

@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Blocks, Layout, Code, Database, Plus, Settings, Eye, Trash2, Globe, Lock, Monitor, Users, Folder, FileText, ArrowLeft, Home, GripVertical, Layers, BookOpen, CalendarDays, ClipboardList, AlertTriangle } from 'lucide-react'
+import { Blocks, Layout, Code, Database, Plus, Settings, Eye, Trash2, Globe, Lock, Monitor, Users, Folder, FileText, ArrowLeft, Home, GripVertical, Layers, BookOpen, CalendarDays, ClipboardList, AlertTriangle, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -29,6 +29,7 @@ export default function AppStudioPage() {
   const [saving, setSaving] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
   const [activeTab, setActiveTab] = useState<'apps' | 'templates' | 'datasources'>('apps')
+  const [searchQuery, setSearchQuery] = useState('')
   const [editingAppId, setEditingAppId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showAddPageModal, setShowAddPageModal] = useState(false)
@@ -39,6 +40,15 @@ export default function AppStudioPage() {
   const [configPageForm, setConfigPageForm] = useState({ name: '', slug: '', icon: 'layout' })
   const [appForm, setAppForm] = useState({ name: '', description: '', icon: 'monitor', access: 'all' })
   const [pageForm, setPageForm] = useState({ name: '', slug: '', icon: 'layout', is_home_page: false })
+
+  const filteredApps = useMemo(() => {
+    if (!searchQuery.trim()) return customApps
+    const q = searchQuery.toLowerCase()
+    return customApps.filter((app: any) =>
+      (app.name || '').toLowerCase().includes(q) ||
+      (app.description || '').toLowerCase().includes(q)
+    )
+  }, [customApps, searchQuery])
 
   // Stats
   const publishedApps = customApps.filter(a => a.status === 'published')
@@ -410,10 +420,23 @@ export default function AppStudioPage() {
         ))}
       </div>
 
+      {/* Search Bar */}
+      {activeTab === 'apps' && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <Input
+            placeholder="Search apps by name or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {/* ── My Apps Tab ── */}
       {activeTab === 'apps' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {customApps.map(app => (
+          {filteredApps.map(app => (
             <Card key={app.id}>
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -468,16 +491,16 @@ export default function AppStudioPage() {
             </Card>
           ))}
 
-          {customApps.length === 0 && (
+          {filteredApps.length === 0 && (
             <div className="col-span-full">
               <Card>
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
                     <Blocks size={28} className="text-t3" />
                   </div>
-                  <h3 className="text-sm font-semibold text-t1 mb-1">No custom apps yet</h3>
-                  <p className="text-xs text-t3 mb-4">Create your first app to get started</p>
-                  <Button size="sm" onClick={openCreateModal}><Plus size={14} /> Create App</Button>
+                  <h3 className="text-sm font-semibold text-t1 mb-1">{searchQuery ? 'No matching apps' : 'No custom apps yet'}</h3>
+                  <p className="text-xs text-t3 mb-4">{searchQuery ? 'Try adjusting your search terms.' : 'Create your first app to get started'}</p>
+                  {!searchQuery && <Button size="sm" onClick={openCreateModal}><Plus size={14} /> Create App</Button>}
                 </div>
               </Card>
             </div>

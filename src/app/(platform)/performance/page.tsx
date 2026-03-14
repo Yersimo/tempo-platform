@@ -38,6 +38,7 @@ export default function PerformancePage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -277,24 +278,27 @@ export default function PerformancePage() {
     setShowGoalModal(true)
   }
 
-  function submitGoal() {
-    if (!goalForm.title || !goalForm.employee_id) return
-    const data = {
-      title: goalForm.title,
-      description: goalForm.description || null,
-      category: goalForm.category,
-      employee_id: goalForm.employee_id,
-      due_date: goalForm.due_date || `${new Date().getFullYear()}-12-31`,
-      start_date: goalForm.start_date || new Date().toISOString().split('T')[0],
-      progress: Number(goalForm.progress) || 0,
-      status: Number(goalForm.progress) >= 75 ? 'on_track' : Number(goalForm.progress) >= 40 ? 'at_risk' : 'behind',
-    }
-    if (editingGoal) {
-      updateGoal(editingGoal, data)
-    } else {
-      addGoal(data)
-    }
-    setShowGoalModal(false)
+  async function submitGoal() {
+    if (!goalForm.title || !goalForm.employee_id) { addToast('Title and employee are required', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: goalForm.title,
+        description: goalForm.description || null,
+        category: goalForm.category,
+        employee_id: goalForm.employee_id,
+        due_date: goalForm.due_date || `${new Date().getFullYear()}-12-31`,
+        start_date: goalForm.start_date || new Date().toISOString().split('T')[0],
+        progress: Number(goalForm.progress) || 0,
+        status: Number(goalForm.progress) >= 75 ? 'on_track' : Number(goalForm.progress) >= 40 ? 'at_risk' : 'behind',
+      }
+      if (editingGoal) {
+        updateGoal(editingGoal, data)
+      } else {
+        addGoal(data)
+      }
+      setShowGoalModal(false)
+    } finally { setSaving(false) }
   }
 
   function confirmDeleteGoal() {
@@ -305,31 +309,37 @@ export default function PerformancePage() {
   }
 
   // ---- Feedback ----
-  function submitFeedback() {
-    if (!fbForm.to_id || !fbForm.content) return
-    addFeedback({
-      from_id: currentEmployeeId,
-      to_id: fbForm.to_id,
-      type: fbForm.type,
-      content: fbForm.content,
-      is_public: fbForm.is_public,
-    })
-    setShowFeedbackModal(false)
-    setFbForm({ to_id: '', type: 'recognition', content: '', is_public: true })
+  async function submitFeedback() {
+    if (!fbForm.to_id || !fbForm.content) { addToast('Recipient and message are required', 'error'); return }
+    setSaving(true)
+    try {
+      addFeedback({
+        from_id: currentEmployeeId,
+        to_id: fbForm.to_id,
+        type: fbForm.type,
+        content: fbForm.content,
+        is_public: fbForm.is_public,
+      })
+      setShowFeedbackModal(false)
+      setFbForm({ to_id: '', type: 'recognition', content: '', is_public: true })
+    } finally { setSaving(false) }
   }
 
   // ---- Review Cycle ----
-  function submitCycle() {
-    if (!cycleForm.title) return
-    addReviewCycle({
-      title: cycleForm.title,
-      type: cycleForm.type,
-      status: 'active',
-      start_date: cycleForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: cycleForm.end_date || `${new Date().getFullYear()}-12-31`,
-    })
-    setShowCycleModal(false)
-    setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
+  async function submitCycle() {
+    if (!cycleForm.title) { addToast('Cycle name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addReviewCycle({
+        title: cycleForm.title,
+        type: cycleForm.type,
+        status: 'active',
+        start_date: cycleForm.start_date || new Date().toISOString().split('T')[0],
+        end_date: cycleForm.end_date || `${new Date().getFullYear()}-12-31`,
+      })
+      setShowCycleModal(false)
+      setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
+    } finally { setSaving(false) }
   }
 
   // ---- Review Acknowledgment ----
@@ -343,15 +353,18 @@ export default function PerformancePage() {
   const [disputeReviewId, setDisputeReviewId] = useState<string | null>(null)
   const [disputeConcern, setDisputeConcern] = useState('')
 
-  function raiseDispute() {
-    if (!disputeReviewId || !disputeConcern.trim()) { addToast('Please describe your concern'); return }
-    updateReview(disputeReviewId, {
-      dispute: { concern: disputeConcern, raised_at: new Date().toISOString(), raised_by: currentEmployeeId, status: 'open' },
-    })
-    addToast('Concern raised — HR BP has been notified')
-    setShowDisputeModal(false)
-    setDisputeReviewId(null)
-    setDisputeConcern('')
+  async function raiseDispute() {
+    if (!disputeReviewId || !disputeConcern.trim()) { addToast('Please describe your concern', 'error'); return }
+    setSaving(true)
+    try {
+      updateReview(disputeReviewId, {
+        dispute: { concern: disputeConcern, raised_at: new Date().toISOString(), raised_by: currentEmployeeId, status: 'open' },
+      })
+      addToast('Concern raised — HR BP has been notified')
+      setShowDisputeModal(false)
+      setDisputeReviewId(null)
+      setDisputeConcern('')
+    } finally { setSaving(false) }
   }
 
   function resolveDispute(reviewId: string, resolution: string, updatedRating?: number) {
@@ -364,76 +377,88 @@ export default function PerformancePage() {
   }
 
   // ---- Review ----
-  function submitReview() {
-    if (!reviewForm.employee_id || !reviewForm.cycle_id) return
-    addReview({
-      cycle_id: reviewForm.cycle_id,
-      employee_id: reviewForm.employee_id,
-      reviewer_id: currentEmployeeId,
-      type: 'manager',
-      status: reviewForm.overall_rating ? 'submitted' : 'in_progress',
-      overall_rating: reviewForm.overall_rating || null,
-      ratings: reviewForm.overall_rating ? { leadership: reviewForm.overall_rating, execution: reviewForm.overall_rating, collaboration: reviewForm.overall_rating, innovation: reviewForm.overall_rating } : null,
-      comments: reviewForm.comments || null,
-      submitted_at: reviewForm.overall_rating ? new Date().toISOString() : null,
-    })
-    setShowReviewModal(false)
-    setReviewForm({ employee_id: '', cycle_id: '', overall_rating: 0, comments: '' })
+  async function submitReview() {
+    if (!reviewForm.employee_id || !reviewForm.cycle_id) { addToast('Employee and review cycle are required', 'error'); return }
+    setSaving(true)
+    try {
+      addReview({
+        cycle_id: reviewForm.cycle_id,
+        employee_id: reviewForm.employee_id,
+        reviewer_id: currentEmployeeId,
+        type: 'manager',
+        status: reviewForm.overall_rating ? 'submitted' : 'in_progress',
+        overall_rating: reviewForm.overall_rating || null,
+        ratings: reviewForm.overall_rating ? { leadership: reviewForm.overall_rating, execution: reviewForm.overall_rating, collaboration: reviewForm.overall_rating, innovation: reviewForm.overall_rating } : null,
+        comments: reviewForm.comments || null,
+        submitted_at: reviewForm.overall_rating ? new Date().toISOString() : null,
+      })
+      setShowReviewModal(false)
+      setReviewForm({ employee_id: '', cycle_id: '', overall_rating: 0, comments: '' })
+    } finally { setSaving(false) }
   }
 
   // ---- 1:1 Meeting ----
-  function submit1on1() {
-    if (!ooForm.employee_id || !ooForm.scheduled_date) return
-    addOneOnOne({
-      manager_id: ooForm.manager_id || currentEmployeeId,
-      employee_id: ooForm.employee_id,
-      scheduled_date: new Date(ooForm.scheduled_date).toISOString(),
-      status: 'upcoming',
-      agenda: ooForm.agenda,
-      notes: null,
-      action_items: [],
-      duration_minutes: Number(ooForm.duration_minutes) || 30,
-      recurring: ooForm.recurring,
-      location: ooForm.location || 'Virtual - Teams',
-    })
-    setShow1on1Modal(false)
-    setOoForm({ employee_id: '', manager_id: currentEmployeeId, scheduled_date: '', duration_minutes: 30, recurring: 'weekly', location: '', agenda: [] })
-    setNewAgendaItem('')
+  async function submit1on1() {
+    if (!ooForm.employee_id || !ooForm.scheduled_date) { addToast('Employee and date are required', 'error'); return }
+    setSaving(true)
+    try {
+      addOneOnOne({
+        manager_id: ooForm.manager_id || currentEmployeeId,
+        employee_id: ooForm.employee_id,
+        scheduled_date: new Date(ooForm.scheduled_date).toISOString(),
+        status: 'upcoming',
+        agenda: ooForm.agenda,
+        notes: null,
+        action_items: [],
+        duration_minutes: Number(ooForm.duration_minutes) || 30,
+        recurring: ooForm.recurring,
+        location: ooForm.location || 'Virtual - Teams',
+      })
+      setShow1on1Modal(false)
+      setOoForm({ employee_id: '', manager_id: currentEmployeeId, scheduled_date: '', duration_minutes: 30, recurring: 'weekly', location: '', agenda: [] })
+      setNewAgendaItem('')
+    } finally { setSaving(false) }
   }
 
   // ---- Recognition ----
-  function submitKudos() {
-    if (!kudosForm.to_id || !kudosForm.message) return
-    addRecognition({
-      from_id: currentEmployeeId,
-      to_id: kudosForm.to_id,
-      value: kudosForm.value,
-      message: kudosForm.message,
-      is_public: true,
-    })
-    setShowKudosModal(false)
-    setKudosForm({ to_id: '', value: 'Excellence', message: '' })
+  async function submitKudos() {
+    if (!kudosForm.to_id || !kudosForm.message) { addToast('Recipient and message are required', 'error'); return }
+    setSaving(true)
+    try {
+      addRecognition({
+        from_id: currentEmployeeId,
+        to_id: kudosForm.to_id,
+        value: kudosForm.value,
+        message: kudosForm.message,
+        is_public: true,
+      })
+      setShowKudosModal(false)
+      setKudosForm({ to_id: '', value: 'Excellence', message: '' })
+    } finally { setSaving(false) }
   }
 
   // ---- Competency Rating ----
-  function submitCompRating() {
-    if (!compRatingForm.employee_id || !compRatingForm.competency_id) return
-    // Check if rating already exists
-    const existing = competencyRatings.find(r => r.employee_id === compRatingForm.employee_id && r.competency_id === compRatingForm.competency_id)
-    if (existing) {
-      updateCompetencyRating(existing.id, { rating: compRatingForm.rating, target: compRatingForm.target, assessed_date: new Date().toISOString().split('T')[0], assessor_id: currentEmployeeId })
-    } else {
-      addCompetencyRating({
-        employee_id: compRatingForm.employee_id,
-        competency_id: compRatingForm.competency_id,
-        rating: compRatingForm.rating,
-        target: compRatingForm.target,
-        assessed_date: new Date().toISOString().split('T')[0],
-        assessor_id: currentEmployeeId,
-      })
-    }
-    setShowCompRatingModal(false)
-    setCompRatingForm({ employee_id: '', competency_id: '', rating: 3, target: 3 })
+  async function submitCompRating() {
+    if (!compRatingForm.employee_id || !compRatingForm.competency_id) { addToast('Employee and competency are required', 'error'); return }
+    setSaving(true)
+    try {
+      // Check if rating already exists
+      const existing = competencyRatings.find(r => r.employee_id === compRatingForm.employee_id && r.competency_id === compRatingForm.competency_id)
+      if (existing) {
+        updateCompetencyRating(existing.id, { rating: compRatingForm.rating, target: compRatingForm.target, assessed_date: new Date().toISOString().split('T')[0], assessor_id: currentEmployeeId })
+      } else {
+        addCompetencyRating({
+          employee_id: compRatingForm.employee_id,
+          competency_id: compRatingForm.competency_id,
+          rating: compRatingForm.rating,
+          target: compRatingForm.target,
+          assessed_date: new Date().toISOString().split('T')[0],
+          assessor_id: currentEmployeeId,
+        })
+      }
+      setShowCompRatingModal(false)
+      setCompRatingForm({ employee_id: '', competency_id: '', rating: 3, target: 3 })
+    } finally { setSaving(false) }
   }
 
   // ---- Bulk Review Assignment ----
@@ -456,21 +481,24 @@ export default function PerformancePage() {
     setBulkRevType('annual')
   }
 
-  function submitBulkReview() {
-    if (!bulkRevCycleId || bulkRevNewAssignees.length === 0) return
-    bulkRevNewAssignees.forEach(emp => {
-      addReview({
-        employee_id: emp.id,
-        cycle_id: bulkRevCycleId,
-        reviewer_id: currentEmployeeId,
-        type: bulkRevType,
-        rating: 0,
-        status: 'pending',
-        comments: '',
+  async function submitBulkReview() {
+    if (!bulkRevCycleId || bulkRevNewAssignees.length === 0) { addToast('Select a cycle and at least one employee', 'error'); return }
+    setSaving(true)
+    try {
+      bulkRevNewAssignees.forEach(emp => {
+        addReview({
+          employee_id: emp.id,
+          cycle_id: bulkRevCycleId,
+          reviewer_id: currentEmployeeId,
+          type: bulkRevType,
+          rating: 0,
+          status: 'pending',
+          comments: '',
+        })
       })
-    })
-    addToast(`${bulkRevNewAssignees.length} reviews assigned successfully`)
-    resetBulkReview()
+      addToast(`${bulkRevNewAssignees.length} reviews assigned successfully`)
+      resetBulkReview()
+    } finally { setSaving(false) }
   }
 
   const valueColors: Record<string, string> = {
@@ -713,8 +741,8 @@ export default function PerformancePage() {
                       </td>
                       <td className="px-4 py-3">
                         {review.status !== 'submitted' && (isHRBPOrAbove || isManager || review.reviewer_id === currentEmployeeId) && (
-                          <Button size="sm" variant="secondary" onClick={() => updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') })}>
-                            {t('completeReview')}
+                          <Button size="sm" variant="secondary" disabled={saving} onClick={async () => { setSaving(true); try { updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') }) } finally { setSaving(false) } }}>
+                            {saving ? 'Saving...' : t('completeReview')}
                           </Button>
                         )}
                       </td>
@@ -1842,7 +1870,7 @@ export default function PerformancePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => { setShowDisputeModal(false); setDisputeReviewId(null); setDisputeConcern('') }}>Cancel</Button>
-            <Button onClick={raiseDispute} disabled={!disputeConcern.trim()}>Submit Concern</Button>
+            <Button onClick={raiseDispute} disabled={saving || !disputeConcern.trim()}>{saving ? 'Saving...' : 'Submit Concern'}</Button>
           </div>
         </div>
       </Modal>
@@ -1894,24 +1922,27 @@ export default function PerformancePage() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPIPModal(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!pipForm.employee_id || !pipForm.reason || !pipForm.start_date || !pipForm.end_date) return
-              addPIP({
-                employee_id: pipForm.employee_id,
-                created_by: currentEmployeeId,
-                reason: pipForm.reason,
-                start_date: pipForm.start_date,
-                end_date: pipForm.end_date,
-                status: 'active',
-                objectives: pipForm.objectives.map(o => ({ ...o, status: 'not_started' })),
-                support_provided: pipForm.support_provided,
-                check_in_frequency: pipForm.check_in_frequency,
-                next_check_in: pipForm.start_date,
-                outcome: null,
-                notes: null,
-              })
-              setShowPIPModal(false)
-            }}>Create PIP</Button>
+            <Button disabled={saving} onClick={async () => {
+              if (!pipForm.employee_id || !pipForm.reason || !pipForm.start_date || !pipForm.end_date) { addToast('Employee, reason, start and end dates are required', 'error'); return }
+              setSaving(true)
+              try {
+                addPIP({
+                  employee_id: pipForm.employee_id,
+                  created_by: currentEmployeeId,
+                  reason: pipForm.reason,
+                  start_date: pipForm.start_date,
+                  end_date: pipForm.end_date,
+                  status: 'active',
+                  objectives: pipForm.objectives.map(o => ({ ...o, status: 'not_started' })),
+                  support_provided: pipForm.support_provided,
+                  check_in_frequency: pipForm.check_in_frequency,
+                  next_check_in: pipForm.start_date,
+                  outcome: null,
+                  notes: null,
+                })
+                setShowPIPModal(false)
+              } finally { setSaving(false) }
+            }}>{saving ? 'Saving...' : 'Create PIP'}</Button>
           </div>
         </div>
       </Modal>
@@ -1929,19 +1960,22 @@ export default function PerformancePage() {
           <Textarea label="Next Steps" placeholder="What actions should be taken before the next check-in?" rows={2} value={checkInForm.next_steps} onChange={(e) => setCheckInForm({ ...checkInForm, next_steps: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCheckInModal(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!selectedPIPForCheckIn || !checkInForm.notes) return
-              addPIPCheckIn({
-                pip_id: selectedPIPForCheckIn,
-                date: new Date().toISOString().split('T')[0],
-                conducted_by: currentEmployeeId,
-                progress: checkInForm.progress,
-                notes: checkInForm.notes,
-                objectives_status: [],
-                next_steps: checkInForm.next_steps,
-              })
-              setShowCheckInModal(false)
-            }}>Record Check-in</Button>
+            <Button disabled={saving} onClick={async () => {
+              if (!selectedPIPForCheckIn || !checkInForm.notes) { addToast('Notes are required for check-in', 'error'); return }
+              setSaving(true)
+              try {
+                addPIPCheckIn({
+                  pip_id: selectedPIPForCheckIn,
+                  date: new Date().toISOString().split('T')[0],
+                  conducted_by: currentEmployeeId,
+                  progress: checkInForm.progress,
+                  notes: checkInForm.notes,
+                  objectives_status: [],
+                  next_steps: checkInForm.next_steps,
+                })
+                setShowCheckInModal(false)
+              } finally { setSaving(false) }
+            }}>{saving ? 'Saving...' : 'Record Check-in'}</Button>
           </div>
         </div>
       </Modal>
@@ -1974,30 +2008,33 @@ export default function PerformancePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMeritModal(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!meritForm.name || !meritForm.total_budget) return
-              addMeritCycle({
-                name: meritForm.name,
-                type: meritForm.type,
-                status: 'planning',
-                fiscal_year: meritForm.fiscal_year,
-                total_budget: meritForm.total_budget,
-                currency: meritForm.currency,
-                guidelines_config: {
-                  rating_ranges: [
-                    { rating: 5, label: 'Exceptional', min_percent: 8, max_percent: 12 },
-                    { rating: 4, label: 'Exceeds Expectations', min_percent: 5, max_percent: 8 },
-                    { rating: 3, label: 'Meets Expectations', min_percent: 2, max_percent: 4 },
-                    { rating: 2, label: 'Needs Improvement', min_percent: 0, max_percent: 2 },
-                    { rating: 1, label: 'Unsatisfactory', min_percent: 0, max_percent: 0 },
-                  ],
-                },
-                start_date: meritForm.start_date || new Date().toISOString().split('T')[0],
-                end_date: meritForm.end_date || `${meritForm.fiscal_year}-12-31`,
-                created_by: currentEmployeeId,
-              })
-              setShowMeritModal(false)
-            }}>Create Merit Cycle</Button>
+            <Button disabled={saving} onClick={async () => {
+              if (!meritForm.name || !meritForm.total_budget) { addToast('Name and budget are required', 'error'); return }
+              setSaving(true)
+              try {
+                addMeritCycle({
+                  name: meritForm.name,
+                  type: meritForm.type,
+                  status: 'planning',
+                  fiscal_year: meritForm.fiscal_year,
+                  total_budget: meritForm.total_budget,
+                  currency: meritForm.currency,
+                  guidelines_config: {
+                    rating_ranges: [
+                      { rating: 5, label: 'Exceptional', min_percent: 8, max_percent: 12 },
+                      { rating: 4, label: 'Exceeds Expectations', min_percent: 5, max_percent: 8 },
+                      { rating: 3, label: 'Meets Expectations', min_percent: 2, max_percent: 4 },
+                      { rating: 2, label: 'Needs Improvement', min_percent: 0, max_percent: 2 },
+                      { rating: 1, label: 'Unsatisfactory', min_percent: 0, max_percent: 0 },
+                    ],
+                  },
+                  start_date: meritForm.start_date || new Date().toISOString().split('T')[0],
+                  end_date: meritForm.end_date || `${meritForm.fiscal_year}-12-31`,
+                  created_by: currentEmployeeId,
+                })
+                setShowMeritModal(false)
+              } finally { setSaving(false) }
+            }}>{saving ? 'Saving...' : 'Create Merit Cycle'}</Button>
           </div>
         </div>
       </Modal>
@@ -2069,40 +2106,43 @@ export default function PerformancePage() {
           <Textarea label="Justification" placeholder="Provide detailed justification for this recommendation..." rows={3} value={meritRecForm.justification} onChange={(e) => setMeritRecForm({ ...meritRecForm, justification: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMeritRecModal(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!meritRecForm.employee_id || !meritRecForm.current_salary || !meritRecForm.proposed_salary) return
-              const increaseAmount = meritRecForm.proposed_salary - meritRecForm.current_salary
-              const increasePercent = (increaseAmount / meritRecForm.current_salary) * 100
+            <Button disabled={saving} onClick={async () => {
+              if (!meritRecForm.employee_id || !meritRecForm.current_salary || !meritRecForm.proposed_salary) { addToast('Employee and salary fields are required', 'error'); return }
+              setSaving(true)
+              try {
+                const increaseAmount = meritRecForm.proposed_salary - meritRecForm.current_salary
+                const increasePercent = (increaseAmount / meritRecForm.current_salary) * 100
 
-              // Budget validation
-              const cycle = meritCycles.find(c => c.id === meritRecForm.cycle_id)
-              if (cycle) {
-                const existingAllocated = meritRecommendations
-                  .filter(r => r.cycle_id === meritRecForm.cycle_id)
-                  .reduce((sum: number, r: any) => sum + r.increase_amount, 0)
-                const newTotal = existingAllocated + increaseAmount
-                if (newTotal > cycle.total_budget) {
-                  const overBy = newTotal - cycle.total_budget
-                  addToast(`Warning: This recommendation exceeds the cycle budget by $${overBy.toLocaleString()}. Total allocated: $${newTotal.toLocaleString()} / Budget: $${cycle.total_budget.toLocaleString()}`, 'error')
+                // Budget validation
+                const cycle = meritCycles.find(c => c.id === meritRecForm.cycle_id)
+                if (cycle) {
+                  const existingAllocated = meritRecommendations
+                    .filter(r => r.cycle_id === meritRecForm.cycle_id)
+                    .reduce((sum: number, r: any) => sum + r.increase_amount, 0)
+                  const newTotal = existingAllocated + increaseAmount
+                  if (newTotal > cycle.total_budget) {
+                    const overBy = newTotal - cycle.total_budget
+                    addToast(`Warning: This recommendation exceeds the cycle budget by $${overBy.toLocaleString()}. Total allocated: $${newTotal.toLocaleString()} / Budget: $${cycle.total_budget.toLocaleString()}`, 'error')
+                  }
                 }
-              }
 
-              addMeritRecommendation({
-                cycle_id: meritRecForm.cycle_id,
-                employee_id: meritRecForm.employee_id,
-                manager_id: currentEmployeeId,
-                current_salary: meritRecForm.current_salary,
-                proposed_salary: meritRecForm.proposed_salary,
-                increase_percent: Number(increasePercent.toFixed(1)),
-                increase_amount: increaseAmount,
-                rating: meritRecForm.rating,
-                justification: meritRecForm.justification,
-                status: 'pending',
-                approved_by: null,
-                approved_at: null,
-              })
-              setShowMeritRecModal(false)
-            }}>Submit Recommendation</Button>
+                addMeritRecommendation({
+                  cycle_id: meritRecForm.cycle_id,
+                  employee_id: meritRecForm.employee_id,
+                  manager_id: currentEmployeeId,
+                  current_salary: meritRecForm.current_salary,
+                  proposed_salary: meritRecForm.proposed_salary,
+                  increase_percent: Number(increasePercent.toFixed(1)),
+                  increase_amount: increaseAmount,
+                  rating: meritRecForm.rating,
+                  justification: meritRecForm.justification,
+                  status: 'pending',
+                  approved_by: null,
+                  approved_at: null,
+                })
+                setShowMeritRecModal(false)
+              } finally { setSaving(false) }
+            }}>{saving ? 'Saving...' : 'Submit Recommendation'}</Button>
           </div>
         </div>
       </Modal>
@@ -2241,26 +2281,29 @@ export default function PerformancePage() {
 
           <div className="flex justify-end gap-2 pt-2 border-t border-divider">
             <Button variant="secondary" onClick={() => setShowTemplateModal(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!templateForm.name || templateForm.sections.length === 0) return
-              if (editingTemplate) {
-                updateReviewTemplate(editingTemplate, {
-                  name: templateForm.name,
-                  type: templateForm.type,
-                  is_default: templateForm.is_default,
-                  sections: templateForm.sections,
-                })
-              } else {
-                addReviewTemplate({
-                  name: templateForm.name,
-                  type: templateForm.type,
-                  is_default: templateForm.is_default,
-                  sections: templateForm.sections,
-                  created_by: currentEmployeeId,
-                })
-              }
-              setShowTemplateModal(false)
-            }}>{editingTemplate ? 'Save Changes' : 'Create Template'}</Button>
+            <Button disabled={saving} onClick={async () => {
+              if (!templateForm.name || templateForm.sections.length === 0) { addToast('Template name and at least one section are required', 'error'); return }
+              setSaving(true)
+              try {
+                if (editingTemplate) {
+                  updateReviewTemplate(editingTemplate, {
+                    name: templateForm.name,
+                    type: templateForm.type,
+                    is_default: templateForm.is_default,
+                    sections: templateForm.sections,
+                  })
+                } else {
+                  addReviewTemplate({
+                    name: templateForm.name,
+                    type: templateForm.type,
+                    is_default: templateForm.is_default,
+                    sections: templateForm.sections,
+                    created_by: currentEmployeeId,
+                  })
+                }
+                setShowTemplateModal(false)
+              } finally { setSaving(false) }
+            }}>{saving ? 'Saving...' : editingTemplate ? 'Save Changes' : 'Create Template'}</Button>
           </div>
         </div>
       </Modal>
@@ -2288,7 +2331,7 @@ export default function PerformancePage() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowGoalModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitGoal}>{editingGoal ? tc('saveChanges') : t('createGoal')}</Button>
+            <Button onClick={submitGoal} disabled={saving}>{saving ? 'Saving...' : editingGoal ? tc('saveChanges') : t('createGoal')}</Button>
           </div>
         </div>
       </Modal>
@@ -2318,7 +2361,7 @@ export default function PerformancePage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowFeedbackModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitFeedback}>{t('sendFeedback')}</Button>
+            <Button onClick={submitFeedback} disabled={saving}>{saving ? 'Saving...' : t('sendFeedback')}</Button>
           </div>
         </div>
       </Modal>
@@ -2338,7 +2381,7 @@ export default function PerformancePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCycleModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCycle}>{t('createCycle')}</Button>
+            <Button onClick={submitCycle} disabled={saving}>{saving ? 'Saving...' : t('createCycle')}</Button>
           </div>
         </div>
       </Modal>
@@ -2359,7 +2402,7 @@ export default function PerformancePage() {
           <Textarea label={t('comments')} placeholder={t('commentsPlaceholder')} rows={3} value={reviewForm.comments} onChange={(e) => setReviewForm({ ...reviewForm, comments: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowReviewModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitReview}>{t('createReview')}</Button>
+            <Button onClick={submitReview} disabled={saving}>{saving ? 'Saving...' : t('createReview')}</Button>
           </div>
         </div>
       </Modal>
@@ -2400,7 +2443,7 @@ export default function PerformancePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShow1on1Modal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submit1on1}>{t('create1on1')}</Button>
+            <Button onClick={submit1on1} disabled={saving}>{saving ? 'Saving...' : t('create1on1')}</Button>
           </div>
         </div>
       </Modal>
@@ -2419,7 +2462,7 @@ export default function PerformancePage() {
           <Textarea label={t('kudosMessage')} placeholder={t('kudosMessagePlaceholder')} rows={4} value={kudosForm.message} onChange={(e) => setKudosForm({ ...kudosForm, message: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowKudosModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitKudos}>{t('sendKudos')}</Button>
+            <Button onClick={submitKudos} disabled={saving}>{saving ? 'Saving...' : t('sendKudos')}</Button>
           </div>
         </div>
       </Modal>
@@ -2447,7 +2490,7 @@ export default function PerformancePage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCompRatingModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCompRating}>{t('submitRating')}</Button>
+            <Button onClick={submitCompRating} disabled={saving}>{saving ? 'Saving...' : t('submitRating')}</Button>
           </div>
         </div>
       </Modal>
@@ -2697,8 +2740,8 @@ export default function PerformancePage() {
               <Button variant="secondary" onClick={() => setBulkRevStep(1)}>Back</Button>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={resetBulkReview}>Cancel</Button>
-                <Button onClick={submitBulkReview} disabled={!bulkRevCycleId || bulkRevNewAssignees.length === 0}>
-                  Assign {bulkRevNewAssignees.length} Review{bulkRevNewAssignees.length !== 1 ? 's' : ''}
+                <Button onClick={submitBulkReview} disabled={saving || !bulkRevCycleId || bulkRevNewAssignees.length === 0}>
+                  {saving ? 'Saving...' : `Assign ${bulkRevNewAssignees.length} Review${bulkRevNewAssignees.length !== 1 ? 's' : ''}`}
                 </Button>
               </div>
             </div>

@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Globe, DollarSign, TrendingUp, ArrowRightLeft, Building2, Plus, Landmark, MapPin, Wallet, CheckCircle, Clock, Users, AlertTriangle } from 'lucide-react'
+import { Globe, DollarSign, TrendingUp, ArrowRightLeft, Building2, Plus, Landmark, MapPin, Wallet, CheckCircle, Clock, Users, AlertTriangle, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 // ─── Currency formatting helper ───
@@ -56,6 +56,7 @@ export default function GlobalSpendPage() {
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferForm, setTransferForm] = useState({
     from_currency: '',
@@ -81,6 +82,17 @@ export default function GlobalSpendPage() {
   )
 
   const entityCount = currencyAccounts.length
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery.trim()) return fxTransactions
+    const q = searchQuery.toLowerCase()
+    return fxTransactions.filter((tx: any) =>
+      (tx.from_currency || '').toLowerCase().includes(q) ||
+      (tx.to_currency || '').toLowerCase().includes(q) ||
+      (tx.memo || '').toLowerCase().includes(q) ||
+      (tx.status || '').toLowerCase().includes(q)
+    )
+  }, [fxTransactions, searchQuery])
 
   // ─── Region aggregation ───
   const regionData = useMemo(() => {
@@ -411,12 +423,24 @@ export default function GlobalSpendPage() {
 
       {/* ─── FX Transactions Tab ─── */}
       {activeTab === 'transactions' && (
+        <>
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder="Search by currency or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>FX Transactions</CardTitle>
               <div className="flex gap-2">
-                <Badge variant="info">{fxTransactions.length} transactions</Badge>
+                <Badge variant="info">{filteredTransactions.length} transactions</Badge>
                 <Button size="sm" variant="secondary" onClick={openTransferModal}>
                   <Plus size={12} /> New Transfer
                 </Button>
@@ -436,7 +460,7 @@ export default function GlobalSpendPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {fxTransactions.map((tx: any) => (
+                {filteredTransactions.map((tx: any) => (
                   <tr key={tx.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs text-t2">{new Date(tx.executed_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
@@ -464,9 +488,9 @@ export default function GlobalSpendPage() {
                     </td>
                   </tr>
                 ))}
-                {fxTransactions.length === 0 && (
+                {filteredTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-t3">No FX transactions yet</td>
+                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-t3">{searchQuery ? 'No matching transactions' : 'No FX transactions yet'}</td>
                   </tr>
                 )}
               </tbody>
@@ -514,6 +538,7 @@ export default function GlobalSpendPage() {
             </div>
           </div>
         </Card>
+        </>
       )}
 
       {/* ─── By Region Tab ─── */}

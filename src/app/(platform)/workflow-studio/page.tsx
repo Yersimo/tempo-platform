@@ -14,6 +14,7 @@ import {
   Plus, Zap, Play, Pause, CheckCircle2, XCircle,
   Pencil, Trash2, ArrowDown, LayoutTemplate, Clock, ChevronRight,
   GitBranch, Bell, Timer, Shield, Loader2, Eye, ThumbsUp, ThumbsDown,
+  Search,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -29,10 +30,12 @@ export default function WorkflowStudioPage() {
     addWorkflowStep, updateWorkflowStep, deleteWorkflowStep,
     addWorkflowRun, updateWorkflowRun,
     getEmployeeName, currentEmployeeId,
-    ensureModulesLoaded,
+    ensureModulesLoaded, addToast,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => { ensureModulesLoaded?.(['workflows', 'workflowSteps', 'workflowRuns', 'workflowTemplates'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
@@ -143,6 +146,38 @@ export default function WorkflowStudioPage() {
     return suggestWorkflowOptimizations(selectedWorkflow, selectedSteps, selectedRuns)
   }, [selectedWorkflow, selectedSteps, selectedRuns])
 
+  // Search/filter
+  const filteredWorkflows = useMemo(() => {
+    if (!searchQuery.trim()) return workflows
+    const q = searchQuery.toLowerCase()
+    return workflows.filter(wf =>
+      wf.title.toLowerCase().includes(q) ||
+      (wf.description && wf.description.toLowerCase().includes(q)) ||
+      wf.status.toLowerCase().includes(q) ||
+      wf.trigger_type.toLowerCase().includes(q)
+    )
+  }, [workflows, searchQuery])
+
+  const filteredTemplates = useMemo(() => {
+    if (!searchQuery.trim()) return workflowTemplates
+    const q = searchQuery.toLowerCase()
+    return workflowTemplates.filter(tmpl =>
+      tmpl.title.toLowerCase().includes(q) ||
+      (tmpl.description && tmpl.description.toLowerCase().includes(q)) ||
+      (tmpl.category && tmpl.category.toLowerCase().includes(q))
+    )
+  }, [workflowTemplates, searchQuery])
+
+  const filteredRuns = useMemo(() => {
+    if (!searchQuery.trim()) return workflowRuns
+    const q = searchQuery.toLowerCase()
+    return workflowRuns.filter(run => {
+      const wf = workflows.find(w => w.id === run.workflow_id)
+      return run.status.toLowerCase().includes(q) ||
+        (wf?.title && wf.title.toLowerCase().includes(q))
+    })
+  }, [workflowRuns, workflows, searchQuery])
+
   // Claude AI enhancement
   const { result: enhancedOptimizations, isLoading: optimizationsLoading } = useAI({
     action: 'enhanceWorkflowOptimization',
@@ -184,25 +219,32 @@ export default function WorkflowStudioPage() {
     setShowWorkflowModal(true)
   }
 
-  function submitWorkflow() {
-    if (!workflowForm.title) return
+  async function submitWorkflow() {
+    if (!workflowForm.title.trim()) { addToast('Workflow title is required', 'error'); return }
     let triggerConfig = {}
-    try { triggerConfig = JSON.parse(workflowForm.trigger_config) } catch { /* ignore */ }
-    const data = {
-      title: workflowForm.title,
-      description: workflowForm.description || null,
-      status: workflowForm.status,
-      trigger_type: workflowForm.trigger_type,
-      trigger_config: triggerConfig,
-      created_by: currentEmployeeId,
+    try { triggerConfig = JSON.parse(workflowForm.trigger_config) } catch { addToast('Invalid trigger config JSON', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: workflowForm.title,
+        description: workflowForm.description || null,
+        status: workflowForm.status,
+        trigger_type: workflowForm.trigger_type,
+        trigger_config: triggerConfig,
+        created_by: currentEmployeeId,
+      }
+      if (editingWorkflow) {
+        updateWorkflow(editingWorkflow, data)
+        addToast('Workflow updated', 'success')
+      } else {
+        const newId = addWorkflow(data)
+        setSelectedWorkflowId(typeof newId === 'string' ? newId : null)
+        addToast(`Workflow "${workflowForm.title}" created`, 'success')
+      }
+      setShowWorkflowModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingWorkflow) {
-      updateWorkflow(editingWorkflow, data)
-    } else {
-      const newId = addWorkflow(data)
-      setSelectedWorkflowId(typeof newId === 'string' ? newId : null)
-    }
-    setShowWorkflowModal(false)
   }
 
   function openNewStep() {
@@ -223,24 +265,32 @@ export default function WorkflowStudioPage() {
     setShowStepModal(true)
   }
 
-  function submitStep() {
-    if (!stepForm.title || !selectedWorkflowId) return
+  async function submitStep() {
+    if (!stepForm.title.trim()) { addToast('Step title is required', 'error'); return }
+    if (!selectedWorkflowId) { addToast('No workflow selected', 'error'); return }
     let config = {}
-    try { config = JSON.parse(stepForm.config) } catch { /* ignore */ }
-    const data = {
-      workflow_id: selectedWorkflowId,
-      step_type: stepForm.step_type,
-      title: stepForm.title,
-      config,
-      position: selectedSteps.length,
-      next_step_id: null,
+    try { config = JSON.parse(stepForm.config) } catch { addToast('Invalid step config JSON', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        workflow_id: selectedWorkflowId,
+        step_type: stepForm.step_type,
+        title: stepForm.title,
+        config,
+        position: selectedSteps.length,
+        next_step_id: null,
+      }
+      if (editingStep) {
+        updateWorkflowStep(editingStep, data)
+        addToast('Step updated', 'success')
+      } else {
+        addWorkflowStep(data)
+        addToast(`Step "${stepForm.title}" added`, 'success')
+      }
+      setShowStepModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingStep) {
-      updateWorkflowStep(editingStep, data)
-    } else {
-      addWorkflowStep(data)
-    }
-    setShowStepModal(false)
   }
 
   function useTemplate(templateId: string) {
@@ -304,6 +354,20 @@ export default function WorkflowStudioPage() {
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
+      {/* Search */}
+      {(activeTab === 'list' || activeTab === 'history' || activeTab === 'templates') && (
+        <div className="relative mb-4">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input
+            type="text"
+            placeholder={activeTab === 'list' ? 'Search workflows...' : activeTab === 'templates' ? 'Search templates...' : 'Search runs...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-500"
+          />
+        </div>
+      )}
+
       {/* ==================== WORKFLOW LIST ==================== */}
       {activeTab === 'list' && (
         <Card padding="none">
@@ -314,10 +378,17 @@ export default function WorkflowStudioPage() {
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
-            {workflows.length === 0 && (
-              <div className="px-6 py-12 text-center text-sm text-t3">{t('noWorkflows')}</div>
+            {filteredWorkflows.length === 0 && (
+              <div className="px-6 py-16 text-center">
+                <Zap size={32} className="mx-auto mb-3 text-t3 opacity-40" />
+                <p className="text-sm font-medium text-t2 mb-1">{workflows.length === 0 ? 'No workflows yet' : 'No workflows match your search'}</p>
+                <p className="text-xs text-t3 mb-4">{workflows.length === 0 ? 'Create your first workflow to automate processes' : 'Try adjusting your search terms'}</p>
+                {workflows.length === 0 && (
+                  <Button size="sm" onClick={openNewWorkflow}><Plus size={14} /> {t('newWorkflow')}</Button>
+                )}
+              </div>
             )}
-            {workflows.map(wf => {
+            {filteredWorkflows.map(wf => {
               const steps = workflowSteps.filter(s => s.workflow_id === wf.id)
               const runs = workflowRuns.filter(r => r.workflow_id === wf.id)
               const lastRun = runs.length > 0 ? runs[runs.length - 1] : null
@@ -499,10 +570,14 @@ export default function WorkflowStudioPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {workflowRuns.length === 0 && (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noRuns')}</td></tr>
+                  {filteredRuns.length === 0 && (
+                    <tr><td colSpan={6} className="px-6 py-16 text-center">
+                      <Clock size={32} className="mx-auto mb-3 text-t3 opacity-40" />
+                      <p className="text-sm font-medium text-t2 mb-1">{workflowRuns.length === 0 ? 'No workflow runs yet' : 'No runs match your search'}</p>
+                      <p className="text-xs text-t3">{workflowRuns.length === 0 ? 'Execute a workflow to see its run history here' : 'Try adjusting your search terms'}</p>
+                    </td></tr>
                   )}
-                  {[...workflowRuns].reverse().map(run => {
+                  {[...filteredRuns].reverse().map(run => {
                     const wf = workflows.find(w => w.id === run.workflow_id)
                     const isViewing = viewingRunId === run.id
                     return (
@@ -604,10 +679,14 @@ export default function WorkflowStudioPage() {
       {/* ==================== TEMPLATES ==================== */}
       {activeTab === 'templates' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workflowTemplates.length === 0 && (
-            <div className="col-span-full py-12 text-center text-sm text-t3">{t('noTemplates')}</div>
+          {filteredTemplates.length === 0 && (
+            <div className="col-span-full py-16 text-center">
+              <LayoutTemplate size={32} className="mx-auto mb-3 text-t3 opacity-40" />
+              <p className="text-sm font-medium text-t2 mb-1">{workflowTemplates.length === 0 ? 'No templates available' : 'No templates match your search'}</p>
+              <p className="text-xs text-t3">{workflowTemplates.length === 0 ? 'Templates will appear here as they become available' : 'Try adjusting your search terms'}</p>
+            </div>
           )}
-          {workflowTemplates.map(template => (
+          {filteredTemplates.map(template => (
             <Card key={template.id}>
               <div className="flex items-start justify-between mb-3">
                 <div className="w-9 h-9 rounded-lg bg-tempo-50 flex items-center justify-center">
@@ -645,8 +724,8 @@ export default function WorkflowStudioPage() {
             ]} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowWorkflowModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitWorkflow}>{editingWorkflow ? tc('saveChanges') : t('createWorkflow')}</Button>
+            <Button variant="secondary" onClick={() => setShowWorkflowModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitWorkflow} disabled={saving}>{saving ? 'Saving...' : editingWorkflow ? tc('saveChanges') : t('createWorkflow')}</Button>
           </div>
         </div>
       </Modal>
@@ -664,8 +743,8 @@ export default function WorkflowStudioPage() {
           <Input label={t('stepTitle')} placeholder={t('stepTitlePlaceholder')} value={stepForm.title} onChange={(e) => setStepForm({ ...stepForm, title: e.target.value })} />
           <Textarea label={t('stepConfig')} placeholder='{"action": "send_email", "to": "manager"}' rows={3} value={stepForm.config} onChange={(e) => setStepForm({ ...stepForm, config: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowStepModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitStep}>{editingStep ? tc('saveChanges') : t('addStep')}</Button>
+            <Button variant="secondary" onClick={() => setShowStepModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitStep} disabled={saving}>{saving ? 'Saving...' : editingStep ? tc('saveChanges') : t('addStep')}</Button>
           </div>
         </div>
       </Modal>

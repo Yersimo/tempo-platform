@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil, Loader2 } from 'lucide-react'
+import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil, Loader2, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 export default function TravelManagementPage() {
@@ -64,6 +64,7 @@ export default function TravelManagementPage() {
   })
 
   const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   // Stats
@@ -81,6 +82,35 @@ export default function TravelManagementPage() {
     })
     return count
   }, [travelBookings, travelPolicies])
+
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery) return travelRequests
+    const q = searchQuery.toLowerCase()
+    return travelRequests.filter((req: any) =>
+      req.destination?.toLowerCase().includes(q) ||
+      req.purpose?.toLowerCase().includes(q) ||
+      req.status?.toLowerCase().includes(q)
+    )
+  }, [travelRequests, searchQuery])
+
+  const filteredBookings = useMemo(() => {
+    if (!searchQuery) return travelBookings
+    const q = searchQuery.toLowerCase()
+    return travelBookings.filter((b: any) =>
+      b.provider?.toLowerCase().includes(q) ||
+      b.confirmation_number?.toLowerCase().includes(q) ||
+      b.type?.toLowerCase().includes(q)
+    )
+  }, [travelBookings, searchQuery])
+
+  const filteredPolicies = useMemo(() => {
+    if (!searchQuery) return travelPolicies
+    const q = searchQuery.toLowerCase()
+    return travelPolicies.filter((p: any) =>
+      p.name?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    )
+  }, [travelPolicies, searchQuery])
 
   function getEmployeeName(empId: string) {
     const emp = employees.find((e: any) => e.id === empId)
@@ -306,6 +336,18 @@ export default function TravelManagementPage() {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative mb-4 max-w-md">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+        <input
+          type="text"
+          placeholder="Search requests, bookings, policies..."
+          className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {/* Requests Tab */}
       {activeTab === 'requests' && (
         <Card padding="none">
@@ -327,7 +369,16 @@ export default function TravelManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {travelRequests.map((req: any) => (
+                {filteredRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-16 text-center">
+                      <Plane size={32} className="mx-auto text-t3 mb-3" />
+                      <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching requests' : 'No travel requests yet'}</p>
+                      <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Submit a travel request to get started'}</p>
+                      {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewRequest}><Plus size={14} /> New Request</Button>}
+                    </td>
+                  </tr>
+                ) : filteredRequests.map((req: any) => (
                   <tr key={req.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-medium text-t1">{getEmployeeName(req.employee_id)}</td>
                     <td className="px-4 py-3 text-xs text-t2">
@@ -374,11 +425,6 @@ export default function TravelManagementPage() {
                     </td>
                   </tr>
                 ))}
-                {travelRequests.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{tc('noResults')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -408,7 +454,16 @@ export default function TravelManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {travelBookings.map((booking: any) => (
+                {filteredBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <Hotel size={32} className="mx-auto text-t3 mb-3" />
+                      <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching bookings' : 'No bookings yet'}</p>
+                      <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Create a booking for flights, hotels, or car rentals'}</p>
+                      {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewBooking}><Plus size={14} /> New Booking</Button>}
+                    </td>
+                  </tr>
+                ) : filteredBookings.map((booking: any) => (
                   <tr key={booking.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{booking.confirmation_number}</td>
                     <td className="px-4 py-3">
@@ -438,11 +493,6 @@ export default function TravelManagementPage() {
                     </td>
                   </tr>
                 ))}
-                {travelBookings.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{tc('noResults')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -455,7 +505,7 @@ export default function TravelManagementPage() {
           <div className="flex justify-end">
             <Button size="sm" onClick={openNewPolicy}><Plus size={14} /> Add Policy</Button>
           </div>
-          {travelPolicies.map((policy: any) => (
+          {filteredPolicies.map((policy: any) => (
             <Card key={policy.id}>
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -524,10 +574,13 @@ export default function TravelManagementPage() {
               )}
             </Card>
           ))}
-          {travelPolicies.length === 0 && (
-            <Card>
-              <p className="text-center text-xs text-t3 py-8">{tc('noResults')}</p>
-            </Card>
+          {filteredPolicies.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Shield size={32} className="text-t3 mb-3" />
+              <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching policies' : 'No travel policies defined'}</p>
+              <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Create policies to set travel spending limits and rules'}</p>
+              {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewPolicy}><Plus size={14} /> Add Policy</Button>}
+            </div>
           )}
         </div>
       )}

@@ -134,11 +134,16 @@ export default function MarketplacePage() {
 
   // Handlers
   function handleInstall(appId: string) {
+    if (!appId) { addToast('No app selected', 'error'); return }
+    if (installedIds.has(appId)) { addToast('App is already installed', 'error'); return }
+    const app = getAppDetails(appId)
+    if (!app) { addToast('App not found', 'error'); return }
+    if (app.status === 'coming_soon') { addToast('This app is not yet available for installation', 'error'); return }
     setSaving(true)
     try {
       const result = installApp(ORG_ID, appId, { autoSync: true })
       if (result.success) {
-        addToast('App installed successfully')
+        addToast(`${app.name} installed successfully`)
         refresh()
       } else {
         addToast('Failed to install app', 'error')

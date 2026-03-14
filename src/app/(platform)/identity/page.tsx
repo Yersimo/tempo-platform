@@ -11,7 +11,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { KeyRound, Shield, ShieldCheck, Users, Globe, Plus, Settings, CheckCircle, AlertTriangle, Lock, RefreshCw, Clock, Link2, Fingerprint, Smartphone, Key, Loader2 } from 'lucide-react'
+import { KeyRound, Shield, ShieldCheck, Users, Globe, Plus, Settings, CheckCircle, AlertTriangle, Lock, RefreshCw, Clock, Link2, Fingerprint, Smartphone, Key, Loader2, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -70,6 +70,23 @@ export default function IdentityPage() {
   }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState<'sso' | 'idp' | 'mfa' | 'scim'>('sso')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredSsoApps = useMemo(() => {
+    if (!searchQuery.trim()) return samlApps
+    const q = searchQuery.toLowerCase()
+    return samlApps.filter((app: any) =>
+      (app.name || '').toLowerCase().includes(q) || (app.sso_url || '').toLowerCase().includes(q)
+    )
+  }, [samlApps, searchQuery])
+
+  const filteredIdpConfigs = useMemo(() => {
+    if (!searchQuery.trim()) return idpConfigurations
+    const q = searchQuery.toLowerCase()
+    return idpConfigurations.filter((idp: any) =>
+      (idp.name || '').toLowerCase().includes(q) || (idp.protocol || '').toLowerCase().includes(q)
+    )
+  }, [idpConfigurations, searchQuery])
 
   // Stat calculations
   const ssoAppCount = samlApps.length
@@ -335,10 +352,25 @@ export default function IdentityPage() {
       {/* Tabs */}
       <Tabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as typeof activeTab)} className="mb-6" />
 
+      {/* ── Search Bar ── */}
+      {(activeTab === 'sso' || activeTab === 'idp') && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder={activeTab === 'sso' ? 'Search SSO apps by name...' : 'Search providers by name...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Tab: SSO Applications ── */}
       {activeTab === 'sso' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {samlApps.map(app => (
+          {filteredSsoApps.map(app => (
             <Card key={app.id}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -390,16 +422,14 @@ export default function IdentityPage() {
             </Card>
           ))}
 
-          {samlApps.length === 0 && (
+          {filteredSsoApps.length === 0 && (
             <Card className="col-span-full">
-              <div className="text-center py-8">
-                <Globe size={32} className="text-t3 mx-auto mb-3" />
-                <p className="text-sm font-medium text-t1">No SSO applications configured</p>
-                <p className="text-xs text-t3 mt-1">Add your first SSO application to enable single sign-on</p>
-                <Button size="sm" className="mt-4" onClick={openAddApp}>
-                  <Plus size={14} /> Add Application
-                </Button>
-              </div>
+              <EmptyState
+                icon={<Globe size={32} />}
+                title={searchQuery ? 'No matching SSO applications' : 'No SSO applications configured'}
+                description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first SSO application to enable single sign-on'}
+                action={!searchQuery ? <Button size="sm" onClick={openAddApp}><Plus size={14} /> Add Application</Button> : undefined}
+              />
             </Card>
           )}
         </div>
@@ -447,7 +477,7 @@ export default function IdentityPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {idpConfigurations.map(idp => {
+                {filteredIdpConfigs.map(idp => {
                   const daysUntilExpiry = getDaysUntil(idp.certificate_expires_at)
                   const certWarning = daysUntilExpiry < 90
                   return (
@@ -521,11 +551,11 @@ export default function IdentityPage() {
               </tbody>
             </table>
           </div>
-          {idpConfigurations.length === 0 && (
+          {filteredIdpConfigs.length === 0 && (
             <div className="text-center py-12">
               <KeyRound size={32} className="text-t3 mx-auto mb-3" />
-              <p className="text-sm font-medium text-t1">No identity providers configured</p>
-              <p className="text-xs text-t3 mt-1">Set up SAML or OIDC to enable single sign-on</p>
+              <p className="text-sm font-medium text-t1">{searchQuery ? 'No matching identity providers' : 'No identity providers configured'}</p>
+              <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try adjusting your search terms.' : 'Set up SAML or OIDC to enable single sign-on'}</p>
             </div>
           )}
         </Card>

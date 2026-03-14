@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { CircleDollarSign, Plus, Calendar, Clock, CheckCircle, XCircle, Send, Repeat, Pause, Play, AlertTriangle, CreditCard, Ban } from 'lucide-react'
+import { CircleDollarSign, Plus, Calendar, Clock, CheckCircle, XCircle, Send, Repeat, Pause, Play, AlertTriangle, CreditCard, Ban, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -33,6 +33,7 @@ export default function BillPayPage() {
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   const [activeTab, setActiveTab] = useState<TabKey>('payments')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentForm, setPaymentForm] = useState({
     vendor_id: '',
@@ -72,6 +73,15 @@ export default function BillPayPage() {
     () => billPayments.filter((p: any) => p.status === 'pending'),
     [billPayments]
   )
+
+  const filteredPayments = useMemo(() => {
+    if (!searchQuery.trim()) return billPayments
+    const q = searchQuery.toLowerCase()
+    return billPayments.filter((p: any) => {
+      const vendorName = vendors.find((v: any) => v.id === p.vendor_id)?.name || ''
+      return vendorName.toLowerCase().includes(q) || (p.memo || '').toLowerCase().includes(q) || (p.reference_number || '').toLowerCase().includes(q)
+    })
+  }, [billPayments, vendors, searchQuery])
 
   // ── Helpers ──
   function getVendorName(vendorId: string) {
@@ -322,6 +332,21 @@ export default function BillPayPage() {
         ))}
       </div>
 
+      {/* ── Search Bar ── */}
+      {activeTab === 'payments' && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder="Search by vendor or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Payments Tab ── */}
       {activeTab === 'payments' && (
         <Card padding="none">
@@ -329,7 +354,7 @@ export default function BillPayPage() {
             <div className="flex items-center justify-between">
               <CardTitle>All Payments</CardTitle>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-t3">{billPayments.length} total</span>
+                <span className="text-xs text-t3">{filteredPayments.length} total</span>
               </div>
             </div>
           </CardHeader>
@@ -347,19 +372,19 @@ export default function BillPayPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {billPayments.length === 0 && (
+                {filteredPayments.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-12">
                       <EmptyState
                         icon={<CircleDollarSign size={32} />}
-                        title="No payments yet"
-                        description="Create your first payment to start managing accounts payable."
-                        action={<Button size="sm" onClick={openNewPayment}><Plus size={14} /> New Payment</Button>}
+                        title={searchQuery ? 'No matching payments' : 'No payments yet'}
+                        description={searchQuery ? 'Try adjusting your search terms.' : 'Create your first payment to start managing accounts payable.'}
+                        action={!searchQuery ? <Button size="sm" onClick={openNewPayment}><Plus size={14} /> New Payment</Button> : undefined}
                       />
                     </td>
                   </tr>
                 )}
-                {billPayments.map((payment: any) => (
+                {filteredPayments.map((payment: any) => (
                   <tr key={payment.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{payment.reference_number}</td>
                     <td className="px-4 py-3 text-xs text-t2">{getVendorName(payment.vendor_id)}</td>

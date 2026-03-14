@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { CreditCard, Plus, DollarSign, TrendingUp, Snowflake, PlayCircle, Eye, ShieldCheck, AlertTriangle, Tag } from 'lucide-react'
+import { CreditCard, Plus, DollarSign, TrendingUp, Snowflake, PlayCircle, Eye, ShieldCheck, AlertTriangle, Tag, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -99,6 +99,7 @@ export default function CorporateCardsPage() {
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   const [activeTab, setActiveTab] = useState<TabKey>('cards')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showIssueModal, setShowIssueModal] = useState(false)
   const [cardForm, setCardForm] = useState({
     employee_id: '',
@@ -134,6 +135,23 @@ export default function CorporateCardsPage() {
     () => cardTransactions.filter((t: any) => t.status === 'pending'),
     [cardTransactions]
   )
+
+  const filteredCards = useMemo(() => {
+    if (!searchQuery.trim()) return corporateCards
+    const q = searchQuery.toLowerCase()
+    return corporateCards.filter((card: any) => {
+      const name = employees.find((e: any) => e.id === card.employee_id)?.profile?.full_name || ''
+      return name.toLowerCase().includes(q) || (card.last_four || '').includes(q)
+    })
+  }, [corporateCards, employees, searchQuery])
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery.trim()) return cardTransactions
+    const q = searchQuery.toLowerCase()
+    return cardTransactions.filter((t: any) =>
+      (t.merchant || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q)
+    )
+  }, [cardTransactions, searchQuery])
 
   // ── Helpers ──
 
@@ -351,13 +369,28 @@ export default function CorporateCardsPage() {
         ))}
       </div>
 
+      {/* ── Search Bar ── */}
+      {(activeTab === 'cards' || activeTab === 'transactions') && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder={activeTab === 'cards' ? 'Search by cardholder name...' : 'Search by merchant or category...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Cards Tab ── */}
       {activeTab === 'cards' && (
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>All Cards</CardTitle>
-              <Badge variant="info">{corporateCards.length} total</Badge>
+              <Badge variant="info">{filteredCards.length} total</Badge>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">
@@ -375,7 +408,7 @@ export default function CorporateCardsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {corporateCards.map((card: any) => {
+                {filteredCards.map((card: any) => {
                   const utilization =
                     card.spend_limit > 0
                       ? Math.round((card.spent_this_month / card.spend_limit) * 100)
@@ -466,7 +499,7 @@ export default function CorporateCardsPage() {
                     </tr>
                   )
                 })}
-                {corporateCards.length === 0 && (
+                {filteredCards.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-6 py-12">
                       <EmptyState
@@ -490,7 +523,7 @@ export default function CorporateCardsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Card Transactions</CardTitle>
-              <Badge variant="info">{cardTransactions.length} total</Badge>
+              <Badge variant="info">{filteredTransactions.length} total</Badge>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">
@@ -507,7 +540,7 @@ export default function CorporateCardsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {cardTransactions.map((txn: any) => (
+                {filteredTransactions.map((txn: any) => (
                   <tr key={txn.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs text-t2">
                       {formatDate(txn.transaction_date)}
@@ -550,7 +583,7 @@ export default function CorporateCardsPage() {
                     </td>
                   </tr>
                 ))}
-                {cardTransactions.length === 0 && (
+                {filteredTransactions.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-12">
                       <EmptyState

@@ -199,6 +199,7 @@ export default function SettingsPage() {
 
   // Bank accounts state
   const [saving, setSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'bank-account' | 'integration'; id: string; label: string } | null>(null)
   const [showBankAccountModal, setShowBankAccountModal] = useState(false)
   const [editingBankAccount, setEditingBankAccount] = useState<string | null>(null)
   const [bankAccountForm, setBankAccountForm] = useState({
@@ -605,7 +606,17 @@ export default function SettingsPage() {
   function handleDeleteBankAccount(account: any) {
     const isDefault = account.is_default ?? account.isDefault
     if (isDefault) { addToast('Cannot delete the default account'); return }
-    deleteCurrencyAccount(account.id)
+    setDeleteConfirm({ type: 'bank-account', id: account.id, label: account.account_name || account.accountName || 'this account' })
+  }
+
+  function confirmDeleteAction() {
+    if (!deleteConfirm) return
+    if (deleteConfirm.type === 'bank-account') {
+      deleteCurrencyAccount(deleteConfirm.id)
+    } else if (deleteConfirm.type === 'integration') {
+      handleDisconnect(deleteConfirm.id)
+    }
+    setDeleteConfirm(null)
   }
 
   // Billing helpers
@@ -744,7 +755,13 @@ export default function SettingsPage() {
                 <th className="tempo-th text-left px-4 py-3">{t('tableRole')}</th>
               </tr></thead>
               <tbody className="divide-y divide-border">
-                {employees.map(emp => (
+                {employees.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-16 text-center">
+                    <Users size={32} className="mx-auto text-t3 mb-3" />
+                    <p className="text-sm font-medium text-t2">No team members yet</p>
+                    <p className="text-xs text-t3 mt-1">Invite employees to get started with your team</p>
+                  </td></tr>
+                ) : employees.map(emp => (
                   <tr key={emp.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3"><div className="flex items-center gap-3"><Avatar name={emp.profile?.full_name || ''} size="sm" /><div><p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p><p className="text-xs text-t3">{emp.profile?.email}</p></div></div></td>
                     <td className="px-4 py-3 text-xs text-t2">{getDepartmentName(emp.department_id)}</td>
@@ -763,22 +780,31 @@ export default function SettingsPage() {
           <div className="flex justify-end mb-4">
             <Button size="sm" onClick={() => setShowDeptModal(true)}>{t('addDepartment')}</Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {departments.map(dept => {
-              const empCount = employees.filter(e => e.department_id === dept.id).length
-              const head = dept.head_id ? getEmployeeName(dept.head_id) : t('unassigned')
-              return (
-                <Card key={dept.id}>
-                  <h3 className="text-sm font-semibold text-t1 mb-1">{dept.name}</h3>
-                  <p className="text-xs text-t3 mb-3">{t('head', { name: head })}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-t2">{t('employeesCount', { count: empCount })}</span>
-                    <Badge variant="success">{tc('active')}</Badge>
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
+          {departments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Building size={32} className="text-t3 mb-3" />
+              <p className="text-sm font-medium text-t2">No departments created</p>
+              <p className="text-xs text-t3 mt-1">Create your first department to organize your team</p>
+              <Button size="sm" className="mt-4" onClick={() => setShowDeptModal(true)}><Plus size={14} /> {t('addDepartment')}</Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {departments.map(dept => {
+                const empCount = employees.filter(e => e.department_id === dept.id).length
+                const head = dept.head_id ? getEmployeeName(dept.head_id) : t('unassigned')
+                return (
+                  <Card key={dept.id}>
+                    <h3 className="text-sm font-semibold text-t1 mb-1">{dept.name}</h3>
+                    <p className="text-xs text-t3 mb-3">{t('head', { name: head })}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-t2">{t('employeesCount', { count: empCount })}</span>
+                      <Badge variant="success">{tc('active')}</Badge>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1481,7 +1507,7 @@ export default function SettingsPage() {
                           variant="outline"
                           size="sm"
                           className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDisconnect(connection.id)}
+                          onClick={() => setDeleteConfirm({ type: 'integration', id: connection.id, label: integration.name })}
                         >
                           <WifiOff size={12} />
                         </Button>
@@ -1928,6 +1954,33 @@ export default function SettingsPage() {
             <Button variant="secondary" onClick={() => setShowBankAccountModal(false)}>Cancel</Button>
             <Button onClick={submitBankAccount} disabled={saving}><Save size={14} /> {saving ? 'Saving...' : editingBankAccount ? 'Update Account' : 'Add Account'}</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Delete / Disconnect Confirmation Modal */}
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title={deleteConfirm?.type === 'integration' ? 'Disconnect Integration' : 'Delete Bank Account'} size="sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={20} className="text-error" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-t1 mb-1">
+              {deleteConfirm?.type === 'integration'
+                ? `Disconnect ${deleteConfirm?.label}?`
+                : `Delete ${deleteConfirm?.label}?`}
+            </p>
+            <p className="text-xs text-t2">
+              {deleteConfirm?.type === 'integration'
+                ? 'This will remove the integration connection and stop all syncing. You can reconnect later.'
+                : 'This action cannot be undone. The bank account will be permanently removed.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>{tc('cancel')}</Button>
+          <Button variant="danger" onClick={confirmDeleteAction}>
+            {deleteConfirm?.type === 'integration' ? 'Disconnect' : tc('delete')}
+          </Button>
         </div>
       </Modal>
     </>

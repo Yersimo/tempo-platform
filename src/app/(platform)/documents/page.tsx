@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { FileSignature, FileText, Plus, CheckCircle, Clock, AlertTriangle, Send, Eye, Download, Users, Trash2, Copy, Edit, History, ArrowRight } from 'lucide-react'
+import { FileSignature, FileText, Plus, CheckCircle, Clock, AlertTriangle, Send, Eye, Download, Users, Trash2, Copy, Edit, History, ArrowRight, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -43,6 +43,7 @@ export default function DocumentsPage() {
   }, [ensureModulesLoaded])
 
   const [activeTab, setActiveTab] = useState<'documents' | 'templates' | 'bulk-send' | 'audit'>('documents')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showNewDocModal, setShowNewDocModal] = useState(false)
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -67,6 +68,24 @@ export default function DocumentsPage() {
   const [bulkDeptFilter, setBulkDeptFilter] = useState('')
   const [bulkCountryFilter, setBulkCountryFilter] = useState('')
   const [bulkSendResults, setBulkSendResults] = useState<{ sent: number; total: number } | null>(null)
+
+  const filteredDocuments = useMemo(() => {
+    if (!searchQuery.trim()) return signatureDocuments
+    const q = searchQuery.toLowerCase()
+    return signatureDocuments.filter((doc: any) =>
+      (doc.title || '').toLowerCase().includes(q) ||
+      (doc.signers || []).some((s: any) => (s.name || '').toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q))
+    )
+  }, [signatureDocuments, searchQuery])
+
+  const filteredTemplates = useMemo(() => {
+    if (!searchQuery.trim()) return signatureTemplates
+    const q = searchQuery.toLowerCase()
+    return signatureTemplates.filter((t: any) =>
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.description || '').toLowerCase().includes(q)
+    )
+  }, [signatureTemplates, searchQuery])
 
   const departments = [...new Set(employees.map(e => e.department_id).filter(Boolean))]
   const countries = [...new Set(employees.map(e => e.country).filter(Boolean))]
@@ -503,13 +522,26 @@ export default function DocumentsPage() {
         ))}
       </div>
 
+      {/* Search Bar */}
+      {(activeTab === 'documents' || activeTab === 'templates') && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <Input
+            placeholder={activeTab === 'documents' ? 'Search documents by title or signer...' : 'Search templates by name or description...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {/* Documents Tab */}
       {activeTab === 'documents' && (
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>All Documents</CardTitle>
-              <span className="text-xs text-t3">{signatureDocuments.length} document{signatureDocuments.length !== 1 ? 's' : ''}</span>
+              <span className="text-xs text-t3">{filteredDocuments.length} document{filteredDocuments.length !== 1 ? 's' : ''}</span>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">
@@ -526,7 +558,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {signatureDocuments.map((doc: any) => (
+                {filteredDocuments.map((doc: any) => (
                   <tr key={doc.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -586,15 +618,17 @@ export default function DocumentsPage() {
                     </td>
                   </tr>
                 ))}
-                {signatureDocuments.length === 0 && (
+                {filteredDocuments.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <FileSignature size={32} className="mx-auto text-t3 mb-2" />
-                      <p className="text-sm text-t2">No documents yet</p>
-                      <p className="text-xs text-t3 mt-1">Create your first document to get started</p>
-                      <Button size="sm" className="mt-3" onClick={openNewDocument}>
-                        <Plus size={14} /> New Document
-                      </Button>
+                      <p className="text-sm text-t2">{searchQuery ? 'No matching documents' : 'No documents yet'}</p>
+                      <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try adjusting your search terms.' : 'Create your first document to get started'}</p>
+                      {!searchQuery && (
+                        <Button size="sm" className="mt-3" onClick={openNewDocument}>
+                          <Plus size={14} /> New Document
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -609,10 +643,10 @@ export default function DocumentsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-t1">Signature Templates</h2>
-            <span className="text-xs text-t3">{signatureTemplates.length} template{signatureTemplates.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-t3">{filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {signatureTemplates.map((template: any) => (
+            {filteredTemplates.map((template: any) => (
               <Card key={template.id}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -661,12 +695,12 @@ export default function DocumentsPage() {
                 </div>
               </Card>
             ))}
-            {signatureTemplates.length === 0 && (
+            {filteredTemplates.length === 0 && (
               <Card>
                 <div className="text-center py-8">
                   <Copy size={32} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t2">No templates yet</p>
-                  <p className="text-xs text-t3 mt-1">Templates help you quickly create recurring documents</p>
+                  <p className="text-sm text-t2">{searchQuery ? 'No matching templates' : 'No templates yet'}</p>
+                  <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try adjusting your search terms.' : 'Templates help you quickly create recurring documents'}</p>
                 </div>
               </Card>
             )}

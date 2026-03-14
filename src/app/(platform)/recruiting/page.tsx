@@ -715,8 +715,11 @@ export default function RecruitingPage() {
       {activeTab === 'postings' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {jobPostings.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-sm text-t3">
-              {t('noJobPostings')}
+            <div className="col-span-2 text-center py-12">
+              <Briefcase size={40} className="mx-auto mb-3 text-t3/50" />
+              <p className="text-sm font-medium text-t1 mb-1">No job postings yet</p>
+              <p className="text-xs text-t3 mb-4">Create your first job posting to start attracting candidates and building your hiring pipeline.</p>
+              <Button size="sm" onClick={() => { setEditingJob(null); setShowJobModal(true) }}><Plus size={14} /> {t('postJob')}</Button>
             </div>
           )}
           {jobPostings.map(job => (
@@ -844,8 +847,10 @@ export default function RecruitingPage() {
               <tbody className="divide-y divide-border">
                 {applications.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
-                      {t('noApplications')}
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <Users size={40} className="mx-auto mb-3 text-t3/50" />
+                      <p className="text-sm font-medium text-t1 mb-1">No applications yet</p>
+                      <p className="text-xs text-t3 mb-4">Applications will appear here once candidates apply to your open positions.</p>
                     </td>
                   </tr>
                 )}

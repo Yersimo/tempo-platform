@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Globe, Users, Building2, MapPin, Shield, FileText, DollarSign, Plus, CheckCircle, AlertTriangle, Briefcase, Clock, Scale, Heart } from 'lucide-react'
+import { Globe, Users, Building2, MapPin, Shield, FileText, DollarSign, Plus, CheckCircle, AlertTriangle, Briefcase, Clock, Scale, Heart, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -83,6 +83,23 @@ export default function GlobalWorkforcePage() {
   }
 
   const [activeTab, setActiveTab] = useState<Tab>('eor')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredEntities = useMemo(() => {
+    if (!searchQuery.trim()) return eorEntities
+    const q = searchQuery.toLowerCase()
+    return eorEntities.filter((e: any) =>
+      (e.legal_name || '').toLowerCase().includes(q) || (e.country || '').toLowerCase().includes(q)
+    )
+  }, [eorEntities, searchQuery])
+
+  const filteredContractors = useMemo(() => {
+    if (!searchQuery.trim()) return corContractors
+    const q = searchQuery.toLowerCase()
+    return corContractors.filter((c: any) =>
+      (c.name || '').toLowerCase().includes(q) || (c.country || '').toLowerCase().includes(q) || (c.specialty || '').toLowerCase().includes(q)
+    )
+  }, [corContractors, searchQuery])
 
   // --- Stat computations ---
   const eorEntityCount = eorEntities.length
@@ -233,12 +250,27 @@ export default function GlobalWorkforcePage() {
         ))}
       </div>
 
+      {/* ── Search Bar ── */}
+      {(activeTab === 'eor' || activeTab === 'contractors') && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder={activeTab === 'eor' ? 'Search entities by name or country...' : 'Search contractors by name or country...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── EOR Tab ── */}
       {activeTab === 'eor' && (
         <div className="space-y-6">
           {/* Entity Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {eorEntities.map((entity: any) => (
+            {filteredEntities.map((entity: any) => (
               <Card key={entity.id}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -268,7 +300,7 @@ export default function GlobalWorkforcePage() {
                 </div>
               </Card>
             ))}
-            {eorEntities.length === 0 && (
+            {filteredEntities.length === 0 && (
               <Card>
                 <div className="text-center py-8">
                   <Building2 size={32} className="text-t3 mx-auto mb-2" />
@@ -353,7 +385,7 @@ export default function GlobalWorkforcePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {corContractors.map((c: any) => (
+                  {filteredContractors.map((c: any) => (
                     <tr key={c.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3 text-xs font-medium text-t1">{c.name}</td>
                       <td className="px-4 py-3 text-xs text-t2">
@@ -371,9 +403,9 @@ export default function GlobalWorkforcePage() {
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{centsToDisplay(c.total_paid || 0)}</td>
                     </tr>
                   ))}
-                  {corContractors.length === 0 && (
+                  {filteredContractors.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-xs text-t3">No contractors found</td>
+                      <td colSpan={6} className="px-6 py-8 text-center text-xs text-t3">{searchQuery ? 'No matching contractors' : 'No contractors found'}</td>
                     </tr>
                   )}
                 </tbody>

@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
-import { FlaskConical, Copy, RefreshCw, Trash2, Play, Pause, Shield, Database, Clock, Plus, Settings, Calendar, AlertTriangle, ExternalLink, CheckCircle2, XCircle, Activity } from 'lucide-react'
+import { FlaskConical, Copy, RefreshCw, Trash2, Play, Pause, Shield, Database, Clock, Plus, Settings, Calendar, AlertTriangle, ExternalLink, CheckCircle2, XCircle, Activity, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -31,6 +31,7 @@ export default function SandboxPage() {
   const [showEnvDetailModal, setShowEnvDetailModal] = useState(false)
   const [detailEnv, setDetailEnv] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'environments' | 'configuration' | 'activity'>('environments')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -51,6 +52,16 @@ export default function SandboxPage() {
     expenses: true,
   })
   const [retentionDays, setRetentionDays] = useState('30')
+
+  const filteredEnvironments = useMemo(() => {
+    if (!searchQuery.trim()) return sandboxEnvironments
+    const q = searchQuery.toLowerCase()
+    return sandboxEnvironments.filter((env: any) =>
+      (env.name || '').toLowerCase().includes(q) ||
+      (env.type || '').toLowerCase().includes(q) ||
+      (env.status || '').toLowerCase().includes(q)
+    )
+  }, [sandboxEnvironments, searchQuery])
 
   // Computed stats
   const activeCount = sandboxEnvironments.filter(s => s.status === 'active').length
@@ -275,22 +286,35 @@ export default function SandboxPage() {
         ))}
       </div>
 
+      {/* Search Bar */}
+      {activeTab === 'environments' && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <Input
+            placeholder="Search environments by name, type, or status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {/* ── Environments Tab ── */}
       {activeTab === 'environments' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sandboxEnvironments.length === 0 && (
+          {filteredEnvironments.length === 0 && (
             <div className="col-span-full">
               <Card>
                 <div className="text-center py-8">
                   <FlaskConical size={32} className="mx-auto text-t3 mb-3" />
-                  <p className="text-sm font-medium text-t1 mb-1">No sandbox environments</p>
-                  <p className="text-xs text-t3 mb-4">Create a sandbox to test configurations safely</p>
-                  <Button size="sm" onClick={openCreateModal}><Plus size={14} /> Create Sandbox</Button>
+                  <p className="text-sm font-medium text-t1 mb-1">{searchQuery ? 'No matching environments' : 'No sandbox environments'}</p>
+                  <p className="text-xs text-t3 mb-4">{searchQuery ? 'Try adjusting your search terms.' : 'Create a sandbox to test configurations safely'}</p>
+                  {!searchQuery && <Button size="sm" onClick={openCreateModal}><Plus size={14} /> Create Sandbox</Button>}
                 </div>
               </Card>
             </div>
           )}
-          {sandboxEnvironments.map(env => {
+          {filteredEnvironments.map(env => {
             const daysLeft = getDaysRemaining(env.expires_at)
             const isExpiringSoon = daysLeft > 0 && daysLeft < 7
             const expiryProgress = Math.max(0, Math.min(100, ((30 - daysLeft) / 30) * 100))

@@ -303,6 +303,15 @@ export default function AppsPage() {
         <StatCard label={t('openItRequests')} value={openRequests} icon={<AlertTriangle size={20} />} />
       </div>
 
+      {softwareLicenses.length === 0 && (
+        <div className="text-center py-12">
+          <AppWindow size={40} className="mx-auto mb-3 text-t3/50" />
+          <p className="text-sm font-medium text-t1 mb-1">No apps or licenses yet</p>
+          <p className="text-xs text-t3 mb-4">Add your first software license to track usage, costs, and renewals across your organization.</p>
+          <Button size="sm" onClick={openAddLicense}><Plus size={14} /> {t('addLicense')}</Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {softwareLicenses.map(license => {
           const utilPct = license.total_licenses > 0 ? Math.round(license.used_licenses / license.total_licenses * 100) : 0

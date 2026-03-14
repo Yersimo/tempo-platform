@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Building2, Plus, FileText, Shield, DollarSign, AlertTriangle, CheckCircle, XCircle, Clock, Phone, Mail, Edit } from 'lucide-react'
+import { Building2, Plus, FileText, Shield, DollarSign, AlertTriangle, CheckCircle, XCircle, Clock, Phone, Mail, Edit, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { demoVendorContracts } from '@/lib/demo-data'
 
@@ -40,6 +40,7 @@ export default function VendorsPage() {
   const { vendors, invoices, addVendor, updateVendor, addToast } = useTempo()
 
   const [activeTab, setActiveTab] = useState<TabKey>('directory')
+  const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
   const [showVendorModal, setShowVendorModal] = useState(false)
@@ -134,6 +135,14 @@ export default function VendorsPage() {
     resetContractForm()
     setSaving(false)
   }
+
+  const filteredVendors = useMemo(() => {
+    if (!searchQuery.trim()) return vendors
+    const q = searchQuery.toLowerCase()
+    return vendors.filter((v: any) =>
+      (v.name || '').toLowerCase().includes(q) || (v.category || '').toLowerCase().includes(q)
+    )
+  }, [vendors, searchQuery])
 
   // Vendor spend aggregation from invoices (amounts in cents)
   const vendorSpendMap = useMemo(() => {
@@ -317,13 +326,28 @@ export default function VendorsPage() {
         })}
       </div>
 
+      {/* ── Search Bar ── */}
+      {activeTab === 'directory' && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <Input
+              placeholder="Search by name or category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Directory Tab ── */}
       {activeTab === 'directory' && (
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Vendor Directory</CardTitle>
-              <span className="text-xs text-t3">{vendors.length} vendors</span>
+              <span className="text-xs text-t3">{filteredVendors.length} vendors</span>
             </div>
           </CardHeader>
           <div className="overflow-x-auto">
@@ -341,20 +365,20 @@ export default function VendorsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {vendors.length === 0 ? (
+                {filteredVendors.length === 0 ? (
                   <tr>
                     <td colSpan={8}>
                       <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="w-12 h-12 rounded-xl bg-canvas flex items-center justify-center mb-3">
                           <Building2 size={24} className="text-t3" />
                         </div>
-                        <p className="text-sm font-medium text-t1 mb-1">No vendors yet</p>
-                        <p className="text-xs text-t3 mb-4">Add your first vendor to get started</p>
-                        <Button size="sm" onClick={openNewVendor}><Plus size={14} /> Add Vendor</Button>
+                        <p className="text-sm font-medium text-t1 mb-1">{searchQuery ? 'No matching vendors' : 'No vendors yet'}</p>
+                        <p className="text-xs text-t3 mb-4">{searchQuery ? 'Try adjusting your search terms.' : 'Add your first vendor to get started'}</p>
+                        {!searchQuery && <Button size="sm" onClick={openNewVendor}><Plus size={14} /> Add Vendor</Button>}
                       </div>
                     </td>
                   </tr>
-                ) : vendors.map(vendor => {
+                ) : filteredVendors.map(vendor => {
                   const spend = vendorSpendMap[vendor.id] || 0
                   const risk = getRiskLevel(vendor)
                   return (

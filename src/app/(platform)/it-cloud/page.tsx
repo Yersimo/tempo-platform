@@ -267,6 +267,18 @@ export default function ITCloudPage() {
   // ---- Action Handlers ----
   function executeDeviceAction() {
     if (!actionDeviceId) { addToast('No device selected', 'error'); return }
+    // Route destructive actions (wipe, lock) through confirmation modal
+    if (actionType === 'wipe' || actionType === 'lock') {
+      const deviceName = managedDevices.find(d => d.id === actionDeviceId)?.name || 'this device'
+      setShowDeviceActionModal(false)
+      setConfirmAction({ show: true, type: `device-${actionType}`, id: actionDeviceId, label: deviceName })
+      return
+    }
+    commitDeviceAction()
+  }
+
+  function commitDeviceAction() {
+    if (!actionDeviceId) return
     setSaving(true)
     try {
       addDeviceAction({
@@ -419,6 +431,18 @@ export default function ITCloudPage() {
       } else if (confirmAction.type === 'deleteEncryption') {
         storeDeleteEncryptionPolicy(confirmAction.id)
         addToast('Encryption policy deleted')
+      } else if (confirmAction.type === 'device-wipe' || confirmAction.type === 'device-lock') {
+        const deviceActionType = confirmAction.type === 'device-wipe' ? 'wipe' : 'lock'
+        addDeviceAction({
+          deviceId: confirmAction.id,
+          actionType: deviceActionType,
+          status: 'pending',
+          initiatedBy: 'emp-1',
+          notes: actionNotes || `${deviceActionType} initiated from IT Cloud`,
+          completedAt: null,
+        })
+        addToast(`${deviceActionType} action queued for ${confirmAction.label}`)
+        setActionNotes('')
       }
     } finally {
       setSaving(false)
@@ -1607,10 +1631,14 @@ export default function ITCloudPage() {
               <p className="text-sm font-medium text-t1">
                 {confirmAction?.type === 'deleteProvRule' && `Delete provisioning rule "${confirmAction?.label}"?`}
                 {confirmAction?.type === 'deleteEncryption' && `Delete encryption policy "${confirmAction?.label}"?`}
+                {confirmAction?.type === 'device-wipe' && `Remote wipe "${confirmAction?.label}"?`}
+                {confirmAction?.type === 'device-lock' && `Lock "${confirmAction?.label}"?`}
               </p>
               <p className="text-xs text-t3 mt-1">
                 {confirmAction?.type === 'deleteProvRule' && 'This provisioning rule will be permanently removed. Auto-provisioning based on this rule will stop.'}
                 {confirmAction?.type === 'deleteEncryption' && 'This encryption policy will be permanently removed. Devices will no longer be evaluated against it.'}
+                {confirmAction?.type === 'device-wipe' && 'This will permanently erase all data on the device. This action cannot be undone.'}
+                {confirmAction?.type === 'device-lock' && 'The device will be locked immediately and the user will lose access until it is unlocked by an admin.'}
               </p>
             </div>
           </div>

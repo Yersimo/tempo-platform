@@ -52,6 +52,7 @@ export default function WorkersCompPage() {
   const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   const [activeTab, setActiveTab] = useState('policies')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showClaimModal, setShowClaimModal] = useState(false)
   const [claimForm, setClaimForm] = useState({
     employee_name: '',
@@ -106,6 +107,28 @@ export default function WorkersCompPage() {
   const [calcClassCode, setCalcClassCode] = useState('')
   const [calcPayroll, setCalcPayroll] = useState('')
   const [calcResult, setCalcResult] = useState<number | null>(null)
+
+  // ── Filtered data ──
+
+  const filteredPolicies = useMemo(() => {
+    if (!searchQuery.trim()) return workersCompPolicies
+    const q = searchQuery.toLowerCase()
+    return workersCompPolicies.filter((p: any) =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.carrier || '').toLowerCase().includes(q) ||
+      (p.policy_number || '').toLowerCase().includes(q)
+    )
+  }, [workersCompPolicies, searchQuery])
+
+  const filteredClaims = useMemo(() => {
+    if (!searchQuery.trim()) return workersCompClaims
+    const q = searchQuery.toLowerCase()
+    return workersCompClaims.filter((c: any) =>
+      (c.employee_name || '').toLowerCase().includes(q) ||
+      (c.description || '').toLowerCase().includes(q) ||
+      (c.injury_type || '').toLowerCase().includes(q)
+    )
+  }, [workersCompClaims, searchQuery])
 
   // ── Computed Stats ──
 
@@ -438,6 +461,19 @@ export default function WorkersCompPage() {
       {/* Tabs */}
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
+      {/* Search Bar */}
+      {(activeTab === 'policies' || activeTab === 'claims') && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <Input
+            placeholder={activeTab === 'policies' ? 'Search policies by name, carrier, or number...' : 'Search claims by employee, description, or injury type...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {/* ── Policies Tab ── */}
       {activeTab === 'policies' && (
         <Card padding="none">
@@ -449,14 +485,14 @@ export default function WorkersCompPage() {
               </Button>
             </div>
           </CardHeader>
-          {workersCompPolicies.length === 0 ? (
+          {filteredPolicies.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
                 <ShieldCheck size={24} className="text-t3" />
               </div>
-              <p className="text-sm font-medium text-t1 mb-1">No policies yet</p>
-              <p className="text-xs text-t3 mb-4 max-w-xs">Add your first workers&apos; compensation policy to start tracking coverage and premiums.</p>
-              <Button size="sm" onClick={openAddPolicyModal}><Plus size={14} /> Add Policy</Button>
+              <p className="text-sm font-medium text-t1 mb-1">{searchQuery ? 'No matching policies' : 'No policies yet'}</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">{searchQuery ? 'Try adjusting your search terms.' : 'Add your first workers\' compensation policy to start tracking coverage and premiums.'}</p>
+              {!searchQuery && <Button size="sm" onClick={openAddPolicyModal}><Plus size={14} /> Add Policy</Button>}
             </div>
           ) : (
           <div className="overflow-x-auto">
@@ -475,7 +511,7 @@ export default function WorkersCompPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {workersCompPolicies.map(policy => (
+                {filteredPolicies.map(policy => (
                   <tr key={policy.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{policy.policy_number}</td>
                     <td className="px-4 py-3 text-xs text-t1 font-medium">{policy.name}</td>
@@ -519,14 +555,14 @@ export default function WorkersCompPage() {
               </Button>
             </div>
           </CardHeader>
-          {workersCompClaims.length === 0 ? (
+          {filteredClaims.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
                 <FileText size={24} className="text-t3" />
               </div>
-              <p className="text-sm font-medium text-t1 mb-1">No claims filed</p>
-              <p className="text-xs text-t3 mb-4 max-w-xs">No workers&apos; compensation claims have been filed yet. Use the button above to file a new claim.</p>
-              <Button size="sm" onClick={openFileClaimModal}><Plus size={14} /> File Claim</Button>
+              <p className="text-sm font-medium text-t1 mb-1">{searchQuery ? 'No matching claims' : 'No claims filed'}</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">{searchQuery ? 'Try adjusting your search terms.' : 'No workers\' compensation claims have been filed yet. Use the button above to file a new claim.'}</p>
+              {!searchQuery && <Button size="sm" onClick={openFileClaimModal}><Plus size={14} /> File Claim</Button>}
             </div>
           ) : (
           <div className="overflow-x-auto">
@@ -545,7 +581,7 @@ export default function WorkersCompPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {workersCompClaims.map(claim => {
+                {filteredClaims.map(claim => {
                   const paidPct = claim.reserve_amount > 0 ? Math.round((claim.paid_amount / claim.reserve_amount) * 100) : 0
                   return (
                     <tr key={claim.id} className="hover:bg-canvas/50">

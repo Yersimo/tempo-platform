@@ -13,7 +13,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import {
   Plus, Compass, Target, TrendingUp, BarChart3,
-  Pencil, Trash2, ChevronRight, ArrowUpRight, AlertTriangle, Loader2
+  Pencil, Trash2, ChevronRight, ArrowUpRight, AlertTriangle, Loader2, Search
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -76,6 +76,7 @@ export default function StrategyPage() {
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const tabs = [
     { id: 'map', label: t('tabStrategyMap') },
@@ -118,6 +119,35 @@ export default function StrategyPage() {
     }
     return trends
   }, [kpiDefinitions, kpiMeasurements])
+
+  // Search filtering
+  const filteredObjectives = useMemo(() => {
+    if (!searchQuery) return strategicObjectives
+    const q = searchQuery.toLowerCase()
+    return strategicObjectives.filter(obj =>
+      obj.title.toLowerCase().includes(q) ||
+      (obj.description && obj.description.toLowerCase().includes(q)) ||
+      obj.period.toLowerCase().includes(q)
+    )
+  }, [strategicObjectives, searchQuery])
+
+  const filteredInitiatives = useMemo(() => {
+    if (!searchQuery) return initiatives
+    const q = searchQuery.toLowerCase()
+    return initiatives.filter(init =>
+      init.title.toLowerCase().includes(q) ||
+      (init.description && init.description.toLowerCase().includes(q))
+    )
+  }, [initiatives, searchQuery])
+
+  const filteredKPIs = useMemo(() => {
+    if (!searchQuery) return kpiDefinitions
+    const q = searchQuery.toLowerCase()
+    return kpiDefinitions.filter(kpi =>
+      kpi.name.toLowerCase().includes(q) ||
+      (kpi.description && kpi.description.toLowerCase().includes(q))
+    )
+  }, [kpiDefinitions, searchQuery])
 
   // Claude AI enhancement - OKR quality
   const { result: enhancedAlignment, isLoading: alignmentLoading } = useAI({
@@ -313,13 +343,30 @@ export default function StrategyPage() {
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
+      {/* Search */}
+      <div className="relative mb-4 max-w-md">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+        <input
+          type="text"
+          placeholder="Search objectives, initiatives, KPIs..."
+          className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {/* ==================== STRATEGY MAP ==================== */}
       {activeTab === 'map' && (
         <div className="space-y-6">
-          {strategicObjectives.length === 0 && (
-            <div className="py-12 text-center text-sm text-t3">{t('noObjectives')}</div>
+          {filteredObjectives.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Compass size={32} className="text-t3 mb-3" />
+              <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching objectives' : t('noObjectives')}</p>
+              <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Create your first strategic objective to get started'}</p>
+              {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewObjective}><Plus size={14} /> {t('newObjective')}</Button>}
+            </div>
           )}
-          {strategicObjectives.map(obj => {
+          {filteredObjectives.map(obj => {
             const objKRs = keyResults.filter(kr => kr.objective_id === obj.id)
             const objInits = initiatives.filter(i => i.objective_id === obj.id)
             const score = okrScores[obj.id]
@@ -415,7 +462,14 @@ export default function StrategyPage() {
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
-            {strategicObjectives.map(obj => {
+            {filteredObjectives.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Target size={32} className="text-t3 mb-3" />
+                <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching OKRs' : 'No objectives defined yet'}</p>
+                <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Define objectives and key results to track strategic progress'}</p>
+                {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewObjective}><Plus size={14} /> {t('newObjective')}</Button>}
+              </div>
+            ) : filteredObjectives.map(obj => {
               const objKRs = keyResults.filter(kr => kr.objective_id === obj.id)
               const score = okrScores[obj.id]
               return (
@@ -454,10 +508,15 @@ export default function StrategyPage() {
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
-            {initiatives.length === 0 && (
-              <div className="px-6 py-12 text-center text-sm text-t3">{t('noInitiatives')}</div>
+            {filteredInitiatives.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16">
+                <TrendingUp size={32} className="text-t3 mb-3" />
+                <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching initiatives' : t('noInitiatives')}</p>
+                <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Create initiatives to drive your strategic objectives'}</p>
+                {!searchQuery && <Button size="sm" className="mt-4" onClick={openNewInitiative}><Plus size={14} /> {t('newInitiative')}</Button>}
+              </div>
             )}
-            {initiatives.map(init => {
+            {filteredInitiatives.map(init => {
               const obj = strategicObjectives.find(o => o.id === init.objective_id)
               return (
                 <div key={init.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
@@ -497,8 +556,16 @@ export default function StrategyPage() {
               <Plus size={14} /> {t('addKPI')}
             </Button>
           </div>
+          {filteredKPIs.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <BarChart3 size={32} className="text-t3 mb-3" />
+              <p className="text-sm font-medium text-t2">{searchQuery ? 'No matching KPIs' : 'No KPIs defined yet'}</p>
+              <p className="text-xs text-t3 mt-1">{searchQuery ? 'Try a different search term' : 'Add KPIs to measure and track organizational performance'}</p>
+              {!searchQuery && <Button size="sm" className="mt-4" onClick={() => { setKPIForm({ name: '', description: '', unit: '%', target_value: 100, frequency: 'monthly', department_id: '', owner_id: '' }); setShowKPIModal(true) }}><Plus size={14} /> {t('addKPI')}</Button>}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {kpiDefinitions.map(kpi => {
+            {filteredKPIs.map(kpi => {
               const measurements = kpiMeasurements.filter(m => m.kpi_id === kpi.id).sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
               const latest = measurements[0]
               const pct = kpi.target_value && latest ? Math.round((latest.value / kpi.target_value) * 100) : 0

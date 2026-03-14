@@ -71,6 +71,12 @@ export default function ProjectsPage() {
     title: '', project_id: '', due_date: '', status: 'pending' as string,
   })
 
+  // Saving state
+  const [saving, setSaving] = useState(false)
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
 
@@ -143,6 +149,18 @@ export default function ProjectsPage() {
     [tasks, automationLog]
   )
 
+  // Filtered projects for search
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return projects
+    const q = searchQuery.toLowerCase()
+    return projects.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      (p.description && p.description.toLowerCase().includes(q)) ||
+      p.status.toLowerCase().includes(q) ||
+      getEmployeeName(p.owner_id).toLowerCase().includes(q)
+    )
+  }, [projects, searchQuery, getEmployeeName])
+
   // Bulk task target tasks - filtered by selection mode
   const bulkTaskTargetTasks = useMemo(() => {
     if (bulkTaskSelectMode === 'project') {
@@ -201,24 +219,29 @@ export default function ProjectsPage() {
     setShowProjectModal(true)
   }
 
-  function submitProject() {
-    if (!projectForm.title) return
-    const data = {
-      title: projectForm.title,
-      description: projectForm.description || null,
-      status: projectForm.status,
-      owner_id: projectForm.owner_id || currentEmployeeId,
-      start_date: projectForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: projectForm.end_date || `${new Date().getFullYear()}-12-31`,
-      budget: projectForm.budget || null,
-      currency: projectForm.currency,
+  async function submitProject() {
+    if (!projectForm.title.trim()) { addToast('Project title is required', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: projectForm.title,
+        description: projectForm.description || null,
+        status: projectForm.status,
+        owner_id: projectForm.owner_id || currentEmployeeId,
+        start_date: projectForm.start_date || new Date().toISOString().split('T')[0],
+        end_date: projectForm.end_date || `${new Date().getFullYear()}-12-31`,
+        budget: projectForm.budget || null,
+        currency: projectForm.currency,
+      }
+      if (editingProject) {
+        updateProject(editingProject, data)
+      } else {
+        addProject(data)
+      }
+      setShowProjectModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingProject) {
-      updateProject(editingProject, data)
-    } else {
-      addProject(data)
-    }
-    setShowProjectModal(false)
   }
 
   function openNewTask() {
@@ -239,37 +262,49 @@ export default function ProjectsPage() {
     setShowTaskModal(true)
   }
 
-  function submitTask() {
-    if (!taskForm.title || !taskForm.project_id) return
-    const data = {
-      title: taskForm.title,
-      description: taskForm.description || null,
-      status: taskForm.status,
-      priority: taskForm.priority,
-      assignee_id: taskForm.assignee_id || currentEmployeeId,
-      project_id: taskForm.project_id,
-      due_date: taskForm.due_date || null,
-      estimated_hours: taskForm.estimated_hours || null,
-      actual_hours: null,
-      milestone_id: null,
+  async function submitTask() {
+    if (!taskForm.title.trim()) { addToast('Task title is required', 'error'); return }
+    if (!taskForm.project_id) { addToast('Please select a project', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: taskForm.title,
+        description: taskForm.description || null,
+        status: taskForm.status,
+        priority: taskForm.priority,
+        assignee_id: taskForm.assignee_id || currentEmployeeId,
+        project_id: taskForm.project_id,
+        due_date: taskForm.due_date || null,
+        estimated_hours: taskForm.estimated_hours || null,
+        actual_hours: null,
+        milestone_id: null,
+      }
+      if (editingTask) {
+        updateTask(editingTask, data)
+      } else {
+        addTask(data)
+      }
+      setShowTaskModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingTask) {
-      updateTask(editingTask, data)
-    } else {
-      addTask(data)
-    }
-    setShowTaskModal(false)
   }
 
-  function submitMilestone() {
-    if (!milestoneForm.title || !milestoneForm.project_id) return
-    addMilestone({
-      title: milestoneForm.title,
-      project_id: milestoneForm.project_id,
-      due_date: milestoneForm.due_date || `${new Date().getFullYear()}-12-31`,
-      status: milestoneForm.status,
-    })
-    setShowMilestoneModal(false)
+  async function submitMilestone() {
+    if (!milestoneForm.title.trim()) { addToast('Milestone title is required', 'error'); return }
+    if (!milestoneForm.project_id) { addToast('Please select a project', 'error'); return }
+    setSaving(true)
+    try {
+      addMilestone({
+        title: milestoneForm.title,
+        project_id: milestoneForm.project_id,
+        due_date: milestoneForm.due_date || `${new Date().getFullYear()}-12-31`,
+        status: milestoneForm.status,
+      })
+      setShowMilestoneModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function confirmDelete() {
@@ -284,17 +319,24 @@ export default function ProjectsPage() {
     setShowRuleModal(true)
   }
 
-  function submitRule() {
-    if (!ruleForm.name || !ruleForm.triggerType || !ruleForm.actionType) return
-    addAutomationRule({
-      name: ruleForm.name,
-      description: ruleForm.description || null,
-      project_id: ruleForm.project_id || null,
-      trigger: { type: ruleForm.triggerType, value: ruleForm.triggerValue },
-      action: { type: ruleForm.actionType, value: ruleForm.actionValue, label: ruleForm.actionLabel || ruleForm.actionValue },
-      is_active: true,
-    })
-    setShowRuleModal(false)
+  async function submitRule() {
+    if (!ruleForm.name.trim()) { addToast('Rule name is required', 'error'); return }
+    if (!ruleForm.triggerType) { addToast('Please select a trigger type', 'error'); return }
+    if (!ruleForm.actionType) { addToast('Please select an action type', 'error'); return }
+    setSaving(true)
+    try {
+      addAutomationRule({
+        name: ruleForm.name,
+        description: ruleForm.description || null,
+        project_id: ruleForm.project_id || null,
+        trigger: { type: ruleForm.triggerType, value: ruleForm.triggerValue },
+        action: { type: ruleForm.actionType, value: ruleForm.actionValue, label: ruleForm.actionLabel || ruleForm.actionValue },
+        is_active: true,
+      })
+      setShowRuleModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function applyTemplate(template: { name: string; description: string; triggerType: string; triggerValue: string; actionType: string; actionValue: string; actionLabel: string }) {
@@ -430,15 +472,29 @@ export default function ProjectsPage() {
         )
       })()}
 
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input
+            type="text"
+            placeholder="Search projects, tasks, owners..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-canvas border border-border rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-300"
+          />
+        </div>
+      </div>
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {/* ==================== PROJECTS LIST ==================== */}
       {activeTab === 'list' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {projects.length === 0 && (
-            <div className="col-span-2 py-12 text-center text-sm text-t3">{t('noProjects')}</div>
+          {filteredProjects.length === 0 && (
+            <div className="col-span-2 py-12 text-center text-sm text-t3">{searchQuery ? 'No projects match your search' : t('noProjects')}</div>
           )}
-          {projects.map(project => {
+          {filteredProjects.map(project => {
             const projectTasks = tasks.filter(t => t.project_id === project.id)
             const projectMilestones = milestones.filter(m => m.project_id === project.id)
             const done = projectTasks.filter(t => t.status === 'done').length
@@ -929,7 +985,7 @@ export default function ProjectsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowRuleModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitRule}>{t('createRule')}</Button>
+            <Button onClick={submitRule} disabled={saving}>{saving ? 'Saving...' : t('createRule')}</Button>
           </div>
         </div>
       </Modal>
@@ -960,7 +1016,7 @@ export default function ProjectsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowProjectModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitProject}>{editingProject ? tc('saveChanges') : t('createProject')}</Button>
+            <Button onClick={submitProject} disabled={saving}>{saving ? 'Saving...' : editingProject ? tc('saveChanges') : t('createProject')}</Button>
           </div>
         </div>
       </Modal>
@@ -987,7 +1043,7 @@ export default function ProjectsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTaskModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitTask}>{editingTask ? tc('saveChanges') : t('createTask')}</Button>
+            <Button onClick={submitTask} disabled={saving}>{saving ? 'Saving...' : editingTask ? tc('saveChanges') : t('createTask')}</Button>
           </div>
         </div>
       </Modal>
@@ -1000,7 +1056,7 @@ export default function ProjectsPage() {
           <Input label={t('dueDate')} type="date" value={milestoneForm.due_date} onChange={(e) => setMilestoneForm({ ...milestoneForm, due_date: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowMilestoneModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitMilestone}>{t('addMilestone')}</Button>
+            <Button onClick={submitMilestone} disabled={saving}>{saving ? 'Saving...' : t('addMilestone')}</Button>
           </div>
         </div>
       </Modal>
