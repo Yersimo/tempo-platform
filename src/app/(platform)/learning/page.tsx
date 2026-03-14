@@ -25,6 +25,11 @@ import { CoursePlayer } from '@/components/learning/course-player'
 import { CertificateDesigner, CertificatePreview } from '@/components/learning/certificate-designer'
 import { ContentProviders } from '@/components/learning/content-providers'
 import { ScormPlayer } from '@/components/learning/scorm-player'
+import Programs from '@/components/learning/programs'
+import ScenarioCards from '@/components/learning/scenario-cards'
+import SmartReviews from '@/components/learning/smart-reviews'
+import InPersonEvents from '@/components/learning/in-person-events'
+import VersionHistory from '@/components/learning/version-history'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
@@ -292,6 +297,7 @@ export default function LearningPage() {
     { id: 'builder', label: t('aiBuilder'), count: aiBuilderTemplates.length },
     { id: 'sessions', label: t('liveSessions'), count: liveSessions.filter(s => s.status === 'upcoming').length },
     { id: 'paths', label: t('learningPaths'), count: learningPaths.length },
+    { id: 'programs', label: 'Programs' },
     { id: 'analytics', label: t('tabAnalytics') },
     { id: 'admin', label: t('tabAdmin'), count: autoEnrollRules.filter(r => r.is_active).length },
     { id: 'course-builder', label: t('tabCourseBuilder'), count: courseBlocks.length },
@@ -303,6 +309,10 @@ export default function LearningPage() {
     { id: 'adaptive', label: 'Adaptive Learning' },
     { id: 'transcript', label: 'Transcript' },
     { id: 'external-training', label: 'External Training', count: extRequests.length },
+    { id: 'scenarios', label: 'AI Scenarios' },
+    { id: 'smart-reviews', label: 'Smart Reviews' },
+    { id: 'events', label: 'Events' },
+    { id: 'version-history', label: 'Version History' },
   ]
 
   // SeamlessHR-inspired: Certification tracking with expiration
@@ -2334,6 +2344,19 @@ export default function LearningPage() {
         </div>
       )}
 
+      {/* Programs Tab */}
+      {activeTab === 'programs' && (
+        <Programs
+          courses={courses}
+          employees={employees}
+          departments={departments}
+          enrollments={enrollments}
+          getEmployeeName={getEmployeeName}
+          getDepartmentName={getDepartmentName}
+          addToast={addToast}
+        />
+      )}
+
       {/* Analytics Dashboard Tab */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
@@ -3744,6 +3767,22 @@ export default function LearningPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {activeTab === 'scenarios' && (
+        <ScenarioCards employees={employees} currentEmployeeId={currentEmployeeId} addToast={addToast} />
+      )}
+
+      {activeTab === 'smart-reviews' && (
+        <SmartReviews courses={courses} enrollments={enrollments} quizQuestions={quizQuestions} addToast={addToast} />
+      )}
+
+      {activeTab === 'events' && (
+        <InPersonEvents employees={employees} courses={courses} currentEmployeeId={currentEmployeeId} getEmployeeName={getEmployeeName} addToast={addToast} />
+      )}
+
+      {activeTab === 'version-history' && (
+        <VersionHistory courseId={selectedBuilderCourse || courses[0]?.id || ''} courseTitle={courses.find(c => c.id === (selectedBuilderCourse || courses[0]?.id))?.title || 'Course'} courseBlocks={courseBlocks} getEmployeeName={getEmployeeName} addToast={addToast} />
       )}
 
       {/* External Training Request Modal */}

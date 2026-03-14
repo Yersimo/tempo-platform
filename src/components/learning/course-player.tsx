@@ -10,8 +10,9 @@ import {
   X, ChevronLeft, ChevronRight, CheckCircle, Play, FileText,
   Video, HelpCircle, Zap, Download, Lock, BookOpen, Award,
   AlertTriangle, Clock, Brain, ArrowRight, Trophy, Sparkles,
-  ChevronDown, BarChart3, Target, GraduationCap, Menu
+  ChevronDown, BarChart3, Target, GraduationCap, Menu, MessageCircle
 } from 'lucide-react'
+import AITutor from '@/components/learning/ai-tutor'
 
 interface CoursePlayerProps {
   courseId: string
@@ -77,6 +78,9 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
 
   // Mobile sidebar
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+
+  // AI Tutor
+  const [showAITutor, setShowAITutor] = useState(false)
 
   // Collapsed module state
   const [collapsedModules, setCollapsedModules] = useState<Set<number>>(new Set())
@@ -605,6 +609,28 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
             )}
           </div>
         </div>
+
+        {/* AI Tutor floating button */}
+        <button
+          onClick={() => setShowAITutor(!showAITutor)}
+          className={cn(
+            'fixed bottom-24 right-6 z-[60] w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110',
+            showAITutor ? 'bg-tempo-600 text-white' : 'bg-white border border-divider text-tempo-600 hover:bg-tempo-50'
+          )}
+          title="AI Tutor"
+        >
+          <MessageCircle size={20} />
+        </button>
+
+        {/* AI Tutor panel */}
+        <AITutor
+          courseTitle={course?.title || ''}
+          currentModule={`Module ${(currentModuleIndex ?? 0) + 1}`}
+          currentBlockContent={currentBlock?.content || ''}
+          currentBlockTitle={currentBlock?.title || ''}
+          isOpen={showAITutor}
+          onToggle={() => setShowAITutor(!showAITutor)}
+        />
       </div>
     </div>
   )
