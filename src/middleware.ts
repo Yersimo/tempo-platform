@@ -72,7 +72,29 @@ async function checkRateLimit(
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events']
 
+// ─── Security Headers ────────────────────────────────────────────────────
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+}
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value)
+  }
+  return response
+}
+
 export async function middleware(request: NextRequest) {
+  const response = await _middlewareInner(request)
+  return applySecurityHeaders(response)
+}
+
+async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
   // Allow marketing landing page

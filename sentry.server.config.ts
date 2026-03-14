@@ -12,7 +12,7 @@ Sentry.init({
   enabled: !!(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN),
 
   // Environment tag
-  environment: process.env.NODE_ENV || 'development',
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NODE_ENV || 'development',
 
   // Attach server name for debugging multi-region deployments
   serverName: process.env.VERCEL_REGION || 'local',
