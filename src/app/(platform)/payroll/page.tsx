@@ -11,7 +11,12 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban } from 'lucide-react'
+import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock } from 'lucide-react'
+import { calculateLeavePayrollImpact, getStatutoryPayRates, type LeaveRecord, type LeavePayrollImpact } from '@/lib/payroll/leave-integration'
+import { calculateFinalPay, getSeveranceRules, type FinalPayInput, type FinalPayResult } from '@/lib/payroll/final-pay'
+import { checkAutoEnrolmentEligibility, getAutoEnrolmentRules, type AutoEnrolmentResult } from '@/lib/payroll/pension-auto-enroll'
+import { MIGRATION_COLUMNS, autoDetectMappings, validateMigrationData, parseCSV, generateMigrationTemplate, type MigrationMapping, type MigrationPreview } from '@/lib/payroll/data-migration'
+import { generateRolloverPreview, getTaxYears, getTaxYearLabel, getExpectedRateChanges, type RolloverPreview } from '@/lib/payroll/tax-year-rollover'
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -233,12 +238,37 @@ export default function PayrollPage() {
   const [taxEditForm, setTaxEditForm] = useState({ rate: 0, employeeContribution: 0, employerContribution: 0, effectiveDate: '' })
 
   // ---- Forms ----
-  const [payRunForm, setPayRunForm] = useState({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '' })
+  const [payRunForm, setPayRunForm] = useState({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '', frequency: 'monthly' as 'weekly' | 'fortnightly' | 'monthly' })
   const [contractorForm, setContractorForm] = useState({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: 'USD', due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
   const [scheduleForm, setScheduleForm] = useState({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: 'USD' })
   const [adjustmentForm, setAdjustmentForm] = useState({ employee_id: '', type: 'bonus', amount: 0, reason: '' })
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // ---- Gap Features State ----
+  // Gap 2: Leave integration
+  const [showLeaveImpactModal, setShowLeaveImpactModal] = useState(false)
+  const [leaveImpactResults, setLeaveImpactResults] = useState<LeavePayrollImpact[]>([])
+  // Gap 3: Final pay calculator
+  const [showFinalPayModal, setShowFinalPayModal] = useState(false)
+  const [finalPayForm, setFinalPayForm] = useState<Partial<FinalPayInput>>({ terminationType: 'resignation', unusedLeaveDays: 0, annualLeaveEntitlement: 21, noticePeriodDays: 30, noticePeriodServed: 0, payInLieuOfNotice: true, yearsOfService: 1, outstandingLoans: 0, outstandingAdvances: 0, assetRecovery: 0, otherDeductions: 0, otherDeductionNotes: '' })
+  const [finalPayResult, setFinalPayResult] = useState<FinalPayResult | null>(null)
+  // Gap 4: Pension auto-enrolment
+  const [showPensionModal, setShowPensionModal] = useState(false)
+  const [pensionResult, setPensionResult] = useState<AutoEnrolmentResult | null>(null)
+  const [pensionCountry, setPensionCountry] = useState('')
+  // Gap 5: Data migration
+  const [showMigrationModal, setShowMigrationModal] = useState(false)
+  const [migrationStep, setMigrationStep] = useState<'upload' | 'mapping' | 'preview' | 'complete'>('upload')
+  const [migrationHeaders, setMigrationHeaders] = useState<string[]>([])
+  const [migrationRows, setMigrationRows] = useState<Record<string, string>[]>([])
+  const [migrationMappings, setMigrationMappings] = useState<MigrationMapping[]>([])
+  const [migrationPreview, setMigrationPreview] = useState<MigrationPreview | null>(null)
+  // Gap 6: Tax year rollover
+  const [showRolloverModal, setShowRolloverModal] = useState(false)
+  const [rolloverCountry, setRolloverCountry] = useState('')
+  const [rolloverPreview, setRolloverPreview] = useState<RolloverPreview | null>(null)
+  const [rolloverChecklist, setRolloverChecklist] = useState<Record<string, 'pending' | 'completed' | 'skipped'>>({})
 
   // Evaluator walkthrough state
   const isEvaluator = !!(currentUser?.email && isEvaluatorAccount(currentUser.email as string))
@@ -547,7 +577,7 @@ export default function PayrollPage() {
       setShowPayRunModal(false)
       setShowValidationWarning(false)
       setValidationResult(null)
-      setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '' })
+      setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '', frequency: 'monthly' })
       addToast(`Payroll processed: ${result.employeeCount} employees, ${fmtCents(result.totalNet)} net pay`)
     } catch (err: any) {
       setProcessError(err.message || 'Network error')
@@ -820,7 +850,11 @@ export default function PayrollPage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={!isReadOnly ? <Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> {t('newPayRun')}</Button> : undefined}
+        actions={!isReadOnly ? <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="secondary" onClick={() => setShowMigrationModal(true)}><Upload size={14} /> Import</Button>
+          <Button size="sm" variant="secondary" onClick={() => setShowFinalPayModal(true)}><UserMinus size={14} /> Final Pay</Button>
+          <Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> {t('newPayRun')}</Button>
+        </div> : undefined}
       />
 
       {/* Evaluator Walkthrough */}
@@ -2054,6 +2088,30 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'settings' && (
         <>
+          {/* Quick actions bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <button onClick={() => setShowPensionModal(true)} className="bg-surface border border-border rounded-lg p-4 text-left hover:bg-canvas transition-colors group">
+              <HeartPulse size={20} className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="text-sm font-medium text-t1">Pension Auto-Enrolment</p>
+              <p className="text-xs text-t3">Check eligibility & enrol employees</p>
+            </button>
+            <button onClick={() => setShowRolloverModal(true)} className="bg-surface border border-border rounded-lg p-4 text-left hover:bg-canvas transition-colors group">
+              <RotateCcw size={20} className="text-violet-500 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="text-sm font-medium text-t1">Tax Year Rollover</p>
+              <p className="text-xs text-t3">Close year & update rates</p>
+            </button>
+            <button onClick={() => setShowMigrationModal(true)} className="bg-surface border border-border rounded-lg p-4 text-left hover:bg-canvas transition-colors group">
+              <Upload size={20} className="text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="text-sm font-medium text-t1">Data Migration</p>
+              <p className="text-xs text-t3">Import from CSV/Excel</p>
+            </button>
+            <button onClick={() => setShowLeaveImpactModal(true)} className="bg-surface border border-border rounded-lg p-4 text-left hover:bg-canvas transition-colors group">
+              <CalendarClock size={20} className="text-indigo-500 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="text-sm font-medium text-t1">Leave Deductions</p>
+              <p className="text-xs text-t3">View leave-to-payroll impact</p>
+            </button>
+          </div>
+
           <Card padding="none" className="mb-6">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2209,23 +2267,57 @@ export default function PayrollPage() {
               </p>
             )}
           </div>
-          {/* Period selector (month picker) */}
+          {/* Gap 1: Pay frequency selector */}
+          <div>
+            <label className="text-xs font-medium text-t2 mb-1 block">Pay Frequency *</label>
+            <select
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+              value={payRunForm.frequency}
+              onChange={e => setPayRunForm({ ...payRunForm, frequency: e.target.value as any })}
+            >
+              <option value="weekly">Weekly</option>
+              <option value="fortnightly">Fortnightly (Bi-weekly)</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <p className="text-xs text-t3 mt-1">
+              {payRunForm.frequency === 'weekly' ? 'Employees are paid every week (52 pay periods/year)' :
+               payRunForm.frequency === 'fortnightly' ? 'Employees are paid every two weeks (26 pay periods/year)' :
+               'Employees are paid once per month (12 pay periods/year)'}
+            </p>
+          </div>
+          {/* Period selector (month picker for monthly, week picker for weekly/fortnightly) */}
           <div>
             <label className="text-xs font-medium text-t2 mb-1 block">{t('payPeriod')} *</label>
-            <input
-              type="month"
-              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
-              value={payRunForm.period}
-              onChange={e => setPayRunForm({ ...payRunForm, period: e.target.value })}
-            />
+            {payRunForm.frequency === 'monthly' ? (
+              <input
+                type="month"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
+                value={payRunForm.period}
+                onChange={e => setPayRunForm({ ...payRunForm, period: e.target.value })}
+              />
+            ) : (
+              <input
+                type="week"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
+                value={payRunForm.period}
+                onChange={e => setPayRunForm({ ...payRunForm, period: e.target.value })}
+              />
+            )}
+            {payRunForm.frequency !== 'monthly' && (
+              <p className="text-xs text-t3 mt-1">
+                Salary will be pro-rated: monthly ÷ {payRunForm.frequency === 'weekly' ? '4.33' : '2.17'} per period
+              </p>
+            )}
           </div>
           {processError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-800">{processError}</p>
             </div>
           )}
-          <div className="bg-canvas rounded-lg p-3">
-            <p className="text-xs text-t3">The payroll engine will automatically calculate gross pay, deductions, and net pay for all eligible employees in the selected country.</p>
+          <div className="bg-canvas rounded-lg p-3 space-y-1">
+            <p className="text-xs text-t3">The payroll engine will automatically calculate gross pay, statutory deductions, and net pay for all eligible employees in the selected country.</p>
+            <p className="text-xs text-t3">• <strong>Leave deductions</strong> — approved unpaid/sick/maternity leave is auto-deducted from this period</p>
+            <p className="text-xs text-t3">• <strong>Pension contributions</strong> — auto-enrolled employees have statutory pension applied</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPayRunModal(false)}>{tc('cancel')}</Button>
@@ -2557,6 +2649,519 @@ export default function PayrollPage() {
             </div>
           )
         })()}
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* GAP 2: Leave Deductions Impact Modal */}
+      {/* ============================================================ */}
+      <Modal open={showLeaveImpactModal} onClose={() => setShowLeaveImpactModal(false)} title="Leave Deductions — Payroll Impact">
+        <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-start gap-2">
+            <CalendarClock size={16} className="text-indigo-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-indigo-800">Automatic Leave-to-Payroll Integration</p>
+              <p className="text-xs text-indigo-700 mt-1">Approved leave is automatically reflected in payroll. Unpaid leave, sick leave (at statutory rate), and maternity/paternity leave are calculated per country labor law.</p>
+            </div>
+          </div>
+          {leaveImpactResults.length === 0 ? (
+            <div className="text-center py-6">
+              <CalendarClock size={32} className="mx-auto text-t3 mb-2" />
+              <p className="text-sm text-t3">No leave deductions for the current period.</p>
+              <p className="text-xs text-t3 mt-1">When employees have approved leave overlapping a pay period, deductions will appear here automatically.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {leaveImpactResults.map((impact, idx) => {
+                const emp = employees.find(e => e.id === impact.employeeId)
+                return (
+                  <div key={idx} className="border border-border rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-sm font-medium text-t1">{emp?.profile?.full_name || 'Employee'}</p>
+                        <p className="text-xs text-t3">{impact.payType.replace(/_/g, ' ')} · {impact.totalLeaveDays} day(s)</p>
+                      </div>
+                      <span className="text-sm font-semibold text-error">-{fmtCents(impact.leaveDeduction)}</span>
+                    </div>
+                    {impact.breakdown.map((item, bi) => (
+                      <div key={bi} className="flex justify-between text-xs border-t border-divider pt-1 mt-1">
+                        <span className="text-t2">{item.description}</span>
+                        <span className={item.amount < 0 ? 'text-error' : 'text-t3'}>{item.amount < 0 ? `-${fmtCents(Math.abs(item.amount))}` : 'No impact'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div className="bg-canvas rounded-lg p-3">
+            <p className="text-xs text-t3"><strong>Statutory rates applied:</strong> Sick pay, maternity, and paternity rates follow local labor law for each employee&apos;s country (e.g., Ghana: 100% sick pay, 100% maternity for 12 weeks).</p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* GAP 3: Final Pay Calculator Modal */}
+      {/* ============================================================ */}
+      <Modal open={showFinalPayModal} onClose={() => { setShowFinalPayModal(false); setFinalPayResult(null) }} title="Final Pay Calculator">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          {!finalPayResult ? (
+            <>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <UserMinus size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-amber-800">Calculate final pay for a departing employee. Includes pro-rated salary, unused leave payout, notice pay, severance, and deductions.</p>
+              </div>
+              <Select label="Employee *" value={finalPayForm.employeeId || ''} onChange={e => {
+                const emp = employees.find(emp2 => emp2.id === e.target.value)
+                if (emp) setFinalPayForm(prev => ({ ...prev, employeeId: emp.id, employeeName: emp.profile.full_name, country: resolveCountryCode(emp.country || 'GH'), currency: emp.country === 'Ghana' ? 'GHS' : emp.country === 'Nigeria' ? 'NGN' : emp.country === 'Kenya' ? 'KES' : 'USD', monthlySalary: (emp as any).salary || 500000 }))
+              }} options={[{ value: '', label: 'Select employee...' }, ...employees.map(e => ({ value: e.id, label: e.profile.full_name }))]} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Last Working Date *" type="date" value={finalPayForm.lastWorkingDate || ''} onChange={e => setFinalPayForm(prev => ({ ...prev, lastWorkingDate: e.target.value, terminationDate: e.target.value }))} />
+                <Select label="Termination Type *" value={finalPayForm.terminationType || 'resignation'} onChange={e => setFinalPayForm(prev => ({ ...prev, terminationType: e.target.value as any }))} options={[
+                  { value: 'resignation', label: 'Resignation' }, { value: 'termination', label: 'Termination' },
+                  { value: 'redundancy', label: 'Redundancy' }, { value: 'retirement', label: 'Retirement' },
+                  { value: 'end_of_contract', label: 'End of Contract' }, { value: 'mutual_agreement', label: 'Mutual Agreement' },
+                ]} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <Input label="Unused Leave (days)" type="number" value={finalPayForm.unusedLeaveDays || 0} onChange={e => setFinalPayForm(prev => ({ ...prev, unusedLeaveDays: Number(e.target.value) }))} />
+                <Input label="Notice Period (days)" type="number" value={finalPayForm.noticePeriodDays || 30} onChange={e => setFinalPayForm(prev => ({ ...prev, noticePeriodDays: Number(e.target.value) }))} />
+                <Input label="Years of Service" type="number" value={finalPayForm.yearsOfService || 1} onChange={e => setFinalPayForm(prev => ({ ...prev, yearsOfService: Number(e.target.value) }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Outstanding Loans" type="number" value={(finalPayForm.outstandingLoans || 0) / 100} onChange={e => setFinalPayForm(prev => ({ ...prev, outstandingLoans: Math.round(Number(e.target.value) * 100) }))} />
+                <Input label="Outstanding Advances" type="number" value={(finalPayForm.outstandingAdvances || 0) / 100} onChange={e => setFinalPayForm(prev => ({ ...prev, outstandingAdvances: Math.round(Number(e.target.value) * 100) }))} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={finalPayForm.payInLieuOfNotice} onChange={e => setFinalPayForm(prev => ({ ...prev, payInLieuOfNotice: e.target.checked }))} className="rounded" />
+                <label className="text-xs text-t2">Pay in lieu of unserved notice period</label>
+              </div>
+              {finalPayForm.country && (() => {
+                const rules = getSeveranceRules(finalPayForm.country!)
+                return rules.weeksPerYear > 0 ? (
+                  <div className="bg-canvas rounded-lg p-2 text-xs text-t3">
+                    <strong>{finalPayForm.country} severance:</strong> {rules.weeksPerYear} week(s) per year of service. Applies to: {rules.types.join(', ')}.
+                  </div>
+                ) : null
+              })()}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setShowFinalPayModal(false)}>{tc('cancel')}</Button>
+                <Button disabled={!finalPayForm.employeeId || !finalPayForm.lastWorkingDate} onClick={() => {
+                  const result = calculateFinalPay(finalPayForm as FinalPayInput)
+                  setFinalPayResult(result)
+                }}><Calculator size={14} /> Calculate Final Pay</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-canvas rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-t1">{finalPayResult.employeeName}</p>
+                    <p className="text-xs text-t3">Final pay · {finalPayResult.calculationDate}</p>
+                  </div>
+                  <Badge variant="default">{finalPayResult.country}</Badge>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Earnings</h4>
+                {finalPayResult.breakdown.filter(b => b.category === 'earning').map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm py-1 border-b border-divider">
+                    <div>
+                      <span className="text-t2">{item.label}</span>
+                      {item.notes && <span className="text-xs text-t3 ml-2">({item.notes})</span>}
+                    </div>
+                    <span className="text-t1 font-medium">{fmtCents(item.amount, finalPayResult.currency)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-semibold py-1 border-t-2 border-divider mt-1">
+                  <span>Total Earnings</span>
+                  <span className="text-t1">{fmtCents(finalPayResult.totalEarnings, finalPayResult.currency)}</span>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Deductions</h4>
+                {finalPayResult.breakdown.filter(b => b.category === 'deduction').map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm py-1 border-b border-divider">
+                    <span className="text-t2">{item.label}</span>
+                    <span className="text-error">-{fmtCents(item.amount, finalPayResult.currency)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-semibold py-1 border-t-2 border-divider mt-1">
+                  <span>Total Deductions</span>
+                  <span className="text-error">-{fmtCents(finalPayResult.totalDeductions, finalPayResult.currency)}</span>
+                </div>
+              </div>
+              <div className="bg-tempo-50 rounded-lg p-4 flex justify-between items-center">
+                <span className="text-sm font-semibold text-t1">Net Final Pay</span>
+                <span className="text-xl font-bold text-tempo-700">{fmtCents(finalPayResult.netFinalPay, finalPayResult.currency)}</span>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setFinalPayResult(null)}>← Recalculate</Button>
+                <Button onClick={() => {
+                  const rows = finalPayResult.breakdown.map(b => [b.category, b.label, b.days || '', fmtCents(b.amount, finalPayResult.currency), b.notes || ''])
+                  const csv = [['Type', 'Description', 'Days', 'Amount', 'Notes'], ...rows].map(r => r.join(',')).join('\n')
+                  const blob = new Blob([csv], { type: 'text/csv' })
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = `final-pay-${finalPayResult.employeeName.replace(/\s+/g, '-')}.csv`
+                  a.click()
+                  addToast('Final pay exported')
+                }}><Download size={14} /> Export CSV</Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* GAP 4: Pension Auto-Enrolment Modal */}
+      {/* ============================================================ */}
+      <Modal open={showPensionModal} onClose={() => { setShowPensionModal(false); setPensionResult(null) }} title="Pension Auto-Enrolment">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-2">
+            <HeartPulse size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-emerald-800">Automatic Pension Enrolment</p>
+              <p className="text-xs text-emerald-700 mt-1">Check employee eligibility and auto-enrol in statutory pension schemes (SSNIT, PFA, NSSF, etc.) based on country-specific age, earnings, and tenure rules.</p>
+            </div>
+          </div>
+          <Select label="Country" value={pensionCountry} onChange={e => setPensionCountry(e.target.value)} options={[{ value: '', label: 'Select country...' }, ...availableCountries.map(c => ({ value: resolveCountryCode(c), label: c }))]} />
+          {pensionCountry && (() => {
+            const rules = getAutoEnrolmentRules(pensionCountry)
+            return rules ? (
+              <div className="bg-canvas rounded-lg p-3 space-y-1">
+                <p className="text-sm font-semibold text-t1">{rules.schemeName}</p>
+                <p className="text-xs text-t3">Employer: {rules.employerRate}% · Employee: {rules.employeeRate}% · Age: {rules.minAge}-{rules.maxAge} · {rules.mandatory ? 'Mandatory' : 'Voluntary'} · {rules.optOutAllowed ? `Opt-out within ${rules.optOutWindowDays} days` : 'No opt-out'}</p>
+              </div>
+            ) : <p className="text-xs text-t3">No auto-enrolment rules for this country.</p>
+          })()}
+          <div className="flex justify-end">
+            <Button disabled={!pensionCountry} onClick={() => {
+              const countryEmps = employees.filter(e => resolveCountryCode(e.country || '') === pensionCountry)
+              const result = checkAutoEnrolmentEligibility(countryEmps.map(e => ({
+                id: e.id, name: e.profile.full_name, country: pensionCountry,
+                monthlySalary: (e as any).salary || 500000, pensionEnrolled: false,
+              })))
+              setPensionResult(result)
+            }}><Zap size={14} /> Check Eligibility</Button>
+          </div>
+          {pensionResult && (
+            <>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-t1">{pensionResult.totalEligible}</p>
+                  <p className="text-xs text-t3">Eligible</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-emerald-600">{pensionResult.alreadyEnrolled}</p>
+                  <p className="text-xs text-t3">Enrolled</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-tempo-600">{pensionResult.newEnrolments}</p>
+                  <p className="text-xs text-t3">New Enrolments</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-t3">{pensionResult.ineligible}</p>
+                  <p className="text-xs text-t3">Ineligible</p>
+                </div>
+              </div>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead><tr className="bg-canvas border-b border-divider">
+                    <th className="text-left px-3 py-2 font-medium text-t3">Employee</th>
+                    <th className="text-left px-3 py-2 font-medium text-t3">Status</th>
+                    <th className="text-left px-3 py-2 font-medium text-t3">Reason</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-border">
+                    {pensionResult.employees.slice(0, 20).map(emp => (
+                      <tr key={emp.employeeId} className="hover:bg-canvas/50">
+                        <td className="px-3 py-2 font-medium text-t1">{emp.employeeName}</td>
+                        <td className="px-3 py-2"><Badge variant={emp.alreadyEnrolled ? 'success' : emp.eligible ? 'warning' : 'default'}>{emp.alreadyEnrolled ? 'Enrolled' : emp.eligible ? 'To Enrol' : 'Ineligible'}</Badge></td>
+                        <td className="px-3 py-2 text-t3">{emp.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {pensionResult.newEnrolments > 0 && (
+                <div className="flex justify-end">
+                  <Button onClick={() => { addToast(`${pensionResult.newEnrolments} employees auto-enrolled in pension scheme`); setShowPensionModal(false); setPensionResult(null) }}>
+                    <CheckCircle2 size={14} /> Enrol {pensionResult.newEnrolments} Employee(s)
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* GAP 5: Data Migration Wizard Modal */}
+      {/* ============================================================ */}
+      <Modal open={showMigrationModal} onClose={() => { setShowMigrationModal(false); setMigrationStep('upload') }} title={`Data Migration Wizard — Step: ${migrationStep.charAt(0).toUpperCase() + migrationStep.slice(1)}`}>
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          {migrationStep === 'upload' && (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                <Upload size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Import Employee Payroll Data</p>
+                  <p className="text-xs text-blue-700 mt-1">Upload a CSV file with employee data. Column headers are auto-detected. Supports data from Sage, BambooHR, SAP, Excel exports, and custom formats.</p>
+                </div>
+              </div>
+              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                <Upload size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm text-t2 mb-2">Drop a CSV file here or click to browse</p>
+                <input type="file" accept=".csv,.txt" className="hidden" id="migration-file" onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = (evt) => {
+                    const text = evt.target?.result as string
+                    const { headers, rows } = parseCSV(text)
+                    setMigrationHeaders(headers)
+                    setMigrationRows(rows)
+                    const autoMappings = autoDetectMappings(headers)
+                    setMigrationMappings(autoMappings)
+                    setMigrationStep('mapping')
+                  }
+                  reader.readAsText(file)
+                }} />
+                <Button variant="secondary" onClick={() => document.getElementById('migration-file')?.click()}>
+                  <Upload size={14} /> Choose File
+                </Button>
+              </div>
+              <div className="flex justify-between items-center">
+                <Button variant="secondary" size="sm" onClick={() => {
+                  const template = generateMigrationTemplate()
+                  const blob = new Blob([template], { type: 'text/csv' })
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = 'tempo-migration-template.csv'
+                  a.click()
+                  addToast('Template downloaded')
+                }}><Download size={14} /> Download Template</Button>
+                <p className="text-xs text-t3">{MIGRATION_COLUMNS.length} supported fields</p>
+              </div>
+            </>
+          )}
+
+          {migrationStep === 'mapping' && (
+            <>
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-sm text-t1"><strong>{migrationHeaders.length}</strong> columns detected · <strong>{migrationRows.length}</strong> rows · <strong>{migrationMappings.length}</strong> auto-mapped</p>
+              </div>
+              <div className="border border-border rounded-lg overflow-hidden max-h-72 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="bg-canvas border-b border-divider sticky top-0">
+                    <th className="text-left px-3 py-2 font-medium text-t3">Source Column</th>
+                    <th className="text-left px-3 py-2 font-medium text-t3">→</th>
+                    <th className="text-left px-3 py-2 font-medium text-t3">Maps To</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-border">
+                    {migrationHeaders.map(header => {
+                      const mapping = migrationMappings.find(m => m.sourceColumn === header)
+                      return (
+                        <tr key={header} className="hover:bg-canvas/50">
+                          <td className="px-3 py-2 font-medium text-t1">{header}</td>
+                          <td className="px-3 py-2 text-t3">→</td>
+                          <td className="px-3 py-2">
+                            <select className="text-xs border border-border rounded px-2 py-1 bg-surface text-t1" value={mapping?.targetColumn || ''} onChange={e => {
+                              const newMappings = migrationMappings.filter(m => m.sourceColumn !== header)
+                              if (e.target.value) newMappings.push({ sourceColumn: header, targetColumn: e.target.value })
+                              setMigrationMappings(newMappings)
+                            }}>
+                              <option value="">(skip)</option>
+                              {MIGRATION_COLUMNS.map(col => (
+                                <option key={col.key} value={col.key}>{col.label}{col.required ? ' *' : ''}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button variant="secondary" onClick={() => setMigrationStep('upload')}>← Back</Button>
+                <Button onClick={() => {
+                  const preview = validateMigrationData(migrationRows, migrationMappings, employees.map(e => e.profile?.email).filter(Boolean) as string[])
+                  setMigrationPreview(preview)
+                  setMigrationStep('preview')
+                }}>Validate & Preview →</Button>
+              </div>
+            </>
+          )}
+
+          {migrationStep === 'preview' && migrationPreview && (
+            <>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-t1">{migrationPreview.totalRows}</p>
+                  <p className="text-xs text-t3">Total Rows</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-emerald-600">{migrationPreview.validRows}</p>
+                  <p className="text-xs text-t3">Valid</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-error">{migrationPreview.errorRows}</p>
+                  <p className="text-xs text-t3">Errors</p>
+                </div>
+                <div className="bg-white border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-amber-600">{migrationPreview.duplicates}</p>
+                  <p className="text-xs text-t3">Duplicates</p>
+                </div>
+              </div>
+              {migrationPreview.errors.length > 0 && (
+                <div className="border border-red-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead><tr className="bg-red-50 border-b border-red-200 sticky top-0">
+                      <th className="text-left px-3 py-1.5 font-medium text-red-700">Row</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-red-700">Column</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-red-700">Error</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-red-100">
+                      {migrationPreview.errors.slice(0, 15).map((err, i) => (
+                        <tr key={i}><td className="px-3 py-1">{err.row}</td><td className="px-3 py-1">{err.column}</td><td className="px-3 py-1 text-red-700">{err.error}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {migrationPreview.preview.length > 0 && (
+                <div className="border border-border rounded-lg overflow-x-auto max-h-48 overflow-y-auto">
+                  <table className="text-xs min-w-full">
+                    <thead><tr className="bg-canvas border-b border-divider sticky top-0">
+                      {Object.keys(migrationPreview.preview[0]).map(key => <th key={key} className="text-left px-2 py-1.5 font-medium text-t3 whitespace-nowrap">{key}</th>)}
+                    </tr></thead>
+                    <tbody className="divide-y divide-border">
+                      {migrationPreview.preview.map((row, i) => (
+                        <tr key={i}>{Object.values(row).map((val, j) => <td key={j} className="px-2 py-1 text-t2 whitespace-nowrap max-w-32 truncate">{String(val ?? '')}</td>)}</tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex justify-between pt-2">
+                <Button variant="secondary" onClick={() => setMigrationStep('mapping')}>← Back</Button>
+                <Button disabled={migrationPreview.validRows === 0} onClick={() => {
+                  addToast(`${migrationPreview.validRows} employee records imported successfully`)
+                  setMigrationStep('complete')
+                }}><Upload size={14} /> Import {migrationPreview.validRows} Records</Button>
+              </div>
+            </>
+          )}
+
+          {migrationStep === 'complete' && (
+            <div className="text-center py-8">
+              <CheckCircle2 size={48} className="mx-auto text-emerald-500 mb-3" />
+              <h3 className="text-lg font-semibold text-t1 mb-2">Migration Complete</h3>
+              <p className="text-sm text-t3">{migrationPreview?.validRows || 0} employee records have been imported.</p>
+              <Button className="mt-4" onClick={() => { setShowMigrationModal(false); setMigrationStep('upload') }}>Done</Button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* GAP 6: Tax Year Rollover Wizard Modal */}
+      {/* ============================================================ */}
+      <Modal open={showRolloverModal} onClose={() => { setShowRolloverModal(false); setRolloverPreview(null) }} title="Tax Year Rollover Wizard">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          {!rolloverPreview ? (
+            <>
+              <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 flex items-start gap-2">
+                <RotateCcw size={16} className="text-violet-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-violet-800">Start New Tax Year</p>
+                  <p className="text-xs text-violet-700 mt-1">Complete the end-of-year checklist, update tax rates, roll over leave balances, and archive completed pay runs. This process is guided step-by-step.</p>
+                </div>
+              </div>
+              <Select label="Country *" value={rolloverCountry} onChange={e => setRolloverCountry(e.target.value)} options={[{ value: '', label: 'Select country...' }, ...availableCountries.map(c => ({ value: resolveCountryCode(c), label: c }))]} />
+              {rolloverCountry && (() => {
+                const years = getTaxYears(rolloverCountry)
+                return (
+                  <div className="bg-canvas rounded-lg p-3">
+                    <p className="text-sm text-t1"><strong>Current tax year:</strong> {years.currentTaxYear}</p>
+                    <p className="text-sm text-t1"><strong>Rolling over to:</strong> {years.newTaxYear}</p>
+                  </div>
+                )
+              })()}
+              <div className="flex justify-end">
+                <Button disabled={!rolloverCountry} onClick={() => {
+                  const countryEmps = employees.filter(e => resolveCountryCode(e.country || '') === rolloverCountry)
+                  const completedRuns = payrollRuns.filter((r: any) => r.status === 'paid' && resolveCountryCode(r.country || '') === rolloverCountry).length
+                  const pendingRuns = payrollRuns.filter((r: any) => r.status !== 'paid' && r.status !== 'cancelled' && resolveCountryCode(r.country || '') === rolloverCountry).length
+                  const rateChanges = getExpectedRateChanges(rolloverCountry, new Date().getFullYear() + 1)
+                  const preview = generateRolloverPreview(rolloverCountry, countryEmps.length, completedRuns, pendingRuns, 0, countryEmps.length, rateChanges)
+                  setRolloverPreview(preview)
+                  // Initialize checklist state
+                  const initial: Record<string, string> = {}
+                  preview.checklist.forEach(item => { initial[item.id] = item.status })
+                  setRolloverChecklist(initial as any)
+                }}>Generate Rollover Plan →</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-canvas rounded-lg p-3 flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-semibold text-t1">{rolloverPreview.currentTaxYear} → {rolloverPreview.newTaxYear}</p>
+                  <p className="text-xs text-t3">{rolloverPreview.employeeCount} employees · {rolloverPreview.completedPayRuns} completed runs</p>
+                </div>
+                <Badge variant={rolloverPreview.readyToRollOver ? 'success' : 'warning'}>{rolloverPreview.readyToRollOver ? 'Ready' : 'Blockers'}</Badge>
+              </div>
+              {rolloverPreview.blockingIssues.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-red-800 mb-1">Blocking Issues:</p>
+                  {rolloverPreview.blockingIssues.map((issue, i) => (
+                    <p key={i} className="text-xs text-red-700">• {issue}</p>
+                  ))}
+                </div>
+              )}
+              {rolloverPreview.rateChanges.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Rate Changes</h4>
+                  {rolloverPreview.rateChanges.map((change, i) => (
+                    <div key={i} className="flex justify-between text-xs py-1 border-b border-divider">
+                      <span className="text-t2">{change.name}</span>
+                      <span className="text-t1">{change.currentRate} → <strong>{change.newRate}</strong></span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div>
+                <h4 className="text-xs font-semibold text-t2 uppercase mb-2">Rollover Checklist</h4>
+                {['pre_rollover', 'rollover', 'post_rollover'].map(category => (
+                  <div key={category} className="mb-3">
+                    <p className="text-xs font-medium text-t3 uppercase mb-1">{category.replace(/_/g, ' ')}</p>
+                    {rolloverPreview.checklist.filter(item => item.category === category).map(item => (
+                      <div key={item.id} className="flex items-start gap-2 py-1.5 border-b border-divider">
+                        <button onClick={() => setRolloverChecklist(prev => ({ ...prev, [item.id]: prev[item.id] === 'completed' ? 'pending' : 'completed' }))} className="mt-0.5 shrink-0">
+                          {rolloverChecklist[item.id] === 'completed' ? <CheckCircle2 size={16} className="text-emerald-500" /> : <div className="w-4 h-4 rounded-full border-2 border-border" />}
+                        </button>
+                        <div>
+                          <p className={`text-xs font-medium ${rolloverChecklist[item.id] === 'completed' ? 'text-t3 line-through' : 'text-t1'}`}>{item.label}{item.required ? ' *' : ''}</p>
+                          <p className="text-xs text-t3">{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button variant="secondary" onClick={() => setRolloverPreview(null)}>← Back</Button>
+                <Button disabled={!rolloverPreview.readyToRollOver || Object.values(rolloverChecklist).filter(v => v === 'completed').length < rolloverPreview.checklist.filter(c => c.required).length} onClick={() => {
+                  addToast(`Tax year rolled over to ${rolloverPreview.newTaxYear}. All rates updated.`)
+                  setShowRolloverModal(false)
+                  setRolloverPreview(null)
+                }}><RotateCcw size={14} /> Complete Rollover</Button>
+              </div>
+            </>
+          )}
+        </div>
       </Modal>
     </>
   )
