@@ -115,6 +115,7 @@ export function Sidebar() {
         { label: 'Sandbox', href: '/sandbox', icon: <FlaskConical size={18} />, requiredPermissions: ['admin:full'] },
         { label: 'Groups', href: '/groups', icon: <Network size={18} /> },
         { label: 'Developer', href: '/developer', icon: <Code size={18} />, requiredPermissions: ['admin:full'] },
+        { label: 'Security Admin', href: '/settings/security', icon: <Shield size={18} />, requiredPermissions: ['settings:manage'] },
       ],
     },
   ]

@@ -229,6 +229,222 @@ export function hasAllPermissions(
   return required.every(p => userPermissions.includes(p))
 }
 
+// ── Role Hierarchy (Oracle pattern) ──────────────────────────────────────────
+
+/**
+ * Role hierarchy defines inheritance. A higher role inherits all permissions
+ * of roles below it. Ordered from highest (owner) to lowest (employee).
+ *
+ * owner > admin > hrbp > manager > employee
+ *
+ * This follows Oracle Fusion's role hierarchy model where each role level
+ * inherits the permissions of all subordinate levels.
+ */
+export const ROLE_HIERARCHY: readonly string[] = [
+  'owner',
+  'admin',
+  'hrbp',
+  'manager',
+  'employee',
+] as const
+
+/**
+ * Check whether role1 is higher than role2 in the hierarchy.
+ * Returns true if role1 has a higher rank (lower index) than role2.
+ * Unknown roles are treated as below employee.
+ */
+export function isRoleHigherThan(role1: string, role2: string): boolean {
+  const idx1 = ROLE_HIERARCHY.indexOf(role1)
+  const idx2 = ROLE_HIERARCHY.indexOf(role2)
+  // Unknown roles get index -1, which we treat as the lowest
+  const rank1 = idx1 === -1 ? ROLE_HIERARCHY.length : idx1
+  const rank2 = idx2 === -1 ? ROLE_HIERARCHY.length : idx2
+  return rank1 < rank2
+}
+
+/**
+ * Get the numeric rank of a role (0 = highest). Returns -1 for unknown roles.
+ */
+export function getRoleRank(role: string): number {
+  return ROLE_HIERARCHY.indexOf(role)
+}
+
+// ── Composable Roles ────────────────────────────────────────────────────────
+
+/**
+ * Composable role architecture following enterprise HRIS patterns:
+ *
+ * 1. Abstract Roles — broad access categories (Employee, Manager, Admin)
+ * 2. Job Roles — domain-specific bundles (HR Admin, Payroll Admin, IT Admin)
+ * 3. Duty Roles — atomic permission bundles that can be mixed and matched
+ *
+ * A user's effective permissions = union of all assigned roles at every tier.
+ */
+
+/** Abstract roles: the base layer of access */
+export const ABSTRACT_ROLES: Record<string, { label: string; description: string; inherits?: string }> = {
+  employee: {
+    label: 'Employee',
+    description: 'Base access for all employees. Self-service capabilities.',
+  },
+  manager: {
+    label: 'Manager',
+    description: 'People management. Inherits Employee.',
+    inherits: 'employee',
+  },
+  admin: {
+    label: 'Administrator',
+    description: 'Full platform administration. Inherits Manager.',
+    inherits: 'manager',
+  },
+}
+
+/** Job roles: domain-specific permission bundles */
+export const JOB_ROLES: Record<string, { label: string; description: string; permissions: Permission[] }> = {
+  hr_admin: {
+    label: 'HR Administrator',
+    description: 'Full HR operations including onboarding, offboarding, and compliance.',
+    permissions: [
+      'people:read', 'people:write', 'people:delete',
+      'performance:read', 'performance:write', 'performance:manage',
+      'compensation:read', 'compensation:write',
+      'onboarding:read', 'onboarding:manage',
+      'offboarding:read', 'offboarding:manage',
+      'benefits:read', 'benefits:manage',
+      'compliance:read', 'compliance:manage',
+      'documents:read', 'documents:write',
+    ],
+  },
+  payroll_admin: {
+    label: 'Payroll Administrator',
+    description: 'Payroll processing, tax management, and financial reporting.',
+    permissions: [
+      'payroll:read', 'payroll:run', 'payroll:approve',
+      'compensation:read',
+      'finance:read',
+      'people:read',
+      'analytics:read',
+    ],
+  },
+  it_admin: {
+    label: 'IT Administrator',
+    description: 'IT infrastructure, identity management, and device management.',
+    permissions: [
+      'it:read', 'it:manage', 'it:admin',
+      'identity:read', 'identity:manage',
+      'settings:read', 'settings:manage',
+      'workflows:read', 'workflows:manage',
+    ],
+  },
+  recruiting_lead: {
+    label: 'Recruiting Lead',
+    description: 'Talent acquisition, headcount planning, and candidate management.',
+    permissions: [
+      'recruiting:read', 'recruiting:write',
+      'headcount:read', 'headcount:write',
+      'people:read',
+      'onboarding:read', 'onboarding:manage',
+    ],
+  },
+  finance_controller: {
+    label: 'Finance Controller',
+    description: 'Financial oversight including budgets, invoices, and expense approvals.',
+    permissions: [
+      'finance:read', 'finance:write', 'finance:approve',
+      'invoices:read', 'invoices:write',
+      'budgets:read', 'budgets:write',
+      'expense:read', 'expense:approve',
+      'payroll:read',
+      'compensation:read',
+      'analytics:read',
+    ],
+  },
+}
+
+/** Duty roles: atomic permission bundles for fine-grained assignment */
+export const DUTY_ROLES: Record<string, { label: string; description: string; permissions: Permission[] }> = {
+  leave_approver: {
+    label: 'Leave Approver',
+    description: 'Can approve or reject leave requests.',
+    permissions: ['leave:read', 'leave:approve'],
+  },
+  expense_approver: {
+    label: 'Expense Approver',
+    description: 'Can approve or reject expense reports.',
+    permissions: ['expense:read', 'expense:approve'],
+  },
+  timesheet_manager: {
+    label: 'Timesheet Manager',
+    description: 'Can view and manage team timesheets.',
+    permissions: ['time:read', 'time:manage'],
+  },
+  report_viewer: {
+    label: 'Report Viewer',
+    description: 'Read-only access to analytics and reporting.',
+    permissions: ['analytics:read'],
+  },
+  document_manager: {
+    label: 'Document Manager',
+    description: 'Can upload, manage, and organize documents.',
+    permissions: ['documents:read', 'documents:write'],
+  },
+  workflow_admin: {
+    label: 'Workflow Administrator',
+    description: 'Can create and manage approval workflows.',
+    permissions: ['workflows:read', 'workflows:manage'],
+  },
+  compliance_viewer: {
+    label: 'Compliance Viewer',
+    description: 'Read-only access to compliance and audit data.',
+    permissions: ['compliance:read'],
+  },
+  benefits_enrollee: {
+    label: 'Benefits Self-Service',
+    description: 'Can view and manage own benefits enrollment.',
+    permissions: ['benefits:read'],
+  },
+}
+
+/**
+ * Resolve effective permissions from a composable role set.
+ * Combines abstract role + job roles + duty roles into a single permission set.
+ */
+export function resolveComposablePermissions(
+  abstractRole: string,
+  jobRoles: string[] = [],
+  dutyRoles: string[] = [],
+): Permission[] {
+  const perms = new Set<Permission>()
+
+  // Abstract role permissions (with inheritance)
+  let current: string | undefined = abstractRole
+  while (current) {
+    const rolePerms = ROLE_PERMISSIONS[current]
+    if (rolePerms) {
+      for (const p of rolePerms) perms.add(p)
+    }
+    current = ABSTRACT_ROLES[current]?.inherits
+  }
+
+  // Job role permissions
+  for (const jr of jobRoles) {
+    const jobRole = JOB_ROLES[jr]
+    if (jobRole) {
+      for (const p of jobRole.permissions) perms.add(p)
+    }
+  }
+
+  // Duty role permissions
+  for (const dr of dutyRoles) {
+    const dutyRole = DUTY_ROLES[dr]
+    if (dutyRole) {
+      for (const p of dutyRole.permissions) perms.add(p)
+    }
+  }
+
+  return Array.from(perms)
+}
+
 // ── Module access map (for sidebar filtering) ──────────────────────────────
 
 export interface ModuleAccessFlags {

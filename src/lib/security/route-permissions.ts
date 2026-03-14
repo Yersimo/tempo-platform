@@ -42,6 +42,7 @@ const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
 
   // ── Settings & Admin ──
   '/settings':            ['settings:read'],
+  '/settings/security':   ['settings:manage'],
   '/workflows':           ['workflows:read'],
   '/workflow-studio':     ['workflows:manage'],
   '/app-studio':          ['admin:full'],
