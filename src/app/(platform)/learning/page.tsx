@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2 } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
@@ -224,6 +224,26 @@ export default function LearningPage() {
   const [connectedProviders, setConnectedProviders] = useState<Set<string>>(new Set(['udemy_business', 'linkedin_learning']))
   const [providerItemCounts, setProviderItemCounts] = useState<Record<string, number>>({ udemy_business: 847, linkedin_learning: 612 })
 
+  // Saving state for form submissions
+  const [saving, setSaving] = useState(false)
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; type: string; id: string; name: string }>({ show: false, type: '', id: '', name: '' })
+
+  function confirmDelete(type: string, id: string, name: string) {
+    setDeleteConfirm({ show: true, type, id, name })
+  }
+
+  function executeDelete() {
+    const { type, id } = deleteConfirm
+    if (type === 'block') deleteCourseBlock(id)
+    else if (type === 'question') deleteQuizQuestion(id)
+    else if (type === 'rule') deleteAutoEnrollRule(id)
+    else if (type === 'prerequisite') deleteCoursePrerequisite(id)
+    addToast(`${deleteConfirm.type.charAt(0).toUpperCase() + deleteConfirm.type.slice(1)} deleted`)
+    setDeleteConfirm({ show: false, type: '', id: '', name: '' })
+  }
+
   // SCORM Player state
   const [scormPlayerOpen, setScormPlayerOpen] = useState(false)
   const [scormPlayerPackage, setScormPlayerPackage] = useState<any>(null)
@@ -401,10 +421,14 @@ export default function LearningPage() {
   }, [enrollments, employees, reviews, skillGaps])
 
   function submitCourse() {
-    if (!courseForm.title) return
+    if (!courseForm.title.trim()) { addToast('Course title is required'); return }
+    if (!courseForm.category.trim()) { addToast('Course category is required'); return }
+    if (!courseForm.duration_hours || courseForm.duration_hours <= 0) { addToast('Duration must be greater than 0'); return }
+    setSaving(true)
     addCourse(courseForm)
     setShowCourseModal(false)
     setCourseForm({ title: '', description: '', category: 'Leadership', duration_hours: 8, format: 'online', level: 'beginner', is_mandatory: false })
+    setSaving(false)
   }
 
   // Mass enrollment helpers
@@ -421,13 +445,16 @@ export default function LearningPage() {
     setEnrollCourseSearch(''); setEnrollCourseCategory('all'); setEnrollCourseLevel('all'); setSelectedCourseId('')
   }
   function submitMassEnrollment() {
-    if (!selectedCourseId || newEnrollees.length === 0) return
+    if (!selectedCourseId) { addToast('Please select a course for enrollment'); return }
+    if (newEnrollees.length === 0) { addToast('Please select at least one employee to enroll'); return }
+    setSaving(true)
     newEnrollees.forEach(emp => {
       addEnrollment({ employee_id: emp.id, course_id: selectedCourseId, status: 'enrolled', progress: 0 })
     })
     const courseName = courses.find(c => c.id === selectedCourseId)?.title || ''
     addToast(t('massEnrollSuccess', { count: newEnrollees.length, course: courseName }))
     resetEnrollModal()
+    setSaving(false)
   }
 
   function handleEnroll(courseId: string) {
@@ -619,7 +646,11 @@ export default function LearningPage() {
   }
 
   function submitSession() {
-    if (!sessionForm.title || !sessionForm.instructor) return
+    if (!sessionForm.title.trim()) { addToast('Session title is required'); return }
+    if (!sessionForm.course_id) { addToast('Please select a course for this session'); return }
+    if (!sessionForm.instructor.trim()) { addToast('Instructor name is required'); return }
+    if (!sessionForm.scheduled_at) { addToast('Scheduled date/time is required'); return }
+    setSaving(true)
     addLiveSession({
       ...sessionForm,
       enrolled_count: 0,
@@ -627,10 +658,13 @@ export default function LearningPage() {
     })
     setShowSessionModal(false)
     setSessionForm({ title: '', course_id: '', instructor: '', scheduled_at: '', duration_minutes: 60, type: 'webinar', capacity: 50, meeting_url: '' })
+    setSaving(false)
   }
 
   function submitPath() {
-    if (!pathForm.title || pathForm.course_ids.length === 0) return
+    if (!pathForm.title.trim()) { addToast('Learning path title is required'); return }
+    if (pathForm.course_ids.length === 0) { addToast('Please add at least one course to the learning path'); return }
+    setSaving(true)
     const selectedCourses = courses.filter(c => pathForm.course_ids.includes(c.id))
     addLearningPath({
       ...pathForm,
@@ -638,6 +672,7 @@ export default function LearningPage() {
     })
     setShowPathModal(false)
     setPathForm({ title: '', description: '', course_ids: [], level: 'beginner' })
+    setSaving(false)
   }
 
   function toggleCourseInPath(courseId: string) {
@@ -651,18 +686,25 @@ export default function LearningPage() {
 
   // Course Builder handlers
   function submitBlock() {
-    if (!blockForm.title || !selectedBuilderCourse) return
+    if (!selectedBuilderCourse) { addToast('Please select a course first'); return }
+    if (!blockForm.title.trim()) { addToast('Block title is required'); return }
+    setSaving(true)
     addCourseBlock({ ...blockForm, course_id: selectedBuilderCourse })
     setShowBlockModal(false)
     setBlockForm({ type: 'text', title: '', content: '', duration_minutes: 10, module_index: 0, order: 0, status: 'draft' })
+    setSaving(false)
   }
 
   // Quiz Builder handlers
   function submitQuestion() {
-    if (!questionForm.question) return
+    if (!questionForm.question.trim()) { addToast('Question text is required'); return }
+    const filledOptions = questionForm.options.filter(o => o.trim())
+    if (filledOptions.length < 2) { addToast('Please provide at least 2 answer options'); return }
+    setSaving(true)
     addQuizQuestion({ ...questionForm, course_id: selectedQuizCourse || questionForm.course_id })
     setShowQuestionModal(false)
     setQuestionForm({ type: 'multiple_choice', question: '', options: ['', '', '', ''], correct_answer: '', points: 10, explanation: '', course_id: '' })
+    setSaving(false)
   }
 
   function handleGenerateQuiz() {
@@ -1538,8 +1580,13 @@ export default function LearningPage() {
                 value={catalogSearch}
                 onChange={(e) => setCatalogSearch(e.target.value)}
                 placeholder={t('searchCourses')}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-canvas border border-divider rounded-lg focus:outline-none focus:border-tempo-400 focus:ring-1 focus:ring-tempo-400"
+                className="w-full pl-9 pr-8 py-2 text-xs bg-canvas border border-divider rounded-lg focus:outline-none focus:border-tempo-400 focus:ring-1 focus:ring-tempo-400"
               />
+              {catalogSearch && (
+                <button onClick={() => setCatalogSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-t3 hover:text-t1 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)}
               className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
@@ -1676,7 +1723,20 @@ export default function LearningPage() {
             })}
           </div>
 
-          {filteredCatalog.length === 0 && (
+          {filteredCatalog.length === 0 && courses.length === 0 && (
+            <Card>
+              <div className="text-center py-12">
+                <BookOpen size={40} className="mx-auto text-t3 mb-3 opacity-50" />
+                <p className="text-sm font-medium text-t1 mb-1">No courses yet</p>
+                <p className="text-xs text-t3 mb-4">Create your first course or use AI to generate one</p>
+                <div className="flex items-center justify-center gap-2">
+                  <Button size="sm" onClick={() => setShowCourseModal(true)}><Plus size={14} /> Create Course</Button>
+                  <Button size="sm" variant="outline" onClick={() => setActiveTab('builder')}><Sparkles size={14} /> AI Builder</Button>
+                </div>
+              </div>
+            </Card>
+          )}
+          {filteredCatalog.length === 0 && courses.length > 0 && (
             <Card>
               <div className="text-center py-12">
                 <Search size={32} className="mx-auto text-t3 mb-3" />
@@ -1693,7 +1753,15 @@ export default function LearningPage() {
           <CardHeader><CardTitle>{t('allEnrollments')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
             {enrollments.length === 0 ? (
-              <div className="px-6 py-12 text-center text-sm text-t3">{t('noEnrollments')}</div>
+              <div className="px-6 py-12 text-center">
+                <GraduationCap size={40} className="mx-auto text-t3 mb-3 opacity-50" />
+                <p className="text-sm font-medium text-t1 mb-1">No enrollments yet</p>
+                <p className="text-xs text-t3 mb-4">Enroll employees in courses to track their progress</p>
+                <div className="flex items-center justify-center gap-2">
+                  <Button size="sm" onClick={() => setShowEnrollModal(true)}><Plus size={14} /> Enroll Employees</Button>
+                  <Button size="sm" variant="outline" onClick={() => setActiveTab('catalog')}><BookOpen size={14} /> Browse Catalog</Button>
+                </div>
+              </div>
             ) : enrollments.map(enr => {
               const course = courses.find(c => c.id === enr.course_id)
               const empName = getEmployeeName(enr.employee_id)
@@ -2182,7 +2250,14 @@ export default function LearningPage() {
           </div>
 
           {learningPaths.length === 0 ? (
-            <Card><div className="text-center py-8 text-sm text-t3">{t('noEnrollments')}</div></Card>
+            <Card>
+              <div className="text-center py-12">
+                <Route size={40} className="mx-auto text-t3 mb-3 opacity-50" />
+                <p className="text-sm font-medium text-t1 mb-1">No learning paths</p>
+                <p className="text-xs text-t3 mb-4">Create structured learning journeys for your team</p>
+                <Button size="sm" onClick={() => setShowPathModal(true)}><Plus size={14} /> Create Learning Path</Button>
+              </div>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {learningPaths.map(path => {
@@ -2386,7 +2461,7 @@ export default function LearningPage() {
                   <div className="flex gap-1">
                     <button onClick={() => updateAutoEnrollRule(rule.id, { is_active: !rule.is_active })}
                       className="text-xs text-t3 hover:text-tempo-600">{rule.is_active ? tc('deactivate') : tc('activate')}</button>
-                    <button onClick={() => deleteAutoEnrollRule(rule.id)}
+                    <button onClick={() => confirmDelete('rule', rule.id, rule.name)}
                       className="text-xs text-red-500 hover:text-red-700 ml-2">×</button>
                   </div>
                 </div>
@@ -2647,7 +2722,7 @@ export default function LearningPage() {
                               {block.status === 'draft' && (
                                 <Button size="sm" variant="outline" onClick={() => updateCourseBlock(block.id, { status: 'published' })}>{t('publishBlock')}</Button>
                               )}
-                              <Button size="sm" variant="secondary" onClick={() => deleteCourseBlock(block.id)}>×</Button>
+                              <Button size="sm" variant="secondary" onClick={() => confirmDelete('block', block.id, block.title)}>×</Button>
                             </div>
                           </div>
                         ))}
@@ -2746,7 +2821,7 @@ export default function LearningPage() {
                                   {p.minimum_score && <span className="text-[0.55rem] text-t3">Min. score: {p.minimum_score}%</span>}
                                 </div>
                               </div>
-                              <Button size="sm" variant="ghost" onClick={() => deleteCoursePrerequisite(p.id)}>x</Button>
+                              <Button size="sm" variant="ghost" onClick={() => confirmDelete('prerequisite', p.id, p.prerequisiteCourse?.title || 'Prerequisite')}>x</Button>
                             </div>
                           ))}
                         </div>
@@ -2860,7 +2935,7 @@ export default function LearningPage() {
                     <div className="text-right">
                       <span className="text-xs font-medium text-tempo-600">{q.points} {t('points')}</span>
                     </div>
-                    <Button size="sm" variant="secondary" onClick={() => deleteQuizQuestion(q.id)}>×</Button>
+                    <Button size="sm" variant="secondary" onClick={() => confirmDelete('question', q.id, q.question)}>×</Button>
                   </div>
                 )
               })}
@@ -3811,7 +3886,7 @@ export default function LearningPage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCourseModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCourse}>{t('createCourse')}</Button>
+            <Button onClick={submitCourse} disabled={saving}>{saving ? 'Saving...' : t('createCourse')}</Button>
           </div>
         </div>
       </Modal>
@@ -4085,8 +4160,8 @@ export default function LearningPage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-divider">
                 <Button variant="secondary" onClick={() => setEnrollStep(1)}>{tc('back')}</Button>
                 <Button variant="secondary" onClick={resetEnrollModal}>{tc('cancel')}</Button>
-                <Button onClick={submitMassEnrollment} disabled={!selectedCourseId || newEnrollees.length === 0}>
-                  {t('enrollCount', { count: newEnrollees.length })}
+                <Button onClick={submitMassEnrollment} disabled={saving || !selectedCourseId || newEnrollees.length === 0}>
+                  {saving ? 'Enrolling...' : t('enrollCount', { count: newEnrollees.length })}
                 </Button>
               </div>
             </>
@@ -4185,7 +4260,7 @@ export default function LearningPage() {
           <Input label={t('meetingUrl')} value={sessionForm.meeting_url} onChange={(e) => setSessionForm({ ...sessionForm, meeting_url: e.target.value })} placeholder="https://meet.tempo.com/..." />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowSessionModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitSession}>{t('scheduleSession')}</Button>
+            <Button onClick={submitSession} disabled={saving}>{saving ? 'Saving...' : t('scheduleSession')}</Button>
           </div>
         </div>
       </Modal>
@@ -4226,7 +4301,7 @@ export default function LearningPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPathModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPath}>{t('createPath')}</Button>
+            <Button onClick={submitPath} disabled={saving}>{saving ? 'Saving...' : t('createPath')}</Button>
           </div>
         </div>
       </Modal>
@@ -4253,7 +4328,7 @@ export default function LearningPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowBlockModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitBlock}>{t('addBlock')}</Button>
+            <Button onClick={submitBlock} disabled={saving}>{saving ? 'Saving...' : t('addBlock')}</Button>
           </div>
         </div>
       </Modal>
@@ -4301,7 +4376,7 @@ export default function LearningPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowQuestionModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitQuestion}>{t('addQuestion')}</Button>
+            <Button onClick={submitQuestion} disabled={saving}>{saving ? 'Saving...' : t('addQuestion')}</Button>
           </div>
         </div>
       </Modal>
@@ -4511,6 +4586,22 @@ export default function LearningPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAssignModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitAssignment}>{t('assignLearning')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={deleteConfirm.show} onClose={() => setDeleteConfirm({ show: false, type: '', id: '', name: '' })} title="Confirm Delete">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">
+            Are you sure you want to delete this {deleteConfirm.type}?
+          </p>
+          <p className="text-xs text-t3 bg-canvas rounded-lg p-3 border border-divider truncate">
+            {deleteConfirm.name}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setDeleteConfirm({ show: false, type: '', id: '', name: '' })}>{tc('cancel')}</Button>
+            <Button variant="primary" className="bg-red-600 hover:bg-red-700" onClick={executeDelete}>Delete</Button>
           </div>
         </div>
       </Modal>

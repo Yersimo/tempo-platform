@@ -370,6 +370,12 @@ export default function OnboardingPage() {
   const [planRole, setPlanRole] = useState('')
   const [planDepartment, setPlanDepartment] = useState('')
 
+  // ─── Production-grade: Confirm, Search/Filter, Saving ─────────────
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: string; id: string; label: string } | null>(null)
+  const [onboardingSearch, setOnboardingSearch] = useState('')
+  const [onboardingStatusFilter, setOnboardingStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started'>('all')
+  const [formSaving, setFormSaving] = useState(false)
+
   // ─── Computed Stats ────────────────────────────────────────────────
   const activeBuddyCount = useMemo(() => buddyAssignments.filter(b => b.status === 'active').length, [buddyAssignments])
   const completedBuddyCount = useMemo(() => buddyAssignments.filter(b => b.status === 'completed').length, [buddyAssignments])
@@ -381,9 +387,38 @@ export default function OnboardingPage() {
   const taskCompletionPct = useMemo(() => preboardingTasks.length > 0 ? Math.round((completedTaskCount / preboardingTasks.length) * 100) : 0, [preboardingTasks, completedTaskCount])
 
   const filteredTasks = useMemo(() => {
-    if (preboardCategoryFilter === 'all') return preboardingTasks
-    return preboardingTasks.filter(t => t.category === preboardCategoryFilter)
-  }, [preboardingTasks, preboardCategoryFilter])
+    let tasks = preboardingTasks
+    if (preboardCategoryFilter !== 'all') tasks = tasks.filter(t => t.category === preboardCategoryFilter)
+    if (onboardingSearch.trim()) {
+      const q = onboardingSearch.toLowerCase()
+      tasks = tasks.filter(t => {
+        const emp = employees.find(e => e.id === t.employee_id)
+        return emp?.profile?.full_name?.toLowerCase().includes(q) || t.title.toLowerCase().includes(q)
+      })
+    }
+    if (onboardingStatusFilter !== 'all') {
+      const statusMap: Record<string, string> = { in_progress: 'in_progress', completed: 'completed', not_started: 'pending' }
+      tasks = tasks.filter(t => t.status === statusMap[onboardingStatusFilter])
+    }
+    return tasks
+  }, [preboardingTasks, preboardCategoryFilter, onboardingSearch, onboardingStatusFilter, employees])
+
+  const filteredBuddyAssignments = useMemo(() => {
+    let assignments = buddyAssignments
+    if (onboardingSearch.trim()) {
+      const q = onboardingSearch.toLowerCase()
+      assignments = assignments.filter(a => {
+        const newHire = employees.find(e => e.id === a.new_hire_id)
+        const buddy = employees.find(e => e.id === a.buddy_id)
+        return newHire?.profile?.full_name?.toLowerCase().includes(q) || buddy?.profile?.full_name?.toLowerCase().includes(q)
+      })
+    }
+    if (onboardingStatusFilter !== 'all') {
+      const statusMap: Record<string, string> = { in_progress: 'active', completed: 'completed', not_started: 'pending' }
+      assignments = assignments.filter(a => a.status === statusMap[onboardingStatusFilter])
+    }
+    return assignments
+  }, [buddyAssignments, onboardingSearch, onboardingStatusFilter, employees])
 
   // ─── Bulk Task Computed Data ──────────────────────────────────────
   const taskTemplates: Record<string, string[]> = {
@@ -596,48 +631,64 @@ export default function OnboardingPage() {
   }
 
   // ─── Buddy Handlers ────────────────────────────────────────────────
-  const handleAssignBuddy = () => {
-    if (!buddyForm.new_hire_id || !buddyForm.buddy_id) return
-    const newHire = employees.find(e => e.id === buddyForm.new_hire_id)
-    addBuddyAssignment({
-      new_hire_id: buddyForm.new_hire_id,
-      buddy_id: buddyForm.buddy_id,
-      status: 'active',
-      match_score: 80,
-      department_id: newHire?.department_id || '',
-      checklist: [
-        { task: 'Introduce to team members', done: false },
-        { task: 'Office tour and facilities walkthrough', done: false },
-        { task: 'Lunch together on first day', done: false },
-        { task: 'Explain team communication channels', done: false },
-        { task: 'Review key tools and systems', done: false },
-      ],
-      meetings: [
-        { date: new Date(Date.now() + 86400000).toISOString(), topic: 'Welcome and introductions', completed: false },
-        { date: new Date(Date.now() + 86400000 * 8).toISOString(), topic: 'First week check-in', completed: false },
-      ],
-    })
-    setBuddyForm({ new_hire_id: '', buddy_id: '' })
-    setShowAssignBuddyModal(false)
+  const handleAssignBuddy = async () => {
+    if (!buddyForm.new_hire_id) { addToast('Please select a new hire', 'error'); return }
+    if (!buddyForm.buddy_id) { addToast('Please select a buddy', 'error'); return }
+    if (buddyForm.new_hire_id === buddyForm.buddy_id) { addToast('New hire and buddy cannot be the same person', 'error'); return }
+    setFormSaving(true)
+    try {
+      const newHire = employees.find(e => e.id === buddyForm.new_hire_id)
+      addBuddyAssignment({
+        new_hire_id: buddyForm.new_hire_id,
+        buddy_id: buddyForm.buddy_id,
+        status: 'active',
+        match_score: 80,
+        department_id: newHire?.department_id || '',
+        checklist: [
+          { task: 'Introduce to team members', done: false },
+          { task: 'Office tour and facilities walkthrough', done: false },
+          { task: 'Lunch together on first day', done: false },
+          { task: 'Explain team communication channels', done: false },
+          { task: 'Review key tools and systems', done: false },
+        ],
+        meetings: [
+          { date: new Date(Date.now() + 86400000).toISOString(), topic: 'Welcome and introductions', completed: false },
+          { date: new Date(Date.now() + 86400000 * 8).toISOString(), topic: 'First week check-in', completed: false },
+        ],
+      })
+      addToast('Buddy assignment created successfully')
+      setBuddyForm({ new_hire_id: '', buddy_id: '' })
+      setShowAssignBuddyModal(false)
+    } finally {
+      setFormSaving(false)
+    }
   }
 
-  const handleAddTask = () => {
-    if (!taskForm.employee_id || !taskForm.title) return
-    addPreboardingTask({
-      employee_id: taskForm.employee_id,
-      title: taskForm.title,
-      category: taskForm.category,
-      status: 'pending',
-      due_date: taskForm.due_date || new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
-      completed_date: null,
-      priority: taskForm.priority,
-    })
-    setTaskForm({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
-    setShowAddTaskModal(false)
+  const handleAddTask = async () => {
+    if (!taskForm.title.trim()) { addToast('Task title is required', 'error'); return }
+    if (!taskForm.due_date) { addToast('Due date is required', 'error'); return }
+    if (!taskForm.employee_id) { addToast('Please select an employee to assign this task to', 'error'); return }
+    setFormSaving(true)
+    try {
+      addPreboardingTask({
+        employee_id: taskForm.employee_id,
+        title: taskForm.title,
+        category: taskForm.category,
+        status: 'pending',
+        due_date: taskForm.due_date,
+        completed_date: null,
+        priority: taskForm.priority,
+      })
+      addToast('Preboarding task created successfully')
+      setTaskForm({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
+      setShowAddTaskModal(false)
+    } finally {
+      setFormSaving(false)
+    }
   }
 
   const addTemplateItem = () => {
-    if (!templateItemForm.title) return
+    if (!templateItemForm.title.trim()) { addToast('Item title is required', 'error'); return }
     setTemplateItems(prev => [...prev, { ...templateItemForm }])
     setTemplateItemForm({ title: '', description: '', due_days: 7, assignee: '' })
   }
@@ -647,6 +698,8 @@ export default function OnboardingPage() {
   }
 
   const applyTemplate = (employeeId: string) => {
+    if (!templateName.trim()) { addToast('Template name is required', 'error'); return }
+    if (!templateCategory) { addToast('Template category is required', 'error'); return }
     if (!employeeId || templateItems.length === 0) return
     const today = new Date()
     templateItems.forEach(item => {
@@ -666,6 +719,23 @@ export default function OnboardingPage() {
     setTemplateName('')
     setTemplateCategory('documents')
     setTemplateItems([])
+  }
+
+  // ─── Confirm Action Handler ────────────────────────────────────────
+  const executeConfirmAction = () => {
+    if (!confirmAction) return
+    const { action, id } = confirmAction
+    if (action === 'remove_buddy') {
+      updateBuddyAssignment(id, { status: 'completed' })
+      addToast('Buddy assignment removed')
+    } else if (action === 'delete_task') {
+      updatePreboardingTask(id, { status: 'completed', completed_date: new Date().toISOString().split('T')[0] })
+      addToast('Preboarding task deleted')
+    } else if (action === 'archive_onboarding') {
+      updatePreboardingTask(id, { status: 'completed', completed_date: new Date().toISOString().split('T')[0] })
+      addToast('Onboarding process archived')
+    }
+    setConfirmAction(null)
   }
 
   // ─── Setup Wizard Render ───────────────────────────────────────────
@@ -1138,6 +1208,37 @@ export default function OnboardingPage() {
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
+      {/* Search & Status Filter */}
+      {(activeTab === 'buddy-system' || activeTab === 'preboarding') && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={onboardingSearch}
+              onChange={e => setOnboardingSearch(e.target.value)}
+              placeholder="Search by employee name..."
+              className="w-full pl-9 pr-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
+            />
+            <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          </div>
+          <div className="flex gap-1">
+            {(['all', 'in_progress', 'completed', 'not_started'] as const).map(status => (
+              <button
+                key={status}
+                onClick={() => setOnboardingStatusFilter(status)}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  onboardingStatusFilter === status
+                    ? 'bg-tempo-600 text-white'
+                    : 'bg-canvas border border-border text-t2 hover:bg-tempo-50'
+                }`}
+              >
+                {status === 'all' ? 'All' : status === 'in_progress' ? 'In Progress' : status === 'completed' ? 'Completed' : 'Not Started'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════════ MY ONBOARDING TAB ═══════════════════ */}
       {activeTab === 'my-onboarding' && (
         <div className="space-y-6">
@@ -1494,15 +1595,16 @@ export default function OnboardingPage() {
 
           {/* Buddy Assignments List */}
           <div className="space-y-4">
-            {buddyAssignments.length === 0 ? (
+            {filteredBuddyAssignments.length === 0 ? (
               <Card>
                 <div className="p-8 text-center">
                   <Users size={40} className="text-t3 mx-auto mb-3" />
-                  <p className="text-sm text-t3">{t('noActiveBuddies')}</p>
+                  <p className="text-sm font-medium text-t2">No buddy assignments yet</p>
+                  <p className="text-xs text-t3 mt-1">Pair new hires with experienced team members to help them settle in faster.</p>
                 </div>
               </Card>
             ) : (
-              buddyAssignments.map(assignment => {
+              filteredBuddyAssignments.map(assignment => {
                 const newHire = employees.find(e => e.id === assignment.new_hire_id)
                 const buddy = employees.find(e => e.id === assignment.buddy_id)
                 const checklist = assignment.checklist || []
@@ -1539,6 +1641,15 @@ export default function OnboardingPage() {
                             <Sparkles size={12} className="text-tempo-600" />
                             <span>{assignment.match_score}%</span>
                           </div>
+                          {assignment.status === 'active' && (
+                            <button
+                              onClick={() => setConfirmAction({ show: true, action: 'remove_buddy', id: assignment.id, label: `Remove buddy pairing: ${newHire?.profile.full_name || 'Unknown'} & ${buddy?.profile.full_name || 'Unknown'}` })}
+                              className="text-xs text-red-500 hover:text-red-700 ml-1"
+                              title="Remove assignment"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1549,7 +1660,10 @@ export default function OnboardingPage() {
                             <p className="text-xs font-medium text-t1">{t('checklistProgress')}</p>
                             <span className="text-xs text-t3">{checklistDone}/{checklistTotal}</span>
                           </div>
-                          <Progress value={checklistDone} max={checklistTotal} size="sm" showLabel />
+                          <div className="flex items-center gap-2">
+                            <Progress value={checklistDone} max={checklistTotal} size="sm" showLabel className="flex-1" />
+                            <span className="text-xs font-semibold text-tempo-600 shrink-0">{checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0}%</span>
+                          </div>
                           <div className="mt-2 space-y-1">
                             {checklist.map((item: any, i: number) => (
                               <div key={i} className="flex items-center gap-2">
@@ -1621,8 +1735,8 @@ export default function OnboardingPage() {
                 { value: '', label: t('selectBuddy') },
                 ...employees.filter(e => e.id !== buddyForm.new_hire_id).map(e => ({ value: e.id, label: `${e.profile.full_name} — ${e.job_title}` })),
               ]} />
-              <Button onClick={handleAssignBuddy} disabled={!buddyForm.new_hire_id || !buddyForm.buddy_id} className="w-full">
-                <UserPlus size={14} /> {t('assignBuddy')}
+              <Button onClick={handleAssignBuddy} disabled={!buddyForm.new_hire_id || !buddyForm.buddy_id || formSaving} className="w-full">
+                {formSaving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><UserPlus size={14} /> {t('assignBuddy')}</>}
               </Button>
             </div>
           </Modal>
@@ -1726,6 +1840,15 @@ export default function OnboardingPage() {
 
           {/* Task List */}
           <div className="space-y-2">
+            {filteredTasks.length === 0 && (
+              <Card>
+                <div className="p-8 text-center">
+                  <FileText size={40} className="text-t3 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-t2">No preboarding tasks</p>
+                  <p className="text-xs text-t3 mt-1">Set up tasks to complete before day one so new hires are ready to go.</p>
+                </div>
+              </Card>
+            )}
             {filteredTasks.map(task => {
               const emp = employees.find(e => e.id === task.employee_id)
               return (
@@ -1770,6 +1893,15 @@ export default function OnboardingPage() {
                     <Badge variant={task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : 'default'}>
                       {task.status === 'completed' ? tc('completed') : task.status === 'in_progress' ? tc('inProgress') : tc('pending')}
                     </Badge>
+                    {task.status !== 'completed' && (
+                      <button
+                        onClick={() => setConfirmAction({ show: true, action: 'delete_task', id: task.id, label: `Delete task: ${task.title}` })}
+                        className="text-t3 hover:text-red-500 shrink-0 ml-1"
+                        title="Delete task"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
                 </Card>
               )
@@ -1938,8 +2070,8 @@ export default function OnboardingPage() {
                   className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-sm text-t1 focus:border-tempo-600 focus:ring-1 focus:ring-tempo-600/20 outline-none"
                 />
               </div>
-              <Button onClick={handleAddTask} disabled={!taskForm.employee_id || !taskForm.title} className="w-full">
-                {tc('create')}
+              <Button onClick={handleAddTask} disabled={!taskForm.employee_id || !taskForm.title || formSaving} className="w-full">
+                {formSaving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : tc('create')}
               </Button>
             </div>
           </Modal>
@@ -2202,6 +2334,23 @@ export default function OnboardingPage() {
                 Create {bulkTaskSelectedEmployees.length * bulkTaskTemplate.length} Tasks
               </Button>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════ CONFIRMATION DIALOG ═══════════════════ */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">Are you sure?</p>
+              <p className="text-xs text-amber-700 mt-1">{confirmAction?.label}</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button onClick={executeConfirmAction} className="bg-red-600 hover:bg-red-700">Confirm</Button>
           </div>
         </div>
       </Modal>

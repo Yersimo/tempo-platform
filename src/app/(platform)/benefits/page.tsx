@@ -167,6 +167,10 @@ export default function BenefitsPage() {
   const [showFlexAccountModal, setShowFlexAccountModal] = useState(false)
   const [showFlexExpenseModal, setShowFlexExpenseModal] = useState(false)
   const [acaTaxYearFilter, setAcaTaxYearFilter] = useState<number | 'all'>('all')
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean, action: string, id: string, label: string } | null>(null)
+  const [planSearch, setPlanSearch] = useState('')
+  const [planTypeFilter, setPlanTypeFilter] = useState('all')
 
   // ---- Forms ----
   const [planForm, setPlanForm] = useState({
@@ -220,6 +224,11 @@ export default function BenefitsPage() {
   const [calcCoverage, setCalcCoverage] = useState('employee_only')
   const [calcDependents, setCalcDependents] = useState(0)
 
+  // ---- Currency Formatting (amounts are in cents) ----
+  function fmtCents(cents: number) {
+    return `$${(cents / 100).toFixed(2)}`
+  }
+
   // ---- Computed Data ----
   const activePlans = benefitPlans.filter(p => p.is_active)
   const totalEmployerCost = benefitPlans.reduce((a, p) => a + p.cost_employer, 0)
@@ -228,6 +237,16 @@ export default function BenefitsPage() {
   const enrolledEmployeeIds = [...new Set(activeEnrollments.map(e => (e as any).employee_id))]
   const enrollmentRate = employees.length > 0 ? Math.round((enrolledEmployeeIds.length / employees.length) * 100) : 0
   const pendingLifeEvents = lifeEvents.filter(e => (e as any).status === 'pending')
+
+  const filteredPlans = useMemo(() => {
+    let list = benefitPlans
+    if (planTypeFilter !== 'all') list = list.filter(p => p.type === planTypeFilter)
+    if (planSearch) {
+      const q = planSearch.toLowerCase()
+      list = list.filter(p => p.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [benefitPlans, planSearch, planTypeFilter])
 
   const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country))].filter(Boolean).sort(), [employees])
   const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level))].filter(Boolean), [employees])
@@ -310,24 +329,55 @@ export default function BenefitsPage() {
   }
 
   async function submitPlan() {
-    if (!planForm.name || !planForm.provider) return
+    if (!planForm.name.trim()) { addToast('Plan name is required'); return }
+    if (!planForm.type) { addToast('Plan type is required'); return }
+    if (!planForm.provider.trim()) { addToast('Provider is required'); return }
+    const costEmp = Number(planForm.cost_employee)
+    const costEr = Number(planForm.cost_employer)
+    if (isNaN(costEmp) || costEmp < 0) { addToast('Employee cost must be a valid number >= 0'); return }
+    if (isNaN(costEr) || costEr < 0) { addToast('Employer cost must be a valid number >= 0'); return }
     const data = {
       name: planForm.name, type: planForm.type, provider: planForm.provider,
-      cost_employee: Number(planForm.cost_employee) || 0, cost_employer: Number(planForm.cost_employer) || 0,
+      cost_employee: costEmp, cost_employer: costEr,
       description: planForm.description, is_active: planForm.is_active, currency: planForm.currency,
     }
+    setSaving(true)
     try {
       await benefitsAPI(editingPlan ? 'update-plan' : 'create-plan', editingPlan ? { id: editingPlan, ...data } : data)
     } catch { /* fallback to store-only */ }
     if (editingPlan) { updateBenefitPlan(editingPlan, data) } else { addBenefitPlan(data) }
+    setSaving(false)
     setShowPlanModal(false)
   }
 
   async function togglePlanStatus(id: string, currentStatus: boolean) {
+    if (currentStatus) {
+      const plan = benefitPlans.find(p => p.id === id)
+      setConfirmAction({ show: true, action: 'deactivate-plan', id, label: `Deactivate plan "${plan?.name || ''}"?` })
+      return
+    }
     try {
-      await benefitsAPI('update-plan', { id, is_active: !currentStatus })
+      await benefitsAPI('update-plan', { id, is_active: true })
     } catch { /* fallback to store-only */ }
-    updateBenefitPlan(id, { is_active: !currentStatus })
+    updateBenefitPlan(id, { is_active: true })
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return
+    const { action, id } = confirmAction
+    setSaving(true)
+    if (action === 'deactivate-plan') {
+      try { await benefitsAPI('update-plan', { id, is_active: false }) } catch { /* fallback */ }
+      updateBenefitPlan(id, { is_active: false })
+    } else if (action === 'cancel-enrollment') {
+      try { await carrierAPI('cancel-enrollment', { id }) } catch { /* fallback */ }
+      updateBenefitEnrollment(id, { status: 'waived' })
+    } else if (action === 'remove-dependent') {
+      try { await benefitsAPI('remove-dependent', { id }) } catch { /* fallback */ }
+      updateBenefitDependent(id, { status: 'removed' })
+    }
+    setSaving(false)
+    setConfirmAction(null)
   }
 
   function toggleCompare(planId: string) {
@@ -340,45 +390,56 @@ export default function BenefitsPage() {
 
   // ---- Enrollment CRUD ----
   async function submitEnrollment() {
-    if (!enrollForm.employee_id || !enrollForm.plan_id) return
+    if (!enrollForm.plan_id) { addToast('Please select a benefit plan'); return }
+    if (!enrollForm.employee_id) { addToast('Please select an employee'); return }
     const data = {
       employee_id: enrollForm.employee_id, plan_id: enrollForm.plan_id,
       coverage_level: enrollForm.coverage_level, status: 'active',
       enrolled_date: new Date().toISOString().split('T')[0],
       effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     }
+    setSaving(true)
     try {
       await carrierAPI('enroll', data)
     } catch { /* fallback to store-only */ }
     addBenefitEnrollment(data)
+    setSaving(false)
     setShowEnrollmentModal(false)
     setEnrollForm({ employee_id: '', plan_id: '', coverage_level: 'employee_only' })
   }
 
   // ---- Dependent CRUD ----
   async function submitDependent() {
-    if (!depForm.employee_id || !depForm.first_name || !depForm.last_name) return
+    if (!depForm.employee_id) { addToast('Please select an employee'); return }
+    if (!depForm.first_name.trim() || !depForm.last_name.trim()) { addToast('Dependent name is required'); return }
+    if (!depForm.relationship) { addToast('Relationship is required'); return }
+    if (!depForm.date_of_birth) { addToast('Date of birth is required'); return }
+    setSaving(true)
     try {
       await benefitsAPI('add-dependent', { ...depForm })
     } catch { /* fallback to store-only */ }
     addBenefitDependent({ ...depForm })
+    setSaving(false)
     setShowDependentModal(false)
     setDepForm({ employee_id: '', first_name: '', last_name: '', relationship: 'spouse', date_of_birth: '', gender: 'male', plan_ids: [] })
   }
 
   // ---- Life Event CRUD ----
   async function submitLifeEvent() {
-    if (!lifeEventForm.employee_id || !lifeEventForm.event_date) return
+    if (!lifeEventForm.employee_id) { addToast('Please select an employee'); return }
+    if (!lifeEventForm.event_date) { addToast('Event date is required'); return }
     const deadline = new Date(new Date(lifeEventForm.event_date).getTime() + 30 * 86400000).toISOString().split('T')[0]
     const data = {
       employee_id: lifeEventForm.employee_id, type: lifeEventForm.type,
       event_date: lifeEventForm.event_date, reported_date: new Date().toISOString().split('T')[0],
       deadline, status: 'pending', notes: lifeEventForm.notes, benefit_changes: [],
     }
+    setSaving(true)
     try {
       await benefitsAPI('add-life-event', data)
     } catch { /* fallback to store-only */ }
     addLifeEvent(data)
+    setSaving(false)
     setShowLifeEventModal(false)
     setLifeEventForm({ employee_id: '', type: 'marriage', event_date: '', notes: '' })
   }
@@ -395,10 +456,12 @@ export default function BenefitsPage() {
       enrolled_count: 0,
       eligible_count: employees.length,
     }
+    setSaving(true)
     try {
       await benefitsAPI('create-open-enrollment', data)
     } catch { /* fallback to store-only */ }
     addOpenEnrollmentPeriod(data)
+    setSaving(false)
     setShowOEPModal(false)
     setOepForm({ name: '', start_date: '', end_date: '', plan_ids: [] })
   }
@@ -420,10 +483,12 @@ export default function BenefitsPage() {
       monthly_premium: Number(cobraForm.monthly_premium) || 0,
       status: 'pending_notification',
     }
+    setSaving(true)
     try {
       await carrierAPI('cobra-notify', data)
     } catch { /* fallback to store-only */ }
     addCobraEvent(data)
+    setSaving(false)
     setShowCobraModal(false)
     setCobraForm({ employee_id: '', qualifying_event: 'termination', event_date: '', notification_date: '', coverage_end_date: '', monthly_premium: 0 })
   }
@@ -441,10 +506,12 @@ export default function BenefitsPage() {
       ytd_expenses: 0,
       status: 'active',
     }
+    setSaving(true)
     try {
       await benefitsAPI('create-flex-account', data)
     } catch { /* fallback to store-only */ }
     addFlexBenefitAccount(data)
+    setSaving(false)
     setShowFlexAccountModal(false)
     setFlexAccountForm({ employee_id: '', account_type: 'hsa', annual_election: 0 })
   }
@@ -460,10 +527,12 @@ export default function BenefitsPage() {
       transaction_date: flexExpenseForm.receipt_date || new Date().toISOString().split('T')[0],
       status: 'pending',
     }
+    setSaving(true)
     try {
       await benefitsAPI('submit-flex-expense', data)
     } catch { /* fallback to store-only */ }
     addFlexBenefitTransaction(data)
+    setSaving(false)
     setShowFlexExpenseModal(false)
     setFlexExpenseForm({ account_id: '', amount: 0, description: '', receipt_date: '' })
   }
@@ -570,7 +639,7 @@ export default function BenefitsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label={t('activePlans')} value={activePlans.length} icon={<Shield size={20} />} />
             <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} />
-            <StatCard label={t('monthlyEmployerCost')} value={`$${totalEmployerCost.toLocaleString()}`} change={tc('perEmployee')} changeType="neutral" />
+            <StatCard label={t('monthlyEmployerCost')} value={fmtCents(totalEmployerCost)} change={tc('perEmployee')} changeType="neutral" />
             <StatCard label={t('providers')} value={uniqueProviders} change={t('activePartnerships')} changeType="neutral" />
           </div>
 
@@ -578,6 +647,30 @@ export default function BenefitsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <AIInsightCard insight={costInsight} />
             <AIRecommendationList title={t('benefitRecommendations')} recommendations={benefitRecs} />
+          </div>
+
+          {/* Search & Filter */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="relative flex-1 max-w-sm">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input
+                type="text" placeholder="Search plans by name..."
+                value={planSearch} onChange={e => setPlanSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+              />
+            </div>
+            <select
+              className="border border-divider rounded-lg px-3 py-2 text-sm bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600"
+              value={planTypeFilter} onChange={e => setPlanTypeFilter(e.target.value)}
+            >
+              <option value="all">All Types</option>
+              <option value="medical">Health</option>
+              <option value="dental">Dental</option>
+              <option value="vision">Vision</option>
+              <option value="life">Life</option>
+              <option value="disability">Disability</option>
+              <option value="retirement">Retirement</option>
+            </select>
           </div>
 
           {/* Plan Comparison (when 2 plans selected) */}
@@ -607,10 +700,10 @@ export default function BenefitsPage() {
                       {[
                         { label: tc('type'), a: planA.type, b: planB.type },
                         { label: t('provider'), a: planA.provider, b: planB.provider },
-                        { label: t('employeeCost'), a: `$${planA.cost_employee}/mo`, b: `$${planB.cost_employee}/mo` },
-                        { label: t('employerCost'), a: `$${planA.cost_employer}/mo`, b: `$${planB.cost_employer}/mo` },
-                        { label: t('totalCost'), a: `$${planA.cost_employee + planA.cost_employer}/mo`, b: `$${planB.cost_employee + planB.cost_employer}/mo` },
-                        { label: t('annualTotal'), a: `$${((planA.cost_employee + planA.cost_employer) * 12).toLocaleString()}`, b: `$${((planB.cost_employee + planB.cost_employer) * 12).toLocaleString()}` },
+                        { label: t('employeeCost'), a: `${fmtCents(planA.cost_employee)}/mo`, b: `${fmtCents(planB.cost_employee)}/mo` },
+                        { label: t('employerCost'), a: `${fmtCents(planA.cost_employer)}/mo`, b: `${fmtCents(planB.cost_employer)}/mo` },
+                        { label: t('totalCost'), a: `${fmtCents(planA.cost_employee + planA.cost_employer)}/mo`, b: `${fmtCents(planB.cost_employee + planB.cost_employer)}/mo` },
+                        { label: t('annualTotal'), a: `$${(((planA.cost_employee + planA.cost_employer) * 12) / 100).toFixed(2)}`, b: `$${(((planB.cost_employee + planB.cost_employer) * 12) / 100).toFixed(2)}` },
                         { label: t('enrolled'), a: String(getPlanEnrollCount(planA.id)), b: String(getPlanEnrollCount(planB.id)) },
                         { label: tc('status'), a: planA.is_active ? tc('active') : tc('inactive'), b: planB.is_active ? tc('active') : tc('inactive') },
                       ].map(row => (
@@ -629,10 +722,18 @@ export default function BenefitsPage() {
 
           {/* Benefit Plan Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {benefitPlans.length === 0 && (
-              <div className="col-span-2 text-center py-12 text-sm text-t3">{t('noBenefitPlans')}</div>
+            {filteredPlans.length === 0 && benefitPlans.length === 0 && (
+              <div className="col-span-2 text-center py-16">
+                <Shield size={40} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm font-medium text-t1 mb-1">No benefit plans configured</p>
+                <p className="text-xs text-t3 mb-4">Set up health, dental, vision, and other plans</p>
+                <Button size="sm" onClick={openNewPlan}><Plus size={14} /> {t('addPlan')}</Button>
+              </div>
             )}
-            {benefitPlans.map(plan => {
+            {filteredPlans.length === 0 && benefitPlans.length > 0 && (
+              <div className="col-span-2 text-center py-12 text-sm text-t3">No plans match your search or filter</div>
+            )}
+            {filteredPlans.map(plan => {
               const enrolledCount = getPlanEnrollCount(plan.id)
               const enrollPct = employees.length > 0 ? Math.round((enrolledCount / employees.length) * 100) : 0
               const isComparing = comparePlans.includes(plan.id)
@@ -669,11 +770,11 @@ export default function BenefitsPage() {
                         </div>
                         <div>
                           <p className="text-[0.6rem] text-t3 uppercase">{t('employeeCost')}</p>
-                          <p className="text-xs font-medium text-t1">${plan.cost_employee}/mo</p>
+                          <p className="text-xs font-medium text-t1">{fmtCents(plan.cost_employee)}/mo</p>
                         </div>
                         <div>
                           <p className="text-[0.6rem] text-t3 uppercase">{t('employerCost')}</p>
-                          <p className="text-xs font-medium text-t1">${plan.cost_employer}/mo</p>
+                          <p className="text-xs font-medium text-t1">{fmtCents(plan.cost_employer)}/mo</p>
                         </div>
                       </div>
                       <div>
@@ -721,22 +822,22 @@ export default function BenefitsPage() {
                         <Badge variant={plan.is_active ? 'success' : 'default'}>{plan.is_active ? tc('active') : tc('inactive')}</Badge>
                       </td>
                       <td className="px-4 py-3 text-xs text-t2 text-right">{getPlanEnrollCount(plan.id)}</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employee}</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employer}</td>
-                      <td className="px-4 py-3 text-xs font-medium text-t1 text-right">${plan.cost_employee + plan.cost_employer}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{fmtCents(plan.cost_employee)}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{fmtCents(plan.cost_employer)}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-t1 text-right">{fmtCents(plan.cost_employee + plan.cost_employer)}</td>
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
-                        ${((plan.cost_employee + plan.cost_employer) * getPlanEnrollCount(plan.id) * 12).toLocaleString()}
+                        ${(((plan.cost_employee + plan.cost_employer) * getPlanEnrollCount(plan.id) * 12) / 100).toFixed(2)}
                       </td>
                     </tr>
                   ))}
                   {benefitPlans.length > 0 && (
                     <tr className="bg-canvas font-semibold">
                       <td className="px-6 py-3 text-xs text-t1" colSpan={4}>{tc('total')}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee, 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employer, 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right">${benefitPlans.reduce((a, p) => a + p.cost_employee + p.cost_employer, 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">{fmtCents(benefitPlans.reduce((a, p) => a + p.cost_employee, 0))}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">{fmtCents(benefitPlans.reduce((a, p) => a + p.cost_employer, 0))}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right">{fmtCents(benefitPlans.reduce((a, p) => a + p.cost_employee + p.cost_employer, 0))}</td>
                       <td className="px-4 py-3 text-xs text-t1 text-right">
-                        ${benefitPlans.reduce((a, p) => a + (p.cost_employee + p.cost_employer) * getPlanEnrollCount(p.id) * 12, 0).toLocaleString()}
+                        ${(benefitPlans.reduce((a, p) => a + (p.cost_employee + p.cost_employer) * getPlanEnrollCount(p.id) * 12, 0) / 100).toFixed(2)}
                       </td>
                     </tr>
                   )}
@@ -782,7 +883,12 @@ export default function BenefitsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {benefitEnrollments.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">{t('noEnrollments')}</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-16 text-center">
+                      <Users size={32} className="mx-auto text-t3 mb-3" />
+                      <p className="text-sm font-medium text-t1 mb-1">No enrollments yet</p>
+                      <p className="text-xs text-t3 mb-4">Employees can enroll during open enrollment periods</p>
+                      <Button size="sm" onClick={() => setShowEnrollmentModal(true)}><Plus size={14} /> {t('newEnrollment')}</Button>
+                    </td></tr>
                   ) : benefitEnrollments.map(enr => {
                     const e = enr as any
                     const plan = benefitPlans.find(p => p.id === e.plan_id)
@@ -809,7 +915,7 @@ export default function BenefitsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {e.status === 'active' && (
-                            <Button size="sm" variant="ghost" onClick={() => updateBenefitEnrollment(e.id, { status: 'waived' })}>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, action: 'cancel-enrollment', id: e.id, label: `Cancel enrollment for ${getEmployeeName(e.employee_id)}?` })}>
                               {t('waive')}
                             </Button>
                           )}
@@ -905,7 +1011,12 @@ export default function BenefitsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {benefitDependents.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-12 text-center text-xs text-t3">{t('noDependents')}</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-16 text-center">
+                      <Baby size={32} className="mx-auto text-t3 mb-3" />
+                      <p className="text-sm font-medium text-t1 mb-1">No dependents added</p>
+                      <p className="text-xs text-t3 mb-4">Add family members to extend coverage</p>
+                      <Button size="sm" onClick={() => setShowDependentModal(true)}><Plus size={14} /> {t('addDependent')}</Button>
+                    </td></tr>
                   ) : benefitDependents.map(dep => {
                     const d = dep as any
                     return (
@@ -976,7 +1087,7 @@ export default function BenefitsPage() {
               <AIScoreBadge score={competitivenessScore} size="lg" showBreakdown />
             </Card>
             <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} icon={<BarChart3 size={20} />} />
-            <StatCard label={t('monthlyEmployerCost')} value={`$${totalEmployerCost.toLocaleString()}`} change={`$${(totalEmployerCost * 12).toLocaleString()} / ${t('year')}`} changeType="neutral" icon={<Wallet size={20} />} />
+            <StatCard label={t('monthlyEmployerCost')} value={fmtCents(totalEmployerCost)} change={`${fmtCents(totalEmployerCost * 12)} / ${t('year')}`} changeType="neutral" icon={<Wallet size={20} />} />
             <StatCard label={t('totalDependents')} value={benefitDependents.length} change={`${[...new Set(benefitDependents.map(d => (d as any).employee_id))].length} ${t('employeesLabel')}`} changeType="neutral" icon={<Users size={20} />} />
           </div>
 
@@ -1032,7 +1143,7 @@ export default function BenefitsPage() {
                       {items.map(([type, d]) => (
                         <div key={type} className="flex justify-between text-xs">
                           <span className="text-t2 capitalize">{type}</span>
-                          <span className="text-t1 font-medium">${(d.employer + d.employee).toLocaleString()}/mo</span>
+                          <span className="text-t1 font-medium">{fmtCents(d.employer + d.employee)}/mo</span>
                         </div>
                       ))}
                     </div>
@@ -1050,7 +1161,7 @@ export default function BenefitsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-t2">{t('employerShare')}</span>
                   <span className="text-sm font-semibold text-t1">
-                    ${benefitPlans.reduce((a, p) => a + p.cost_employer * getPlanEnrollCount(p.id), 0).toLocaleString()}/mo
+                    {fmtCents(benefitPlans.reduce((a, p) => a + p.cost_employer * getPlanEnrollCount(p.id), 0))}/mo
                   </span>
                 </div>
                 <Progress
@@ -1062,7 +1173,7 @@ export default function BenefitsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-t2">{t('employeeShare')}</span>
                   <span className="text-sm font-semibold text-t1">
-                    ${benefitPlans.reduce((a, p) => a + p.cost_employee * getPlanEnrollCount(p.id), 0).toLocaleString()}/mo
+                    {fmtCents(benefitPlans.reduce((a, p) => a + p.cost_employee * getPlanEnrollCount(p.id), 0))}/mo
                   </span>
                 </div>
                 <Progress
@@ -1249,18 +1360,18 @@ export default function BenefitsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-white rounded-lg p-4 border border-border">
                     <p className="text-xs text-t3 mb-1">{t('employeeMonthly')}</p>
-                    <p className="text-xl font-bold text-t1">${calcResult.empMonthly.toLocaleString()}</p>
-                    <p className="text-xs text-t3">${calcResult.empAnnual.toLocaleString()}/{t('year')}</p>
+                    <p className="text-xl font-bold text-t1">{fmtCents(calcResult.empMonthly)}</p>
+                    <p className="text-xs text-t3">{fmtCents(calcResult.empAnnual)}/{t('year')}</p>
                   </div>
                   <div className="bg-white rounded-lg p-4 border border-border">
                     <p className="text-xs text-t3 mb-1">{t('employerMonthly')}</p>
-                    <p className="text-xl font-bold text-tempo-600">${calcResult.erMonthly.toLocaleString()}</p>
-                    <p className="text-xs text-t3">${calcResult.erAnnual.toLocaleString()}/{t('year')}</p>
+                    <p className="text-xl font-bold text-tempo-600">{fmtCents(calcResult.erMonthly)}</p>
+                    <p className="text-xs text-t3">{fmtCents(calcResult.erAnnual)}/{t('year')}</p>
                   </div>
                   <div className="bg-tempo-50 rounded-lg p-4 border border-tempo-200">
                     <p className="text-xs text-tempo-600 mb-1">{t('totalMonthly')}</p>
-                    <p className="text-xl font-bold text-tempo-700">${calcResult.totalMonthly.toLocaleString()}</p>
-                    <p className="text-xs text-tempo-500">${calcResult.totalAnnual.toLocaleString()}/{t('year')}</p>
+                    <p className="text-xl font-bold text-tempo-700">{fmtCents(calcResult.totalMonthly)}</p>
+                    <p className="text-xs text-tempo-500">{fmtCents(calcResult.totalAnnual)}/{t('year')}</p>
                   </div>
                 </div>
 
@@ -1322,10 +1433,10 @@ export default function BenefitsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3"><Badge>{plan.type}</Badge></td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${plan.cost_employee}/mo</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${Math.round(plan.cost_employee * 1.6)}/mo</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${Math.round(plan.cost_employee * 2.2)}/mo</td>
-                      <td className="px-4 py-3 text-xs text-tempo-600 text-right font-medium">${plan.cost_employer}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{fmtCents(plan.cost_employee)}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{fmtCents(Math.round(plan.cost_employee * 1.6))}/mo</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{fmtCents(Math.round(plan.cost_employee * 2.2))}/mo</td>
+                      <td className="px-4 py-3 text-xs text-tempo-600 text-right font-medium">{fmtCents(plan.cost_employer)}/mo</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1511,12 +1622,12 @@ export default function BenefitsPage() {
             <StatCard label="Active Accounts" value={flexBenefitAccounts.filter(a => (a as any).status === 'active').length} icon={<Landmark size={20} />} />
             <StatCard
               label="Total Balance"
-              value={`$${flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).current_balance || 0), 0).toLocaleString()}`}
+              value={fmtCents(flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).current_balance || 0), 0))}
               icon={<DollarSign size={20} />}
             />
             <StatCard
               label="YTD Contributions"
-              value={`$${flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).ytd_contributions || 0), 0).toLocaleString()}`}
+              value={fmtCents(flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).ytd_contributions || 0), 0))}
               icon={<TrendingUp size={20} />}
               changeType="positive"
             />
@@ -1553,21 +1664,21 @@ export default function BenefitsPage() {
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div className="bg-canvas rounded-lg p-3">
                       <p className="text-[0.6rem] text-t3 uppercase">Total Balance</p>
-                      <p className="text-lg font-bold text-t1">${totalBalance.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-t1">{fmtCents(totalBalance)}</p>
                     </div>
                     <div className="bg-canvas rounded-lg p-3">
                       <p className="text-[0.6rem] text-t3 uppercase">Annual Election</p>
-                      <p className="text-lg font-bold text-t1">${totalElection.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-t1">{fmtCents(totalElection)}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
                       <span className="text-t3">YTD Contributions</span>
-                      <span className="text-green-600 font-medium">${totalContrib.toLocaleString()}</span>
+                      <span className="text-green-600 font-medium">{fmtCents(totalContrib)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-t3">YTD Expenses</span>
-                      <span className="text-red-500 font-medium">${totalExpenses.toLocaleString()}</span>
+                      <span className="text-red-500 font-medium">{fmtCents(totalExpenses)}</span>
                     </div>
                   </div>
                   {limit > 0 && (
@@ -1646,7 +1757,7 @@ export default function BenefitsPage() {
                           </Badge>
                         </td>
                         <td className={cn('px-4 py-3 text-xs font-medium text-right', tx.type === 'contribution' || tx.type === 'rollover' ? 'text-green-600' : 'text-red-500')}>
-                          {tx.type === 'contribution' || tx.type === 'rollover' ? '+' : '-'}${(tx.amount || 0).toLocaleString()}
+                          {tx.type === 'contribution' || tx.type === 'rollover' ? '+' : '-'}{fmtCents(tx.amount || 0)}
                         </td>
                         <td className="px-4 py-3 text-xs text-t2">{tx.description || '-'}</td>
                         <td className="px-4 py-3 text-center">
@@ -1687,7 +1798,7 @@ export default function BenefitsPage() {
             <StatCard label="Election Pending" value={cobraEvents.filter(e => (e as any).status === 'notified').length} icon={<Clock size={20} />} />
             <StatCard
               label="Monthly Premiums"
-              value={`$${cobraEvents.filter(e => (e as any).status === 'elected').reduce((a, e) => a + ((e as any).monthly_premium || 0), 0).toLocaleString()}`}
+              value={fmtCents(cobraEvents.filter(e => (e as any).status === 'elected').reduce((a, e) => a + ((e as any).monthly_premium || 0), 0))}
               icon={<DollarSign size={20} />}
             />
           </div>
@@ -1840,7 +1951,7 @@ export default function BenefitsPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-t2 text-center">{ev.coverage_end_date}</td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-xs text-t1 font-medium">${(ev.monthly_premium || 0).toLocaleString()}/mo</span>
+                          <span className="text-xs text-t1 font-medium">{fmtCents(ev.monthly_premium || 0)}/mo</span>
                           {ev.subsidy_percent > 0 && (
                             <div className="mt-1">
                               <Badge variant="success">{ev.subsidy_percent}% Subsidy</Badge>
@@ -2324,8 +2435,8 @@ export default function BenefitsPage() {
             {t('planIsActive')}
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPlan}>{editingPlan ? tc('saveChanges') : t('addPlan')}</Button>
+            <Button variant="secondary" onClick={() => setShowPlanModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitPlan} disabled={saving}>{saving ? 'Saving...' : editingPlan ? tc('saveChanges') : t('addPlan')}</Button>
           </div>
         </div>
       </Modal>
@@ -2346,7 +2457,7 @@ export default function BenefitsPage() {
             onChange={e => setEnrollForm({ ...enrollForm, plan_id: e.target.value })}
             options={[
               { value: '', label: t('selectPlanOption') },
-              ...activePlans.map(p => ({ value: p.id, label: `${p.name} — $${p.cost_employee + p.cost_employer}/mo` })),
+              ...activePlans.map(p => ({ value: p.id, label: `${p.name} — ${fmtCents(p.cost_employee + p.cost_employer)}/mo` })),
             ]}
           />
           <Select
@@ -2360,8 +2471,8 @@ export default function BenefitsPage() {
             ]}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEnrollmentModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitEnrollment}>{t('enrollEmployee')}</Button>
+            <Button variant="secondary" onClick={() => setShowEnrollmentModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitEnrollment} disabled={saving}>{saving ? 'Saving...' : t('enrollEmployee')}</Button>
           </div>
         </div>
       </Modal>
@@ -2411,8 +2522,8 @@ export default function BenefitsPage() {
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowDependentModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitDependent}>{t('addDependent')}</Button>
+            <Button variant="secondary" onClick={() => setShowDependentModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitDependent} disabled={saving}>{saving ? 'Saving...' : t('addDependent')}</Button>
           </div>
         </div>
       </Modal>
@@ -2453,8 +2564,8 @@ export default function BenefitsPage() {
             <p className="text-xs text-t3">{t('lifeEventDeadlineNote')}</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowLifeEventModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitLifeEvent}>{t('submitLifeEvent')}</Button>
+            <Button variant="secondary" onClick={() => setShowLifeEventModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitLifeEvent} disabled={saving}>{saving ? 'Saving...' : t('submitLifeEvent')}</Button>
           </div>
         </div>
       </Modal>
@@ -2666,7 +2777,7 @@ export default function BenefitsPage() {
                       <p className="text-sm font-medium text-t1">{plan.name}</p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <Badge>{plan.type}</Badge>
-                        <span className="text-[0.6rem] text-t3">${plan.cost_employee}/mo employee &middot; ${plan.cost_employer}/mo employer</span>
+                        <span className="text-[0.6rem] text-t3">{fmtCents(plan.cost_employee)}/mo employee &middot; {fmtCents(plan.cost_employer)}/mo employer</span>
                       </div>
                     </div>
                   </label>
@@ -2727,15 +2838,15 @@ export default function BenefitsPage() {
                       <h4 className="text-[0.65rem] font-semibold text-t2 uppercase tracking-wider mb-3">Cost Impact</h4>
                       <div className="grid grid-cols-3 gap-3">
                         <div className="text-center">
-                          <p className="text-lg font-bold text-t1">${bulkCostImpact.monthlyPerEmp.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-t1">{fmtCents(bulkCostImpact.monthlyPerEmp)}</p>
                           <p className="text-[0.6rem] text-t3">Monthly / Employee</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-tempo-600">${bulkCostImpact.totalMonthly.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-tempo-600">{fmtCents(bulkCostImpact.totalMonthly)}</p>
                           <p className="text-[0.6rem] text-t3">Total Monthly</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-tempo-700">${bulkCostImpact.totalAnnual.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-tempo-700">{fmtCents(bulkCostImpact.totalAnnual)}</p>
                           <p className="text-[0.6rem] text-t3">Total Annual</p>
                         </div>
                       </div>
@@ -2795,8 +2906,8 @@ export default function BenefitsPage() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowOEPModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitOEP}>Create Period</Button>
+            <Button variant="secondary" onClick={() => setShowOEPModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitOEP} disabled={saving}>{saving ? 'Saving...' : 'Create Period'}</Button>
           </div>
         </div>
       </Modal>
@@ -2847,8 +2958,8 @@ export default function BenefitsPage() {
             <p className="text-xs text-t3">Notification must be sent within 14 days of the qualifying event. The employee has 60 days from notification to elect COBRA coverage. Coverage may last up to 18 months (36 months for certain events).</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowCobraModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCobra}>Create COBRA Event</Button>
+            <Button variant="secondary" onClick={() => setShowCobraModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitCobra} disabled={saving}>{saving ? 'Saving...' : 'Create COBRA Event'}</Button>
           </div>
         </div>
       </Modal>
@@ -2887,8 +2998,8 @@ export default function BenefitsPage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowFlexAccountModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitFlexAccount}>Create Account</Button>
+            <Button variant="secondary" onClick={() => setShowFlexAccountModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitFlexAccount} disabled={saving}>{saving ? 'Saving...' : 'Create Account'}</Button>
           </div>
         </div>
       </Modal>
@@ -2903,7 +3014,7 @@ export default function BenefitsPage() {
               { value: '', label: 'Select account...' },
               ...flexBenefitAccounts.filter(a => (a as any).status === 'active').map(a => {
                 const acc = a as any
-                return { value: acc.id, label: `${getEmployeeName(acc.employee_id)} — ${flexAccountLabels[acc.account_type] || acc.account_type} ($${(acc.current_balance || 0).toLocaleString()} balance)` }
+                return { value: acc.id, label: `${getEmployeeName(acc.employee_id)} — ${flexAccountLabels[acc.account_type] || acc.account_type} (${fmtCents(acc.current_balance || 0)} balance)` }
               }),
             ]}
           />
@@ -2925,8 +3036,22 @@ export default function BenefitsPage() {
             onChange={e => setFlexExpenseForm({ ...flexExpenseForm, description: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowFlexExpenseModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitFlexExpense}>Submit Expense</Button>
+            <Button variant="secondary" onClick={() => setShowFlexExpenseModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitFlexExpense} disabled={saving}>{saving ? 'Saving...' : 'Submit Expense'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Dialog */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.label}</p>
+          <p className="text-xs text-t3">This action cannot be easily undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)} disabled={saving}>Cancel</Button>
+            <Button variant="primary" onClick={executeConfirmAction} disabled={saving}>
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>

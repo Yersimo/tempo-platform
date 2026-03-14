@@ -120,6 +120,13 @@ export default function TimeAttendancePage() {
   const [filterDept, setFilterDept] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
 
+  // ---- Production-grade state ----
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: string; id: string; label: string } | null>(null)
+  const [dateRangeFrom, setDateRangeFrom] = useState('')
+  const [dateRangeTo, setDateRangeTo] = useState('')
+  const [entrySearchQuery, setEntrySearchQuery] = useState('')
+
   // ---- Time Clock State ----
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInTime, setClockInTime] = useState<Date | null>(null)
@@ -317,7 +324,12 @@ export default function TimeAttendancePage() {
   [shifts, weekDates])
 
   function submitShift() {
-    if (!shiftForm.employee_id || !shiftForm.date) return
+    if (!shiftForm.employee_id) { addToast('Please select an employee', 'error'); return }
+    if (!shiftForm.date) { addToast('Date is required', 'error'); return }
+    if (!shiftForm.start_time) { addToast('Start time is required', 'error'); return }
+    if (!shiftForm.end_time) { addToast('End time is required', 'error'); return }
+    if (shiftForm.start_time >= shiftForm.end_time) { addToast('Start time must be before end time', 'error'); return }
+    setSaving(true)
     addShift({
       employee_id: shiftForm.employee_id, date: shiftForm.date,
       start_time: shiftForm.start_time, end_time: shiftForm.end_time,
@@ -326,6 +338,8 @@ export default function TimeAttendancePage() {
     })
     setShowShiftModal(false)
     setShiftForm({ employee_id: '', date: '', start_time: '09:00', end_time: '17:00', role: '', location: '' })
+    setSaving(false)
+    addToast('Shift created successfully')
   }
 
   // ---- Overtime Tab ----
@@ -363,8 +377,39 @@ export default function TimeAttendancePage() {
     addToast('Overtime approved')
   }
   function rejectOvertimeEntry(entryId: string) {
-    updateTimeEntry(entryId, { status: 'rejected', approved_by: currentEmployeeId })
-    addToast('Overtime rejected')
+    setConfirmAction({ show: true, action: 'reject_overtime', id: entryId, label: 'Reject this overtime entry?' })
+  }
+
+  function confirmDeleteShift(shiftId: string) {
+    setConfirmAction({ show: true, action: 'delete_shift', id: shiftId, label: 'Delete this shift?' })
+  }
+  function confirmDeleteTimeEntry(entryId: string) {
+    setConfirmAction({ show: true, action: 'delete_time_entry', id: entryId, label: 'Delete this time entry?' })
+  }
+  function confirmDeletePolicy(policyId: string) {
+    setConfirmAction({ show: true, action: 'delete_policy', id: policyId, label: 'Delete this PTO policy?' })
+  }
+
+  function handleConfirmAction() {
+    if (!confirmAction) return
+    const { action, id } = confirmAction
+    if (action === 'reject_overtime') {
+      updateTimeEntry(id, { status: 'rejected', approved_by: currentEmployeeId })
+      addToast('Overtime rejected')
+    } else if (action === 'delete_shift') {
+      deleteShift(id)
+      addToast('Shift deleted')
+    } else if (action === 'delete_time_entry') {
+      updateTimeEntry(id, { status: 'rejected' })
+      addToast('Time entry deleted')
+    } else if (action === 'delete_policy') {
+      deleteTimeOffPolicy(id)
+      addToast('Policy deleted')
+    } else if (action === 'delete_ot_rule') {
+      deleteOvertimeRule(id)
+      addToast('Overtime rule deleted')
+    }
+    setConfirmAction(null)
   }
 
   // Employees approaching overtime threshold
@@ -377,7 +422,12 @@ export default function TimeAttendancePage() {
   }, [employees, timeEntries, weekDates])
 
   function submitOTRule() {
-    if (!otRuleForm.name || !otRuleForm.country) return
+    if (!otRuleForm.name) { addToast('Rule name is required', 'error'); return }
+    if (!otRuleForm.country) { addToast('Country is required', 'error'); return }
+    if (Number(otRuleForm.daily_threshold_hours) <= 0) { addToast('Daily threshold must be greater than 0', 'error'); return }
+    if (Number(otRuleForm.weekly_threshold_hours) <= 0) { addToast('Weekly threshold must be greater than 0', 'error'); return }
+    if (Number(otRuleForm.multiplier) <= 0) { addToast('Multiplier must be greater than 0', 'error'); return }
+    setSaving(true)
     const data = {
       name: otRuleForm.name, country: otRuleForm.country,
       daily_threshold_hours: Number(otRuleForm.daily_threshold_hours),
@@ -395,6 +445,8 @@ export default function TimeAttendancePage() {
     setShowOTRuleModal(false)
     setEditingOTRule(null)
     setOTRuleForm({ name: '', country: '', daily_threshold_hours: 8, weekly_threshold_hours: 40, multiplier: 1.5, double_overtime_threshold: '', double_overtime_multiplier: '' })
+    setSaving(false)
+    addToast(editingOTRule ? 'Overtime rule updated' : 'Overtime rule created')
   }
 
   // ---- PTO Tab ----
@@ -419,7 +471,9 @@ export default function TimeAttendancePage() {
 
   function submitLeaveRequest() {
     if (leaveSubmittingRef.current) return
-    if (!leaveForm.start_date || !leaveForm.end_date) return
+    if (!leaveForm.start_date) { addToast('Start date is required', 'error'); return }
+    if (!leaveForm.end_date) { addToast('End date is required', 'error'); return }
+    if (leaveForm.end_date < leaveForm.start_date) { addToast('End date must be on or after start date', 'error'); return }
     leaveSubmittingRef.current = true
     const start = new Date(leaveForm.start_date)
     const end = new Date(leaveForm.end_date)
@@ -440,7 +494,10 @@ export default function TimeAttendancePage() {
   }
 
   function submitPTOPolicy() {
-    if (!ptoPolicyForm.name) return
+    if (!ptoPolicyForm.name) { addToast('Policy name is required', 'error'); return }
+    if (Number(ptoPolicyForm.max_balance) <= 0) { addToast('Max balance (days per year) must be greater than 0', 'error'); return }
+    if (Number(ptoPolicyForm.accrual_rate) <= 0) { addToast('Accrual rate must be greater than 0', 'error'); return }
+    setSaving(true)
     const data = {
       name: ptoPolicyForm.name, type: ptoPolicyForm.type,
       accrual_rate: Number(ptoPolicyForm.accrual_rate),
@@ -458,6 +515,8 @@ export default function TimeAttendancePage() {
     setShowPTOPolicyModal(false)
     setEditingPolicy(null)
     setPtoPolicyForm({ name: '', type: 'annual', accrual_rate: 1.67, accrual_period: 'monthly', max_balance: 20, carryover_limit: 0, waiting_period_days: 0 })
+    setSaving(false)
+    addToast(editingPolicy ? 'PTO policy updated' : 'PTO policy created')
   }
 
   // ---- Analytics Tab ----
@@ -499,6 +558,27 @@ export default function TimeAttendancePage() {
 
     return { weeklyAvgs, punctualityRate, ptoUtilization, deptCosts }
   }, [timeEntries, weekDates, timeOffBalances, employees, getDepartmentName])
+
+  // Filtered time entries for timesheets tab (date range + employee search)
+  const filteredTimeEntries = useMemo(() => {
+    let entries = timeEntries
+    if (dateRangeFrom) entries = entries.filter(e => e.date >= dateRangeFrom)
+    if (dateRangeTo) entries = entries.filter(e => e.date <= dateRangeTo)
+    if (entrySearchQuery) {
+      const q = entrySearchQuery.toLowerCase()
+      entries = entries.filter(e => getEmployeeName(e.employee_id).toLowerCase().includes(q))
+    }
+    return entries
+  }, [timeEntries, dateRangeFrom, dateRangeTo, entrySearchQuery, getEmployeeName])
+
+  // Weekly and monthly hour totals summary
+  const weeklyHoursTotal = useMemo(() =>
+    timeEntries.filter(e => weekDates.includes(e.date)).reduce((s, e) => s + (e.total_hours || 0), 0),
+  [timeEntries, weekDates])
+  const monthlyHoursTotal = useMemo(() => {
+    const month = today.slice(0, 7)
+    return timeEntries.filter(e => e.date.startsWith(month)).reduce((s, e) => s + (e.total_hours || 0), 0)
+  }, [timeEntries, today])
 
   // Stats
   const pendingCount = timeEntries.filter(e => e.status === 'pending').length
@@ -562,6 +642,20 @@ export default function TimeAttendancePage() {
             <StatCard label="Pending Approvals" value={pendingCount} change="entries" changeType={pendingCount > 5 ? 'negative' : 'neutral'} icon={<Clock size={20} />} />
             <StatCard label="Weekly Overtime" value={`${formatHours(totalOTWeek)}h`} change="this week" changeType={totalOTWeek > 20 ? 'negative' : 'neutral'} icon={<TrendingUp size={20} />} />
             <StatCard label="Approved Today" value={approvedToday} change="entries" changeType="positive" icon={<CheckCircle size={20} />} />
+          </div>
+
+          {/* Hours Summary */}
+          <div className="flex gap-4 mb-6">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-canvas border border-divider">
+              <Clock size={14} className="text-t3" />
+              <span className="text-sm text-t2">Weekly Total:</span>
+              <span className="text-sm font-bold text-t1">{formatHours(weeklyHoursTotal)}h</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-canvas border border-divider">
+              <Calendar size={14} className="text-t3" />
+              <span className="text-sm text-t2">Monthly Total:</span>
+              <span className="text-sm font-bold text-t1">{formatHours(monthlyHoursTotal)}h</span>
+            </div>
           </div>
 
           {/* Who's In Today */}
@@ -750,6 +844,8 @@ export default function TimeAttendancePage() {
               <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
                 placeholder="Search employees..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
+            <input type="date" className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={dateRangeFrom} onChange={e => setDateRangeFrom(e.target.value)} title="From date" />
+            <input type="date" className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={dateRangeTo} onChange={e => setDateRangeTo(e.target.value)} title="To date" />
             <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
               <option value="">All Departments</option>
               {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -782,7 +878,7 @@ export default function TimeAttendancePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {timesheetData.size === 0 ? (
-                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-t3">No timesheet data for this week</td></tr>
+                    <tr><td colSpan={11} className="px-4 py-16 text-center"><div className="flex flex-col items-center gap-2"><Clock size={32} className="text-t3/50" /><p className="text-sm font-medium text-t2">No time entries recorded</p><p className="text-xs text-t3">Log your first time entry to start tracking hours</p></div></td></tr>
                   ) : Array.from(timesheetData.entries()).map(([empId, data]) => {
                     const emp = employees.find(e => e.id === empId)
                     const weekStatus = data.statuses.includes('pending') ? 'pending' : data.statuses.includes('rejected') ? 'rejected' : 'approved'
@@ -893,7 +989,7 @@ export default function TimeAttendancePage() {
                                 </div>
                               )
                             })}
-                            {dayShifts.length === 0 && <p className="text-xs text-t3 text-center py-4">No shifts</p>}
+                            {dayShifts.length === 0 && <p className="text-xs text-t3 text-center py-4">No shifts configured</p>}
                           </div>
                         </td>
                       )
@@ -1028,8 +1124,8 @@ export default function TimeAttendancePage() {
                         <td className="px-4 py-3 text-sm text-center text-t2">{formatHours(entry.total_hours || 0)}h</td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex gap-2 justify-center">
-                            <Button size="sm" onClick={() => approveOvertimeEntry(entry.id)}>Approve</Button>
-                            <Button size="sm" variant="ghost" onClick={() => rejectOvertimeEntry(entry.id)}>Reject</Button>
+                            <Button size="sm" disabled={saving} onClick={() => approveOvertimeEntry(entry.id)}>Approve</Button>
+                            <Button size="sm" variant="ghost" disabled={saving} onClick={() => rejectOvertimeEntry(entry.id)}>Reject</Button>
                           </div>
                         </td>
                       </tr>
@@ -1062,6 +1158,9 @@ export default function TimeAttendancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
+                  {overtimeRules.length === 0 && (
+                    <tr><td colSpan={8} className="px-4 py-16 text-center"><div className="flex flex-col items-center gap-2"><TrendingUp size={32} className="text-t3/50" /><p className="text-sm font-medium text-t2">No overtime requests</p><p className="text-xs text-t3">Employees can submit overtime for approval</p></div></td></tr>
+                  )}
                   {overtimeRules.map(rule => (
                     <tr key={rule.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3 text-sm font-medium text-t1">{rule.name}</td>
@@ -1089,7 +1188,7 @@ export default function TimeAttendancePage() {
                             })
                             setShowOTRuleModal(true)
                           }}>Edit</Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteOvertimeRule(rule.id)}>Delete</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, action: 'delete_ot_rule', id: rule.id, label: 'Delete this overtime rule?' })}>Delete</Button>
                         </div>
                       </td>
                     </tr>
@@ -1196,6 +1295,9 @@ export default function TimeAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
+                    {timeOffPolicies.length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="flex flex-col items-center gap-2"><Briefcase size={32} className="text-t3/50" /><p className="text-sm font-medium text-t2">No time-off policies</p><p className="text-xs text-t3">Configure leave policies for your organization</p></div></td></tr>
+                    )}
                     {timeOffPolicies.map(policy => (
                       <tr key={policy.id} className="hover:bg-canvas/50">
                         <td className="px-4 py-3">
@@ -1223,7 +1325,7 @@ export default function TimeAttendancePage() {
                               })
                               setShowPTOPolicyModal(true)
                             }}>Edit</Button>
-                            <Button size="sm" variant="ghost" onClick={() => deleteTimeOffPolicy(policy.id)}>Delete</Button>
+                            <Button size="sm" variant="ghost" onClick={() => confirmDeletePolicy(policy.id)}>Delete</Button>
                           </div>
                         </td>
                       </tr>
@@ -1420,7 +1522,7 @@ export default function TimeAttendancePage() {
           <Input label="Location" value={shiftForm.location} onChange={e => setShiftForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Lagos HQ" />
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowShiftModal(false)}>Cancel</Button>
-            <Button onClick={submitShift}>Create Shift</Button>
+            <Button onClick={submitShift} disabled={saving}>{saving ? 'Creating...' : 'Create Shift'}</Button>
           </div>
         </div>
       </Modal>
@@ -1441,7 +1543,7 @@ export default function TimeAttendancePage() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => { setShowOTRuleModal(false); setEditingOTRule(null) }}>Cancel</Button>
-            <Button onClick={submitOTRule}>{editingOTRule ? 'Update Rule' : 'Create Rule'}</Button>
+            <Button onClick={submitOTRule} disabled={saving}>{saving ? 'Saving...' : editingOTRule ? 'Update Rule' : 'Create Rule'}</Button>
           </div>
         </div>
       </Modal>
@@ -1471,7 +1573,19 @@ export default function TimeAttendancePage() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => { setShowPTOPolicyModal(false); setEditingPolicy(null) }}>Cancel</Button>
-            <Button onClick={submitPTOPolicy}>{editingPolicy ? 'Update Policy' : 'Create Policy'}</Button>
+            <Button onClick={submitPTOPolicy} disabled={saving}>{saving ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Create Policy'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.label || 'Are you sure?'}</p>
+          <p className="text-xs text-t3">This action cannot be undone.</p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="primary" onClick={handleConfirmAction}>Confirm</Button>
           </div>
         </div>
       </Modal>
@@ -1501,7 +1615,7 @@ export default function TimeAttendancePage() {
           )}
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowLeaveRequestModal(false)}>Cancel</Button>
-            <Button onClick={submitLeaveRequest} disabled={!leaveForm.start_date || !leaveForm.end_date}>Submit Request</Button>
+            <Button onClick={submitLeaveRequest} disabled={saving || !leaveForm.start_date || !leaveForm.end_date}>{saving ? 'Submitting...' : 'Submit Request'}</Button>
           </div>
         </div>
       </Modal>

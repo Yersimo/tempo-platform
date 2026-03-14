@@ -163,6 +163,10 @@ export default function OffboardingPage() {
     assignee_role: '', order_index: 0, is_required: true,
   })
 
+  // ── Confirmation / Saving State ────────────────
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: string; id: string; label: string } | null>(null)
+  const [saving, setSaving] = useState(false)
+
   // ── Survey State ────────────────────────────
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
   const [showSurveyModal, setShowSurveyModal] = useState(false)
@@ -300,6 +304,22 @@ export default function OffboardingPage() {
       .map(([name, v]) => ({ name, avg: +(v.sum / v.total).toFixed(1) }))
   }, [exitSurveys])
 
+  // Top reasons for leaving (for survey summary)
+  const topReasons = useMemo(() => {
+    const reasons: Record<string, number> = {}
+    exitSurveys.forEach(s => {
+      const r = s.responses as Record<string, unknown>
+      if (r?.reason_for_leaving && typeof r.reason_for_leaving === 'string') {
+        const reason = r.reason_for_leaving.slice(0, 60)
+        reasons[reason] = (reasons[reason] || 0) + 1
+      }
+    })
+    return Object.entries(reasons)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([reason, count]) => ({ reason, count }))
+  }, [exitSurveys])
+
   // ═══════════════════════════════════════════════
   //  HANDLERS
   // ═══════════════════════════════════════════════
@@ -342,7 +362,11 @@ export default function OffboardingPage() {
   }
 
   function handleNewProcess() {
-    if (!processForm.employee_id || !processForm.last_working_date) return
+    const errors: string[] = []
+    if (!processForm.employee_id) errors.push('Employee is required')
+    if (!processForm.last_working_date) errors.push('Last working date is required')
+    if (!processForm.reason) errors.push('Reason is required')
+    if (errors.length > 0) { addToast(errors.join('. '), 'error'); return }
     const checklistId = processForm.checklist_id || offboardingChecklists[0]?.id
 
     // T5 #36: Apply probation-specific rules
@@ -353,24 +377,29 @@ export default function OffboardingPage() {
     const orphanedReports = checkOrphanedReports(processForm.employee_id)
     const orphanWarning = orphanedReports.length > 0 ? `[WARNING] ${orphanedReports.length} direct report(s) need reassignment: ${orphanedReports.map(e => e.profile?.full_name).join(', ')}. ` : ''
 
-    addOffboardingProcess({
-      employee_id: processForm.employee_id,
-      initiated_by: currentEmployeeId,
-      status: 'pending',
-      checklist_id: checklistId,
-      last_working_date: processForm.last_working_date,
-      reason: processForm.reason,
-      notes: `${probationNotes}${orphanWarning}${processForm.notes || ''}`.trim(),
-    })
+    setSaving(true)
+    try {
+      addOffboardingProcess({
+        employee_id: processForm.employee_id,
+        initiated_by: currentEmployeeId,
+        status: 'pending',
+        checklist_id: checklistId,
+        last_working_date: processForm.last_working_date,
+        reason: processForm.reason,
+        notes: `${probationNotes}${orphanWarning}${processForm.notes || ''}`.trim(),
+      })
 
-    if (orphanedReports.length > 0) {
-      addToast(`Offboarding submitted — ${orphanedReports.length} direct report(s) need reassignment`, 'info')
-    } else {
-      addToast('Offboarding submitted for approval')
+      if (orphanedReports.length > 0) {
+        addToast(`Offboarding submitted — ${orphanedReports.length} direct report(s) need reassignment`, 'info')
+      } else {
+        addToast('Offboarding submitted for approval')
+      }
+
+      setShowNewProcessModal(false)
+      setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
+    } finally {
+      setSaving(false)
     }
-
-    setShowNewProcessModal(false)
-    setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
   }
 
   function approveOffboarding(processId: string) {
@@ -448,55 +477,104 @@ export default function OffboardingPage() {
   }
 
   function handleSaveChecklist() {
-    if (!checklistForm.name) return
-    if (editingChecklistId) {
-      updateOffboardingChecklist(editingChecklistId, checklistForm)
-    } else {
-      addOffboardingChecklist(checklistForm)
+    if (!checklistForm.name) { addToast('Checklist name is required', 'error'); return }
+    setSaving(true)
+    try {
+      if (editingChecklistId) {
+        updateOffboardingChecklist(editingChecklistId, checklistForm)
+      } else {
+        addOffboardingChecklist(checklistForm)
+      }
+      addToast(editingChecklistId ? 'Checklist updated' : 'Checklist created')
+      setShowChecklistModal(false)
+      setEditingChecklistId(null)
+      setChecklistForm({ name: '', description: '', is_default: false })
+    } finally {
+      setSaving(false)
     }
-    setShowChecklistModal(false)
-    setEditingChecklistId(null)
-    setChecklistForm({ name: '', description: '', is_default: false })
   }
 
   function handleSubmitSurvey() {
-    if (!surveyForm.employee_id && !surveyForm.is_anonymous) {
-      addToast('Please select an employee or mark as anonymous', 'error')
-      return
+    const errors: string[] = []
+    if (!surveyForm.employee_id && !surveyForm.is_anonymous) errors.push('Employee is required (or mark as anonymous)')
+    // Check at least 1 meaningful response exists
+    const hasRating = surveyForm.overall_satisfaction !== 3 || surveyForm.management_rating !== 3 || surveyForm.work_life_balance !== 3 || surveyForm.career_growth !== 3 || surveyForm.compensation_satisfaction !== 3 || surveyForm.team_culture !== 3
+    const hasText = !!surveyForm.reason_for_leaving || !!surveyForm.what_could_improve || !!surveyForm.best_part || !!surveyForm.additional_comments
+    if (!hasRating && !hasText) errors.push('At least 1 response (rating or text) is required')
+    if (errors.length > 0) { addToast(errors.join('. '), 'error'); return }
+    setSaving(true)
+    try {
+      addExitSurvey({
+        employee_id: surveyForm.is_anonymous ? null : surveyForm.employee_id,
+        is_anonymous: surveyForm.is_anonymous,
+        responses: {
+          overall_satisfaction: surveyForm.overall_satisfaction,
+          management_rating: surveyForm.management_rating,
+          work_life_balance: surveyForm.work_life_balance,
+          career_growth: surveyForm.career_growth,
+          compensation_satisfaction: surveyForm.compensation_satisfaction,
+          team_culture: surveyForm.team_culture,
+          reason_for_leaving: surveyForm.reason_for_leaving,
+          what_could_improve: surveyForm.what_could_improve,
+          best_part: surveyForm.best_part,
+          additional_comments: surveyForm.additional_comments,
+          would_recommend: surveyForm.would_recommend,
+        },
+      })
+      addToast('Exit survey submitted successfully')
+      setShowSurveyModal(false)
+      setSurveyForm({
+        employee_id: '', is_anonymous: false,
+        overall_satisfaction: 3, management_rating: 3, work_life_balance: 3,
+        career_growth: 3, compensation_satisfaction: 3, team_culture: 3,
+        reason_for_leaving: '', what_could_improve: '', best_part: '',
+        additional_comments: '', would_recommend: true,
+      })
+    } finally {
+      setSaving(false)
     }
-    addExitSurvey({
-      employee_id: surveyForm.is_anonymous ? null : surveyForm.employee_id,
-      is_anonymous: surveyForm.is_anonymous,
-      responses: {
-        overall_satisfaction: surveyForm.overall_satisfaction,
-        management_rating: surveyForm.management_rating,
-        work_life_balance: surveyForm.work_life_balance,
-        career_growth: surveyForm.career_growth,
-        compensation_satisfaction: surveyForm.compensation_satisfaction,
-        team_culture: surveyForm.team_culture,
-        reason_for_leaving: surveyForm.reason_for_leaving,
-        what_could_improve: surveyForm.what_could_improve,
-        best_part: surveyForm.best_part,
-        additional_comments: surveyForm.additional_comments,
-        would_recommend: surveyForm.would_recommend,
-      },
-    })
-    addToast('Exit survey submitted successfully')
-    setShowSurveyModal(false)
-    setSurveyForm({
-      employee_id: '', is_anonymous: false,
-      overall_satisfaction: 3, management_rating: 3, work_life_balance: 3,
-      career_growth: 3, compensation_satisfaction: 3, team_culture: 3,
-      reason_for_leaving: '', what_could_improve: '', best_part: '',
-      additional_comments: '', would_recommend: true,
-    })
   }
 
   function handleSaveItem() {
-    if (!itemForm.title || !itemForm.checklist_id) return
-    addOffboardingChecklistItem(itemForm)
-    setShowItemModal(false)
-    setItemForm({ checklist_id: '', title: '', description: '', category: 'access_revocation', assignee_role: '', order_index: 0, is_required: true })
+    const errors: string[] = []
+    if (!itemForm.title) errors.push('Task title is required')
+    if (!itemForm.category) errors.push('Category is required')
+    if (!itemForm.checklist_id) errors.push('Checklist is required')
+    if (errors.length > 0) { addToast(errors.join('. '), 'error'); return }
+    setSaving(true)
+    try {
+      addOffboardingChecklistItem(itemForm)
+      addToast('Checklist item added')
+      setShowItemModal(false)
+      setItemForm({ checklist_id: '', title: '', description: '', category: 'access_revocation', assignee_role: '', order_index: 0, is_required: true })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Confirmation Action Handler ──────────────
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      switch (confirmAction.action) {
+        case 'cancel_process':
+          updateOffboardingProcess(confirmAction.id, { status: 'cancelled' })
+          addToast('Offboarding process cancelled')
+          break
+        case 'complete_process':
+          updateOffboardingProcess(confirmAction.id, { status: 'completed', completed_at: new Date().toISOString() })
+          addToast('Offboarding marked as complete')
+          break
+        case 'delete_checklist_item':
+          deleteOffboardingChecklistItem(confirmAction.id)
+          addToast('Checklist item deleted')
+          break
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
 
   // ═══════════════════════════════════════════════
@@ -817,14 +895,14 @@ export default function OffboardingPage() {
                     </Button>
                   )}
                   {selectedProcess.status === 'in_progress' && getProcessProgress(selectedProcess.id) === 100 && (
-                    <Button onClick={() => updateOffboardingProcess(selectedProcess.id, { status: 'completed', completed_at: new Date().toISOString() })}>
+                    <Button onClick={() => setConfirmAction({ show: true, action: 'complete_process', id: selectedProcess.id, label: `Mark offboarding for ${getEmployeeName(selectedProcess.employee_id)} as complete? This action is irreversible.` })}>
                       <Check size={14} className="mr-1" /> Mark Complete
                     </Button>
                   )}
                   {(selectedProcess.status === 'pending' || selectedProcess.status === 'in_progress') && (
                     <Button
                       variant="ghost"
-                      onClick={() => updateOffboardingProcess(selectedProcess.id, { status: 'cancelled' })}
+                      onClick={() => setConfirmAction({ show: true, action: 'cancel_process', id: selectedProcess.id, label: `Cancel offboarding process for ${getEmployeeName(selectedProcess.employee_id)}? All pending tasks will be abandoned.` })}
                     >
                       <X size={14} className="mr-1" /> Cancel Process
                     </Button>
@@ -862,8 +940,17 @@ export default function OffboardingPage() {
                 {filteredProcesses.length === 0 ? (
                   <Card className="text-center py-12">
                     <UserMinus size={32} className="mx-auto text-t3 mb-3" />
-                    <p className="text-sm text-t2">No offboarding processes found</p>
-                    <p className="text-xs text-t3 mt-1">Initiate a new offboarding to get started</p>
+                    <p className="text-sm font-medium text-t2">
+                      {processStatusFilter === 'completed' ? 'No completed offboarding' :
+                       processStatusFilter === 'cancelled' ? 'No cancelled offboarding processes' :
+                       processSearch ? 'No matching processes found' :
+                       'No active offboarding processes'}
+                    </p>
+                    <p className="text-xs text-t3 mt-1">
+                      {processStatusFilter === 'completed' ? 'Historical records will appear here once processes are finished' :
+                       processSearch ? 'Try adjusting your search terms' :
+                       'Processes will appear when employees are departing'}
+                    </p>
                   </Card>
                 ) : (
                   <div className="space-y-3">
@@ -941,6 +1028,13 @@ export default function OffboardingPage() {
               </Button>
             </div>
 
+            {offboardingChecklists.length === 0 ? (
+              <Card className="text-center py-12">
+                <ClipboardList size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-sm font-medium text-t2">No offboarding templates</p>
+                <p className="text-xs text-t3 mt-1">Create reusable checklists for consistent offboarding</p>
+              </Card>
+            ) : (
             <div className="space-y-4">
               {offboardingChecklists.map(checklist => {
                 const items = offboardingChecklistItems.filter(i => i.checklist_id === checklist.id)
@@ -997,7 +1091,7 @@ export default function OffboardingPage() {
                                       <span className="text-[0.6rem] text-red-500 font-medium">Required</span>
                                     )}
                                     <button
-                                      onClick={(e) => { e.stopPropagation(); deleteOffboardingChecklistItem(item.id) }}
+                                      onClick={(e) => { e.stopPropagation(); setConfirmAction({ show: true, action: 'delete_checklist_item', id: item.id, label: `Delete checklist item "${item.title}"? This cannot be undone.` }) }}
                                       className="text-t3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
                                       <X size={12} />
@@ -1040,6 +1134,7 @@ export default function OffboardingPage() {
                 )
               })}
             </div>
+            )}
           </div>
         )}
 
@@ -1144,6 +1239,20 @@ export default function OffboardingPage() {
                         </div>
                       ))}
                     </div>
+                    {topReasons.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-divider">
+                        <p className="text-xs font-medium text-t2 mb-2">Top Reasons for Leaving</p>
+                        <div className="space-y-1.5">
+                          {topReasons.map((r, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <span className="text-t3 w-4">{i + 1}.</span>
+                              <span className="text-t1 flex-1 truncate">{r.reason}</span>
+                              <Badge variant="default">{r.count}x</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 )}
 
@@ -1156,8 +1265,8 @@ export default function OffboardingPage() {
                 {exitSurveys.length === 0 ? (
                   <Card className="text-center py-12">
                     <MessageSquareText size={32} className="mx-auto text-t3 mb-3" />
-                    <p className="text-sm text-t2">No exit surveys submitted yet</p>
-                    <p className="text-xs text-t3 mt-1">Surveys are collected during the offboarding process</p>
+                    <p className="text-sm font-medium text-t2">No exit surveys yet</p>
+                    <p className="text-xs text-t3 mt-1">Gather feedback from departing employees to improve retention</p>
                   </Card>
                 ) : (
                   <div className="space-y-3">
@@ -1513,9 +1622,9 @@ export default function OffboardingPage() {
             <Button variant="ghost" onClick={() => setShowNewProcessModal(false)}>Cancel</Button>
             <Button
               onClick={handleNewProcess}
-              disabled={!processForm.employee_id || !processForm.last_working_date}
+              disabled={!processForm.employee_id || !processForm.last_working_date || saving}
             >
-              Initiate Offboarding
+              {saving ? 'Saving...' : 'Initiate Offboarding'}
             </Button>
           </div>
         </div>
@@ -1555,8 +1664,8 @@ export default function OffboardingPage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => { setShowChecklistModal(false); setEditingChecklistId(null) }}>Cancel</Button>
-            <Button onClick={handleSaveChecklist} disabled={!checklistForm.name}>
-              {editingChecklistId ? 'Save Changes' : 'Create Checklist'}
+            <Button onClick={handleSaveChecklist} disabled={!checklistForm.name || saving}>
+              {saving ? 'Saving...' : editingChecklistId ? 'Save Changes' : 'Create Checklist'}
             </Button>
           </div>
         </div>
@@ -1611,8 +1720,8 @@ export default function OffboardingPage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setShowItemModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveItem} disabled={!itemForm.title}>
-              Add Item
+            <Button onClick={handleSaveItem} disabled={!itemForm.title || saving}>
+              {saving ? 'Saving...' : 'Add Item'}
             </Button>
           </div>
         </div>
@@ -1717,9 +1826,28 @@ export default function OffboardingPage() {
             <Button variant="ghost" onClick={() => setShowSurveyModal(false)}>Cancel</Button>
             <Button
               onClick={handleSubmitSurvey}
-              disabled={!surveyForm.employee_id && !surveyForm.is_anonymous}
+              disabled={(!surveyForm.employee_id && !surveyForm.is_anonymous) || saving}
             >
-              Submit Survey
+              {saving ? 'Submitting...' : 'Submit Survey'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ═══════════════════════════════════════
+          MODAL: Confirmation Dialog
+      ═══════════════════════════════════════ */}
+      <Modal
+        open={!!confirmAction?.show}
+        onClose={() => setConfirmAction(null)}
+        title="Confirm Action"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.label}</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button onClick={executeConfirmAction} disabled={saving}>
+              {saving ? 'Processing...' : 'Confirm'}
             </Button>
           </div>
         </div>

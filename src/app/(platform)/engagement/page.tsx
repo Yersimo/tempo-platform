@@ -90,6 +90,16 @@ export default function EngagementPage() {
     target_department: '', target_country: '',
   })
 
+  // ---- Saving State ----
+  const [saving, setSaving] = useState(false)
+
+  // ---- Delete Confirmation State ----
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'template' | 'schedule' | 'trigger'; id: string } | null>(null)
+
+  // ---- Survey Search/Filter State ----
+  const [surveySearch, setSurveySearch] = useState('')
+  const [surveyStatusFilter, setSurveyStatusFilter] = useState<'all' | 'active' | 'closed' | 'draft'>('all')
+
   // ---- Text Analysis State ----
   const [textAnalysisFilter, setTextAnalysisFilter] = useState({ sentiment: 'all', survey: 'all', department: 'all' })
 
@@ -154,6 +164,15 @@ export default function EngagementPage() {
   }, [bulkSurveyMode, employees, bulkSurveySelectedEmpIds, bulkSurveyTargetEmployees])
 
   const activeSurveysForBulk = useMemo(() => surveys.filter(s => s.status === 'active'), [surveys])
+
+  // ---- Filtered Surveys for Search/Filter ----
+  const filteredSurveys = useMemo(() => {
+    return surveys.filter(s => {
+      if (surveySearch && !s.title.toLowerCase().includes(surveySearch.toLowerCase())) return false
+      if (surveyStatusFilter !== 'all' && s.status !== surveyStatusFilter) return false
+      return true
+    })
+  }, [surveys, surveySearch, surveyStatusFilter])
 
   // ---- AI-Powered Insights ----
   const driverInsights = useMemo(() => identifyEngagementDrivers(engagementScores), [engagementScores])
@@ -246,18 +265,28 @@ export default function EngagementPage() {
   }, [surveyAnalysis.categoryScores])
 
   // ---- Handlers ----
-  function submitSurvey() {
-    if (!surveyForm.title || !surveyForm.start_date || !surveyForm.end_date) return
-    addSurvey(surveyForm)
-    setShowSurveyModal(false)
-    setSurveyForm({ title: '', type: 'pulse', status: 'active', start_date: '', end_date: '', anonymous: true })
+  async function submitSurvey() {
+    if (!surveyForm.title) { addToast('Survey title is required', 'error'); return }
+    if (!surveyForm.type) { addToast('Survey type is required', 'error'); return }
+    if (!surveyForm.start_date) { addToast('Start date is required', 'error'); return }
+    setSaving(true)
+    try {
+      addSurvey(surveyForm)
+      setShowSurveyModal(false)
+      setSurveyForm({ title: '', type: 'pulse', status: 'active', start_date: '', end_date: '', anonymous: true })
+    } finally { setSaving(false) }
   }
 
-  function submitActionPlan() {
-    if (!actionForm.title || !actionForm.owner || !actionForm.due_date) return
-    addActionPlan(actionForm)
-    setShowActionPlanModal(false)
-    setActionForm({ title: '', owner: '', priority: 'medium', status: 'planned', due_date: '', category: 'Leadership', department_id: '' })
+  async function submitActionPlan() {
+    if (!actionForm.title) { addToast('Action plan title is required', 'error'); return }
+    if (!actionForm.priority) { addToast('Priority is required', 'error'); return }
+    if (!actionForm.owner) { addToast('Owner is required', 'error'); return }
+    setSaving(true)
+    try {
+      addActionPlan(actionForm)
+      setShowActionPlanModal(false)
+      setActionForm({ title: '', owner: '', priority: 'medium', status: 'planned', due_date: '', category: 'Leadership', department_id: '' })
+    } finally { setSaving(false) }
   }
 
   function advanceActionPlan(id: string, currentStatus: string) {
@@ -304,16 +333,24 @@ export default function EngagementPage() {
     })
   }
 
-  function saveBuilderAsTemplate() {
-    if (!builderTitle || builderQuestions.length === 0) { addToast('Please add a title and at least one question', 'error'); return }
-    addSurveyTemplate({ name: builderTitle, type: builderType, description: builderDesc, questions: builderQuestions, isDefault: false, usageCount: 0 })
-    resetBuilder()
+  async function saveBuilderAsTemplate() {
+    if (!builderTitle) { addToast('Template title is required', 'error'); return }
+    if (builderQuestions.length === 0) { addToast('Please add at least one question', 'error'); return }
+    setSaving(true)
+    try {
+      addSurveyTemplate({ name: builderTitle, type: builderType, description: builderDesc, questions: builderQuestions, isDefault: false, usageCount: 0 })
+      resetBuilder()
+    } finally { setSaving(false) }
   }
 
-  function saveBuilderAsSurvey() {
-    if (!builderTitle || builderQuestions.length === 0) { addToast('Please add a title and at least one question', 'error'); return }
-    addSurvey({ title: builderTitle, type: builderType === 'custom' ? 'custom' : builderType, status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', anonymous: true, questions: builderQuestions })
-    resetBuilder()
+  async function saveBuilderAsSurvey() {
+    if (!builderTitle) { addToast('Survey title is required', 'error'); return }
+    if (builderQuestions.length === 0) { addToast('Please add at least one question', 'error'); return }
+    setSaving(true)
+    try {
+      addSurvey({ title: builderTitle, type: builderType === 'custom' ? 'custom' : builderType, status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', anonymous: true, questions: builderQuestions })
+      resetBuilder()
+    } finally { setSaving(false) }
   }
 
   function resetBuilder() {
@@ -345,33 +382,51 @@ export default function EngagementPage() {
   }
 
   // ---- Schedule Helpers ----
-  function submitSchedule() {
-    if (!scheduleForm.survey_title || !scheduleForm.frequency || !scheduleForm.start_date) return
+  async function submitSchedule() {
+    if (!scheduleForm.survey_title) { addToast('Survey name is required', 'error'); return }
+    if (!scheduleForm.frequency) { addToast('Frequency is required', 'error'); return }
+    if (!scheduleForm.start_date) { addToast('Start date is required', 'error'); return }
+    setSaving(true)
     const nextRun = new Date(scheduleForm.start_date)
     if (scheduleForm.frequency === 'weekly') nextRun.setDate(nextRun.getDate() + 7)
     else if (scheduleForm.frequency === 'biweekly') nextRun.setDate(nextRun.getDate() + 14)
     else if (scheduleForm.frequency === 'monthly') nextRun.setMonth(nextRun.getMonth() + 1)
     else if (scheduleForm.frequency === 'quarterly') nextRun.setMonth(nextRun.getMonth() + 3)
     else nextRun.setFullYear(nextRun.getFullYear() + 1)
-    addSurveySchedule({
-      survey_title: scheduleForm.survey_title, frequency: scheduleForm.frequency,
-      start_date: scheduleForm.start_date, next_run_date: nextRun.toISOString().split('T')[0],
-      end_date: scheduleForm.end_date || null, target_audience: { department: scheduleForm.target_department || null, country: scheduleForm.target_country || null },
-    })
-    setShowScheduleModal(false)
-    setScheduleForm({ survey_title: '', frequency: 'monthly', start_date: '', end_date: '', target_department: '', target_country: '' })
+    try {
+      addSurveySchedule({
+        survey_title: scheduleForm.survey_title, frequency: scheduleForm.frequency,
+        start_date: scheduleForm.start_date, next_run_date: nextRun.toISOString().split('T')[0],
+        end_date: scheduleForm.end_date || null, target_audience: { department: scheduleForm.target_department || null, country: scheduleForm.target_country || null },
+      })
+      setShowScheduleModal(false)
+      setScheduleForm({ survey_title: '', frequency: 'monthly', start_date: '', end_date: '', target_department: '', target_country: '' })
+    } finally { setSaving(false) }
   }
 
   // ---- Trigger Helpers ----
-  function submitTrigger() {
-    if (!triggerForm.template_id || !triggerForm.trigger_event) return
-    const tpl = surveyTemplates.find((t: any) => t.id === triggerForm.template_id) as any
-    addSurveyTrigger({
-      template_id: triggerForm.template_id, template_name: tpl?.name || '', trigger_event: triggerForm.trigger_event,
-      delay_days: triggerForm.delay_days, target_audience: { department: triggerForm.target_department || null, country: triggerForm.target_country || null },
-    })
-    setShowTriggerModal(false)
-    setTriggerForm({ template_id: '', trigger_event: 'employee_hired', delay_days: 0, target_department: '', target_country: '' })
+  async function submitTrigger() {
+    if (!triggerForm.template_id) { addToast('Template is required', 'error'); return }
+    if (!triggerForm.trigger_event) { addToast('Trigger event is required', 'error'); return }
+    setSaving(true)
+    try {
+      const tpl = surveyTemplates.find((t: any) => t.id === triggerForm.template_id) as any
+      addSurveyTrigger({
+        template_id: triggerForm.template_id, template_name: tpl?.name || '', trigger_event: triggerForm.trigger_event,
+        delay_days: triggerForm.delay_days, target_audience: { department: triggerForm.target_department || null, country: triggerForm.target_country || null },
+      })
+      setShowTriggerModal(false)
+      setTriggerForm({ template_id: '', trigger_event: 'employee_hired', delay_days: 0, target_department: '', target_country: '' })
+    } finally { setSaving(false) }
+  }
+
+  // ---- Delete Confirmation Handler ----
+  function confirmDelete() {
+    if (!deleteConfirm) return
+    if (deleteConfirm.type === 'template') deleteSurveyTemplate(deleteConfirm.id)
+    else if (deleteConfirm.type === 'schedule') deleteSurveySchedule(deleteConfirm.id)
+    else if (deleteConfirm.type === 'trigger') deleteSurveyTrigger(deleteConfirm.id)
+    setDeleteConfirm(null)
   }
 
   // ---- Text Analysis Computed ----
@@ -452,12 +507,32 @@ export default function EngagementPage() {
       {/* TAB 1: SURVEYS */}
       {/* ============================================================ */}
       {activeTab === 'surveys' && (
+        <>
+        {/* Search and Filter Bar */}
+        <Card className="mb-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <Input placeholder="Search surveys by title..." value={surveySearch} onChange={e => setSurveySearch(e.target.value)} />
+            </div>
+            <Select label="Status" value={surveyStatusFilter} onChange={e => setSurveyStatusFilter(e.target.value as 'all' | 'active' | 'closed' | 'draft')} options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'closed', label: 'Closed' },
+              { value: 'draft', label: 'Draft' },
+            ]} />
+          </div>
+        </Card>
         <Card padding="none">
           <CardHeader><CardTitle>{t('surveyManagement')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
-            {surveys.length === 0 ? (
-              <div className="px-6 py-12 text-center text-sm text-t3">{t('noSurveys')}</div>
-            ) : surveys.map(survey => (
+            {filteredSurveys.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <HeartPulse size={40} className="mx-auto mb-3 text-t3 opacity-40" />
+                <p className="text-sm font-medium text-t1 mb-1">No surveys yet</p>
+                <p className="text-xs text-t3 mb-4">Create your first pulse survey to measure employee engagement</p>
+                <Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> Create Survey</Button>
+              </div>
+            ) : filteredSurveys.map(survey => (
               <div key={survey.id}>
                 <div className="px-6 py-4 flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600">
@@ -547,6 +622,7 @@ export default function EngagementPage() {
             ))}
           </div>
         </Card>
+        </>
       )}
 
       {/* ============================================================ */}
@@ -657,11 +733,11 @@ export default function EngagementPage() {
               <Card>
                 <h3 className="text-sm font-semibold text-t1 mb-3">Actions</h3>
                 <div className="space-y-2">
-                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsSurvey} disabled={!builderTitle || builderQuestions.length === 0}>
-                    <Send size={14} /> Create Survey
+                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsSurvey} disabled={saving || !builderTitle || builderQuestions.length === 0}>
+                    <Send size={14} /> {saving ? 'Creating...' : 'Create Survey'}
                   </Button>
-                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsTemplate} disabled={!builderTitle || builderQuestions.length === 0}>
-                    <Copy size={14} /> Save as Template
+                  <Button size="sm" variant="outline" className="w-full" onClick={saveBuilderAsTemplate} disabled={saving || !builderTitle || builderQuestions.length === 0}>
+                    <Copy size={14} /> {saving ? 'Saving...' : 'Save as Template'}
                   </Button>
                 </div>
               </Card>
@@ -696,6 +772,14 @@ export default function EngagementPage() {
             <StatCard label="Total Usage" value={surveyTemplates.reduce((a: number, t: any) => a + (t.usageCount || 0), 0)} icon={<BarChart3 size={20} />} />
           </div>
 
+          {surveyTemplates.length === 0 ? (
+            <Card className="text-center py-16">
+              <Copy size={40} className="mx-auto mb-3 text-t3 opacity-40" />
+              <p className="text-sm font-medium text-t1 mb-1">No survey templates</p>
+              <p className="text-xs text-t3 mb-4">Build reusable templates for recurring surveys</p>
+              <Button size="sm" onClick={() => setActiveTab('builder')}><Plus size={14} /> Create Template</Button>
+            </Card>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {surveyTemplates.map((tpl: any) => (
               <Card key={tpl.id} className="relative group">
@@ -751,6 +835,7 @@ export default function EngagementPage() {
               </Card>
             ))}
           </div>
+          )}
         </>
       )}
 
@@ -788,7 +873,12 @@ export default function EngagementPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {surveySchedules.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">No schedules created yet.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-16 text-center">
+                      <Calendar size={40} className="mx-auto mb-3 text-t3 opacity-40" />
+                      <p className="text-sm font-medium text-t1 mb-1">No schedules yet</p>
+                      <p className="text-xs text-t3 mb-4">Set up automated recurring surveys on a schedule</p>
+                      <Button size="sm" onClick={() => setShowScheduleModal(true)}><Plus size={14} /> Create Schedule</Button>
+                    </td></tr>
                   ) : surveySchedules.map((sched: any) => {
                     const daysUntilNext = sched.next_run_date ? Math.ceil((new Date(sched.next_run_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
                     return (
@@ -819,7 +909,7 @@ export default function EngagementPage() {
                             <button onClick={() => updateSurveySchedule(sched.id, { is_active: !sched.is_active })} className={`p-1.5 rounded-lg ${sched.is_active ? 'text-success hover:bg-success/10' : 'text-t3 hover:bg-canvas'}`} title={sched.is_active ? 'Pause' : 'Activate'}>
                               <Power size={14} />
                             </button>
-                            <button onClick={() => deleteSurveySchedule(sched.id)} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10" title="Delete"><Trash2 size={14} /></button>
+                            <button onClick={() => setDeleteConfirm({ type: 'schedule', id: sched.id })} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10" title="Delete"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -853,7 +943,12 @@ export default function EngagementPage() {
             </CardHeader>
             <div className="divide-y divide-divider">
               {surveyTriggers.length === 0 ? (
-                <div className="px-6 py-12 text-center text-sm text-t3">No triggers created yet.</div>
+                <div className="px-6 py-16 text-center">
+                  <Zap size={40} className="mx-auto mb-3 text-t3 opacity-40" />
+                  <p className="text-sm font-medium text-t1 mb-1">No triggers yet</p>
+                  <p className="text-xs text-t3 mb-4">Create event-based triggers to automatically send surveys</p>
+                  <Button size="sm" onClick={() => setShowTriggerModal(true)}><Plus size={14} /> Create Trigger</Button>
+                </div>
               ) : surveyTriggers.map((trigger: any) => (
                 <div key={trigger.id} className="px-6 py-4">
                   <div className="flex items-center gap-4 mb-3">
@@ -872,7 +967,7 @@ export default function EngagementPage() {
                       <button onClick={() => updateSurveyTrigger(trigger.id, { is_active: !trigger.is_active })} className={`p-1.5 rounded-lg ${trigger.is_active ? 'text-success hover:bg-success/10' : 'text-t3 hover:bg-canvas'}`}>
                         <Power size={14} />
                       </button>
-                      <button onClick={() => deleteSurveyTrigger(trigger.id)} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10">
+                      <button onClick={() => setDeleteConfirm({ type: 'trigger', id: trigger.id })} className="p-1.5 text-t3 hover:text-error rounded-lg hover:bg-error/10">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -1168,7 +1263,12 @@ export default function EngagementPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {actionPlans.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noActionPlans')}</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-16 text-center">
+                      <Target size={40} className="mx-auto mb-3 text-t3 opacity-40" />
+                      <p className="text-sm font-medium text-t1 mb-1">No action plans yet</p>
+                      <p className="text-xs text-t3 mb-4">Turn survey insights into concrete improvement plans</p>
+                      <Button size="sm" onClick={() => setShowActionPlanModal(true)}><Plus size={14} /> Create Action Plan</Button>
+                    </td></tr>
                   ) : actionPlans.map((ap: any) => (
                     <tr key={ap.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
@@ -1500,7 +1600,7 @@ export default function EngagementPage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowSurveyModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitSurvey}>{t('createSurvey')}</Button>
+            <Button onClick={submitSurvey} disabled={saving}>{saving ? 'Creating...' : t('createSurvey')}</Button>
           </div>
         </div>
       </Modal>
@@ -1528,7 +1628,7 @@ export default function EngagementPage() {
           <Input label={t('actionDueDate')} type="date" value={actionForm.due_date} onChange={(e) => setActionForm({ ...actionForm, due_date: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowActionPlanModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitActionPlan}>{t('createActionPlan')}</Button>
+            <Button onClick={submitActionPlan} disabled={saving}>{saving ? 'Creating...' : t('createActionPlan')}</Button>
           </div>
         </div>
       </Modal>
@@ -1854,7 +1954,18 @@ export default function EngagementPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
-            <Button onClick={submitSchedule} disabled={!scheduleForm.survey_title || !scheduleForm.start_date}>Create Schedule</Button>
+            <Button onClick={submitSchedule} disabled={saving || !scheduleForm.survey_title || !scheduleForm.start_date}>{saving ? 'Creating...' : 'Create Schedule'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Confirm Deletion">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">Are you sure you want to delete this? This action cannot be undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDelete}>Delete</Button>
           </div>
         </div>
       </Modal>
@@ -1886,7 +1997,7 @@ export default function EngagementPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTriggerModal(false)}>Cancel</Button>
-            <Button onClick={submitTrigger} disabled={!triggerForm.template_id}>Create Trigger</Button>
+            <Button onClick={submitTrigger} disabled={saving || !triggerForm.template_id}>{saving ? 'Creating...' : 'Create Trigger'}</Button>
           </div>
         </div>
       </Modal>
