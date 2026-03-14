@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
 import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
+import { usePermissions } from '@/lib/hooks/use-permissions'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/search'
@@ -27,6 +28,8 @@ interface NavItem {
   href: string
   icon: React.ReactNode
   badge?: number
+  /** Permission(s) required to see this item. Empty = visible to all. */
+  requiredPermissions?: string[]
 }
 
 interface NavGroup {
@@ -44,16 +47,8 @@ export function Sidebar() {
   const tCommon = useTranslations('common')
 
   const role = currentUser?.role || 'owner'
-  const isEmployee = role === 'employee'
   const isEvaluator = !!(currentUser?.email && isEvaluatorAccount(currentUser.email))
-
-  // Employee self-service: only show modules employees need
-  const EMPLOYEE_ALLOWED_HREFS = new Set([
-    '/dashboard', '/people', '/performance', '/learning',
-    '/engagement', '/payslips', '/time-attendance', '/benefits',
-    '/expense', '/mentoring', '/chat', '/documents', '/travel',
-    '/help',
-  ])
+  const { canAny } = usePermissions()
 
   const allNavGroups: NavGroup[] = [
     {
@@ -61,7 +56,7 @@ export function Sidebar() {
       items: [
         { label: t('dashboard'), href: '/dashboard', icon: <LayoutDashboard size={18} /> },
         { label: t('peopleLabel'), href: '/people', icon: <Users size={18} /> },
-        { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5 },
+        { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5, requiredPermissions: ['recruiting:read'] },
         { label: 'Chat', href: '/chat', icon: <MessageSquare size={18} /> },
       ],
     },
@@ -69,40 +64,40 @@ export function Sidebar() {
       title: t('people'),
       items: [
         { label: t('performance'), href: '/performance', icon: <TrendingUp size={18} />, badge: 3 },
-        { label: t('compensation'), href: '/compensation', icon: <Banknote size={18} /> },
+        { label: t('compensation'), href: '/compensation', icon: <Banknote size={18} />, requiredPermissions: ['compensation:read'] },
         { label: t('learning'), href: '/learning', icon: <GraduationCap size={18} /> },
         { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
         { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
-        { label: 'Offboarding', href: '/offboarding', icon: <UserMinus size={18} /> },
+        { label: 'Offboarding', href: '/offboarding', icon: <UserMinus size={18} />, requiredPermissions: ['offboarding:read'] },
       ],
     },
     {
       title: t('operations'),
       items: [
-        { label: t('payroll'), href: '/payroll', icon: <Wallet size={18} /> },
+        { label: t('payroll'), href: '/payroll', icon: <Wallet size={18} />, requiredPermissions: ['payroll:read'] },
         { label: 'My Payslips', href: '/payslips', icon: <FileText size={18} /> },
         { label: t('timeAttendance'), href: '/time-attendance', icon: <Clock size={18} />, badge: 2 },
         { label: t('benefits'), href: '/benefits', icon: <Shield size={18} /> },
         { label: t('expense'), href: '/expense', icon: <Receipt size={18} />, badge: 3 },
         { label: 'Travel', href: '/travel', icon: <Plane size={18} /> },
-        { label: 'Global Workforce', href: '/global-workforce', icon: <Globe size={18} /> },
-        { label: "Workers' Comp", href: '/workers-comp', icon: <ShieldCheck size={18} /> },
+        { label: 'Global Workforce', href: '/global-workforce', icon: <Globe size={18} />, requiredPermissions: ['people:read'] },
+        { label: "Workers' Comp", href: '/workers-comp', icon: <ShieldCheck size={18} />, requiredPermissions: ['compliance:read'] },
       ],
     },
     {
       title: t('it') + ' & ' + t('finance'),
       items: [
-        { label: 'IT Cloud', href: '/it-cloud', icon: <Cloud size={18} /> },
-        { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} /> },
-        { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} /> },
-        { label: 'Identity', href: '/identity', icon: <KeyRound size={18} /> },
-        { label: 'Passwords', href: '/password-manager', icon: <Lock size={18} /> },
-        { label: 'Marketplace', href: '/marketplace', icon: <Store size={18} /> },
-        { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} /> },
-        { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} /> },
-        { label: 'Corporate Cards', href: '/finance/cards', icon: <CreditCard size={18} /> },
-        { label: 'Bill Pay', href: '/finance/bill-pay', icon: <CircleDollarSign size={18} /> },
-        { label: 'Global Spend', href: '/finance/global-spend', icon: <Globe size={18} /> },
+        { label: 'IT Cloud', href: '/it-cloud', icon: <Cloud size={18} />, requiredPermissions: ['it:read'] },
+        { label: t('devices'), href: '/it/devices', icon: <Laptop size={18} />, requiredPermissions: ['it:read'] },
+        { label: t('apps'), href: '/it/apps', icon: <AppWindow size={18} />, requiredPermissions: ['it:read'] },
+        { label: 'Identity', href: '/identity', icon: <KeyRound size={18} />, requiredPermissions: ['identity:read'] },
+        { label: 'Passwords', href: '/password-manager', icon: <Lock size={18} />, requiredPermissions: ['it:read'] },
+        { label: 'Marketplace', href: '/marketplace', icon: <Store size={18} />, requiredPermissions: ['settings:read'] },
+        { label: t('invoices'), href: '/finance/invoices', icon: <FileText size={18} />, requiredPermissions: ['invoices:read'] },
+        { label: t('budgets'), href: '/finance/budgets', icon: <PieChart size={18} />, requiredPermissions: ['budgets:read'] },
+        { label: 'Corporate Cards', href: '/finance/cards', icon: <CreditCard size={18} />, requiredPermissions: ['finance:read'] },
+        { label: 'Bill Pay', href: '/finance/bill-pay', icon: <CircleDollarSign size={18} />, requiredPermissions: ['finance:read'] },
+        { label: 'Global Spend', href: '/finance/global-spend', icon: <Globe size={18} />, requiredPermissions: ['finance:read'] },
       ],
     },
     {
@@ -110,21 +105,34 @@ export function Sidebar() {
       items: [
         { label: t('projects'), href: '/projects', icon: <FolderKanban size={18} /> },
         { label: t('strategy'), href: '/strategy', icon: <Compass size={18} /> },
-        { label: 'Headcount', href: '/headcount', icon: <UserPlus size={18} /> },
-        { label: 'Compliance', href: '/compliance', icon: <ShieldCheck size={18} /> },
-        { label: 'Automation', href: '/workflows', icon: <Zap size={18} /> },
-        { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} /> },
-        { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} /> },
+        { label: 'Headcount', href: '/headcount', icon: <UserPlus size={18} />, requiredPermissions: ['headcount:read'] },
+        { label: 'Compliance', href: '/compliance', icon: <ShieldCheck size={18} />, requiredPermissions: ['compliance:read'] },
+        { label: 'Automation', href: '/workflows', icon: <Zap size={18} />, requiredPermissions: ['workflows:read'] },
+        { label: t('workflowStudio'), href: '/workflow-studio', icon: <Zap size={18} />, requiredPermissions: ['workflows:manage'] },
+        { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} />, requiredPermissions: ['analytics:read'] },
         { label: 'Documents', href: '/documents', icon: <FileSignature size={18} /> },
-        { label: 'App Studio', href: '/app-studio', icon: <Blocks size={18} /> },
-        { label: 'Sandbox', href: '/sandbox', icon: <FlaskConical size={18} /> },
+        { label: 'App Studio', href: '/app-studio', icon: <Blocks size={18} />, requiredPermissions: ['admin:full'] },
+        { label: 'Sandbox', href: '/sandbox', icon: <FlaskConical size={18} />, requiredPermissions: ['admin:full'] },
         { label: 'Groups', href: '/groups', icon: <Network size={18} /> },
-        { label: 'Developer', href: '/developer', icon: <Code size={18} /> },
+        { label: 'Developer', href: '/developer', icon: <Code size={18} />, requiredPermissions: ['admin:full'] },
       ],
     },
   ]
 
-  // Filter nav groups for employee role
+  // Filter nav items by permissions
+  const filterByPermissions = (groups: NavGroup[]): NavGroup[] =>
+    groups
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => {
+          // No permission requirement → visible to all
+          if (!item.requiredPermissions || item.requiredPermissions.length === 0) return true
+          // Check if user has any of the required permissions
+          return canAny(item.requiredPermissions as any)
+        }),
+      }))
+      .filter(group => group.items.length > 0)
+
   // Filter nav groups for evaluator accounts (restricted module list)
   const filterNavGroups = (groups: NavGroup[], allowed: Set<string>, prefixMatch = false): NavGroup[] =>
     groups
@@ -140,9 +148,7 @@ export function Sidebar() {
 
   const navGroups: NavGroup[] = isEvaluator
     ? filterNavGroups(allNavGroups, EVALUATOR_SIDEBAR_ALLOWED, true)
-    : isEmployee
-      ? filterNavGroups(allNavGroups, EMPLOYEE_ALLOWED_HREFS)
-      : allNavGroups
+    : filterByPermissions(allNavGroups)
 
   const displayName = currentUser?.full_name || 'Amara Kone'
   const displayTitle = currentUser?.job_title || 'CHRO'

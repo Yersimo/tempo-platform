@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { getPermissionsForRole, hasAnyPermission } from '@/lib/security/permissions'
+import { getRequiredPermissions } from '@/lib/security/route-permissions'
 
 const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
 if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
@@ -282,6 +284,29 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set('x-employee-role', payload.role as string)
     requestHeaders.set('x-org-id', payload.orgId as string)
     requestHeaders.set('x-session-id', payload.sessionId as string)
+
+    // ─── RBAC Authorization ──────────────────────────────────────────────
+    const employeeRole = (payload.role as string) || 'employee'
+    const userPermissions = getPermissionsForRole(employeeRole)
+
+    // Forward permissions so API routes can perform their own checks
+    requestHeaders.set('x-employee-permissions', userPermissions.join(','))
+
+    // Check route-level permissions (only for page routes, not API routes —
+    // API routes should use the forwarded permissions header for granular checks)
+    if (!pathname.startsWith('/api/')) {
+      const required = getRequiredPermissions(pathname)
+      // `null` means route is not mapped → open to all authenticated users
+      // empty array means explicitly open to all authenticated users
+      if (required !== null && required.length > 0) {
+        if (!hasAnyPermission(userPermissions, required)) {
+          const accessDeniedUrl = new URL('/access-denied', request.url)
+          accessDeniedUrl.searchParams.set('path', pathname)
+          accessDeniedUrl.searchParams.set('permission', required.join(', '))
+          return NextResponse.redirect(accessDeniedUrl)
+        }
+      }
+    }
 
     // ─── Demo Org Guard ────────────────────────────────────────────────
     // Demo orgs use IDs like 'org-1' (not valid UUIDs). If a demo org
