@@ -95,6 +95,9 @@ export default function CorporateCardsPage() {
     return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
+
   const [activeTab, setActiveTab] = useState<TabKey>('cards')
   const [showIssueModal, setShowIssueModal] = useState(false)
   const [cardForm, setCardForm] = useState({
@@ -166,6 +169,7 @@ export default function CorporateCardsPage() {
   // ── Card actions ──
 
   async function freezeCard(id: string) {
+    setSaving(true)
     try {
       const result = await cardsAPI('freeze', { cardId: id })
       updateCorporateCard(id, result.card ?? { status: 'frozen' })
@@ -173,10 +177,13 @@ export default function CorporateCardsPage() {
     } catch {
       updateCorporateCard(id, { status: 'frozen' })
       addToast('Card frozen (offline)', 'info')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function unfreezeCard(id: string) {
+    setSaving(true)
     try {
       const result = await cardsAPI('activate', { cardId: id })
       updateCorporateCard(id, result.card ?? { status: 'active' })
@@ -184,7 +191,17 @@ export default function CorporateCardsPage() {
     } catch {
       updateCorporateCard(id, { status: 'active' })
       addToast('Card activated (offline)', 'info')
+    } finally {
+      setSaving(false)
     }
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return
+    const { type, id } = confirmAction
+    setConfirmAction(null)
+    if (type === 'freeze') await freezeCard(id)
+    else if (type === 'unfreeze') await unfreezeCard(id)
   }
 
   // ── Issue card modal ──
@@ -210,7 +227,9 @@ export default function CorporateCardsPage() {
   }
 
   async function submitIssueCard() {
-    if (!cardForm.employee_id || !cardForm.spend_limit) return
+    if (!cardForm.employee_id) { addToast('Please select an employee', 'error'); return }
+    if (!cardForm.spend_limit || Number(cardForm.spend_limit) <= 0) { addToast('Please enter a valid spend limit', 'error'); return }
+    setSaving(true)
     const allowedCategories =
       cardForm.merchant_categories.length > 0
         ? cardForm.merchant_categories
@@ -248,6 +267,8 @@ export default function CorporateCardsPage() {
         merchant_categories: allowedCategories,
       })
       addToast('Card issued (offline)', 'info')
+    } finally {
+      setSaving(false)
     }
     setShowIssueModal(false)
   }
@@ -421,7 +442,8 @@ export default function CorporateCardsPage() {
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => freezeCard(card.id)}
+                              disabled={saving}
+                              onClick={() => setConfirmAction({ show: true, type: 'freeze', id: card.id, label: `Freeze card ••••${card.last_four}?` })}
                             >
                               <Snowflake size={12} /> Freeze
                             </Button>
@@ -430,7 +452,8 @@ export default function CorporateCardsPage() {
                             <Button
                               size="sm"
                               variant="primary"
-                              onClick={() => unfreezeCard(card.id)}
+                              disabled={saving}
+                              onClick={() => setConfirmAction({ show: true, type: 'unfreeze', id: card.id, label: `Unfreeze card ••••${card.last_four}?` })}
                             >
                               <PlayCircle size={12} /> Unfreeze
                             </Button>
@@ -736,8 +759,29 @@ export default function CorporateCardsPage() {
             <Button variant="secondary" onClick={() => setShowIssueModal(false)}>
               {tc('cancel')}
             </Button>
-            <Button onClick={submitIssueCard}>
-              <CreditCard size={14} /> Issue Card
+            <Button onClick={submitIssueCard} disabled={saving}>
+              <CreditCard size={14} /> {saving ? 'Issuing...' : 'Issue Card'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">{confirmAction?.label}</p>
+              <p className="text-xs text-t3 mt-1">This action can be reversed later.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button onClick={executeConfirmAction} disabled={saving}>
+              {saving ? 'Processing...' : 'Confirm'}
             </Button>
           </div>
         </div>

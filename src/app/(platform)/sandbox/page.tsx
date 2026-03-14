@@ -26,6 +26,8 @@ export default function SandboxPage() {
     return () => clearTimeout(t)
   }, [])
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
   const [showEnvDetailModal, setShowEnvDetailModal] = useState(false)
   const [detailEnv, setDetailEnv] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'environments' | 'configuration' | 'activity'>('environments')
@@ -97,18 +99,44 @@ export default function SandboxPage() {
     setShowCreateModal(true)
   }
 
-  function submitCreate() {
-    if (!createForm.name) return
-    addSandboxEnvironment({
-      name: createForm.name,
-      type: createForm.type,
-      data_masking: createForm.data_masking,
-      expires_at: createForm.expires_at ? `${createForm.expires_at}T00:00:00Z` : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      source_org_id: 'org-1',
-      created_by: employees[0]?.id || 'emp-1',
-      last_refreshed_at: new Date().toISOString(),
-    })
-    setShowCreateModal(false)
+  async function submitCreate() {
+    if (!createForm.name) { addToast('Environment name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addSandboxEnvironment({
+        name: createForm.name,
+        type: createForm.type,
+        data_masking: createForm.data_masking,
+        expires_at: createForm.expires_at ? `${createForm.expires_at}T00:00:00Z` : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        source_org_id: 'org-1',
+        created_by: employees[0]?.id || 'emp-1',
+        last_refreshed_at: new Date().toISOString(),
+      })
+      setShowCreateModal(false)
+      addToast(`Sandbox "${createForm.name}" created`, 'success')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function confirmDeleteEnvironment(env: any) {
+    setConfirmAction({ show: true, type: 'delete-env', id: env.id, label: env.name })
+  }
+
+  function confirmResetEnvironment(env: any) {
+    setConfirmAction({ show: true, type: 'reset-env', id: env.id, label: env.name })
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete-env') {
+      deleteSandboxEnvironment(confirmAction.id)
+      addToast(`Sandbox "${confirmAction.label}" deleted`, 'success')
+    } else if (confirmAction.type === 'reset-env') {
+      refreshEnvironment(confirmAction.id)
+      addToast(`Sandbox "${confirmAction.label}" refreshed`, 'success')
+    }
+    setConfirmAction(null)
   }
 
   function refreshEnvironment(id: string) {
@@ -128,8 +156,13 @@ export default function SandboxPage() {
     setShowEnvDetailModal(true)
   }
 
-  function saveRetentionPolicy() {
-    addToast(`Retention policy updated to ${retentionDays} days`, 'success')
+  async function saveRetentionPolicy() {
+    setSaving(true)
+    try {
+      addToast(`Retention policy updated to ${retentionDays} days`, 'success')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Static activity log data
@@ -320,7 +353,7 @@ export default function SandboxPage() {
                   <Button size="sm" variant="secondary" onClick={() => extendEnvironment(env.id)}>
                     <Clock size={12} /> Extend
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-error hover:text-error" onClick={() => deleteSandboxEnvironment(env.id)}>
+                  <Button size="sm" variant="ghost" className="text-error hover:text-error" onClick={() => confirmDeleteEnvironment(env)}>
                     <Trash2 size={12} />
                   </Button>
                   <div className="flex-1" />
@@ -423,7 +456,7 @@ export default function SandboxPage() {
                   { value: '90', label: '90 days' },
                 ]}
               />
-              <Button size="sm" variant="secondary" onClick={saveRetentionPolicy}>Save Policy</Button>
+              <Button size="sm" variant="secondary" onClick={saveRetentionPolicy} disabled={saving}>{saving ? 'Saving...' : 'Save Policy'}</Button>
             </div>
           </Card>
         </div>
@@ -563,7 +596,32 @@ export default function SandboxPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCreate}><FlaskConical size={14} /> Create Sandbox</Button>
+            <Button onClick={submitCreate} disabled={saving}><FlaskConical size={14} /> {saving ? 'Creating...' : 'Create Sandbox'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg">
+            <AlertTriangle size={20} className="text-error shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'delete-env' ? 'Are you sure you want to delete' : 'Are you sure you want to reset'} &quot;{confirmAction?.label}&quot;?
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'delete-env'
+                  ? 'This action cannot be undone. All sandbox data will be permanently removed.'
+                  : 'This will refresh all data from production. Any unsaved changes will be lost.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="danger" onClick={executeConfirmAction}>
+              {confirmAction?.type === 'delete-env' ? <><Trash2 size={14} /> Delete</> : <><RefreshCw size={14} /> Reset</>}
+            </Button>
           </div>
         </div>
       </Modal>

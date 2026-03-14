@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, ChartLegend, CHART_COLORS } from '@/components/ui/charts'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { PieChart, Plus, DollarSign, Pencil, BarChart3, TrendingUp, TrendingDown, Minus, Users, Building2, ArrowRightLeft, Lightbulb, Calendar, Target, Layers } from 'lucide-react'
+import { PieChart, Plus, DollarSign, Pencil, BarChart3, TrendingUp, TrendingDown, Minus, Users, Building2, ArrowRightLeft, Lightbulb, Calendar, Target, Layers, Search, AlertTriangle, Wallet } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { AIAlertBanner, AIScoreBadge, AIInsightCard } from '@/components/ai'
 import { calculateBurnRate, calculateForecastAccuracy, analyzeVarianceByDepartment } from '@/lib/ai-engine'
@@ -21,9 +21,12 @@ import { demoBudgetForecast, demoRollingForecast, demoMultiYearPlan } from '@/li
 export default function BudgetsPage() {
   const t = useTranslations('budgets')
   const tc = useTranslations('common')
-  const { budgets, departments, addBudget, updateBudget, getDepartmentName, ensureModulesLoaded } = useTempo()
+  const { budgets, departments, addBudget, updateBudget, getDepartmentName, ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   useEffect(() => { ensureModulesLoaded?.(['budgets', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
@@ -116,31 +119,64 @@ export default function BudgetsPage() {
   }
 
   function submitBudget() {
-    if (!budgetForm.name || !budgetForm.department_id || !budgetForm.total_amount) return
-    const data = {
-      name: budgetForm.name,
-      department_id: budgetForm.department_id,
-      total_amount: Number(budgetForm.total_amount),
-      spent_amount: Number(budgetForm.spent_amount) || 0,
-      fiscal_year: Number(budgetForm.fiscal_year) || 2026,
-      status: 'active' as string,
-      currency: budgetForm.currency,
+    if (!budgetForm.name.trim()) { addToast('Budget name is required', 'error'); return }
+    if (!budgetForm.department_id) { addToast('Please select a department', 'error'); return }
+    if (!budgetForm.total_amount || Number(budgetForm.total_amount) <= 0) { addToast('Total amount must be greater than zero', 'error'); return }
+    if (editingBudget && Number(budgetForm.spent_amount) > Number(budgetForm.total_amount)) { addToast('Spent amount cannot exceed total budget', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        name: budgetForm.name,
+        department_id: budgetForm.department_id,
+        total_amount: Number(budgetForm.total_amount),
+        spent_amount: Number(budgetForm.spent_amount) || 0,
+        fiscal_year: Number(budgetForm.fiscal_year) || 2026,
+        status: 'active' as string,
+        currency: budgetForm.currency,
+      }
+      if (editingBudget) {
+        updateBudget(editingBudget, data)
+        addToast('Budget updated successfully', 'success')
+      } else {
+        addBudget(data)
+        addToast('Budget created successfully', 'success')
+      }
+      setShowBudgetModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingBudget) {
-      updateBudget(editingBudget, data)
-    } else {
-      addBudget(data)
-    }
-    setShowBudgetModal(false)
   }
 
   function closeBudget(id: string) {
-    updateBudget(id, { status: 'closed' })
+    setConfirmAction({ show: true, type: 'close', id, label: budgets.find(b => b.id === id)?.name || 'this budget' })
   }
 
   function reactivateBudget(id: string) {
-    updateBudget(id, { status: 'active' })
+    setSaving(true)
+    try { updateBudget(id, { status: 'active' }); addToast('Budget reactivated', 'success') } finally { setSaving(false) }
   }
+
+  function handleConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'close') { updateBudget(confirmAction.id, { status: 'closed' }); addToast('Budget closed', 'success') }
+      if (confirmAction.type === 'delete') { updateBudget(confirmAction.id, { status: 'deleted' }); addToast('Budget deleted', 'success') }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
+  }
+
+  // Filtered budgets
+  const filteredBudgets = useMemo(() => {
+    if (!searchQuery) return budgets
+    const q = searchQuery.toLowerCase()
+    return budgets.filter(b =>
+      b.name.toLowerCase().includes(q) ||
+      getDepartmentName(b.department_id).toLowerCase().includes(q)
+    )
+  }, [budgets, searchQuery])
 
   if (pageLoading) {
     return (
@@ -169,8 +205,35 @@ export default function BudgetsPage() {
       {/* AI Insights */}
       <AIAlertBanner insights={burnRateInsights} className="mb-6" />
 
+      {/* Search */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input
+            type="text"
+            placeholder="Search budgets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+      </div>
+
+      {/* Empty State */}
+      {filteredBudgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-12 h-12 rounded-xl bg-canvas flex items-center justify-center mb-3">
+            <Wallet size={24} className="text-t3" />
+          </div>
+          <p className="text-sm font-medium text-t1 mb-1">No budgets found</p>
+          <p className="text-xs text-t3 mb-4">{searchQuery ? 'Try adjusting your search' : 'Create your first budget to get started'}</p>
+          {!searchQuery && (
+            <Button size="sm" onClick={openNewBudget}><Plus size={14} /> {t('newBudget')}</Button>
+          )}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {budgets.map(budget => {
+        {filteredBudgets.map(budget => {
           const pct = budget.total_amount > 0 ? Math.round(budget.spent_amount / budget.total_amount * 100) : 0
           return (
             <Card key={budget.id}>
@@ -203,16 +266,17 @@ export default function BudgetsPage() {
               <Progress value={pct} showLabel color={pct > 80 ? 'error' : pct > 50 ? 'warning' : 'success'} />
               <div className="flex justify-end mt-3 gap-2">
                 {budget.status === 'active' && (
-                  <Button size="sm" variant="ghost" onClick={() => closeBudget(budget.id)}>{t('closeBudget')}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => closeBudget(budget.id)} disabled={saving}>{t('closeBudget')}</Button>
                 )}
                 {budget.status === 'closed' && (
-                  <Button size="sm" variant="secondary" onClick={() => reactivateBudget(budget.id)}>{t('reactivate')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => reactivateBudget(budget.id)} disabled={saving}>{t('reactivate')}</Button>
                 )}
               </div>
             </Card>
           )
         })}
       </div>
+      )}
 
       {/* ── Section 1: Forecast vs Actual ── */}
       <div className="mt-8">
@@ -615,7 +679,34 @@ export default function BudgetsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowBudgetModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitBudget}>{editingBudget ? tc('saveChanges') : t('createBudget')}</Button>
+            <Button onClick={submitBudget} disabled={saving}>{saving ? 'Saving...' : editingBudget ? tc('saveChanges') : t('createBudget')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'close' ? 'Close this budget?' : 'Delete this budget?'}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'close'
+                  ? `"${confirmAction?.label}" will be closed. You can reactivate it later.`
+                  : `"${confirmAction?.label}" will be permanently deleted.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="primary" onClick={handleConfirmAction} disabled={saving}>
+              {confirmAction?.type === 'close' ? 'Close Budget' : 'Delete Budget'}
+            </Button>
           </div>
         </div>
       </Modal>

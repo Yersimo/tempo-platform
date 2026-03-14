@@ -13,7 +13,7 @@ import {
   AppWindow, Search, Star, Download, Trash2, RefreshCw,
   Filter, ExternalLink, Check, X, ChevronRight, Package,
   Code, CreditCard, Globe, Shield, MessageSquare, Zap,
-  BarChart3, Headphones, Settings,
+  BarChart3, Headphones, Settings, AlertTriangle,
 } from 'lucide-react'
 import {
   getMarketplaceApps,
@@ -26,6 +26,7 @@ import {
   getMarketplaceStats,
 } from '@/lib/marketplace'
 import type { AppCategory, AppPricing, MarketplaceApp, InstalledApp } from '@/lib/marketplace'
+import { useTempo } from '@/lib/store'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -95,6 +96,8 @@ function timeAgo(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function MarketplacePage() {
+  const { addToast } = useTempo()
+
   // State
   const [activeTab, setActiveTab] = useState('browse')
   const [searchTerm, setSearchTerm] = useState('')
@@ -102,6 +105,8 @@ export default function MarketplacePage() {
   const [pricingFilter, setPricingFilter] = useState<AppPricing | 'all'>('all')
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null)
   const [, setRefreshKey] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: 'uninstall'; appId: string; appName: string } | null>(null)
 
   // Force re-render helper (needed because marketplace functions mutate in-memory state)
   const refresh = () => setRefreshKey((k) => k + 1)
@@ -129,23 +134,51 @@ export default function MarketplacePage() {
 
   // Handlers
   function handleInstall(appId: string) {
-    const result = installApp(ORG_ID, appId, { autoSync: true })
-    if (result.success) {
-      refresh()
+    setSaving(true)
+    try {
+      const result = installApp(ORG_ID, appId, { autoSync: true })
+      if (result.success) {
+        addToast('App installed successfully')
+        refresh()
+      } else {
+        addToast('Failed to install app', 'error')
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
-  function handleUninstall(appId: string) {
-    const result = uninstallApp(ORG_ID, appId)
-    if (result.success) {
-      setSelectedAppId(null)
-      refresh()
+  function requestUninstall(appId: string, appName: string) {
+    setConfirmAction({ show: true, type: 'uninstall', appId, appName })
+  }
+
+  function executeUninstall() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      const result = uninstallApp(ORG_ID, confirmAction.appId)
+      if (result.success) {
+        addToast('App uninstalled successfully')
+        setSelectedAppId(null)
+        refresh()
+      } else {
+        addToast('Failed to uninstall app', 'error')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
     }
   }
 
   function handleSync(appId: string) {
-    syncAppData(ORG_ID, appId)
-    refresh()
+    setSaving(true)
+    try {
+      syncAppData(ORG_ID, appId)
+      addToast('Sync completed')
+      refresh()
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Tabs config
@@ -305,10 +338,11 @@ export default function MarketplacePage() {
                       <Button
                         size="sm"
                         variant={isInstalled ? 'secondary' : 'primary'}
+                        disabled={saving}
                         onClick={(e) => {
                           e.stopPropagation()
                           if (isInstalled) {
-                            handleUninstall(app.id)
+                            requestUninstall(app.id, app.name)
                           } else {
                             handleInstall(app.id)
                           }
@@ -385,6 +419,7 @@ export default function MarketplacePage() {
                           <Button
                             size="sm"
                             variant="secondary"
+                            disabled={saving}
                             onClick={() => handleSync(app.id)}
                           >
                             <RefreshCw size={12} /> Sync
@@ -393,7 +428,8 @@ export default function MarketplacePage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleUninstall(app.id)}
+                          disabled={saving}
+                          onClick={() => requestUninstall(app.id, app.name)}
                         >
                           <Trash2 size={12} />
                         </Button>
@@ -499,11 +535,11 @@ export default function MarketplacePage() {
                   <ExternalLink size={12} /> Website
                 </Button>
                 {installedIds.has(selectedApp.id) ? (
-                  <Button size="sm" variant="danger" onClick={() => handleUninstall(selectedApp.id)}>
+                  <Button size="sm" variant="danger" disabled={saving} onClick={() => requestUninstall(selectedApp.id, selectedApp.name)}>
                     <Trash2 size={12} /> Uninstall
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={() => handleInstall(selectedApp.id)}>
+                  <Button size="sm" disabled={saving} onClick={() => handleInstall(selectedApp.id)}>
                     <Download size={12} /> Install
                   </Button>
                 )}
@@ -526,7 +562,7 @@ export default function MarketplacePage() {
                     {selectedInstallation.lastSyncAt && <> &middot; Last sync: {timeAgo(selectedInstallation.lastSyncAt)}</>}
                   </span>
                   {selectedInstallation.status === 'active' && (
-                    <Button size="sm" variant="outline" onClick={() => handleSync(selectedApp.id)}>
+                    <Button size="sm" variant="outline" disabled={saving} onClick={() => handleSync(selectedApp.id)}>
                       <RefreshCw size={12} /> Sync Now
                     </Button>
                   )}
@@ -602,6 +638,27 @@ export default function MarketplacePage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-full bg-error/10">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">Uninstall App</p>
+              <p className="text-xs text-t3 mt-1">
+                Are you sure you want to uninstall <span className="font-medium text-t1">{confirmAction?.appName}</span>? This will remove all synced data and cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="danger" disabled={saving} onClick={executeUninstall}>Uninstall</Button>
+          </div>
+        </div>
       </Modal>
     </>
   )

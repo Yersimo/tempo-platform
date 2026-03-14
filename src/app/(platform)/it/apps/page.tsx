@@ -29,6 +29,8 @@ export default function AppsPage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['devices', 'softwareLicenses', 'itRequests', 'appCatalog', 'appAssignments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -181,17 +183,44 @@ export default function AppsPage() {
   }
 
   function submitLicense() {
-    if (!licenseForm.name || !licenseForm.vendor) return
-    addSoftwareLicense({
-      name: licenseForm.name,
-      vendor: licenseForm.vendor,
-      total_licenses: Number(licenseForm.total_licenses) || 10,
-      used_licenses: Number(licenseForm.used_licenses) || 0,
-      cost_per_license: Number(licenseForm.cost_per_license) || 0,
-      renewal_date: licenseForm.renewal_date || '2027-01-01',
-      currency: licenseForm.currency,
-    })
-    setShowLicenseModal(false)
+    if (!licenseForm.name) { addToast('License name is required', 'error'); return }
+    if (!licenseForm.vendor) { addToast('Vendor is required', 'error'); return }
+    setSaving(true)
+    try {
+      addSoftwareLicense({
+        name: licenseForm.name,
+        vendor: licenseForm.vendor,
+        total_licenses: Number(licenseForm.total_licenses) || 10,
+        used_licenses: Number(licenseForm.used_licenses) || 0,
+        cost_per_license: Number(licenseForm.cost_per_license) || 0,
+        renewal_date: licenseForm.renewal_date || '2027-01-01',
+        currency: licenseForm.currency,
+      })
+      addToast('License added successfully')
+      setShowLicenseModal(false)
+    } finally { setSaving(false) }
+  }
+
+  function revokeLicense(id: string) {
+    const license = softwareLicenses.find(l => l.id === id)
+    setConfirmAction({ show: true, type: 'revoke', id, label: license?.name || 'this license' })
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'revoke') {
+        updateSoftwareLicense(confirmAction.id, { used_licenses: 0 })
+        addToast('All license seats revoked')
+      } else if (confirmAction.type === 'resolve') {
+        updateITRequest(confirmAction.id, { status: 'resolved' })
+        addToast('Request resolved')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
 
   function openAddRequest() {
@@ -200,21 +229,27 @@ export default function AppsPage() {
   }
 
   function submitRequest() {
-    if (!requestForm.title || !requestForm.requester_id) return
-    addITRequest({
-      requester_id: requestForm.requester_id,
-      type: requestForm.type,
-      title: requestForm.title,
-      description: requestForm.description,
-      priority: requestForm.priority,
-      status: 'open',
-      assigned_to: null,
-    })
-    setShowRequestModal(false)
+    if (!requestForm.title) { addToast('Request title is required', 'error'); return }
+    if (!requestForm.requester_id) { addToast('Requester is required', 'error'); return }
+    setSaving(true)
+    try {
+      addITRequest({
+        requester_id: requestForm.requester_id,
+        type: requestForm.type,
+        title: requestForm.title,
+        description: requestForm.description,
+        priority: requestForm.priority,
+        status: 'open',
+        assigned_to: null,
+      })
+      addToast('IT request submitted')
+      setShowRequestModal(false)
+    } finally { setSaving(false) }
   }
 
   function resolveRequest(id: string) {
-    updateITRequest(id, { status: 'resolved' })
+    const req = itRequests.find(r => r.id === id)
+    setConfirmAction({ show: true, type: 'resolve', id, label: req?.title || 'this request' })
   }
 
   function startRequest(id: string) {
@@ -878,6 +913,31 @@ export default function AppsPage() {
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5">
+            <AlertTriangle size={20} className="text-warning mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'revoke' && `Revoke all seats for ${confirmAction?.label}?`}
+                {confirmAction?.type === 'resolve' && `Resolve request "${confirmAction?.label}"?`}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'revoke' && 'All assigned license seats will be revoked. Users will lose access.'}
+                {confirmAction?.type === 'resolve' && 'This request will be marked as resolved and closed.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="danger" disabled={saving} onClick={executeConfirmAction}>
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>

@@ -78,6 +78,8 @@ export default function CompensationPage() {
   const [stipForm, setStipForm] = useState({ base: 72000, multiplier: 1.2, raroc: 0.95, target: 20 })
   const [grantForm, setGrantForm] = useState({ employee_id: '', grant_type: 'RSU', shares: 0, strike_price: 0, vesting_schedule: '4-year with 1-year cliff', grant_date: `${new Date().getFullYear()}-03-01` })
   const [cycleForm, setCycleForm] = useState({ name: '', budget_percent: 4.0, start_date: '', end_date: '' })
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employees[0]?.id || '')
   const [scenarioAdjustPct, setScenarioAdjustPct] = useState(5)
 
@@ -176,31 +178,58 @@ export default function CompensationPage() {
 
   // ---- Handlers ----
   function submitBand() {
-    if (!bandForm.role_title) return
-    addCompBand(bandForm)
-    setShowBandModal(false)
-    setBandForm({ role_title: '', level: 'Mid', country: '', min_salary: 0, mid_salary: 0, max_salary: 0, currency: 'USD', p25: 0, p50: 0, p75: 0, effective_date: '2026-01-01' })
+    if (!bandForm.role_title) { addToast('Role title is required', 'error'); return }
+    setSaving(true)
+    try {
+      addCompBand(bandForm)
+      setShowBandModal(false)
+      setBandForm({ role_title: '', level: 'Mid', country: '', min_salary: 0, mid_salary: 0, max_salary: 0, currency: 'USD', p25: 0, p50: 0, p75: 0, effective_date: '2026-01-01' })
+      addToast('Comp band created')
+    } finally { setSaving(false) }
   }
 
   function submitReview() {
-    if (!reviewForm.employee_id || !reviewForm.proposed_salary) return
-    addSalaryReview({ ...reviewForm, proposed_by: currentEmployeeId, status: 'pending_approval', approved_by: null, currency: 'USD' })
-    setShowReviewModal(false)
-    setReviewForm({ employee_id: '', current_salary: 0, proposed_salary: 0, justification: '', cycle: '2026 Annual' })
+    if (!reviewForm.employee_id) { addToast('Select an employee', 'error'); return }
+    if (!reviewForm.proposed_salary) { addToast('Proposed salary is required', 'error'); return }
+    setSaving(true)
+    try {
+      addSalaryReview({ ...reviewForm, proposed_by: currentEmployeeId, status: 'pending_approval', approved_by: null, currency: 'USD' })
+      setShowReviewModal(false)
+      setReviewForm({ employee_id: '', current_salary: 0, proposed_salary: 0, justification: '', cycle: '2026 Annual' })
+      addToast('Salary review submitted')
+    } finally { setSaving(false) }
   }
 
   function submitGrant() {
-    if (!grantForm.employee_id || !grantForm.shares) return
-    addEquityGrant({ ...grantForm, vested_shares: 0, current_value: grantForm.shares * (grantForm.strike_price || 25), status: 'active' })
-    setShowGrantModal(false)
-    setGrantForm({ employee_id: '', grant_type: 'RSU', shares: 0, strike_price: 0, vesting_schedule: '4-year with 1-year cliff', grant_date: '2026-03-01' })
+    if (!grantForm.employee_id) { addToast('Select an employee', 'error'); return }
+    if (!grantForm.shares) { addToast('Number of shares is required', 'error'); return }
+    setSaving(true)
+    try {
+      addEquityGrant({ ...grantForm, vested_shares: 0, current_value: grantForm.shares * (grantForm.strike_price || 25), status: 'active' })
+      setShowGrantModal(false)
+      setGrantForm({ employee_id: '', grant_type: 'RSU', shares: 0, strike_price: 0, vesting_schedule: '4-year with 1-year cliff', grant_date: '2026-03-01' })
+      addToast('Equity grant created')
+    } finally { setSaving(false) }
   }
 
   function submitCycle() {
-    if (!cycleForm.name || !cycleForm.start_date) return
-    addCompPlanningCycle({ ...cycleForm, status: 'active', employees_reviewed: 0, total_employees: employees.length, avg_increase: 0, total_budget: Math.round(scenario.totalCurrentCost * (cycleForm.budget_percent / 100)) })
-    setShowCycleModal(false)
-    setCycleForm({ name: '', budget_percent: 4.0, start_date: '', end_date: '' })
+    if (!cycleForm.name) { addToast('Cycle name is required', 'error'); return }
+    if (!cycleForm.start_date) { addToast('Start date is required', 'error'); return }
+    setSaving(true)
+    try {
+      addCompPlanningCycle({ ...cycleForm, status: 'active', employees_reviewed: 0, total_employees: employees.length, avg_increase: 0, total_budget: Math.round(scenario.totalCurrentCost * (cycleForm.budget_percent / 100)) })
+      setShowCycleModal(false)
+      setCycleForm({ name: '', budget_percent: 4.0, start_date: '', end_date: '' })
+      addToast('Planning cycle created')
+    } finally { setSaving(false) }
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete-band') deleteCompBand(confirmAction.id)
+    if (confirmAction.type === 'reject-review') updateSalaryReview(confirmAction.id, { status: 'rejected' })
+    addToast(`${confirmAction.label} completed`)
+    setConfirmAction(null)
   }
 
   function toggleBulkSalSet<T>(set: Set<T>, value: T, setter: (s: Set<T>) => void) {
@@ -225,6 +254,8 @@ export default function CompensationPage() {
   }
 
   function submitBulkSalary() {
+    setSaving(true)
+    try {
     let created = 0
     bulkSalNewReviewees.forEach(emp => {
       const band = compBands.find(b => b.level === emp.level)
@@ -247,6 +278,7 @@ export default function CompensationPage() {
     })
     addToast(`Created ${created} salary review${created !== 1 ? 's' : ''} successfully`)
     resetBulkSalary()
+    } finally { setSaving(false) }
   }
 
   if (pageLoading) {
@@ -390,7 +422,7 @@ export default function CompensationPage() {
                   {sr.status === 'pending_approval' && (
                     <div className="flex gap-1 shrink-0">
                       <Button size="sm" variant="primary" onClick={() => updateSalaryReview(sr.id, { status: 'approved', approved_by: currentEmployeeId })}>{tc('approve')}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => updateSalaryReview(sr.id, { status: 'rejected' })}>{tc('reject')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'reject-review', id: sr.id, label: 'Reject salary review' })}>{tc('reject')}</Button>
                     </div>
                   )}
                 </div>
@@ -475,7 +507,7 @@ export default function CompensationPage() {
                       <td className="px-4 py-3 text-xs font-medium text-t1 text-right">${band.mid_salary.toLocaleString()}</td>
                       <td className="px-4 py-3 text-xs text-t2 text-right">${band.max_salary.toLocaleString()}</td>
                       <td className="px-4 py-3 text-center">
-                        <Button size="sm" variant="ghost" onClick={() => deleteCompBand(band.id)}>{tc('remove')}</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'delete-band', id: band.id, label: 'Remove comp band' })}>{tc('remove')}</Button>
                       </td>
                     </tr>
                   ))}
@@ -1446,6 +1478,23 @@ export default function CompensationPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-amber-500/10 rounded-lg">
+            <AlertTriangle size={20} className="text-amber-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-t1">{confirmAction?.label}</p>
+              <p className="text-xs text-t3 mt-1">This action cannot be undone. Are you sure you want to proceed?</p>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button size="sm" onClick={executeConfirmAction}>Confirm</Button>
+          </div>
+        </div>
       </Modal>
     </>
   )

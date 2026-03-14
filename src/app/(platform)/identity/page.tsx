@@ -57,6 +57,8 @@ export default function IdentityPage() {
   // Lazy-load identity modules from DB on mount
   const [pageLoading, setPageLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
   useEffect(() => {
     ensureModulesLoaded?.(['idpConfigurations', 'samlApps', 'mfaPolicies', 'scimProviders'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
     // Also fetch the real dashboard data from the IdP API
@@ -107,7 +109,9 @@ export default function IdentityPage() {
   }
 
   async function submitApp() {
-    if (!appForm.name || !appForm.sso_url) return
+    if (!appForm.name) { addToast('Application name is required', 'error'); return }
+    if (!appForm.sso_url) { addToast('SSO URL is required', 'error'); return }
+    setSaving(true)
     try {
       // Try real API first
       await idpAPI('POST', undefined, {
@@ -131,10 +135,12 @@ export default function IdentityPage() {
       logo_url: '',
     })
     setShowAppModal(false)
+    setSaving(false)
   }
 
   async function toggleAppStatus(app: any) {
     const newStatus = app.status === 'active' ? 'inactive' : 'active'
+    setSaving(true)
     try {
       await idpAPI('POST', undefined, {
         action: 'register-app',
@@ -149,6 +155,7 @@ export default function IdentityPage() {
       addToast(`Failed to update via API, applying locally`, 'error')
     }
     updateSamlApp(app.id, { status: newStatus })
+    setSaving(false)
   }
 
   function openConfigureApp(app: any) {
@@ -163,7 +170,10 @@ export default function IdentityPage() {
   }
 
   async function submitConfigApp() {
-    if (!configApp || !configForm.name || !configForm.sso_url) return
+    if (!configApp) return
+    if (!configForm.name) { addToast('Application name is required', 'error'); return }
+    if (!configForm.sso_url) { addToast('SSO URL is required', 'error'); return }
+    setSaving(true)
     try {
       await idpAPI('POST', undefined, {
         action: 'register-app',
@@ -184,6 +194,7 @@ export default function IdentityPage() {
       status: configForm.status,
     })
     setShowConfigModal(false)
+    setSaving(false)
   }
 
   async function toggleMfaPolicy(policy: any) {
@@ -225,6 +236,45 @@ export default function IdentityPage() {
   function getIdpName(idpId: string) {
     const idp = idpConfigurations.find(c => c.id === idpId)
     return idp?.name || 'Unknown'
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'disable_app') {
+        const app = samlApps.find(a => a.id === confirmAction.id)
+        if (app) await toggleAppStatus(app)
+      } else if (confirmAction.type === 'disable_idp') {
+        const idp = idpConfigurations.find(c => c.id === confirmAction.id)
+        if (idp) {
+          try {
+            await idpAPI('POST', undefined, {
+              action: 'configure-idp',
+              id: idp.id,
+              name: idp.name,
+              protocol: idp.protocol,
+              entity_id: idp.entity_id,
+              sso_url: idp.sso_url,
+              status: 'inactive',
+            })
+            addToast(`Provider "${idp.name}" disabled`)
+          } catch {
+            addToast('Failed to update provider via API, applying locally', 'error')
+          }
+          updateIdpConfiguration(idp.id, { status: 'inactive' })
+        }
+      } else if (confirmAction.type === 'disable_mfa') {
+        const policy = mfaPolicies.find(p => p.id === confirmAction.id)
+        if (policy) await toggleMfaPolicy(policy)
+      } else if (confirmAction.type === 'delete_scim') {
+        deleteScimProvider(confirmAction.id)
+        addToast('SCIM provider deleted')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
 
   const methodIcons: Record<string, React.ReactNode> = {
@@ -328,7 +378,11 @@ export default function IdentityPage() {
                   variant="ghost"
                   size="sm"
                   className="flex-1"
-                  onClick={() => toggleAppStatus(app)}
+                  disabled={saving}
+                  onClick={() => app.status === 'active'
+                    ? setConfirmAction({ show: true, type: 'disable_app', id: app.id, label: app.name })
+                    : toggleAppStatus(app)
+                  }
                 >
                   {app.status === 'active' ? 'Disable' : 'Enable'}
                 </Button>
@@ -432,25 +486,32 @@ export default function IdentityPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex gap-1 justify-center">
-                          <Button size="sm" variant="secondary" onClick={async () => {
-                            const newStatus = idp.status === 'active' ? 'inactive' : 'active'
-                            try {
-                              await idpAPI('POST', undefined, {
-                                action: 'configure-idp',
-                                id: idp.id,
-                                name: idp.name,
-                                protocol: idp.protocol,
-                                entity_id: idp.entity_id,
-                                sso_url: idp.sso_url,
-                                status: newStatus,
-                              })
-                              addToast(`Provider "${idp.name}" ${newStatus === 'active' ? 'enabled' : 'disabled'}`)
-                            } catch {
-                              addToast('Failed to update provider via API, applying locally', 'error')
+                          <Button size="sm" variant="secondary" disabled={saving} onClick={() => {
+                            if (idp.status === 'active') {
+                              setConfirmAction({ show: true, type: 'disable_idp', id: idp.id, label: idp.name })
+                            } else {
+                              (async () => {
+                                setSaving(true)
+                                try {
+                                  await idpAPI('POST', undefined, {
+                                    action: 'configure-idp',
+                                    id: idp.id,
+                                    name: idp.name,
+                                    protocol: idp.protocol,
+                                    entity_id: idp.entity_id,
+                                    sso_url: idp.sso_url,
+                                    status: 'active',
+                                  })
+                                  addToast(`Provider "${idp.name}" enabled`)
+                                } catch {
+                                  addToast('Failed to update provider via API, applying locally', 'error')
+                                }
+                                updateIdpConfiguration(idp.id, { status: 'active' })
+                                setSaving(false)
+                              })()
                             }
-                            updateIdpConfiguration(idp.id, { status: newStatus })
                           }}>
-                            <Settings size={12} /> {tc('edit')}
+                            <Settings size={12} /> {idp.status === 'active' ? 'Disable' : 'Enable'}
                           </Button>
                         </div>
                       </td>
@@ -495,7 +556,11 @@ export default function IdentityPage() {
                   <Button
                     size="sm"
                     variant={policy.is_active ? 'ghost' : 'primary'}
-                    onClick={() => toggleMfaPolicy(policy)}
+                    disabled={saving}
+                    onClick={() => policy.is_active
+                      ? setConfirmAction({ show: true, type: 'disable_mfa', id: policy.id, label: policy.name })
+                      : toggleMfaPolicy(policy)
+                    }
                   >
                     {policy.is_active ? 'Disable' : 'Enable'}
                   </Button>
@@ -713,7 +778,31 @@ export default function IdentityPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAppModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitApp}>Add Application</Button>
+            <Button onClick={submitApp} disabled={saving}>{saving ? 'Adding...' : 'Add Application'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+            <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-t1">Are you sure?</p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'disable_app' && `This will disable the SSO application "${confirmAction.label}". Users will no longer be able to sign in via this application.`}
+                {confirmAction?.type === 'disable_idp' && `This will disable the identity provider "${confirmAction.label}". All SSO applications using this provider will stop working.`}
+                {confirmAction?.type === 'disable_mfa' && `This will disable the MFA policy "${confirmAction.label}". Multi-factor authentication will no longer be enforced for affected users.`}
+                {confirmAction?.type === 'delete_scim' && `This will delete the SCIM provider "${confirmAction.label}". Automated user provisioning will stop.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button size="sm" onClick={executeConfirmAction} disabled={saving} className="bg-red-600 hover:bg-red-700">
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -750,7 +839,7 @@ export default function IdentityPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowConfigModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitConfigApp}><Settings size={14} /> Save Configuration</Button>
+            <Button onClick={submitConfigApp} disabled={saving}><Settings size={14} /> {saving ? 'Saving...' : 'Save Configuration'}</Button>
           </div>
         </div>
       </Modal>

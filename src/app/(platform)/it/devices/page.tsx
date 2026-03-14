@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe, Store, Truck, RotateCcw, Trash2, Package, ShieldCheck, Leaf, FileWarning } from 'lucide-react'
+import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe, Store, Truck, RotateCcw, Trash2, Package, ShieldCheck, Leaf, FileWarning, AlertTriangle } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
 import { exportToCSV } from '@/lib/export-import'
@@ -25,6 +25,8 @@ export default function DevicesPage() {
   const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests, ensureModulesLoaded } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['devices', 'deviceActions', 'deviceInventory', 'deviceStoreCatalog', 'deviceOrders', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -177,18 +179,24 @@ export default function DevicesPage() {
   }
 
   function submitDevice() {
-    if (!deviceForm.brand || !deviceForm.model || !deviceForm.serial_number) return
-    addDevice({
-      type: deviceForm.type,
-      brand: deviceForm.brand,
-      model: deviceForm.model,
-      serial_number: deviceForm.serial_number,
-      status: 'available',
-      assigned_to: null,
-      purchase_date: deviceForm.purchase_date || new Date().toISOString().split('T')[0],
-      warranty_end: deviceForm.warranty_end || '2028-12-31',
-    })
-    setShowAddModal(false)
+    if (!deviceForm.brand) { addToast('Brand is required', 'error'); return }
+    if (!deviceForm.model) { addToast('Model is required', 'error'); return }
+    if (!deviceForm.serial_number) { addToast('Serial number is required', 'error'); return }
+    setSaving(true)
+    try {
+      addDevice({
+        type: deviceForm.type,
+        brand: deviceForm.brand,
+        model: deviceForm.model,
+        serial_number: deviceForm.serial_number,
+        status: 'available',
+        assigned_to: null,
+        purchase_date: deviceForm.purchase_date || new Date().toISOString().split('T')[0],
+        warranty_end: deviceForm.warranty_end || '2028-12-31',
+      })
+      addToast('Device added successfully')
+      setShowAddModal(false)
+    } finally { setSaving(false) }
   }
 
   function openAssign(deviceId: string) {
@@ -198,22 +206,47 @@ export default function DevicesPage() {
   }
 
   function submitAssign() {
-    if (!assignDeviceId || !assignEmployeeId) return
-    updateDevice(assignDeviceId, { assigned_to: assignEmployeeId, status: 'assigned' })
-    setShowAssignModal(false)
-    setAssignDeviceId(null)
+    if (!assignDeviceId) { addToast('No device selected', 'error'); return }
+    if (!assignEmployeeId) { addToast('Please select an employee', 'error'); return }
+    setSaving(true)
+    try {
+      updateDevice(assignDeviceId, { assigned_to: assignEmployeeId, status: 'assigned' })
+      addToast('Device assigned successfully')
+      setShowAssignModal(false)
+      setAssignDeviceId(null)
+    } finally { setSaving(false) }
   }
 
   function unassignDevice(deviceId: string) {
-    updateDevice(deviceId, { assigned_to: null, status: 'available' })
+    const device = devices.find(d => d.id === deviceId)
+    setConfirmAction({ show: true, type: 'unassign', id: deviceId, label: `${device?.brand || ''} ${device?.model || 'this device'}` })
   }
 
   function setMaintenance(deviceId: string) {
-    updateDevice(deviceId, { status: 'maintenance' })
+    const device = devices.find(d => d.id === deviceId)
+    setConfirmAction({ show: true, type: 'maintenance', id: deviceId, label: `${device?.brand || ''} ${device?.model || 'this device'}` })
   }
 
   function setAvailable(deviceId: string) {
     updateDevice(deviceId, { assigned_to: null, status: 'available' })
+    addToast('Device marked as available')
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'unassign') {
+        updateDevice(confirmAction.id, { assigned_to: null, status: 'available' })
+        addToast('Device unassigned')
+      } else if (confirmAction.type === 'maintenance') {
+        updateDevice(confirmAction.id, { status: 'maintenance' })
+        addToast('Device sent to maintenance')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
 
   if (pageLoading) {
@@ -1163,6 +1196,31 @@ export default function DevicesPage() {
                 {t('assignDevicesCount', { count: assignableCount })}
               </Button>
             )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5">
+            <AlertTriangle size={20} className="text-warning mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'unassign' && `Unassign ${confirmAction?.label}?`}
+                {confirmAction?.type === 'maintenance' && `Send ${confirmAction?.label} to maintenance?`}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'unassign' && 'The device will be unassigned from the current employee and marked as available.'}
+                {confirmAction?.type === 'maintenance' && 'The device will be taken offline and marked for maintenance.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="danger" disabled={saving} onClick={executeConfirmAction}>
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>

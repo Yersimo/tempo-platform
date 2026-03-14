@@ -79,6 +79,8 @@ export default function ITCloudPage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   // ---- Lazy-load IT modules on mount ----
   useEffect(() => {
@@ -264,30 +266,39 @@ export default function ITCloudPage() {
 
   // ---- Action Handlers ----
   function executeDeviceAction() {
-    if (!actionDeviceId) return
-    addDeviceAction({
-      deviceId: actionDeviceId,
-      actionType,
-      status: 'pending',
-      initiatedBy: 'emp-1',
-      notes: actionNotes || `${actionType} initiated from IT Cloud`,
-      completedAt: null,
-    })
-    setShowDeviceActionModal(false)
-    setActionNotes('')
+    if (!actionDeviceId) { addToast('No device selected', 'error'); return }
+    setSaving(true)
+    try {
+      addDeviceAction({
+        deviceId: actionDeviceId,
+        actionType,
+        status: 'pending',
+        initiatedBy: 'emp-1',
+        notes: actionNotes || `${actionType} initiated from IT Cloud`,
+        completedAt: null,
+      })
+      addToast(`${actionType.replace(/_/g, ' ')} action queued`)
+      setShowDeviceActionModal(false)
+      setActionNotes('')
+    } finally { setSaving(false) }
   }
 
   function submitApp() {
-    if (!appForm.name) return
-    addAppCatalogItem({
-      ...appForm,
-      licenseCost: Number(appForm.licenseCost),
-      licenseCount: Number(appForm.licenseCount),
-      assignedCount: 0,
-      icon: 'AppWindow',
-    })
-    setShowAddAppModal(false)
-    setAppForm({ name: '', vendor: '', category: 'productivity', platform: 'cross-platform', version: '', licenseType: 'per_seat', licenseCost: 0, licenseCount: 0, isRequired: false, autoInstall: false })
+    if (!appForm.name) { addToast('App name is required', 'error'); return }
+    if (!appForm.vendor) { addToast('Vendor is required', 'error'); return }
+    setSaving(true)
+    try {
+      addAppCatalogItem({
+        ...appForm,
+        licenseCost: Number(appForm.licenseCost),
+        licenseCount: Number(appForm.licenseCount),
+        assignedCount: 0,
+        icon: 'AppWindow',
+      })
+      addToast('App added to catalog')
+      setShowAddAppModal(false)
+      setAppForm({ name: '', vendor: '', category: 'productivity', platform: 'cross-platform', version: '', licenseType: 'per_seat', licenseCost: 0, licenseCount: 0, isRequired: false, autoInstall: false })
+    } finally { setSaving(false) }
   }
 
   function submitAssignApp() {
@@ -301,26 +312,35 @@ export default function ITCloudPage() {
   }
 
   function submitPolicy() {
-    if (!policyForm.name) return
-    if (editPolicyId) {
-      updateSecurityPolicyIT(editPolicyId, policyForm)
-    } else {
-      addSecurityPolicyIT(policyForm)
-    }
-    setShowPolicyModal(false)
-    setEditPolicyId(null)
-    setPolicyForm({ name: '', type: 'password', appliesTo: 'all', isActive: true, settings: {} })
+    if (!policyForm.name) { addToast('Policy name is required', 'error'); return }
+    setSaving(true)
+    try {
+      if (editPolicyId) {
+        updateSecurityPolicyIT(editPolicyId, policyForm)
+        addToast('Policy updated')
+      } else {
+        addSecurityPolicyIT(policyForm)
+        addToast('Policy created')
+      }
+      setShowPolicyModal(false)
+      setEditPolicyId(null)
+      setPolicyForm({ name: '', type: 'password', appliesTo: 'all', isActive: true, settings: {} })
+    } finally { setSaving(false) }
   }
 
   function submitInventoryItem() {
-    if (!invForm.name) return
-    addDeviceInventoryItem({
-      ...invForm,
-      purchaseCost: Number(invForm.purchaseCost),
-      assignedTo: null,
-    })
-    setShowInventoryModal(false)
-    setInvForm({ name: '', type: 'laptop', platform: 'windows', serialNumber: '', status: 'in_warehouse', condition: 'new', purchaseDate: '', purchaseCost: 0, warrantyExpiry: '', warehouseLocation: '', notes: '' })
+    if (!invForm.name) { addToast('Device name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addDeviceInventoryItem({
+        ...invForm,
+        purchaseCost: Number(invForm.purchaseCost),
+        assignedTo: null,
+      })
+      addToast('Asset added to inventory')
+      setShowInventoryModal(false)
+      setInvForm({ name: '', type: 'laptop', platform: 'windows', serialNumber: '', status: 'in_warehouse', condition: 'new', purchaseDate: '', purchaseCost: 0, warrantyExpiry: '', warehouseLocation: '', notes: '' })
+    } finally { setSaving(false) }
   }
 
   // ---- Provisioning Rule CRUD ----
@@ -335,20 +355,23 @@ export default function ITCloudPage() {
     setShowProvRuleModal(true)
   }
   function submitProvRule() {
-    if (!provRuleForm.name) return
-    const appsArr = provRuleForm.apps.split(',').map(s => s.trim()).filter(Boolean)
-    if (editProvRuleId) {
-      updateProvisioningRule(editProvRuleId, { name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive })
-      addToast('Provisioning rule updated')
-    } else {
-      addProvisioningRule({ name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive, createdAt: new Date().toISOString().slice(0, 10) })
-      addToast('Provisioning rule created')
-    }
-    setShowProvRuleModal(false)
+    if (!provRuleForm.name) { addToast('Rule name is required', 'error'); return }
+    setSaving(true)
+    try {
+      const appsArr = provRuleForm.apps.split(',').map(s => s.trim()).filter(Boolean)
+      if (editProvRuleId) {
+        updateProvisioningRule(editProvRuleId, { name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive })
+        addToast('Provisioning rule updated')
+      } else {
+        addProvisioningRule({ name: provRuleForm.name, trigger: provRuleForm.trigger as ProvisioningRule['trigger'], department: provRuleForm.department || null, role: provRuleForm.role || null, apps: appsArr, isActive: provRuleForm.isActive, createdAt: new Date().toISOString().slice(0, 10) })
+        addToast('Provisioning rule created')
+      }
+      setShowProvRuleModal(false)
+    } finally { setSaving(false) }
   }
   function deleteProvRule(id: string) {
-    storeDeleteProvisioningRule(id)
-    addToast('Provisioning rule deleted')
+    const rule = provisioningRules.find(r => r.id === id)
+    setConfirmAction({ show: true, type: 'deleteProvRule', id, label: rule?.name || 'this rule' })
   }
   function toggleProvRule(id: string) {
     const rule = provisioningRules.find(r => r.id === id)
@@ -367,20 +390,40 @@ export default function ITCloudPage() {
     setShowEncryptionModal(true)
   }
   function submitEncryptionPolicy() {
-    if (!encryptionForm.name) return
-    if (editEncryptionId) {
-      updateEncryptionPolicy(editEncryptionId, { name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, lastUpdated: new Date().toISOString().slice(0, 10) })
-      addToast('Encryption policy updated')
-    } else {
-      const now = new Date().toISOString().slice(0, 10)
-      addEncryptionPolicy({ name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, compliantCount: 0, totalCount: 0, createdAt: now, lastUpdated: now })
-      addToast('Encryption policy created')
-    }
-    setShowEncryptionModal(false)
+    if (!encryptionForm.name) { addToast('Policy name is required', 'error'); return }
+    setSaving(true)
+    try {
+      if (editEncryptionId) {
+        updateEncryptionPolicy(editEncryptionId, { name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, lastUpdated: new Date().toISOString().slice(0, 10) })
+        addToast('Encryption policy updated')
+      } else {
+        const now = new Date().toISOString().slice(0, 10)
+        addEncryptionPolicy({ name: encryptionForm.name, platform: encryptionForm.platform as EncryptionPolicy['platform'], encryptionType: encryptionForm.encryptionType as EncryptionPolicy['encryptionType'], enforced: encryptionForm.enforced, recoveryKeyEscrowed: encryptionForm.recoveryKeyEscrowed, gracePeriodHours: encryptionForm.gracePeriodHours, appliesTo: encryptionForm.appliesTo, compliantCount: 0, totalCount: 0, createdAt: now, lastUpdated: now })
+        addToast('Encryption policy created')
+      }
+      setShowEncryptionModal(false)
+    } finally { setSaving(false) }
   }
   function deleteEncryptionPolicyHandler(id: string) {
-    storeDeleteEncryptionPolicy(id)
-    addToast('Encryption policy deleted')
+    const policy = encryptionPolicies.find(p => p.id === id)
+    setConfirmAction({ show: true, type: 'deleteEncryption', id, label: policy?.name || 'this policy' })
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'deleteProvRule') {
+        storeDeleteProvisioningRule(confirmAction.id)
+        addToast('Provisioning rule deleted')
+      } else if (confirmAction.type === 'deleteEncryption') {
+        storeDeleteEncryptionPolicy(confirmAction.id)
+        addToast('Encryption policy deleted')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
   function toggleEncryptionEnforced(id: string) {
     const policy = encryptionPolicies.find(p => p.id === id)
@@ -1551,6 +1594,31 @@ export default function ITCloudPage() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowEncryptionModal(false)}>Cancel</Button>
             <Button onClick={submitEncryptionPolicy}>{editEncryptionId ? 'Update' : 'Create'} Policy</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+            <AlertTriangle size={20} className="text-red-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'deleteProvRule' && `Delete provisioning rule "${confirmAction?.label}"?`}
+                {confirmAction?.type === 'deleteEncryption' && `Delete encryption policy "${confirmAction?.label}"?`}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'deleteProvRule' && 'This provisioning rule will be permanently removed. Auto-provisioning based on this rule will stop.'}
+                {confirmAction?.type === 'deleteEncryption' && 'This encryption policy will be permanently removed. Devices will no longer be evaluated against it.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="danger" disabled={saving} onClick={executeConfirmAction}>
+              {saving ? 'Deleting...' : 'Delete'}
+            </Button>
           </div>
         </div>
       </Modal>

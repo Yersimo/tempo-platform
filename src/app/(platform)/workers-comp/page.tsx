@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
-import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList, Edit3 } from 'lucide-react'
+import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList, Edit3, Inbox } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -37,6 +37,7 @@ export default function WorkersCompPage() {
     addWorkersCompClassCode, updateWorkersCompClassCode,
     addWorkersCompAudit, updateWorkersCompAudit,
     ensureModulesLoaded,
+    addToast,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -46,6 +47,9 @@ export default function WorkersCompPage() {
   }, [ensureModulesLoaded])
 
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
+
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   const [activeTab, setActiveTab] = useState('policies')
   const [showClaimModal, setShowClaimModal] = useState(false)
@@ -132,20 +136,27 @@ export default function WorkersCompPage() {
     setShowClaimModal(true)
   }
 
-  function submitClaim() {
-    if (!claimForm.employee_name || !claimForm.incident_date || !claimForm.injury_type) return
-    const activePolicyId = workersCompPolicies.find((p: any) => p.status === 'active')?.id || ''
-    addWorkersCompClaim({
-      policy_id: activePolicyId,
-      employee_name: claimForm.employee_name,
-      incident_date: claimForm.incident_date,
-      description: claimForm.description,
-      injury_type: claimForm.injury_type,
-      body_part: claimForm.body_part,
-      reserve_amount: Number(claimForm.reserve_amount) * 100 || 0,
-      paid_amount: 0,
-    })
-    setShowClaimModal(false)
+  async function submitClaim() {
+    if (!claimForm.employee_name) { addToast('Employee name is required', 'error'); return }
+    if (!claimForm.incident_date) { addToast('Incident date is required', 'error'); return }
+    if (!claimForm.injury_type) { addToast('Injury type is required', 'error'); return }
+    if (!claimForm.description) { addToast('Incident description is required', 'error'); return }
+    setSaving(true)
+    try {
+      const activePolicyId = workersCompPolicies.find((p: any) => p.status === 'active')?.id || ''
+      addWorkersCompClaim({
+        policy_id: activePolicyId,
+        employee_name: claimForm.employee_name,
+        incident_date: claimForm.incident_date,
+        description: claimForm.description,
+        injury_type: claimForm.injury_type,
+        body_part: claimForm.body_part,
+        reserve_amount: Number(claimForm.reserve_amount) * 100 || 0,
+        paid_amount: 0,
+      })
+      setShowClaimModal(false)
+      addToast('Claim filed successfully')
+    } finally { setSaving(false) }
   }
 
   // ── Policy Handlers ──
@@ -178,24 +189,32 @@ export default function WorkersCompPage() {
     setShowPolicyModal(true)
   }
 
-  function submitPolicy() {
-    if (!policyForm.name || !policyForm.carrier || !policyForm.policy_number) return
-    const payload = {
-      name: policyForm.name,
-      carrier: policyForm.carrier,
-      policy_number: policyForm.policy_number,
-      effective_date: policyForm.effective_date,
-      expiry_date: policyForm.expiration_date,
-      premium: Number(policyForm.premium) * 100 || 0,
-      status: policyForm.status,
-      covered_employees: employees.length,
-    }
-    if (editingPolicy) {
-      updateWorkersCompPolicy(editingPolicy.id, payload)
-    } else {
-      addWorkersCompPolicy(payload)
-    }
-    setShowPolicyModal(false)
+  async function submitPolicy() {
+    if (!policyForm.name) { addToast('Policy name is required', 'error'); return }
+    if (!policyForm.carrier) { addToast('Carrier is required', 'error'); return }
+    if (!policyForm.policy_number) { addToast('Policy number is required', 'error'); return }
+    if (!policyForm.effective_date) { addToast('Effective date is required', 'error'); return }
+    setSaving(true)
+    try {
+      const payload = {
+        name: policyForm.name,
+        carrier: policyForm.carrier,
+        policy_number: policyForm.policy_number,
+        effective_date: policyForm.effective_date,
+        expiry_date: policyForm.expiration_date,
+        premium: Number(policyForm.premium) * 100 || 0,
+        status: policyForm.status,
+        covered_employees: employees.length,
+      }
+      if (editingPolicy) {
+        updateWorkersCompPolicy(editingPolicy.id, payload)
+        addToast('Policy updated successfully')
+      } else {
+        addWorkersCompPolicy(payload)
+        addToast('Policy added successfully')
+      }
+      setShowPolicyModal(false)
+    } finally { setSaving(false) }
   }
 
   // ── Claim Status Handlers ──
@@ -207,9 +226,25 @@ export default function WorkersCompPage() {
   }
 
   function submitClaimStatus() {
-    if (!editingClaim || !claimStatusForm.status) return
-    updateWorkersCompClaim(editingClaim.id, { status: claimStatusForm.status })
-    setShowClaimStatusModal(false)
+    if (!editingClaim || !claimStatusForm.status) { addToast('Please select a status', 'error'); return }
+    const destructive = claimStatusForm.status === 'denied' || claimStatusForm.status === 'closed'
+    const doUpdate = () => {
+      setSaving(true)
+      try {
+        updateWorkersCompClaim(editingClaim.id, { status: claimStatusForm.status })
+        setShowClaimStatusModal(false)
+        addToast('Claim status updated')
+      } finally { setSaving(false) }
+    }
+    if (destructive) {
+      setConfirmAction({
+        title: claimStatusForm.status === 'denied' ? 'Deny Claim' : 'Close Claim',
+        message: `Are you sure you want to ${claimStatusForm.status === 'denied' ? 'deny' : 'close'} the claim for ${editingClaim.employee_name}? This action cannot be easily undone.`,
+        onConfirm: doUpdate,
+      })
+    } else {
+      doUpdate()
+    }
   }
 
   // ── Class Code Handlers ──
@@ -231,21 +266,28 @@ export default function WorkersCompPage() {
     setShowClassCodeModal(true)
   }
 
-  function submitClassCode() {
-    if (!classCodeForm.code || !classCodeForm.description || !classCodeForm.rate) return
-    const payload = {
-      code: classCodeForm.code,
-      description: classCodeForm.description,
-      rate: Number(classCodeForm.rate),
-      industry: classCodeForm.industry,
-      employee_count: 0,
-    }
-    if (editingClassCode) {
-      updateWorkersCompClassCode(editingClassCode.id, payload)
-    } else {
-      addWorkersCompClassCode(payload)
-    }
-    setShowClassCodeModal(false)
+  async function submitClassCode() {
+    if (!classCodeForm.code) { addToast('Class code is required', 'error'); return }
+    if (!classCodeForm.description) { addToast('Description is required', 'error'); return }
+    if (!classCodeForm.rate || Number(classCodeForm.rate) <= 0) { addToast('A valid rate is required', 'error'); return }
+    setSaving(true)
+    try {
+      const payload = {
+        code: classCodeForm.code,
+        description: classCodeForm.description,
+        rate: Number(classCodeForm.rate),
+        industry: classCodeForm.industry,
+        employee_count: 0,
+      }
+      if (editingClassCode) {
+        updateWorkersCompClassCode(editingClassCode.id, payload)
+        addToast('Class code updated')
+      } else {
+        addWorkersCompClassCode(payload)
+        addToast('Class code added')
+      }
+      setShowClassCodeModal(false)
+    } finally { setSaving(false) }
   }
 
   // ── Audit Handlers ──
@@ -261,18 +303,23 @@ export default function WorkersCompPage() {
     setShowAuditModal(true)
   }
 
-  function submitAudit() {
-    if (!auditForm.scheduled_date || !auditForm.auditor) return
-    addWorkersCompAudit({
-      audit_type: auditForm.audit_type,
-      audit_date: auditForm.scheduled_date,
-      period: `${new Date().getFullYear()}`,
-      auditor: auditForm.auditor,
-      status: auditForm.status,
-      findings: '',
-      adjustment_amount: 0,
-    })
-    setShowAuditModal(false)
+  async function submitAudit() {
+    if (!auditForm.scheduled_date) { addToast('Scheduled date is required', 'error'); return }
+    if (!auditForm.auditor) { addToast('Auditor name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addWorkersCompAudit({
+        audit_type: auditForm.audit_type,
+        audit_date: auditForm.scheduled_date,
+        period: `${new Date().getFullYear()}`,
+        auditor: auditForm.auditor,
+        status: auditForm.status,
+        findings: '',
+        adjustment_amount: 0,
+      })
+      setShowAuditModal(false)
+      addToast('Audit scheduled successfully')
+    } finally { setSaving(false) }
   }
 
   function openAuditStatusModal(audit: any) {
@@ -282,9 +329,25 @@ export default function WorkersCompPage() {
   }
 
   function submitAuditStatus() {
-    if (!editingAudit || !auditStatusForm.status) return
-    updateWorkersCompAudit(editingAudit.id, { status: auditStatusForm.status })
-    setShowAuditStatusModal(false)
+    if (!editingAudit || !auditStatusForm.status) { addToast('Please select a status', 'error'); return }
+    const destructive = auditStatusForm.status === 'cancelled'
+    const doUpdate = () => {
+      setSaving(true)
+      try {
+        updateWorkersCompAudit(editingAudit.id, { status: auditStatusForm.status })
+        setShowAuditStatusModal(false)
+        addToast('Audit status updated')
+      } finally { setSaving(false) }
+    }
+    if (destructive) {
+      setConfirmAction({
+        title: 'Cancel Audit',
+        message: `Are you sure you want to cancel the audit by ${editingAudit.auditor}? This action cannot be easily undone.`,
+        onConfirm: doUpdate,
+      })
+    } else {
+      doUpdate()
+    }
   }
 
   function calculatePremium() {
@@ -386,6 +449,16 @@ export default function WorkersCompPage() {
               </Button>
             </div>
           </CardHeader>
+          {workersCompPolicies.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
+                <ShieldCheck size={24} className="text-t3" />
+              </div>
+              <p className="text-sm font-medium text-t1 mb-1">No policies yet</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">Add your first workers&apos; compensation policy to start tracking coverage and premiums.</p>
+              <Button size="sm" onClick={openAddPolicyModal}><Plus size={14} /> Add Policy</Button>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -431,6 +504,7 @@ export default function WorkersCompPage() {
               </tbody>
             </table>
           </div>
+          )}
         </Card>
       )}
 
@@ -445,6 +519,16 @@ export default function WorkersCompPage() {
               </Button>
             </div>
           </CardHeader>
+          {workersCompClaims.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
+                <FileText size={24} className="text-t3" />
+              </div>
+              <p className="text-sm font-medium text-t1 mb-1">No claims filed</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">No workers&apos; compensation claims have been filed yet. Use the button above to file a new claim.</p>
+              <Button size="sm" onClick={openFileClaimModal}><Plus size={14} /> File Claim</Button>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -501,6 +585,7 @@ export default function WorkersCompPage() {
               </tbody>
             </table>
           </div>
+          )}
         </Card>
       )}
 
@@ -521,6 +606,17 @@ export default function WorkersCompPage() {
               </div>
             </div>
           </CardHeader>
+          {workersCompClassCodes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
+                <Briefcase size={24} className="text-t3" />
+              </div>
+              <p className="text-sm font-medium text-t1 mb-1">No class codes configured</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">Add NCCI class codes to classify employees by occupation and calculate premiums.</p>
+              <Button size="sm" onClick={openAddClassCodeModal}><Plus size={14} /> Add Class Code</Button>
+            </div>
+          ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -582,6 +678,8 @@ export default function WorkersCompPage() {
               </span>
             </div>
           </div>
+          </>
+          )}
         </Card>
       )}
 
@@ -688,6 +786,17 @@ export default function WorkersCompPage() {
             </Button>
           </div>
 
+          {workersCompAudits.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center mb-3">
+                <ClipboardList size={24} className="text-t3" />
+              </div>
+              <p className="text-sm font-medium text-t1 mb-1">No audits scheduled</p>
+              <p className="text-xs text-t3 mb-4 max-w-xs">Schedule your first premium audit to verify payroll records and ensure accurate classification rates.</p>
+              <Button size="sm" onClick={openScheduleAuditModal}><Plus size={14} /> Schedule Audit</Button>
+            </div>
+          ) : (
+          <>
           {workersCompAudits.map(audit => (
             <Card key={audit.id}>
               <div className="flex items-start justify-between">
@@ -745,6 +854,7 @@ export default function WorkersCompPage() {
           ))}
 
           {/* Summary Card */}
+          {workersCompAudits.length > 0 && (
           <Card>
             <h4 className="text-sm font-semibold text-t1 mb-3">Audit Summary</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -768,6 +878,9 @@ export default function WorkersCompPage() {
               </div>
             </div>
           </Card>
+          )}
+          </>
+          )}
         </div>
       )}
 
@@ -819,8 +932,8 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowClaimModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitClaim}>
-              <ShieldCheck size={14} /> Submit Claim
+            <Button onClick={submitClaim} disabled={saving}>
+              <ShieldCheck size={14} /> {saving ? 'Saving...' : 'Submit Claim'}
             </Button>
           </div>
         </div>
@@ -881,8 +994,8 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPolicyModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPolicy}>
-              <ShieldCheck size={14} /> {editingPolicy ? 'Update Policy' : 'Add Policy'}
+            <Button onClick={submitPolicy} disabled={saving}>
+              <ShieldCheck size={14} /> {saving ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Add Policy'}
             </Button>
           </div>
         </div>
@@ -912,8 +1025,8 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowClaimStatusModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitClaimStatus}>
-              <CheckCircle size={14} /> Update Status
+            <Button onClick={submitClaimStatus} disabled={saving}>
+              <CheckCircle size={14} /> {saving ? 'Saving...' : 'Update Status'}
             </Button>
           </div>
         </div>
@@ -950,8 +1063,8 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowClassCodeModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitClassCode}>
-              <Plus size={14} /> {editingClassCode ? 'Update Class Code' : 'Add Class Code'}
+            <Button onClick={submitClassCode} disabled={saving}>
+              <Plus size={14} /> {saving ? 'Saving...' : editingClassCode ? 'Update Class Code' : 'Add Class Code'}
             </Button>
           </div>
         </div>
@@ -994,8 +1107,8 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAuditModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitAudit}>
-              <ClipboardList size={14} /> Schedule Audit
+            <Button onClick={submitAudit} disabled={saving}>
+              <ClipboardList size={14} /> {saving ? 'Saving...' : 'Schedule Audit'}
             </Button>
           </div>
         </div>
@@ -1024,8 +1137,21 @@ export default function WorkersCompPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAuditStatusModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitAuditStatus}>
-              <CheckCircle size={14} /> Update Status
+            <Button onClick={submitAuditStatus} disabled={saving}>
+              <CheckCircle size={14} /> {saving ? 'Saving...' : 'Update Status'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.title || 'Confirm'}>
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.message}</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="danger" onClick={() => { confirmAction?.onConfirm(); setConfirmAction(null) }}>
+              <AlertTriangle size={14} /> Confirm
             </Button>
           </div>
         </div>

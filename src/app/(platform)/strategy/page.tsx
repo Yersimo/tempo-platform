@@ -13,7 +13,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import {
   Plus, Compass, Target, TrendingUp, BarChart3,
-  Pencil, Trash2, ChevronRight, ArrowUpRight
+  Pencil, Trash2, ChevronRight, ArrowUpRight, AlertTriangle, Loader2
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -30,7 +30,7 @@ export default function StrategyPage() {
     addInitiative, updateInitiative, deleteInitiative,
     addKPIDefinition, addKPIMeasurement,
     getEmployeeName, currentEmployeeId, departments, getDepartmentName,
-    ensureModulesLoaded,
+    ensureModulesLoaded, addToast,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -75,6 +75,7 @@ export default function StrategyPage() {
 
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const tabs = [
     { id: 'map', label: t('tabStrategyMap') },
@@ -145,36 +146,48 @@ export default function StrategyPage() {
     setShowObjModal(true)
   }
 
-  function submitObjective() {
-    if (!objForm.title) return
-    const data = {
-      title: objForm.title,
-      description: objForm.description || null,
-      status: objForm.status,
-      owner_id: objForm.owner_id || currentEmployeeId,
-      period: objForm.period,
-      progress: objForm.progress,
+  async function submitObjective() {
+    if (!objForm.title) { addToast('Objective title is required', 'error'); return }
+    if (!objForm.period) { addToast('Period is required', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: objForm.title,
+        description: objForm.description || null,
+        status: objForm.status,
+        owner_id: objForm.owner_id || currentEmployeeId,
+        period: objForm.period,
+        progress: objForm.progress,
+      }
+      if (editingObj) {
+        updateStrategicObjective(editingObj, data)
+      } else {
+        addStrategicObjective(data)
+      }
+      setShowObjModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingObj) {
-      updateStrategicObjective(editingObj, data)
-    } else {
-      addStrategicObjective(data)
-    }
-    setShowObjModal(false)
   }
 
-  function submitKeyResult() {
-    if (!krForm.title || !krForm.objective_id) return
-    addKeyResult({
-      title: krForm.title,
-      objective_id: krForm.objective_id,
-      target_value: krForm.target_value,
-      current_value: krForm.current_value,
-      unit: krForm.unit,
-      owner_id: krForm.owner_id || currentEmployeeId,
-      due_date: krForm.due_date || `${new Date().getFullYear()}-12-31`,
-    })
-    setShowKRModal(false)
+  async function submitKeyResult() {
+    if (!krForm.title) { addToast('Key result title is required', 'error'); return }
+    if (!krForm.objective_id) { addToast('Please select an objective', 'error'); return }
+    setSaving(true)
+    try {
+      addKeyResult({
+        title: krForm.title,
+        objective_id: krForm.objective_id,
+        target_value: krForm.target_value,
+        current_value: krForm.current_value,
+        unit: krForm.unit,
+        owner_id: krForm.owner_id || currentEmployeeId,
+        due_date: krForm.due_date || `${new Date().getFullYear()}-12-31`,
+      })
+      setShowKRModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openNewInitiative() {
@@ -196,40 +209,51 @@ export default function StrategyPage() {
     setShowInitModal(true)
   }
 
-  function submitInitiative() {
-    if (!initForm.title) return
-    const data = {
-      title: initForm.title,
-      description: initForm.description || null,
-      status: initForm.status,
-      objective_id: initForm.objective_id || null,
-      owner_id: initForm.owner_id || currentEmployeeId,
-      start_date: initForm.start_date || new Date().toISOString().split('T')[0],
-      end_date: initForm.end_date || `${new Date().getFullYear()}-12-31`,
-      progress: initForm.progress,
-      budget: initForm.budget || null,
-      currency: initForm.currency,
+  async function submitInitiative() {
+    if (!initForm.title) { addToast('Initiative title is required', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: initForm.title,
+        description: initForm.description || null,
+        status: initForm.status,
+        objective_id: initForm.objective_id || null,
+        owner_id: initForm.owner_id || currentEmployeeId,
+        start_date: initForm.start_date || new Date().toISOString().split('T')[0],
+        end_date: initForm.end_date || `${new Date().getFullYear()}-12-31`,
+        progress: initForm.progress,
+        budget: initForm.budget || null,
+        currency: initForm.currency,
+      }
+      if (editingInit) {
+        updateInitiative(editingInit, data)
+      } else {
+        addInitiative(data)
+      }
+      setShowInitModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingInit) {
-      updateInitiative(editingInit, data)
-    } else {
-      addInitiative(data)
-    }
-    setShowInitModal(false)
   }
 
-  function submitKPI() {
-    if (!kpiForm.name) return
-    addKPIDefinition({
-      name: kpiForm.name,
-      description: kpiForm.description || null,
-      unit: kpiForm.unit,
-      target_value: kpiForm.target_value,
-      frequency: kpiForm.frequency,
-      department_id: kpiForm.department_id || null,
-      owner_id: kpiForm.owner_id || currentEmployeeId,
-    })
-    setShowKPIModal(false)
+  async function submitKPI() {
+    if (!kpiForm.name) { addToast('KPI name is required', 'error'); return }
+    if (!kpiForm.target_value) { addToast('Target value is required', 'error'); return }
+    setSaving(true)
+    try {
+      addKPIDefinition({
+        name: kpiForm.name,
+        description: kpiForm.description || null,
+        unit: kpiForm.unit,
+        target_value: kpiForm.target_value,
+        frequency: kpiForm.frequency,
+        department_id: kpiForm.department_id || null,
+        owner_id: kpiForm.owner_id || currentEmployeeId,
+      })
+      setShowKPIModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function confirmDelete() {
@@ -533,7 +557,7 @@ export default function StrategyPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowObjModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitObjective}>{editingObj ? tc('saveChanges') : t('createObjective')}</Button>
+            <Button onClick={submitObjective} disabled={saving}>{saving ? <><Loader2 size={14} className="animate-spin" /> {tc('saving')}...</> : editingObj ? tc('saveChanges') : t('createObjective')}</Button>
           </div>
         </div>
       </Modal>
@@ -554,7 +578,7 @@ export default function StrategyPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowKRModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitKeyResult}>{t('addKeyResult')}</Button>
+            <Button onClick={submitKeyResult} disabled={saving}>{saving ? <><Loader2 size={14} className="animate-spin" /> {tc('saving')}...</> : t('addKeyResult')}</Button>
           </div>
         </div>
       </Modal>
@@ -583,7 +607,7 @@ export default function StrategyPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowInitModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitInitiative}>{editingInit ? tc('saveChanges') : t('createInitiative')}</Button>
+            <Button onClick={submitInitiative} disabled={saving}>{saving ? <><Loader2 size={14} className="animate-spin" /> {tc('saving')}...</> : editingInit ? tc('saveChanges') : t('createInitiative')}</Button>
           </div>
         </div>
       </Modal>
@@ -605,14 +629,22 @@ export default function StrategyPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowKPIModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitKPI}>{t('addKPI')}</Button>
+            <Button onClick={submitKPI} disabled={saving}>{saving ? <><Loader2 size={14} className="animate-spin" /> {tc('saving')}...</> : t('addKPI')}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Delete Confirmation */}
       <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title={t('deleteConfirmTitle')} size="sm">
-        <p className="text-sm text-t2 mb-4">{t('deleteConfirmMessage')}</p>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={20} className="text-error" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-t1 mb-1">{t('deleteConfirmTitle')}</p>
+            <p className="text-xs text-t2">{t('deleteConfirmMessage')}</p>
+          </div>
+        </div>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>{tc('cancel')}</Button>
           <Button variant="danger" onClick={confirmDelete}>{tc('delete')}</Button>

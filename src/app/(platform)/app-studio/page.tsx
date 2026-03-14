@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Blocks, Layout, Code, Database, Plus, Settings, Eye, Trash2, Globe, Lock, Monitor, Users, Folder, FileText, ArrowLeft, Home, GripVertical, Layers, BookOpen, CalendarDays, ClipboardList } from 'lucide-react'
+import { Blocks, Layout, Code, Database, Plus, Settings, Eye, Trash2, Globe, Lock, Monitor, Users, Folder, FileText, ArrowLeft, Home, GripVertical, Layers, BookOpen, CalendarDays, ClipboardList, AlertTriangle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -26,6 +26,8 @@ export default function AppStudioPage() {
     return () => clearTimeout(t)
   }, [])
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
   const [activeTab, setActiveTab] = useState<'apps' | 'templates' | 'datasources'>('apps')
   const [editingAppId, setEditingAppId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -98,18 +100,24 @@ export default function AppStudioPage() {
     setShowCreateModal(true)
   }
 
-  function submitCreateApp() {
-    if (!appForm.name) return
-    const slug = appForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    addCustomApp({
-      name: appForm.name,
-      description: appForm.description,
-      slug,
-      icon: appForm.icon,
-      created_by: employees[0]?.id || 'emp-1',
-      access_roles: appForm.access === 'all' ? null : ['admin'],
-    })
-    setShowCreateModal(false)
+  async function submitCreateApp() {
+    if (!appForm.name) { addToast('App name is required', 'error'); return }
+    setSaving(true)
+    try {
+      const slug = appForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      addCustomApp({
+        name: appForm.name,
+        description: appForm.description,
+        slug,
+        icon: appForm.icon,
+        created_by: employees[0]?.id || 'emp-1',
+        access_roles: appForm.access === 'all' ? null : ['admin'],
+      })
+      setShowCreateModal(false)
+      addToast(`App "${appForm.name}" created`, 'success')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function publishApp(id: string) {
@@ -125,8 +133,18 @@ export default function AppStudioPage() {
   }
 
   function handleDeleteApp(id: string) {
-    deleteCustomApp(id)
-    if (editingAppId === id) setEditingAppId(null)
+    const app = customApps.find(a => a.id === id)
+    setConfirmAction({ show: true, type: 'delete-app', id, label: app?.name || 'this app' })
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete-app') {
+      deleteCustomApp(confirmAction.id)
+      if (editingAppId === confirmAction.id) setEditingAppId(null)
+      addToast(`App "${confirmAction.label}" deleted`, 'success')
+    }
+    setConfirmAction(null)
   }
 
   function openAddPage() {
@@ -134,19 +152,25 @@ export default function AppStudioPage() {
     setShowAddPageModal(true)
   }
 
-  function submitAddPage() {
-    if (!pageForm.name || !editingAppId) return
-    const slug = pageForm.slug || pageForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const maxOrder = editingAppPages.reduce((max, p) => Math.max(max, p.order_index || 0), -1)
-    addAppPage({
-      app_id: editingAppId,
-      name: pageForm.name,
-      slug,
-      icon: pageForm.icon,
-      is_home_page: pageForm.is_home_page,
-      order_index: maxOrder + 1,
-    })
-    setShowAddPageModal(false)
+  async function submitAddPage() {
+    if (!pageForm.name) { addToast('Page name is required', 'error'); return }
+    if (!editingAppId) return
+    setSaving(true)
+    try {
+      const slug = pageForm.slug || pageForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const maxOrder = editingAppPages.reduce((max, p) => Math.max(max, p.order_index || 0), -1)
+      addAppPage({
+        app_id: editingAppId,
+        name: pageForm.name,
+        slug,
+        icon: pageForm.icon,
+        is_home_page: pageForm.is_home_page,
+        order_index: maxOrder + 1,
+      })
+      setShowAddPageModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function toggleHomePage(pageId: string) {
@@ -168,15 +192,21 @@ export default function AppStudioPage() {
     setShowConfigPageModal(true)
   }
 
-  function submitConfigPage() {
-    if (!configPage || !configPageForm.name) return
-    updateAppPage(configPage.id, {
-      name: configPageForm.name,
-      slug: configPageForm.slug || configPageForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-      icon: configPageForm.icon,
-    })
-    addToast(`Page "${configPageForm.name}" updated`, 'success')
-    setShowConfigPageModal(false)
+  async function submitConfigPage() {
+    if (!configPageForm.name) { addToast('Page name is required', 'error'); return }
+    if (!configPage) return
+    setSaving(true)
+    try {
+      updateAppPage(configPage.id, {
+        name: configPageForm.name,
+        slug: configPageForm.slug || configPageForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        icon: configPageForm.icon,
+      })
+      addToast(`Page "${configPageForm.name}" updated`, 'success')
+      setShowConfigPageModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (pageLoading) {
@@ -333,7 +363,7 @@ export default function AppStudioPage() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setShowAddPageModal(false)}>{tc('cancel')}</Button>
-              <Button onClick={submitAddPage}>Add Page</Button>
+              <Button onClick={submitAddPage} disabled={saving}>{saving ? 'Adding...' : 'Add Page'}</Button>
             </div>
           </div>
         </Modal>
@@ -615,7 +645,24 @@ export default function AppStudioPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowConfigPageModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitConfigPage}><Settings size={14} /> Save</Button>
+            <Button onClick={submitConfigPage} disabled={saving}><Settings size={14} /> {saving ? 'Saving...' : 'Save'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg">
+            <AlertTriangle size={20} className="text-error shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-t1">Are you sure you want to delete &quot;{confirmAction?.label}&quot;?</p>
+              <p className="text-xs text-t3 mt-1">This action cannot be undone. All pages and configurations will be permanently removed.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="danger" onClick={executeConfirmAction}><Trash2 size={14} /> Delete</Button>
           </div>
         </div>
       </Modal>
@@ -668,7 +715,7 @@ export default function AppStudioPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCreateApp}><Plus size={14} /> Create App</Button>
+            <Button onClick={submitCreateApp} disabled={saving}><Plus size={14} /> {saving ? 'Creating...' : 'Create App'}</Button>
           </div>
         </div>
       </Modal>

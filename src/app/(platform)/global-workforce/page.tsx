@@ -63,6 +63,8 @@ export default function GlobalWorkforcePage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['eorEntities', 'eorEmployees', 'eorContracts', 'corContractors', 'corContracts', 'corPayments', 'peoConfigurations', 'coEmploymentRecords', 'globalBenefitPlans', 'countryBenefitConfigs', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -103,23 +105,29 @@ export default function GlobalWorkforcePage() {
   }
 
   async function submitEntity() {
-    if (!entityForm.country || !entityForm.legal_name) return
-    const payload = {
-      country: entityForm.country,
-      legal_name: entityForm.legal_name,
-      status: 'active',
-      employee_count: 0,
-      currency: entityForm.currency,
-      established_at: new Date().toISOString().split('T')[0],
-    }
+    if (!entityForm.legal_name.trim()) { addToast('Legal name is required', 'error'); return }
+    if (!entityForm.country) { addToast('Country is required', 'error'); return }
+    setSaving(true)
     try {
-      await eorAPI('create-entity', payload)
-      addToast('EOR entity created')
-    } catch {
-      addEorEntity(payload)
-      addToast('Entity saved locally', 'info')
+      const payload = {
+        country: entityForm.country,
+        legal_name: entityForm.legal_name,
+        status: 'active',
+        employee_count: 0,
+        currency: entityForm.currency,
+        established_at: new Date().toISOString().split('T')[0],
+      }
+      try {
+        await eorAPI('create-entity', payload)
+        addToast('EOR entity created')
+      } catch {
+        addEorEntity(payload)
+        addToast('Entity saved locally', 'info')
+      }
+      setShowEntityModal(false)
+    } finally {
+      setSaving(false)
     }
-    setShowEntityModal(false)
   }
 
   // --- Add Contractor modal ---
@@ -132,26 +140,33 @@ export default function GlobalWorkforcePage() {
   }
 
   async function submitContractor() {
-    if (!contractorForm.name || !contractorForm.country) return
-    const payload = {
-      name: contractorForm.name,
-      country: contractorForm.country,
-      specialty: contractorForm.specialty,
-      hourly_rate: Number(contractorForm.hourly_rate),
-      currency: contractorForm.currency,
-      status: 'active',
-      contract_start: new Date().toISOString().split('T')[0],
-      contract_end: '',
-      total_paid: 0,
-    }
+    if (!contractorForm.name.trim()) { addToast('Contractor name is required', 'error'); return }
+    if (!contractorForm.country) { addToast('Country is required', 'error'); return }
+    if (!contractorForm.hourly_rate || Number(contractorForm.hourly_rate) <= 0) { addToast('A valid hourly rate is required', 'error'); return }
+    setSaving(true)
     try {
-      await eorAPI('onboard-employee', payload)
-      addToast('Contractor added')
-    } catch {
-      addCorContractor(payload)
-      addToast('Contractor saved locally', 'info')
+      const payload = {
+        name: contractorForm.name,
+        country: contractorForm.country,
+        specialty: contractorForm.specialty,
+        hourly_rate: Number(contractorForm.hourly_rate),
+        currency: contractorForm.currency,
+        status: 'active',
+        contract_start: new Date().toISOString().split('T')[0],
+        contract_end: '',
+        total_paid: 0,
+      }
+      try {
+        await eorAPI('onboard-employee', payload)
+        addToast('Contractor added')
+      } catch {
+        addCorContractor(payload)
+        addToast('Contractor saved locally', 'info')
+      }
+      setShowContractorModal(false)
+    } finally {
+      setSaving(false)
     }
-    setShowContractorModal(false)
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -703,8 +718,37 @@ export default function GlobalWorkforcePage() {
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEntityModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitEntity}>Create Entity</Button>
+            <Button variant="secondary" onClick={() => setShowEntityModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitEntity} disabled={saving}>{saving ? 'Saving...' : 'Create Entity'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">
+            Are you sure you want to {confirmAction?.type === 'delete_entity' ? 'delete' : 'remove'}{' '}
+            <span className="font-semibold text-t1">{confirmAction?.label}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button
+              variant="danger"
+              disabled={saving}
+              onClick={async () => {
+                if (!confirmAction) return
+                setSaving(true)
+                try {
+                  addToast(`${confirmAction.label} removed`)
+                } finally {
+                  setSaving(false)
+                  setConfirmAction(null)
+                }
+              }}
+            >
+              {saving ? 'Removing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -748,8 +792,8 @@ export default function GlobalWorkforcePage() {
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowContractorModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitContractor}>Add Contractor</Button>
+            <Button variant="secondary" onClick={() => setShowContractorModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitContractor} disabled={saving}>{saving ? 'Saving...' : 'Add Contractor'}</Button>
           </div>
         </div>
       </Modal>

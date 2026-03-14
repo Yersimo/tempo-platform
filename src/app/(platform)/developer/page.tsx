@@ -12,7 +12,7 @@ import { Input, Textarea } from '@/components/ui/input'
 import {
   Code, Key, Webhook, Shield, Plus, Trash2, Copy, Check, Eye, EyeOff,
   RefreshCw, Terminal, Globe, Lock, AlertTriangle, ExternalLink,
-  ChevronRight, Hash, Zap, BookOpen, Package,
+  ChevronRight, Hash, Zap, BookOpen, Package, Search,
 } from 'lucide-react'
 import {
   createApiKey,
@@ -44,9 +44,12 @@ import type {
 import { useTempo } from '@/lib/store'
 
 export default function DeveloperPortalPage() {
-  const { org } = useTempo()
+  const { org, addToast } = useTempo()
   const ORG_ID = org?.id || 'org-1'
   const [activeTab, setActiveTab] = useState('api-keys')
+  const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   // ---- API Keys state ----
   const [apiKeys, setApiKeys] = useState<ApiKeyListItem[]>([])
@@ -164,8 +167,10 @@ export default function DeveloperPortalPage() {
 
   // ---- API Key actions ----
   async function handleCreateKey() {
-    if (!keyForm.name.trim() || keyForm.scopes.length === 0) return
+    if (!keyForm.name.trim()) { addToast('Key name is required', 'error'); return }
+    if (keyForm.scopes.length === 0) { addToast('Select at least one scope', 'error'); return }
     setKeyCreating(true)
+    setSaving(true)
     try {
       const expiresIn = keyForm.expiresInDays ? parseInt(keyForm.expiresInDays, 10) : undefined
       const result = await createApiKey(ORG_ID, keyForm.name, keyForm.scopes, expiresIn)
@@ -174,19 +179,27 @@ export default function DeveloperPortalPage() {
       setShowKeySuccessModal(true)
       setKeyForm({ name: '', scopes: [], expiresInDays: '' })
       await loadApiKeys()
+      addToast('API key created successfully')
     } catch (e) {
       console.error('Failed to create API key:', e)
+      addToast('Failed to create API key', 'error')
     } finally {
       setKeyCreating(false)
+      setSaving(false)
     }
   }
 
   async function handleRevokeKey(keyId: string) {
+    setSaving(true)
     try {
       await revokeApiKey(ORG_ID, keyId)
       await loadApiKeys()
+      addToast('API key revoked')
     } catch (e) {
       console.error('Failed to revoke API key:', e)
+      addToast('Failed to revoke API key', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -201,26 +214,37 @@ export default function DeveloperPortalPage() {
 
   // ---- Webhook actions ----
   async function handleRegisterWebhook() {
-    if (!webhookForm.url.trim() || webhookForm.events.length === 0) return
+    if (!webhookForm.url.trim()) { addToast('Endpoint URL is required', 'error'); return }
+    try { new URL(webhookForm.url) } catch { addToast('Enter a valid URL', 'error'); return }
+    if (webhookForm.events.length === 0) { addToast('Select at least one event', 'error'); return }
     setWebhookCreating(true)
+    setSaving(true)
     try {
       await registerWebhookEndpoint(ORG_ID, webhookForm.url, webhookForm.events)
       setShowWebhookModal(false)
       setWebhookForm({ url: '', events: [] })
       await loadWebhooks()
+      addToast('Webhook endpoint registered')
     } catch (e) {
       console.error('Failed to register webhook:', e)
+      addToast('Failed to register webhook', 'error')
     } finally {
       setWebhookCreating(false)
+      setSaving(false)
     }
   }
 
   async function handleDeleteWebhook(endpointId: string) {
+    setSaving(true)
     try {
       await deleteWebhookEndpoint(ORG_ID, endpointId)
       await loadWebhooks()
+      addToast('Webhook endpoint deleted')
     } catch (e) {
       console.error('Failed to delete webhook:', e)
+      addToast('Failed to delete webhook', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -245,8 +269,11 @@ export default function DeveloperPortalPage() {
 
   // ---- OAuth App actions ----
   async function handleRegisterOAuth() {
-    if (!oauthForm.appName.trim() || !oauthForm.redirectUris.trim() || oauthForm.scopes.length === 0) return
+    if (!oauthForm.appName.trim()) { addToast('App name is required', 'error'); return }
+    if (!oauthForm.redirectUris.trim()) { addToast('At least one redirect URI is required', 'error'); return }
+    if (oauthForm.scopes.length === 0) { addToast('Select at least one scope', 'error'); return }
     setOauthCreating(true)
+    setSaving(true)
     try {
       const uris = oauthForm.redirectUris.split('\n').map(u => u.trim()).filter(Boolean)
       const result = await registerOAuthApp(ORG_ID, oauthForm.appName, uris, oauthForm.scopes)
@@ -255,19 +282,27 @@ export default function DeveloperPortalPage() {
       setShowOAuthSecretModal(true)
       setOauthForm({ appName: '', redirectUris: '', scopes: [] })
       await loadOAuthApps()
+      addToast('OAuth app registered successfully')
     } catch (e) {
       console.error('Failed to register OAuth app:', e)
+      addToast('Failed to register OAuth app', 'error')
     } finally {
       setOauthCreating(false)
+      setSaving(false)
     }
   }
 
   async function handleRevokeOAuth(appId: string) {
+    setSaving(true)
     try {
       await revokeOAuthApp(ORG_ID, appId)
       await loadOAuthApps()
+      addToast('OAuth app revoked')
     } catch (e) {
       console.error('Failed to revoke OAuth app:', e)
+      addToast('Failed to revoke OAuth app', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -280,6 +315,41 @@ export default function DeveloperPortalPage() {
     }))
   }
 
+  const currentLanguage: SDKLanguage | undefined = sdkConfig?.sdkLanguages[selectedLanguage] ?? SDK_LANGUAGES[selectedLanguage]
+  const endpoints: SDKEndpoint[] = sdkConfig?.availableEndpoints ?? []
+
+  // ---- Confirmation handler ----
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'revoke-key') {
+      handleRevokeKey(confirmAction.id)
+    } else if (confirmAction.type === 'delete-webhook') {
+      handleDeleteWebhook(confirmAction.id)
+    } else if (confirmAction.type === 'revoke-oauth') {
+      handleRevokeOAuth(confirmAction.id)
+    }
+    setConfirmAction(null)
+  }
+
+  // ---- Search / filter ----
+  const q = searchQuery.toLowerCase()
+  const filteredApiKeys = useMemo(() =>
+    apiKeys.filter(k => !q || k.name.toLowerCase().includes(q) || k.prefix.toLowerCase().includes(q) || k.scopes.some(s => s.toLowerCase().includes(q))),
+    [apiKeys, q]
+  )
+  const filteredWebhooks = useMemo(() =>
+    webhooks.filter(w => !q || w.url.toLowerCase().includes(q) || w.events.some(e => e.toLowerCase().includes(q))),
+    [webhooks, q]
+  )
+  const filteredOAuthApps = useMemo(() =>
+    oauthApps.filter(a => !q || a.appName.toLowerCase().includes(q) || a.clientId.toLowerCase().includes(q) || a.scopes.some(s => s.toLowerCase().includes(q))),
+    [oauthApps, q]
+  )
+  const filteredEndpoints = useMemo(() =>
+    endpoints.filter(ep => !q || ep.path.toLowerCase().includes(q) || ep.description.toLowerCase().includes(q) || ep.method.toLowerCase().includes(q)),
+    [endpoints, q]
+  )
+
   // ---- Tabs config ----
   const tabs = [
     { id: 'api-keys', label: 'API Keys', count: activeKeys },
@@ -287,9 +357,6 @@ export default function DeveloperPortalPage() {
     { id: 'oauth', label: 'OAuth Apps', count: oauthApps.filter(a => a.isActive).length },
     { id: 'sdk-docs', label: 'SDK & Docs' },
   ]
-
-  const currentLanguage: SDKLanguage | undefined = sdkConfig?.sdkLanguages[selectedLanguage] ?? SDK_LANGUAGES[selectedLanguage]
-  const endpoints: SDKEndpoint[] = sdkConfig?.availableEndpoints ?? []
 
   // Method color helper
   function methodColor(method: string): 'success' | 'info' | 'warning' | 'error' | 'orange' {
@@ -344,6 +411,18 @@ export default function DeveloperPortalPage() {
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
+      {/* Search bar */}
+      <div className="relative mb-6">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+        <input
+          type="text"
+          placeholder={activeTab === 'api-keys' ? 'Search keys by name, prefix, or scope...' : activeTab === 'webhooks' ? 'Search webhooks by URL or event...' : activeTab === 'oauth' ? 'Search apps by name, client ID, or scope...' : 'Search endpoints by path, method, or description...'}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 text-xs border border-divider rounded-lg bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+        />
+      </div>
+
       {/* ==================== TAB 1: API Keys ==================== */}
       {activeTab === 'api-keys' && (
         <Card padding="none">
@@ -379,12 +458,30 @@ export default function DeveloperPortalPage() {
                 )}
                 {!apiKeysLoading && apiKeys.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
-                      No API keys yet. Create one to get started.
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center">
+                          <Key size={24} className="text-t3" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-t1">No API keys yet</p>
+                          <p className="text-xs text-t3 mt-1">Create an API key to start integrating with the Tempo platform.</p>
+                        </div>
+                        <Button size="sm" onClick={() => { setKeyForm({ name: '', scopes: [], expiresInDays: '' }); setShowCreateKeyModal(true) }}>
+                          <Plus size={14} /> Create API Key
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 )}
-                {!apiKeysLoading && apiKeys.map(key => (
+                {!apiKeysLoading && apiKeys.length > 0 && filteredApiKeys.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
+                      No API keys match your search.
+                    </td>
+                  </tr>
+                )}
+                {!apiKeysLoading && filteredApiKeys.map(key => (
                   <tr key={key.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <p className="text-xs font-medium text-t1">{key.name}</p>
@@ -429,7 +526,7 @@ export default function DeveloperPortalPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {key.isActive && (
-                        <Button size="sm" variant="danger" onClick={() => handleRevokeKey(key.id)}>
+                        <Button size="sm" variant="danger" onClick={() => setConfirmAction({ show: true, type: 'revoke-key', id: key.id, label: key.name })}>
                           <Trash2 size={12} /> Revoke
                         </Button>
                       )}
@@ -476,12 +573,30 @@ export default function DeveloperPortalPage() {
                 )}
                 {!webhooksLoading && webhooks.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
-                      No webhook endpoints registered yet.
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center">
+                          <Webhook size={24} className="text-t3" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-t1">No webhook endpoints</p>
+                          <p className="text-xs text-t3 mt-1">Register a webhook endpoint to receive real-time event notifications.</p>
+                        </div>
+                        <Button size="sm" onClick={() => { setWebhookForm({ url: '', events: [] }); setShowWebhookModal(true) }}>
+                          <Plus size={14} /> Register Endpoint
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 )}
-                {!webhooksLoading && webhooks.map(wh => (
+                {!webhooksLoading && webhooks.length > 0 && filteredWebhooks.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
+                      No webhooks match your search.
+                    </td>
+                  </tr>
+                )}
+                {!webhooksLoading && filteredWebhooks.map(wh => (
                   <tr key={wh.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -519,7 +634,7 @@ export default function DeveloperPortalPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {wh.isActive && (
-                        <Button size="sm" variant="danger" onClick={() => handleDeleteWebhook(wh.id)}>
+                        <Button size="sm" variant="danger" onClick={() => setConfirmAction({ show: true, type: 'delete-webhook', id: wh.id, label: wh.url })}>
                           <Trash2 size={12} /> Delete
                         </Button>
                       )}
@@ -566,12 +681,30 @@ export default function DeveloperPortalPage() {
                 )}
                 {!oauthLoading && oauthApps.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
-                      No OAuth applications registered yet.
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center">
+                          <Shield size={24} className="text-t3" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-t1">No OAuth applications</p>
+                          <p className="text-xs text-t3 mt-1">Register an OAuth application to enable third-party integrations.</p>
+                        </div>
+                        <Button size="sm" onClick={() => { setOauthForm({ appName: '', redirectUris: '', scopes: [] }); setShowOAuthModal(true) }}>
+                          <Plus size={14} /> Register App
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 )}
-                {!oauthLoading && oauthApps.map(app => (
+                {!oauthLoading && oauthApps.length > 0 && filteredOAuthApps.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-t3">
+                      No OAuth apps match your search.
+                    </td>
+                  </tr>
+                )}
+                {!oauthLoading && filteredOAuthApps.map(app => (
                   <tr key={app.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <p className="text-xs font-medium text-t1">{app.appName}</p>
@@ -609,7 +742,7 @@ export default function DeveloperPortalPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {app.isActive && (
-                        <Button size="sm" variant="danger" onClick={() => handleRevokeOAuth(app.id)}>
+                        <Button size="sm" variant="danger" onClick={() => setConfirmAction({ show: true, type: 'revoke-oauth', id: app.id, label: app.appName })}>
                           <Trash2 size={12} /> Revoke
                         </Button>
                       )}
@@ -735,7 +868,7 @@ export default function DeveloperPortalPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {endpoints.map((ep, idx) => (
+                  {filteredEndpoints.map((ep, idx) => (
                     <tr key={`${ep.method}-${ep.path}-${idx}`} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
                         <Badge variant={methodColor(ep.method)}>
@@ -985,6 +1118,37 @@ export default function DeveloperPortalPage() {
             <Button variant="secondary" onClick={() => setShowOAuthModal(false)}>Cancel</Button>
             <Button onClick={handleRegisterOAuth} disabled={oauthCreating || !oauthForm.appName.trim() || !oauthForm.redirectUris.trim() || oauthForm.scopes.length === 0}>
               {oauthCreating ? <><RefreshCw size={14} className="animate-spin" /> Registering...</> : 'Register App'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'revoke-key' && 'Revoke this API key?'}
+                {confirmAction?.type === 'delete-webhook' && 'Delete this webhook endpoint?'}
+                {confirmAction?.type === 'revoke-oauth' && 'Revoke this OAuth application?'}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'revoke-key' && `"${confirmAction.label}" will be permanently revoked and any integrations using it will stop working.`}
+                {confirmAction?.type === 'delete-webhook' && `The endpoint "${confirmAction?.label}" will be removed and will no longer receive events.`}
+                {confirmAction?.type === 'revoke-oauth' && `"${confirmAction.label}" will be revoked and all users will lose access through this application.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="danger" onClick={executeConfirmAction}>
+              {confirmAction?.type === 'revoke-key' && 'Revoke Key'}
+              {confirmAction?.type === 'delete-webhook' && 'Delete Endpoint'}
+              {confirmAction?.type === 'revoke-oauth' && 'Revoke App'}
             </Button>
           </div>
         </div>

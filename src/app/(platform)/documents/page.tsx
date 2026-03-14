@@ -33,6 +33,8 @@ export default function DocumentsPage() {
   }
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['signatureDocuments', 'signatureTemplates'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -214,52 +216,60 @@ export default function DocumentsPage() {
   }
 
   async function submitDocument() {
-    if (!docForm.title || docForm.signers.some(s => !s.name || !s.email)) return
-    const signers = docForm.signers.map((s, i) => ({ ...s, status: 'pending', signing_order: s.order || i + 1, role: s.role || 'signer' }))
-    const createdBy = currentEmployeeId || employees[0]?.id || 'unknown'
+    if (!docForm.title) { addToast('Document title is required', 'error'); return }
+    if (docForm.signers.some(s => !s.name)) { addToast('All signer names are required', 'error'); return }
+    if (docForm.signers.some(s => !s.email)) { addToast('All signer emails are required', 'error'); return }
+    setSaving(true)
     try {
-      const result = await esigAPI('POST', 'create', {
-        title: docForm.title,
-        description: '',
-        signers,
-        signingOrder: docForm.signing_flow,
-        expiresAt: null,
-        createdBy,
-      })
-      addSignatureDocument({
-        ...result,
-        title: docForm.title,
-        status: 'pending',
-        signing_flow: docForm.signing_flow,
-        created_by: createdBy,
-        document_url: '/docs/uploaded-document.pdf',
-        signers,
-      })
-      addToast('Document created and sent for signing', 'success')
-    } catch (err: any) {
-      addSignatureDocument({
-        title: docForm.title,
-        status: 'pending',
-        signing_flow: docForm.signing_flow,
-        created_by: createdBy,
-        document_url: '/docs/uploaded-document.pdf',
-        signers,
-      })
-      addToast(`Document saved locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
-    }
-    setShowNewDocModal(false)
+      const signers = docForm.signers.map((s, i) => ({ ...s, status: 'pending', signing_order: s.order || i + 1, role: s.role || 'signer' }))
+      const createdBy = currentEmployeeId || employees[0]?.id || 'unknown'
+      try {
+        const result = await esigAPI('POST', 'create', {
+          title: docForm.title,
+          description: '',
+          signers,
+          signingOrder: docForm.signing_flow,
+          expiresAt: null,
+          createdBy,
+        })
+        addSignatureDocument({
+          ...result,
+          title: docForm.title,
+          status: 'pending',
+          signing_flow: docForm.signing_flow,
+          created_by: createdBy,
+          document_url: '/docs/uploaded-document.pdf',
+          signers,
+        })
+        addToast('Document created and sent for signing', 'success')
+      } catch (err: any) {
+        addSignatureDocument({
+          title: docForm.title,
+          status: 'pending',
+          signing_flow: docForm.signing_flow,
+          created_by: createdBy,
+          document_url: '/docs/uploaded-document.pdf',
+          signers,
+        })
+        addToast(`Document saved locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
+      }
+      setShowNewDocModal(false)
+    } finally { setSaving(false) }
   }
 
   async function sendReminder(docId: string) {
-    const senderEmail = employees[0]?.profile?.email || ''
+    setSaving(true)
     try {
-      await esigAPI('POST', 'send', { documentId: docId, senderEmail })
-      updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
-      addToast('Reminder sent successfully', 'success')
-    } catch (err: any) {
-      updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
-      addToast(`Reminder recorded locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
-    }
+      const senderEmail = employees[0]?.profile?.email || ''
+      try {
+        await esigAPI('POST', 'send', { documentId: docId, senderEmail })
+        updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
+        addToast('Reminder sent successfully', 'success')
+      } catch (err: any) {
+        updateSignatureDocument(docId, { last_reminder_sent: new Date().toISOString() })
+        addToast(`Reminder recorded locally. API error: ${err?.message || 'Service unavailable'}`, 'error')
+      }
+    } finally { setSaving(false) }
   }
 
   async function useTemplate(templateId: string) {
@@ -569,7 +579,7 @@ export default function DocumentsPage() {
                             <Download size={12} />
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(doc.id)} title="Delete">
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'delete_doc', id: doc.id, label: doc.title })} title="Delete">
                           <Trash2 size={12} />
                         </Button>
                       </div>

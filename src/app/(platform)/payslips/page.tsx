@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { StatCard } from '@/components/ui/stat-card'
-import { FileText, Download, Eye, Wallet, DollarSign, Calendar, AlertTriangle } from 'lucide-react'
+import { FileText, Download, Eye, Wallet, DollarSign, Calendar, AlertTriangle, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { isEvaluatorAccount, getEvaluatorConfig, evaluatorPayslips } from '@/lib/evaluator-demo-data'
 
@@ -79,6 +79,8 @@ export default function PayslipsPage() {
   const [selectedStub, setSelectedStub] = useState<PayStubDetail | null>(null)
   const [showStubModal, setShowStubModal] = useState(false)
   const [loadingStub, setLoadingStub] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   const employeeId = currentEmployeeId || currentUser?.id
   const userEmail = currentUser?.email || ''
@@ -198,6 +200,7 @@ export default function PayslipsPage() {
 
   // Download pay stub PDF
   async function downloadPDF(payslip: Payslip) {
+    setDownloading(payslip.entryId)
     try {
       const res = await fetch(`/api/payroll/pay-stub-pdf?employeeId=${employeeId}&payrollRunId=${payslip.payrollRunId}`)
       if (!res.ok) {
@@ -218,6 +221,8 @@ export default function PayslipsPage() {
       addToast('Payslip downloaded')
     } catch {
       addToast('Failed to download payslip')
+    } finally {
+      setDownloading(null)
     }
   }
 
@@ -232,6 +237,12 @@ export default function PayslipsPage() {
   const fmtAmount = hasRawAmounts
     ? (amount: number | null | undefined) => fmtCurrency(amount, payslipCurrency)
     : fmtCents
+
+  const filteredPayslips = useMemo(() => {
+    if (!searchQuery.trim()) return payslips
+    const q = searchQuery.toLowerCase()
+    return payslips.filter(p => p.period.toLowerCase().includes(q))
+  }, [payslips, searchQuery])
 
   // Stub formatting — currency-aware
   const stubCurrency = selectedStub?.currency || 'USD'
@@ -272,10 +283,22 @@ export default function PayslipsPage() {
       {!loading && !error && (
         <Card padding="none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText size={18} className="text-tempo-600" />
-              Pay History
-            </CardTitle>
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <FileText size={18} className="text-tempo-600" />
+                Pay History
+              </CardTitle>
+              <div className="relative w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                <input
+                  type="text"
+                  placeholder="Search by period..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-md border border-divider bg-canvas text-t1 placeholder:text-t3 focus:outline-none focus:ring-1 focus:ring-tempo-500"
+                />
+              </div>
+            </div>
           </CardHeader>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -291,13 +314,21 @@ export default function PayslipsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {payslips.length === 0 ? (
+                {filteredPayslips.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">
-                      No payslips available yet. Payslips appear here after your payroll has been processed and paid.
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <FileText size={36} className="mx-auto mb-3 text-t3/40" />
+                      <p className="text-sm font-medium text-t1 mb-1">
+                        {searchQuery.trim() ? 'No matching payslips' : 'No payslips available yet'}
+                      </p>
+                      <p className="text-xs text-t3 max-w-xs mx-auto">
+                        {searchQuery.trim()
+                          ? `No payslips match "${searchQuery}". Try a different search term.`
+                          : 'Payslips will appear here once your payroll has been processed and paid by your employer.'}
+                      </p>
                     </td>
                   </tr>
-                ) : payslips.map(payslip => (
+                ) : filteredPayslips.map(payslip => (
                   <tr key={payslip.entryId} className="hover:bg-canvas/50">
                     <td className="px-6 py-3">
                       <p className="text-xs font-medium text-t1">{payslip.period}</p>
@@ -317,8 +348,8 @@ export default function PayslipsPage() {
                         <Button size="sm" variant="ghost" onClick={() => viewPayStub(payslip)} disabled={loadingStub}>
                           <Eye size={12} /> View
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => downloadPDF(payslip)}>
-                          <Download size={12} /> PDF
+                        <Button size="sm" variant="ghost" onClick={() => downloadPDF(payslip)} disabled={downloading === payslip.entryId}>
+                          <Download size={12} /> {downloading === payslip.entryId ? 'Downloading...' : 'PDF'}
                         </Button>
                       </div>
                     </td>

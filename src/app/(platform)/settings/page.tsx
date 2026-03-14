@@ -198,6 +198,7 @@ export default function SettingsPage() {
   const [billingLoaded, setBillingLoaded] = useState(false)
 
   // Bank accounts state
+  const [saving, setSaving] = useState(false)
   const [showBankAccountModal, setShowBankAccountModal] = useState(false)
   const [editingBankAccount, setEditingBankAccount] = useState<string | null>(null)
   const [bankAccountForm, setBankAccountForm] = useState({
@@ -518,6 +519,7 @@ export default function SettingsPage() {
       addToast('Company name is required', 'error')
       return
     }
+    setSaving(true)
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
@@ -539,14 +541,24 @@ export default function SettingsPage() {
       // Still update locally even if API fails
       updateOrg(orgForm)
       setShowOrgModal(false)
+    } finally {
+      setSaving(false)
     }
   }
 
-  function submitDept() {
-    if (!deptForm.name) return
-    addDepartment({ name: deptForm.name, parent_id: deptForm.parent_id, head_id: deptForm.head_id || null })
-    setShowDeptModal(false)
-    setDeptForm({ name: '', parent_id: null, head_id: '' })
+  async function submitDept() {
+    if (!deptForm.name) {
+      addToast('Department name is required', 'error')
+      return
+    }
+    setSaving(true)
+    try {
+      addDepartment({ name: deptForm.name, parent_id: deptForm.parent_id, head_id: deptForm.head_id || null })
+      setShowDeptModal(false)
+      setDeptForm({ name: '', parent_id: null, head_id: '' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Bank account helpers
@@ -567,23 +579,28 @@ export default function SettingsPage() {
     })
     setShowBankAccountModal(true)
   }
-  function submitBankAccount() {
+  async function submitBankAccount() {
     if (!bankAccountForm.account_name || !bankAccountForm.bank_name) {
-      addToast('Account name and bank name are required')
+      addToast('Account name and bank name are required', 'error')
       return
     }
-    const payload = {
-      account_name: bankAccountForm.account_name, bank_name: bankAccountForm.bank_name,
-      routing_number: bankAccountForm.routing_number, bank_account_number: bankAccountForm.bank_account_number,
-      iban: bankAccountForm.iban, swift_code: bankAccountForm.swift_code,
-      currency: bankAccountForm.currency, is_default: bankAccountForm.is_default, is_active: true,
+    setSaving(true)
+    try {
+      const payload = {
+        account_name: bankAccountForm.account_name, bank_name: bankAccountForm.bank_name,
+        routing_number: bankAccountForm.routing_number, bank_account_number: bankAccountForm.bank_account_number,
+        iban: bankAccountForm.iban, swift_code: bankAccountForm.swift_code,
+        currency: bankAccountForm.currency, is_default: bankAccountForm.is_default, is_active: true,
+      }
+      if (editingBankAccount) {
+        updateCurrencyAccount(editingBankAccount, payload)
+      } else {
+        addCurrencyAccount(payload)
+      }
+      setShowBankAccountModal(false)
+    } finally {
+      setSaving(false)
     }
-    if (editingBankAccount) {
-      updateCurrencyAccount(editingBankAccount, payload)
-    } else {
-      addCurrencyAccount(payload)
-    }
-    setShowBankAccountModal(false)
   }
   function handleDeleteBankAccount(account: any) {
     const isDefault = account.is_default ?? account.isDefault
@@ -1748,7 +1765,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowOrgModal(false)}>Cancel</Button>
-            <Button onClick={submitOrg}>Save Changes</Button>
+            <Button onClick={submitOrg} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
           </div>
         </div>
       </Modal>
@@ -1760,7 +1777,7 @@ export default function SettingsPage() {
           <Select label="Department Head" value={deptForm.head_id} onChange={(e) => setDeptForm({ ...deptForm, head_id: e.target.value })} options={[{ value: '', label: 'Select head...' }, ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))]} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowDeptModal(false)}>Cancel</Button>
-            <Button onClick={submitDept}>Add Department</Button>
+            <Button onClick={submitDept} disabled={saving}>{saving ? 'Adding...' : 'Add Department'}</Button>
           </div>
         </div>
       </Modal>
@@ -1909,7 +1926,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowBankAccountModal(false)}>Cancel</Button>
-            <Button onClick={submitBankAccount}><Save size={14} /> {editingBankAccount ? 'Update' : 'Add'} Account</Button>
+            <Button onClick={submitBankAccount} disabled={saving}><Save size={14} /> {saving ? 'Saving...' : editingBankAccount ? 'Update Account' : 'Add Account'}</Button>
           </div>
         </div>
       </Modal>

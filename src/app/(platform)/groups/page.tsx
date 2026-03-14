@@ -50,13 +50,15 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
 
 export default function GroupsPage() {
   const tc = useTranslations('common')
-  const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup, ensureModulesLoaded } = useTempo()
+  const { employees, groups, addGroup, updateGroup, deleteGroup: removeGroup, addToast, ensureModulesLoaded } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => { ensureModulesLoaded?.(['groups', 'employees'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
   const [activeTab, setActiveTab] = useState<'groups' | 'rules' | 'modules'>('groups')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -121,19 +123,26 @@ export default function GroupsPage() {
     }))
   }
 
-  function submitGroup() {
-    if (!groupForm.name) return
-    addGroup({
-      name: groupForm.name,
-      description: groupForm.description,
-      type: groupForm.type,
-      rule: groupForm.type === 'dynamic' ? { field: groupForm.rule_field, operator: groupForm.rule_operator, value: groupForm.rule_value } : null,
-      member_count: 0,
-      created_by: 'emp-1',
-      last_synced_at: groupForm.type === 'dynamic' ? new Date().toISOString() : null,
-      modules: groupForm.modules,
-    })
-    setShowCreateModal(false)
+  async function submitGroup() {
+    if (!groupForm.name) { addToast('Group name is required', 'error'); return }
+    if (groupForm.type === 'dynamic' && !groupForm.rule_value) { addToast('Rule value is required for dynamic groups', 'error'); return }
+    setSaving(true)
+    try {
+      addGroup({
+        name: groupForm.name,
+        description: groupForm.description,
+        type: groupForm.type,
+        rule: groupForm.type === 'dynamic' ? { field: groupForm.rule_field, operator: groupForm.rule_operator, value: groupForm.rule_value } : null,
+        member_count: 0,
+        created_by: 'emp-1',
+        last_synced_at: groupForm.type === 'dynamic' ? new Date().toISOString() : null,
+        modules: groupForm.modules,
+      })
+      setShowCreateModal(false)
+      addToast(`Group "${groupForm.name}" created`, 'success')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openEditGroup(group: any) {

@@ -57,6 +57,8 @@ export default function CompliancePage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['complianceRequirements', 'complianceDocuments', 'complianceAlerts', 'employees', 'courses', 'enrollments', 'signatureDocuments', 'payrollRuns'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -330,38 +332,75 @@ export default function CompliancePage() {
     return Array.from(set).sort()
   }, [complianceRequirements])
 
-  function submitRequirement() {
-    addComplianceRequirement({
-      ...reqForm,
-      last_checked: new Date().toISOString().split('T')[0],
-      next_due: reqForm.due_date,
-      evidence: null,
-    })
-    setShowAddReqModal(false)
-    setReqForm({ name: '', category: 'labor_law', country: '', description: '', frequency: 'annually', due_date: '', assigned_to: '', status: 'compliant' })
+  async function submitRequirement() {
+    if (!reqForm.name) { addToast('Requirement name is required', 'error'); return }
+    if (!reqForm.due_date) { addToast('Due date is required', 'error'); return }
+    setSaving(true)
+    try {
+      addComplianceRequirement({
+        ...reqForm,
+        last_checked: new Date().toISOString().split('T')[0],
+        next_due: reqForm.due_date,
+        evidence: null,
+      })
+      setShowAddReqModal(false)
+      setReqForm({ name: '', category: 'labor_law', country: '', description: '', frequency: 'annually', due_date: '', assigned_to: '', status: 'compliant' })
+      addToast('Requirement added successfully')
+    } finally { setSaving(false) }
   }
 
-  function submitDocument() {
-    addComplianceDocument({
-      ...docForm,
-      uploaded_by: 'emp-17',
-      status: 'valid',
-    })
-    setShowAddDocModal(false)
-    setDocForm({ requirement_id: '', name: '', file_url: '', expires_at: '' })
+  async function submitDocument() {
+    if (!docForm.name) { addToast('Document name is required', 'error'); return }
+    if (!docForm.requirement_id) { addToast('Linked requirement is required', 'error'); return }
+    setSaving(true)
+    try {
+      addComplianceDocument({
+        ...docForm,
+        uploaded_by: 'emp-17',
+        status: 'valid',
+      })
+      setShowAddDocModal(false)
+      setDocForm({ requirement_id: '', name: '', file_url: '', expires_at: '' })
+      addToast('Document uploaded successfully')
+    } finally { setSaving(false) }
   }
 
-  function submitRemediation() {
-    if (!remediationForm.title || !remediationForm.due_date) return
-    setRemediationActions(prev => [...prev, {
-      id: crypto.randomUUID(),
-      ...remediationForm,
-      status: 'open',
-      created_at: new Date().toISOString(),
-    }])
-    setShowRemediationModal(false)
-    setRemediationForm({ requirement_id: '', title: '', assignee: '', due_date: '', priority: 'medium', notes: '' })
-    addToast('Remediation action created')
+  async function submitRemediation() {
+    if (!remediationForm.title) { addToast('Title is required', 'error'); return }
+    if (!remediationForm.due_date) { addToast('Due date is required', 'error'); return }
+    setSaving(true)
+    try {
+      setRemediationActions(prev => [...prev, {
+        id: crypto.randomUUID(),
+        ...remediationForm,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      }])
+      setShowRemediationModal(false)
+      setRemediationForm({ requirement_id: '', title: '', assignee: '', due_date: '', priority: 'medium', notes: '' })
+      addToast('Remediation action created')
+    } finally { setSaving(false) }
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      if (confirmAction.type === 'delete_requirement') {
+        deleteComplianceRequirement(confirmAction.id)
+        setShowReqDetail(null)
+        addToast('Requirement deleted')
+      } else if (confirmAction.type === 'delete_document') {
+        deleteComplianceDocument(confirmAction.id)
+        addToast('Document deleted')
+      } else if (confirmAction.type === 'dismiss_alert') {
+        dismissComplianceAlert(confirmAction.id)
+        addToast('Alert dismissed')
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
   }
 
   const detailReq = showReqDetail ? complianceRequirements.find(r => r.id === showReqDetail) : null
@@ -746,7 +785,7 @@ export default function CompliancePage() {
                               <Download size={14} />
                             </button>
                             <button
-                              onClick={() => deleteComplianceDocument(doc.id)}
+                              onClick={() => setConfirmAction({ show: true, type: 'delete_document', id: doc.id, label: doc.name })}
                               className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
                               title="Delete"
                             >
@@ -1063,7 +1102,7 @@ export default function CompliancePage() {
           <Textarea label="Description" value={reqForm.description} onChange={(e) => setReqForm({ ...reqForm, description: e.target.value })} rows={3} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAddReqModal(false)}>Cancel</Button>
-            <Button onClick={submitRequirement} disabled={!reqForm.name}>Add Requirement</Button>
+            <Button onClick={submitRequirement} disabled={!reqForm.name || saving}>{saving ? 'Saving...' : 'Add Requirement'}</Button>
           </div>
         </div>
       </Modal>
@@ -1080,7 +1119,7 @@ export default function CompliancePage() {
           <Input label="Expires At" type="date" value={docForm.expires_at} onChange={(e) => setDocForm({ ...docForm, expires_at: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAddDocModal(false)}>Cancel</Button>
-            <Button onClick={submitDocument} disabled={!docForm.name || !docForm.requirement_id}>Upload Document</Button>
+            <Button onClick={submitDocument} disabled={!docForm.name || !docForm.requirement_id || saving}>{saving ? 'Uploading...' : 'Upload Document'}</Button>
           </div>
         </div>
       </Modal>
@@ -1156,12 +1195,35 @@ export default function CompliancePage() {
                   <AlertTriangle size={14} /> Flag At Risk
                 </Button>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => { deleteComplianceRequirement(detailReq.id); setShowReqDetail(null) }}>
+              <Button size="sm" variant="secondary" onClick={() => setConfirmAction({ show: true, type: 'delete_requirement', id: detailReq.id, label: detailReq.name })}>
                 <Trash2 size={14} /> Delete
               </Button>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+            <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-t1">Are you sure?</p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'delete_requirement' && `This will permanently delete the requirement "${confirmAction.label}". This action cannot be undone.`}
+                {confirmAction?.type === 'delete_document' && `This will permanently delete the document "${confirmAction.label}". This action cannot be undone.`}
+                {confirmAction?.type === 'dismiss_alert' && `This will dismiss the alert "${confirmAction.label}".`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button size="sm" onClick={executeConfirmAction} disabled={saving} className="bg-red-600 hover:bg-red-700">
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Remediation Action Modal */}
@@ -1204,7 +1266,7 @@ export default function CompliancePage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" size="sm" onClick={() => setShowRemediationModal(false)}>Cancel</Button>
-            <Button size="sm" onClick={submitRemediation}>Create Action</Button>
+            <Button size="sm" onClick={submitRemediation} disabled={saving}>{saving ? 'Creating...' : 'Create Action'}</Button>
           </div>
         </div>
       </Modal>

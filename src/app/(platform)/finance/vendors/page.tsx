@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +40,8 @@ export default function VendorsPage() {
   const { vendors, invoices, addVendor, updateVendor, addToast } = useTempo()
 
   const [activeTab, setActiveTab] = useState<TabKey>('directory')
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
   const [showVendorModal, setShowVendorModal] = useState(false)
   const [editingVendor, setEditingVendor] = useState<string | null>(null)
   const [vendorForm, setVendorForm] = useState({
@@ -76,9 +78,14 @@ export default function VendorsPage() {
   }
 
   const handleSaveContract = async () => {
-    if (!contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value) return
+    if (!contractForm.vendor_id) { addToast('Please select a vendor', 'error'); return }
+    if (!contractForm.start_date) { addToast('Start date is required', 'error'); return }
+    if (!contractForm.end_date) { addToast('End date is required', 'error'); return }
+    if (!contractForm.annual_value) { addToast('Annual value is required', 'error'); return }
     const value = parseFloat(contractForm.annual_value)
-    if (isNaN(value)) return
+    if (isNaN(value) || value <= 0) { addToast('Annual value must be greater than zero', 'error'); return }
+    if (contractForm.start_date >= contractForm.end_date) { addToast('End date must be after start date', 'error'); return }
+    setSaving(true)
 
     if (editingContractId) {
       const updatedData = {
@@ -125,6 +132,7 @@ export default function VendorsPage() {
       }).catch(() => {})
     }
     resetContractForm()
+    setSaving(false)
   }
 
   // Vendor spend aggregation from invoices (amounts in cents)
@@ -225,14 +233,38 @@ export default function VendorsPage() {
   }
 
   function submitVendor() {
-    if (!vendorForm.name || !vendorForm.contact_email) return
-    if (editingVendor) {
-      updateVendor(editingVendor, { ...vendorForm, status: 'active' })
-    } else {
-      addVendor({ ...vendorForm, status: 'active' })
+    if (!vendorForm.name.trim()) { addToast('Vendor name is required', 'error'); return }
+    if (!vendorForm.contact_email.trim()) { addToast('Contact email is required', 'error'); return }
+    if (vendorForm.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorForm.contact_email)) { addToast('Please enter a valid email address', 'error'); return }
+    setSaving(true)
+    try {
+      if (editingVendor) {
+        updateVendor(editingVendor, { ...vendorForm, status: 'active' })
+        addToast('Vendor updated successfully', 'success')
+      } else {
+        addVendor({ ...vendorForm, status: 'active' })
+        addToast('Vendor added successfully', 'success')
+      }
+      setShowVendorModal(false)
+      setEditingVendor(null)
+    } finally {
+      setSaving(false)
     }
-    setShowVendorModal(false)
-    setEditingVendor(null)
+  }
+
+  function deactivateVendor(id: string) {
+    setSaving(true)
+    try { updateVendor(id, { status: 'inactive' }); addToast('Vendor deactivated', 'success') } finally { setSaving(false) }
+  }
+
+  function handleConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'deactivate') deactivateVendor(confirmAction.id)
+    if (confirmAction.type === 'delete') {
+      setSaving(true)
+      try { updateVendor(confirmAction.id, { status: 'deleted' }); addToast('Vendor deleted', 'success') } finally { setSaving(false) }
+    }
+    setConfirmAction(null)
   }
 
   const tabs: { key: TabKey; label: string; icon: any }[] = [
@@ -309,7 +341,20 @@ export default function VendorsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {vendors.map(vendor => {
+                {vendors.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-12 h-12 rounded-xl bg-canvas flex items-center justify-center mb-3">
+                          <Building2 size={24} className="text-t3" />
+                        </div>
+                        <p className="text-sm font-medium text-t1 mb-1">No vendors yet</p>
+                        <p className="text-xs text-t3 mb-4">Add your first vendor to get started</p>
+                        <Button size="sm" onClick={openNewVendor}><Plus size={14} /> Add Vendor</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : vendors.map(vendor => {
                   const spend = vendorSpendMap[vendor.id] || 0
                   const risk = getRiskLevel(vendor)
                   return (
@@ -351,9 +396,16 @@ export default function VendorsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Button size="sm" variant="secondary" onClick={() => openEditVendor(vendor)}>
-                          <Edit size={12} /> {tc('edit')}
-                        </Button>
+                        <div className="flex gap-1 justify-center">
+                          <Button size="sm" variant="secondary" onClick={() => openEditVendor(vendor)} disabled={saving}>
+                            <Edit size={12} /> {tc('edit')}
+                          </Button>
+                          {vendor.status === 'active' && (
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'deactivate', id: vendor.id, label: vendor.name })} disabled={saving}>
+                              Deactivate
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -711,7 +763,7 @@ export default function VendorsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowVendorModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitVendor}>{editingVendor ? tc('save') : 'Add Vendor'}</Button>
+            <Button onClick={submitVendor} disabled={saving}>{saving ? 'Saving...' : editingVendor ? tc('save') : 'Add Vendor'}</Button>
           </div>
         </div>
       </Modal>
@@ -785,9 +837,36 @@ export default function VendorsPage() {
             <Button variant="secondary" onClick={resetContractForm}>{tc('cancel')}</Button>
             <Button
               onClick={handleSaveContract}
-              disabled={!contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value}
+              disabled={saving || !contractForm.vendor_id || !contractForm.start_date || !contractForm.end_date || !contractForm.annual_value}
             >
-              {editingContractId ? tc('save') : 'Create Contract'}
+              {saving ? 'Saving...' : editingContractId ? tc('save') : 'Create Contract'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'deactivate' ? 'Deactivate this vendor?' : 'Delete this vendor?'}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'deactivate'
+                  ? `"${confirmAction?.label}" will be marked as inactive. You can reactivate them later.`
+                  : `"${confirmAction?.label}" will be permanently removed.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="primary" onClick={handleConfirmAction} disabled={saving}>
+              {confirmAction?.type === 'deactivate' ? 'Deactivate' : 'Delete'}
             </Button>
           </div>
         </div>

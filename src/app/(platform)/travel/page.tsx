@@ -11,12 +11,12 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil } from 'lucide-react'
+import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil, Loader2 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 export default function TravelManagementPage() {
   const tc = useTranslations('common')
-  const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded } = useTempo()
+  const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -63,6 +63,9 @@ export default function TravelManagementPage() {
     status: 'active',
   })
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
+
   // Stats
   const activeTrips = travelRequests.filter((r: any) => r.status === 'approved').length
   const pendingApproval = travelRequests.filter((r: any) => r.status === 'pending').length
@@ -96,19 +99,28 @@ export default function TravelManagementPage() {
     setShowRequestModal(true)
   }
 
-  function submitRequest() {
-    if (!requestForm.destination || !requestForm.purpose || !requestForm.estimated_cost) return
-    addTravelRequest({
-      employee_id: employees[0]?.id || 'emp-1',
-      destination: requestForm.destination,
-      purpose: requestForm.purpose,
-      travel_dates: { start: requestForm.start_date, end: requestForm.end_date },
-      estimated_cost: Number(requestForm.estimated_cost),
-      status: 'pending',
-      approved_by: null,
-      submitted_at: new Date().toISOString(),
-    })
-    setShowRequestModal(false)
+  async function submitRequest() {
+    if (!requestForm.destination) { addToast('Destination is required', 'error'); return }
+    if (!requestForm.purpose) { addToast('Purpose is required', 'error'); return }
+    if (!requestForm.start_date) { addToast('Start date is required', 'error'); return }
+    if (!requestForm.end_date) { addToast('End date is required', 'error'); return }
+    if (!requestForm.estimated_cost) { addToast('Estimated cost is required', 'error'); return }
+    setSaving(true)
+    try {
+      addTravelRequest({
+        employee_id: employees[0]?.id || 'emp-1',
+        destination: requestForm.destination,
+        purpose: requestForm.purpose,
+        travel_dates: { start: requestForm.start_date, end: requestForm.end_date },
+        estimated_cost: Number(requestForm.estimated_cost),
+        status: 'pending',
+        approved_by: null,
+        submitted_at: new Date().toISOString(),
+      })
+      setShowRequestModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function approveRequest(id: string) {

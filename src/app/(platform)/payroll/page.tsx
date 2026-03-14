@@ -244,6 +244,8 @@ export default function PayrollPage() {
   const [adjustmentForm, setAdjustmentForm] = useState({ employee_id: '', type: 'bonus', amount: 0, reason: '' })
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   // ---- Gap Features State ----
   // Gap 2: Leave integration
@@ -503,6 +505,7 @@ export default function PayrollPage() {
       return
     }
 
+    setSaving(true)
     setIsProcessing(true)
     setProcessError(null)
     try {
@@ -522,6 +525,8 @@ export default function PayrollPage() {
     } catch (err: any) {
       setProcessError(err.message || 'Validation failed')
       setIsProcessing(false)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -596,6 +601,7 @@ export default function PayrollPage() {
   }
 
   async function handleStatusAction(runId: string, currentStatus: string, action: 'submit' | 'approve-hr' | 'approve-finance' | 'process' | 'mark-paid') {
+    setSaving(true)
     try {
       const apiAction = action === 'process' ? 'mark-processing' : action
       const body: any = { action: apiAction, payrollRunId: runId }
@@ -641,11 +647,14 @@ export default function PayrollPage() {
       } else {
         addToast('Network error')
       }
+    } finally {
+      setSaving(false)
     }
   }
 
   async function handleReject(runId: string) {
     if (!rejectReason.trim()) { addToast('Please provide a rejection reason'); return }
+    setSaving(true)
     try {
       const res = await fetch('/api/payroll', {
         method: 'POST',
@@ -681,6 +690,8 @@ export default function PayrollPage() {
       setRejectReason('')
     } catch (err) {
       addToast('Network error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -752,16 +763,35 @@ export default function PayrollPage() {
 
   function submitContractorPayment() {
     if (!contractorForm.contractor_name || !contractorForm.amount) return
-    addContractorPayment({ ...contractorForm, status: 'pending', paid_date: null })
-    setShowContractorModal(false)
-    setContractorForm({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: 'USD', due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
+    setSaving(true)
+    try {
+      addContractorPayment({ ...contractorForm, status: 'pending', paid_date: null })
+      setShowContractorModal(false)
+      setContractorForm({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: 'USD', due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   function submitSchedule() {
     if (!scheduleForm.name || !scheduleForm.next_run_date) return
-    addPayrollSchedule({ ...scheduleForm, status: 'active', last_run_date: null })
-    setShowScheduleModal(false)
-    setScheduleForm({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: 'USD' })
+    setSaving(true)
+    try {
+      addPayrollSchedule({ ...scheduleForm, status: 'active', last_run_date: null })
+      setShowScheduleModal(false)
+      setScheduleForm({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: 'USD' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'reject') {
+      setShowRejectModal(confirmAction.id)
+      setRejectReason('')
+    }
+    setConfirmAction(null)
   }
 
   const selectedStub = showPayStubModal ? employeePayrollEntries.find(e => e.id === showPayStubModal) : null
@@ -772,34 +802,34 @@ export default function PayrollPage() {
     return (
       <div className="flex gap-1 justify-center flex-wrap">
         {!isReadOnly && status === 'draft' && (
-          <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, status, 'submit')}>
-            <Send size={12} /> Submit
+          <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'submit')}>
+            <Send size={12} /> {saving ? 'Saving...' : 'Submit'}
           </Button>
         )}
         {!isReadOnly && status === 'pending_hr' && (
           <>
-            <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, status, 'approve-hr')}>
-              <CheckCircle2 size={12} /> HR Approve
+            <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'approve-hr')}>
+              <CheckCircle2 size={12} /> {saving ? 'Saving...' : 'HR Approve'}
             </Button>
-            <Button size="sm" variant="ghost" className="text-error" onClick={() => { setShowRejectModal(run.id); setRejectReason('') }}>
+            <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'reject', id: run.id, label: `Reject payroll run ${run.period || run.id}` })}>
               <XCircle size={12} /> Reject
             </Button>
           </>
         )}
         {!isReadOnly && status === 'pending_finance' && (
           <>
-            <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, status, 'approve-finance')}>
-              <CheckCircle2 size={12} /> Finance Approve
+            <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'approve-finance')}>
+              <CheckCircle2 size={12} /> {saving ? 'Saving...' : 'Finance Approve'}
             </Button>
-            <Button size="sm" variant="ghost" className="text-error" onClick={() => { setShowRejectModal(run.id); setRejectReason('') }}>
+            <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'reject', id: run.id, label: `Reject payroll run ${run.period || run.id}` })}>
               <XCircle size={12} /> Reject
             </Button>
           </>
         )}
         {!isReadOnly && status === 'approved' && (
           <>
-            <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, status, 'process')}>
-              {tc('process')}
+            <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'process')}>
+              {saving ? 'Saving...' : tc('process')}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => handleExportBankFile(run.id)}>
               <Download size={12} /> Export Payment File
@@ -807,8 +837,8 @@ export default function PayrollPage() {
           </>
         )}
         {!isReadOnly && status === 'processing' && (
-          <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, status, 'mark-paid')}>
-            <DollarSign size={12} /> Mark Paid
+          <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'mark-paid')}>
+            <DollarSign size={12} /> {saving ? 'Saving...' : 'Mark Paid'}
           </Button>
         )}
         {status === 'paid' && (
@@ -1361,10 +1391,10 @@ export default function PayrollPage() {
                           <p className="text-xs text-t3">{run.employee_count} employees · {fmtCents(run.total_gross, COUNTRY_CURRENCY_MAP[(run as any).country] || undefined)} gross · {displayCountry((run as any).country || 'All')}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, run.status, 'approve-hr')}>
-                            <CheckCircle2 size={12} /> Approve
+                          <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, run.status, 'approve-hr')}>
+                            <CheckCircle2 size={12} /> {saving ? 'Saving...' : 'Approve'}
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-error" onClick={() => { setShowRejectModal(run.id); setRejectReason('') }}>
+                          <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'reject', id: run.id, label: `Reject payroll run ${run.period || run.id}` })}>
                             <XCircle size={12} /> Reject
                           </Button>
                         </div>
@@ -1385,10 +1415,10 @@ export default function PayrollPage() {
                           <p className="text-xs text-t3">{run.employee_count} employees · {fmtCents(run.total_gross, COUNTRY_CURRENCY_MAP[(run as any).country] || undefined)} gross · {displayCountry((run as any).country || 'All')}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="primary" onClick={() => handleStatusAction(run.id, run.status, 'approve-finance')}>
-                            <CheckCircle2 size={12} /> Approve
+                          <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, run.status, 'approve-finance')}>
+                            <CheckCircle2 size={12} /> {saving ? 'Saving...' : 'Approve'}
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-error" onClick={() => { setShowRejectModal(run.id); setRejectReason('') }}>
+                          <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'reject', id: run.id, label: `Reject payroll run ${run.period || run.id}` })}>
                             <XCircle size={12} /> Reject
                           </Button>
                         </div>
@@ -2321,8 +2351,8 @@ export default function PayrollPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPayRunModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPayRun} disabled={!payRunForm.country || !payRunForm.period || isProcessing}>
-              {isProcessing ? 'Processing...' : t('createPayRun')}
+            <Button onClick={submitPayRun} disabled={!payRunForm.country || !payRunForm.period || isProcessing || saving}>
+              {isProcessing || saving ? 'Processing...' : t('createPayRun')}
             </Button>
           </div>
         </div>
@@ -2395,8 +2425,8 @@ export default function PayrollPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowRejectModal(null)}>{tc('cancel')}</Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={() => showRejectModal && handleReject(showRejectModal)}>
-              <XCircle size={14} /> Reject
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={() => showRejectModal && handleReject(showRejectModal)} disabled={saving}>
+              <XCircle size={14} /> {saving ? 'Saving...' : 'Reject'}
             </Button>
           </div>
         </div>
@@ -2518,7 +2548,7 @@ export default function PayrollPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowBankDetailWarning(false)}>Pause &amp; Collect Details</Button>
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => { setShowBankDetailWarning(false); submitPayRun() }}>Proceed Anyway</Button>
+            <Button className="bg-amber-600 hover:bg-amber-700 text-white" disabled={saving} onClick={() => { setShowBankDetailWarning(false); submitPayRun() }}>{saving ? 'Saving...' : 'Proceed Anyway'}</Button>
           </div>
         </div>
       </Modal>
@@ -2556,7 +2586,7 @@ export default function PayrollPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowContractorModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitContractorPayment}>{t('addPayment')}</Button>
+            <Button onClick={submitContractorPayment} disabled={saving}>{saving ? 'Saving...' : t('addPayment')}</Button>
           </div>
         </div>
       </Modal>
@@ -2578,7 +2608,7 @@ export default function PayrollPage() {
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowScheduleModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitSchedule}>{t('createSchedule')}</Button>
+            <Button onClick={submitSchedule} disabled={saving}>{saving ? 'Saving...' : t('createSchedule')}</Button>
           </div>
         </div>
       </Modal>
@@ -3161,6 +3191,25 @@ export default function PayrollPage() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal for destructive actions (reject/cancel) */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={16} className="text-red-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Are you sure?</p>
+              <p className="text-xs text-red-700 mt-1">{confirmAction?.label}</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={executeConfirmAction}>
+              <XCircle size={14} /> Confirm
+            </Button>
+          </div>
         </div>
       </Modal>
     </>

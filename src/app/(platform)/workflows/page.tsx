@@ -184,7 +184,9 @@ export default function WorkflowsPage() {
     approver: '', approvalMessage: '',
   })
 
+  const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   // Run history filters
   const [runFilterWorkflow, setRunFilterWorkflow] = useState('')
@@ -304,15 +306,24 @@ export default function WorkflowsPage() {
   }
 
   function submitWorkflow() {
-    if (!workflowForm.name) return
-    if (editingWorkflowId) {
-      updateAutomationWorkflow(editingWorkflowId, workflowForm)
-    } else {
-      const newId = addAutomationWorkflow({ ...workflowForm, createdBy: currentEmployeeId })
-      setSelectedWorkflowId(newId)
-      setActiveTab('builder')
+    if (!workflowForm.name.trim()) {
+      addToast('Workflow name is required', 'error')
+      return
     }
-    setShowWorkflowModal(false)
+    setSaving(true)
+    try {
+      if (editingWorkflowId) {
+        updateAutomationWorkflow(editingWorkflowId, workflowForm)
+      } else {
+        const newId = addAutomationWorkflow({ ...workflowForm, createdBy: currentEmployeeId })
+        setSelectedWorkflowId(newId)
+        setActiveTab('builder')
+      }
+      setShowWorkflowModal(false)
+      addToast(editingWorkflowId ? 'Workflow updated' : 'Workflow created')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function duplicateWorkflow(id: string) {
@@ -424,25 +435,52 @@ export default function WorkflowsPage() {
 
   function submitStep() {
     if (!selectedWorkflowId) return
-    const config = buildStepConfig()
-    if (editingStepId) {
-      updateAutomationWorkflowStep(editingStepId, { type: stepForm.type, config })
-    } else {
-      // Insert step: shift indices of steps after insertAfterIndex
-      const newIndex = insertAfterIndex + 1
-      selectedSteps.filter(s => s.orderIndex >= newIndex).forEach(s => {
-        updateAutomationWorkflowStep(s.id, { orderIndex: s.orderIndex + 1 })
-      })
-      addAutomationWorkflowStep({
-        workflowId: selectedWorkflowId,
-        orderIndex: newIndex,
-        type: stepForm.type,
-        config,
-        nextStepOnTrue: null,
-        nextStepOnFalse: null,
-      })
+    // Validate required fields per step type
+    if (stepForm.type === 'action') {
+      if (stepForm.actionType === 'send_email' && !stepForm.to.trim()) {
+        addToast('Recipient (To) is required', 'error'); return
+      }
+      if (stepForm.actionType === 'send_slack' && !stepForm.channel.trim()) {
+        addToast('Channel is required', 'error'); return
+      }
+      if (stepForm.actionType === 'create_task' && !stepForm.title.trim()) {
+        addToast('Task title is required', 'error'); return
+      }
+      if ((stepForm.actionType === 'assign_app' || stepForm.actionType === 'revoke_app') && !stepForm.apps.trim()) {
+        addToast('Apps field is required', 'error'); return
+      }
     }
-    setShowStepModal(false)
+    if (stepForm.type === 'condition' && !stepForm.condField.trim()) {
+      addToast('Condition field is required', 'error'); return
+    }
+    if (stepForm.type === 'approval' && !stepForm.approver.trim()) {
+      addToast('Approver is required', 'error'); return
+    }
+    setSaving(true)
+    try {
+      const config = buildStepConfig()
+      if (editingStepId) {
+        updateAutomationWorkflowStep(editingStepId, { type: stepForm.type, config })
+      } else {
+        // Insert step: shift indices of steps after insertAfterIndex
+        const newIndex = insertAfterIndex + 1
+        selectedSteps.filter(s => s.orderIndex >= newIndex).forEach(s => {
+          updateAutomationWorkflowStep(s.id, { orderIndex: s.orderIndex + 1 })
+        })
+        addAutomationWorkflowStep({
+          workflowId: selectedWorkflowId,
+          orderIndex: newIndex,
+          type: stepForm.type,
+          config,
+          nextStepOnTrue: null,
+          nextStepOnFalse: null,
+        })
+      }
+      setShowStepModal(false)
+      addToast(editingStepId ? 'Step updated' : 'Step added')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function removeStep(id: string) {
@@ -524,6 +562,24 @@ export default function WorkflowsPage() {
     }
     if (deleteConfirm.type === 'step') removeStep(deleteConfirm.id)
     setDeleteConfirm(null)
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete_workflow') {
+      deleteAutomationWorkflow(confirmAction.id)
+      if (selectedWorkflowId === confirmAction.id) setSelectedWorkflowId(null)
+      addToast('Workflow deleted')
+    }
+    if (confirmAction.type === 'delete_step') {
+      removeStep(confirmAction.id)
+      addToast('Step removed')
+    }
+    if (confirmAction.type === 'deactivate_workflow') {
+      updateAutomationWorkflow(confirmAction.id, { isActive: false })
+      addToast('Workflow deactivated')
+    }
+    setConfirmAction(null)
   }
 
   // ============================================================
@@ -623,7 +679,7 @@ export default function WorkflowsPage() {
                         <Pencil size={13} />
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); setDeleteConfirm({ type: 'workflow', id: wf.id }) }}
+                        onClick={e => { e.stopPropagation(); setConfirmAction({ show: true, type: 'delete_workflow', id: wf.id, label: `Delete workflow "${wf.name}"` }) }}
                         className="p-1 text-white/30 hover:text-red-400 rounded"
                         title="Delete"
                       >
@@ -775,7 +831,7 @@ export default function WorkflowsPage() {
                               </div>
                             </div>
                             <button
-                              onClick={e => { e.stopPropagation(); setDeleteConfirm({ type: 'step', id: step.id }) }}
+                              onClick={e => { e.stopPropagation(); setConfirmAction({ show: true, type: 'delete_step', id: step.id, label: `Remove step "${getStepSummary(step)}"` }) }}
                               className="p-1 text-white/20 hover:text-red-400 rounded"
                             >
                               <Trash2 size={13} />
@@ -1275,8 +1331,8 @@ export default function WorkflowsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" size="sm" onClick={() => setShowWorkflowModal(false)}>Cancel</Button>
-            <Button size="sm" onClick={submitWorkflow} disabled={!workflowForm.name}>
-              {editingWorkflowId ? 'Save Changes' : 'Create Workflow'}
+            <Button size="sm" onClick={submitWorkflow} disabled={!workflowForm.name || saving}>
+              {saving ? 'Saving...' : editingWorkflowId ? 'Save Changes' : 'Create Workflow'}
             </Button>
           </div>
         </div>
@@ -1442,14 +1498,14 @@ export default function WorkflowsPage() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" size="sm" onClick={() => setShowStepModal(false)}>Cancel</Button>
-            <Button size="sm" onClick={submitStep}>
-              {editingStepId ? 'Save Changes' : 'Add Step'}
+            <Button size="sm" onClick={submitStep} disabled={saving}>
+              {saving ? 'Saving...' : editingStepId ? 'Save Changes' : 'Add Step'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* ==================== DELETE CONFIRM ==================== */}
+      {/* ==================== DELETE CONFIRM (legacy) ==================== */}
       <Modal
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
@@ -1461,6 +1517,21 @@ export default function WorkflowsPage() {
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
           <Button size="sm" onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</Button>
+        </div>
+      </Modal>
+
+      {/* ==================== CONFIRM ACTION ==================== */}
+      <Modal
+        open={!!confirmAction?.show}
+        onClose={() => setConfirmAction(null)}
+        title="Confirm Action"
+      >
+        <p className="text-sm text-white/70 mb-4">
+          Are you sure you want to {confirmAction?.label || 'perform this action'}? This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+          <Button size="sm" onClick={executeConfirmAction} className="bg-red-600 hover:bg-red-700">Confirm</Button>
         </div>
       </Modal>
     </>

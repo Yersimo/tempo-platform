@@ -76,6 +76,8 @@ export default function HeadcountPage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['headcountPlans', 'headcountPositions', 'headcountBudgetItems', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -364,29 +366,35 @@ export default function HeadcountPage() {
     setShowPositionModal(true)
   }
 
-  function submitPosition() {
-    if (!posForm.job_title || !posForm.department_id) return
-    const data = {
-      plan_id: selectedPlanId,
-      department_id: posForm.department_id,
-      job_title: posForm.job_title,
-      level: posForm.level || null,
-      type: posForm.type,
-      priority: posForm.priority,
-      salary_min: Number(posForm.salary_min) || 0,
-      salary_max: Number(posForm.salary_max) || 0,
-      currency: posForm.currency,
-      target_start_date: posForm.target_start_date || null,
-      justification: posForm.justification || null,
-      status: 'planned',
-    }
-    if (editingPositionId) {
-      const { status: _s, ...rest } = data
-      updateHeadcountPosition(editingPositionId, rest)
-    } else {
-      addHeadcountPosition(data)
-    }
-    setShowPositionModal(false)
+  async function submitPosition() {
+    if (!posForm.job_title.trim()) { addToast('Job title is required', 'error'); return }
+    if (!posForm.department_id) { addToast('Department is required', 'error'); return }
+    if (!selectedPlanId) { addToast('No plan selected', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        plan_id: selectedPlanId,
+        department_id: posForm.department_id,
+        job_title: posForm.job_title,
+        level: posForm.level || null,
+        type: posForm.type,
+        priority: posForm.priority,
+        salary_min: Number(posForm.salary_min) || 0,
+        salary_max: Number(posForm.salary_max) || 0,
+        currency: posForm.currency,
+        target_start_date: posForm.target_start_date || null,
+        justification: posForm.justification || null,
+        status: 'planned',
+      }
+      if (editingPositionId) {
+        const { status: _s, ...rest } = data
+        updateHeadcountPosition(editingPositionId, rest)
+      } else {
+        addHeadcountPosition(data)
+      }
+      setShowPositionModal(false)
+      addToast(editingPositionId ? 'Position updated' : 'Position created')
+    } finally { setSaving(false) }
   }
 
   // ---- Approval ----
@@ -397,21 +405,24 @@ export default function HeadcountPage() {
     setShowApprovalModal(true)
   }
 
-  function submitApproval() {
+  async function submitApproval() {
     if (!approvalPositionId) return
-    if (approvalAction === 'approve') {
-      updateHeadcountPosition(approvalPositionId, {
-        status: 'approved',
-        approved_by: 'emp-17',
-      })
-      addToast('Position approved')
-    } else {
-      updateHeadcountPosition(approvalPositionId, {
-        status: 'cancelled',
-      })
-      addToast('Position rejected')
-    }
-    setShowApprovalModal(false)
+    setSaving(true)
+    try {
+      if (approvalAction === 'approve') {
+        updateHeadcountPosition(approvalPositionId, {
+          status: 'approved',
+          approved_by: 'emp-17',
+        })
+        addToast('Position approved')
+      } else {
+        updateHeadcountPosition(approvalPositionId, {
+          status: 'cancelled',
+        })
+        addToast('Position rejected')
+      }
+      setShowApprovalModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- Budget Item ----
@@ -421,26 +432,31 @@ export default function HeadcountPage() {
     setShowBudgetModal(true)
   }
 
-  function submitBudgetItem() {
-    if (!budgetPositionId || !budgetForm.amount) return
-    if (editingBudgetItemId) {
-      updateHeadcountBudgetItem(editingBudgetItemId, {
-        category: budgetForm.category,
-        amount: Number(budgetForm.amount),
-        currency: budgetForm.currency,
-        notes: budgetForm.notes || null,
-      })
-    } else {
-      addHeadcountBudgetItem({
-        position_id: budgetPositionId,
-        category: budgetForm.category,
-        amount: Number(budgetForm.amount),
-        currency: budgetForm.currency,
-        notes: budgetForm.notes || null,
-      })
-    }
-    setShowBudgetModal(false)
-    setEditingBudgetItemId(null)
+  async function submitBudgetItem() {
+    if (!budgetPositionId) { addToast('No position selected', 'error'); return }
+    if (!budgetForm.amount || Number(budgetForm.amount) <= 0) { addToast('Amount must be greater than zero', 'error'); return }
+    setSaving(true)
+    try {
+      if (editingBudgetItemId) {
+        updateHeadcountBudgetItem(editingBudgetItemId, {
+          category: budgetForm.category,
+          amount: Number(budgetForm.amount),
+          currency: budgetForm.currency,
+          notes: budgetForm.notes || null,
+        })
+      } else {
+        addHeadcountBudgetItem({
+          position_id: budgetPositionId,
+          category: budgetForm.category,
+          amount: Number(budgetForm.amount),
+          currency: budgetForm.currency,
+          notes: budgetForm.notes || null,
+        })
+      }
+      setShowBudgetModal(false)
+      setEditingBudgetItemId(null)
+      addToast(editingBudgetItemId ? 'Budget item updated' : 'Budget item added')
+    } finally { setSaving(false) }
   }
 
   function openEditBudgetItem(bi: any) {
@@ -468,17 +484,22 @@ export default function HeadcountPage() {
     setShowPlanModal(true)
   }
 
-  function submitPlan() {
-    if (!planForm.name || !planForm.fiscal_year) return
-    addHeadcountPlan({
-      name: planForm.name,
-      fiscal_year: planForm.fiscal_year,
-      department_id: planForm.department_id || null,
-      total_headcount: Number(planForm.total_headcount) || 0,
-      total_budget: Number(planForm.total_budget) || 0,
-      status: planForm.status,
-    })
-    setShowPlanModal(false)
+  async function submitPlan() {
+    if (!planForm.name.trim()) { addToast('Plan name is required', 'error'); return }
+    if (!planForm.fiscal_year.trim()) { addToast('Fiscal year is required', 'error'); return }
+    setSaving(true)
+    try {
+      addHeadcountPlan({
+        name: planForm.name,
+        fiscal_year: planForm.fiscal_year,
+        department_id: planForm.department_id || null,
+        total_headcount: Number(planForm.total_headcount) || 0,
+        total_budget: Number(planForm.total_budget) || 0,
+        status: planForm.status,
+      })
+      setShowPlanModal(false)
+      addToast('Plan created')
+    } finally { setSaving(false) }
   }
 
   // ---- Status change ----
@@ -798,7 +819,7 @@ export default function HeadcountPage() {
                                               <Pencil size={10} />
                                             </button>
                                             <button
-                                              onClick={() => deleteHeadcountBudgetItem(bi.id)}
+                                              onClick={() => setConfirmAction({ show: true, type: 'delete_budget_item', id: bi.id, label: BUDGET_CATEGORY_LABELS[bi.category] || bi.category })}
                                               className="p-0.5 text-t3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
                                               title="Delete"
                                             >
@@ -862,7 +883,7 @@ export default function HeadcountPage() {
                               )}
                               {(pos.status === 'planned' || pos.status === 'cancelled') && (
                                 <button
-                                  onClick={() => deleteHeadcountPosition(pos.id)}
+                                  onClick={() => setConfirmAction({ show: true, type: 'delete_position', id: pos.id, label: pos.job_title })}
                                   className="p-1 text-t3 hover:text-error transition-colors"
                                   title="Delete"
                                 >
@@ -1300,8 +1321,8 @@ export default function HeadcountPage() {
             rows={3}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowPositionModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPosition}>{editingPositionId ? tc('save') : t('addPosition')}</Button>
+            <Button variant="secondary" onClick={() => setShowPositionModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitPosition} disabled={saving}>{saving ? 'Saving...' : editingPositionId ? tc('save') : t('addPosition')}</Button>
           </div>
         </div>
       </Modal>
@@ -1328,12 +1349,13 @@ export default function HeadcountPage() {
             rows={3}
           />
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowApprovalModal(false)}>{tc('cancel')}</Button>
+            <Button variant="secondary" onClick={() => setShowApprovalModal(false)} disabled={saving}>{tc('cancel')}</Button>
             <Button
               variant={approvalAction === 'approve' ? 'primary' : 'danger'}
               onClick={submitApproval}
+              disabled={saving}
             >
-              {approvalAction === 'approve' ? t('approve') : t('reject')}
+              {saving ? 'Saving...' : approvalAction === 'approve' ? t('approve') : t('reject')}
             </Button>
           </div>
         </div>
@@ -1373,8 +1395,8 @@ export default function HeadcountPage() {
             placeholder="Optional notes..."
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => { setShowBudgetModal(false); setEditingBudgetItemId(null) }}>{tc('cancel')}</Button>
-            <Button onClick={submitBudgetItem}>{editingBudgetItemId ? tc('save') : 'Add Item'}</Button>
+            <Button variant="secondary" onClick={() => { setShowBudgetModal(false); setEditingBudgetItemId(null) }} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitBudgetItem} disabled={saving}>{saving ? 'Saving...' : editingBudgetItemId ? tc('save') : 'Add Item'}</Button>
           </div>
         </div>
       </Modal>
@@ -1435,8 +1457,43 @@ export default function HeadcountPage() {
             ]}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowPlanModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPlan} disabled={!planForm.name || !planForm.fiscal_year}>Create Plan</Button>
+            <Button variant="secondary" onClick={() => setShowPlanModal(false)} disabled={saving}>{tc('cancel')}</Button>
+            <Button onClick={submitPlan} disabled={saving || !planForm.name || !planForm.fiscal_year}>{saving ? 'Saving...' : 'Create Plan'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal
+        open={!!confirmAction?.show}
+        onClose={() => setConfirmAction(null)}
+        title="Confirm Action"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-t2">
+            Are you sure you want to delete <span className="font-semibold text-t1">{confirmAction?.label}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="danger" disabled={saving} onClick={() => {
+              if (!confirmAction) return
+              setSaving(true)
+              try {
+                if (confirmAction.type === 'delete_position') {
+                  deleteHeadcountPosition(confirmAction.id)
+                  addToast('Position deleted')
+                } else if (confirmAction.type === 'delete_budget_item') {
+                  deleteHeadcountBudgetItem(confirmAction.id)
+                  addToast('Budget item deleted')
+                }
+              } finally {
+                setSaving(false)
+                setConfirmAction(null)
+              }
+            }}>
+              {saving ? 'Deleting...' : 'Delete'}
+            </Button>
           </div>
         </div>
       </Modal>

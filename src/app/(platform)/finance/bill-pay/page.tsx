@@ -29,6 +29,9 @@ export default function BillPayPage() {
     return () => clearTimeout(t)
   }, [ensureModulesLoaded])
 
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
+
   const [activeTab, setActiveTab] = useState<TabKey>('payments')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentForm, setPaymentForm] = useState({
@@ -120,6 +123,7 @@ export default function BillPayPage() {
 
   // ── Actions ──
   async function markAsPaid(id: string) {
+    setSaving(true)
     try {
       await billPayAPI('approve', { paymentId: id, approverId: currentUser?.id })
       updateBillPayment(id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] })
@@ -127,10 +131,13 @@ export default function BillPayPage() {
     } catch (e: any) {
       updateBillPayment(id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] })
       addToast(e.message || 'API error — updated locally', 'info')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function cancelPayment(id: string) {
+    setSaving(true)
     try {
       await billPayAPI('cancel', { paymentId: id })
       updateBillPayment(id, { status: 'failed' })
@@ -138,10 +145,13 @@ export default function BillPayPage() {
     } catch (e: any) {
       updateBillPayment(id, { status: 'failed' })
       addToast(e.message || 'API error — updated locally', 'info')
+    } finally {
+      setSaving(false)
     }
   }
 
   async function approvePayment(id: string) {
+    setSaving(true)
     try {
       await billPayAPI('approve', { paymentId: id, approverId: currentUser?.id })
       updateBillPayment(id, { status: 'scheduled' })
@@ -149,15 +159,20 @@ export default function BillPayPage() {
     } catch (e: any) {
       updateBillPayment(id, { status: 'scheduled' })
       addToast(e.message || 'API error — updated locally', 'info')
+    } finally {
+      setSaving(false)
     }
   }
 
   function rejectPayment(id: string) {
+    setSaving(true)
     updateBillPayment(id, { status: 'failed' })
     addToast('Payment rejected', 'success')
+    setSaving(false)
   }
 
   async function toggleSchedule(id: string, currentActive: boolean) {
+    setSaving(true)
     try {
       await billPayAPI('update-recurring', { scheduleId: id, isActive: !currentActive })
       updateBillPaySchedule(id, { is_active: !currentActive })
@@ -165,7 +180,17 @@ export default function BillPayPage() {
     } catch (e: any) {
       updateBillPaySchedule(id, { is_active: !currentActive })
       addToast(e.message || 'API error — updated locally', 'info')
+    } finally {
+      setSaving(false)
     }
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return
+    const { type, id } = confirmAction
+    setConfirmAction(null)
+    if (type === 'cancel') await cancelPayment(id)
+    else if (type === 'reject') rejectPayment(id)
   }
 
   // ── New Payment Modal ──
@@ -182,7 +207,9 @@ export default function BillPayPage() {
   }
 
   async function submitPayment() {
-    if (!paymentForm.vendor_id || !paymentForm.amount) return
+    if (!paymentForm.vendor_id) { addToast('Please select a vendor', 'error'); return }
+    if (!paymentForm.amount || Number(paymentForm.amount) <= 0) { addToast('Please enter a valid amount', 'error'); return }
+    setSaving(true)
     const paymentData = {
       vendor_id: paymentForm.vendor_id,
       amount: Math.round(Number(paymentForm.amount) * 100),
@@ -210,6 +237,8 @@ export default function BillPayPage() {
     } catch (e: any) {
       addBillPayment(paymentData)
       addToast(e.message || 'API error — created locally', 'info')
+    } finally {
+      setSaving(false)
     }
     setShowPaymentModal(false)
   }
@@ -342,10 +371,10 @@ export default function BillPayPage() {
                       <div className="flex gap-1 justify-center">
                         {(payment.status === 'scheduled' || payment.status === 'pending') && (
                           <>
-                            <Button size="sm" variant="primary" onClick={() => markAsPaid(payment.id)}>
+                            <Button size="sm" variant="primary" disabled={saving} onClick={() => markAsPaid(payment.id)}>
                               <CheckCircle size={12} /> Mark Paid
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => cancelPayment(payment.id)}>
+                            <Button size="sm" variant="ghost" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'cancel', id: payment.id, label: `Cancel payment ${payment.reference_number}?` })}>
                               <Ban size={12} /> Cancel
                             </Button>
                           </>
@@ -410,10 +439,10 @@ export default function BillPayPage() {
                       <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{payment.memo}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex gap-1 justify-center">
-                          <Button size="sm" variant="primary" onClick={() => markAsPaid(payment.id)}>
+                          <Button size="sm" variant="primary" disabled={saving} onClick={() => markAsPaid(payment.id)}>
                             <Send size={12} /> Process Now
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => cancelPayment(payment.id)}>
+                          <Button size="sm" variant="ghost" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'cancel', id: payment.id, label: `Cancel scheduled payment ${payment.reference_number}?` })}>
                             <Ban size={12} />
                           </Button>
                         </div>
@@ -492,6 +521,7 @@ export default function BillPayPage() {
                       <Button
                         size="sm"
                         variant={schedule.is_active ? 'ghost' : 'secondary'}
+                        disabled={saving}
                         onClick={() => toggleSchedule(schedule.id, schedule.is_active)}
                       >
                         {schedule.is_active ? (
@@ -554,10 +584,10 @@ export default function BillPayPage() {
                     <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{payment.memo}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex gap-1 justify-center">
-                        <Button size="sm" variant="primary" onClick={() => approvePayment(payment.id)}>
+                        <Button size="sm" variant="primary" disabled={saving} onClick={() => approvePayment(payment.id)}>
                           <CheckCircle size={12} /> Approve
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => rejectPayment(payment.id)}>
+                        <Button size="sm" variant="ghost" disabled={saving} onClick={() => setConfirmAction({ show: true, type: 'reject', id: payment.id, label: `Reject payment ${payment.reference_number}?` })}>
                           <XCircle size={12} /> Reject
                         </Button>
                       </div>
@@ -627,7 +657,28 @@ export default function BillPayPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPayment}>Create Payment</Button>
+            <Button onClick={submitPayment} disabled={saving}>{saving ? 'Creating...' : 'Create Payment'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">{confirmAction?.label}</p>
+              <p className="text-xs text-t3 mt-1">This action cannot be undone.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button onClick={executeConfirmAction} disabled={saving}>
+              {saving ? 'Processing...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>

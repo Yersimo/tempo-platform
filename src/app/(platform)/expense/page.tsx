@@ -68,6 +68,8 @@ export default function ExpensePage() {
   const canApproveExpenses = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['expenseReports', 'expensePolicies', 'mileageLogs', 'receiptMatches', 'mileageEntries', 'advancedExpensePolicies', 'reimbursementBatches', 'duplicateDetections'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -332,47 +334,60 @@ export default function ExpensePage() {
 
   // ---- Mileage Entry CRUD ----
   function submitMileageEntry() {
-    if (!mileageEntryForm.employee_id || !mileageEntryForm.start_location || !mileageEntryForm.end_location || !mileageEntryForm.distance_miles) return
-    const amount = Number((mileageEntryForm.distance_miles * mileageEntryForm.rate).toFixed(2))
-    addMileageEntry({ ...mileageEntryForm, amount, status: 'pending', approved_by: null })
-    setShowMileageEntryModal(false)
-    setMileageEntryForm({ employee_id: '', date: '', start_location: '', end_location: '', distance_miles: 0, rate: 0.67, purpose: '', vehicle_type: 'personal', trip_type: 'one_way' })
+    if (!mileageEntryForm.employee_id) { addToast('Employee is required', 'error'); return }
+    if (!mileageEntryForm.date) { addToast('Date is required', 'error'); return }
+    if (!mileageEntryForm.start_location) { addToast('Start location is required', 'error'); return }
+    if (!mileageEntryForm.end_location) { addToast('End location is required', 'error'); return }
+    if (!mileageEntryForm.distance_miles) { addToast('Distance is required', 'error'); return }
+    setSaving(true)
+    try {
+      const amount = Number((mileageEntryForm.distance_miles * mileageEntryForm.rate).toFixed(2))
+      addMileageEntry({ ...mileageEntryForm, amount, status: 'pending', approved_by: null })
+      setShowMileageEntryModal(false)
+      setMileageEntryForm({ employee_id: '', date: '', start_location: '', end_location: '', distance_miles: 0, rate: 0.67, purpose: '', vehicle_type: 'personal', trip_type: 'one_way' })
+    } finally { setSaving(false) }
   }
 
   // ---- Advanced Policy CRUD ----
   function submitAdvancedPolicy() {
-    if (!advancedPolicyForm.name) return
-    addAdvancedExpensePolicy({ ...advancedPolicyForm })
-    setShowAdvancedPolicyModal(false)
-    setAdvancedPolicyForm({ name: '', is_active: true, applies_to: 'all', rules: [{ field: 'amount', operator: '>', value: 0, action: 'warn' }] })
+    if (!advancedPolicyForm.name) { addToast('Policy name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addAdvancedExpensePolicy({ ...advancedPolicyForm })
+      setShowAdvancedPolicyModal(false)
+      setAdvancedPolicyForm({ name: '', is_active: true, applies_to: 'all', rules: [{ field: 'amount', operator: '>', value: 0, action: 'warn' }] })
+    } finally { setSaving(false) }
   }
 
   // ---- Reimbursement Batch ----
   function submitReimbursementBatch() {
-    if (selectedReimbursementIds.size === 0) return
-    const selectedReports = approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id))
-    const totalAmount = selectedReports.reduce((a: number, r: any) => a + r.total_amount, 0)
-    const items = selectedReports.map((r: any) => ({
-      id: `ri-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      expense_report_id: r.id,
-      employee_id: r.employee_id,
-      amount: r.total_amount,
-      currency: r.currency || 'USD',
-      status: 'pending' as const,
-      notes: r.title,
-    }))
-    addReimbursementBatch({
-      status: 'pending',
-      method: reimbursementMethod,
-      total_amount: totalAmount,
-      currency: 'USD',
-      employee_count: new Set(selectedReports.map((r: any) => r.employee_id)).size,
-      processed_at: null,
-      payroll_run_id: null,
-      items,
-    })
-    setShowReimbursementModal(false)
-    setSelectedReimbursementIds(new Set())
+    if (selectedReimbursementIds.size === 0) { addToast('Select at least one expense to reimburse', 'error'); return }
+    setSaving(true)
+    try {
+      const selectedReports = approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id))
+      const totalAmount = selectedReports.reduce((a: number, r: any) => a + r.total_amount, 0)
+      const items = selectedReports.map((r: any) => ({
+        id: `ri-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        expense_report_id: r.id,
+        employee_id: r.employee_id,
+        amount: r.total_amount,
+        currency: r.currency || 'USD',
+        status: 'pending' as const,
+        notes: r.title,
+      }))
+      addReimbursementBatch({
+        status: 'pending',
+        method: reimbursementMethod,
+        total_amount: totalAmount,
+        currency: 'USD',
+        employee_count: new Set(selectedReports.map((r: any) => r.employee_id)).size,
+        processed_at: null,
+        payroll_run_id: null,
+        items,
+      })
+      setShowReimbursementModal(false)
+      setSelectedReimbursementIds(new Set())
+    } finally { setSaving(false) }
   }
 
   // ---- Bulk Expense Approval Memos ----
@@ -433,9 +448,10 @@ export default function ExpensePage() {
 
   function submitReport() {
     if (reportSubmittingRef.current) return
-    if (!reportForm.employee_id || !reportForm.title) return
+    if (!reportForm.employee_id) { addToast('Employee is required', 'error'); return }
+    if (!reportForm.title) { addToast('Report title is required', 'error'); return }
     const validItems = reportForm.items.filter(item => item.description && item.amount > 0)
-    if (validItems.length === 0) return
+    if (validItems.length === 0) { addToast('At least one line item with description and amount is required', 'error'); return }
     const totalAmount = validItems.reduce((a, item) => a + Number(item.amount), 0)
 
     // T5 #35: Check for duplicate submissions within 7 days
@@ -454,20 +470,43 @@ export default function ExpensePage() {
     }
 
     reportSubmittingRef.current = true
-    addExpenseReport({
-      employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
-      status: 'submitted', submitted_at: new Date().toISOString(),
-      items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
-    })
-    setShowReportModal(false)
-    setDuplicateConfirmed(false)
-    setTimeout(() => { reportSubmittingRef.current = false }, 0)
+    setSaving(true)
+    try {
+      addExpenseReport({
+        employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
+        status: 'submitted', submitted_at: new Date().toISOString(),
+        items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
+      })
+      setShowReportModal(false)
+      setDuplicateConfirmed(false)
+    } finally {
+      setSaving(false)
+      setTimeout(() => { reportSubmittingRef.current = false }, 0)
+    }
   }
 
-  function approveReport(id: string) { updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
-  function rejectReport(id: string) { updateExpenseReport(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) }
+  function approveReport(id: string) { setSaving(true); try { updateExpenseReport(id, { status: 'approved', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) } finally { setSaving(false) } }
+  function rejectReport(id: string) { setSaving(true); try { updateExpenseReport(id, { status: 'rejected', approved_by: currentEmployeeId, approved_at: new Date().toISOString() }) } finally { setSaving(false) } }
   function reimburseReport(id: string) { updateExpenseReport(id, { status: 'reimbursed', reimbursed_at: new Date().toISOString() }) }
   function confirmDelete() { if (deleteConfirm) { deleteExpenseReport(deleteConfirm); setDeleteConfirm(null) } }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    setSaving(true)
+    try {
+      switch (confirmAction.type) {
+        case 'reject_report':
+          rejectReport(confirmAction.id)
+          break
+        case 'delete_advanced_policy':
+          deleteAdvancedExpensePolicy(confirmAction.id)
+          break
+      }
+    } finally {
+      setSaving(false)
+      setConfirmAction(null)
+    }
+  }
 
   // ---- Policy CRUD ----
   function openAddPolicy() { setPolicyForm({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' }); setEditingPolicyId(null); setShowPolicyModal(true) }
@@ -478,9 +517,12 @@ export default function ExpensePage() {
     setEditingPolicyId(id); setShowPolicyModal(true)
   }
   function submitPolicy() {
-    if (!policyForm.category) return
-    if (editingPolicyId) { updateExpensePolicy(editingPolicyId, policyForm) } else { addExpensePolicy(policyForm) }
-    setShowPolicyModal(false)
+    if (!policyForm.category) { addToast('Policy category is required', 'error'); return }
+    setSaving(true)
+    try {
+      if (editingPolicyId) { updateExpensePolicy(editingPolicyId, policyForm) } else { addExpensePolicy(policyForm) }
+      setShowPolicyModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- Policy Document Upload (AI mock) ----
@@ -565,11 +607,17 @@ export default function ExpensePage() {
 
   // ---- Mileage CRUD ----
   function submitMileage() {
-    if (!mileageForm.employee_id || !mileageForm.origin || !mileageForm.destination || !mileageForm.distance_km) return
-    const amount = Number((mileageForm.distance_km * mileageForm.rate_per_km).toFixed(2))
-    addMileageLog({ ...mileageForm, amount, status: 'pending' })
-    setShowMileageModal(false)
-    setMileageForm({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
+    if (!mileageForm.employee_id) { addToast('Employee is required', 'error'); return }
+    if (!mileageForm.origin) { addToast('Origin is required', 'error'); return }
+    if (!mileageForm.destination) { addToast('Destination is required', 'error'); return }
+    if (!mileageForm.distance_km) { addToast('Distance is required', 'error'); return }
+    setSaving(true)
+    try {
+      const amount = Number((mileageForm.distance_km * mileageForm.rate_per_km).toFixed(2))
+      addMileageLog({ ...mileageForm, amount, status: 'pending' })
+      setShowMileageModal(false)
+      setMileageForm({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
+    } finally { setSaving(false) }
   }
 
   // ---- Bulk Expense Approval Handlers ----
@@ -590,7 +638,9 @@ export default function ExpensePage() {
   }
 
   function submitBulkExpense() {
-    if (bulkExpSelectedReports.length === 0) return
+    if (bulkExpSelectedReports.length === 0) { addToast('Select at least one report', 'error'); return }
+    setSaving(true)
+    try {
     const now = new Date().toISOString()
     bulkExpSelectedReports.forEach(report => {
       if (bulkExpAction === 'approve') {
@@ -601,6 +651,7 @@ export default function ExpensePage() {
     })
     addToast(`${bulkExpSelectedReports.length} expense report${bulkExpSelectedReports.length !== 1 ? 's' : ''} ${bulkExpAction === 'approve' ? 'approved' : 'rejected'} successfully`)
     resetBulkExpense()
+    } finally { setSaving(false) }
   }
 
   const forecastInsight = useMemo(() => ({
@@ -726,7 +777,7 @@ export default function ExpensePage() {
                         {(report.status === 'submitted' || report.status === 'pending_approval') && canApproveExpenses && report.employee_id !== currentEmployeeId && (
                           <>
                             <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
-                            <Button size="sm" variant="ghost" onClick={() => rejectReport(report.id)}>{tc('reject')}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'reject_report', id: report.id, label: report.title })}>{tc('reject')}</Button>
                           </>
                         )}
                         {report.status === 'approved' && (
@@ -1718,7 +1769,7 @@ export default function ExpensePage() {
                       <Button size="sm" variant="ghost" onClick={() => updateAdvancedExpensePolicy(policy.id, { is_active: !policy.is_active })}>
                         {policy.is_active ? 'Deactivate' : 'Activate'}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteAdvancedExpensePolicy(policy.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'delete_advanced_policy', id: policy.id, label: policy.name })}>
                         <Trash2 size={12} />
                       </Button>
                     </div>
@@ -2558,6 +2609,20 @@ export default function ExpensePage() {
               <Banknote size={14} /> Create Batch
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal for Destructive Actions */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action" size="sm">
+        <p className="text-sm text-t2 mb-4">
+          {confirmAction?.type === 'reject_report' && `Are you sure you want to reject "${confirmAction.label}"? This action cannot be undone.`}
+          {confirmAction?.type === 'delete_advanced_policy' && `Are you sure you want to delete the policy "${confirmAction?.label}"? This action cannot be undone.`}
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+          <Button variant="danger" onClick={executeConfirmAction} disabled={saving}>
+            {confirmAction?.type === 'reject_report' ? 'Reject' : 'Delete'}
+          </Button>
         </div>
       </Modal>
     </>

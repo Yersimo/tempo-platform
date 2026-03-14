@@ -21,6 +21,8 @@ import {
   Star,
   Loader2,
   RefreshCw,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { cn } from '@/lib/utils/cn'
@@ -132,6 +134,8 @@ export default function ChatPage() {
   const [threadReplies, setThreadReplies] = useState<any[]>([])
   const [threadInput, setThreadInput] = useState('')
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set())
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
+  const [savingChannel, setSavingChannel] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -393,7 +397,8 @@ export default function ChatPage() {
   // ---- Create channel (real API or local) ----
   async function handleCreateChannel() {
     const name = newChannelName.trim().toLowerCase().replace(/\s+/g, '-')
-    if (!name) return
+    if (!name) { addToast('Channel name is required', 'error'); return }
+    setSavingChannel(true)
     try {
       if (isLive) {
         const result = await chatAPI('POST', undefined, {
@@ -412,11 +417,14 @@ export default function ChatPage() {
         setChannels(prev => [...prev, ch])
         setActiveChannelId(ch.id)
       }
+      addToast('Channel created', 'success')
     } catch {
       // Local fallback
       const ch = { id: `chan-${name}`, name, type: newChannelType, description: newChannelDesc.trim(), member_count: 1 }
       setChannels(prev => [...prev, ch])
       setActiveChannelId(ch.id)
+    } finally {
+      setSavingChannel(false)
     }
     setNewChannelName('')
     setNewChannelDesc('')
@@ -512,6 +520,40 @@ export default function ChatPage() {
       }
       return next
     })
+  }
+
+  // ---- Delete message ----
+  async function handleDeleteMessage(msgId: string) {
+    if (isLive) {
+      try {
+        await chatAPI('DELETE', undefined, { action: 'delete-message', messageId: msgId })
+      } catch { /* fall through to local delete */ }
+    }
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+    addToast('Message deleted', 'success')
+  }
+
+  // ---- Delete channel ----
+  async function handleDeleteChannel(channelId: string) {
+    if (isLive) {
+      try {
+        await chatAPI('DELETE', undefined, { action: 'delete-channel', channelId })
+      } catch { /* fall through to local delete */ }
+    }
+    setChannels(prev => prev.filter(c => c.id !== channelId))
+    if (activeChannelId === channelId) {
+      const remaining = channels.filter(c => c.id !== channelId)
+      setActiveChannelId(remaining[0]?.id || '')
+    }
+    addToast('Channel deleted', 'success')
+  }
+
+  // ---- Execute confirmation action ----
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete-message') handleDeleteMessage(confirmAction.id)
+    if (confirmAction.type === 'delete-channel') handleDeleteChannel(confirmAction.id)
+    setConfirmAction(null)
   }
 
   // Key handler
@@ -868,6 +910,15 @@ export default function ChatPage() {
                       >
                         <Star size={14} />
                       </button>
+                      {msg.sender_id === employeeId && (
+                        <button
+                          onClick={() => setConfirmAction({ show: true, type: 'delete-message', id: msg.id, label: 'this message' })}
+                          className="p-1 hover:bg-red-50 rounded text-t3 hover:text-error transition-colors"
+                          title="Delete message"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -1077,10 +1128,27 @@ export default function ChatPage() {
             <Button variant="ghost" size="sm" onClick={() => setShowCreateChannel(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleCreateChannel} disabled={!newChannelName.trim()}>
-              Create Channel
+            <Button size="sm" onClick={handleCreateChannel} disabled={!newChannelName.trim() || savingChannel}>
+              {savingChannel ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : 'Create Channel'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* ──────── CONFIRMATION MODAL ──────── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Delete" size="sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={20} className="text-error" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-t1 mb-1">Are you sure?</p>
+            <p className="text-xs text-t2">This will permanently delete {confirmAction?.label}. This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+          <Button variant="danger" size="sm" onClick={executeConfirmAction}>Delete</Button>
         </div>
       </Modal>
     </div>

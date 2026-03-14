@@ -9,7 +9,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
-import { Select } from '@/components/ui/input'
+import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search } from 'lucide-react'
 import { useTempo } from '@/lib/store'
@@ -26,7 +26,7 @@ export default function AnalyticsPage() {
     employees, departments, goals, reviews, enrollments,
     engagementScores, mentoringPairs, expenseReports,
     jobPostings, leaveRequests, payrollRuns, salaryReviews,
-    compBands, courses, getDepartmentName, ensureModulesLoaded,
+    compBands, courses, getDepartmentName, ensureModulesLoaded, addToast,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -35,6 +35,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
 
+  const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('workforce')
   const [deptFilter, setDeptFilter] = useState('all')
   const [queryResults, setQueryResults] = useState<{ results: any[]; description: string } | null>(null)
@@ -137,11 +139,22 @@ export default function AnalyticsPage() {
     { id: 'executive', label: 'Executive' },
   ]
 
-  // Filter employees by department selection
+  // Filter employees by department and search query
   const filteredEmployees = useMemo(() => {
-    if (deptFilter === 'all') return employees
-    return employees.filter(e => e.department_id === deptFilter)
-  }, [employees, deptFilter])
+    let result = employees
+    if (deptFilter !== 'all') result = result.filter(e => e.department_id === deptFilter)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(e =>
+        e.profile?.full_name?.toLowerCase().includes(q) ||
+        e.job_title?.toLowerCase().includes(q) ||
+        e.country?.toLowerCase().includes(q) ||
+        e.level?.toLowerCase().includes(q) ||
+        getDepartmentName(e.department_id)?.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [employees, deptFilter, searchQuery, getDepartmentName])
 
   // Live computed metrics
   const headcount = filteredEmployees.length
@@ -186,16 +199,23 @@ export default function AnalyticsPage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm" onClick={() => exportToPrint(
-          employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
-          [
-            { header: 'Name', accessor: (r: any) => r.name },
-            { header: 'Department', accessor: (r: any) => r.dept },
-            { header: 'Country', accessor: (r: any) => r.country },
-            { header: 'Level', accessor: (r: any) => r.level },
-          ],
-          'Analytics Report - Workforce Overview'
-        )}><FileText size={14} /> {t('generateReport')}</Button>} />
+        actions={<Button size="sm" disabled={saving} onClick={async () => {
+          if (employees.length === 0) { addToast('No employee data available to export', 'error'); return }
+          setSaving(true)
+          try {
+            exportToPrint(
+              employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
+              [
+                { header: 'Name', accessor: (r: any) => r.name },
+                { header: 'Department', accessor: (r: any) => r.dept },
+                { header: 'Country', accessor: (r: any) => r.country },
+                { header: 'Level', accessor: (r: any) => r.level },
+              ],
+              'Analytics Report - Workforce Overview'
+            )
+            addToast('Report generated successfully', 'success')
+          } finally { setSaving(false) }
+        }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>} />
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
@@ -256,10 +276,29 @@ export default function AnalyticsPage() {
 
       <div className="flex items-center gap-4 mb-6">
         <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
-        <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} options={[{ value: 'all', label: tc('all') + ' ' + tc('department') }, ...departments.map(d => ({ value: d.id, label: d.name }))]} className="w-48" />
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-t3" />
+            <Input placeholder="Search employees..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 w-56 h-8 text-xs" />
+          </div>
+          <Select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} options={[{ value: 'all', label: tc('all') + ' ' + tc('department') }, ...departments.map(d => ({ value: d.id, label: d.name }))]} className="w-48" />
+        </div>
       </div>
 
-      {activeTab === 'workforce' && (
+      {activeTab === 'workforce' && filteredEmployees.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+              <Users size={28} className="text-t3" />
+            </div>
+            <h3 className="text-sm font-semibold text-t1 mb-1">No workforce data</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">No employees match the current filters. Try adjusting your search or department filter.</p>
+            <Button size="sm" onClick={() => { setSearchQuery(''); setDeptFilter('all') }}>Clear Filters</Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'workforce' && filteredEmployees.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('headcountByDept')}</h3>
@@ -324,7 +363,20 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {activeTab === 'performance' && (
+      {activeTab === 'performance' && goals.length === 0 && reviews.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+              <TrendingUp size={28} className="text-t3" />
+            </div>
+            <h3 className="text-sm font-semibold text-t1 mb-1">No performance data yet</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">Create goals and complete reviews to see performance analytics here.</p>
+            <Button size="sm" onClick={() => window.location.href = '/performance'}>Go to Performance</Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'performance' && (goals.length > 0 || reviews.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('goalStatusDistribution')}</h3>
@@ -363,7 +415,20 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {activeTab === 'engagement' && (
+      {activeTab === 'engagement' && engagementScores.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+              <BarChart3 size={28} className="text-t3" />
+            </div>
+            <h3 className="text-sm font-semibold text-t1 mb-1">No engagement data</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">Run engagement surveys to see scores and trends here.</p>
+            <Button size="sm" onClick={() => window.location.href = '/engagement'}>Go to Engagement</Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'engagement' && engagementScores.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-4">{t('engagementByDept')}</h3>
@@ -404,7 +469,20 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {activeTab === 'flight_risk' && (
+      {activeTab === 'flight_risk' && filteredEmployees.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+              <AlertTriangle size={28} className="text-t3" />
+            </div>
+            <h3 className="text-sm font-semibold text-t1 mb-1">No flight risk data</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">No employees match the current filters. Adjust your search or department filter to view flight risk analysis.</p>
+            <Button size="sm" onClick={() => { setSearchQuery(''); setDeptFilter('all') }}>Clear Filters</Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'flight_risk' && filteredEmployees.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <h3 className="text-sm font-semibold text-t1 mb-3">{t('highFlightRisk')}</h3>
@@ -550,7 +628,20 @@ export default function AnalyticsPage() {
       })()}
 
       {/* Recruiting Analytics - Ashby style */}
-      {activeTab === 'recruiting' && (() => {
+      {activeTab === 'recruiting' && jobPostings.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+              <BarChart3 size={28} className="text-t3" />
+            </div>
+            <h3 className="text-sm font-semibold text-t1 mb-1">No recruiting data</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">Create job postings to see recruiting pipeline analytics here.</p>
+            <Button size="sm" onClick={() => window.location.href = '/recruiting'}>Go to Recruiting</Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'recruiting' && jobPostings.length > 0 && (() => {
         const openJobs = jobPostings.filter(j => j.status === 'open').length
         const closedJobs = jobPostings.filter(j => j.status === 'closed' || j.status === 'filled').length
         const totalApps = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)

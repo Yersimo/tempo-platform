@@ -10,7 +10,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search, Shield, Gift, HelpCircle, CalendarClock, Trash2, GripVertical, Link2, User, Award, TrendingUp } from 'lucide-react'
+import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search, Shield, Gift, HelpCircle, CalendarClock, Trash2, GripVertical, Link2, User, Award, TrendingUp, AlertTriangle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
@@ -185,6 +185,10 @@ export default function RecruitingPage() {
   const [showPortalPreview, setShowPortalPreview] = useState(false)
   const [portalCandidateId, setPortalCandidateId] = useState<string | null>(null)
 
+  // Production: saving state & confirmation
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
+
   const openPositions = jobPostings.filter(j => j.status === 'open').length
   const totalApplicants = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)
   const inInterview = applications.filter(a => a.stage === 'interview' || a.status === 'interview').length
@@ -305,30 +309,36 @@ export default function RecruitingPage() {
     setShowJobModal(true)
   }
 
-  function submitJob() {
-    if (!jobForm.title || !jobForm.department_id || !jobForm.location) return
-    const data = {
-      title: jobForm.title,
-      department_id: jobForm.department_id,
-      location: jobForm.location,
-      type: jobForm.type,
-      description: jobForm.description,
-      requirements: jobForm.requirements.split('\n').filter(r => r.trim()),
-      salary_min: Number(jobForm.salary_min) || 0,
-      salary_max: Number(jobForm.salary_max) || 0,
-      currency: jobForm.currency,
-      status: 'open',
-    }
-    if (editingJob) {
-      updateJobPosting(editingJob, data)
-    } else {
-      addJobPosting(data)
-    }
-    setShowJobModal(false)
+  async function submitJob() {
+    if (!jobForm.title) { addToast('Job title is required', 'error'); return }
+    if (!jobForm.department_id) { addToast('Department is required', 'error'); return }
+    if (!jobForm.location) { addToast('Location is required', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: jobForm.title,
+        department_id: jobForm.department_id,
+        location: jobForm.location,
+        type: jobForm.type,
+        description: jobForm.description,
+        requirements: jobForm.requirements.split('\n').filter(r => r.trim()),
+        salary_min: Number(jobForm.salary_min) || 0,
+        salary_max: Number(jobForm.salary_max) || 0,
+        currency: jobForm.currency,
+        status: 'open',
+      }
+      if (editingJob) {
+        updateJobPosting(editingJob, data)
+      } else {
+        addJobPosting(data)
+      }
+      setShowJobModal(false)
+    } finally { setSaving(false) }
   }
 
   function closeJob(id: string) {
-    updateJobPosting(id, { status: 'closed' })
+    const job = jobPostings.find(j => j.id === id)
+    setConfirmAction({ show: true, type: 'close-job', id, label: job?.title || 'this posting' })
   }
 
   function reopenJob(id: string) {
@@ -347,19 +357,24 @@ export default function RecruitingPage() {
     setShowAppModal(true)
   }
 
-  function submitApplication() {
-    if (!appForm.job_id || !appForm.candidate_name || !appForm.candidate_email) return
-    addApplication({
-      job_id: appForm.job_id,
-      candidate_name: appForm.candidate_name,
-      candidate_email: appForm.candidate_email,
-      resume_url: appForm.resume_url || null,
-      cover_letter: appForm.cover_letter || null,
-      stage: 'applied',
-      status: 'applied',
-      rating: null,
-    })
-    setShowAppModal(false)
+  async function submitApplication() {
+    if (!appForm.job_id) { addToast('Job posting is required', 'error'); return }
+    if (!appForm.candidate_name) { addToast('Candidate name is required', 'error'); return }
+    if (!appForm.candidate_email) { addToast('Candidate email is required', 'error'); return }
+    setSaving(true)
+    try {
+      addApplication({
+        job_id: appForm.job_id,
+        candidate_name: appForm.candidate_name,
+        candidate_email: appForm.candidate_email,
+        resume_url: appForm.resume_url || null,
+        cover_letter: appForm.cover_letter || null,
+        stage: 'applied',
+        status: 'applied',
+        rating: null,
+      })
+      setShowAppModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- Stage Movement ----
@@ -373,23 +388,31 @@ export default function RecruitingPage() {
     setShowStageModal(true)
   }
 
-  function submitStageChange() {
+  async function submitStageChange() {
     if (!stageForm.app_id || !stageForm.stage) return
-    updateApplication(stageForm.app_id, {
-      stage: stageForm.stage,
-      status: stageForm.stage,
-      notes: stageForm.notes || undefined,
-    })
-    setShowStageModal(false)
+    setSaving(true)
+    try {
+      updateApplication(stageForm.app_id, {
+        stage: stageForm.stage,
+        status: stageForm.stage,
+        notes: stageForm.notes || undefined,
+      })
+      setShowStageModal(false)
+    } finally { setSaving(false) }
   }
 
   function rejectApplication(id: string) {
-    updateApplication(id, { stage: 'rejected', status: 'rejected' })
+    const app = applications.find(a => a.id === id)
+    setConfirmAction({ show: true, type: 'reject', id, label: app?.candidate_name || 'this candidate' })
   }
 
   // ---- Career Site ----
-  function saveCareerSite() {
-    updateCareerSiteConfig(careerForm)
+  async function saveCareerSite() {
+    setSaving(true)
+    try {
+      updateCareerSiteConfig(careerForm)
+      addToast('Career site settings saved')
+    } finally { setSaving(false) }
   }
 
   function toggleSection(section: string) {
@@ -415,16 +438,19 @@ export default function RecruitingPage() {
     )
   }
 
-  function submitDistribution() {
+  async function submitDistribution() {
     if (!distJobId || selectedBoards.length === 0) return
-    const statusPerBoard: Record<string, string> = {}
-    selectedBoards.forEach(b => { statusPerBoard[b] = 'posted' })
-    addJobDistribution({
-      job_id: distJobId,
-      boards: selectedBoards,
-      status_per_board: statusPerBoard,
-    })
-    setShowDistModal(false)
+    setSaving(true)
+    try {
+      const statusPerBoard: Record<string, string> = {}
+      selectedBoards.forEach(b => { statusPerBoard[b] = 'posted' })
+      addJobDistribution({
+        job_id: distJobId,
+        boards: selectedBoards,
+        status_per_board: statusPerBoard,
+      })
+      setShowDistModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- Interviews ----
@@ -445,15 +471,20 @@ export default function RecruitingPage() {
     setShowInterviewModal(true)
   }
 
-  function submitInterview() {
-    if (!interviewForm.application_id || !interviewForm.interviewer_id || !interviewForm.scheduled_at) return
-    addInterview({
-      ...interviewForm,
-      status: 'scheduled',
-      score: null,
-      feedback: null,
-    })
-    setShowInterviewModal(false)
+  async function submitInterview() {
+    if (!interviewForm.application_id) { addToast('Application is required', 'error'); return }
+    if (!interviewForm.interviewer_id) { addToast('Interviewer is required', 'error'); return }
+    if (!interviewForm.scheduled_at) { addToast('Schedule time is required', 'error'); return }
+    setSaving(true)
+    try {
+      addInterview({
+        ...interviewForm,
+        status: 'scheduled',
+        score: null,
+        feedback: null,
+      })
+      setShowInterviewModal(false)
+    } finally { setSaving(false) }
   }
 
   function openFeedbackModal(interviewId: string) {
@@ -466,14 +497,17 @@ export default function RecruitingPage() {
     setShowFeedbackModal(true)
   }
 
-  function submitFeedback() {
+  async function submitFeedback() {
     if (!feedbackForm.interview_id) return
-    updateInterview(feedbackForm.interview_id, {
-      score: feedbackForm.score,
-      feedback: feedbackForm.feedback,
-      status: 'completed',
-    })
-    setShowFeedbackModal(false)
+    setSaving(true)
+    try {
+      updateInterview(feedbackForm.interview_id, {
+        score: feedbackForm.score,
+        feedback: feedbackForm.feedback,
+        status: 'completed',
+      })
+      setShowFeedbackModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- Talent Pools ----
@@ -482,15 +516,18 @@ export default function RecruitingPage() {
     setShowPoolModal(true)
   }
 
-  function submitPool() {
-    if (!poolForm.name) return
-    addTalentPool({
-      name: poolForm.name,
-      description: poolForm.description,
-      category: poolForm.category,
-      candidates: [],
-    })
-    setShowPoolModal(false)
+  async function submitPool() {
+    if (!poolForm.name) { addToast('Pool name is required', 'error'); return }
+    setSaving(true)
+    try {
+      addTalentPool({
+        name: poolForm.name,
+        description: poolForm.description,
+        category: poolForm.category,
+        candidates: [],
+      })
+      setShowPoolModal(false)
+    } finally { setSaving(false) }
   }
 
   // ---- AI Questions ----
@@ -527,17 +564,36 @@ export default function RecruitingPage() {
     setBulkPipeNotes('')
   }
 
-  function submitBulkPipeline() {
+  async function submitBulkPipeline() {
     if (!bulkPipeTargetStage || bulkPipeMovableApps.length === 0) return
-    bulkPipeMovableApps.forEach(app => {
-      updateApplication(app.id, {
-        stage: bulkPipeTargetStage,
-        status: bulkPipeTargetStage,
-        notes: bulkPipeNotes || undefined,
+    setSaving(true)
+    try {
+      bulkPipeMovableApps.forEach(app => {
+        updateApplication(app.id, {
+          stage: bulkPipeTargetStage,
+          status: bulkPipeTargetStage,
+          notes: bulkPipeNotes || undefined,
+        })
       })
-    })
-    addToast(`${bulkPipeMovableApps.length} candidate${bulkPipeMovableApps.length !== 1 ? 's' : ''} moved to ${bulkPipeTargetStage}`)
-    resetBulkPipeline()
+      addToast(`${bulkPipeMovableApps.length} candidate${bulkPipeMovableApps.length !== 1 ? 's' : ''} moved to ${bulkPipeTargetStage}`)
+      resetBulkPipeline()
+    } finally { setSaving(false) }
+  }
+
+  function executeConfirmAction() {
+    if (!confirmAction) return
+    const { type, id } = confirmAction
+    if (type === 'reject') {
+      updateApplication(id, { stage: 'rejected', status: 'rejected' })
+      addToast('Candidate rejected')
+    } else if (type === 'close-job') {
+      updateJobPosting(id, { status: 'closed' })
+      addToast('Job posting closed')
+    } else if (type === 'delete-question') {
+      deleteKnockoutQuestion(id)
+      addToast('Screening question deleted')
+    }
+    setConfirmAction(null)
   }
 
   if (pageLoading) {
@@ -718,7 +774,7 @@ export default function RecruitingPage() {
                         <div key={q.id} className="flex items-center gap-2 text-[0.6rem]">
                           <span className="text-t2 truncate flex-1">{q.question}</span>
                           {q.eliminate_on_wrong && <Badge variant="error">Knockout</Badge>}
-                          <button onClick={() => deleteKnockoutQuestion(q.id)} className="text-t3 hover:text-red-500 transition-colors">
+                          <button onClick={() => setConfirmAction({ show: true, type: 'delete-question', id: q.id, label: q.question })} className="text-t3 hover:text-red-500 transition-colors">
                             <Trash2 size={10} />
                           </button>
                         </div>
@@ -906,7 +962,7 @@ export default function RecruitingPage() {
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <Button onClick={saveCareerSite}>{tc('saveChanges')}</Button>
+                  <Button onClick={saveCareerSite} disabled={saving}>{saving ? 'Saving...' : tc('saveChanges')}</Button>
                 </div>
               </div>
             </Card>
@@ -1928,7 +1984,7 @@ export default function RecruitingPage() {
           <Textarea label={t('requirementsLabel')} placeholder={t('requirementsPlaceholder')} rows={4} value={jobForm.requirements} onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowJobModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitJob}>{editingJob ? tc('saveChanges') : t('postJobButton')}</Button>
+            <Button onClick={submitJob} disabled={saving}>{saving ? 'Saving...' : editingJob ? tc('saveChanges') : t('postJobButton')}</Button>
           </div>
         </div>
       </Modal>
@@ -1945,7 +2001,7 @@ export default function RecruitingPage() {
           <Textarea label={t('coverLetter')} placeholder={t('coverLetterPlaceholder')} rows={3} value={appForm.cover_letter} onChange={(e) => setAppForm({ ...appForm, cover_letter: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowAppModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitApplication}>{t('addCandidateButton')}</Button>
+            <Button onClick={submitApplication} disabled={saving}>{saving ? 'Saving...' : t('addCandidateButton')}</Button>
           </div>
         </div>
       </Modal>
@@ -1969,7 +2025,7 @@ export default function RecruitingPage() {
           <Textarea label={t('notesOptional')} placeholder={t('notesPlaceholder')} rows={2} value={stageForm.notes} onChange={(e) => setStageForm({ ...stageForm, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowStageModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitStageChange}>{t('moveStage')}</Button>
+            <Button onClick={submitStageChange} disabled={saving}>{saving ? 'Saving...' : t('moveStage')}</Button>
           </div>
         </div>
       </Modal>
@@ -2024,7 +2080,7 @@ export default function RecruitingPage() {
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="secondary" onClick={() => setShowDistModal(false)}>{tc('cancel')}</Button>
-                  <Button onClick={submitDistribution}><Send size={14} /> {t('postToBoards')} ({selectedBoards.length})</Button>
+                  <Button onClick={submitDistribution} disabled={saving}><Send size={14} /> {saving ? 'Posting...' : `${t('postToBoards')} (${selectedBoards.length})`}</Button>
                 </div>
               </>
             )
@@ -2080,7 +2136,7 @@ export default function RecruitingPage() {
           <Input label={t('interviewKit')} value={interviewForm.kit_name} onChange={(e) => setInterviewForm({ ...interviewForm, kit_name: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowInterviewModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitInterview}>{t('addInterviewButton')}</Button>
+            <Button onClick={submitInterview} disabled={saving}>{saving ? 'Saving...' : t('addInterviewButton')}</Button>
           </div>
         </div>
       </Modal>
@@ -2116,7 +2172,7 @@ export default function RecruitingPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowFeedbackModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitFeedback}>{t('submitFeedback')}</Button>
+            <Button onClick={submitFeedback} disabled={saving}>{saving ? 'Saving...' : t('submitFeedback')}</Button>
           </div>
         </div>
       </Modal>
@@ -2138,7 +2194,7 @@ export default function RecruitingPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowPoolModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitPool}>{t('createPool')}</Button>
+            <Button onClick={submitPool} disabled={saving}>{saving ? 'Saving...' : t('createPool')}</Button>
           </div>
         </div>
       </Modal>
@@ -2474,9 +2530,9 @@ export default function RecruitingPage() {
               {bulkPipeStep === 2 && (
                 <Button
                   onClick={submitBulkPipeline}
-                  disabled={!bulkPipeTargetStage || bulkPipeMovableApps.length === 0}
+                  disabled={saving || !bulkPipeTargetStage || bulkPipeMovableApps.length === 0}
                 >
-                  <ArrowRight size={14} /> Move {bulkPipeMovableApps.length} Candidate{bulkPipeMovableApps.length !== 1 ? 's' : ''}
+                  <ArrowRight size={14} /> {saving ? 'Moving...' : `Move ${bulkPipeMovableApps.length} Candidate${bulkPipeMovableApps.length !== 1 ? 's' : ''}`}
                 </Button>
               )}
             </div>
@@ -2885,6 +2941,33 @@ export default function RecruitingPage() {
               </div>
             )
           })()}
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-full bg-error/10">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'reject' && 'Reject Candidate'}
+                {confirmAction?.type === 'close-job' && 'Close Job Posting'}
+                {confirmAction?.type === 'delete-question' && 'Delete Screening Question'}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                Are you sure you want to {confirmAction?.type === 'reject' ? 'reject' : confirmAction?.type === 'close-job' ? 'close' : 'delete'} <span className="font-medium text-t1">{confirmAction?.label}</span>? This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button variant="danger" onClick={executeConfirmAction}>
+              {confirmAction?.type === 'reject' ? 'Reject' : confirmAction?.type === 'close-job' ? 'Close' : 'Delete'}
+            </Button>
+          </div>
         </div>
       </Modal>
     </>

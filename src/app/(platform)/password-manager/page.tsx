@@ -55,6 +55,8 @@ export default function PasswordManagerPage() {
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   useEffect(() => {
     ensureModulesLoaded?.(['passwordVaults', 'vaultItems'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
@@ -134,14 +136,24 @@ export default function PasswordManagerPage() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
   }
 
-  async function handleDeleteItem(itemId: string) {
-    try {
-      await pmAPI('delete-item', { itemId })
-      addToast('Item deleted')
-    } catch {
-      addToast('API failed, removing locally', 'error')
-    }
-    deleteVaultItem(itemId)
+  function handleDeleteItem(itemId: string) {
+    setConfirmAction({
+      title: 'Delete Credential',
+      message: 'Are you sure you want to delete this credential? This action cannot be undone.',
+      onConfirm: async () => {
+        setSaving(true)
+        try {
+          await pmAPI('delete-item', { itemId })
+          addToast('Item deleted')
+        } catch {
+          addToast('API failed, removing locally', 'error')
+        } finally {
+          setSaving(false)
+        }
+        deleteVaultItem(itemId)
+        setConfirmAction(null)
+      },
+    })
   }
 
   function copyToClipboard(text: string) {
@@ -157,7 +169,11 @@ export default function PasswordManagerPage() {
   }
 
   async function submitVault() {
-    if (!vaultForm.name) return
+    if (!vaultForm.name.trim()) {
+      addToast('Vault name is required', 'error')
+      return
+    }
+    setSaving(true)
     try {
       await pmAPI('create-vault', {
         ownerId: 'emp-1',
@@ -166,6 +182,8 @@ export default function PasswordManagerPage() {
       addToast('Vault created')
     } catch {
       addToast('API failed, saving locally', 'error')
+    } finally {
+      setSaving(false)
     }
     addPasswordVault({
       name: vaultForm.name,
@@ -731,7 +749,20 @@ export default function PasswordManagerPage() {
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowCreateVault(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitVault}>Create Vault</Button>
+            <Button onClick={submitVault} disabled={saving}>{saving ? 'Saving...' : 'Create Vault'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.title || 'Confirm'}>
+        <div className="space-y-4">
+          <p className="text-sm text-t2">{confirmAction?.message}</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)} disabled={saving}>{tc('cancel')}</Button>
+            <Button variant="danger" onClick={confirmAction?.onConfirm} disabled={saving}>
+              {saving ? 'Saving...' : 'Confirm'}
+            </Button>
           </div>
         </div>
       </Modal>

@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard, Star, TrendingUp, TrendingDown, Minus, Building2, Brain, PieChart } from 'lucide-react'
+import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard, Star, TrendingUp, TrendingDown, Minus, Building2, Brain, PieChart, Search, XCircle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
@@ -21,9 +21,13 @@ import { demoVendorContracts, demoSpendByCategory } from '@/lib/demo-data'
 export default function InvoicesPage() {
   const t = useTranslations('invoices')
   const tc = useTranslations('common')
-  const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice, ensureModulesLoaded } = useTempo()
+  const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice, ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [confirmAction, setConfirmAction] = useState<{ show: boolean; type: string; id: string; label: string } | null>(null)
 
   useEffect(() => { ensureModulesLoaded?.(['invoices', 'vendors', 'softwareLicenses'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false)) }, [])
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
@@ -47,6 +51,23 @@ export default function InvoicesPage() {
   }, [invoices])
 
   const totalVendorSpend = Object.values(vendorSpendMap).reduce((a, b) => a + b, 0)
+
+  function getVendorName(vendorId: string) {
+    const vendor = vendors.find(v => v.id === vendorId)
+    return vendor?.name || tc('unknown')
+  }
+
+  // Filtered invoices
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const matchesSearch = !searchQuery ||
+        inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        getVendorName(inv.vendor_id).toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesStatus = statusFilter === 'all' || inv.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+  }, [invoices, searchQuery, statusFilter, vendors])
 
   // New Invoice modal
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
@@ -73,36 +94,54 @@ export default function InvoicesPage() {
     setShowInvoiceModal(true)
   }
 
-  function submitInvoice() {
-    if (!invoiceForm.invoice_number || !invoiceForm.vendor_id || !invoiceForm.amount) return
-    addInvoice({
-      invoice_number: invoiceForm.invoice_number,
-      vendor_id: invoiceForm.vendor_id,
-      amount: Number(invoiceForm.amount),
-      description: invoiceForm.description,
-      due_date: invoiceForm.due_date || `${new Date().getFullYear()}-12-31`,
-      issued_date: invoiceForm.issued_date || new Date().toISOString().split('T')[0],
-      status: 'draft',
-      currency: invoiceForm.currency,
-    })
-    setShowInvoiceModal(false)
+  async function submitInvoice() {
+    if (!invoiceForm.invoice_number.trim()) { addToast('Invoice number is required', 'error'); return }
+    if (!invoiceForm.vendor_id) { addToast('Please select a vendor', 'error'); return }
+    if (!invoiceForm.amount || Number(invoiceForm.amount) <= 0) { addToast('Amount must be greater than zero', 'error'); return }
+    if (!invoiceForm.due_date) { addToast('Due date is required', 'error'); return }
+    setSaving(true)
+    try {
+      addInvoice({
+        invoice_number: invoiceForm.invoice_number,
+        vendor_id: invoiceForm.vendor_id,
+        amount: Number(invoiceForm.amount),
+        description: invoiceForm.description,
+        due_date: invoiceForm.due_date,
+        issued_date: invoiceForm.issued_date || new Date().toISOString().split('T')[0],
+        status: 'draft',
+        currency: invoiceForm.currency,
+      })
+      addToast('Invoice created successfully', 'success')
+      setShowInvoiceModal(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function sendInvoice(id: string) {
-    updateInvoice(id, { status: 'sent' })
+  async function sendInvoice(id: string) {
+    setSaving(true)
+    try { updateInvoice(id, { status: 'sent' }); addToast('Invoice sent', 'success') } finally { setSaving(false) }
   }
 
-  function payInvoice(id: string) {
-    updateInvoice(id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] })
+  async function payInvoice(id: string) {
+    setSaving(true)
+    try { updateInvoice(id, { status: 'paid', paid_date: new Date().toISOString().split('T')[0] }); addToast('Invoice marked as paid', 'success') } finally { setSaving(false) }
   }
 
   function markOverdue(id: string) {
     updateInvoice(id, { status: 'overdue' })
   }
 
-  function getVendorName(vendorId: string) {
-    const vendor = vendors.find(v => v.id === vendorId)
-    return vendor?.name || tc('unknown')
+  function voidInvoice(id: string) {
+    setSaving(true)
+    try { updateInvoice(id, { status: 'void' }); addToast('Invoice voided', 'success') } finally { setSaving(false) }
+  }
+
+  function handleConfirmAction() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'void') voidInvoice(confirmAction.id)
+    if (confirmAction.type === 'delete') { updateInvoice(confirmAction.id, { status: 'deleted' }); addToast('Invoice deleted', 'success') }
+    setConfirmAction(null)
   }
 
   if (pageLoading) {
@@ -139,6 +178,31 @@ export default function InvoicesPage() {
         />}
       </div>
 
+      {/* Search & Filter */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+          <input
+            type="text"
+            placeholder="Search invoices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          options={[
+            { value: 'all', label: 'All Statuses' },
+            { value: 'draft', label: 'Draft' },
+            { value: 'sent', label: 'Sent' },
+            { value: 'paid', label: 'Paid' },
+            { value: 'overdue', label: 'Overdue' },
+          ]}
+        />
+      </div>
+
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -170,7 +234,22 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {invoices.map(inv => (
+              {filteredInvoices.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-canvas flex items-center justify-center mb-3">
+                        <FileText size={24} className="text-t3" />
+                      </div>
+                      <p className="text-sm font-medium text-t1 mb-1">No invoices found</p>
+                      <p className="text-xs text-t3 mb-4">{searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or filters' : 'Create your first invoice to get started'}</p>
+                      {!searchQuery && statusFilter === 'all' && (
+                        <Button size="sm" onClick={openNewInvoice}><Plus size={14} /> {t('newInvoice')}</Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredInvoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-canvas/50">
                   <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{inv.invoice_number}</td>
                   <td className="px-4 py-3 text-xs text-t2">{getVendorName(inv.vendor_id)}</td>
@@ -181,7 +260,8 @@ export default function InvoicesPage() {
                     <Badge variant={
                       inv.status === 'paid' ? 'success' :
                       inv.status === 'overdue' ? 'error' :
-                      inv.status === 'sent' ? 'info' : 'default'
+                      inv.status === 'sent' ? 'info' :
+                      inv.status === 'void' ? 'default' : 'default'
                     }>
                       {inv.status}
                     </Badge>
@@ -189,24 +269,37 @@ export default function InvoicesPage() {
                   <td className="px-4 py-3 text-center">
                     <div className="flex gap-1 justify-center">
                       {inv.status === 'draft' && (
-                        <Button size="sm" variant="secondary" onClick={() => sendInvoice(inv.id)}>
-                          <Send size={12} /> {tc('send')}
-                        </Button>
+                        <>
+                          <Button size="sm" variant="secondary" onClick={() => sendInvoice(inv.id)} disabled={saving}>
+                            <Send size={12} /> {tc('send')}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'delete', id: inv.id, label: inv.invoice_number })} disabled={saving}>
+                            <XCircle size={12} />
+                          </Button>
+                        </>
                       )}
                       {inv.status === 'sent' && (
                         <>
-                          <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)}>
+                          <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)} disabled={saving}>
                             <CreditCard size={12} /> {tc('process')}
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => markOverdue(inv.id)}>
+                          <Button size="sm" variant="ghost" onClick={() => markOverdue(inv.id)} disabled={saving}>
                             {tc('overdue')}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'void', id: inv.id, label: inv.invoice_number })} disabled={saving}>
+                            Void
                           </Button>
                         </>
                       )}
                       {inv.status === 'overdue' && (
-                        <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)}>
-                          <CreditCard size={12} /> {tc('process')}
-                        </Button>
+                        <>
+                          <Button size="sm" variant="primary" onClick={() => payInvoice(inv.id)} disabled={saving}>
+                            <CreditCard size={12} /> {tc('process')}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'void', id: inv.id, label: inv.invoice_number })} disabled={saving}>
+                            Void
+                          </Button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -442,7 +535,34 @@ export default function InvoicesPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowInvoiceModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitInvoice}>{t('createInvoice')}</Button>
+            <Button onClick={submitInvoice} disabled={saving}>{saving ? 'Creating...' : t('createInvoice')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-error" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">
+                {confirmAction?.type === 'void' ? 'Void this invoice?' : 'Delete this invoice?'}
+              </p>
+              <p className="text-xs text-t3 mt-1">
+                {confirmAction?.type === 'void'
+                  ? `Invoice ${confirmAction?.label} will be marked as void. This cannot be undone.`
+                  : `Invoice ${confirmAction?.label} will be permanently deleted.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button variant="primary" onClick={handleConfirmAction} disabled={saving}>
+              {confirmAction?.type === 'void' ? 'Void Invoice' : 'Delete Invoice'}
+            </Button>
           </div>
         </div>
       </Modal>

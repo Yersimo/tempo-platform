@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Globe, DollarSign, TrendingUp, ArrowRightLeft, Building2, Plus, Landmark, MapPin, Wallet, CheckCircle, Clock, Users } from 'lucide-react'
+import { Globe, DollarSign, TrendingUp, ArrowRightLeft, Building2, Plus, Landmark, MapPin, Wallet, CheckCircle, Clock, Users, AlertTriangle } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
 // ─── Currency formatting helper ───
@@ -51,6 +51,9 @@ export default function GlobalSpendPage() {
     ensureModulesLoaded?.(['currencyAccounts', 'fxTransactions', 'invoices', 'billPayments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
   }, [ensureModulesLoaded])
   useEffect(() => { const t = setTimeout(() => setPageLoading(false), 2000); return () => clearTimeout(t) }, [])
+
+  const [saving, setSaving] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [showTransferModal, setShowTransferModal] = useState(false)
@@ -130,8 +133,24 @@ export default function GlobalSpendPage() {
     setShowTransferModal(true)
   }
 
-  async function submitTransfer() {
+  function validateTransferForm(): boolean {
+    if (!transferForm.from_currency) { addToast('Please select a source currency', 'error'); return false }
+    if (!transferForm.to_currency) { addToast('Please select a destination currency', 'error'); return false }
+    if (transferForm.from_currency === transferForm.to_currency) { addToast('Source and destination currencies must differ', 'error'); return false }
+    if (!transferForm.amount || Number(transferForm.amount) <= 0) { addToast('Please enter a valid amount', 'error'); return false }
+    return true
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return
+    const { type } = confirmAction
+    setConfirmAction(null)
+    if (type === 'transfer') await submitTransferConfirmed()
+  }
+
+  async function submitTransferConfirmed() {
     if (!transferForm.from_currency || !transferForm.to_currency || !transferForm.amount) return
+    setSaving(true)
     const fromAccount = currencyAccounts.find((a: any) => a.currency === transferForm.from_currency)
     const toAccount = currencyAccounts.find((a: any) => a.currency === transferForm.to_currency)
     const amountCents = Math.round(Number(transferForm.amount) * 100)
@@ -156,7 +175,6 @@ export default function GlobalSpendPage() {
       addToast('FX transfer executed successfully', 'success')
       setShowTransferModal(false)
     } catch (e: any) {
-      // Fallback: update store locally so UI stays consistent
       const rate = (usdRates[transferForm.to_currency] || 1) / (usdRates[transferForm.from_currency] || 1)
       addFxTransaction({
         from_currency: transferForm.from_currency,
@@ -170,6 +188,8 @@ export default function GlobalSpendPage() {
       })
       addToast(e.message || 'API error — updated locally', 'info')
       setShowTransferModal(false)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -652,8 +672,29 @@ export default function GlobalSpendPage() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTransferModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitTransfer}>
-              <ArrowRightLeft size={14} /> Execute Transfer
+            <Button onClick={() => { if (validateTransferForm()) setConfirmAction({ show: true, type: 'transfer', id: '', label: `Execute FX transfer of ${transferForm.amount} ${transferForm.from_currency} to ${transferForm.to_currency}?` }) }} disabled={saving}>
+              <ArrowRightLeft size={14} /> {saving ? 'Executing...' : 'Execute Transfer'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Confirmation Modal ── */}
+      <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Action">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">{confirmAction?.label}</p>
+              <p className="text-xs text-t3 mt-1">This action will be executed immediately.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>{tc('cancel')}</Button>
+            <Button onClick={executeConfirmAction} disabled={saving}>
+              {saving ? 'Processing...' : 'Confirm'}
             </Button>
           </div>
         </div>
