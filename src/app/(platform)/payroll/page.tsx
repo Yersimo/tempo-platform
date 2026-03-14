@@ -830,6 +830,19 @@ export default function PayrollPage() {
           payrollGroupName={evaluatorConfig?.payrollGroupName || 'Ghana Evaluation Group'}
           currentStep={walkthroughCurrentStep}
           completedSteps={walkthroughCompletedSteps}
+          onStepClick={(step) => setWalkthroughCurrentStep(step)}
+          onStepComplete={(step) => {
+            setWalkthroughCompletedSteps((prev) => {
+              const next = new Set(prev)
+              next.add(step)
+              return next
+            })
+            // Auto-advance to the next incomplete step
+            const nextStep = step < 10 ? step + 1 : step
+            if (!walkthroughCompletedSteps.has(nextStep)) {
+              setWalkthroughCurrentStep(nextStep)
+            }
+          }}
           onDismiss={() => setWalkthroughDismissed(true)}
           className="mb-6"
         />

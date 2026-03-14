@@ -103,6 +103,7 @@ interface EvaluatorWalkthroughProps {
   currentStep: number
   completedSteps: Set<number>
   onStepComplete?: (step: number) => void
+  onStepClick?: (step: number) => void
   onDismiss: () => void
   onResumeRequest?: () => void
   className?: string
@@ -114,13 +115,26 @@ function StepIndicator({
   step,
   isCompleted,
   isCurrent,
+  isClickable,
+  onClick,
 }: {
   step: WalkthroughStep
   isCompleted: boolean
   isCurrent: boolean
+  isClickable: boolean
+  onClick?: () => void
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 min-w-0">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isClickable}
+      className={cn(
+        'flex flex-col items-center gap-1.5 min-w-0 bg-transparent border-none p-0',
+        isClickable && 'cursor-pointer group'
+      )}
+      title={isClickable ? `Go to Step ${step.number}: ${step.title}` : step.title}
+    >
       {/* Circle */}
       <div
         className={cn(
@@ -131,7 +145,9 @@ function StepIndicator({
             'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-400/50',
           !isCompleted &&
             !isCurrent &&
-            'bg-gray-100 text-gray-400'
+            'bg-gray-100 text-gray-400',
+          isClickable && !isCurrent &&
+            'group-hover:ring-2 group-hover:ring-indigo-300/50 group-hover:scale-110'
         )}
         style={
           isCurrent
@@ -152,7 +168,7 @@ function StepIndicator({
       >
         {step.shortTitle}
       </span>
-    </div>
+    </button>
   )
 }
 
@@ -177,6 +193,7 @@ export function EvaluatorWalkthrough({
   currentStep,
   completedSteps,
   onStepComplete,
+  onStepClick,
   onDismiss,
   className,
 }: EvaluatorWalkthroughProps) {
@@ -245,6 +262,9 @@ export function EvaluatorWalkthrough({
             {WALKTHROUGH_STEPS.map((step, idx) => {
               const isCompleted = completedSteps.has(step.number)
               const isCurrent = step.number === currentStep
+              // Allow clicking completed steps, the current step, and the next available step
+              const maxReachable = Math.max(1, ...Array.from(completedSteps)) + 1
+              const isClickable = !!(onStepClick && (isCompleted || isCurrent || step.number <= maxReachable))
               // Connector is "filled" if the step before it is completed
               const showConnector = idx > 0
               const connectorFilled = idx > 0 && completedSteps.has(WALKTHROUGH_STEPS[idx - 1].number)
@@ -260,6 +280,8 @@ export function EvaluatorWalkthrough({
                     step={step}
                     isCompleted={isCompleted}
                     isCurrent={isCurrent}
+                    isClickable={isClickable}
+                    onClick={isClickable ? () => onStepClick(step.number) : undefined}
                   />
                 </div>
               )
