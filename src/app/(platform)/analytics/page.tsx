@@ -136,6 +136,7 @@ export default function AnalyticsPage() {
     { id: 'flight_risk', label: t('tabFlightRisk') },
     { id: 'compensation', label: 'Compensation' },
     { id: 'recruiting', label: 'Recruiting' },
+    { id: 'diversity', label: 'Diversity' },
     { id: 'executive', label: 'Executive' },
   ]
 
