@@ -50,7 +50,7 @@ export function AIScoreBadge({ score, size = 'sm', showBreakdown = false, showTr
             <span className={cn('text-sm font-bold', colorClass)}>{score.value}</span>
           </div>
         </div>
-        <span className="text-[0.55rem] text-t3 mt-1">{score.label}</span>
+        <span className="text-[0.55rem] text-t3 mt-1">{typeof score.label === 'string' ? score.label : String(score.label ?? '')}</span>
         {showTrend && score.trend && (
           <span className={cn('flex items-center gap-0.5 text-[0.5rem] mt-0.5',
             score.trend === 'up' ? 'text-success' : score.trend === 'down' ? 'text-error' : 'text-t3'
