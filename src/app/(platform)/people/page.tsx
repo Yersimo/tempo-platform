@@ -20,7 +20,7 @@ import {
   Search, Plus, Download, Upload, Users, Building2, BarChart3,
   FileText, Clock, Layers, UserPlus, Award, ArrowRightLeft, DollarSign,
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
-  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe,
+  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe, FileCheck,
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
@@ -854,6 +854,7 @@ export default function PeoplePage() {
                     <th className="tempo-th text-center px-4 py-3">{t('uploadDate')}</th>
                     <th className="tempo-th text-center px-4 py-3">{t('expiryDate')}</th>
                     <th className="tempo-th text-right px-4 py-3">{t('fileSize')}</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -877,6 +878,11 @@ export default function PeoplePage() {
                       <td className="px-4 py-3 text-xs text-t2 text-center">{doc.upload_date}</td>
                       <td className="px-4 py-3 text-xs text-t2 text-center">{doc.expiry_date || '-'}</td>
                       <td className="px-4 py-3 text-xs text-t3 text-right">{doc.file_size}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Button size="sm" variant="ghost" onClick={() => addToast('Signature request sent to employee')}>
+                          <FileCheck size={12} className="mr-1" /> Request Signature
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

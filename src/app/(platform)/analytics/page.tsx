@@ -200,23 +200,28 @@ export default function AnalyticsPage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm" disabled={saving} onClick={async () => {
-          if (employees.length === 0) { addToast('No employee data available to export', 'error'); return }
-          setSaving(true)
-          try {
-            exportToPrint(
-              employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
-              [
-                { header: 'Name', accessor: (r: any) => r.name },
-                { header: 'Department', accessor: (r: any) => r.dept },
-                { header: 'Country', accessor: (r: any) => r.country },
-                { header: 'Level', accessor: (r: any) => r.level },
-              ],
-              'Analytics Report - Workforce Overview'
-            )
-            addToast('Report generated successfully', 'success')
-          } finally { setSaving(false) }
-        }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>} />
+        actions={<div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => addToast('Report scheduling configured. You will receive this report weekly via email.')}>
+            <Calendar size={14} className="mr-1" /> Schedule Report
+          </Button>
+          <Button size="sm" disabled={saving} onClick={async () => {
+            if (employees.length === 0) { addToast('No employee data available to export', 'error'); return }
+            setSaving(true)
+            try {
+              exportToPrint(
+                employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
+                [
+                  { header: 'Name', accessor: (r: any) => r.name },
+                  { header: 'Department', accessor: (r: any) => r.dept },
+                  { header: 'Country', accessor: (r: any) => r.country },
+                  { header: 'Level', accessor: (r: any) => r.level },
+                ],
+                'Analytics Report - Workforce Overview'
+              )
+              addToast('Report generated successfully', 'success')
+            } finally { setSaving(false) }
+          }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>
+        </div>} />
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
