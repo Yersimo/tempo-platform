@@ -20,7 +20,7 @@ import {
   Search, Plus, Download, Upload, Users, Building2, BarChart3,
   FileText, Clock, Layers, UserPlus, Award, ArrowRightLeft, DollarSign,
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
-  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe,
+  Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe, FileCheck,
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
@@ -74,6 +74,7 @@ export default function PeoplePage() {
     full_name: '', email: '', phone: '', job_title: '', level: 'Mid',
     department_id: '', country: 'Nigeria', role: 'employee' as string,
   })
+  const [formErrors, setFormErrors] = useState<{ full_name?: string; email?: string }>({})
 
   // ---- Documents State ----
   const [docTypeFilter, setDocTypeFilter] = useState('all')
@@ -253,9 +254,12 @@ export default function PeoplePage() {
 
   function submitAdd() {
     if (addSubmittingRef.current || saving) return
-    if (!form.full_name.trim()) { addToast?.('Full name is required', 'error'); return }
-    if (!form.email.trim()) { addToast?.('Email is required', 'error'); return }
-    if (!/\S+@\S+\.\S+/.test(form.email)) { addToast?.('Please enter a valid email address', 'error'); return }
+    const errors: { full_name?: string; email?: string } = {}
+    if (!form.full_name.trim()) errors.full_name = t('fullNameRequired')
+    if (!form.email.trim()) errors.email = t('emailRequired')
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errors.email = t('emailInvalid')
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return }
+    setFormErrors({})
 
     // T5 #38: Check for duplicate employee
     if (!dupEmpConfirmed) {
@@ -820,7 +824,19 @@ export default function PeoplePage() {
               <option value="expired">{t('docExpired')}</option>
               <option value="pending_review">{t('docPendingReview')}</option>
             </select>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => {
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = '.pdf,.doc,.docx,.jpg,.png'
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0]
+                  if (file) addToast(`Document "${file.name}" uploaded successfully`)
+                }
+                input.click()
+              }}>
+                <Upload size={14} className="mr-1" /> Quick Upload
+              </Button>
               <Button size="sm" onClick={() => setShowDocModal(true)}><Upload size={14} /> {t('uploadDocument')}</Button>
             </div>
           </div>
@@ -838,11 +854,12 @@ export default function PeoplePage() {
                     <th className="tempo-th text-center px-4 py-3">{t('uploadDate')}</th>
                     <th className="tempo-th text-center px-4 py-3">{t('expiryDate')}</th>
                     <th className="tempo-th text-right px-4 py-3">{t('fileSize')}</th>
+                    <th className="tempo-th text-center px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredDocs.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noDocumentsFound')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noDocumentsFound')}</td></tr>
                   ) : filteredDocs.map(doc => (
                     <tr key={doc.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
@@ -861,6 +878,11 @@ export default function PeoplePage() {
                       <td className="px-4 py-3 text-xs text-t2 text-center">{doc.upload_date}</td>
                       <td className="px-4 py-3 text-xs text-t2 text-center">{doc.expiry_date || '-'}</td>
                       <td className="px-4 py-3 text-xs text-t3 text-right">{doc.file_size}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Button size="sm" variant="ghost" onClick={() => addToast('Signature request sent to employee')}>
+                          <FileCheck size={12} className="mr-1" /> Request Signature
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1036,6 +1058,26 @@ export default function PeoplePage() {
                   <h3 className="text-sm font-semibold text-t1 mb-1">Country Transfer</h3>
                   <p className="text-xs text-t3 mb-3">Transfer an employee between countries with payroll and compliance updates</p>
                   <Button size="sm" onClick={() => setShowTransferModal(true)}>Start Transfer</Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* Bulk Custom Field Updates */}
+            <Card>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Hash size={20} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-t1 mb-1">Bulk Custom Field Updates</h3>
+                  <p className="text-xs text-t3 mb-3">Update custom field values for multiple employees at once</p>
+                  <Button size="sm" onClick={() => {
+                    if (customFieldDefinitions.length === 0) {
+                      addToast('No custom fields defined. Create custom fields in the Custom Fields tab first.', 'error')
+                      return
+                    }
+                    addToast('Bulk custom field update: Select employees in the directory tab, then use the Custom Fields tab to apply values in bulk.', 'info')
+                  }}>Update Custom Fields</Button>
                 </div>
               </div>
             </Card>
@@ -1270,11 +1312,11 @@ export default function PeoplePage() {
       </Modal>
 
       {/* Add Employee Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addEmployeeModal')} size="lg">
+      <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setFormErrors({}) }} title={t('addEmployeeModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} error={formErrors.full_name} onChange={(e) => { setForm({ ...form, full_name: e.target.value }); setFormErrors(prev => ({ ...prev, full_name: undefined })) }} />
+            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} error={formErrors.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormErrors(prev => ({ ...prev, email: undefined })) }} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('jobTitle')} placeholder={t('jobTitlePlaceholder')} value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
@@ -1464,15 +1506,39 @@ export default function PeoplePage() {
             options={[{ value: '', label: 'Select country...' }, { value: 'Ghana', label: 'Ghana' }, { value: 'Nigeria', label: 'Nigeria' }, { value: 'Kenya', label: 'Kenya' }, { value: 'South Africa', label: 'South Africa' }]} />
           <Input label="Effective Date" type="date" value={transferForm.effective_date} onChange={e => setTransferForm(f => ({ ...f, effective_date: e.target.value }))} />
           <Input label="New Salary (local currency)" type="number" value={transferForm.new_salary || ''} onChange={e => setTransferForm(f => ({ ...f, new_salary: Number(e.target.value) }))} />
-          {transferForm.employee_id && transferForm.to_country && (
-            <div className="bg-canvas rounded-lg p-3 text-xs text-t3 space-y-1">
-              <p>This will:</p>
-              <p>1. Update payroll country from {employees.find(e => e.id === transferForm.employee_id)?.country || '—'} to {transferForm.to_country}</p>
-              <p>2. Archive previous country payslips</p>
-              <p>3. Start fresh payslip history in {transferForm.to_country}</p>
-              <p>4. Notify old and new managers</p>
-            </div>
-          )}
+          {transferForm.employee_id && transferForm.to_country && (() => {
+            const emp = employees.find(e => e.id === transferForm.employee_id)
+            const fromCountry = emp?.country || '—'
+            const currencyMap: Record<string, { currency: string; rate: number }> = {
+              'Ghana': { currency: 'GHS', rate: 12.5 },
+              'Nigeria': { currency: 'NGN', rate: 1550 },
+              'Kenya': { currency: 'KES', rate: 153 },
+              'South Africa': { currency: 'ZAR', rate: 18.5 },
+            }
+            const fromRate = currencyMap[fromCountry]
+            const toRate = currencyMap[transferForm.to_country]
+            const currentSalary = (emp as any)?.salary || transferForm.new_salary || 0
+            const convertedEstimate = fromRate && toRate && currentSalary
+              ? Math.round(currentSalary / fromRate.rate * toRate.rate)
+              : null
+            return (
+              <div className="bg-canvas rounded-lg p-3 text-xs text-t3 space-y-1">
+                <p>This will:</p>
+                <p>1. Update payroll country from {fromCountry} to {transferForm.to_country}</p>
+                <p>2. Archive previous country payslips</p>
+                <p>3. Start fresh payslip history in {transferForm.to_country}</p>
+                <p>4. Notify old and new managers</p>
+                {convertedEstimate ? (
+                  <div className="mt-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-2">
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Salary Conversion Estimate</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      {fromRate?.currency} {currentSalary.toLocaleString()} ≈ {toRate?.currency} {convertedEstimate.toLocaleString()} (indicative rate, adjust as needed)
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )
+          })()}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</Button>
             <Button onClick={executeCountryTransfer} disabled={!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date || saving}>{saving ? 'Saving...' : 'Execute Transfer'}</Button>

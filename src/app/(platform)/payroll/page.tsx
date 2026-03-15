@@ -837,9 +837,17 @@ export default function PayrollPage() {
           </>
         )}
         {!isReadOnly && status === 'processing' && (
-          <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'mark-paid')}>
-            <DollarSign size={12} /> {saving ? 'Saving...' : 'Mark Paid'}
-          </Button>
+          <>
+            <Button size="sm" variant="primary" disabled={saving} onClick={() => handleStatusAction(run.id, status, 'mark-paid')}>
+              <DollarSign size={12} /> {saving ? 'Saving...' : 'Mark Paid'}
+            </Button>
+            <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => {
+              updatePayrollRun(run.id, { status: 'cancelled', notes: (run.notes || '') + ' [Cancelled on ' + new Date().toISOString().split('T')[0] + ']' })
+              addToast('Payroll run cancelled', 'success')
+            }}>
+              <RotateCcw size={14} className="mr-1" /> Cancel
+            </Button>
+          </>
         )}
         {status === 'paid' && (
           <>
@@ -853,6 +861,14 @@ export default function PayrollPage() {
             </Button>
             {(run as any).stubs_generated && (
               <Badge variant="success">Stubs Generated</Badge>
+            )}
+            {!isReadOnly && (
+              <Button size="sm" variant="ghost" className="text-error" disabled={saving} onClick={() => {
+                updatePayrollRun(run.id, { status: 'cancelled', notes: (run.notes || '') + ' [Voided on ' + new Date().toISOString().split('T')[0] + ']' })
+                addToast('Payroll run voided', 'success')
+              }}>
+                <RotateCcw size={14} className="mr-1" /> Void
+              </Button>
             )}
           </>
         )}
@@ -1219,6 +1235,23 @@ export default function PayrollPage() {
                               <td className="px-3 py-2 text-t1 text-right font-semibold">{fmtCents(e.net_pay)}</td>
                               <td className="px-3 py-2 text-center">
                                 <Button size="sm" variant="ghost" onClick={() => setShowPayStubModal(e.id)}><Eye size={12} /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                  const printWindow = window.open('', '_blank')
+                                  if (!printWindow) return
+                                  const empName = resolveEmployeeName(mergedEmployees, e.employee_id, (e as any).employee_name)
+                                  printWindow.document.write(`<html><head><title>Payslip - ${empName}</title><style>body{font-family:sans-serif;padding:40px;max-width:800px;margin:0 auto}h1{font-size:24px;margin-bottom:4px}h2{font-size:18px;color:#666}table{width:100%;border-collapse:collapse;margin-top:20px}td,th{text-align:left;padding:8px 12px;border-bottom:1px solid #eee}th{background:#f5f5f5;font-weight:600}.amount{text-align:right}.total{font-weight:bold;border-top:2px solid #333}</style></head><body>`)
+                                  printWindow.document.write(`<h1>PAYSLIP</h1><h2>${empName}</h2><p>Period: ${(e as any).period || (e as any).pay_period || '\u2014'}</p>`)
+                                  printWindow.document.write(`<table><tr><th>Description</th><th class="amount">Amount</th></tr>`)
+                                  printWindow.document.write(`<tr><td>Gross Pay</td><td class="amount">${fmtCents((e as any).gross_pay || (e as any).grossPay)}</td></tr>`)
+                                  printWindow.document.write(`<tr><td>Tax</td><td class="amount">-${fmtCents((e as any).tax || (e as any).federal_tax || 0)}</td></tr>`)
+                                  printWindow.document.write(`<tr><td>Deductions</td><td class="amount">-${fmtCents((e as any).deductions || (e as any).total_deductions || 0)}</td></tr>`)
+                                  printWindow.document.write(`<tr class="total"><td>Net Pay</td><td class="amount">${fmtCents((e as any).net_pay || (e as any).netPay)}</td></tr>`)
+                                  printWindow.document.write(`</table><p style="margin-top:40px;color:#999;font-size:12px">Generated on ${new Date().toLocaleDateString()}</p></body></html>`)
+                                  printWindow.document.close()
+                                  printWindow.print()
+                                }}>
+                                  <Download size={12} className="mr-1" /> Payslip PDF
+                                </Button>
                               </td>
                             </tr>
                           )
@@ -1349,6 +1382,23 @@ export default function PayrollPage() {
                         <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{fmtCents(e.net_pay)}</td>
                         <td className="px-4 py-3 text-center">
                           <Button size="sm" variant="ghost" onClick={() => setShowPayStubModal(e.id)}>{t('viewStub')}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            const printWindow = window.open('', '_blank')
+                            if (!printWindow) return
+                            const empName = resolveEmployeeName(mergedEmployees, e.employee_id, (e as any).employee_name)
+                            printWindow.document.write(`<html><head><title>Payslip - ${empName}</title><style>body{font-family:sans-serif;padding:40px;max-width:800px;margin:0 auto}h1{font-size:24px;margin-bottom:4px}h2{font-size:18px;color:#666}table{width:100%;border-collapse:collapse;margin-top:20px}td,th{text-align:left;padding:8px 12px;border-bottom:1px solid #eee}th{background:#f5f5f5;font-weight:600}.amount{text-align:right}.total{font-weight:bold;border-top:2px solid #333}</style></head><body>`)
+                            printWindow.document.write(`<h1>PAYSLIP</h1><h2>${empName}</h2><p>Period: ${(e as any).period || (e as any).pay_period || '\u2014'}</p>`)
+                            printWindow.document.write(`<table><tr><th>Description</th><th class="amount">Amount</th></tr>`)
+                            printWindow.document.write(`<tr><td>Gross Pay</td><td class="amount">${fmtCents((e as any).gross_pay || (e as any).grossPay)}</td></tr>`)
+                            printWindow.document.write(`<tr><td>Tax</td><td class="amount">-${fmtCents((e as any).tax || (e as any).federal_tax || 0)}</td></tr>`)
+                            printWindow.document.write(`<tr><td>Deductions</td><td class="amount">-${fmtCents((e as any).deductions || (e as any).total_deductions || 0)}</td></tr>`)
+                            printWindow.document.write(`<tr class="total"><td>Net Pay</td><td class="amount">${fmtCents((e as any).net_pay || (e as any).netPay)}</td></tr>`)
+                            printWindow.document.write(`</table><p style="margin-top:40px;color:#999;font-size:12px">Generated on ${new Date().toLocaleDateString()}</p></body></html>`)
+                            printWindow.document.close()
+                            printWindow.print()
+                          }}>
+                            <Download size={12} className="mr-1" /> Payslip PDF
+                          </Button>
                         </td>
                       </tr>
                     )

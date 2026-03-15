@@ -757,51 +757,111 @@ export default function PerformancePage() {
 
       {/* Calibration Tab */}
       {activeTab === 'calibration' && (() => {
-        const boxes = [
-          { label: t('enigma'), bg: 'bg-gray-50', pos: t('highPotLowPerf') },
-          { label: t('growthEmployee'), bg: 'bg-gray-50', pos: t('highPotModPerf') },
-          { label: t('star'), bg: 'bg-gray-100', pos: t('highPotHighPerf') },
-          { label: t('underperformer'), bg: 'bg-gray-50', pos: t('modPotLowPerf') },
-          { label: t('corePlayer'), bg: 'bg-gray-50', pos: t('modPotModPerf') },
-          { label: t('highPerformer'), bg: 'bg-gray-100', pos: t('modPotHighPerf') },
-          { label: t('risk'), bg: 'bg-gray-100', pos: t('lowPotLowPerf') },
-          { label: t('averagePerformer'), bg: 'bg-gray-50', pos: t('lowPotModPerf') },
-          { label: t('workhorse'), bg: 'bg-gray-50', pos: t('lowPotHighPerf') },
+        const nineBoxDefs = [
+          { perf: 'Low', pot: 'High', label: t('enigma'), color: 'bg-yellow-50 border-yellow-200' },
+          { perf: 'Medium', pot: 'High', label: t('growthEmployee'), color: 'bg-blue-50 border-blue-200' },
+          { perf: 'High', pot: 'High', label: t('star'), color: 'bg-green-50 border-green-200' },
+          { perf: 'Low', pot: 'Medium', label: t('underperformer') || 'Dilemma', color: 'bg-orange-50 border-orange-200' },
+          { perf: 'Medium', pot: 'Medium', label: t('corePlayer'), color: 'bg-gray-50 border-gray-200' },
+          { perf: 'High', pot: 'Medium', label: t('highPerformer'), color: 'bg-green-50 border-green-200' },
+          { perf: 'Low', pot: 'Low', label: t('risk') || 'Underperformer', color: 'bg-red-50 border-red-200' },
+          { perf: 'Medium', pot: 'Low', label: t('averagePerformer') || 'Effective', color: 'bg-gray-50 border-gray-200' },
+          { perf: 'High', pot: 'Low', label: t('workhorse') || 'Trusted Professional', color: 'bg-blue-50 border-blue-200' },
         ]
         const boxAssignments: Record<number, typeof employees> = {}
-        boxes.forEach((_, i) => { boxAssignments[i] = [] })
+        nineBoxDefs.forEach((_, i) => { boxAssignments[i] = [] })
         employees.forEach(emp => {
           const empReviews = reviews.filter(r => r.employee_id === emp.id)
           const avgRating = empReviews.length > 0 ? empReviews.reduce((a, r) => a + (r.overall_rating || 3), 0) / empReviews.length : 3
           const empGoals = goals.filter(g => g.employee_id === emp.id)
           const avgProgress = empGoals.length > 0 ? empGoals.reduce((a, g) => a + g.progress, 0) / empGoals.length : 50
-          const perfCol = avgRating < 3 ? 0 : avgRating <= 4 ? 1 : 2
+          const perfLevel = avgRating >= 4 ? 'High' : avgRating >= 2.5 ? 'Medium' : 'Low'
           const levelScore = ['Executive', 'Director', 'Principal'].some(l => (emp.level || '').includes(l)) ? 2
             : ['Senior', 'Lead'].some(l => (emp.level || '').includes(l)) ? (avgProgress > 60 ? 2 : 1)
             : avgProgress > 70 ? 1 : 0
-          const potRow = levelScore >= 2 ? 0 : levelScore === 1 ? 1 : 2
-          const boxIdx = potRow * 3 + perfCol
-          boxAssignments[boxIdx].push(emp)
+          const potLevel = levelScore >= 2 ? 'High' : levelScore === 1 ? 'Medium' : 'Low'
+          const boxIdx = nineBoxDefs.findIndex(b => b.perf === perfLevel && b.pot === potLevel)
+          if (boxIdx >= 0) boxAssignments[boxIdx].push(emp)
         })
+        const totalPlaced = Object.values(boxAssignments).reduce((a, b) => a + b.length, 0)
         return (
-          <Card>
-            <h3 className="text-sm font-semibold text-t1 mb-4">{t('nineBoxTitle')}</h3>
-            <div className="grid grid-cols-3 gap-1 max-w-2xl">
-              {boxes.map((box, i) => (
-                <div key={i} className={`${box.bg} rounded-lg p-4 min-h-[120px]`}>
-                  <p className="text-xs font-semibold text-t1 mb-1">{box.label}</p>
-                  <p className="text-[0.6rem] text-t3 mb-2">{box.pos}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {boxAssignments[i].map(e => <Avatar key={e.id} name={e.profile?.full_name || ''} size="sm" />)}
+          <div className="space-y-6">
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard label="Total Employees" value={employees.length} icon={<Users size={20} />} />
+              <StatCard label="Placed in Grid" value={totalPlaced} icon={<BarChart3 size={20} />} />
+              <StatCard label="High Performers" value={(boxAssignments[2]?.length || 0) + (boxAssignments[5]?.length || 0) + (boxAssignments[8]?.length || 0)} icon={<Star size={20} />} />
+              <StatCard label="Needs Attention" value={(boxAssignments[3]?.length || 0) + (boxAssignments[6]?.length || 0)} icon={<AlertTriangle size={20} />} />
+            </div>
+
+            {/* 9-Box Calibration Grid */}
+            <Card className="mb-6">
+              <CardHeader><CardTitle>{t('nineBoxTitle')}</CardTitle></CardHeader>
+              <div className="p-6">
+                {/* Y-axis label */}
+                <div className="flex">
+                  <div className="flex flex-col justify-between items-center mr-2 py-2" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    <span className="text-xs text-t3">High</span>
+                    <span className="text-xs font-semibold text-t2">Potential</span>
+                    <span className="text-xs text-t3">Low</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="grid grid-cols-3 gap-1">
+                      {nineBoxDefs.map((box, idx) => {
+                        const boxEmployees = boxAssignments[idx] || []
+                        return (
+                          <div key={idx} className={`border rounded-lg p-3 min-h-[120px] ${box.color}`}>
+                            <p className="text-xs font-semibold text-t1 mb-1">{box.label}</p>
+                            <p className="text-[10px] text-t3 mb-2">{box.perf} Perf / {box.pot} Pot</p>
+                            <div className="space-y-1">
+                              {boxEmployees.slice(0, 3).map(emp => (
+                                <div key={emp.id} className="flex items-center gap-1">
+                                  <div className="w-5 h-5 rounded-full bg-tempo-100 flex items-center justify-center text-[9px] font-bold text-tempo-700">
+                                    {(emp.profile?.full_name || '').split(' ').map((n: string) => n[0]).join('')}
+                                  </div>
+                                  <span className="text-[10px] text-t2 truncate">{emp.profile?.full_name}</span>
+                                </div>
+                              ))}
+                              {boxEmployees.length > 3 && <p className="text-[10px] text-t3">+{boxEmployees.length - 3} more</p>}
+                              {boxEmployees.length === 0 && <p className="text-[10px] text-t3 italic">No employees</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {/* X-axis label */}
+                    <div className="flex justify-between mt-2">
+                      <span className="text-xs text-t3">&larr; Low Performance</span>
+                      <span className="text-xs font-semibold text-t2">Performance</span>
+                      <span className="text-xs text-t3">High Performance &rarr;</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex mt-4 gap-4 text-xs text-t3">
-              <span>{t('yAxis')}</span>
-              <span>{t('xAxis')}</span>
-            </div>
-          </Card>
+              </div>
+            </Card>
+
+            {/* Distribution breakdown */}
+            <Card>
+              <CardHeader><CardTitle>Distribution Breakdown</CardTitle></CardHeader>
+              <div className="p-6">
+                <div className="space-y-3">
+                  {nineBoxDefs.map((box, idx) => {
+                    const count = boxAssignments[idx]?.length || 0
+                    const pct = totalPlaced > 0 ? Math.round((count / totalPlaced) * 100) : 0
+                    return (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="text-sm text-t1 w-40 truncate">{box.label}</span>
+                        <div className="flex-1">
+                          <Progress value={pct} />
+                        </div>
+                        <span className="text-sm text-t2 w-20 text-right">{count} ({pct}%)</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </Card>
+          </div>
         )
       })()}
 

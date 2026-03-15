@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -324,14 +324,13 @@ export default function TimeAttendancePage() {
   [shifts, weekDates])
 
   function submitShift() {
-    if (!shiftForm.employee_id) { addToast('Please select an employee', 'error'); return }
     if (!shiftForm.date) { addToast('Date is required', 'error'); return }
     if (!shiftForm.start_time) { addToast('Start time is required', 'error'); return }
     if (!shiftForm.end_time) { addToast('End time is required', 'error'); return }
     if (shiftForm.start_time >= shiftForm.end_time) { addToast('Start time must be before end time', 'error'); return }
     setSaving(true)
     addShift({
-      employee_id: shiftForm.employee_id, date: shiftForm.date,
+      employee_id: shiftForm.employee_id || null, date: shiftForm.date,
       start_time: shiftForm.start_time, end_time: shiftForm.end_time,
       break_duration: 60, role: shiftForm.role || null, location: shiftForm.location || null,
       status: 'scheduled', swapped_with: null, notes: null,
@@ -339,7 +338,7 @@ export default function TimeAttendancePage() {
     setShowShiftModal(false)
     setShiftForm({ employee_id: '', date: '', start_time: '09:00', end_time: '17:00', role: '', location: '' })
     setSaving(false)
-    addToast('Shift created successfully')
+    addToast(shiftForm.employee_id ? 'Shift created successfully' : 'Open shift created - employees can pick it up')
   }
 
   // ---- Overtime Tab ----
@@ -468,6 +467,11 @@ export default function TimeAttendancePage() {
   const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
   const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
   const leaveSubmittingRef = useRef(false)
+  const [showAdjustBalanceModal, setShowAdjustBalanceModal] = useState(false)
+  const [adjustBalanceForm, setAdjustBalanceForm] = useState({ employee_id: '', policy_id: '', adjustment: 0, reason: '' })
+  const [showBulkBalanceModal, setShowBulkBalanceModal] = useState(false)
+  const [bulkBalanceForm, setBulkBalanceForm] = useState({ policy_id: '', new_balance: 0, reason: '' })
+  const [expandedTimesheetEmp, setExpandedTimesheetEmp] = useState<string | null>(null)
 
   function submitLeaveRequest() {
     if (leaveSubmittingRef.current) return
@@ -883,7 +887,8 @@ export default function TimeAttendancePage() {
                     const emp = employees.find(e => e.id === empId)
                     const weekStatus = data.statuses.includes('pending') ? 'pending' : data.statuses.includes('rejected') ? 'rejected' : 'approved'
                     return (
-                      <tr key={empId} className="hover:bg-canvas/50">
+                      <React.Fragment key={empId}>
+                      <tr className="hover:bg-canvas/50 cursor-pointer" onClick={() => setExpandedTimesheetEmp(prev => prev === empId ? null : empId)}>
                         <td className="px-4 py-3 sticky left-0 bg-surface z-10">
                           <div className="flex items-center gap-2">
                             <Avatar name={emp?.profile.full_name || ''} src={emp?.profile.avatar_url} size="sm" />
@@ -906,6 +911,39 @@ export default function TimeAttendancePage() {
                           <Badge variant={STATUS_COLORS[weekStatus] || 'default'} className="text-xs">{weekStatus}</Badge>
                         </td>
                       </tr>
+                      {expandedTimesheetEmp === empId && (
+                        <tr className="bg-canvas/30">
+                          <td colSpan={11} className="px-4 py-3">
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-t2 mb-2">Daily Entries for {emp?.profile.full_name}</p>
+                              {weekDates.map((date, i) => {
+                                const dayEntries = timeEntries.filter(e => e.date === date && e.employee_id === empId)
+                                if (dayEntries.length === 0) return null
+                                return dayEntries.map(entry => (
+                                  <div key={entry.id} className="flex items-center gap-4 p-2 rounded border border-divider bg-surface">
+                                    <span className="text-xs font-medium text-t1 w-16">{DAY_NAMES[i]}</span>
+                                    <span className="text-xs text-t2">{entry.clock_in ? formatTime(entry.clock_in) : '\u2014'} \u2192 {entry.clock_out ? formatTime(entry.clock_out) : '\u2014'}</span>
+                                    <span className="text-xs text-t1">{formatHours(entry.total_hours || 0)}h</span>
+                                    {(entry.overtime_hours || 0) > 0 && <span className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)} OT</span>}
+                                    <Badge variant={STATUS_COLORS[entry.status] || 'default'} className="text-xs">{entry.status}</Badge>
+                                    {canApproveLeave && entry.status === 'pending' && (
+                                      <div className="flex gap-1 ml-auto">
+                                        <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); updateTimeEntry(entry.id, { status: 'approved', approved_by: currentEmployeeId }); addToast('Entry approved') }}>
+                                          <CheckCircle size={12} /> Approve
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); updateTimeEntry(entry.id, { status: 'rejected', approved_by: currentEmployeeId }); addToast('Entry rejected') }}>
+                                          <XCircle size={12} /> Reject
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              })}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     )
                   })}
                 </tbody>
@@ -978,14 +1016,34 @@ export default function TimeAttendancePage() {
                         <td key={date} className="px-2 py-2 align-top border-r last:border-r-0 border-divider" style={{ minWidth: 140 }}>
                           <div className="space-y-1.5 min-h-[100px]">
                             {dayShifts.map(shift => {
-                              const colorClass = shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
+                              const isUnassigned = !shift.employee_id
+                              const colorClass = isUnassigned ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                                shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
                                 shift.status === 'no_show' ? 'bg-red-50 border-red-200 text-red-700' :
                                 'bg-blue-50 border-blue-200 text-blue-700'
                               return (
                                 <div key={shift.id} className={`rounded-md border p-1.5 text-xs ${colorClass}`}>
-                                  <p className="font-medium truncate">{getEmployeeName(shift.employee_id).split(' ')[0]}</p>
-                                  <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
-                                  {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                  {isUnassigned ? (
+                                    <>
+                                      <p className="font-medium truncate">Open Shift</p>
+                                      <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
+                                      {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                      {role === 'employee' && (
+                                        <button
+                                          className="mt-1 w-full text-[10px] font-medium bg-orange-500 text-white rounded px-1 py-0.5 hover:bg-orange-600 transition-colors"
+                                          onClick={() => { updateShift(shift.id, { employee_id: currentEmployeeId }); addToast('Shift picked up successfully!', 'success') }}
+                                        >
+                                          Pick Up Shift
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="font-medium truncate">{getEmployeeName(shift.employee_id).split(' ')[0]}</p>
+                                      <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
+                                      {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                    </>
+                                  )}
                                 </div>
                               )
                             })}
@@ -1213,7 +1271,12 @@ export default function TimeAttendancePage() {
           </div>
 
           {/* Request Leave Button */}
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            {canApproveLeave && (
+              <Button size="sm" variant="secondary" onClick={() => setShowBulkBalanceModal(true)}>
+                <Users size={14} className="mr-1" /> Bulk Update Balances
+              </Button>
+            )}
             <Button size="sm" onClick={() => setShowLeaveRequestModal(true)}>
               <Plus size={14} className="mr-1" /> Request Leave
             </Button>
@@ -1237,7 +1300,7 @@ export default function TimeAttendancePage() {
                       <th className="tempo-th text-left px-3 py-3">Dates</th>
                       <th className="tempo-th text-center px-3 py-3">Days</th>
                       <th className="tempo-th text-left px-3 py-3">Reason</th>
-                      {canApproveLeave && <th className="tempo-th text-center px-3 py-3">Actions</th>}
+                      <th className="tempo-th text-center px-3 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1253,18 +1316,25 @@ export default function TimeAttendancePage() {
                         <td className="px-3 py-3 text-xs text-t2">{leave.start_date} — {leave.end_date}</td>
                         <td className="px-3 py-3 text-xs text-t1 text-center">{leave.days}d</td>
                         <td className="px-3 py-3 text-xs text-t2 max-w-[200px] truncate">{leave.reason || '—'}</td>
-                        {canApproveLeave && (
-                          <td className="px-3 py-3 text-center">
+                        <td className="px-3 py-3 text-center">
                             <div className="flex gap-1 justify-center">
-                              <Button size="sm" variant="primary" onClick={() => { updateLeaveRequest(leave.id, { status: 'approved', approved_by: currentEmployeeId }); addToast('Leave approved') }}>
-                                <CheckCircle size={12} className="mr-1" /> Approve
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => { updateLeaveRequest(leave.id, { status: 'rejected', approved_by: currentEmployeeId }); addToast('Leave rejected') }}>
-                                <XCircle size={12} className="mr-1" /> Reject
-                              </Button>
+                              {canApproveLeave && (
+                                <>
+                                  <Button size="sm" variant="primary" onClick={() => { updateLeaveRequest(leave.id, { status: 'approved', approved_by: currentEmployeeId }); addToast('Leave approved') }}>
+                                    <CheckCircle size={12} className="mr-1" /> Approve
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => { updateLeaveRequest(leave.id, { status: 'rejected', approved_by: currentEmployeeId }); addToast('Leave rejected') }}>
+                                    <XCircle size={12} className="mr-1" /> Reject
+                                  </Button>
+                                </>
+                              )}
+                              {leave.employee_id === currentEmployeeId && (
+                                <Button size="sm" variant="ghost" onClick={() => { updateLeaveRequest(leave.id, { status: 'withdrawn' as any }); addToast('Leave request withdrawn') }}>
+                                  <XCircle size={12} className="mr-1" /> Withdraw
+                                </Button>
+                              )}
                             </div>
                           </td>
-                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -1384,7 +1454,11 @@ export default function TimeAttendancePage() {
                           const pct = policy.max_balance > 0 ? ((bal.balance) / policy.max_balance) * 100 : 0
                           return (
                             <td key={policy.id} className="px-3 py-3 text-center">
-                              <div className="text-xs">
+                              <div className={`text-xs ${canApproveLeave ? 'cursor-pointer hover:bg-tempo-50 rounded p-1' : ''}`}
+                                onClick={() => canApproveLeave && bal && (() => {
+                                  setAdjustBalanceForm({ employee_id: emp.id, policy_id: policy.id, adjustment: 0, reason: '' })
+                                  setShowAdjustBalanceModal(true)
+                                })()}>
                                 <span className="font-semibold text-t1">{bal.balance}</span>
                                 <span className="text-t3">/{policy.max_balance}</span>
                               </div>
@@ -1593,6 +1667,26 @@ export default function TimeAttendancePage() {
       {/* Request Leave Modal */}
       <Modal open={showLeaveRequestModal} onClose={() => setShowLeaveRequestModal(false)} title="Request Leave">
         <div className="space-y-4">
+          {(() => {
+            const myBalances = timeOffBalances.filter(b => b.employee_id === currentEmployeeId)
+            if (myBalances.length === 0) return null
+            return (
+              <div className="p-3 rounded-lg bg-canvas border border-divider">
+                <p className="text-xs font-medium text-t2 mb-2">Your Leave Balances</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {myBalances.map(bal => {
+                    const policy = timeOffPolicies.find(p => p.id === bal.policy_id)
+                    return (
+                      <div key={bal.id} className="flex justify-between text-xs">
+                        <span className="text-t2">{policy?.name || bal.policy_id}</span>
+                        <span className="font-semibold text-t1">{bal.balance}d left</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
           <Select label="Leave Type" value={leaveForm.type} onChange={e => setLeaveForm(f => ({ ...f, type: e.target.value }))}
             options={[
               { value: 'annual', label: 'Annual Leave' },
@@ -1616,6 +1710,61 @@ export default function TimeAttendancePage() {
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowLeaveRequestModal(false)}>Cancel</Button>
             <Button onClick={submitLeaveRequest} disabled={saving || !leaveForm.start_date || !leaveForm.end_date}>{saving ? 'Submitting...' : 'Submit Request'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Adjust Balance Modal */}
+      <Modal open={showAdjustBalanceModal} onClose={() => setShowAdjustBalanceModal(false)} title="Adjust Leave Balance">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">
+            Adjusting balance for <strong>{getEmployeeName(adjustBalanceForm.employee_id)}</strong> — {timeOffPolicies.find(p => p.id === adjustBalanceForm.policy_id)?.name || 'Policy'}
+          </p>
+          <Input label="Adjustment (days, use negative to deduct)" type="number" value={adjustBalanceForm.adjustment} onChange={e => setAdjustBalanceForm(f => ({ ...f, adjustment: Number(e.target.value) }))} />
+          <Input label="Reason" value={adjustBalanceForm.reason} onChange={e => setAdjustBalanceForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Annual allowance update" />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowAdjustBalanceModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              const bal = timeOffBalances.find(b => b.employee_id === adjustBalanceForm.employee_id && b.policy_id === adjustBalanceForm.policy_id)
+              if (bal) {
+                updateTimeOffBalance(bal.id, { balance: bal.balance + adjustBalanceForm.adjustment })
+                addToast(`Balance adjusted by ${adjustBalanceForm.adjustment > 0 ? '+' : ''}${adjustBalanceForm.adjustment} days`)
+              } else {
+                addTimeOffBalance({ employee_id: adjustBalanceForm.employee_id, policy_id: adjustBalanceForm.policy_id, balance: adjustBalanceForm.adjustment, used: 0, pending: 0, year: new Date().getFullYear() })
+                addToast('Balance created')
+              }
+              setShowAdjustBalanceModal(false)
+            }} disabled={!adjustBalanceForm.reason}>Save Adjustment</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Balance Update Modal */}
+      <Modal open={showBulkBalanceModal} onClose={() => setShowBulkBalanceModal(false)} title="Bulk Update Leave Balances">
+        <div className="space-y-4">
+          <Select label="Policy" value={bulkBalanceForm.policy_id} onChange={e => setBulkBalanceForm(f => ({ ...f, policy_id: e.target.value }))}
+            options={[{ value: '', label: 'Select a policy' }, ...timeOffPolicies.filter(p => p.is_active).map(p => ({ value: p.id, label: p.name }))]} />
+          <Input label="New Balance (days)" type="number" value={bulkBalanceForm.new_balance} onChange={e => setBulkBalanceForm(f => ({ ...f, new_balance: Number(e.target.value) }))} />
+          <Input label="Reason" value={bulkBalanceForm.reason} onChange={e => setBulkBalanceForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Annual allowance reset for 2026" />
+          <p className="text-xs text-t3">This will set the balance to {bulkBalanceForm.new_balance} days for all employees under the selected policy.</p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowBulkBalanceModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!bulkBalanceForm.policy_id) { addToast('Select a policy first', 'error'); return }
+              let updated = 0
+              employees.forEach(emp => {
+                const existing = timeOffBalances.find(b => b.employee_id === emp.id && b.policy_id === bulkBalanceForm.policy_id)
+                if (existing) {
+                  updateTimeOffBalance(existing.id, { balance: bulkBalanceForm.new_balance })
+                  updated++
+                } else {
+                  addTimeOffBalance({ employee_id: emp.id, policy_id: bulkBalanceForm.policy_id, balance: bulkBalanceForm.new_balance, used: 0, pending: 0, year: new Date().getFullYear() })
+                  updated++
+                }
+              })
+              addToast(`Updated balances for ${updated} employees`)
+              setShowBulkBalanceModal(false)
+            }} disabled={!bulkBalanceForm.policy_id || !bulkBalanceForm.reason}>Update All Employees</Button>
           </div>
         </div>
       </Modal>

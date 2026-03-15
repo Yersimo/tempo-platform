@@ -36,6 +36,7 @@ const TRIGGER_TYPES = [
   { value: 'expense_submitted', label: 'Expense Submitted', icon: FileText, color: 'text-orange-400' },
   { value: 'payroll_completed', label: 'Payroll Completed', icon: DollarSign, color: 'text-green-400' },
   { value: 'custom', label: 'Custom Trigger', icon: Settings, color: 'text-slate-400' },
+  { value: 'scheduled', label: 'Scheduled (Cron/Date)', icon: Calendar, color: 'text-indigo-400' },
 ] as const
 
 const ACTION_TYPES = [
@@ -1319,6 +1320,39 @@ export default function WorkflowsPage() {
             onChange={e => setWorkflowForm({ ...workflowForm, trigger: e.target.value })}
             options={TRIGGER_TYPES.map(t => ({ value: t.value, label: t.label }))}
           />
+          {workflowForm.trigger === 'scheduled' && (
+            <div className="space-y-3 bg-white/5 border border-white/10 rounded-lg p-3">
+              <p className="text-xs text-white/60 font-medium">Schedule Configuration</p>
+              <Select
+                label="Frequency"
+                value={(workflowForm as any).scheduleFrequency || 'daily'}
+                onChange={e => setWorkflowForm({ ...workflowForm, scheduleFrequency: e.target.value } as any)}
+                options={[
+                  { value: 'daily', label: 'Daily' },
+                  { value: 'weekly', label: 'Weekly' },
+                  { value: 'monthly', label: 'Monthly' },
+                  { value: 'quarterly', label: 'Quarterly' },
+                  { value: 'yearly', label: 'Yearly' },
+                  { value: 'cron', label: 'Custom Cron Expression' },
+                ]}
+              />
+              {(workflowForm as any).scheduleFrequency === 'cron' ? (
+                <Input
+                  label="Cron Expression"
+                  value={(workflowForm as any).cronExpression || ''}
+                  onChange={e => setWorkflowForm({ ...workflowForm, cronExpression: e.target.value } as any)}
+                  placeholder="0 9 * * 1 (Mon 9am)"
+                />
+              ) : (
+                <Input
+                  label="Start Date"
+                  type="date"
+                  value={(workflowForm as any).scheduleStartDate || ''}
+                  onChange={e => setWorkflowForm({ ...workflowForm, scheduleStartDate: e.target.value } as any)}
+                />
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"

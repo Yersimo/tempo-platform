@@ -108,33 +108,33 @@ export function MyTeamTab() {
       {/* Team Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Team Size"
+          label={t('teamSize')}
           value={teamMembers.length}
-          change={currentDepartment?.name || 'Department'}
+          change={currentDepartment?.name || tc('department')}
           changeType="neutral"
           icon={<Users size={20} />}
           href="/people"
         />
         <StatCard
-          label="Pending Leave"
+          label={t('teamPendingLeave')}
           value={teamPendingLeave.length}
-          change={teamPendingLeave.length > 0 ? 'Needs approval' : 'No pending requests'}
+          change={teamPendingLeave.length > 0 ? t('needsApproval') : t('noPendingRequests')}
           changeType={teamPendingLeave.length > 0 ? 'negative' : 'positive'}
           icon={<CalendarCheck size={20} />}
           href="/time-attendance"
         />
         <StatCard
-          label="Goals at Risk"
+          label={t('goalsAtRisk')}
           value={teamGoalsAtRisk.length}
-          change={`${teamGoals.length} total team goals`}
+          change={t('totalTeamGoals', { count: teamGoals.length })}
           changeType={teamGoalsAtRisk.length > 0 ? 'negative' : 'positive'}
           icon={<Target size={20} />}
           href="/performance"
         />
         <StatCard
-          label="Review Completion"
+          label={t('teamReviewCompletion')}
           value={`${teamReviewCompletion}%`}
-          change={`${teamReviews.filter(r => r.status === 'submitted').length}/${teamReviews.length} submitted`}
+          change={t('reviewsSubmitted', { submitted: teamReviews.filter(r => r.status === 'submitted').length, total: teamReviews.length })}
           changeType={teamReviewCompletion >= 80 ? 'positive' : teamReviewCompletion >= 50 ? 'neutral' : 'negative'}
           icon={<TrendingUp size={20} />}
           href="/performance"
@@ -146,7 +146,7 @@ export function MyTeamTab() {
         <Card padding="none" className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Direct Reports</CardTitle>
+              <CardTitle>{t('directReports')}</CardTitle>
               <Button variant="ghost" size="sm" onClick={() => router.push('/people')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
@@ -154,7 +154,7 @@ export function MyTeamTab() {
             {memberDetails.length === 0 ? (
               <div className="px-6 py-8 text-center">
                 <Users size={24} className="mx-auto text-t3 mb-2" />
-                <p className="text-sm text-t3">No team members found</p>
+                <p className="text-sm text-t3">{t('noTeamMembers')}</p>
               </div>
             ) : (
               memberDetails.map(member => (
@@ -194,7 +194,7 @@ export function MyTeamTab() {
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Team Leave Requests</CardTitle>
+              <CardTitle>{t('teamLeaveRequests')}</CardTitle>
               <Badge variant="warning">{teamPendingLeave.length}</Badge>
             </div>
           </CardHeader>
@@ -202,7 +202,7 @@ export function MyTeamTab() {
             {teamPendingLeave.length === 0 ? (
               <div className="px-6 py-8 text-center">
                 <CalendarCheck size={24} className="mx-auto text-t3 mb-2" />
-                <p className="text-sm text-t3">No pending leave requests</p>
+                <p className="text-sm text-t3">{t('noPendingLeaveRequests')}</p>
               </div>
             ) : (
               teamPendingLeave.map(lr => (
@@ -229,7 +229,7 @@ export function MyTeamTab() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Team Goals Progress</CardTitle>
+            <CardTitle>{t('teamGoalsProgress')}</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
           </div>
         </CardHeader>
@@ -237,7 +237,7 @@ export function MyTeamTab() {
           {teamGoals.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <Target size={24} className="mx-auto text-t3 mb-2" />
-              <p className="text-sm text-t3">No team goals found</p>
+              <p className="text-sm text-t3">{t('noTeamGoals')}</p>
             </div>
           ) : (
             teamGoals.slice(0, 8).map(goal => (
@@ -274,7 +274,7 @@ export function MyTeamTab() {
       <Card padding="none">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Team Learning</CardTitle>
+            <CardTitle>{t('teamLearning')}</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => router.push('/learning')}>{tc('viewAll')}</Button>
           </div>
         </CardHeader>
@@ -282,7 +282,7 @@ export function MyTeamTab() {
           {teamEnrollments.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <Star size={24} className="mx-auto text-t3 mb-2" />
-              <p className="text-sm text-t3">No team enrollments</p>
+              <p className="text-sm text-t3">{t('noTeamEnrollments')}</p>
             </div>
           ) : (
             <>
@@ -290,11 +290,11 @@ export function MyTeamTab() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-lg font-semibold text-t1">{teamEnrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').length}</p>
-                    <p className="text-xs text-t3">In Progress</p>
+                    <p className="text-xs text-t3">{t('inProgressLabel')}</p>
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-t1">{teamEnrollments.filter(e => e.status === 'completed').length}</p>
-                    <p className="text-xs text-t3">Completed</p>
+                    <p className="text-xs text-t3">{t('completedLabel')}</p>
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-t1">
@@ -302,7 +302,7 @@ export function MyTeamTab() {
                         ? Math.round(teamEnrollments.reduce((sum, e) => sum + e.progress, 0) / teamEnrollments.length)
                         : 0}%
                     </p>
-                    <p className="text-xs text-t3">Avg Progress</p>
+                    <p className="text-xs text-t3">{t('avgProgress')}</p>
                   </div>
                 </div>
               </div>

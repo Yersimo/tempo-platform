@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
-import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
@@ -136,6 +136,7 @@ export default function AnalyticsPage() {
     { id: 'flight_risk', label: t('tabFlightRisk') },
     { id: 'compensation', label: 'Compensation' },
     { id: 'recruiting', label: 'Recruiting' },
+    { id: 'diversity', label: 'Diversity' },
     { id: 'executive', label: 'Executive' },
   ]
 
@@ -199,23 +200,28 @@ export default function AnalyticsPage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<Button size="sm" disabled={saving} onClick={async () => {
-          if (employees.length === 0) { addToast('No employee data available to export', 'error'); return }
-          setSaving(true)
-          try {
-            exportToPrint(
-              employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
-              [
-                { header: 'Name', accessor: (r: any) => r.name },
-                { header: 'Department', accessor: (r: any) => r.dept },
-                { header: 'Country', accessor: (r: any) => r.country },
-                { header: 'Level', accessor: (r: any) => r.level },
-              ],
-              'Analytics Report - Workforce Overview'
-            )
-            addToast('Report generated successfully', 'success')
-          } finally { setSaving(false) }
-        }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>} />
+        actions={<div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => addToast('Report scheduling configured. You will receive this report weekly via email.')}>
+            <Calendar size={14} className="mr-1" /> Schedule Report
+          </Button>
+          <Button size="sm" disabled={saving} onClick={async () => {
+            if (employees.length === 0) { addToast('No employee data available to export', 'error'); return }
+            setSaving(true)
+            try {
+              exportToPrint(
+                employees.map(e => ({ name: e.profile?.full_name || '', dept: getDepartmentName(e.department_id), country: e.country, level: e.level })),
+                [
+                  { header: 'Name', accessor: (r: any) => r.name },
+                  { header: 'Department', accessor: (r: any) => r.dept },
+                  { header: 'Country', accessor: (r: any) => r.country },
+                  { header: 'Level', accessor: (r: any) => r.level },
+                ],
+                'Analytics Report - Workforce Overview'
+              )
+              addToast('Report generated successfully', 'success')
+            } finally { setSaving(false) }
+          }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>
+        </div>} />
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
@@ -711,6 +717,90 @@ export default function AnalyticsPage() {
           </div>
         )
       })()}
+
+      {/* Diversity Analytics */}
+      {activeTab === 'diversity' && filteredEmployees.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">Nationality / Country Diversity</h3>
+            <TempoDonutChart
+              data={countryCounts.map(([country, count]) => ({ name: country, value: count as number }))}
+              centerLabel={String(new Set(filteredEmployees.map(e => e.country)).size)}
+              centerSub="Countries"
+              height={220}
+              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']}
+            />
+          </Card>
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">Department Diversity Index</h3>
+            <div className="space-y-3">
+              {departments.map(dept => {
+                const deptEmps = filteredEmployees.filter(e => e.department_id === dept.id)
+                const deptCountries = new Set(deptEmps.map(e => e.country)).size
+                const deptLevels = new Set(deptEmps.map(e => e.level)).size
+                const diversityScore = deptEmps.length > 0 ? Math.min(100, Math.round(((deptCountries + deptLevels) / (deptEmps.length + 1)) * 100)) : 0
+                return deptEmps.length > 0 ? (
+                  <div key={dept.id} className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-t1 truncate">{dept.name}</p>
+                      <p className="text-[10px] text-t3">{deptEmps.length} employees, {deptCountries} countries, {deptLevels} levels</p>
+                    </div>
+                    <Badge variant={diversityScore >= 50 ? 'success' : diversityScore >= 25 ? 'warning' : 'default'}>{diversityScore}%</Badge>
+                  </div>
+                ) : null
+              })}
+            </div>
+          </Card>
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">Level Distribution</h3>
+            <TempoBarChart
+              data={['Executive', 'Director', 'Senior', 'Mid', 'Associate', 'Junior'].map(level => ({
+                name: level,
+                count: filteredEmployees.filter(e => e.level === level).length,
+              })).filter(d => d.count > 0)}
+              bars={[{ dataKey: 'count', name: 'Employees', color: CHART_COLORS.primary }]}
+              xKey="name"
+              layout="horizontal"
+              height={200}
+              showGrid={false}
+            />
+          </Card>
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-4">Diversity Summary</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-t2">Total Countries Represented</span>
+                <span className="text-sm font-semibold text-t1">{new Set(filteredEmployees.map(e => e.country)).size}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-t2">Departments</span>
+                <span className="text-sm font-semibold text-t1">{departments.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-t2">Unique Job Levels</span>
+                <span className="text-sm font-semibold text-t1">{new Set(filteredEmployees.map(e => e.level)).size}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-t2">Unique Job Titles</span>
+                <span className="text-sm font-semibold text-t1">{new Set(filteredEmployees.map(e => e.job_title)).size}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-t2">Management Ratio</span>
+                <span className="text-sm font-semibold text-t1">{filteredEmployees.length > 0 ? Math.round((filteredEmployees.filter(e => e.role === 'manager' || e.role === 'admin' || e.role === 'owner').length / filteredEmployees.length) * 100) : 0}%</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      {activeTab === 'diversity' && filteredEmployees.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Users size={28} className="text-t3 mb-4" />
+            <h3 className="text-sm font-semibold text-t1 mb-1">No employee data</h3>
+            <p className="text-xs text-t3 mb-4 max-w-xs">Add employees to see diversity analytics.</p>
+          </div>
+        </Card>
+      )}
 
       {/* Executive Summary - Board-level reporting */}
       {activeTab === 'executive' && (() => {

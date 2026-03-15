@@ -1121,7 +1121,7 @@ export interface JourneyStep {
 
 export interface Journey {
   id: string
-  type: 'new_hire_onboarding' | 'performance_review' | 'salary_review' | 'benefits_enrollment'
+  type: string
   title: string
   description: string
   employee_id: string
@@ -1131,6 +1131,8 @@ export interface Journey {
   steps: JourneyStep[]
   started_at: string | null
   due_date: string | null
+  template_id?: string
+  category?: 'onboarding' | 'performance' | 'benefits' | 'compliance' | 'career' | 'offboarding' | 'custom'
 }
 
 export const demoJourneys: Journey[] = [
@@ -1189,6 +1191,170 @@ export const demoJourneys: Journey[] = [
       { id: 'js-13', title: 'Select plan options', description: 'Choose your medical, dental, and vision plan options.', status: 'pending', type: 'form', action_href: '/benefits' },
       { id: 'js-14', title: 'Confirm enrollment', description: 'Review and confirm your benefit elections.', status: 'pending', type: 'approval', action_href: '/benefits' },
     ],
+  },
+  {
+    id: 'journey-4',
+    type: 'compliance_renewal',
+    title: 'Annual Compliance Renewal — Fatou Ndiaye',
+    description: 'Complete your annual compliance certifications and policy acknowledgements.',
+    employee_id: 'emp-6',
+    assigned_by: 'emp-12',
+    status: 'completed',
+    current_step: 3,
+    started_at: '2026-01-15T09:00:00Z',
+    due_date: '2026-02-15T09:00:00Z',
+    template_id: 'jt-4',
+    category: 'compliance',
+    steps: [
+      { id: 'js-15', title: 'AML refresher training', description: 'Complete Anti-Money Laundering refresher.', status: 'completed', type: 'task', action_href: '/learning' },
+      { id: 'js-16', title: 'Data privacy certification', description: 'Pass data privacy assessment.', status: 'completed', type: 'task', action_href: '/learning' },
+      { id: 'js-17', title: 'Policy acknowledgement', description: 'Review and sign updated policies.', status: 'completed', type: 'form', action_href: '/documents' },
+      { id: 'js-18', title: 'Manager sign-off', description: 'Manager confirms completion.', status: 'completed', type: 'approval', action_href: '/compliance' },
+    ],
+  },
+  {
+    id: 'journey-5',
+    type: 'promotion_transition',
+    title: 'Promotion Transition — Folake Adeleke',
+    description: 'Guide through transition to new Team Lead role.',
+    employee_id: 'emp-12',
+    assigned_by: 'emp-1',
+    status: 'in_progress',
+    current_step: 2,
+    started_at: '2026-03-01T09:00:00Z',
+    due_date: '2026-04-30T09:00:00Z',
+    template_id: 'jt-5',
+    category: 'career',
+    steps: [
+      { id: 'js-19', title: 'Review new role expectations', description: 'Understand responsibilities for Team Lead role.', status: 'completed', type: 'info', action_href: '/performance' },
+      { id: 'js-20', title: 'Leadership training', description: 'Complete leadership development module.', status: 'completed', type: 'task', action_href: '/learning' },
+      { id: 'js-21', title: 'Meet new team', description: 'Introduction meetings with direct reports.', status: 'in_progress', type: 'task', action_href: '/people' },
+      { id: 'js-22', title: 'Set new goals', description: 'Define goals for the Team Lead role.', status: 'pending', type: 'form', action_href: '/performance' },
+      { id: 'js-23', title: '60-day transition review', description: 'Review transition progress with manager.', status: 'pending', type: 'review', action_href: '/performance' },
+    ],
+  },
+]
+
+// ============================================================
+// MOMENTS THAT MATTER — Employee lifecycle moments
+// ============================================================
+
+export interface MomentThatMatters {
+  id: string
+  org_id: string
+  employee_id: string
+  type: 'birthday' | 'work_anniversary' | 'promotion' | 'new_hire' | 'return_from_leave' | 'retirement' | 'first_project' | 'certification' | 'team_change' | 'milestone_achievement' | 'baby_born' | 'wedding' | 'custom'
+  title: string
+  description: string
+  date: string
+  status: 'upcoming' | 'today' | 'celebrated' | 'missed'
+  visibility: 'public' | 'manager_only' | 'hr_only'
+  celebration_type: 'auto_message' | 'team_shoutout' | 'gift_card' | 'spotlight' | 'none'
+  acknowledged_by: string[]
+  created_at: string
+}
+
+export const demoMomentsThatMatter: MomentThatMatters[] = [
+  { id: 'mtm-1', org_id: 'org-1', employee_id: 'emp-2', type: 'work_anniversary', title: '5-Year Work Anniversary', description: 'Ngozi Okafor celebrates 5 years at Ecobank! She has grown from a teller to Branch Manager.', date: '2026-03-18', status: 'upcoming', visibility: 'public', celebration_type: 'team_shoutout', acknowledged_by: ['emp-1'], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-2', org_id: 'org-1', employee_id: 'emp-6', type: 'promotion', title: 'Promoted to Senior Credit Analyst', description: 'Fatou Ndiaye has been promoted to Senior Credit Analyst in recognition of her outstanding performance.', date: '2026-03-10', status: 'celebrated', visibility: 'public', celebration_type: 'spotlight', acknowledged_by: ['emp-5', 'emp-7', 'emp-8', 'emp-1'], created_at: '2026-03-05T00:00:00Z' },
+  { id: 'mtm-3', org_id: 'org-1', employee_id: 'emp-10', type: 'birthday', title: 'Birthday Celebration', description: 'Happy birthday to Yaw Mensah from the Digital Banking team!', date: '2026-03-15', status: 'today', visibility: 'public', celebration_type: 'auto_message', acknowledged_by: ['emp-9', 'emp-11'], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-4', org_id: 'org-1', employee_id: 'emp-30', type: 'new_hire', title: 'Welcome New Team Member', description: 'Aminata Diop has joined the Retail Banking team as a Customer Service Associate.', date: '2026-02-10', status: 'celebrated', visibility: 'public', celebration_type: 'team_shoutout', acknowledged_by: ['emp-1', 'emp-2', 'emp-3', 'emp-4'], created_at: '2026-02-10T00:00:00Z' },
+  { id: 'mtm-5', org_id: 'org-1', employee_id: 'emp-13', type: 'first_project', title: 'First Major Project Completed', description: 'Babajide Ogunleye successfully delivered the Core Banking System Upgrade project.', date: '2026-03-05', status: 'celebrated', visibility: 'public', celebration_type: 'spotlight', acknowledged_by: ['emp-9', 'emp-14', 'emp-1'], created_at: '2026-03-05T00:00:00Z' },
+  { id: 'mtm-6', org_id: 'org-1', employee_id: 'emp-15', type: 'certification', title: 'CFA Level III Passed', description: 'Aisha Mohammed has passed her CFA Level III exam. Outstanding achievement!', date: '2026-02-28', status: 'celebrated', visibility: 'public', celebration_type: 'team_shoutout', acknowledged_by: ['emp-14', 'emp-16', 'emp-1'], created_at: '2026-02-28T00:00:00Z' },
+  { id: 'mtm-7', org_id: 'org-1', employee_id: 'emp-1', type: 'work_anniversary', title: '10-Year Work Anniversary', description: 'Oluwaseun Adeyemi marks a decade of leadership at Ecobank. A true pillar of the organization.', date: '2026-04-01', status: 'upcoming', visibility: 'public', celebration_type: 'spotlight', acknowledged_by: [], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-8', org_id: 'org-1', employee_id: 'emp-8', type: 'baby_born', title: 'New Baby!', description: 'Congratulations to Ibrahim Coulibaly on the birth of their child!', date: '2026-03-12', status: 'celebrated', visibility: 'public', celebration_type: 'gift_card', acknowledged_by: ['emp-5', 'emp-6', 'emp-7', 'emp-1', 'emp-9'], created_at: '2026-03-12T00:00:00Z' },
+  { id: 'mtm-9', org_id: 'org-1', employee_id: 'emp-20', type: 'return_from_leave', title: 'Welcome Back', description: 'Thandiwe Ndlovu returns from parental leave. Welcome back to the team!', date: '2026-03-20', status: 'upcoming', visibility: 'manager_only', celebration_type: 'auto_message', acknowledged_by: [], created_at: '2026-03-10T00:00:00Z' },
+  { id: 'mtm-10', org_id: 'org-1', employee_id: 'emp-5', type: 'milestone_achievement', title: '100th Deal Closed', description: 'Amadou Diallo has closed his 100th corporate banking deal. A remarkable milestone!', date: '2026-03-08', status: 'celebrated', visibility: 'public', celebration_type: 'spotlight', acknowledged_by: ['emp-1', 'emp-6', 'emp-7', 'emp-8', 'emp-9'], created_at: '2026-03-08T00:00:00Z' },
+  { id: 'mtm-11', org_id: 'org-1', employee_id: 'emp-12', type: 'team_change', title: 'New Team Lead', description: 'Folake Adeleke has been appointed Team Lead of the Compliance division.', date: '2026-03-01', status: 'celebrated', visibility: 'public', celebration_type: 'team_shoutout', acknowledged_by: ['emp-11', 'emp-1'], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-12', org_id: 'org-1', employee_id: 'emp-22', type: 'birthday', title: 'Birthday Celebration', description: 'Happy birthday to Sipho Moyo!', date: '2026-03-25', status: 'upcoming', visibility: 'public', celebration_type: 'auto_message', acknowledged_by: [], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-13', org_id: 'org-1', employee_id: 'emp-18', type: 'work_anniversary', title: '3-Year Work Anniversary', description: 'Chinwe Eze celebrates 3 years with Ecobank Treasury.', date: '2026-03-22', status: 'upcoming', visibility: 'public', celebration_type: 'auto_message', acknowledged_by: [], created_at: '2026-03-01T00:00:00Z' },
+  { id: 'mtm-14', org_id: 'org-1', employee_id: 'emp-25', type: 'wedding', title: 'Congratulations on the Wedding!', description: 'Nana Ampah recently got married. Wishing them a lifetime of happiness!', date: '2026-02-22', status: 'celebrated', visibility: 'public', celebration_type: 'gift_card', acknowledged_by: ['emp-24', 'emp-26', 'emp-1'], created_at: '2026-02-22T00:00:00Z' },
+]
+
+// ============================================================
+// JOURNEY TEMPLATES — Reusable journey blueprints
+// ============================================================
+
+export interface JourneyTemplate {
+  id: string
+  org_id: string
+  type: string
+  title: string
+  description: string
+  category: 'onboarding' | 'performance' | 'benefits' | 'compliance' | 'career' | 'offboarding' | 'custom'
+  steps: Omit<JourneyStep, 'status'>[]
+  is_active: boolean
+  auto_assign: boolean
+  trigger_event?: string
+  estimated_days: number
+  created_by: string
+  created_at: string
+}
+
+export const demoJourneyTemplates: JourneyTemplate[] = [
+  {
+    id: 'jt-1', org_id: 'org-1', type: 'new_hire_onboarding', title: 'New Hire Onboarding', description: 'Complete onboarding journey for all new employees.', category: 'onboarding',
+    steps: [
+      { id: 'jts-1', title: 'Complete personal profile', description: 'Fill in personal details, emergency contacts, and banking information.', type: 'form', action_href: '/people' },
+      { id: 'jts-2', title: 'Review company policies', description: 'Read and acknowledge the employee handbook and code of conduct.', type: 'info', action_href: '/documents' },
+      { id: 'jts-3', title: 'Complete compliance training', description: 'Finish required AML and Data Protection courses.', type: 'task', action_href: '/learning' },
+      { id: 'jts-4', title: 'Meet your buddy', description: 'Schedule first meeting with onboarding buddy.', type: 'task', action_href: '/mentoring' },
+      { id: 'jts-5', title: 'Set 90-day goals', description: 'Define initial goals with your manager.', type: 'form', action_href: '/performance' },
+      { id: 'jts-6', title: '30-day check-in', description: 'Complete 30-day check-in with manager.', type: 'review', action_href: '/performance' },
+    ],
+    is_active: true, auto_assign: true, trigger_event: 'employee_hired', estimated_days: 30, created_by: 'emp-1', created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'jt-2', org_id: 'org-1', type: 'performance_review', title: 'Quarterly Performance Review', description: 'End-to-end performance review cycle journey.', category: 'performance',
+    steps: [
+      { id: 'jts-7', title: 'Self-assessment', description: 'Complete your self-assessment.', type: 'form', action_href: '/performance' },
+      { id: 'jts-8', title: 'Peer feedback', description: 'Request and gather peer feedback from 3+ colleagues.', type: 'task', action_href: '/performance' },
+      { id: 'jts-9', title: 'Manager review', description: 'Manager completes assessment.', type: 'approval', action_href: '/performance' },
+      { id: 'jts-10', title: 'Calibration', description: 'Department-level calibration session.', type: 'review', action_href: '/performance' },
+    ],
+    is_active: true, auto_assign: false, estimated_days: 21, created_by: 'emp-1', created_at: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'jt-3', org_id: 'org-1', type: 'benefits_enrollment', title: 'Annual Benefits Enrollment', description: 'Guide employees through annual benefit elections.', category: 'benefits',
+    steps: [
+      { id: 'jts-11', title: 'Review current benefits', description: 'Review existing enrollments and coverage.', type: 'info', action_href: '/benefits' },
+      { id: 'jts-12', title: 'Update dependents', description: 'Add or remove dependents.', type: 'form', action_href: '/benefits' },
+      { id: 'jts-13', title: 'Select plan options', description: 'Choose medical, dental, and vision plans.', type: 'form', action_href: '/benefits' },
+      { id: 'jts-14', title: 'Confirm enrollment', description: 'Review and confirm benefit elections.', type: 'approval', action_href: '/benefits' },
+    ],
+    is_active: true, auto_assign: true, trigger_event: 'open_enrollment_start', estimated_days: 14, created_by: 'emp-9', created_at: '2025-08-01T00:00:00Z',
+  },
+  {
+    id: 'jt-4', org_id: 'org-1', type: 'compliance_renewal', title: 'Annual Compliance Renewal', description: 'Yearly compliance certification and policy acknowledgement.', category: 'compliance',
+    steps: [
+      { id: 'jts-15', title: 'AML refresher training', description: 'Complete Anti-Money Laundering refresher.', type: 'task', action_href: '/learning' },
+      { id: 'jts-16', title: 'Data privacy certification', description: 'Pass data privacy assessment.', type: 'task', action_href: '/learning' },
+      { id: 'jts-17', title: 'Policy acknowledgement', description: 'Review and sign updated policies.', type: 'form', action_href: '/documents' },
+      { id: 'jts-18', title: 'Manager sign-off', description: 'Manager confirms completion.', type: 'approval', action_href: '/compliance' },
+    ],
+    is_active: true, auto_assign: true, trigger_event: 'annual_compliance_due', estimated_days: 14, created_by: 'emp-12', created_at: '2025-09-01T00:00:00Z',
+  },
+  {
+    id: 'jt-5', org_id: 'org-1', type: 'promotion_transition', title: 'Promotion Transition', description: 'Guide newly promoted employees through their transition.', category: 'career',
+    steps: [
+      { id: 'jts-19', title: 'Review new role expectations', description: 'Understand responsibilities and competencies for your new role.', type: 'info', action_href: '/performance' },
+      { id: 'jts-20', title: 'Leadership training', description: 'Complete leadership development module.', type: 'task', action_href: '/learning' },
+      { id: 'jts-21', title: 'Meet new team', description: 'Introduction meetings with direct reports or peers.', type: 'task', action_href: '/people' },
+      { id: 'jts-22', title: 'Set new goals', description: 'Define goals for the new role.', type: 'form', action_href: '/performance' },
+      { id: 'jts-23', title: '60-day transition review', description: 'Review transition progress with manager.', type: 'review', action_href: '/performance' },
+    ],
+    is_active: true, auto_assign: true, trigger_event: 'employee_promoted', estimated_days: 60, created_by: 'emp-1', created_at: '2025-10-01T00:00:00Z',
+  },
+  {
+    id: 'jt-6', org_id: 'org-1', type: 'offboarding', title: 'Employee Offboarding', description: 'Structured offboarding process for departing employees.', category: 'offboarding',
+    steps: [
+      { id: 'jts-24', title: 'Exit interview', description: 'Schedule and complete exit interview.', type: 'task', action_href: '/offboarding' },
+      { id: 'jts-25', title: 'Knowledge transfer', description: 'Document key processes and hand over responsibilities.', type: 'task', action_href: '/documents' },
+      { id: 'jts-26', title: 'Return equipment', description: 'Return laptop, access cards, and other company property.', type: 'task', action_href: '/it/devices' },
+      { id: 'jts-27', title: 'Final payroll & benefits', description: 'Review final paycheck and benefits continuation.', type: 'review', action_href: '/payroll' },
+      { id: 'jts-28', title: 'Access revocation', description: 'IT confirms all access has been revoked.', type: 'approval', action_href: '/identity' },
+    ],
+    is_active: true, auto_assign: true, trigger_event: 'employee_terminated', estimated_days: 14, created_by: 'emp-1', created_at: '2025-11-01T00:00:00Z',
   },
 ]
 

@@ -134,6 +134,7 @@ export default function OffboardingPage() {
     { id: 'checklists', label: 'Checklists', count: offboardingChecklists.length },
     { id: 'surveys', label: 'Exit Surveys', count: exitSurveys.length },
     { id: 'knowledge-transfer', label: 'Knowledge Transfer', count: ktItems.length },
+    { id: 'alumni', label: 'Alumni Archive', count: offboardingProcesses.filter(p => p.status === 'completed').length },
     { id: 'analytics', label: 'Analytics' },
   ]
 
@@ -433,7 +434,27 @@ export default function OffboardingPage() {
         status: 'pending',
       })
     })
-    addToast('Offboarding approved — tasks created')
+    // G14: Auto-create IT Access Revocation task
+    addOffboardingTask({
+      process_id: processId,
+      checklist_item_id: 'auto_it_revocation',
+      assignee_id: null,
+      status: 'pending',
+      title: 'IT Access Revocation',
+      description: 'Revoke all IT access: email, VPN, SSO, internal tools. Disable Active Directory account.',
+      category: 'access_revocation',
+    })
+    // G15: Auto-trigger COBRA notification for benefits termination
+    addOffboardingTask({
+      process_id: processId,
+      checklist_item_id: 'auto_cobra_notification',
+      assignee_id: null,
+      status: 'pending',
+      title: 'Send COBRA Notification',
+      description: 'Send COBRA continuation coverage notice to departing employee within 14 days of benefits termination.',
+      category: 'benefits',
+    })
+    addToast('Offboarding approved — tasks created (incl. IT revocation & COBRA notice)')
   }
 
   function confirmReassignAndApprove() {
@@ -1454,6 +1475,47 @@ export default function OffboardingPage() {
                 </Button>
               </div>
             </Modal>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: Alumni Archive
+        ═══════════════════════════════════════ */}
+        {activeTab === 'alumni' && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Alumni Directory</CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-6">
+                {offboardingProcesses.filter(p => p.status === 'completed').length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-8">No offboarded employees yet. Completed offboarding processes will appear here as alumni records.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {offboardingProcesses.filter(p => p.status === 'completed').map(process => {
+                      const emp = employees.find(e => e.id === process.employee_id)
+                      const survey = exitSurveys.find(s => s.employee_id === process.employee_id)
+                      return (
+                        <div key={process.id} className="flex items-center justify-between p-4 rounded-lg border border-divider hover:bg-canvas/50">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={emp?.profile?.full_name || 'Unknown'} size="sm" />
+                            <div>
+                              <p className="text-sm font-medium text-t1">{emp?.profile?.full_name || 'Unknown Employee'}</p>
+                              <p className="text-xs text-t3">{emp?.job_title || 'N/A'} &middot; Left: {process.completed_at ? new Date(process.completed_at).toLocaleDateString() : 'N/A'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default">{(process as any).reason || 'N/A'}</Badge>
+                            {survey && <Badge variant="info">Exit Survey</Badge>}
+                            {(survey?.responses as any)?.would_recommend && <Badge variant="success">Would Recommend</Badge>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         )}
 
