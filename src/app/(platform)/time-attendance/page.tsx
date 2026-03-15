@@ -324,14 +324,13 @@ export default function TimeAttendancePage() {
   [shifts, weekDates])
 
   function submitShift() {
-    if (!shiftForm.employee_id) { addToast('Please select an employee', 'error'); return }
     if (!shiftForm.date) { addToast('Date is required', 'error'); return }
     if (!shiftForm.start_time) { addToast('Start time is required', 'error'); return }
     if (!shiftForm.end_time) { addToast('End time is required', 'error'); return }
     if (shiftForm.start_time >= shiftForm.end_time) { addToast('Start time must be before end time', 'error'); return }
     setSaving(true)
     addShift({
-      employee_id: shiftForm.employee_id, date: shiftForm.date,
+      employee_id: shiftForm.employee_id || null, date: shiftForm.date,
       start_time: shiftForm.start_time, end_time: shiftForm.end_time,
       break_duration: 60, role: shiftForm.role || null, location: shiftForm.location || null,
       status: 'scheduled', swapped_with: null, notes: null,
@@ -339,7 +338,7 @@ export default function TimeAttendancePage() {
     setShowShiftModal(false)
     setShiftForm({ employee_id: '', date: '', start_time: '09:00', end_time: '17:00', role: '', location: '' })
     setSaving(false)
-    addToast('Shift created successfully')
+    addToast(shiftForm.employee_id ? 'Shift created successfully' : 'Open shift created - employees can pick it up')
   }
 
   // ---- Overtime Tab ----
@@ -1017,14 +1016,34 @@ export default function TimeAttendancePage() {
                         <td key={date} className="px-2 py-2 align-top border-r last:border-r-0 border-divider" style={{ minWidth: 140 }}>
                           <div className="space-y-1.5 min-h-[100px]">
                             {dayShifts.map(shift => {
-                              const colorClass = shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
+                              const isUnassigned = !shift.employee_id
+                              const colorClass = isUnassigned ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                                shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
                                 shift.status === 'no_show' ? 'bg-red-50 border-red-200 text-red-700' :
                                 'bg-blue-50 border-blue-200 text-blue-700'
                               return (
                                 <div key={shift.id} className={`rounded-md border p-1.5 text-xs ${colorClass}`}>
-                                  <p className="font-medium truncate">{getEmployeeName(shift.employee_id).split(' ')[0]}</p>
-                                  <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
-                                  {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                  {isUnassigned ? (
+                                    <>
+                                      <p className="font-medium truncate">Open Shift</p>
+                                      <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
+                                      {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                      {role === 'employee' && (
+                                        <button
+                                          className="mt-1 w-full text-[10px] font-medium bg-orange-500 text-white rounded px-1 py-0.5 hover:bg-orange-600 transition-colors"
+                                          onClick={() => { updateShift(shift.id, { employee_id: currentEmployeeId }); addToast('Shift picked up successfully!', 'success') }}
+                                        >
+                                          Pick Up Shift
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="font-medium truncate">{getEmployeeName(shift.employee_id).split(' ')[0]}</p>
+                                      <p className="text-[10px] opacity-80">{shift.start_time}-{shift.end_time}</p>
+                                      {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
+                                    </>
+                                  )}
                                 </div>
                               )
                             })}
