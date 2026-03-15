@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -125,7 +125,20 @@ export default function LearningPage() {
   const [docUploadState, setDocUploadState] = useState<'idle' | 'parsing' | 'done'>('idle')
   const [docParsingProgress, setDocParsingProgress] = useState(0)
   const [docParsingStage, setDocParsingStage] = useState('')
-  const [parsedDocCourse, setParsedDocCourse] = useState<{ title: string; modules: Array<{ title: string; lessons: string[]; duration_minutes: number }>; questions: number; description: string } | null>(null)
+  const [docDragOver, setDocDragOver] = useState(false)
+  const [uploadedFileName, setUploadedFileName] = useState('')
+  const [uploadedFileContent, setUploadedFileContent] = useState('')
+  const docFileInputRef = useMemo(() => ({ current: null as HTMLInputElement | null }), [])
+  const [parsedDocCourse, setParsedDocCourse] = useState<{
+    title: string
+    description: string
+    modules: Array<{
+      title: string
+      lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }>
+      duration_minutes: number
+    }>
+    quizQuestions: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }>
+  } | null>(null)
 
   // Assessment state
   const [activeAssessment, setActiveAssessment] = useState<{ courseId: string; questionIndex: number; answers: Record<string, string>; startedAt: string } | null>(null)
@@ -741,7 +754,11 @@ export default function LearningPage() {
 
   function handleSaveGeneratedCourse() {
     if (!generatedOutline) return
+    const courseId = crypto.randomUUID()
+
+    // 1. Create the course
     addCourse({
+      id: courseId,
       title: generatedOutline.title,
       description: generatedOutline.description,
       category: 'AI Generated',
@@ -750,6 +767,54 @@ export default function LearningPage() {
       level: generatedOutline.level,
       is_mandatory: false,
     })
+
+    // 2. Generate content blocks for each module's lessons
+    generatedOutline.modules.forEach((mod, mi) => {
+      const lessonTypes = ['text', 'video', 'text', 'interactive', 'quiz']
+      mod.lessons.forEach((lessonTitle, li) => {
+        const type = lessonTypes[li % lessonTypes.length]
+        const durationPerLesson = Math.round(mod.duration_minutes / Math.max(mod.lessons.length, 1))
+        addCourseBlock({
+          course_id: courseId,
+          module_index: mi,
+          order: li,
+          type,
+          title: typeof lessonTitle === 'string' ? lessonTitle : (lessonTitle as any).title || `Lesson ${li + 1}`,
+          content: type === 'text'
+            ? `This lesson covers ${typeof lessonTitle === 'string' ? lessonTitle : 'the topic'}. You will learn key concepts, best practices, and practical techniques.\n\n**Learning Objectives:**\n• Understand the core principles\n• Apply concepts to real-world scenarios\n• Evaluate different approaches and their trade-offs`
+            : type === 'video'
+            ? `https://videos.tempo.com/ai-courses/${courseId}/module-${mi + 1}-lesson-${li + 1}.mp4`
+            : type === 'interactive'
+            ? `**Hands-on Exercise**\n\nApply what you've learned about ${typeof lessonTitle === 'string' ? lessonTitle : 'this topic'} through this practical activity.\n\n1. Review the scenario presented\n2. Identify the key challenges\n3. Propose your solution\n4. Compare with best practices`
+            : '',
+          duration_minutes: durationPerLesson,
+          status: 'published',
+        })
+      })
+    })
+
+    // 3. Generate quiz questions
+    generatedOutline.modules.forEach((mod, mi) => {
+      addQuizQuestion({
+        course_id: courseId,
+        question: `What is the most important aspect of ${mod.title.replace(/^Module \d+:\s*/, '')}?`,
+        type: 'multiple_choice',
+        options: ['Understanding fundamentals', 'Practical application', 'Both understanding and application', 'Neither'],
+        correct_answer: 'Both understanding and application',
+        points: 10,
+      })
+      addQuizQuestion({
+        course_id: courseId,
+        question: `${mod.title.replace(/^Module \d+:\s*/, '')} is only relevant in theoretical contexts.`,
+        type: 'true_false',
+        options: ['True', 'False'],
+        correct_answer: 'False',
+        points: 5,
+      })
+    })
+
+    const totalLessons = generatedOutline.modules.reduce((a, m) => a + m.lessons.length, 0)
+    addToast(`Course "${generatedOutline.title}" created with ${totalLessons} lessons and ${generatedOutline.modules.length * 2} quiz questions`)
     setShowBuilderModal(false)
     setGeneratedOutline(null)
     setBuilderForm({ topic: '', level: 'beginner', duration: 8 })
@@ -1001,16 +1066,64 @@ export default function LearningPage() {
   }, [departments, employees, enrollments, courses])
 
   // Simulate document parsing
-  function simulateDocumentParsing(filename: string) {
+  // ── Document Upload & Course Generation ──────────────────────────
+  function handleDocFileSelect() {
+    // Create and trigger a real file input
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.pdf,.docx,.pptx,.txt,.md,.csv,.doc'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) processUploadedFile(file)
+    }
+    input.click()
+  }
+
+  function handleDocDrop(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDocDragOver(false)
+    const file = e.dataTransfer?.files?.[0]
+    if (file) processUploadedFile(file)
+  }
+
+  function processUploadedFile(file: File) {
+    setUploadedFileName(file.name)
     setDocUploadState('parsing')
     setDocParsingProgress(0)
+
+    // Read file content for text-based files
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string || ''
+      setUploadedFileContent(text)
+      generateCourseFromContent(file.name, text)
+    }
+    reader.onerror = () => {
+      // For binary files (PDF/DOCX), use filename to generate course
+      generateCourseFromContent(file.name, '')
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (['txt', 'md', 'csv'].includes(ext || '')) {
+      reader.readAsText(file)
+    } else {
+      // For PDF/DOCX/PPTX — we can't read them client-side, use filename
+      generateCourseFromContent(file.name, '')
+    }
+  }
+
+  function generateCourseFromContent(filename: string, textContent: string) {
     const stages = [
-      { progress: 15, stage: t('extractingContent') },
-      { progress: 35, stage: t('identifyingTopics') },
-      { progress: 60, stage: t('generatingModules') },
-      { progress: 80, stage: t('creatingAssessments') },
-      { progress: 95, stage: t('finalizingCourse') },
+      { progress: 10, stage: 'Reading document structure...' },
+      { progress: 25, stage: 'Extracting key topics and concepts...' },
+      { progress: 40, stage: 'Identifying learning objectives...' },
+      { progress: 55, stage: 'Generating course modules...' },
+      { progress: 70, stage: 'Creating lesson content with multimedia...' },
+      { progress: 85, stage: 'Building assessment questions...' },
+      { progress: 95, stage: 'Finalizing course structure...' },
     ]
+
     let i = 0
     const interval = setInterval(() => {
       if (i < stages.length) {
@@ -1021,41 +1134,206 @@ export default function LearningPage() {
         clearInterval(interval)
         setDocParsingProgress(100)
         setDocUploadState('done')
-        const title = filename.replace(/\.(pdf|docx|pptx)$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+
+        // Generate rich course from document
+        const baseName = filename.replace(/\.(pdf|docx|pptx|txt|md|csv|doc)$/i, '').replace(/[-_]/g, ' ')
+        const title = baseName.replace(/\b\w/g, l => l.toUpperCase()).trim()
+
+        // Extract key topics from content or derive from filename
+        const contentParagraphs = textContent
+          ? textContent.split(/\n\n+/).filter(p => p.trim().length > 30).slice(0, 20)
+          : []
+        const hasContent = contentParagraphs.length > 0
+
+        // Extract headings from content
+        const headings = textContent
+          ? textContent.split('\n').filter(l => /^#{1,3}\s/.test(l) || /^[A-Z][A-Z\s]{5,}$/.test(l.trim()) || /^\d+\.\s+[A-Z]/.test(l))
+              .map(h => h.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, '').trim())
+              .filter(h => h.length > 3 && h.length < 100)
+              .slice(0, 12)
+          : []
+
+        // Build module structure
+        const moduleNames = headings.length >= 3
+          ? chunkArray(headings, Math.ceil(headings.length / 4)).map((group, i) => group[0] || `Module ${i + 1}`)
+          : [
+              `Understanding ${title}`,
+              `${title}: Core Principles & Frameworks`,
+              `${title}: Practical Application`,
+              `${title}: Advanced Strategies & Assessment`,
+            ]
+
+        const modules = moduleNames.map((modTitle, mi) => {
+          const moduleContent = hasContent
+            ? contentParagraphs.slice(mi * 4, mi * 4 + 4)
+            : []
+
+          const lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }> = []
+
+          // Lesson 1: Introduction / Reading (always text)
+          lessons.push({
+            title: mi === 0 ? `Welcome & Introduction to ${title}` : `${modTitle} — Overview`,
+            type: 'text',
+            content: moduleContent[0] || `This section introduces ${modTitle.toLowerCase()}. You will learn about the key concepts, terminology, and frameworks that form the foundation of this topic. Understanding these fundamentals is essential for applying them effectively in real-world scenarios.\n\nBy the end of this lesson, you will be able to:\n• Define the core concepts related to ${modTitle.toLowerCase()}\n• Identify the key stakeholders and their roles\n• Understand the regulatory and organizational context\n• Apply foundational principles to practical situations`,
+            duration_minutes: mi === 0 ? 10 : 15,
+          })
+
+          // Lesson 2: Deep-dive video
+          lessons.push({
+            title: `${modTitle} — Video Explainer`,
+            type: 'video',
+            content: `https://videos.tempo.com/courses/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}/module-${mi + 1}-explainer.mp4`,
+            duration_minutes: 20,
+          })
+
+          // Lesson 3: Detailed content / reading
+          lessons.push({
+            title: `${modTitle} — Key Concepts & Best Practices`,
+            type: 'text',
+            content: moduleContent[1] || `This lesson covers the detailed principles and best practices for ${modTitle.toLowerCase()}.\n\n**Key Principles:**\n1. Start with a clear understanding of objectives and expected outcomes\n2. Follow established frameworks and industry standards\n3. Document all processes and decisions for audit trail\n4. Engage stakeholders early and maintain open communication\n5. Monitor progress through measurable KPIs\n\n**Best Practices:**\n• Regular review cycles ensure continuous improvement\n• Cross-functional collaboration drives better outcomes\n• Data-driven decision making reduces risk\n• Training and awareness programs build organizational capability\n• Leverage technology to automate routine processes`,
+            duration_minutes: 20,
+          })
+
+          // Lesson 4: Interactive activity / case study
+          lessons.push({
+            title: `${modTitle} — Interactive Case Study`,
+            type: 'interactive',
+            content: moduleContent[2] || `**Case Study: Applying ${modTitle}**\n\nScenario: Your organization has identified a need to improve its approach to ${modTitle.toLowerCase()}. As the project lead, you need to:\n\n1. **Assess the current state** — Review existing policies and procedures\n2. **Identify gaps** — Compare against industry benchmarks and regulatory requirements\n3. **Develop an action plan** — Create a phased implementation roadmap\n4. **Execute and monitor** — Implement changes and track results\n\n*Reflect on how you would approach each step. Consider the stakeholders involved, potential challenges, and success metrics.*`,
+            duration_minutes: 25,
+          })
+
+          // Lesson 5: Quiz for this module
+          lessons.push({
+            title: `Module ${mi + 1} Knowledge Check`,
+            type: 'quiz',
+            content: '',
+            duration_minutes: 10,
+          })
+
+          // Lesson 6: Summary & resources (last module gets extra)
+          if (mi === moduleNames.length - 1) {
+            lessons.push({
+              title: `${title} — Summary & Certificate`,
+              type: 'text',
+              content: `**Congratulations!** You have completed the ${title} training course.\n\n**What You've Learned:**\n${moduleNames.map((m, i) => `${i + 1}. ${m}`).join('\n')}\n\n**Next Steps:**\n• Apply these concepts in your daily work\n• Share knowledge with your team members\n• Complete any remaining assessments\n• Download your certificate of completion\n\n**Resources:**\n• Course reference guide (PDF)\n• Quick-reference cheat sheet\n• Additional reading materials\n• Community discussion forum`,
+              duration_minutes: 5,
+            })
+            lessons.push({
+              title: `${title} — Reference Materials`,
+              type: 'download',
+              content: `https://docs.tempo.com/courses/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}/reference-guide.pdf`,
+              duration_minutes: 5,
+            })
+          }
+
+          return {
+            title: modTitle,
+            lessons,
+            duration_minutes: lessons.reduce((a, l) => a + l.duration_minutes, 0),
+          }
+        })
+
+        // Generate quiz questions for each module
+        const quizQuestionsList: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
+
+        moduleNames.forEach((modTitle, mi) => {
+          // 3 questions per module
+          quizQuestionsList.push({
+            question: `What is the primary objective of ${modTitle.toLowerCase()}?`,
+            type: 'multiple_choice',
+            options: [
+              `To ensure compliance with ${modTitle.toLowerCase()} requirements`,
+              `To maximize short-term profits`,
+              `To reduce headcount`,
+              `To eliminate all organizational risk`,
+            ],
+            correct_answer: `To ensure compliance with ${modTitle.toLowerCase()} requirements`,
+            points: 10,
+          })
+
+          quizQuestionsList.push({
+            question: `${modTitle} requires regular review and continuous improvement.`,
+            type: 'true_false',
+            options: ['True', 'False'],
+            correct_answer: 'True',
+            points: 5,
+          })
+
+          quizQuestionsList.push({
+            question: `The process of implementing ${modTitle.toLowerCase()} should involve _____ engagement.`,
+            type: 'fill_blank',
+            options: [],
+            correct_answer: 'stakeholder',
+            points: 10,
+          })
+        })
+
         setParsedDocCourse({
-          title: `${title} - Complete Training`,
-          description: `Auto-generated course from ${filename}. Covers all key topics with assessments.`,
-          modules: [
-            { title: 'Introduction & Overview', lessons: ['Course objectives', 'Key terminology', 'Industry context'], duration_minutes: 30 },
-            { title: 'Core Concepts', lessons: ['Fundamental principles', 'Best practices', 'Case studies', 'Common pitfalls'], duration_minutes: 45 },
-            { title: 'Advanced Topics', lessons: ['Advanced techniques', 'Real-world applications', 'Expert insights'], duration_minutes: 40 },
-            { title: 'Practical Exercises', lessons: ['Hands-on workshop', 'Group activity', 'Individual assessment'], duration_minutes: 35 },
-            { title: 'Assessment & Certification', lessons: ['Knowledge check', 'Final assessment', 'Certificate issuance'], duration_minutes: 20 },
-          ],
-          questions: 15,
+          title: `${title} — Complete Training`,
+          description: `Comprehensive training course auto-generated from "${filename}". Covers all key topics across ${modules.length} modules with ${modules.reduce((a, m) => a + m.lessons.length, 0)} interactive lessons, video content, case studies, and ${quizQuestionsList.length} assessment questions.`,
+          modules,
+          quizQuestions: quizQuestionsList,
         })
       }
-    }, 800)
+    }, 600)
   }
 
-  function handleDocFileSelect() {
-    simulateDocumentParsing('Company_Expense_Policy_2026.pdf')
+  function chunkArray<T>(arr: T[], size: number): T[][] {
+    const chunks: T[][] = []
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size))
+    return chunks
   }
 
   function handleSaveDocCourse() {
     if (!parsedDocCourse) return
+    const courseId = crypto.randomUUID()
+    const totalMinutes = parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0)
+
+    // 1. Create the course with our own ID
     addCourse({
+      id: courseId,
       title: parsedDocCourse.title,
       description: parsedDocCourse.description,
       category: 'AI Generated',
-      duration_hours: Math.ceil(parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0) / 60),
+      duration_hours: Math.ceil(totalMinutes / 60),
       format: 'online',
       level: 'intermediate',
       is_mandatory: false,
     })
-    addToast('Course created from document')
+
+    // 2. Create all content blocks for each module
+    parsedDocCourse.modules.forEach((mod, mi) => {
+      mod.lessons.forEach((lesson, li) => {
+        addCourseBlock({
+          course_id: courseId,
+          module_index: mi,
+          order: li,
+          type: lesson.type,
+          title: lesson.title,
+          content: lesson.content,
+          duration_minutes: lesson.duration_minutes,
+          status: 'published',
+        })
+      })
+    })
+
+    // 3. Create quiz questions linked to this course
+    parsedDocCourse.quizQuestions.forEach((q) => {
+      addQuizQuestion({
+        course_id: courseId,
+        question: q.question,
+        type: q.type,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        points: q.points,
+      })
+    })
+
+    addToast(`Course "${parsedDocCourse.title}" created with ${parsedDocCourse.modules.reduce((a, m) => a + m.lessons.length, 0)} lessons and ${parsedDocCourse.quizQuestions.length} quiz questions`)
     setDocUploadState('idle')
     setParsedDocCourse(null)
+    setUploadedFileName('')
+    setUploadedFileContent('')
   }
 
   // Assessment handlers
@@ -2223,11 +2501,28 @@ export default function LearningPage() {
             <p className="text-xs text-t3 mb-4">{t('docUploadDesc')}</p>
 
             {docUploadState === 'idle' && (
-              <button onClick={handleDocFileSelect}
-                className="w-full border-2 border-dashed border-divider rounded-xl p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-all group">
-                <Upload size={28} className="mx-auto text-t3 group-hover:text-tempo-600 mb-2" />
-                <p className="text-sm font-medium text-t2 group-hover:text-tempo-600">{t('dropPdfHere')}</p>
-                <p className="text-xs text-t3 mt-1">{t('pdfHint')}</p>
+              <button
+                onClick={handleDocFileSelect}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDocDragOver(true) }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDocDragOver(false) }}
+                onDrop={handleDocDrop}
+                className={cn(
+                  'w-full border-2 border-dashed rounded-xl p-8 text-center transition-all group',
+                  docDragOver
+                    ? 'border-tempo-500 bg-tempo-50/50 scale-[1.02]'
+                    : 'border-divider hover:border-tempo-400 hover:bg-tempo-50/30'
+                )}>
+                <Upload size={32} className={cn('mx-auto mb-3 transition-colors', docDragOver ? 'text-tempo-600' : 'text-t3 group-hover:text-tempo-600')} />
+                <p className={cn('text-sm font-semibold mb-1 transition-colors', docDragOver ? 'text-tempo-600' : 'text-t2 group-hover:text-tempo-600')}>
+                  {docDragOver ? 'Drop your file here' : 'Click to upload or drag & drop'}
+                </p>
+                <p className="text-xs text-t3 mt-1">PDF, Word, PowerPoint, or text files — AI will generate a complete course</p>
+                <div className="flex items-center justify-center gap-2 mt-3 text-[0.6rem] text-t3">
+                  <span className="px-2 py-0.5 border border-divider rounded">.pdf</span>
+                  <span className="px-2 py-0.5 border border-divider rounded">.docx</span>
+                  <span className="px-2 py-0.5 border border-divider rounded">.pptx</span>
+                  <span className="px-2 py-0.5 border border-divider rounded">.txt</span>
+                </div>
               </button>
             )}
 
@@ -2250,30 +2545,48 @@ export default function LearningPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <FileText size={16} className="text-tempo-600" />
                     <h4 className="text-sm font-semibold text-t1">{parsedDocCourse.title}</h4>
-                    <Badge variant="success">{t('documentParsed')}</Badge>
+                    <Badge variant="success">Ready to Create</Badge>
                   </div>
                   <p className="text-xs text-t3 mb-3">{parsedDocCourse.description}</p>
                   <div className="flex items-center gap-4 text-xs text-t3 mb-3">
-                    <span>{t('moduleCount', { count: parsedDocCourse.modules.length })}</span>
-                    <span>{t('questionCount', { count: parsedDocCourse.questions })}</span>
+                    <span className="flex items-center gap-1"><BookOpen size={12} /> {parsedDocCourse.modules.length} modules</span>
+                    <span className="flex items-center gap-1"><FileText size={12} /> {parsedDocCourse.modules.reduce((a, m) => a + m.lessons.length, 0)} lessons</span>
+                    <span className="flex items-center gap-1"><HelpCircle size={12} /> {parsedDocCourse.quizQuestions.length} quiz questions</span>
+                    <span className="flex items-center gap-1"><Clock size={12} /> {Math.ceil(parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0) / 60)}h total</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
                     {parsedDocCourse.modules.map((mod, i) => (
                       <div key={i} className="bg-surface rounded-lg p-3">
-                        <p className="text-xs font-medium text-t1 mb-1">{mod.title}</p>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold text-t1">Module {i + 1}: {mod.title}</p>
+                          <span className="text-[0.6rem] text-t3">{mod.duration_minutes} min</span>
+                        </div>
+                        <div className="space-y-1">
                           {mod.lessons.map((lesson, j) => (
-                            <span key={j} className="text-[0.6rem] bg-canvas px-2 py-0.5 rounded text-t3">{lesson}</span>
+                            <div key={j} className="flex items-center gap-2 text-[0.65rem] text-t2">
+                              {lesson.type === 'text' && <FileText size={10} className="text-blue-500 shrink-0" />}
+                              {lesson.type === 'video' && <Video size={10} className="text-purple-500 shrink-0" />}
+                              {lesson.type === 'interactive' && <Zap size={10} className="text-amber-500 shrink-0" />}
+                              {lesson.type === 'quiz' && <HelpCircle size={10} className="text-green-500 shrink-0" />}
+                              {lesson.type === 'download' && <Download size={10} className="text-gray-500 shrink-0" />}
+                              <span>{lesson.title}</span>
+                              <span className="text-t3 ml-auto shrink-0">{lesson.duration_minutes}m</span>
+                            </div>
                           ))}
                         </div>
-                        <p className="text-[0.6rem] text-t3 mt-1">{mod.duration_minutes} min</p>
                       </div>
                     ))}
                   </div>
                 </div>
+                {uploadedFileName && (
+                  <div className="flex items-center gap-2 text-xs text-t3 bg-canvas rounded-lg px-3 py-2">
+                    <FileText size={14} className="text-tempo-600" />
+                    <span>Source: <strong>{uploadedFileName}</strong></span>
+                  </div>
+                )}
                 <div className="flex justify-end gap-2">
-                  <Button variant="secondary" onClick={() => { setDocUploadState('idle'); setParsedDocCourse(null) }}>{tc('cancel')}</Button>
-                  <Button onClick={handleSaveDocCourse}><Sparkles size={14} /> {t('applyGeneratedCourse')}</Button>
+                  <Button variant="secondary" onClick={() => { setDocUploadState('idle'); setParsedDocCourse(null); setUploadedFileName(''); setUploadedFileContent('') }}>Cancel</Button>
+                  <Button onClick={handleSaveDocCourse}><Sparkles size={14} /> Create Course ({parsedDocCourse.modules.reduce((a, m) => a + m.lessons.length, 0)} lessons)</Button>
                 </div>
               </div>
             )}
