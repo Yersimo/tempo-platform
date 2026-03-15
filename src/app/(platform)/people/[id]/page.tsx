@@ -135,22 +135,30 @@ export default function EmployeeDetailPage() {
   const careerRecs = useMemo(() => emp ? suggestCareerPath(emp, employees) : null, [emp, employees])
 
   // Claude AI enhancement - employee insight narrative
-  const { result: enhancedInsight, isLoading: insightLoading } = useAI({
+  const { result: rawEnhancedInsight, isLoading: insightLoading } = useAI({
     action: 'enhanceNarrative',
     data: { insight: employeeInsight, employee: emp ? { name: emp.profile?.full_name, title: emp.job_title, level: emp.level } : null },
     fallback: employeeInsight,
     enabled: !!employeeInsight,
     cacheKey: `people-insight-${id}`,
   })
+  // Defensive: ensure narrative has correct shape (AI might return unexpected format)
+  const enhancedInsight = rawEnhancedInsight && typeof rawEnhancedInsight === 'object' && 'summary' in rawEnhancedInsight
+    ? { ...rawEnhancedInsight, summary: String((rawEnhancedInsight as any).summary ?? ''), bulletPoints: Array.isArray((rawEnhancedInsight as any).bulletPoints) ? (rawEnhancedInsight as any).bulletPoints.map((p: any) => typeof p === 'string' ? p : String(p ?? '')) : [] }
+    : rawEnhancedInsight
 
   // Claude AI enhancement - career path suggestions
-  const { result: enhancedCareer, isLoading: careerLoading } = useAI({
+  const { result: rawEnhancedCareer, isLoading: careerLoading } = useAI({
     action: 'enhanceCareerPath',
     data: { employee: emp ? { name: emp.profile?.full_name, title: emp.job_title, level: emp.level } : null, currentSuggestions: careerRecs },
     fallback: careerRecs,
     enabled: !!careerRecs && careerRecs.length > 0,
     cacheKey: `people-career-${id}`,
   })
+  // Defensive: ensure career recs have string titles
+  const enhancedCareer = Array.isArray(rawEnhancedCareer)
+    ? rawEnhancedCareer.map((rec: any) => ({ ...rec, title: typeof rec.title === 'string' ? rec.title : String(rec.title ?? '') }))
+    : rawEnhancedCareer
 
   const tabs = [
     { id: 'overview', label: t('tabOverview') },
@@ -435,9 +443,9 @@ export default function EmployeeDetailPage() {
         <Card className="md:w-80 flex-shrink-0">
           <div className="flex flex-col items-center text-center">
             <Avatar name={emp.profile?.full_name || ''} size="lg" />
-            <h2 className="text-lg font-semibold text-t1 mt-3">{emp.profile?.full_name}</h2>
-            <p className="text-sm text-t2">{emp.job_title}</p>
-            <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'} className="mt-2">{emp.role}</Badge>
+            <h2 className="text-lg font-semibold text-t1 mt-3">{String(emp.profile?.full_name ?? '')}</h2>
+            <p className="text-sm text-t2">{String(emp.job_title ?? '')}</p>
+            <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'} className="mt-2">{String(emp.role ?? '')}</Badge>
             {isPrivilegedRole && (
               <Button size="sm" variant="secondary" className="mt-4" onClick={openEdit}><Pencil size={14} /> {t('editProfile')}</Button>
             )}
@@ -448,25 +456,25 @@ export default function EmployeeDetailPage() {
           <div className="mt-6 space-y-3 border-t border-divider pt-4">
             <div className="flex items-center gap-3 text-sm">
               <Mail size={14} className="text-t3" />
-              <span className="text-t2">{emp.profile?.email}</span>
+              <span className="text-t2">{String(emp.profile?.email ?? '')}</span>
             </div>
             {emp.profile?.phone && (
               <div className="flex items-center gap-3 text-sm">
                 <Phone size={14} className="text-t3" />
-                <span className="text-t2">{emp.profile.phone}</span>
+                <span className="text-t2">{String(emp.profile.phone)}</span>
               </div>
             )}
             <div className="flex items-center gap-3 text-sm">
               <MapPin size={14} className="text-t3" />
-              <span className="text-t2">{emp.country}</span>
+              <span className="text-t2">{String(emp.country ?? '')}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <Building2 size={14} className="text-t3" />
-              <span className="text-t2">{getDepartmentName(emp.department_id)}</span>
+              <span className="text-t2">{String(getDepartmentName(emp.department_id) ?? '')}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <Briefcase size={14} className="text-t3" />
-              <span className="text-t2">{emp.level}</span>
+              <span className="text-t2">{String(emp.level ?? '')}</span>
             </div>
           </div>
 
@@ -476,8 +484,8 @@ export default function EmployeeDetailPage() {
               <h4 className="text-xs font-semibold text-t3 uppercase mb-2">Emergency Contact</h4>
               {empContacts.filter(c => c.is_primary).map(c => (
                 <div key={c.id} className="space-y-1">
-                  <p className="text-xs font-medium text-t1">{c.name}</p>
-                  <p className="text-[0.65rem] text-t3">{c.relationship}</p>
+                  <p className="text-xs font-medium text-t1">{String(c.name ?? '')}</p>
+                  <p className="text-[0.65rem] text-t3">{String(c.relationship ?? '')}</p>
                   <div className="flex items-center gap-1.5">
                     <Phone size={10} className="text-t3" />
                     <span className="text-xs text-t2">{c.phone}</span>
@@ -531,7 +539,7 @@ export default function EmployeeDetailPage() {
                 {empGoals.length > 0 ? empGoals.map(g => (
                   <div key={g.id} className="flex items-center gap-3 mb-3">
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-t1">{g.title}</p>
+                      <p className="text-xs font-medium text-t1">{String(g.title ?? '')}</p>
                       <Progress value={g.progress} showLabel className="mt-1" />
                     </div>
                     <Badge variant={g.status === 'on_track' ? 'success' : g.status === 'at_risk' ? 'warning' : 'error'} />
@@ -543,12 +551,12 @@ export default function EmployeeDetailPage() {
                 {empReviews.length > 0 ? empReviews.map(r => (
                   <div key={r.id} className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-xs font-medium text-t1">{t('reviewType', { type: r.type })}</p>
-                      <p className="text-[0.65rem] text-t3">{t('reviewBy', { name: getEmployeeName(r.reviewer_id) })}</p>
+                      <p className="text-xs font-medium text-t1">{t('reviewType', { type: String(r.type ?? '') })}</p>
+                      <p className="text-[0.65rem] text-t3">{t('reviewBy', { name: String(getEmployeeName(r.reviewer_id) ?? '') })}</p>
                     </div>
                     <div className="text-right">
-                      {r.overall_rating && <span className="tempo-stat text-tempo-600">{t('ratingOutOf', { rating: r.overall_rating })}</span>}
-                      <Badge variant={r.status === 'submitted' ? 'success' : 'warning'} className="ml-2">{r.status.replace(/_/g, ' ')}</Badge>
+                      {r.overall_rating && <span className="tempo-stat text-tempo-600">{t('ratingOutOf', { rating: String(r.overall_rating) })}</span>}
+                      <Badge variant={r.status === 'submitted' ? 'success' : 'warning'} className="ml-2">{String(r.status ?? '').replace(/_/g, ' ')}</Badge>
                     </div>
                   </div>
                 )) : <p className="text-xs text-t3">{t('noReviewsYet')}</p>}
@@ -558,10 +566,10 @@ export default function EmployeeDetailPage() {
                 {empFeedback.length > 0 ? empFeedback.slice(0, 3).map(f => (
                   <div key={f.id} className="mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-t1">{getEmployeeName(f.from_id)}</span>
-                      <Badge variant={f.type === 'recognition' ? 'success' : 'info'}>{f.type}</Badge>
+                      <span className="text-xs font-medium text-t1">{String(getEmployeeName(f.from_id) ?? '')}</span>
+                      <Badge variant={f.type === 'recognition' ? 'success' : 'info'}>{String(f.type ?? '')}</Badge>
                     </div>
-                    <p className="text-xs text-t2 mt-1 line-clamp-2">{f.content}</p>
+                    <p className="text-xs text-t2 mt-1 line-clamp-2">{String(f.content ?? '')}</p>
                   </div>
                 )) : <p className="text-xs text-t3">{t('noFeedbackReceived')}</p>}
               </Card>
@@ -569,8 +577,8 @@ export default function EmployeeDetailPage() {
                 <h3 className="text-sm font-semibold text-t1 mb-3">{t('devices')}</h3>
                 {empDevices.length > 0 ? empDevices.map(d => (
                   <div key={d.id} className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-t1">{d.brand} {d.model}</span>
-                    <Badge>{d.type}</Badge>
+                    <span className="text-xs text-t1">{String(d.brand ?? '')} {String(d.model ?? '')}</span>
+                    <Badge>{String(d.type ?? '')}</Badge>
                   </div>
                 )) : <p className="text-xs text-t3">{t('noDevicesAssigned')}</p>}
               </Card>
@@ -815,10 +823,10 @@ export default function EmployeeDetailPage() {
                 {empGoals.map(g => (
                   <div key={g.id} className="px-6 py-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-t1">{g.title}</p>
-                      <Badge variant={g.status === 'on_track' ? 'success' : g.status === 'at_risk' ? 'warning' : 'error'}>{g.status.replace(/_/g, ' ')}</Badge>
+                      <p className="text-sm font-medium text-t1">{String(g.title ?? '')}</p>
+                      <Badge variant={g.status === 'on_track' ? 'success' : g.status === 'at_risk' ? 'warning' : 'error'}>{String(g.status ?? '').replace(/_/g, ' ')}</Badge>
                     </div>
-                    {g.description && <p className="text-xs text-t2 mb-2">{g.description}</p>}
+                    {g.description && <p className="text-xs text-t2 mb-2">{String(g.description)}</p>}
                     <Progress value={g.progress} showLabel />
                     <p className="text-xs text-t3 mt-1">{t('due', { date: g.due_date })}</p>
                   </div>
@@ -837,7 +845,7 @@ export default function EmployeeDetailPage() {
                   return (
                     <div key={e.id} className="px-6 py-4">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-t1">{course?.title}</p>
+                        <p className="text-sm font-medium text-t1">{String(course?.title ?? '')}</p>
                         <Badge variant={e.status === 'completed' ? 'success' : e.status === 'in_progress' ? 'warning' : 'default'}>{e.status.replace(/_/g, ' ')}</Badge>
                       </div>
                       <Progress value={e.progress} showLabel />
@@ -856,11 +864,11 @@ export default function EmployeeDetailPage() {
                 {empLeave.map(lr => (
                   <div key={lr.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-t1">{t('leaveType', { type: lr.type })}</p>
-                      <p className="text-xs text-t3">{t('leaveDateRange', { start: lr.start_date, end: lr.end_date, days: lr.days })}</p>
-                      {lr.reason && <p className="text-xs text-t2 mt-1">{lr.reason}</p>}
+                      <p className="text-sm font-medium text-t1">{t('leaveType', { type: String(lr.type ?? '') })}</p>
+                      <p className="text-xs text-t3">{t('leaveDateRange', { start: String(lr.start_date ?? ''), end: String(lr.end_date ?? ''), days: String(lr.days ?? '') })}</p>
+                      {lr.reason && <p className="text-xs text-t2 mt-1">{String(lr.reason)}</p>}
                     </div>
-                    <Badge variant={lr.status === 'approved' ? 'success' : lr.status === 'pending' ? 'warning' : 'error'}>{lr.status}</Badge>
+                    <Badge variant={lr.status === 'approved' ? 'success' : lr.status === 'pending' ? 'warning' : 'error'}>{String(lr.status ?? '')}</Badge>
                   </div>
                 ))}
                 {empLeave.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noLeaveRequests')}</div>}
@@ -875,10 +883,10 @@ export default function EmployeeDetailPage() {
                 {empDevices.map(d => (
                   <div key={d.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-t1">{d.brand} {d.model}</p>
-                      <p className="text-xs text-t3">{t('serialNumber', { serial: d.serial_number })}</p>
+                      <p className="text-sm font-medium text-t1">{String(d.brand ?? '')} {String(d.model ?? '')}</p>
+                      <p className="text-xs text-t3">{t('serialNumber', { serial: String(d.serial_number ?? '') })}</p>
                     </div>
-                    <Badge>{d.type}</Badge>
+                    <Badge>{String(d.type ?? '')}</Badge>
                   </div>
                 ))}
                 {empDevices.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noDevices')}</div>}
@@ -893,10 +901,10 @@ export default function EmployeeDetailPage() {
                 {empExpenses.map(e => (
                   <div key={e.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-t1">{e.title}</p>
-                      <p className="text-xs text-t3">{t('expenseAmount', { amount: e.total_amount.toLocaleString(), currency: e.currency })}</p>
+                      <p className="text-sm font-medium text-t1">{String(e.title ?? '')}</p>
+                      <p className="text-xs text-t3">{t('expenseAmount', { amount: (e.total_amount ?? 0).toLocaleString(), currency: String(e.currency ?? '') })}</p>
                     </div>
-                    <Badge variant={e.status === 'approved' || e.status === 'reimbursed' ? 'success' : e.status === 'submitted' || e.status === 'pending_approval' ? 'warning' : 'default'}>{e.status.replace(/_/g, ' ')}</Badge>
+                    <Badge variant={e.status === 'approved' || e.status === 'reimbursed' ? 'success' : e.status === 'submitted' || e.status === 'pending_approval' ? 'warning' : 'default'}>{String(e.status ?? '').replace(/_/g, ' ')}</Badge>
                   </div>
                 ))}
                 {empExpenses.length === 0 && <div className="px-6 py-8 text-center text-xs text-t3">{t('noExpenseReports')}</div>}

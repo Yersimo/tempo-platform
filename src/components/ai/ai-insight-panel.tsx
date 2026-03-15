@@ -72,13 +72,13 @@ export function AIInsightPanel({
           {/* Narrative */}
           {narrative && (
             <div className="px-4 py-3 border-b border-divider bg-tempo-50/30">
-              <p className="text-xs text-t1 leading-relaxed">{narrative.summary}</p>
-              {narrative.bulletPoints.length > 0 && (
+              <p className="text-xs text-t1 leading-relaxed">{typeof narrative.summary === 'string' ? narrative.summary : JSON.stringify(narrative.summary)}</p>
+              {Array.isArray(narrative.bulletPoints) && narrative.bulletPoints.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {narrative.bulletPoints.map((point, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-[0.6rem] text-t2">
                       <span className="w-1 h-1 rounded-full bg-tempo-400 mt-1.5 shrink-0" />
-                      {point}
+                      {typeof point === 'string' ? point : JSON.stringify(point)}
                     </li>
                   ))}
                 </ul>
