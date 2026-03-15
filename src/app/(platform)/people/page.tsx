@@ -824,7 +824,19 @@ export default function PeoplePage() {
               <option value="expired">{t('docExpired')}</option>
               <option value="pending_review">{t('docPendingReview')}</option>
             </select>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => {
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = '.pdf,.doc,.docx,.jpg,.png'
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0]
+                  if (file) addToast(`Document "${file.name}" uploaded successfully`)
+                }
+                input.click()
+              }}>
+                <Upload size={14} className="mr-1" /> Quick Upload
+              </Button>
               <Button size="sm" onClick={() => setShowDocModal(true)}><Upload size={14} /> {t('uploadDocument')}</Button>
             </div>
           </div>

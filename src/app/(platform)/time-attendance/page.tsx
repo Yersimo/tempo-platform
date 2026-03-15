@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -888,7 +888,8 @@ export default function TimeAttendancePage() {
                     const emp = employees.find(e => e.id === empId)
                     const weekStatus = data.statuses.includes('pending') ? 'pending' : data.statuses.includes('rejected') ? 'rejected' : 'approved'
                     return (
-                      <tr key={empId} className="hover:bg-canvas/50 cursor-pointer" onClick={() => setExpandedTimesheetEmp(prev => prev === empId ? null : empId)}>
+                      <React.Fragment key={empId}>
+                      <tr className="hover:bg-canvas/50 cursor-pointer" onClick={() => setExpandedTimesheetEmp(prev => prev === empId ? null : empId)}>
                         <td className="px-4 py-3 sticky left-0 bg-surface z-10">
                           <div className="flex items-center gap-2">
                             <Avatar name={emp?.profile.full_name || ''} src={emp?.profile.avatar_url} size="sm" />
@@ -943,6 +944,7 @@ export default function TimeAttendancePage() {
                           </td>
                         </tr>
                       )}
+                      </React.Fragment>
                     )
                   })}
                 </tbody>

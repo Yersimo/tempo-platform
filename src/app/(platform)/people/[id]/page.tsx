@@ -438,7 +438,12 @@ export default function EmployeeDetailPage() {
             <h2 className="text-lg font-semibold text-t1 mt-3">{emp.profile?.full_name}</h2>
             <p className="text-sm text-t2">{emp.job_title}</p>
             <Badge variant={emp.role === 'admin' || emp.role === 'owner' ? 'orange' : emp.role === 'manager' ? 'info' : 'default'} className="mt-2">{emp.role}</Badge>
-            <Button size="sm" variant="secondary" className="mt-4" onClick={openEdit}><Pencil size={14} /> {t('editProfile')}</Button>
+            {isPrivilegedRole && (
+              <Button size="sm" variant="secondary" className="mt-4" onClick={openEdit}><Pencil size={14} /> {t('editProfile')}</Button>
+            )}
+            {isOwnProfile && !isPrivilegedRole && (
+              <Button size="sm" variant="secondary" className="mt-4" onClick={openSelfEdit}><Pencil size={14} /> Edit My Profile</Button>
+            )}
           </div>
           <div className="mt-6 space-y-3 border-t border-divider pt-4">
             <div className="flex items-center gap-3 text-sm">
@@ -929,6 +934,30 @@ export default function EmployeeDetailPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>{tc('cancel')}</Button>
             <Button onClick={submitEdit}>{tc('saveChanges')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Self-Service Profile Edit Modal */}
+      <Modal open={showSelfEditModal} onClose={() => setShowSelfEditModal(false)} title="Edit My Profile" size="lg">
+        <div className="space-y-4">
+          <p className="text-xs text-t3 bg-canvas p-3 rounded">You can update your personal contact details below. For changes to your job title, department, or other employment details, please contact HR.</p>
+          <h4 className="text-xs font-semibold text-t2 uppercase tracking-wider">Contact Information</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Phone Number" value={selfEditForm.phone} onChange={(e) => setSelfEditForm({ ...selfEditForm, phone: e.target.value })} placeholder="e.g. +234 801 234 5678" />
+            <Input label="Personal Email" type="email" value={selfEditForm.personal_email} onChange={(e) => setSelfEditForm({ ...selfEditForm, personal_email: e.target.value })} placeholder="e.g. name@gmail.com" />
+          </div>
+          <Input label="Address" value={selfEditForm.address} onChange={(e) => setSelfEditForm({ ...selfEditForm, address: e.target.value })} placeholder="Street address, city, country" />
+          <h4 className="text-xs font-semibold text-t2 uppercase tracking-wider pt-2">Emergency Contact</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Emergency Contact Name" value={selfEditForm.emergency_contact_name} onChange={(e) => setSelfEditForm({ ...selfEditForm, emergency_contact_name: e.target.value })} placeholder="Full name" />
+            <Input label="Emergency Contact Phone" value={selfEditForm.emergency_contact_phone} onChange={(e) => setSelfEditForm({ ...selfEditForm, emergency_contact_phone: e.target.value })} placeholder="e.g. +234 801 234 5678" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowSelfEditModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={submitSelfEdit}>
+              <Save size={14} /> {tc('saveChanges')}
+            </Button>
           </div>
         </div>
       </Modal>
