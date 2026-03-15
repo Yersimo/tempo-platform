@@ -74,6 +74,7 @@ export default function PeoplePage() {
     full_name: '', email: '', phone: '', job_title: '', level: 'Mid',
     department_id: '', country: 'Nigeria', role: 'employee' as string,
   })
+  const [formErrors, setFormErrors] = useState<{ full_name?: string; email?: string }>({})
 
   // ---- Documents State ----
   const [docTypeFilter, setDocTypeFilter] = useState('all')
@@ -253,9 +254,12 @@ export default function PeoplePage() {
 
   function submitAdd() {
     if (addSubmittingRef.current || saving) return
-    if (!form.full_name.trim()) { addToast?.('Full name is required', 'error'); return }
-    if (!form.email.trim()) { addToast?.('Email is required', 'error'); return }
-    if (!/\S+@\S+\.\S+/.test(form.email)) { addToast?.('Please enter a valid email address', 'error'); return }
+    const errors: { full_name?: string; email?: string } = {}
+    if (!form.full_name.trim()) errors.full_name = t('fullNameRequired')
+    if (!form.email.trim()) errors.email = t('emailRequired')
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errors.email = t('emailInvalid')
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return }
+    setFormErrors({})
 
     // T5 #38: Check for duplicate employee
     if (!dupEmpConfirmed) {
@@ -1270,11 +1274,11 @@ export default function PeoplePage() {
       </Modal>
 
       {/* Add Employee Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('addEmployeeModal')} size="lg">
+      <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setFormErrors({}) }} title={t('addEmployeeModal')} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} error={formErrors.full_name} onChange={(e) => { setForm({ ...form, full_name: e.target.value }); setFormErrors(prev => ({ ...prev, full_name: undefined })) }} />
+            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} error={formErrors.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormErrors(prev => ({ ...prev, email: undefined })) }} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('jobTitle')} placeholder={t('jobTitlePlaceholder')} value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />

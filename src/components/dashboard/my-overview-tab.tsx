@@ -119,21 +119,21 @@ export function MyOverviewTab() {
       .reduce((sum, l) => sum + l.days, 0)
 
     return [
-      { label: 'Annual', used: annualUsed, total: 20, color: 'orange' as const },
-      { label: 'Sick', used: sickUsed, total: 10, color: 'warning' as const },
-      { label: 'Personal', used: personalUsed, total: 5, color: 'success' as const },
+      { label: t('leaveAnnual'), used: annualUsed, total: 20, color: 'orange' as const },
+      { label: t('leaveSick'), used: sickUsed, total: 10, color: 'warning' as const },
+      { label: t('leavePersonal'), used: personalUsed, total: 5, color: 'success' as const },
     ]
   }, [myLeaveRequests])
 
   // ---- Quick actions ----
 
   const quickActions = [
-    { label: 'Request Leave', icon: <Calendar size={20} />, href: '/time-attendance' },
-    { label: 'Submit Expense', icon: <FileText size={20} />, href: '/expense' },
-    { label: 'Clock In/Out', icon: <Clock size={20} />, href: '/time-attendance' },
-    { label: 'View Pay Stubs', icon: <DollarSign size={20} />, href: '/payroll' },
-    { label: 'My Goals', icon: <Target size={20} />, href: '/performance' },
-    { label: 'My Learning', icon: <BookOpen size={20} />, href: '/learning' },
+    { label: t('requestLeave'), icon: <Calendar size={20} />, href: '/time-attendance' },
+    { label: t('submitExpense'), icon: <FileText size={20} />, href: '/expense' },
+    { label: t('clockInOut'), icon: <Clock size={20} />, href: '/time-attendance' },
+    { label: t('viewPayStubs'), icon: <DollarSign size={20} />, href: '/payroll' },
+    { label: t('myGoals'), icon: <Target size={20} />, href: '/performance' },
+    { label: t('myLearning'), icon: <BookOpen size={20} />, href: '/learning' },
   ]
 
   // ---- Pending approvals for managers ----
@@ -157,10 +157,10 @@ export function MyOverviewTab() {
 
   function goalStatusLabel(status: string): string {
     switch (status) {
-      case 'on_track': return 'On Track'
-      case 'at_risk': return 'At Risk'
-      case 'behind': return 'Behind'
-      case 'completed': return 'Completed'
+      case 'on_track': return t('goalOnTrack')
+      case 'at_risk': return t('goalAtRisk')
+      case 'behind': return t('goalBehind')
+      case 'completed': return t('goalCompleted')
       default: return status
     }
   }
@@ -177,10 +177,10 @@ export function MyOverviewTab() {
 
   function reviewStatusLabel(status: string): string {
     switch (status) {
-      case 'submitted': return 'Submitted'
-      case 'in_progress': return 'In Progress'
-      case 'pending': return 'Pending'
-      case 'draft': return 'Draft'
+      case 'submitted': return t('reviewSubmitted')
+      case 'in_progress': return t('reviewInProgress')
+      case 'pending': return t('reviewPending')
+      case 'draft': return t('reviewDraft')
       default: return status
     }
   }
@@ -239,20 +239,20 @@ export function MyOverviewTab() {
       {(role === 'manager' || role === 'hrbp' || role === 'admin') && (
         <div className="mb-6 rounded-[var(--radius-card)] border border-amber-200 bg-amber-50/50 p-4">
           <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
-            <Clock size={16} className="text-amber-600" /> Pending Approvals
+            <Clock size={16} className="text-amber-600" /> {t('pendingApprovals')}
           </h4>
           <div className="grid grid-cols-3 gap-3">
             <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingLeaveCount}</p>
-              <p className="text-[11px] text-t3">Leave Requests</p>
+              <p className="text-[11px] text-t3">{t('leaveRequestsLabel')}</p>
             </a>
             <a href="/expense" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingExpenseCount}</p>
-              <p className="text-[11px] text-t3">Expense Reports</p>
+              <p className="text-[11px] text-t3">{t('expenseReportsLabel')}</p>
             </a>
             <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingTimesheetCount}</p>
-              <p className="text-[11px] text-t3">Timesheets</p>
+              <p className="text-[11px] text-t3">{t('timesheetsLabel')}</p>
             </a>
           </div>
         </div>
@@ -261,35 +261,35 @@ export function MyOverviewTab() {
       {/* ---- Stat Cards ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Leave Balance"
-          value={`${leaveBalance.annual} days`}
-          change="Annual leave remaining"
+          label={t('leaveBalance')}
+          value={t('days', { count: leaveBalance.annual })}
+          change={t('annualLeaveRemaining')}
           changeType="neutral"
           icon={<Calendar size={20} />}
           href="/time-attendance"
         />
         <StatCard
-          label="Active Goals"
+          label={t('activeGoalsLabel')}
           value={activeGoalsCount}
           change={myGoals.filter(g => g.status === 'at_risk' || g.status === 'behind').length > 0
-            ? `${myGoals.filter(g => g.status === 'at_risk' || g.status === 'behind').length} need attention`
-            : 'All on track'}
+            ? t('needAttention', { count: myGoals.filter(g => g.status === 'at_risk' || g.status === 'behind').length })
+            : t('allOnTrack')}
           changeType={myGoals.some(g => g.status === 'at_risk' || g.status === 'behind') ? 'negative' : 'positive'}
           icon={<Target size={20} />}
           href="/performance"
         />
         <StatCard
-          label="Pending Reviews"
+          label={t('pendingReviews')}
           value={pendingReviewCount}
-          change={pendingReviewCount > 0 ? 'Action required' : 'All complete'}
+          change={pendingReviewCount > 0 ? t('actionRequired') : t('allComplete')}
           changeType={pendingReviewCount > 0 ? 'negative' : 'positive'}
           icon={<Star size={20} />}
           href="/performance"
         />
         <StatCard
-          label="Learning Progress"
+          label={t('learningProgress')}
           value={`${learningProgress}%`}
-          change={`${myEnrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').length} active course${myEnrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').length !== 1 ? 's' : ''}`}
+          change={t('activeCourses', { count: myEnrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').length })}
           changeType="neutral"
           icon={<BookOpen size={20} />}
           href="/learning"
@@ -304,7 +304,7 @@ export function MyOverviewTab() {
           {/* Quick Actions */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-t1">My Quick Actions</h3>
+              <h3 className="text-sm font-semibold text-t1">{t('myQuickActions')}</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {quickActions.map(action => (
@@ -326,12 +326,12 @@ export function MyOverviewTab() {
           <Card padding="none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>My Goals</CardTitle>
+                <CardTitle>{t('myGoals')}</CardTitle>
                 <button
                   onClick={() => router.push('/performance')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
-                  View all goals <ChevronRight size={14} />
+                  {t('viewAllGoals')} <ChevronRight size={14} />
                 </button>
               </div>
             </CardHeader>
@@ -339,14 +339,14 @@ export function MyOverviewTab() {
               {myGoals.length === 0 ? (
                 <div className="px-6 py-8 text-center">
                   <Target size={24} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t3">No goals assigned yet</p>
+                  <p className="text-sm text-t3">{t('noGoalsAssigned')}</p>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="mt-2"
                     onClick={() => router.push('/performance')}
                   >
-                    Set a goal
+                    {t('setGoal')}
                   </Button>
                 </div>
               ) : (
@@ -374,12 +374,12 @@ export function MyOverviewTab() {
           <Card padding="none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>My Upcoming Reviews</CardTitle>
+                <CardTitle>{t('myUpcomingReviews')}</CardTitle>
                 <button
                   onClick={() => router.push('/performance')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
-                  View all reviews <ChevronRight size={14} />
+                  {t('viewAllReviews')} <ChevronRight size={14} />
                 </button>
               </div>
             </CardHeader>
@@ -387,7 +387,7 @@ export function MyOverviewTab() {
               {myReviews.length === 0 ? (
                 <div className="px-6 py-8 text-center">
                   <Star size={24} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t3">No reviews scheduled</p>
+                  <p className="text-sm text-t3">{t('noReviewsScheduled')}</p>
                 </div>
               ) : (
                 myReviews.slice(0, 5).map(review => {
@@ -422,7 +422,7 @@ export function MyOverviewTab() {
                             {reviewStatusLabel(review.status)}
                           </Badge>
                           {isReviewer && (
-                            <span className="text-[0.6rem] text-t3">As reviewer</span>
+                            <span className="text-[0.6rem] text-t3">{t('asReviewer')}</span>
                           )}
                         </div>
                       </div>
@@ -439,7 +439,7 @@ export function MyOverviewTab() {
 
           {/* My Leave Balance */}
           <Card>
-            <h3 className="text-sm font-semibold text-t1 mb-4">My Leave Balance</h3>
+            <h3 className="text-sm font-semibold text-t1 mb-4">{t('myLeaveBalance')}</h3>
             <div className="space-y-4">
               {leaveBreakdown.map(item => (
                 <div key={item.label}>
@@ -465,7 +465,7 @@ export function MyOverviewTab() {
               onClick={() => router.push('/time-attendance')}
             >
               <Calendar size={14} />
-              Request Leave
+              {t('requestLeave')}
             </Button>
           </Card>
 
@@ -473,7 +473,7 @@ export function MyOverviewTab() {
           <Card padding="none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Recent Pay Stubs</CardTitle>
+                <CardTitle>{t('recentPayStubs')}</CardTitle>
                 <button
                   onClick={() => router.push('/payroll')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
@@ -486,7 +486,7 @@ export function MyOverviewTab() {
               {myPayrollEntries.length === 0 ? (
                 <div className="px-6 py-8 text-center">
                   <DollarSign size={24} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t3">No pay stubs available</p>
+                  <p className="text-sm text-t3">{t('noPayStubs')}</p>
                 </div>
               ) : (
                 myPayrollEntries.slice(0, 3).map(entry => (
@@ -500,8 +500,8 @@ export function MyOverviewTab() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between text-xs text-t3">
-                      <span>Gross: {formatCurrency(entry.gross_pay)}</span>
-                      <span className="font-medium text-t1">Net: {formatCurrency(entry.net_pay)}</span>
+                      <span>{t('gross')}: {formatCurrency(entry.gross_pay)}</span>
+                      <span className="font-medium text-t1">{t('net')}: {formatCurrency(entry.net_pay)}</span>
                     </div>
                   </div>
                 ))
@@ -513,12 +513,12 @@ export function MyOverviewTab() {
           <Card padding="none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>My Benefits</CardTitle>
+                <CardTitle>{t('myBenefits')}</CardTitle>
                 <button
                   onClick={() => router.push('/benefits')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
-                  Manage Benefits <ChevronRight size={14} />
+                  {t('manageBenefits')} <ChevronRight size={14} />
                 </button>
               </div>
             </CardHeader>
@@ -526,14 +526,14 @@ export function MyOverviewTab() {
               {myBenefitEnrollments.length === 0 ? (
                 <div className="px-6 py-8 text-center">
                   <Heart size={24} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t3">No benefit plans enrolled</p>
+                  <p className="text-sm text-t3">{t('noBenefitPlans')}</p>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="mt-2"
                     onClick={() => router.push('/benefits')}
                   >
-                    Browse plans
+                    {t('browsePlans')}
                   </Button>
                 </div>
               ) : (
@@ -560,12 +560,12 @@ export function MyOverviewTab() {
           <Card padding="none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>My Learning</CardTitle>
+                <CardTitle>{t('myLearning')}</CardTitle>
                 <button
                   onClick={() => router.push('/learning')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
-                  Browse Courses <ChevronRight size={14} />
+                  {t('browseCourses')} <ChevronRight size={14} />
                 </button>
               </div>
             </CardHeader>
@@ -573,14 +573,14 @@ export function MyOverviewTab() {
               {myEnrollments.length === 0 ? (
                 <div className="px-6 py-8 text-center">
                   <BookOpen size={24} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t3">No courses enrolled</p>
+                  <p className="text-sm text-t3">{t('noCourses')}</p>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="mt-2"
                     onClick={() => router.push('/learning')}
                   >
-                    Explore courses
+                    {t('exploreCourses')}
                   </Button>
                 </div>
               ) : (
