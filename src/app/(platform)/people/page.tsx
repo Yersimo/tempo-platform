@@ -859,7 +859,7 @@ export default function PeoplePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredDocs.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-12 text-center text-xs text-t3">{t('noDocumentsFound')}</td></tr>
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-xs text-t3">{t('noDocumentsFound')}</td></tr>
                   ) : filteredDocs.map(doc => (
                     <tr key={doc.id} className="hover:bg-canvas/50">
                       <td className="px-6 py-3">
