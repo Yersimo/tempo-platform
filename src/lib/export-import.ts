@@ -203,45 +203,173 @@ export function readFileAsCSV(file: File): Promise<ParsedCSV> {
 // ============================================================
 
 export interface EmployeeImportRow {
+  // ── Core HR ──────────────────────────────────────────────
   full_name: string
   email: string
+  personal_email?: string
   job_title: string
   department: string
   country: string
+  level?: string
   hire_date: string
   phone?: string
-  location?: string
-  level?: string
+  role?: string
   manager_email?: string
+  location?: string
   employment_type?: string
+  employee_id?: string
+  date_of_birth?: string
+  gender?: string
+  marital_status?: string
+  nationality?: string
+  national_id?: string
+
+  // ── Address ──────────────────────────────────────────────
+  street_address?: string
+  city?: string
+  state_province?: string
+  postal_code?: string
+  address_country?: string
+
+  // ── Payroll & Banking ────────────────────────────────────
+  base_salary?: string
+  pay_currency?: string
+  pay_frequency?: string
   bank_name?: string
+  bank_branch_code?: string
   bank_account_number?: string
   bank_account_name?: string
+  mobile_money_provider?: string
+  mobile_money_number?: string
   tax_id_number?: string
-  date_of_birth?: string
+  social_security_number?: string
+  pension_id?: string
+
+  // ── Compensation ─────────────────────────────────────────
+  bonus_target_percent?: string
+  equity_stock_units?: string
+  pay_band_grade?: string
+  allowance_housing?: string
+  allowance_transport?: string
+  allowance_medical?: string
+
+  // ── Benefits ─────────────────────────────────────────────
+  medical_plan?: string
+  dental_plan?: string
+  life_insurance?: string
+  number_of_dependents?: string
+
+  // ── Time & Attendance ────────────────────────────────────
+  work_schedule?: string
+  weekly_hours?: string
+  timezone?: string
+  shift_type?: string
+
+  // ── IT & Identity ────────────────────────────────────────
+  ad_sso_username?: string
+  corporate_email?: string
+  device_preference?: string
+
+  // ── Emergency Contact ────────────────────────────────────
   emergency_contact_name?: string
   emergency_contact_phone?: string
+  emergency_contact_relationship?: string
+
+  // ── Documents / Compliance ───────────────────────────────
+  passport_number?: string
+  work_permit_number?: string
+  work_permit_expiry?: string
+  highest_education?: string
+  university_institution?: string
+  previous_employer?: string
+
+  // ── Notes ────────────────────────────────────────────────
+  onboarding_notes?: string
 }
 
 const EMPLOYEE_FIELD_ALIASES: Record<string, string[]> = {
-  full_name: ['full_name', 'name', 'employee_name', 'fullname', 'full name'],
-  email: ['email', 'email_address', 'work_email', 'employee_email'],
-  job_title: ['job_title', 'title', 'position', 'role', 'job title'],
+  // Core HR
+  full_name: ['full_name', 'full name', 'name', 'employee_name', 'employee name', 'fullname'],
+  email: ['email', 'email_address', 'email address', 'work_email', 'work email', 'employee_email', 'employee email'],
+  personal_email: ['personal_email', 'personal email', 'private_email', 'private email', 'home_email', 'home email'],
+  job_title: ['job_title', 'job title', 'title', 'position', 'role_title', 'role title'],
   department: ['department', 'dept', 'team', 'division'],
-  country: ['country', 'country_code', 'location_country'],
-  hire_date: ['hire_date', 'start_date', 'join_date', 'hire date', 'start date'],
-  phone: ['phone', 'phone_number', 'mobile', 'telephone'],
-  location: ['location', 'office', 'city', 'work_location'],
-  level: ['level', 'job_level', 'grade', 'band', 'seniority'],
-  manager_email: ['manager_email', 'manager', 'reports_to', 'manager email'],
-  employment_type: ['employment_type', 'employment type', 'emp_type', 'emp type', 'type', 'contract_type', 'contract type'],
+  country: ['country', 'country_code', 'country code'],
+  level: ['level', 'job_level', 'job level', 'grade', 'band', 'seniority'],
+  hire_date: ['hire_date', 'hire date', 'start_date', 'start date', 'join_date', 'join date', 'joining_date', 'joining date'],
+  phone: ['phone', 'phone_number', 'phone number', 'mobile', 'telephone', 'tel'],
+  role: ['role', 'access_role', 'access role', 'system_role', 'system role', 'permission'],
+  manager_email: ['manager_email', 'manager email', 'manager', 'reports_to', 'reports to'],
+  location: ['location', 'office', 'work_location', 'work location', 'office_location', 'office location'],
+  employment_type: ['employment_type', 'employment type', 'emp_type', 'emp type', 'contract_type', 'contract type'],
+  employee_id: ['employee_id', 'employee id', 'badge_number', 'badge number', 'emp_id', 'emp id', 'staff_id', 'staff id'],
+  date_of_birth: ['date_of_birth', 'date of birth', 'dob', 'birthdate', 'birth_date', 'birth date', 'birthday'],
+  gender: ['gender', 'sex'],
+  marital_status: ['marital_status', 'marital status', 'civil_status', 'civil status'],
+  nationality: ['nationality', 'citizenship'],
+  national_id: ['national_id', 'national id', 'nin', 'id_number', 'id number'],
+
+  // Address
+  street_address: ['street_address', 'street address', 'address', 'street', 'address_line_1', 'address line 1'],
+  city: ['city', 'town'],
+  state_province: ['state_province', 'state/province', 'state', 'province', 'region'],
+  postal_code: ['postal_code', 'postal code', 'zip_code', 'zip code', 'zip', 'postcode'],
+  address_country: ['address_country', 'address country', 'residence_country', 'residence country'],
+
+  // Payroll & Banking
+  base_salary: ['base_salary', 'base salary', 'salary', 'annual_salary', 'annual salary', 'compensation'],
+  pay_currency: ['pay_currency', 'pay currency', 'currency', 'salary_currency', 'salary currency'],
+  pay_frequency: ['pay_frequency', 'pay frequency', 'payment_frequency', 'payment frequency'],
   bank_name: ['bank_name', 'bank name', 'bank'],
+  bank_branch_code: ['bank_branch_code', 'bank branch code', 'swift', 'sort_code', 'sort code', 'routing_number', 'routing number', 'branch_code', 'branch code'],
   bank_account_number: ['bank_account_number', 'bank account number', 'account_number', 'account number', 'acct_number', 'acct number'],
   bank_account_name: ['bank_account_name', 'bank account name', 'account_name', 'account name', 'acct_name', 'acct name'],
-  tax_id_number: ['tax_id_number', 'tax id number', 'tax_id', 'tax id', 'tin', 'ssn', 'national_id', 'national id'],
-  date_of_birth: ['date_of_birth', 'date of birth', 'dob', 'birthdate', 'birth_date', 'birth date', 'birthday'],
+  mobile_money_provider: ['mobile_money_provider', 'mobile money provider', 'momo_provider', 'momo provider', 'mobile_money', 'mobile money'],
+  mobile_money_number: ['mobile_money_number', 'mobile money number', 'momo_number', 'momo number'],
+  tax_id_number: ['tax_id_number', 'tax id number', 'tax_id', 'tax id', 'tin', 'kra_pin', 'kra pin'],
+  social_security_number: ['social_security_number', 'social security number', 'ssn', 'nssf', 'nssf_number', 'nssf number'],
+  pension_id: ['pension_id', 'pension id', 'pension_number', 'pension number', 'pencom', 'pencom_id', 'pencom id'],
+
+  // Compensation
+  bonus_target_percent: ['bonus_target_percent', 'bonus target %', 'bonus_target', 'bonus target', 'bonus_%', 'bonus %', 'bonus target percent'],
+  equity_stock_units: ['equity_stock_units', 'equity/stock units', 'equity', 'stock_units', 'stock units', 'rsu', 'rsus'],
+  pay_band_grade: ['pay_band_grade', 'pay band/grade', 'pay_band', 'pay band', 'pay_grade', 'pay grade', 'grade_code', 'grade code'],
+  allowance_housing: ['allowance_housing', 'allowance - housing', 'housing_allowance', 'housing allowance'],
+  allowance_transport: ['allowance_transport', 'allowance - transport', 'transport_allowance', 'transport allowance', 'travel_allowance', 'travel allowance'],
+  allowance_medical: ['allowance_medical', 'allowance - medical', 'medical_allowance', 'medical allowance', 'health_allowance', 'health allowance'],
+
+  // Benefits
+  medical_plan: ['medical_plan', 'medical plan', 'health_plan', 'health plan', 'medical_insurance', 'medical insurance'],
+  dental_plan: ['dental_plan', 'dental plan', 'dental_insurance', 'dental insurance'],
+  life_insurance: ['life_insurance', 'life insurance'],
+  number_of_dependents: ['number_of_dependents', 'number of dependents', 'dependents', 'num_dependents', 'num dependents'],
+
+  // Time & Attendance
+  work_schedule: ['work_schedule', 'work schedule', 'schedule', 'working_hours', 'working hours'],
+  weekly_hours: ['weekly_hours', 'weekly hours', 'hours_per_week', 'hours per week'],
+  timezone: ['timezone', 'time_zone', 'time zone', 'tz'],
+  shift_type: ['shift_type', 'shift type', 'shift'],
+
+  // IT & Identity
+  ad_sso_username: ['ad_sso_username', 'ad/sso username', 'ad_username', 'ad username', 'sso_username', 'sso username', 'username', 'login'],
+  corporate_email: ['corporate_email', 'corporate email', 'corp_email', 'corp email'],
+  device_preference: ['device_preference', 'device preference', 'device', 'preferred_device', 'preferred device', 'laptop_preference', 'laptop preference'],
+
+  // Emergency Contact
   emergency_contact_name: ['emergency_contact_name', 'emergency contact name', 'emergency_contact', 'emergency contact', 'emergency_name', 'emergency name', 'ice_name', 'ice name'],
   emergency_contact_phone: ['emergency_contact_phone', 'emergency contact phone', 'emergency_phone', 'emergency phone', 'ice_phone', 'ice phone'],
+  emergency_contact_relationship: ['emergency_contact_relationship', 'emergency contact relationship', 'emergency_relationship', 'emergency relationship', 'ice_relationship', 'ice relationship'],
+
+  // Documents / Compliance
+  passport_number: ['passport_number', 'passport number', 'passport', 'passport_no', 'passport no'],
+  work_permit_number: ['work_permit_number', 'work permit number', 'work_permit', 'work permit', 'visa_number', 'visa number'],
+  work_permit_expiry: ['work_permit_expiry', 'work permit expiry', 'permit_expiry', 'permit expiry', 'visa_expiry', 'visa expiry'],
+  highest_education: ['highest_education', 'highest education', 'education', 'education_level', 'education level', 'qualification'],
+  university_institution: ['university_institution', 'university/institution', 'university', 'institution', 'school', 'alma_mater', 'alma mater'],
+  previous_employer: ['previous_employer', 'previous employer', 'last_employer', 'last employer', 'prior_employer', 'prior employer'],
+
+  // Notes
+  onboarding_notes: ['onboarding_notes', 'onboarding notes', 'notes', 'comments', 'remarks'],
 }
 
 /**
@@ -287,25 +415,97 @@ export function validateEmployeeImport(
       return
     }
 
+    // Helper to read an optional trimmed field
+    const opt = (field: string) => {
+      const header = mapping[field]
+      if (!header) return undefined
+      const val = row[header]?.trim()
+      return val || undefined
+    }
+
     valid.push({
+      // Core HR
       full_name: name.trim(),
       email: email.trim().toLowerCase(),
+      personal_email: opt('personal_email'),
       job_title: row[mapping.job_title]?.trim() || 'Team Member',
       department: row[mapping.department]?.trim() || 'General',
       country: row[mapping.country]?.trim() || 'US',
+      level: opt('level'),
       hire_date: row[mapping.hire_date]?.trim() || new Date().toISOString().split('T')[0],
-      phone: row[mapping.phone]?.trim(),
-      location: row[mapping.location]?.trim(),
-      level: row[mapping.level]?.trim(),
-      manager_email: row[mapping.manager_email]?.trim(),
-      employment_type: row[mapping.employment_type]?.trim(),
-      bank_name: row[mapping.bank_name]?.trim(),
-      bank_account_number: row[mapping.bank_account_number]?.trim(),
-      bank_account_name: row[mapping.bank_account_name]?.trim(),
-      tax_id_number: row[mapping.tax_id_number]?.trim(),
-      date_of_birth: row[mapping.date_of_birth]?.trim(),
-      emergency_contact_name: row[mapping.emergency_contact_name]?.trim(),
-      emergency_contact_phone: row[mapping.emergency_contact_phone]?.trim(),
+      phone: opt('phone'),
+      role: opt('role'),
+      manager_email: opt('manager_email'),
+      location: opt('location'),
+      employment_type: opt('employment_type'),
+      employee_id: opt('employee_id'),
+      date_of_birth: opt('date_of_birth'),
+      gender: opt('gender'),
+      marital_status: opt('marital_status'),
+      nationality: opt('nationality'),
+      national_id: opt('national_id'),
+
+      // Address
+      street_address: opt('street_address'),
+      city: opt('city'),
+      state_province: opt('state_province'),
+      postal_code: opt('postal_code'),
+      address_country: opt('address_country'),
+
+      // Payroll & Banking
+      base_salary: opt('base_salary'),
+      pay_currency: opt('pay_currency'),
+      pay_frequency: opt('pay_frequency'),
+      bank_name: opt('bank_name'),
+      bank_branch_code: opt('bank_branch_code'),
+      bank_account_number: opt('bank_account_number'),
+      bank_account_name: opt('bank_account_name'),
+      mobile_money_provider: opt('mobile_money_provider'),
+      mobile_money_number: opt('mobile_money_number'),
+      tax_id_number: opt('tax_id_number'),
+      social_security_number: opt('social_security_number'),
+      pension_id: opt('pension_id'),
+
+      // Compensation
+      bonus_target_percent: opt('bonus_target_percent'),
+      equity_stock_units: opt('equity_stock_units'),
+      pay_band_grade: opt('pay_band_grade'),
+      allowance_housing: opt('allowance_housing'),
+      allowance_transport: opt('allowance_transport'),
+      allowance_medical: opt('allowance_medical'),
+
+      // Benefits
+      medical_plan: opt('medical_plan'),
+      dental_plan: opt('dental_plan'),
+      life_insurance: opt('life_insurance'),
+      number_of_dependents: opt('number_of_dependents'),
+
+      // Time & Attendance
+      work_schedule: opt('work_schedule'),
+      weekly_hours: opt('weekly_hours'),
+      timezone: opt('timezone'),
+      shift_type: opt('shift_type'),
+
+      // IT & Identity
+      ad_sso_username: opt('ad_sso_username'),
+      corporate_email: opt('corporate_email'),
+      device_preference: opt('device_preference'),
+
+      // Emergency Contact
+      emergency_contact_name: opt('emergency_contact_name'),
+      emergency_contact_phone: opt('emergency_contact_phone'),
+      emergency_contact_relationship: opt('emergency_contact_relationship'),
+
+      // Documents / Compliance
+      passport_number: opt('passport_number'),
+      work_permit_number: opt('work_permit_number'),
+      work_permit_expiry: opt('work_permit_expiry'),
+      highest_education: opt('highest_education'),
+      university_institution: opt('university_institution'),
+      previous_employer: opt('previous_employer'),
+
+      // Notes
+      onboarding_notes: opt('onboarding_notes'),
     })
   })
 
