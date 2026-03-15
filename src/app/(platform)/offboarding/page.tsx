@@ -433,7 +433,27 @@ export default function OffboardingPage() {
         status: 'pending',
       })
     })
-    addToast('Offboarding approved — tasks created')
+    // G14: Auto-create IT Access Revocation task
+    addOffboardingTask({
+      process_id: processId,
+      checklist_item_id: 'auto_it_revocation',
+      assignee_id: null,
+      status: 'pending',
+      title: 'IT Access Revocation',
+      description: 'Revoke all IT access: email, VPN, SSO, internal tools. Disable Active Directory account.',
+      category: 'access_revocation',
+    })
+    // G15: Auto-trigger COBRA notification for benefits termination
+    addOffboardingTask({
+      process_id: processId,
+      checklist_item_id: 'auto_cobra_notification',
+      assignee_id: null,
+      status: 'pending',
+      title: 'Send COBRA Notification',
+      description: 'Send COBRA continuation coverage notice to departing employee within 14 days of benefits termination.',
+      category: 'benefits',
+    })
+    addToast('Offboarding approved — tasks created (incl. IT revocation & COBRA notice)')
   }
 
   function confirmReassignAndApprove() {

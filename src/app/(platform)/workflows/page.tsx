@@ -36,6 +36,7 @@ const TRIGGER_TYPES = [
   { value: 'expense_submitted', label: 'Expense Submitted', icon: FileText, color: 'text-orange-400' },
   { value: 'payroll_completed', label: 'Payroll Completed', icon: DollarSign, color: 'text-green-400' },
   { value: 'custom', label: 'Custom Trigger', icon: Settings, color: 'text-slate-400' },
+  { value: 'scheduled', label: 'Scheduled (Cron/Date)', icon: Calendar, color: 'text-indigo-400' },
 ] as const
 
 const ACTION_TYPES = [

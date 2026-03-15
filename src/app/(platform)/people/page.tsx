@@ -1056,6 +1056,26 @@ export default function PeoplePage() {
               </div>
             </Card>
 
+            {/* Bulk Custom Field Updates */}
+            <Card>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Hash size={20} className="text-gray-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-t1 mb-1">Bulk Custom Field Updates</h3>
+                  <p className="text-xs text-t3 mb-3">Update custom field values for multiple employees at once</p>
+                  <Button size="sm" onClick={() => {
+                    if (customFieldDefinitions.length === 0) {
+                      addToast('No custom fields defined. Create custom fields in the Custom Fields tab first.', 'error')
+                      return
+                    }
+                    addToast('Bulk custom field update: Select employees in the directory tab, then use the Custom Fields tab to apply values in bulk.', 'info')
+                  }}>Update Custom Fields</Button>
+                </div>
+              </div>
+            </Card>
+
             {/* Org Restructure */}
             <Card>
               <div className="flex items-start gap-3">
@@ -1480,15 +1500,39 @@ export default function PeoplePage() {
             options={[{ value: '', label: 'Select country...' }, { value: 'Ghana', label: 'Ghana' }, { value: 'Nigeria', label: 'Nigeria' }, { value: 'Kenya', label: 'Kenya' }, { value: 'South Africa', label: 'South Africa' }]} />
           <Input label="Effective Date" type="date" value={transferForm.effective_date} onChange={e => setTransferForm(f => ({ ...f, effective_date: e.target.value }))} />
           <Input label="New Salary (local currency)" type="number" value={transferForm.new_salary || ''} onChange={e => setTransferForm(f => ({ ...f, new_salary: Number(e.target.value) }))} />
-          {transferForm.employee_id && transferForm.to_country && (
-            <div className="bg-canvas rounded-lg p-3 text-xs text-t3 space-y-1">
-              <p>This will:</p>
-              <p>1. Update payroll country from {employees.find(e => e.id === transferForm.employee_id)?.country || '—'} to {transferForm.to_country}</p>
-              <p>2. Archive previous country payslips</p>
-              <p>3. Start fresh payslip history in {transferForm.to_country}</p>
-              <p>4. Notify old and new managers</p>
-            </div>
-          )}
+          {transferForm.employee_id && transferForm.to_country && (() => {
+            const emp = employees.find(e => e.id === transferForm.employee_id)
+            const fromCountry = emp?.country || '—'
+            const currencyMap: Record<string, { currency: string; rate: number }> = {
+              'Ghana': { currency: 'GHS', rate: 12.5 },
+              'Nigeria': { currency: 'NGN', rate: 1550 },
+              'Kenya': { currency: 'KES', rate: 153 },
+              'South Africa': { currency: 'ZAR', rate: 18.5 },
+            }
+            const fromRate = currencyMap[fromCountry]
+            const toRate = currencyMap[transferForm.to_country]
+            const currentSalary = (emp as any)?.salary || transferForm.new_salary || 0
+            const convertedEstimate = fromRate && toRate && currentSalary
+              ? Math.round(currentSalary / fromRate.rate * toRate.rate)
+              : null
+            return (
+              <div className="bg-canvas rounded-lg p-3 text-xs text-t3 space-y-1">
+                <p>This will:</p>
+                <p>1. Update payroll country from {fromCountry} to {transferForm.to_country}</p>
+                <p>2. Archive previous country payslips</p>
+                <p>3. Start fresh payslip history in {transferForm.to_country}</p>
+                <p>4. Notify old and new managers</p>
+                {convertedEstimate ? (
+                  <div className="mt-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-2">
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Salary Conversion Estimate</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      {fromRate?.currency} {currentSalary.toLocaleString()} ≈ {toRate?.currency} {convertedEstimate.toLocaleString()} (indicative rate, adjust as needed)
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )
+          })()}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</Button>
             <Button onClick={executeCountryTransfer} disabled={!transferForm.employee_id || !transferForm.to_country || !transferForm.effective_date || saving}>{saving ? 'Saving...' : 'Execute Transfer'}</Button>
