@@ -41,6 +41,7 @@ export default function RecruitingPage() {
     knockoutQuestions, addKnockoutQuestion, updateKnockoutQuestion, deleteKnockoutQuestion,
     candidateScheduling, addCandidateScheduling, updateCandidateScheduling,
     addToast,
+    addEmployee,
     ensureModulesLoaded,
   } = useTempo()
 
@@ -76,6 +77,11 @@ export default function RecruitingPage() {
     resume_url: '',
     cover_letter: '',
   })
+
+  // Convert to Employee modal
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertApp, setConvertApp] = useState<any>(null)
+  const [convertForm, setConvertForm] = useState({ department_id: '', start_date: '', job_title: '' })
 
   // Move stage modal
   const [showStageModal, setShowStageModal] = useState(false)
@@ -909,7 +915,14 @@ export default function RecruitingPage() {
                             </Button>
                           </div>
                         )}
-                        {isHired && <span className="text-xs text-success font-medium">{t('hiredLabel')}</span>}
+                        {isHired && (
+                          <div className="flex gap-1 items-center justify-center">
+                            <span className="text-xs text-success font-medium">{t('hiredLabel')}</span>
+                            <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); setConvertApp(app); setConvertForm({ department_id: jobPostings.find(j => j.id === app.job_id)?.department_id || '', start_date: '', job_title: jobPostings.find(j => j.id === app.job_id)?.title || '' }); setShowConvertModal(true) }}>
+                              <UserCheck size={12} className="mr-1" /> Convert to Employee
+                            </Button>
+                          </div>
+                        )}
                         {isRejected && <span className="text-xs text-error font-medium">{t('rejectedLabel')}</span>}
                       </td>
                     </tr>
@@ -2973,6 +2986,47 @@ export default function RecruitingPage() {
               {confirmAction?.type === 'reject' ? 'Reject' : confirmAction?.type === 'close-job' ? 'Close' : 'Delete'}
             </Button>
           </div>
+        </div>
+      </Modal>
+      {/* Convert to Employee Modal */}
+      <Modal open={showConvertModal} onClose={() => setShowConvertModal(false)} title="Convert to Employee">
+        <div className="space-y-4">
+          {convertApp && (
+            <>
+              <div className="p-3 rounded-lg bg-canvas border border-divider">
+                <p className="text-sm font-medium text-t1">{convertApp.candidate_name}</p>
+                <p className="text-xs text-t2">{convertApp.candidate_email}</p>
+                <p className="text-xs text-t3 mt-1">Applied for: {jobPostings.find(j => j.id === convertApp.job_id)?.title || 'Unknown'}</p>
+              </div>
+              <Input label="Job Title" value={convertForm.job_title} onChange={e => setConvertForm(f => ({ ...f, job_title: e.target.value }))} />
+              <Select label="Department" value={convertForm.department_id} onChange={e => setConvertForm(f => ({ ...f, department_id: e.target.value }))}
+                options={[{ value: '', label: 'Select department' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+              <Input label="Start Date" type="date" value={convertForm.start_date} onChange={e => setConvertForm(f => ({ ...f, start_date: e.target.value }))} />
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => setShowConvertModal(false)}>Cancel</Button>
+                <Button onClick={() => {
+                  if (!convertForm.start_date) { addToast('Start date is required', 'error'); return }
+                  addEmployee({
+                    profile: {
+                      full_name: convertApp.candidate_name,
+                      email: convertApp.candidate_email,
+                      avatar_url: null,
+                    },
+                    department_id: convertForm.department_id,
+                    job_title: convertForm.job_title,
+                    employment_type: 'full_time',
+                    status: 'active',
+                    start_date: convertForm.start_date,
+                    country: '',
+                    role: 'employee',
+                  })
+                  updateApplication(convertApp.id, { stage: 'hired', notes: (convertApp.notes || '') + '\n[Converted to employee on ' + new Date().toISOString().split('T')[0] + ']' })
+                  addToast(`${convertApp.candidate_name} has been added as an employee`)
+                  setShowConvertModal(false)
+                }} disabled={!convertForm.start_date || !convertForm.department_id}>Create Employee Record</Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </>

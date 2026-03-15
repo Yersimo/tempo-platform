@@ -40,6 +40,7 @@ export default function EmployeeDetailPage() {
     employees, departments, goals, reviews, enrollments, courses,
     leaveRequests, devices, expenseReports, feedback, mentoringPairs,
     salaryReviews, compBands,
+    currentEmployeeId, currentUser,
     updateEmployee, getDepartmentName, getEmployeeName,
     customFieldDefinitions, customFieldValues,
     addCustomFieldValue, updateCustomFieldValue,
@@ -80,6 +81,13 @@ export default function EmployeeDetailPage() {
   const [bankingForm, setBankingForm] = useState({
     bank_name: '', bank_code: '', bank_account_number: '', bank_account_name: '',
     bank_country: '', mobile_money_provider: '', mobile_money_number: '',
+  })
+
+  // Self-service profile edit state (for employees editing their own profile)
+  const [showSelfEditModal, setShowSelfEditModal] = useState(false)
+  const [selfEditForm, setSelfEditForm] = useState({
+    phone: '', personal_email: '', address: '',
+    emergency_contact_name: '', emergency_contact_phone: '',
   })
 
   if (pageLoading) {
@@ -267,6 +275,55 @@ export default function EmployeeDetailPage() {
 
   const empAny = emp as any
   const hasBankingDetails = emp && (empAny?.bank_account_number || empAny?.mobile_money_number)
+
+  // Self-service profile edit: employees can edit their own limited fields
+  const isOwnProfile = id === currentEmployeeId
+  const userRole = currentUser?.role || 'employee'
+  const isPrivilegedRole = userRole === 'admin' || userRole === 'owner' || userRole === 'hrbp' || userRole === 'manager'
+
+  function openSelfEdit() {
+    if (!emp) return
+    const primaryContact = empContacts.find(c => c.is_primary) || empContacts[0]
+    setSelfEditForm({
+      phone: emp.profile?.phone || '',
+      personal_email: (emp as any).personal_email || '',
+      address: (emp as any).address || emp.country || '',
+      emergency_contact_name: primaryContact?.name || '',
+      emergency_contact_phone: primaryContact?.phone || '',
+    })
+    setShowSelfEditModal(true)
+  }
+
+  function submitSelfEdit() {
+    if (!emp) return
+    updateEmployee(id, {
+      profile: { ...emp.profile, phone: selfEditForm.phone },
+      personal_email: selfEditForm.personal_email,
+      address: selfEditForm.address,
+    })
+    // Update or create primary emergency contact
+    if (selfEditForm.emergency_contact_name && selfEditForm.emergency_contact_phone) {
+      const primaryContact = empContacts.find(c => c.is_primary) || empContacts[0]
+      if (primaryContact) {
+        updateEmergencyContact(primaryContact.id, {
+          name: selfEditForm.emergency_contact_name,
+          phone: selfEditForm.emergency_contact_phone,
+          employee_id: id,
+          is_primary: true,
+          relationship: primaryContact.relationship,
+        })
+      } else {
+        addEmergencyContact({
+          name: selfEditForm.emergency_contact_name,
+          phone: selfEditForm.emergency_contact_phone,
+          employee_id: id,
+          is_primary: true,
+          relationship: 'other',
+        })
+      }
+    }
+    setShowSelfEditModal(false)
+  }
 
   // Render field input based on type
   function renderFieldInput(def: typeof empFieldDefs[0]) {
