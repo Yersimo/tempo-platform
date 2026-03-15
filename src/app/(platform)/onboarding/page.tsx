@@ -26,6 +26,7 @@ import {
   CheckSquare, Video, Coffee, MapPin, Upload, Download, AlertCircle, Table,
   Plus, X
 } from 'lucide-react'
+import { generateEmployeeImportTemplate, parseExcelFile } from '@/lib/excel-template'
 
 // ─── Platform Setup Wizard (preserved from original) ─────────────────
 
@@ -256,12 +257,45 @@ export default function OnboardingPage() {
     setCsvImportStatus('preview')
   }, [])
 
-  const handleCSVFile = useCallback((file: File) => {
+  const handleCSVFile = useCallback(async (file: File) => {
     setCsvErrors([])
-    const reader = new FileReader()
-    reader.onload = (e) => { parseCSV(e.target?.result as string) }
-    reader.readAsText(file)
-  }, [parseCSV])
+    const isExcel = /\.xlsx?$/i.test(file.name)
+    if (isExcel) {
+      try {
+        const result = await parseExcelFile(file)
+        if (result.headers.length === 0) {
+          setCsvErrors(['Excel file is empty or has no headers'])
+          return
+        }
+        setCsvHeaders(result.headers)
+        const autoMap: Record<string, string> = {}
+        const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        result.headers.forEach(h => {
+          const norm = normalizeHeader(h)
+          const match = allFieldOptions.find(f => {
+            const fNorm = f.replace(/_/g, '')
+            const hNorm = norm.replace(/_/g, '')
+            return hNorm.includes(fNorm) || fNorm.includes(hNorm) || norm === f
+          })
+          if (match) autoMap[h] = match
+        })
+        setCsvColumnMap(autoMap)
+        const rows = result.rows.filter(r => r.some(cell => cell.trim())).map(row => {
+          const record: Record<string, string> = {}
+          result.headers.forEach((h, i) => { record[h] = row[i] || '' })
+          return record
+        })
+        setCsvData(rows)
+        setCsvImportStatus('preview')
+      } catch {
+        setCsvErrors(['Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file.'])
+      }
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => { parseCSV(e.target?.result as string) }
+      reader.readAsText(file)
+    }
+  }, [parseCSV, allFieldOptions])
 
   const importCSVEmployees = useCallback(async () => {
     setCsvImportStatus('importing')
@@ -962,20 +996,20 @@ export default function OnboardingPage() {
                         className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-tempo-600/40 transition-colors cursor-pointer"
                         onClick={() => csvInputRef.current?.click()}
                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
-                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f) }}
+                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer.files[0]; if (f && (f.name.endsWith('.csv') || /\.xlsx?$/i.test(f.name))) handleCSVFile(f) }}
                       >
                         <Upload size={32} className="mx-auto text-t3 mb-3" />
-                        <p className="text-sm font-medium text-t1 mb-1">Drop a CSV file here, or click to browse</p>
-                        <p className="text-xs text-t3">Supports .csv files with employee data</p>
+                        <p className="text-sm font-medium text-t1 mb-1">Drop a file here, or click to browse</p>
+                        <p className="text-xs text-t3">Supports .csv, .xlsx, and .xls files with employee data</p>
                         <input
                           ref={csvInputRef}
                           type="file"
-                          accept=".csv"
+                          accept=".csv,.xlsx,.xls"
                           className="hidden"
                           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCSVFile(f) }}
                         />
                       </div>
-                      <div className="text-center">
+                      <div className="text-center flex items-center justify-center gap-4">
                         <button
                           onClick={() => {
                             const csv = 'first_name,last_name,email,department,job_title,start_date\nJane,Doe,jane@example.com,Engineering,Software Engineer,2026-03-01\nJohn,Smith,john@example.com,Marketing,Marketing Lead,2026-03-01'
@@ -987,7 +1021,13 @@ export default function OnboardingPage() {
                           }}
                           className="text-xs text-tempo-600 hover:text-tempo-700 font-medium inline-flex items-center gap-1"
                         >
-                          <Download size={12} /> Download CSV template
+                          <Download size={12} /> Download CSV Template
+                        </button>
+                        <button
+                          onClick={generateEmployeeImportTemplate}
+                          className="text-xs text-tempo-600 hover:text-tempo-700 font-medium inline-flex items-center gap-1"
+                        >
+                          <Download size={12} /> Download Excel Template
                         </button>
                       </div>
                       {csvErrors.length > 0 && (

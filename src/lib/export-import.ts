@@ -1,9 +1,11 @@
 /**
  * Export / Import Utilities
  *
- * Client-safe functions for exporting data to CSV/JSON and parsing CSV imports.
+ * Client-safe functions for exporting data to CSV/JSON/Excel and parsing CSV imports.
  * No database imports -- safe for 'use client' pages.
  */
+
+import * as XLSX from 'xlsx'
 
 // ============================================================
 // CSV EXPORT
@@ -493,6 +495,55 @@ export const APPLICATION_EXPORT_COLUMNS = [
   { header: 'Applied Date', accessor: (a: any) => a.applied_date || '' },
   { header: 'Source', accessor: (a: any) => a.source || '' },
 ]
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+
+/**
+ * Export data as a formatted .xlsx file with auto-width columns.
+ * Accepts the same ExportColumn format used by exportToCSV for consistency.
+ */
+export function exportToExcel<T>(
+  data: T[],
+  columns: { key: string; label: string }[],
+  filename: string,
+  exportColumns?: ExportColumn<T>[]
+): void {
+  if (data.length === 0) return
+
+  const headers = columns.map(c => c.label)
+
+  // Build rows using exportColumns accessors if provided, otherwise use key-based access
+  const rows = data.map(row => {
+    return columns.map((col, idx) => {
+      if (exportColumns && exportColumns[idx]) {
+        const val = exportColumns[idx].accessor(row)
+        return val == null ? '' : String(val)
+      }
+      const val = (row as Record<string, unknown>)[col.key]
+      return val == null ? '' : String(val)
+    })
+  })
+
+  const sheetData = [headers, ...rows]
+  const ws = XLSX.utils.aoa_to_sheet(sheetData)
+
+  // Auto-width columns
+  const colWidths = headers.map((header, colIdx) => {
+    let maxLen = header.length
+    for (const row of rows) {
+      const cellLen = (row[colIdx] || '').length
+      if (cellLen > maxLen) maxLen = cellLen
+    }
+    return { wch: Math.min(maxLen + 4, 50) }
+  })
+  ws['!cols'] = colWidths
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Export')
+  XLSX.writeFile(wb, `${filename}.xlsx`)
+}
 
 // ============================================================
 // HELPERS

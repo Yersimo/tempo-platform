@@ -24,7 +24,8 @@ import {
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
-import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
+import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, exportToExcel, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
+import { generateEmployeeImportTemplate, parseExcelFile } from '@/lib/excel-template'
 import Link from 'next/link'
 import OrgChart from '@/components/org-chart'
 
@@ -353,20 +354,42 @@ export default function PeoplePage() {
   async function handleFileSelect(file: File) {
     setImportFile(file)
     try {
-      const parsed = await readFileAsCSV(file)
-      if (parsed.errors.length > 0 && parsed.rows.length === 0) {
-        setImportPreviewData({ valid: [], errors: parsed.errors.map((e, i) => ({ row: i + 1, message: e })), totalRows: 0 })
-        setImportStep('preview')
-        setShowImportModal(true)
-        return
+      const isExcel = /\.xlsx?$/i.test(file.name)
+      let headers: string[]
+      let rows: Record<string, string>[]
+      let errors: string[] = []
+      let totalRows: number
+
+      if (isExcel) {
+        const result = await parseExcelFile(file)
+        headers = result.headers
+        totalRows = result.rows.length
+        rows = result.rows.map(row => {
+          const record: Record<string, string> = {}
+          headers.forEach((h, idx) => { record[h] = row[idx] || '' })
+          return record
+        })
+      } else {
+        const parsed = await readFileAsCSV(file)
+        if (parsed.errors.length > 0 && parsed.rows.length === 0) {
+          setImportPreviewData({ valid: [], errors: parsed.errors.map((e, i) => ({ row: i + 1, message: e })), totalRows: 0 })
+          setImportStep('preview')
+          setShowImportModal(true)
+          return
+        }
+        headers = parsed.headers
+        rows = parsed.rows
+        errors = parsed.errors
+        totalRows = parsed.totalRows
       }
-      const mapping = mapCSVToEmployeeFields(parsed.headers)
-      const result = validateEmployeeImport(parsed.rows, mapping)
-      setImportPreviewData({ valid: result.valid, errors: result.errors, totalRows: parsed.totalRows })
+
+      const mapping = mapCSVToEmployeeFields(headers)
+      const result = validateEmployeeImport(rows, mapping)
+      setImportPreviewData({ valid: result.valid, errors: [...errors.map((e, i) => ({ row: i + 1, message: e })), ...result.errors], totalRows })
       setImportStep('preview')
       setShowImportModal(true)
     } catch {
-      setImportPreviewData({ valid: [], errors: [{ row: 0, message: 'Failed to read file. Please ensure it is a valid CSV.' }], totalRows: 0 })
+      setImportPreviewData({ valid: [], errors: [{ row: 0, message: 'Failed to read file. Please ensure it is a valid CSV or Excel file.' }], totalRows: 0 })
       setImportStep('preview')
       setShowImportModal(true)
     }
@@ -386,7 +409,7 @@ export default function PeoplePage() {
     e.preventDefault()
     e.stopPropagation()
     const file = e.dataTransfer.files[0]
-    if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
+    if (file && (file.name.endsWith('.csv') || file.type === 'text/csv' || /\.xlsx?$/i.test(file.name))) {
       handleFileSelect(file)
     }
   }
@@ -499,9 +522,19 @@ export default function PeoplePage() {
         subtitle={t('subtitle', { employeeCount: employees.length, departmentCount: departments.length })}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered, EMPLOYEE_EXPORT_COLUMNS, 'employees-export')}>
-              <Download size={14} /> Export
-            </Button>
+            <div className="relative group">
+              <Button variant="outline" size="sm">
+                <Download size={14} /> Export
+              </Button>
+              <div className="absolute right-0 top-full mt-1 bg-card border border-divider rounded-lg shadow-lg py-1 hidden group-hover:block z-50 min-w-[160px]">
+                <button className="w-full px-3 py-1.5 text-xs text-t2 hover:bg-canvas text-left flex items-center gap-2" onClick={() => exportToCSV(filtered, EMPLOYEE_EXPORT_COLUMNS, 'employees-export')}>
+                  <Download size={12} /> Export as CSV
+                </button>
+                <button className="w-full px-3 py-1.5 text-xs text-t2 hover:bg-canvas text-left flex items-center gap-2" onClick={() => exportToExcel(filtered, EMPLOYEE_EXPORT_COLUMNS.map(c => ({ key: c.header, label: c.header })), 'employees-export', EMPLOYEE_EXPORT_COLUMNS)}>
+                  <Download size={12} /> Export as Excel
+                </button>
+              </div>
+            </div>
             <Button variant="outline" size="sm" onClick={() => { setImportStep('idle'); setShowImportModal(true) }}>
               <Upload size={14} /> Import
             </Button>
@@ -926,13 +959,16 @@ export default function PeoplePage() {
                     <p className="text-sm text-t2">{t('dragDropCsv')}</p>
                     <p className="text-xs text-t3 mt-1">{t('csvFormat')}</p>
                   </div>
-                  <input id="csv-file-input" type="file" accept=".csv" className="hidden" onChange={handleImportInputChange} />
+                  <input id="csv-file-input" type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportInputChange} />
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => document.getElementById('csv-file-input')?.click()}>
                       <Upload size={14} /> {t('selectFile')}
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1" onClick={downloadTemplate}>
-                      <Download size={14} /> {tc('downloadTemplate')}
+                      <Download size={14} /> CSV Template
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={generateEmployeeImportTemplate}>
+                      <Download size={14} /> Excel Template
                     </Button>
                   </div>
                   <div className="mt-3 bg-canvas rounded-lg p-3">
@@ -955,7 +991,7 @@ export default function PeoplePage() {
                   <p className="text-xs text-t3 mb-3">{t('exportDescription')}</p>
                   <div className="space-y-2">
                     <Button variant="outline" size="sm" className="w-full" onClick={() => exportToCSV(employees, EMPLOYEE_EXPORT_COLUMNS, 'employees-export')}><Download size={14} /> {t('exportCsv')}</Button>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => exportToCSV(employees, EMPLOYEE_EXPORT_COLUMNS, 'employees-excel')}><Download size={14} /> {t('exportExcel')}</Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => exportToExcel(employees, EMPLOYEE_EXPORT_COLUMNS.map(c => ({ key: c.header, label: c.header })), 'employees-export', EMPLOYEE_EXPORT_COLUMNS)}><Download size={14} /> {t('exportExcel')}</Button>
                     <Button variant="outline" size="sm" className="w-full" onClick={() => exportToPrint(employees, EMPLOYEE_EXPORT_COLUMNS, 'Employee Directory')}><Download size={14} /> {t('exportPdf')}</Button>
                   </div>
                 </div>
@@ -1508,15 +1544,18 @@ export default function PeoplePage() {
             <>
               <div className="bg-canvas rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-t1 mb-2">Step 1: Download Template</h4>
-                <p className="text-xs text-t3 mb-3">Download the CSV template, fill it in with your employee data, then upload it below.</p>
+                <p className="text-xs text-t3 mb-3">Download a template, fill it in with your employee data, then upload it below.</p>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                    <Download size={14} /> Download Template
+                    <Download size={14} /> Download CSV Template
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={generateEmployeeImportTemplate}>
+                    <Download size={14} /> Download Excel Template
                   </Button>
                 </div>
               </div>
               <div className="bg-canvas rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-t1 mb-2">Step 2: Upload CSV</h4>
+                <h4 className="text-sm font-semibold text-t1 mb-2">Step 2: Upload File</h4>
                 <div
                   className="border-2 border-dashed border-divider rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer"
                   onDragOver={handleDragOver}
@@ -1524,10 +1563,10 @@ export default function PeoplePage() {
                   onClick={() => document.getElementById('csv-file-input-modal')?.click()}
                 >
                   <Upload size={28} className="mx-auto text-t3 mb-2" />
-                  <p className="text-sm text-t2">Drag & drop your CSV file here</p>
-                  <p className="text-xs text-t3 mt-1">or click to browse (.csv files only)</p>
+                  <p className="text-sm text-t2">Drag & drop your file here</p>
+                  <p className="text-xs text-t3 mt-1">or click to browse (.csv, .xlsx, .xls)</p>
                 </div>
-                <input id="csv-file-input-modal" type="file" accept=".csv" className="hidden" onChange={handleImportInputChange} />
+                <input id="csv-file-input-modal" type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportInputChange} />
               </div>
               <div className="bg-canvas rounded-lg p-3">
                 <p className="text-[0.65rem] font-medium text-t2 mb-1">Supported Fields</p>
