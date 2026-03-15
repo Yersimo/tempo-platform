@@ -1,0 +1,4 @@
+Full Name,Email,Job Title,Department,Country,Level,Hire Date,Phone,Role,Manager Email,Location,Employment Type
+John Smith,john.smith@temporuns.com,Software Engineer,Engineering,Kenya,Mid-Level,2025-01-15,+254712345678,employee,,Nairobi,full_time
+Jane Doe,jane.doe@temporuns.com,HR Manager,Human Resources,Kenya,Senior Manager,2024-06-01,+254723456789,hrbp,,Nairobi,full_time
+Bob Wilson,bob.wilson@temporuns.com,Finance Analyst,Finance,Tanzania,Mid-Level,2025-03-01,+255712345678,employee,jane.doe@temporuns.com,Dar es Salaam,full_time

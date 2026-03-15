@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
-import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
+import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import Link from 'next/link'
 import OrgChart from '@/components/org-chart'
 
@@ -460,14 +460,7 @@ export default function PeoplePage() {
   }
 
   function downloadTemplate() {
-    const templateCSV = 'full_name,email,job_title,department,country,hire_date,phone,level,manager_email\nJohn Doe,john.doe@company.com,Software Engineer,Engineering,Nigeria,2026-01-15,+234 800 000 0000,Mid,manager@company.com\nJane Smith,jane.smith@company.com,Product Manager,Product,Ghana,2026-02-01,+233 20 000 0000,Senior,director@company.com'
-    const blob = new Blob([templateCSV], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'employee-import-template.csv'
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadImportTemplate()
   }
 
   const timelineIcon = (type: string) => {
@@ -504,7 +497,19 @@ export default function PeoplePage() {
       <Header
         title={t('title')}
         subtitle={t('subtitle', { employeeCount: employees.length, departmentCount: departments.length })}
-        actions={<Button size="sm" onClick={() => setShowAddModal(true)}><Plus size={14} /> {t('addEmployee')}</Button>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered, EMPLOYEE_EXPORT_COLUMNS, 'employees-export')}>
+              <Download size={14} /> Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setImportStep('idle'); setShowImportModal(true) }}>
+              <Upload size={14} /> Import
+            </Button>
+            <Button size="sm" onClick={() => setShowAddModal(true)}>
+              <Plus size={14} /> {t('addEmployee')}
+            </Button>
+          </div>
+        }
       />
 
       {/* Stat Cards */}
@@ -932,7 +937,7 @@ export default function PeoplePage() {
                   </div>
                   <div className="mt-3 bg-canvas rounded-lg p-3">
                     <p className="text-[0.65rem] font-medium text-t2 mb-1">{tc('supportedFields')}</p>
-                    <p className="text-[0.6rem] text-t3">full_name, email, job_title, department, country, hire_date, phone, level, manager_email</p>
+                    <p className="text-[0.6rem] text-t3">full_name, email, job_title, department, country, level, hire_date, phone, role, manager_email, location, employment_type, bank_name, bank_account_number, bank_account_name, tax_id_number, date_of_birth, emergency_contact_name, emergency_contact_phone</p>
                     <p className="text-[0.6rem] text-tempo-600 mt-1">{tc('autoCredentials')}</p>
                   </div>
                 </div>
@@ -1498,6 +1503,40 @@ export default function PeoplePage() {
       {/* Bulk Import Modal */}
       <Modal open={showImportModal} onClose={resetImport} title={t('importEmployees')} size="lg">
         <div className="space-y-4">
+          {/* Step 0: Upload */}
+          {importStep === 'idle' && (
+            <>
+              <div className="bg-canvas rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-t1 mb-2">Step 1: Download Template</h4>
+                <p className="text-xs text-t3 mb-3">Download the CSV template, fill it in with your employee data, then upload it below.</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                    <Download size={14} /> Download Template
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-canvas rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-t1 mb-2">Step 2: Upload CSV</h4>
+                <div
+                  className="border-2 border-dashed border-divider rounded-lg p-8 text-center hover:border-tempo-400 hover:bg-tempo-50/30 transition-colors cursor-pointer"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('csv-file-input-modal')?.click()}
+                >
+                  <Upload size={28} className="mx-auto text-t3 mb-2" />
+                  <p className="text-sm text-t2">Drag & drop your CSV file here</p>
+                  <p className="text-xs text-t3 mt-1">or click to browse (.csv files only)</p>
+                </div>
+                <input id="csv-file-input-modal" type="file" accept=".csv" className="hidden" onChange={handleImportInputChange} />
+              </div>
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-[0.65rem] font-medium text-t2 mb-1">Supported Fields</p>
+                <p className="text-[0.6rem] text-t3">Full Name, Email, Job Title, Department, Country, Level, Hire Date, Phone, Role, Manager Email, Location, Employment Type, Bank Name, Bank Account Number, Bank Account Name, Tax ID Number, Date of Birth, Emergency Contact Name, Emergency Contact Phone</p>
+                <p className="text-[0.6rem] text-tempo-600 mt-1">Only Full Name and Email are required. All other fields are optional.</p>
+              </div>
+            </>
+          )}
+
           {/* Step 1: Preview */}
           {importStep === 'preview' && importPreviewData && (
             <>

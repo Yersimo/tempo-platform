@@ -296,6 +296,7 @@ export default function OnboardingPage() {
         continue
       }
 
+      const fullName = `${firstName} ${lastName}`.trim()
       try {
         await fetch('/api/data', {
           method: 'POST',
@@ -304,20 +305,23 @@ export default function OnboardingPage() {
             entity: 'employees',
             action: 'create',
             data: {
-              first_name: firstName,
-              last_name: lastName,
+              full_name: fullName,
               email,
               job_title: row[reverseMap['job_title']]?.trim() || '',
               phone: row[reverseMap['phone']]?.trim() || '',
               location: row[reverseMap['location']]?.trim() || '',
-              start_date: row[reverseMap['start_date']]?.trim() || new Date().toISOString().split('T')[0],
-              status: 'active',
+              hire_date: row[reverseMap['start_date']]?.trim() || row[reverseMap['hire_date']]?.trim() || new Date().toISOString().split('T')[0],
+              department: row[reverseMap['department']]?.trim() || '',
+              country: row[reverseMap['country']]?.trim() || '',
+              level: row[reverseMap['level']]?.trim() || '',
+              role: row[reverseMap['role']]?.trim() || 'employee',
+              is_active: true,
             },
           }),
         })
         imported++
       } catch {
-        errors.push(`Row ${i + 2}: Failed to import ${firstName} ${lastName}`)
+        errors.push(`Row ${i + 2}: Failed to import ${fullName}`)
       }
     }
 

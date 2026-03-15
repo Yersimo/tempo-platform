@@ -211,6 +211,14 @@ export interface EmployeeImportRow {
   location?: string
   level?: string
   manager_email?: string
+  employment_type?: string
+  bank_name?: string
+  bank_account_number?: string
+  bank_account_name?: string
+  tax_id_number?: string
+  date_of_birth?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
 }
 
 const EMPLOYEE_FIELD_ALIASES: Record<string, string[]> = {
@@ -222,8 +230,16 @@ const EMPLOYEE_FIELD_ALIASES: Record<string, string[]> = {
   hire_date: ['hire_date', 'start_date', 'join_date', 'hire date', 'start date'],
   phone: ['phone', 'phone_number', 'mobile', 'telephone'],
   location: ['location', 'office', 'city', 'work_location'],
-  level: ['level', 'job_level', 'grade', 'band'],
+  level: ['level', 'job_level', 'grade', 'band', 'seniority'],
   manager_email: ['manager_email', 'manager', 'reports_to', 'manager email'],
+  employment_type: ['employment_type', 'employment type', 'emp_type', 'emp type', 'type', 'contract_type', 'contract type'],
+  bank_name: ['bank_name', 'bank name', 'bank'],
+  bank_account_number: ['bank_account_number', 'bank account number', 'account_number', 'account number', 'acct_number', 'acct number'],
+  bank_account_name: ['bank_account_name', 'bank account name', 'account_name', 'account name', 'acct_name', 'acct name'],
+  tax_id_number: ['tax_id_number', 'tax id number', 'tax_id', 'tax id', 'tin', 'ssn', 'national_id', 'national id'],
+  date_of_birth: ['date_of_birth', 'date of birth', 'dob', 'birthdate', 'birth_date', 'birth date', 'birthday'],
+  emergency_contact_name: ['emergency_contact_name', 'emergency contact name', 'emergency_contact', 'emergency contact', 'emergency_name', 'emergency name', 'ice_name', 'ice name'],
+  emergency_contact_phone: ['emergency_contact_phone', 'emergency contact phone', 'emergency_phone', 'emergency phone', 'ice_phone', 'ice phone'],
 }
 
 /**
@@ -280,10 +296,34 @@ export function validateEmployeeImport(
       location: row[mapping.location]?.trim(),
       level: row[mapping.level]?.trim(),
       manager_email: row[mapping.manager_email]?.trim(),
+      employment_type: row[mapping.employment_type]?.trim(),
+      bank_name: row[mapping.bank_name]?.trim(),
+      bank_account_number: row[mapping.bank_account_number]?.trim(),
+      bank_account_name: row[mapping.bank_account_name]?.trim(),
+      tax_id_number: row[mapping.tax_id_number]?.trim(),
+      date_of_birth: row[mapping.date_of_birth]?.trim(),
+      emergency_contact_name: row[mapping.emergency_contact_name]?.trim(),
+      emergency_contact_phone: row[mapping.emergency_contact_phone]?.trim(),
     })
   })
 
   return { valid, errors }
+}
+
+// ============================================================
+// TEMPLATE DOWNLOAD
+// ============================================================
+
+/**
+ * Triggers download of the CSV template from /templates/employee-import-template.csv
+ */
+export function downloadImportTemplate(): void {
+  const link = document.createElement('a')
+  link.href = '/templates/employee-import-template.csv'
+  link.download = 'employee-import-template.csv'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // ============================================================
