@@ -264,6 +264,10 @@ interface TempoState {
 
   // Guided Journeys
   journeys: import('@/lib/demo-data').Journey[]
+  journeyTemplates: import('@/lib/demo-data').JourneyTemplate[]
+
+  // Moments That Matter
+  momentsThatMatter: import('@/lib/demo-data').MomentThatMatters[]
 
   // Widget Preferences
   widgetPreferences: DemoData['demoWidgetPreferences']
@@ -826,6 +830,18 @@ interface TempoState {
 
   // Journeys
   updateJourneyStep: (journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => void
+  addJourney: (data: AnyRecord) => void
+  updateJourney: (id: string, data: AnyRecord) => void
+  deleteJourney: (id: string) => void
+  addJourneyTemplate: (data: AnyRecord) => void
+  updateJourneyTemplate: (id: string, data: AnyRecord) => void
+  deleteJourneyTemplate: (id: string) => void
+
+  // Moments That Matter
+  addMoment: (data: AnyRecord) => void
+  updateMoment: (id: string, data: AnyRecord) => void
+  deleteMoment: (id: string) => void
+  acknowledgeMoment: (id: string, employeeId: string) => void
 
   // Widget Preferences
   updateWidgetPreferences: (data: AnyRecord) => void
@@ -1427,6 +1443,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [marketBenchmarks, setMarketBenchmarks] = useState<any[]>([])
   const [widgetPreferences, setWidgetPreferences] = useState<any>({})
   const [journeys, setJourneys] = useState<any[]>([])
+  const [journeyTemplates, setJourneyTemplates] = useState<any[]>([])
+  const [momentsThatMatter, setMomentsThatMatter] = useState<any[]>([])
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1742,6 +1760,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).scimProviders) setScimProviders((data as any).scimProviders)
     if ((data as any).autoDetectionScans) setAutoDetectionScans((data as any).autoDetectionScans)
     if ((data as any).shadowITDetections) setShadowITDetections((data as any).shadowITDetections)
+    // Journeys & Moments That Matter
+    if (mod.demoJourneys) setJourneys(mod.demoJourneys as any)
+    if (mod.demoJourneyTemplates) setJourneyTemplates(mod.demoJourneyTemplates as any)
+    if (mod.demoMomentsThatMatter) setMomentsThatMatter(mod.demoMomentsThatMatter as any)
     /* eslint-enable @typescript-eslint/no-explicit-any */
     setAuditLog([])
     try { localStorage.setItem('tempo_current_org', orgId) } catch { /* ignore */ }
@@ -3199,6 +3221,75 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       }
     }))
     addToast('Journey step updated')
+  }, [addToast])
+
+  const addJourney = useCallback((data: AnyRecord) => {
+    const id = genId('journey')
+    setJourneys(prev => [...prev, { id, org_id: orgIdRef.current, status: 'not_started', current_step: 0, started_at: null, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'journey', id, `Assigned journey: ${data.title}`)
+    addToast('Journey assigned')
+  }, [logAudit, addToast])
+
+  const updateJourney = useCallback((id: string, data: AnyRecord) => {
+    setJourneys(prev => prev.map(j => j.id === id ? { ...j, ...data } : j) as typeof prev)
+    logAudit('update', 'journey', id, 'Updated journey')
+    addToast('Journey updated')
+  }, [logAudit, addToast])
+
+  const deleteJourney = useCallback((id: string) => {
+    setJourneys(prev => prev.filter(j => j.id !== id))
+    logAudit('delete', 'journey', id, 'Deleted journey')
+    addToast('Journey deleted')
+  }, [logAudit, addToast])
+
+  // ---- Journey Templates ----
+  const addJourneyTemplate = useCallback((data: AnyRecord) => {
+    const id = genId('jt')
+    setJourneyTemplates(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, auto_assign: false, created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'journey_template', id, `Created template: ${data.title}`)
+    addToast('Journey template created')
+  }, [logAudit, addToast])
+
+  const updateJourneyTemplate = useCallback((id: string, data: AnyRecord) => {
+    setJourneyTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t) as typeof prev)
+    logAudit('update', 'journey_template', id, 'Updated template')
+    addToast('Journey template updated')
+  }, [logAudit, addToast])
+
+  const deleteJourneyTemplate = useCallback((id: string) => {
+    setJourneyTemplates(prev => prev.filter(t => t.id !== id))
+    logAudit('delete', 'journey_template', id, 'Deleted template')
+    addToast('Journey template deleted')
+  }, [logAudit, addToast])
+
+  // ---- Moments That Matter ----
+  const addMoment = useCallback((data: AnyRecord) => {
+    const id = genId('mtm')
+    setMomentsThatMatter(prev => [...prev, { id, org_id: orgIdRef.current, status: 'upcoming', acknowledged_by: [], created_at: new Date().toISOString(), ...data }] as typeof prev)
+    logAudit('create', 'moment', id, `Created moment: ${data.title}`)
+    addToast('Moment created')
+  }, [logAudit, addToast])
+
+  const updateMoment = useCallback((id: string, data: AnyRecord) => {
+    setMomentsThatMatter(prev => prev.map(m => m.id === id ? { ...m, ...data } : m) as typeof prev)
+    logAudit('update', 'moment', id, 'Updated moment')
+    addToast('Moment updated')
+  }, [logAudit, addToast])
+
+  const deleteMoment = useCallback((id: string) => {
+    setMomentsThatMatter(prev => prev.filter(m => m.id !== id))
+    logAudit('delete', 'moment', id, 'Deleted moment')
+    addToast('Moment deleted')
+  }, [logAudit, addToast])
+
+  const acknowledgeMoment = useCallback((id: string, employeeId: string) => {
+    setMomentsThatMatter(prev => prev.map(m => {
+      if (m.id !== id) return m
+      const acked = m.acknowledged_by || []
+      if (acked.includes(employeeId)) return m
+      return { ...m, acknowledged_by: [...acked, employeeId] }
+    }) as typeof prev)
+    addToast('Moment acknowledged')
   }, [addToast])
 
   // ---- Widget Preferences ----
@@ -5527,7 +5618,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addMeritCycle, updateMeritCycle, addMeritRecommendation, updateMeritRecommendation,
     addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
     offers, careerTracks, marketBenchmarks, widgetPreferences,
-    addOffer, updateOffer, updateWidgetPreferences, journeys, updateJourneyStep,
+    addOffer, updateOffer, updateWidgetPreferences,
+    journeys, updateJourneyStep, addJourney, updateJourney, deleteJourney,
+    journeyTemplates, addJourneyTemplate, updateJourneyTemplate, deleteJourneyTemplate,
+    momentsThatMatter, addMoment, updateMoment, deleteMoment, acknowledgeMoment,
     customFieldDefinitions, customFieldValues,
     addCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition,
     addCustomFieldValue, updateCustomFieldValue,

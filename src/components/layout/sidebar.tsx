@@ -14,7 +14,7 @@ import {
   LogOut, FolderKanban, Compass, Zap, Plug, Store, Code,
   CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
   KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
-  ArrowLeftRight, X, Building2, BookOpen,
+  ArrowLeftRight, X, Building2, BookOpen, Route, Sparkles,
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
 import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
@@ -68,6 +68,8 @@ export function Sidebar() {
         { label: t('learning'), href: '/learning', icon: <GraduationCap size={18} /> },
         { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
         { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
+        { label: 'Journeys', href: '/journeys', icon: <Route size={18} /> },
+        { label: 'Moments', href: '/moments', icon: <Sparkles size={18} /> },
         { label: 'Offboarding', href: '/offboarding', icon: <UserMinus size={18} />, requiredPermissions: ['offboarding:read'] },
       ],
     },
