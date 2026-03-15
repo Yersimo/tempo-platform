@@ -117,6 +117,10 @@ export default function LearningPage() {
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState({ name: '', description: '', course_id: '', max_members: 10, meeting_frequency: 'biweekly' as string })
 
+  // Course Detail View state
+  const [courseDetailId, setCourseDetailId] = useState<string | null>(null)
+  const courseDetail = courseDetailId ? courses.find((c: any) => c.id === courseDetailId) : null
+
   // Document upload state
   const [docUploadState, setDocUploadState] = useState<'idle' | 'parsing' | 'done'>('idle')
   const [docParsingProgress, setDocParsingProgress] = useState(0)
@@ -267,6 +271,102 @@ export default function LearningPage() {
   const [extRequests, setExtRequests] = useState<any[]>([])
   const [extReqForm, setExtReqForm] = useState({ title: '', provider: '', url: '', cost: '', justification: '', format: 'online' as string })
   const canApproveTraining = currentUser?.role === 'manager' || currentUser?.role === 'hrbp' || currentUser?.role === 'admin' || currentUser?.role === 'owner'
+
+  // Seed course blocks for courses that don't have any (critical for course player)
+  const [blocksSeeded, setBlocksSeeded] = useState(false)
+  useEffect(() => {
+    if (!blocksSeeded && courses.length > 0) {
+      const coursesWithBlocks = new Set(courseBlocks.map((b: any) => b.course_id))
+      const coursesNeedingBlocks = courses.filter((c: any) => !coursesWithBlocks.has(c.id))
+      if (coursesNeedingBlocks.length > 0) {
+        coursesNeedingBlocks.forEach((course: any) => {
+          const cat = (course.category || 'General').toLowerCase()
+          const modules = [
+            { title: `Introduction to ${course.title}`, type: 'text', content: `Welcome to ${course.title}. ${course.description || 'This course will help you build essential skills and knowledge.'}`, duration: 15, module: 0, order: 0 },
+            { title: 'Core Concepts & Fundamentals', type: 'video', content: `https://videos.tempo.com/${course.id}-fundamentals.mp4`, duration: 20, module: 0, order: 1 },
+            { title: 'Key Principles & Best Practices', type: 'text', content: `This section covers the fundamental principles of ${cat}. You\'ll learn about industry standards, proven methodologies, and practical techniques that are used by leading organizations worldwide. Topics include strategic frameworks, analytical approaches, and implementation guidelines.`, duration: 25, module: 1, order: 0 },
+            { title: 'Practical Application Workshop', type: 'interactive', content: `Hands-on exercise: Apply the concepts from ${course.title} to real-world scenarios. Work through case studies and practice problems.`, duration: 30, module: 1, order: 1 },
+            { title: 'Advanced Topics & Case Studies', type: 'video', content: `https://videos.tempo.com/${course.id}-advanced.mp4`, duration: 25, module: 2, order: 0 },
+            { title: 'Knowledge Check Quiz', type: 'quiz', content: '', duration: 15, module: 2, order: 1 },
+            { title: 'Summary & Next Steps', type: 'text', content: `Congratulations on completing ${course.title}! You\'ve learned the key concepts, best practices, and practical applications. Continue your learning journey by exploring related courses in our catalog.`, duration: 10, module: 3, order: 0 },
+            { title: 'Resources & Reference Guide', type: 'download', content: `https://docs.tempo.com/${course.id}-resources.pdf`, duration: 5, module: 3, order: 1 },
+          ]
+          modules.forEach(m => {
+            addCourseBlock({
+              course_id: course.id,
+              module_index: m.module,
+              order: m.order,
+              type: m.type,
+              title: m.title,
+              content: m.content,
+              duration_minutes: m.duration,
+              status: 'published',
+            })
+          })
+        })
+      }
+      setBlocksSeeded(true)
+    }
+  }, [blocksSeeded, courses.length, courseBlocks.length])
+
+  // Seed live sessions when empty
+  const [sessionsSeeded, setSessionsSeeded] = useState(false)
+  useEffect(() => {
+    if (!sessionsSeeded && liveSessions.length === 0 && courses.length > 0) {
+      const now = new Date()
+      const sessionData = [
+        { title: 'New Hire Orientation Webinar', type: 'webinar', instructor: 'Sarah Johnson', capacity: 200, enrolled_count: 145, duration_minutes: 60, daysOffset: 2, status: 'upcoming' },
+        { title: 'Quarterly Compliance Update', type: 'webinar', instructor: 'David Chen', capacity: 300, enrolled_count: 210, duration_minutes: 45, daysOffset: 5, status: 'upcoming' },
+        { title: 'Leadership Workshop: Coaching Skills', type: 'workshop', instructor: 'Maria Santos', capacity: 30, enrolled_count: 28, duration_minutes: 120, daysOffset: 7, status: 'upcoming' },
+        { title: 'Tech Talk: AI in Banking', type: 'webinar', instructor: 'James Okafor', capacity: 150, enrolled_count: 89, duration_minutes: 60, daysOffset: 10, status: 'upcoming' },
+        { title: 'Expert Q&A: Risk Management', type: 'q_and_a', instructor: 'Priya Sharma', capacity: 100, enrolled_count: 65, duration_minutes: 45, daysOffset: 14, status: 'upcoming' },
+      ]
+      sessionData.forEach((s, i) => {
+        const scheduledAt = new Date(now)
+        scheduledAt.setDate(scheduledAt.getDate() + s.daysOffset)
+        scheduledAt.setHours(10 + i, 0, 0, 0)
+        addLiveSession({
+          course_id: courses[i % courses.length]?.id || courses[0]?.id,
+          title: s.title,
+          instructor: s.instructor,
+          scheduled_at: scheduledAt.toISOString(),
+          duration_minutes: s.duration_minutes,
+          type: s.type,
+          capacity: s.capacity,
+          enrolled_count: s.enrolled_count,
+          meeting_url: `https://meet.tempo.com/session-${i + 1}`,
+          status: s.status,
+        })
+      })
+      setSessionsSeeded(true)
+    }
+  }, [sessionsSeeded, liveSessions.length, courses.length])
+
+  // Seed learning paths when empty
+  const [pathsSeeded, setPathsSeeded] = useState(false)
+  useEffect(() => {
+    if (!pathsSeeded && learningPaths.length === 0 && courses.length >= 3) {
+      const pathData = [
+        { title: 'New Manager Essentials', description: 'Essential skills and knowledge for first-time managers covering leadership, communication, and team management', level: 'intermediate', courseCount: 3, estimatedHours: 40 },
+        { title: 'Compliance Mastery', description: 'Mandatory compliance training pathway covering all regulatory requirements', level: 'beginner', courseCount: 2, estimatedHours: 12 },
+        { title: 'Digital Transformation Specialist', description: 'Advanced pathway for employees leading digital initiatives and technology adoption', level: 'advanced', courseCount: 3, estimatedHours: 36 },
+        { title: 'Customer Excellence Track', description: 'Build world-class customer service skills from foundational to advanced levels', level: 'intermediate', courseCount: 2, estimatedHours: 20 },
+      ]
+      pathData.forEach((p, i) => {
+        const courseIds = courses.slice(i * 2, i * 2 + p.courseCount).map((c: any) => c.id)
+        if (courseIds.length > 0) {
+          addLearningPath({
+            title: p.title,
+            description: p.description,
+            course_ids: courseIds,
+            estimated_hours: p.estimatedHours,
+            level: p.level,
+          })
+        }
+      })
+      setPathsSeeded(true)
+    }
+  }, [pathsSeeded, learningPaths.length, courses.length])
 
   // Seed quiz questions for demo
   const [quizSeeded, setQuizSeeded] = useState(false)
@@ -1652,8 +1752,8 @@ export default function LearningPage() {
                     </div>
                     <Badge>{course.level}</Badge>
                   </div>
-                  <h3 className="text-sm font-semibold text-t1 mb-1">{course.title}</h3>
-                  <p className="text-xs text-t3 mb-2 line-clamp-2">{course.description}</p>
+                  <h3 className="text-sm font-semibold text-t1 mb-1 cursor-pointer hover:text-tempo-600 transition-colors" onClick={() => setCourseDetailId(course.id)}>{course.title}</h3>
+                  <p className="text-xs text-t3 mb-2 line-clamp-2 cursor-pointer" onClick={() => setCourseDetailId(course.id)}>{course.description}</p>
 
                   {/* Prerequisites indicator */}
                   {coursePrereqs.length > 0 && (
@@ -2213,7 +2313,7 @@ export default function LearningPage() {
           </div>
 
           {liveSessions.length === 0 ? (
-            <Card><div className="text-center py-8 text-sm text-t3">{t('noEnrollments')}</div></Card>
+            <Card><div className="text-center py-8 text-sm text-t3">No live sessions scheduled yet. Click &quot;Schedule Session&quot; to create one.</div></Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {liveSessions.map(session => {
@@ -4643,6 +4743,91 @@ export default function LearningPage() {
             <Button variant="primary" className="bg-red-600 hover:bg-red-700" onClick={executeDelete}>Delete</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Course Detail Modal */}
+      <Modal open={!!courseDetailId} onClose={() => setCourseDetailId(null)} title={courseDetail?.title || 'Course Details'} size="lg">
+        {courseDetail && (() => {
+          const detailBlocks = courseBlocks.filter((b: any) => b.course_id === courseDetail.id && b.status === 'published')
+          const detailModules = new Map<number, any[]>()
+          detailBlocks.forEach((b: any) => {
+            if (!detailModules.has(b.module_index)) detailModules.set(b.module_index, [])
+            detailModules.get(b.module_index)!.push(b)
+          })
+          const moduleList = [...detailModules.entries()].sort((a, b) => a[0] - b[0])
+          const totalMinutes = detailBlocks.reduce((s: number, b: any) => s + (b.duration_minutes || 0), 0)
+          const myEnrollment = enrollments.find((e: any) => e.course_id === courseDetail.id && e.employee_id === currentEmployeeId)
+          const { rating, reviews: reviewCount } = getCourseRating(courseDetail.id)
+          return (
+            <div className="space-y-5">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant={courseDetail.is_mandatory ? 'error' : 'default'}>{courseDetail.is_mandatory ? 'Mandatory' : courseDetail.category}</Badge>
+                <Badge>{courseDetail.level}</Badge>
+                <Badge variant="info">{courseDetail.format}</Badge>
+              </div>
+              <p className="text-sm text-t2">{courseDetail.description}</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-bg2 rounded-lg">
+                  <Clock size={16} className="mx-auto text-t3 mb-1" />
+                  <p className="text-sm font-semibold text-t1">{courseDetail.duration_hours}h</p>
+                  <p className="text-[0.6rem] text-t3">Duration</p>
+                </div>
+                <div className="text-center p-3 bg-bg2 rounded-lg">
+                  <BookOpen size={16} className="mx-auto text-t3 mb-1" />
+                  <p className="text-sm font-semibold text-t1">{detailBlocks.length}</p>
+                  <p className="text-[0.6rem] text-t3">Lessons</p>
+                </div>
+                <div className="text-center p-3 bg-bg2 rounded-lg">
+                  <Star size={16} className="mx-auto text-yellow-400 mb-1" />
+                  <p className="text-sm font-semibold text-t1">{rating.toFixed(1)}</p>
+                  <p className="text-[0.6rem] text-t3">{reviewCount} reviews</p>
+                </div>
+              </div>
+              {moduleList.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-t1 mb-3">Course Content</h4>
+                  <div className="space-y-2">
+                    {moduleList.map(([moduleIdx, blocks]) => (
+                      <div key={moduleIdx} className="border border-divider rounded-lg overflow-hidden">
+                        <div className="px-4 py-2 bg-bg2 text-xs font-medium text-t1">Module {moduleIdx + 1} · {blocks.length} lessons · {blocks.reduce((s: number, b: any) => s + (b.duration_minutes || 0), 0)} min</div>
+                        <div className="divide-y divide-divider">
+                          {blocks.sort((a: any, b: any) => a.order - b.order).map((block: any) => (
+                            <div key={block.id} className="px-4 py-2 flex items-center gap-3 text-xs">
+                              {block.type === 'video' ? <Video size={12} className="text-blue-500" /> :
+                               block.type === 'quiz' ? <HelpCircle size={12} className="text-purple-500" /> :
+                               block.type === 'interactive' ? <Zap size={12} className="text-green-500" /> :
+                               block.type === 'download' ? <Download size={12} className="text-orange-500" /> :
+                               <FileText size={12} className="text-t3" />}
+                              <span className="text-t2 flex-1">{block.title}</span>
+                              <span className="text-t3">{block.duration_minutes}m</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[0.6rem] text-t3 mt-2">Total: {totalMinutes} minutes across {moduleList.length} modules</p>
+                </div>
+              )}
+              <div className="flex items-center gap-3 pt-3 border-t border-divider">
+                {myEnrollment?.status === 'completed' ? (
+                  <Button variant="primary" className="flex-1" onClick={() => { setCourseDetailId(null); handleViewCertificate(myEnrollment.id) }}>
+                    <Medal size={14} /> View Certificate
+                  </Button>
+                ) : myEnrollment ? (
+                  <Button variant="primary" className="flex-1" onClick={() => { setCourseDetailId(null); openPlayer(myEnrollment.id, courseDetail.id) }}>
+                    <Play size={14} /> {myEnrollment.status === 'in_progress' ? 'Continue Learning' : 'Start Course'}
+                  </Button>
+                ) : (
+                  <Button variant="primary" className="flex-1" onClick={() => { handleEnroll(courseDetail.id); setCourseDetailId(null) }}>
+                    <Plus size={14} /> Enroll Now
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setCourseDetailId(null)}>Close</Button>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
 
       {/* Course Player */}
