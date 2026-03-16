@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { Skeleton, SkeletonAvatar, SkeletonText } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -568,8 +569,30 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="animate-spin text-tempo-600" size={32} />
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-surface animate-in fade-in duration-300">
+        {/* Channel list skeleton */}
+        <div className="w-64 border-r border-border p-4 space-y-3 hidden md:block">
+          <Skeleton height="h-8" width="w-full" className="rounded-lg mb-4" />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton height="h-4" width="w-4" className="rounded shrink-0" />
+              <Skeleton height="h-4" width={i % 2 === 0 ? 'w-28' : 'w-20'} />
+            </div>
+          ))}
+        </div>
+        {/* Messages skeleton */}
+        <div className="flex-1 p-6 space-y-5">
+          <Skeleton height="h-6" width="w-36" className="mb-6" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <SkeletonAvatar size="sm" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton height="h-3" width="w-24" />
+                <SkeletonText lines={i % 2 === 0 ? 2 : 1} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -774,8 +797,16 @@ export default function ChatPage() {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {messagesLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="animate-spin text-tempo-600" size={24} />
+            <div className="py-4 space-y-4 animate-in fade-in duration-200">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <SkeletonAvatar size="sm" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton height="h-3" width="w-20" />
+                    <SkeletonText lines={i === 1 ? 2 : 1} />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

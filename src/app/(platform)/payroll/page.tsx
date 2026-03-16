@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
@@ -2132,10 +2133,8 @@ export default function PayrollPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-t3 mb-1">Effective Date</label>
-                    <input type="date" className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                      value={taxEditForm.effectiveDate}
-                      onChange={e => setTaxEditForm(p => ({ ...p, effectiveDate: e.target.value }))} />
+                    <DatePicker label="Effective Date" value={taxEditForm.effectiveDate}
+                      onChange={d => setTaxEditForm(p => ({ ...p, effectiveDate: d.toISOString().split('T')[0] }))} />
                   </div>
                   {/* T5 #40: Impact warning for tax rate change */}
                   {taxEditForm.effectiveDate && (taxEditForm.employeeContribution !== showTaxEditModal.employeeContribution || taxEditForm.employerContribution !== showTaxEditModal.employerContribution) && (() => {
@@ -2627,7 +2626,7 @@ export default function PayrollPage() {
             <Input label={t('amount')} type="number" value={contractorForm.amount || ''} onChange={e => setContractorForm({ ...contractorForm, amount: Number(e.target.value) })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('dueDate')} type="date" value={contractorForm.due_date} onChange={e => setContractorForm({ ...contractorForm, due_date: e.target.value })} />
+            <DatePicker label={t('dueDate')} value={contractorForm.due_date} onChange={d => setContractorForm({ ...contractorForm, due_date: d.toISOString().split('T')[0] })} />
             <Input label={t('country')} value={contractorForm.country} onChange={e => setContractorForm({ ...contractorForm, country: e.target.value })} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -2645,7 +2644,7 @@ export default function PayrollPage() {
             <Select label={t('frequency')} value={scheduleForm.frequency} onChange={e => setScheduleForm({ ...scheduleForm, frequency: e.target.value })} options={[
               { value: 'weekly', label: t('weekly') }, { value: 'biweekly', label: t('biweekly') }, { value: 'semi_monthly', label: t('semiMonthly') }, { value: 'monthly', label: t('monthly') },
             ]} />
-            <Input label={t('nextRun')} type="date" value={scheduleForm.next_run_date} onChange={e => setScheduleForm({ ...scheduleForm, next_run_date: e.target.value })} />
+            <DatePicker label={t('nextRun')} value={scheduleForm.next_run_date} onChange={d => setScheduleForm({ ...scheduleForm, next_run_date: d.toISOString().split('T')[0] })} />
           </div>
           <Input label={t('employeeGroup')} value={scheduleForm.employee_group} onChange={e => setScheduleForm({ ...scheduleForm, employee_group: e.target.value })} placeholder="e.g. All Employees" />
           <label className="flex items-center gap-2 text-sm text-t1">
@@ -2791,7 +2790,7 @@ export default function PayrollPage() {
                 if (emp) setFinalPayForm(prev => ({ ...prev, employeeId: emp.id, employeeName: emp.profile.full_name, country: resolveCountryCode(emp.country || 'GH'), currency: emp.country === 'Ghana' ? 'GHS' : emp.country === 'Nigeria' ? 'NGN' : emp.country === 'Kenya' ? 'KES' : 'USD', monthlySalary: (emp as any).salary || 500000 }))
               }} options={[{ value: '', label: 'Select employee...' }, ...employees.map(e => ({ value: e.id, label: e.profile.full_name }))]} />
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Last Working Date *" type="date" value={finalPayForm.lastWorkingDate || ''} onChange={e => setFinalPayForm(prev => ({ ...prev, lastWorkingDate: e.target.value, terminationDate: e.target.value }))} />
+                <DatePicker label="Last Working Date *" value={finalPayForm.lastWorkingDate || ''} onChange={d => { const v = d.toISOString().split('T')[0]; setFinalPayForm(prev => ({ ...prev, lastWorkingDate: v, terminationDate: v })) }} />
                 <Select label="Termination Type *" value={finalPayForm.terminationType || 'resignation'} onChange={e => setFinalPayForm(prev => ({ ...prev, terminationType: e.target.value as any }))} options={[
                   { value: 'resignation', label: 'Resignation' }, { value: 'termination', label: 'Termination' },
                   { value: 'redundancy', label: 'Redundancy' }, { value: 'retirement', label: 'Retirement' },

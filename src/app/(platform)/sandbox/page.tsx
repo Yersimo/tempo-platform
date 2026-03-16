@@ -438,14 +438,14 @@ export default function SandboxPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {[
-                    { field: 'Full Name', original: 'John Doe', masked: 'John D.', active: true },
-                    { field: 'Email Address', original: 'john.doe@company.com', masked: 'j***@***.com', active: true },
-                    { field: 'SSN', original: '123-45-6789', masked: '***-**-6789', active: true },
-                    { field: 'Phone Number', original: '+1 (555) 123-4567', masked: '+1 (***) ***-4567', active: true },
-                    { field: 'Bank Account', original: '9876543210', masked: '******3210', active: true },
-                    { field: 'Home Address', original: '123 Main St, City, ST', masked: '*** Main St, City, ST', active: true },
-                    { field: 'Date of Birth', original: '1990-05-15', masked: '1990-**-**', active: true },
-                    { field: 'Salary', original: '$125,000', masked: '$***,***', active: true },
+                    { field: 'Full Name', original: 'Alex Taylor', masked: 'Alex T.', active: true },
+                    { field: 'Email Address', original: 'user@company.com', masked: 'u***@***.com', active: true },
+                    { field: 'SSN', original: 'XXX-XX-XXXX', masked: '***-**-XXXX', active: true },
+                    { field: 'Phone Number', original: '+1 (XXX) XXX-XXXX', masked: '+1 (***) ***-XXXX', active: true },
+                    { field: 'Bank Account', original: 'XXXXXXXXXX', masked: '******XXXX', active: true },
+                    { field: 'Home Address', original: '123 Example St, City, ST', masked: '*** Example St, City, ST', active: true },
+                    { field: 'Date of Birth', original: 'YYYY-MM-DD', masked: 'YYYY-**-**', active: true },
+                    { field: 'Salary', original: '$XX,XXX', masked: '$**,***', active: true },
                   ].map(rule => (
                     <tr key={rule.field} className="hover:bg-canvas/50">
                       <td className="px-6 py-3 text-xs font-medium text-t1">{rule.field}</td>

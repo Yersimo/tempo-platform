@@ -471,19 +471,19 @@ export default function CompliancePage() {
         </div>
       )}
 
+      {/* Stat Cards */}
+      <ExpandableStats>
+        <StatCard label="Total Requirements" value={totalReqs} icon={<ShieldCheck size={STAT_ICON} />} />
+        <StatCard label="Compliance Score" value={`${complianceScore}%`} icon={<CheckCircle size={STAT_ICON} />} change={`${complianceScore}%`} changeType={complianceScore >= 80 ? 'positive' : 'negative'} />
+        <StatCard label="At Risk" value={atRiskCount} icon={<AlertTriangle size={STAT_ICON} />} />
+        <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={STAT_ICON} />} />
+      </ExpandableStats>
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Stat Cards */}
-          <ExpandableStats>
-            <StatCard label="Total Requirements" value={totalReqs} icon={<ShieldCheck size={STAT_ICON} />} />
-            <StatCard label="Compliance Score" value={`${complianceScore}%`} icon={<CheckCircle size={STAT_ICON} />} change={`${complianceScore}%`} changeType={complianceScore >= 80 ? 'positive' : 'negative'} />
-            <StatCard label="At Risk" value={atRiskCount} icon={<AlertTriangle size={STAT_ICON} />} />
-            <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={STAT_ICON} />} />
-          </ExpandableStats>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Compliance Score Gauge */}
             <Card>

@@ -60,7 +60,7 @@ function ModuleCard({ entry }: { entry: DocPlaceholderEntry }) {
               )}
             </div>
             <p className="text-xs text-t3 mt-0.5">
-              {documented ? 'Full documentation available' : 'Documentation coming soon'}
+              {documented ? 'Full documentation available' : 'No documentation yet'}
             </p>
           </div>
           <ArrowRight size={14} className="text-t3 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />

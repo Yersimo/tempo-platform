@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { TempoBarChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -849,8 +850,8 @@ export default function TimeAttendancePage() {
               <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
                 placeholder="Search employees..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
-            <input type="date" className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={dateRangeFrom} onChange={e => setDateRangeFrom(e.target.value)} title="From date" />
-            <input type="date" className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={dateRangeTo} onChange={e => setDateRangeTo(e.target.value)} title="To date" />
+            <DatePicker value={dateRangeFrom} onChange={d => setDateRangeFrom(d.toISOString().split('T')[0])} placeholder="From date" />
+            <DatePicker value={dateRangeTo} onChange={d => setDateRangeTo(d.toISOString().split('T')[0])} placeholder="To date" />
             <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
               <option value="">All Departments</option>
               {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1588,7 +1589,7 @@ export default function TimeAttendancePage() {
         <div className="space-y-4">
           <Select label="Employee" value={shiftForm.employee_id} onChange={e => setShiftForm(f => ({ ...f, employee_id: e.target.value }))}
             options={[{ value: '', label: 'Select Employee' }, ...employees.map(emp => ({ value: emp.id, label: emp.profile.full_name }))]} />
-          <Input label="Date" type="date" value={shiftForm.date} onChange={e => setShiftForm(f => ({ ...f, date: e.target.value }))} />
+          <DatePicker label="Date" value={shiftForm.date} onChange={d => setShiftForm(f => ({ ...f, date: d.toISOString().split('T')[0] }))} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Start Time" type="time" value={shiftForm.start_time} onChange={e => setShiftForm(f => ({ ...f, start_time: e.target.value }))} />
             <Input label="End Time" type="time" value={shiftForm.end_time} onChange={e => setShiftForm(f => ({ ...f, end_time: e.target.value }))} />
@@ -1701,8 +1702,8 @@ export default function TimeAttendancePage() {
             ]}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Start Date" type="date" value={leaveForm.start_date} onChange={e => setLeaveForm(f => ({ ...f, start_date: e.target.value }))} />
-            <Input label="End Date" type="date" value={leaveForm.end_date} onChange={e => setLeaveForm(f => ({ ...f, end_date: e.target.value }))} />
+            <DatePicker label="Start Date" value={leaveForm.start_date} onChange={d => setLeaveForm(f => ({ ...f, start_date: d.toISOString().split('T')[0] }))} />
+            <DatePicker label="End Date" value={leaveForm.end_date} onChange={d => setLeaveForm(f => ({ ...f, end_date: d.toISOString().split('T')[0] }))} />
           </div>
           <Textarea label="Reason (optional)" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} placeholder={leaveForm.type === 'work_from_home' ? 'Brief description of work planned...' : 'Brief reason for leave...'} />
           {leaveForm.type === 'work_from_home' && (

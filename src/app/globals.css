@@ -189,7 +189,8 @@ body {
 
 /* ─── Clickable Card Hover ─── */
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .card-hover:hover {
   transform: translateY(-2px);

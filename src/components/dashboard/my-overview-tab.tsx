@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import {
   Calendar, Clock, Target, BookOpen, Heart, DollarSign,
   FileText, ChevronRight, CheckCircle2, AlertCircle,
-  Briefcase, Award, TrendingUp, Star
+  Briefcase, Award, TrendingUp, Star, CircleDot, ArrowRight
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -31,6 +31,7 @@ export function MyOverviewTab() {
     payrollRuns,
     benefitPlans,
     benefitEnrollments,
+    salaryReviews,
     getEmployeeName,
   } = useTempo()
 
@@ -142,6 +143,69 @@ export function MyOverviewTab() {
   const pendingLeaveCount = (leaveRequests || []).filter((l: any) => l.status === 'pending').length
   const pendingExpenseCount = (expenseReports || []).filter((e: any) => e.status === 'submitted' || e.status === 'pending_approval').length
   const pendingTimesheetCount = (timeEntries || []).filter((t: any) => t.status === 'pending').length
+  const pendingSalaryCount = (salaryReviews || []).filter((s: any) => s.status === 'pending' || s.status === 'proposed').length
+
+  // ---- Your Tasks (Rippling-style actionable task list) ----
+  const yourTasks = useMemo(() => {
+    const tasks: { id: string; label: string; badge?: string; badgeVariant?: 'warning' | 'error' | 'info' | 'default'; href: string; icon: React.ReactNode }[] = []
+
+    if (pendingLeaveCount > 0) {
+      tasks.push({
+        id: 'leave',
+        label: `Approve ${pendingLeaveCount} pending leave request${pendingLeaveCount !== 1 ? 's' : ''}`,
+        badge: 'Action needed',
+        badgeVariant: 'warning',
+        href: '/time-attendance',
+        icon: <Calendar size={16} />,
+      })
+    }
+
+    if (pendingExpenseCount > 0) {
+      tasks.push({
+        id: 'expense',
+        label: `Review ${pendingExpenseCount} expense report${pendingExpenseCount !== 1 ? 's' : ''}`,
+        badge: pendingExpenseCount >= 5 ? 'Overdue' : 'Pending',
+        badgeVariant: pendingExpenseCount >= 5 ? 'error' : 'warning',
+        href: '/expense',
+        icon: <FileText size={16} />,
+      })
+    }
+
+    if (pendingReviewCount > 0) {
+      tasks.push({
+        id: 'reviews',
+        label: `Complete ${pendingReviewCount} performance review${pendingReviewCount !== 1 ? 's' : ''}`,
+        badge: 'Due soon',
+        badgeVariant: 'info',
+        href: '/performance',
+        icon: <Star size={16} />,
+      })
+    }
+
+    if (pendingSalaryCount > 0) {
+      tasks.push({
+        id: 'salary',
+        label: `Approve ${pendingSalaryCount} salary proposal${pendingSalaryCount !== 1 ? 's' : ''}`,
+        badge: 'Pending',
+        badgeVariant: 'warning',
+        href: '/compensation',
+        icon: <DollarSign size={16} />,
+      })
+    }
+
+    if (pendingTimesheetCount > 0) {
+      tasks.push({
+        id: 'timesheets',
+        label: `Review ${pendingTimesheetCount} timesheet submission${pendingTimesheetCount !== 1 ? 's' : ''}`,
+        badge: 'Pending',
+        badgeVariant: 'default',
+        href: '/time-attendance',
+        icon: <Clock size={16} />,
+      })
+    }
+
+    return tasks
+  }, [pendingLeaveCount, pendingExpenseCount, pendingReviewCount, pendingSalaryCount, pendingTimesheetCount])
 
   // ---- Status helpers ----
 
@@ -235,6 +299,42 @@ export function MyOverviewTab() {
 
   return (
     <div className="space-y-6">
+      {/* ---- Your Tasks (Rippling-style task cards) ---- */}
+      {yourTasks.length > 0 && (
+        <div className="rounded-[var(--radius-card)] border border-border bg-white">
+          <div className="px-5 py-3.5 border-b border-divider flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-t1 flex items-center gap-2">
+              <CircleDot size={16} className="text-tempo-600" />
+              Your Tasks
+              <span className="ml-1 text-[11px] font-medium text-t3 bg-gray-100 rounded-full px-2 py-0.5">{yourTasks.length}</span>
+            </h4>
+          </div>
+          <div className="divide-y divide-divider">
+            {yourTasks.map(task => (
+              <button
+                key={task.id}
+                onClick={() => router.push(task.href)}
+                className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-canvas/60 transition-colors group"
+              >
+                <div className="flex-shrink-0 w-5 h-5 rounded-md border-2 border-gray-300 group-hover:border-tempo-500 transition-colors flex items-center justify-center">
+                  {/* decorative checkbox */}
+                </div>
+                <div className="flex-shrink-0 text-t3 group-hover:text-tempo-600 transition-colors">
+                  {task.icon}
+                </div>
+                <span className="flex-1 text-sm text-t1 group-hover:text-tempo-700 transition-colors font-medium">
+                  {task.label}
+                </span>
+                {task.badge && (
+                  <Badge variant={task.badgeVariant || 'default'}>{task.badge}</Badge>
+                )}
+                <ArrowRight size={14} className="text-t3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ---- Pending Approvals (managers/hrbp/admin only) ---- */}
       {(role === 'manager' || role === 'hrbp' || role === 'admin') && (
         <div className="mb-6 rounded-[var(--radius-card)] border border-amber-200 bg-amber-50/50 p-4">

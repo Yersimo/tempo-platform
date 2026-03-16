@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/skeleton'
 import { Header } from '@/components/layout/header'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -308,22 +309,22 @@ export default function HelpModulePage() {
   // ─── Loading state ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="animate-pulse space-y-6">
+      <div className="p-6 max-w-7xl mx-auto animate-in fade-in duration-300">
+        <div className="space-y-6">
           <div className="space-y-2">
-            <div className="h-3 w-40 bg-gray-200 rounded" />
-            <div className="h-6 w-64 bg-gray-200 rounded" />
-            <div className="h-4 w-96 bg-gray-100 rounded" />
+            <Skeleton height="h-3" width="w-40" />
+            <Skeleton height="h-6" width="w-64" />
+            <Skeleton height="h-4" width="w-96" className="opacity-60" />
           </div>
           <div className="flex gap-8">
             <div className="flex-1 space-y-4">
-              <div className="h-32 bg-gray-100 rounded-xl" />
-              <div className="h-24 bg-gray-100 rounded-xl" />
-              <div className="h-40 bg-gray-100 rounded-xl" />
+              <SkeletonCard lines={4} />
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={5} />
             </div>
-            <div className="w-56 hidden lg:block space-y-2">
+            <div className="w-56 hidden lg:block space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-6 bg-gray-100 rounded" />
+                <Skeleton key={i} height="h-6" width={i % 2 === 0 ? 'w-full' : 'w-4/5'} />
               ))}
             </div>
           </div>

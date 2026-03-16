@@ -39,6 +39,17 @@ interface NavGroup {
   items: NavItem[]
 }
 
+/**
+ * Hrefs whose badges represent items requiring USER ACTION (approvals, unread messages, pending reviews).
+ * All other badges are informational (headcounts, course counts) and should be hidden.
+ */
+const ACTIONABLE_BADGE_HREFS = new Set([
+  '/time-attendance',  // pending leave approvals
+  '/expense',          // pending expense approvals
+  '/chat',             // unread messages
+  '/performance',      // pending reviews
+])
+
 /** The primary nav items shown when collapsed (icon rail). Max ~10 items. */
 const PRIMARY_HREFS = new Set([
   '/dashboard',
@@ -241,7 +252,7 @@ export function Sidebar() {
         {!isCollapsed && (
           <>
             <span className="flex-1">{item.label}</span>
-            {item.badge && (
+            {!!(item.badge && item.badge > 0 && ACTIONABLE_BADGE_HREFS.has(item.href)) && (
               <span className="bg-tempo-600 text-white text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                 {item.badge}
               </span>

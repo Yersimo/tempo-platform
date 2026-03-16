@@ -14,19 +14,26 @@ interface StatCardProps {
   className?: string
   /** When provided, the card becomes a clickable link */
   href?: string
+  /** Optional click handler */
+  onClick?: () => void
 }
 
-export function StatCard({ label, value, change, changeType = 'neutral', icon, className, href }: StatCardProps) {
+export function StatCard({ label, value, change, changeType = 'neutral', icon, className, href, onClick }: StatCardProps) {
   const router = useRouter()
+  const isInteractive = !!(href || onClick)
+
+  const handleClick = href
+    ? () => router.push(href)
+    : onClick
 
   return (
     <Card
       className={cn(
         'relative overflow-hidden',
-        href && 'group hover:shadow-md hover:border-tempo-200 transition-all cursor-pointer',
+        isInteractive && 'group cursor-pointer hover:shadow-md hover:border-tempo-200 transition-all duration-200',
         className
       )}
-      onClick={href ? () => router.push(href) : undefined}
+      onClick={handleClick}
       role={href ? 'link' : undefined}
     >
       <div className="flex items-start justify-between">
@@ -50,8 +57,8 @@ export function StatCard({ label, value, change, changeType = 'neutral', icon, c
               {icon}
             </div>
           )}
-          {href && (
-            <ArrowRight size={14} className="text-t3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          {isInteractive && (
+            <ArrowRight size={14} className="text-t3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
           )}
         </div>
       </div>

@@ -10,8 +10,11 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
+import { Tabs } from '@/components/ui/tabs'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
@@ -678,43 +681,34 @@ export default function ExpensePage() {
         actions={<div className="flex gap-2">{pendingExpenseReports.length > 0 && <Button size="sm" variant="secondary" onClick={() => setShowBulkExpenseModal(true)}><CheckCircle size={14} /> Bulk Approve</Button>}<Button size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button></div>}
       />
 
+      {/* Stats */}
+      <ExpandableStats>
+        <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
+        <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label={t('approvedReimbursed')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
+        <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
+      </ExpandableStats>
+
+      {/* AI Insights */}
+      {aiExpenseInsights.length > 0 && (
+        <AIInsightsCard
+          insights={aiExpenseInsights}
+          title="Expense AI Insights"
+          maxVisible={3}
+          className="mb-6"
+        />
+      )}
+
+      {spendingInsights.length > 0 && <AIAlertBanner insights={spendingInsights} className="mb-4" />}
+
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-tempo-600 text-tempo-600' : 'border-transparent text-t3 hover:text-t1 hover:border-border'}`}>
-              <Icon size={16} /> {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {/* ============================================================ */}
       {/* TAB 1: REPORTS */}
       {/* ============================================================ */}
       {activeTab === 'reports' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
-            <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('approvedReimbursed')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
-            <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
-          </div>
-
-          {/* AI Insights Card */}
-          {aiExpenseInsights.length > 0 && (
-            <AIInsightsCard
-              insights={aiExpenseInsights}
-              title="Expense AI Insights"
-              maxVisible={3}
-              className="mb-6"
-            />
-          )}
-
-          {spendingInsights.length > 0 && <AIAlertBanner insights={spendingInsights} className="mb-4" />}
-
           {/* Search & Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
             <div className="relative flex-1 min-w-[200px]">
@@ -1239,8 +1233,8 @@ export default function ExpensePage() {
                   {[...new Set(perDiemRates.map(r => r.country))].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <Input label={t('startDate')} type="date" value={perDiemStart} onChange={e => setPerDiemStart(e.target.value)} />
-              <Input label={t('endDate')} type="date" value={perDiemEnd} onChange={e => setPerDiemEnd(e.target.value)} />
+              <DatePicker label={t('startDate')} value={perDiemStart} onChange={d => setPerDiemStart(d.toISOString().split('T')[0])} />
+              <DatePicker label={t('endDate')} value={perDiemEnd} onChange={d => setPerDiemEnd(d.toISOString().split('T')[0])} />
               <div className="flex items-end">
                 <Button size="sm" onClick={() => addToast('Per diem calculated successfully')}><Calculator size={14} /> {t('calculatePerDiem')}</Button>
               </div>
@@ -2153,8 +2147,8 @@ export default function ExpensePage() {
           <Select label={tc('employee')} value={mileageForm.employee_id}
             onChange={e => setMileageForm({ ...mileageForm, employee_id: e.target.value })}
             options={employees.slice(0, 20).map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
-          <Input label={t('startDate')} type="date" value={mileageForm.date}
-            onChange={e => setMileageForm({ ...mileageForm, date: e.target.value })} />
+          <DatePicker label={t('startDate')} value={mileageForm.date}
+            onChange={d => setMileageForm({ ...mileageForm, date: d.toISOString().split('T')[0] })} />
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('origin')} value={mileageForm.origin} placeholder="e.g., Lagos Office"
               onChange={e => setMileageForm({ ...mileageForm, origin: e.target.value })} />
@@ -2382,8 +2376,8 @@ export default function ExpensePage() {
           <Select label="Employee" value={mileageEntryForm.employee_id}
             onChange={e => setMileageEntryForm({ ...mileageEntryForm, employee_id: e.target.value })}
             options={employees.slice(0, 20).map(emp => ({ value: emp.id, label: emp.profile.full_name }))} />
-          <Input label="Date" type="date" value={mileageEntryForm.date}
-            onChange={e => setMileageEntryForm({ ...mileageEntryForm, date: e.target.value })} />
+          <DatePicker label="Date" value={mileageEntryForm.date}
+            onChange={d => setMileageEntryForm({ ...mileageEntryForm, date: d.toISOString().split('T')[0] })} />
           <div className="grid grid-cols-2 gap-4">
             <Input label="Start Location" value={mileageEntryForm.start_location} placeholder="e.g., Lagos Office"
               onChange={e => setMileageEntryForm({ ...mileageEntryForm, start_location: e.target.value })} />

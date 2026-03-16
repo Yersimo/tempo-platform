@@ -1012,7 +1012,7 @@ export default function OnboardingPage() {
                       <div className="text-center flex items-center justify-center gap-4">
                         <button
                           onClick={() => {
-                            const csv = 'first_name,last_name,email,department,job_title,start_date\nJane,Doe,jane@example.com,Engineering,Software Engineer,2026-03-01\nJohn,Smith,john@example.com,Marketing,Marketing Lead,2026-03-01'
+                            const csv = 'first_name,last_name,email,department,job_title,start_date'
                             const blob = new Blob([csv], { type: 'text/csv' })
                             const url = URL.createObjectURL(blob)
                             const a = document.createElement('a')

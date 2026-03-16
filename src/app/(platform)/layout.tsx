@@ -7,6 +7,7 @@ import { TempoProvider, useTempo } from '@/lib/store'
 import { ToastContainer } from '@/components/ui/toast'
 import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { Skeleton } from '@/components/ui/skeleton'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -39,17 +40,29 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading || !ready) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-canvas">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full border-2 border-border" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-tempo-600 border-t-transparent animate-spin" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-t1">Loading Tempo</p>
-            <p className="text-xs text-t3 mt-1">Preparing your workspace...</p>
-          </div>
+      <div className="flex min-h-screen bg-canvas">
+        {/* Sidebar skeleton */}
+        <div className="hidden lg:flex w-[260px] flex-col border-r border-border bg-card p-4 gap-3">
+          <Skeleton height="h-8" width="w-28" className="mb-4" />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} height="h-8" width={i % 3 === 0 ? 'w-3/4' : 'w-full'} className="rounded-lg" />
+          ))}
         </div>
+        {/* Main content skeleton */}
+        <main className="flex-1 min-w-0 p-6 lg:p-8">
+          <div className="max-w-[1400px] space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-2">
+              <Skeleton height="h-7" width="w-48" />
+              <Skeleton height="h-4" width="w-72" className="opacity-60" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} height="h-24" className="rounded-xl" />
+              ))}
+            </div>
+            <Skeleton height="h-[400px]" className="rounded-xl" />
+          </div>
+        </main>
       </div>
     )
   }

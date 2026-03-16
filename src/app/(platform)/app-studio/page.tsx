@@ -329,9 +329,14 @@ export default function AppStudioPage() {
                 <Blocks size={32} className="text-primary" />
               </div>
               <h3 className="text-sm font-semibold text-t1 mb-2">Visual Page Designer</h3>
-              <p className="text-xs text-t3 max-w-md">
-                Drag-and-drop page builder with form components, data tables, charts, and layout containers. Coming soon.
+              <p className="text-xs text-t3 max-w-md mb-1">
+                Select a page above to open the drag-and-drop builder with form components, data tables, charts, and layout containers.
               </p>
+              {editingAppPages.length === 0 && (
+                <p className="text-xs text-t3 max-w-md">
+                  Add a page first using the button above to begin designing.
+                </p>
+              )}
               <div className="flex gap-2 mt-4">
                 <Badge variant="default">Forms</Badge>
                 <Badge variant="default">Tables</Badge>
