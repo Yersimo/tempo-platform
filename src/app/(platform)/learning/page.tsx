@@ -1152,18 +1152,101 @@ export default function LearningPage() {
     }
   }
 
+  // Decode HTML entities and clean up extracted text
+  function cleanText(text: string): string {
+    return text
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+      .replace(/\s{3,}/g, '  ').trim()
+  }
+
+  // Create a short, clean title from a heading (max ~60 chars)
+  function cleanTitle(raw: string, maxLen = 60): string {
+    let t = cleanText(raw)
+    // Remove redundant prefixes like "SUCCESS PROFILE Success Profile"
+    t = t.replace(/^([A-Z\s]+)\s+\1/i, '$1')
+    // Remove duplicate case variations: "WORD Word" → "Word"
+    t = t.replace(/\b([A-Z]+)\s+(\1)/gi, (_, a: string, b: string) => b.charAt(0).toUpperCase() + b.slice(1).toLowerCase())
+    // For titles with "Key: Description" pattern, keep just the key part if too long
+    if (t.length > maxLen && t.includes(':')) {
+      const keyPart = t.split(':')[0].trim()
+      if (keyPart.length >= 5 && keyPart.length <= maxLen) t = keyPart
+    }
+    // Truncate at a word boundary
+    if (t.length > maxLen) {
+      t = t.substring(0, maxLen).replace(/\s+\S*$/, '')
+    }
+    return t
+  }
+
+  // Split raw content into structured bullet points / paragraphs for lesson content
+  function formatContentForLesson(rawContent: string, heading: string): string {
+    const content = cleanText(rawContent)
+    const lines = content.split(/\n+/).map(l => l.trim()).filter(Boolean)
+
+    // Group into logical blocks
+    const blocks: string[] = []
+    let currentBlock: string[] = []
+
+    for (const line of lines) {
+      // Detect sub-headings (ALL CAPS lines, or lines ending with colon)
+      const isSubheading = (/^[A-Z][A-Z\s&,\-:]{3,60}$/.test(line) && !/[a-z]/.test(line)) ||
+        /^[A-Z][A-Za-z\s&]{2,40}:\s*$/.test(line)
+
+      if (isSubheading) {
+        if (currentBlock.length > 0) blocks.push(currentBlock.join('\n'))
+        currentBlock = [`\n**${cleanTitle(line, 80)}**\n`]
+      } else {
+        // If line looks like a bullet item or short KPI/metric
+        const isBullet = /^[-•●▪]\s/.test(line) || /^\d+[.)]\s/.test(line)
+        if (isBullet) {
+          currentBlock.push(`- ${line.replace(/^[-•●▪\d.)]+\s*/, '')}`)
+        } else {
+          currentBlock.push(line)
+        }
+      }
+    }
+    if (currentBlock.length > 0) blocks.push(currentBlock.join('\n'))
+
+    return `## ${cleanTitle(heading)}\n\n${blocks.join('\n\n')}`
+  }
+
   function buildCourseFromSections(
     filename: string,
     sections: Array<{ heading: string; content: string; level: number }>,
     fullText: string,
   ) {
     const baseName = filename.replace(/\.(pdf|docx|pptx|txt|md|csv|doc)$/i, '').replace(/[-_]/g, ' ')
-    const title = baseName.replace(/\b\w/g, l => l.toUpperCase()).trim()
+    const title = cleanTitle(baseName.replace(/\b\w/g, l => l.toUpperCase()).trim(), 80)
 
-    // Group sections into modules (3-6 sections per module)
-    const validSections = sections.filter(s => s.content.length > 20)
-    const moduleCount = Math.max(2, Math.min(6, Math.ceil(validSections.length / 3)))
-    const sectionsPerModule = Math.ceil(validSections.length / moduleCount)
+    // Clean all sections
+    const cleanedSections = sections
+      .map(s => ({ heading: cleanTitle(s.heading), content: cleanText(s.content), level: s.level }))
+      .filter(s => s.content.length > 20)
+
+    // Group sections into modules — use level-1 headings as module boundaries when available
+    const level1Indices = cleanedSections.map((s, i) => s.level === 1 ? i : -1).filter(i => i >= 0)
+
+    type ModuleGroup = { title: string; sections: typeof cleanedSections }
+    let moduleGroups: ModuleGroup[] = []
+
+    if (level1Indices.length >= 2 && level1Indices.length <= 8) {
+      // Use document's own structure
+      for (let i = 0; i < level1Indices.length; i++) {
+        const start = level1Indices[i]
+        const end = i + 1 < level1Indices.length ? level1Indices[i + 1] : cleanedSections.length
+        const group = cleanedSections.slice(start, end)
+        moduleGroups.push({ title: group[0].heading, sections: group })
+      }
+    } else {
+      // Evenly distribute
+      const moduleCount = Math.max(2, Math.min(6, Math.ceil(cleanedSections.length / 3)))
+      const perModule = Math.ceil(cleanedSections.length / moduleCount)
+      for (let i = 0; i < cleanedSections.length; i += perModule) {
+        const group = cleanedSections.slice(i, i + perModule)
+        moduleGroups.push({ title: group[0].heading, sections: group })
+      }
+    }
 
     const modules: Array<{
       title: string
@@ -1173,69 +1256,57 @@ export default function LearningPage() {
 
     const quizQuestionsList: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
 
-    for (let mi = 0; mi < moduleCount; mi++) {
-      const modSections = validSections.slice(mi * sectionsPerModule, (mi + 1) * sectionsPerModule)
-      if (modSections.length === 0) continue
-
-      const modTitle = modSections[0].heading || `Module ${mi + 1}`
-      const modContent = modSections.map(s => s.content).join('\n\n')
+    moduleGroups.forEach((mod, mi) => {
+      const modTitle = cleanTitle(mod.title, 50)
+      const modContent = mod.sections.map(s => s.content).join('\n\n')
       const lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }> = []
+      const wordCount = modContent.split(/\s+/).length
 
-      // Lesson 1: Reading — actual document content
-      const readingContent = modSections.map(s => `## ${s.heading}\n\n${s.content}`).join('\n\n---\n\n')
+      // Short label for lesson titles (avoid repeating long module name)
+      const shortLabel = modTitle.length > 30 ? `Module ${mi + 1}` : modTitle
+
+      // Lesson 1: Core Reading — formatted document content
+      const formattedContent = mod.sections.map(s => formatContentForLesson(s.content, s.heading)).join('\n\n---\n\n')
       lessons.push({
-        title: mi === 0 ? `Introduction: ${modTitle}` : `${modTitle} — Core Content`,
+        title: mi === 0 ? `Introduction: ${shortLabel}` : `${shortLabel} — Core Reading`,
         type: 'text',
-        content: readingContent,
-        duration_minutes: Math.max(5, Math.ceil(modContent.split(/\s+/).length / 200)),
+        content: formattedContent,
+        duration_minutes: Math.max(5, Math.min(30, Math.ceil(wordCount / 200))),
       })
 
-      // Lesson 2: Visual Summary (replaces empty video — rich text with key points)
+      // Lesson 2: Key Takeaways & Summary (replaces empty video)
       const keyPoints = extractKeyPoints(modContent)
       const keyTerms = extractKeyTerms(modContent)
-      const visualContent = `## Visual Summary: ${modTitle}\n\n` +
-        `**Key Takeaways from this section:**\n\n` +
-        keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n') +
-        (keyTerms.length > 0 ? `\n\n**Important Terms & Concepts:**\n\n` + keyTerms.map(t => `- **${t}**`).join('\n') : '') +
-        `\n\n**Learning Objectives:**\n` +
-        `- Understand the core principles of ${modTitle.toLowerCase()}\n` +
-        `- Identify key processes and requirements\n` +
-        `- Apply concepts to real-world scenarios`
+      const summaryContent = `## Key Takeaways: ${modTitle}\n\n` +
+        (keyPoints.length > 0
+          ? `**What You Need to Know:**\n\n${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n\n')}`
+          : `**Summary:**\n\n${modContent.split(/[.!?]+/).filter(s => s.trim().length > 20).slice(0, 4).map((s, i) => `${i + 1}. ${s.trim()}`).join('\n\n')}`) +
+        (keyTerms.length > 0 ? `\n\n---\n\n**Key Concepts:**\n\n${keyTerms.map(t => `- **${t}**`).join('\n')}` : '') +
+        `\n\n---\n\n**Learning Check:**\n- Can you explain the main purpose of ${modTitle.toLowerCase()}?\n- What are the critical success factors?\n- How does this connect to the broader context?`
       lessons.push({
-        title: `${modTitle} — Visual Summary & Key Points`,
+        title: `${shortLabel} — Key Takeaways`,
         type: 'text',
-        content: visualContent,
-        duration_minutes: 10,
+        content: summaryContent,
+        duration_minutes: 8,
       })
 
-      // Lesson 3: Deep Dive — remaining content details
-      if (modSections.length > 1) {
-        const deepContent = modSections.slice(1).map(s =>
-          `### ${s.heading}\n\n${s.content}`
-        ).join('\n\n')
+      // Lesson 3: Applied Scenario (only if enough content)
+      if (wordCount > 100) {
+        const scenario = buildScenario(modTitle, modContent, keyPoints)
         lessons.push({
-          title: `${modTitle} — Deep Dive`,
-          type: 'text',
-          content: deepContent,
-          duration_minutes: Math.max(10, Math.ceil(deepContent.split(/\s+/).length / 200)),
+          title: `${shortLabel} — Practice Scenario`,
+          type: 'interactive',
+          content: scenario,
+          duration_minutes: 12,
         })
       }
 
-      // Lesson 4: Interactive Scenario built from actual content
-      const scenario = buildScenario(modTitle, modContent, keyPoints)
+      // Lesson 4: Module Quiz
       lessons.push({
-        title: `${modTitle} — Applied Scenario`,
-        type: 'interactive',
-        content: scenario,
-        duration_minutes: 15,
-      })
-
-      // Lesson 5: Module Quiz
-      lessons.push({
-        title: `Module ${mi + 1}: ${modTitle} — Knowledge Check`,
+        title: `${shortLabel} — Knowledge Check`,
         type: 'quiz',
         content: '',
-        duration_minutes: 10,
+        duration_minutes: 8,
       })
 
       // Generate quiz questions from actual content
@@ -1247,20 +1318,21 @@ export default function LearningPage() {
         lessons,
         duration_minutes: lessons.reduce((a, l) => a + l.duration_minutes, 0),
       })
-    }
+    })
 
     // Final summary module
+    const totalLessons = modules.reduce((a, m) => a + m.lessons.length, 0)
     modules.push({
-      title: `${title} — Summary & Assessment`,
+      title: 'Course Summary & Final Assessment',
       lessons: [
         {
           title: `Course Summary: ${title}`,
           type: 'text',
-          content: `## Course Complete: ${title}\n\n**Modules Covered:**\n\n${modules.map((m, i) => `${i + 1}. **${m.title}**`).join('\n')}\n\n**Total Content:** ${modules.reduce((a, m) => a + m.lessons.length, 0)} lessons across ${modules.length} modules\n\n**Next Steps:**\n- Review any modules you found challenging\n- Apply the concepts in your daily work\n- Share insights with your team\n- Complete the final assessment for your certificate`,
+          content: `## Course Complete: ${title}\n\n**Modules Covered:**\n\n${modules.map((m, i) => `${i + 1}. **${m.title}**`).join('\n')}\n\n**Total Content:** ${totalLessons} lessons across ${modules.length} modules\n\n**Next Steps:**\n- Review any modules you found challenging\n- Apply the concepts in your daily work\n- Share insights with your team\n- Complete the final assessment for your certificate`,
           duration_minutes: 5,
         },
         {
-          title: `Final Assessment`,
+          title: 'Final Assessment',
           type: 'quiz',
           content: '',
           duration_minutes: 15,
@@ -1270,45 +1342,51 @@ export default function LearningPage() {
     })
 
     setParsedDocCourse({
-      title: `${title} — Complete Training`,
-      description: `Course auto-generated from "${filename}" (${Math.round(fullText.length / 1000)}K chars, ${fullText.split(/\s+/).length} words). Contains ${modules.length} modules with ${modules.reduce((a, m) => a + m.lessons.length, 0)} lessons built directly from document content, plus ${quizQuestionsList.length} assessment questions.`,
+      title: `${title} — Training Course`,
+      description: `Auto-generated from "${filename}". ${modules.length} modules, ${totalLessons + 2} lessons, ${quizQuestionsList.length} quiz questions — all built from the document's actual content and structure.`,
       modules,
       quizQuestions: quizQuestionsList,
     })
   }
 
   function extractKeyPoints(text: string): string[] {
-    const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200)
-    const indicators = ['must', 'should', 'require', 'important', 'essential', 'key', 'critical', 'ensure', 'necessary', 'responsible', 'obligat', 'comply', 'mandatory', 'recommend']
-    const important = sentences.filter(s => indicators.some(ind => s.toLowerCase().includes(ind)))
+    const clean = cleanText(text)
+    const sentences = clean.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200)
+    // Remove duplicate/near-duplicate sentences
+    const unique = sentences.filter((s, i) => !sentences.slice(0, i).some(prev => prev.toLowerCase() === s.toLowerCase()))
+    const indicators = ['must', 'should', 'require', 'important', 'essential', 'key', 'critical', 'ensure', 'necessary', 'responsible', 'obligat', 'comply', 'mandatory', 'recommend', 'accountable', 'drive', 'lead', 'oversee']
+    const important = unique.filter(s => indicators.some(ind => s.toLowerCase().includes(ind)))
     if (important.length >= 3) return important.slice(0, 6)
     // Fallback: first sentence of each paragraph
-    return text.split(/\n\n+/).map(p => p.split(/[.!?]/)[0]?.trim()).filter(s => s && s.length > 15 && s.length < 200).slice(0, 6)
+    return clean.split(/\n\n+/).map(p => p.split(/[.!?]/)[0]?.trim()).filter(s => s && s.length > 15 && s.length < 200).slice(0, 6)
   }
 
   function extractKeyTerms(text: string): string[] {
+    const clean = cleanText(text)
     const terms = new Set<string>()
     // Capitalized multi-word phrases (likely proper nouns / concepts)
-    const capsMatches = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g) || []
-    capsMatches.forEach(m => { if (m.length > 5 && m.length < 60) terms.add(m) })
-    // Bold terms from markdown
-    const boldMatches = text.match(/\*\*([^*]+)\*\*/g) || []
-    boldMatches.forEach(m => terms.add(m.replace(/\*\*/g, '')))
+    const capsMatches = clean.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g) || []
+    capsMatches.forEach(m => { if (m.length > 5 && m.length < 50 && !['The ', 'This ', 'That ', 'These '].some(p => m.startsWith(p))) terms.add(m) })
+    // ALL CAPS acronyms with context (e.g. "P&L", "CCB", "NPS")
+    const acronyms = clean.match(/\b[A-Z]{2,6}\b/g) || []
+    acronyms.forEach(a => { if (!['THE', 'AND', 'FOR', 'WITH', 'FROM', 'KEY', 'ALL'].includes(a)) terms.add(a) })
     return Array.from(terms).slice(0, 10)
   }
 
   function buildScenario(modTitle: string, content: string, keyPoints: string[]): string {
+    const title = cleanTitle(modTitle, 50)
     const topPoints = keyPoints.slice(0, 3)
-    return `## Applied Scenario: ${modTitle}\n\n` +
-      `**Situation:** Your organization is reviewing its approach to ${modTitle.toLowerCase()}. ` +
-      `As the responsible team lead, you need to evaluate current practices against the principles covered in this module.\n\n` +
-      `**Your Task:**\n\n` +
-      topPoints.map((p, i) => `${i + 1}. **Consider:** ${p}\n   - How does this apply to your current context?\n   - What changes would you implement?`).join('\n\n') +
-      `\n\n**Reflection Questions:**\n` +
-      `- What are the biggest gaps between current practice and the standards described?\n` +
-      `- Who are the key stakeholders that need to be involved?\n` +
-      `- What would a 90-day implementation plan look like?\n` +
-      `- How would you measure success?`
+    return `## Practice Scenario: ${title}\n\n` +
+      `**Situation:** You have been asked to evaluate your organization's approach to ${title.toLowerCase()}. ` +
+      `Using what you've learned in this module, consider the following:\n\n` +
+      (topPoints.length > 0
+        ? `**Key Areas to Address:**\n\n` + topPoints.map((p, i) => `${i + 1}. ${p}\n   - How does this apply to your current role?\n   - What specific actions would you take?`).join('\n\n')
+        : `**Consider:**\n- What are the main objectives of ${title.toLowerCase()}?\n- Who are the key stakeholders?\n- What metrics would you use to measure success?`) +
+      `\n\n**Deliverable:**\nPrepare a brief action plan that includes:\n` +
+      `- Current state assessment\n` +
+      `- 3 priority improvements\n` +
+      `- Timeline and success metrics\n` +
+      `- Key risks and mitigations`
   }
 
   function generateQuestionsFromContent(
@@ -1317,6 +1395,7 @@ export default function LearningPage() {
     keyPoints: string[],
     keyTerms: string[],
   ): Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> {
+    const title = cleanTitle(modTitle, 50)
     const questions: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
 
     // Q1: Multiple choice from a key point
@@ -1324,13 +1403,13 @@ export default function LearningPage() {
       const point = keyPoints[0]
       const correctSnippet = point.length > 80 ? point.substring(0, 77) + '...' : point
       questions.push({
-        question: `According to the "${modTitle}" section, which of the following is correct?`,
+        question: `Which of the following best describes a key requirement of "${title}"?`,
         type: 'multiple_choice',
         options: [
           correctSnippet,
-          `${modTitle} has no formal requirements or guidelines`,
-          `Only senior management is responsible for ${modTitle.toLowerCase()}`,
-          `${modTitle} is optional and does not impact operations`,
+          `${title} has no formal requirements or guidelines`,
+          `Only senior management is involved in ${title.toLowerCase()}`,
+          `${title} is optional and does not impact operations`,
         ],
         correct_answer: correctSnippet,
         points: 10,
@@ -1339,7 +1418,7 @@ export default function LearningPage() {
 
     // Q2: True/false from content
     if (keyPoints.length > 1) {
-      const statement = keyPoints[1]
+      const statement = keyPoints[1].length > 100 ? keyPoints[1].substring(0, 97) + '...' : keyPoints[1]
       questions.push({
         question: `True or False: ${statement}`,
         type: 'true_false',
@@ -1353,7 +1432,7 @@ export default function LearningPage() {
     if (keyTerms.length > 0) {
       const term = keyTerms[0]
       questions.push({
-        question: `A key concept in ${modTitle.toLowerCase()} is _____.`,
+        question: `A key concept covered in the "${title}" module is _____.`,
         type: 'fill_blank',
         options: [],
         correct_answer: term,
@@ -1361,7 +1440,7 @@ export default function LearningPage() {
       })
     } else {
       questions.push({
-        question: `The ${modTitle.toLowerCase()} process requires ongoing _____ and review.`,
+        question: `Effective ${title.toLowerCase()} requires ongoing _____ and review.`,
         type: 'fill_blank',
         options: [],
         correct_answer: 'monitoring',

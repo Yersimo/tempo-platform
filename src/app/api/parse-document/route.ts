@@ -85,6 +85,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No text content could be extracted from this file.' }, { status: 422 })
     }
 
+    // Decode common HTML entities from extracted text
+    extractedText = extractedText
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+
     // Parse the text into sections
     const sections = parseIntoSections(extractedText)
 
