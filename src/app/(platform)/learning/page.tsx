@@ -1087,201 +1087,289 @@ export default function LearningPage() {
     if (file) processUploadedFile(file)
   }
 
-  function processUploadedFile(file: File) {
+  async function processUploadedFile(file: File) {
     setUploadedFileName(file.name)
     setDocUploadState('parsing')
     setDocParsingProgress(0)
+    setDocParsingStage('Uploading document to server...')
 
-    // Read file content for text-based files
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string || ''
-      setUploadedFileContent(text)
-      generateCourseFromContent(file.name, text)
-    }
-    reader.onerror = () => {
-      // For binary files (PDF/DOCX), use filename to generate course
-      generateCourseFromContent(file.name, '')
-    }
+    try {
+      // Send file to server for proper text extraction (handles PDF, DOCX, PPTX, etc.)
+      setDocParsingProgress(10)
+      setDocParsingStage('Extracting text from document...')
 
-    const ext = file.name.split('.').pop()?.toLowerCase()
-    if (['txt', 'md', 'csv'].includes(ext || '')) {
-      reader.readAsText(file)
-    } else {
-      // For PDF/DOCX/PPTX — we can't read them client-side, use filename
-      generateCourseFromContent(file.name, '')
-    }
-  }
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/parse-document', { method: 'POST', body: formData })
 
-  function generateCourseFromContent(filename: string, textContent: string) {
-    const stages = [
-      { progress: 10, stage: 'Reading document structure...' },
-      { progress: 25, stage: 'Extracting key topics and concepts...' },
-      { progress: 40, stage: 'Identifying learning objectives...' },
-      { progress: 55, stage: 'Generating course modules...' },
-      { progress: 70, stage: 'Creating lesson content with multimedia...' },
-      { progress: 85, stage: 'Building assessment questions...' },
-      { progress: 95, stage: 'Finalizing course structure...' },
-    ]
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+        addToast(err.error || 'Failed to parse document')
+        setDocUploadState('idle')
+        return
+      }
 
-    let i = 0
-    const interval = setInterval(() => {
-      if (i < stages.length) {
-        setDocParsingProgress(stages[i].progress)
-        setDocParsingStage(stages[i].stage)
-        i++
-      } else {
-        clearInterval(interval)
+      const parsed = await res.json() as {
+        filename: string
+        textLength: number
+        wordCount: number
+        sections: Array<{ heading: string; content: string; level: number }>
+        fullText: string
+      }
+
+      setUploadedFileContent(parsed.fullText)
+      setDocParsingProgress(30)
+      setDocParsingStage('Analyzing document structure...')
+
+      // Small delay for UI feedback
+      await new Promise(r => setTimeout(r, 400))
+      setDocParsingProgress(50)
+      setDocParsingStage('Generating course modules from content...')
+      await new Promise(r => setTimeout(r, 400))
+
+      buildCourseFromSections(file.name, parsed.sections, parsed.fullText)
+
+      setDocParsingProgress(100)
+      setDocUploadState('done')
+    } catch (e) {
+      // Fallback: read text files client-side
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      if (['txt', 'md', 'csv'].includes(ext || '')) {
+        const text = await file.text()
+        setUploadedFileContent(text)
+        const fallbackSections = text.split(/\n\n+/).filter(p => p.trim().length > 30).map((p, i) => ({
+          heading: p.split(/[.!?\n]/)[0]?.trim().substring(0, 80) || `Section ${i + 1}`,
+          content: p.trim(),
+          level: 1,
+        }))
+        buildCourseFromSections(file.name, fallbackSections, text)
         setDocParsingProgress(100)
         setDocUploadState('done')
-
-        // Generate rich course from document
-        const baseName = filename.replace(/\.(pdf|docx|pptx|txt|md|csv|doc)$/i, '').replace(/[-_]/g, ' ')
-        const title = baseName.replace(/\b\w/g, l => l.toUpperCase()).trim()
-
-        // Extract key topics from content or derive from filename
-        const contentParagraphs = textContent
-          ? textContent.split(/\n\n+/).filter(p => p.trim().length > 30).slice(0, 20)
-          : []
-        const hasContent = contentParagraphs.length > 0
-
-        // Extract headings from content
-        const headings = textContent
-          ? textContent.split('\n').filter(l => /^#{1,3}\s/.test(l) || /^[A-Z][A-Z\s]{5,}$/.test(l.trim()) || /^\d+\.\s+[A-Z]/.test(l))
-              .map(h => h.replace(/^#+\s*/, '').replace(/^\d+\.\s*/, '').trim())
-              .filter(h => h.length > 3 && h.length < 100)
-              .slice(0, 12)
-          : []
-
-        // Build module structure
-        const moduleNames = headings.length >= 3
-          ? chunkArray(headings, Math.ceil(headings.length / 4)).map((group, i) => group[0] || `Module ${i + 1}`)
-          : [
-              `Understanding ${title}`,
-              `${title}: Core Principles & Frameworks`,
-              `${title}: Practical Application`,
-              `${title}: Advanced Strategies & Assessment`,
-            ]
-
-        const modules = moduleNames.map((modTitle, mi) => {
-          const moduleContent = hasContent
-            ? contentParagraphs.slice(mi * 4, mi * 4 + 4)
-            : []
-
-          const lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }> = []
-
-          // Lesson 1: Introduction / Reading (always text)
-          lessons.push({
-            title: mi === 0 ? `Welcome & Introduction to ${title}` : `${modTitle} — Overview`,
-            type: 'text',
-            content: moduleContent[0] || `This section introduces ${modTitle.toLowerCase()}. You will learn about the key concepts, terminology, and frameworks that form the foundation of this topic. Understanding these fundamentals is essential for applying them effectively in real-world scenarios.\n\nBy the end of this lesson, you will be able to:\n• Define the core concepts related to ${modTitle.toLowerCase()}\n• Identify the key stakeholders and their roles\n• Understand the regulatory and organizational context\n• Apply foundational principles to practical situations`,
-            duration_minutes: mi === 0 ? 10 : 15,
-          })
-
-          // Lesson 2: Deep-dive video
-          lessons.push({
-            title: `${modTitle} — Video Explainer`,
-            type: 'video',
-            content: `https://videos.tempo.com/courses/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}/module-${mi + 1}-explainer.mp4`,
-            duration_minutes: 20,
-          })
-
-          // Lesson 3: Detailed content / reading
-          lessons.push({
-            title: `${modTitle} — Key Concepts & Best Practices`,
-            type: 'text',
-            content: moduleContent[1] || `This lesson covers the detailed principles and best practices for ${modTitle.toLowerCase()}.\n\n**Key Principles:**\n1. Start with a clear understanding of objectives and expected outcomes\n2. Follow established frameworks and industry standards\n3. Document all processes and decisions for audit trail\n4. Engage stakeholders early and maintain open communication\n5. Monitor progress through measurable KPIs\n\n**Best Practices:**\n• Regular review cycles ensure continuous improvement\n• Cross-functional collaboration drives better outcomes\n• Data-driven decision making reduces risk\n• Training and awareness programs build organizational capability\n• Leverage technology to automate routine processes`,
-            duration_minutes: 20,
-          })
-
-          // Lesson 4: Interactive activity / case study
-          lessons.push({
-            title: `${modTitle} — Interactive Case Study`,
-            type: 'interactive',
-            content: moduleContent[2] || `**Case Study: Applying ${modTitle}**\n\nScenario: Your organization has identified a need to improve its approach to ${modTitle.toLowerCase()}. As the project lead, you need to:\n\n1. **Assess the current state** — Review existing policies and procedures\n2. **Identify gaps** — Compare against industry benchmarks and regulatory requirements\n3. **Develop an action plan** — Create a phased implementation roadmap\n4. **Execute and monitor** — Implement changes and track results\n\n*Reflect on how you would approach each step. Consider the stakeholders involved, potential challenges, and success metrics.*`,
-            duration_minutes: 25,
-          })
-
-          // Lesson 5: Quiz for this module
-          lessons.push({
-            title: `Module ${mi + 1} Knowledge Check`,
-            type: 'quiz',
-            content: '',
-            duration_minutes: 10,
-          })
-
-          // Lesson 6: Summary & resources (last module gets extra)
-          if (mi === moduleNames.length - 1) {
-            lessons.push({
-              title: `${title} — Summary & Certificate`,
-              type: 'text',
-              content: `**Congratulations!** You have completed the ${title} training course.\n\n**What You've Learned:**\n${moduleNames.map((m, i) => `${i + 1}. ${m}`).join('\n')}\n\n**Next Steps:**\n• Apply these concepts in your daily work\n• Share knowledge with your team members\n• Complete any remaining assessments\n• Download your certificate of completion\n\n**Resources:**\n• Course reference guide (PDF)\n• Quick-reference cheat sheet\n• Additional reading materials\n• Community discussion forum`,
-              duration_minutes: 5,
-            })
-            lessons.push({
-              title: `${title} — Reference Materials`,
-              type: 'download',
-              content: `https://docs.tempo.com/courses/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}/reference-guide.pdf`,
-              duration_minutes: 5,
-            })
-          }
-
-          return {
-            title: modTitle,
-            lessons,
-            duration_minutes: lessons.reduce((a, l) => a + l.duration_minutes, 0),
-          }
-        })
-
-        // Generate quiz questions for each module
-        const quizQuestionsList: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
-
-        moduleNames.forEach((modTitle, mi) => {
-          // 3 questions per module
-          quizQuestionsList.push({
-            question: `What is the primary objective of ${modTitle.toLowerCase()}?`,
-            type: 'multiple_choice',
-            options: [
-              `To ensure compliance with ${modTitle.toLowerCase()} requirements`,
-              `To maximize short-term profits`,
-              `To reduce headcount`,
-              `To eliminate all organizational risk`,
-            ],
-            correct_answer: `To ensure compliance with ${modTitle.toLowerCase()} requirements`,
-            points: 10,
-          })
-
-          quizQuestionsList.push({
-            question: `${modTitle} requires regular review and continuous improvement.`,
-            type: 'true_false',
-            options: ['True', 'False'],
-            correct_answer: 'True',
-            points: 5,
-          })
-
-          quizQuestionsList.push({
-            question: `The process of implementing ${modTitle.toLowerCase()} should involve _____ engagement.`,
-            type: 'fill_blank',
-            options: [],
-            correct_answer: 'stakeholder',
-            points: 10,
-          })
-        })
-
-        setParsedDocCourse({
-          title: `${title} — Complete Training`,
-          description: `Comprehensive training course auto-generated from "${filename}". Covers all key topics across ${modules.length} modules with ${modules.reduce((a, m) => a + m.lessons.length, 0)} interactive lessons, video content, case studies, and ${quizQuestionsList.length} assessment questions.`,
-          modules,
-          quizQuestions: quizQuestionsList,
-        })
+      } else {
+        addToast('Failed to parse document. Please try a different file format.')
+        setDocUploadState('idle')
       }
-    }, 600)
+    }
   }
 
-  function chunkArray<T>(arr: T[], size: number): T[][] {
-    const chunks: T[][] = []
-    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size))
-    return chunks
+  function buildCourseFromSections(
+    filename: string,
+    sections: Array<{ heading: string; content: string; level: number }>,
+    fullText: string,
+  ) {
+    const baseName = filename.replace(/\.(pdf|docx|pptx|txt|md|csv|doc)$/i, '').replace(/[-_]/g, ' ')
+    const title = baseName.replace(/\b\w/g, l => l.toUpperCase()).trim()
+
+    // Group sections into modules (3-6 sections per module)
+    const validSections = sections.filter(s => s.content.length > 20)
+    const moduleCount = Math.max(2, Math.min(6, Math.ceil(validSections.length / 3)))
+    const sectionsPerModule = Math.ceil(validSections.length / moduleCount)
+
+    const modules: Array<{
+      title: string
+      lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }>
+      duration_minutes: number
+    }> = []
+
+    const quizQuestionsList: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
+
+    for (let mi = 0; mi < moduleCount; mi++) {
+      const modSections = validSections.slice(mi * sectionsPerModule, (mi + 1) * sectionsPerModule)
+      if (modSections.length === 0) continue
+
+      const modTitle = modSections[0].heading || `Module ${mi + 1}`
+      const modContent = modSections.map(s => s.content).join('\n\n')
+      const lessons: Array<{ title: string; type: string; content: string; duration_minutes: number }> = []
+
+      // Lesson 1: Reading — actual document content
+      const readingContent = modSections.map(s => `## ${s.heading}\n\n${s.content}`).join('\n\n---\n\n')
+      lessons.push({
+        title: mi === 0 ? `Introduction: ${modTitle}` : `${modTitle} — Core Content`,
+        type: 'text',
+        content: readingContent,
+        duration_minutes: Math.max(5, Math.ceil(modContent.split(/\s+/).length / 200)),
+      })
+
+      // Lesson 2: Visual Summary (replaces empty video — rich text with key points)
+      const keyPoints = extractKeyPoints(modContent)
+      const keyTerms = extractKeyTerms(modContent)
+      const visualContent = `## Visual Summary: ${modTitle}\n\n` +
+        `**Key Takeaways from this section:**\n\n` +
+        keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n') +
+        (keyTerms.length > 0 ? `\n\n**Important Terms & Concepts:**\n\n` + keyTerms.map(t => `- **${t}**`).join('\n') : '') +
+        `\n\n**Learning Objectives:**\n` +
+        `- Understand the core principles of ${modTitle.toLowerCase()}\n` +
+        `- Identify key processes and requirements\n` +
+        `- Apply concepts to real-world scenarios`
+      lessons.push({
+        title: `${modTitle} — Visual Summary & Key Points`,
+        type: 'text',
+        content: visualContent,
+        duration_minutes: 10,
+      })
+
+      // Lesson 3: Deep Dive — remaining content details
+      if (modSections.length > 1) {
+        const deepContent = modSections.slice(1).map(s =>
+          `### ${s.heading}\n\n${s.content}`
+        ).join('\n\n')
+        lessons.push({
+          title: `${modTitle} — Deep Dive`,
+          type: 'text',
+          content: deepContent,
+          duration_minutes: Math.max(10, Math.ceil(deepContent.split(/\s+/).length / 200)),
+        })
+      }
+
+      // Lesson 4: Interactive Scenario built from actual content
+      const scenario = buildScenario(modTitle, modContent, keyPoints)
+      lessons.push({
+        title: `${modTitle} — Applied Scenario`,
+        type: 'interactive',
+        content: scenario,
+        duration_minutes: 15,
+      })
+
+      // Lesson 5: Module Quiz
+      lessons.push({
+        title: `Module ${mi + 1}: ${modTitle} — Knowledge Check`,
+        type: 'quiz',
+        content: '',
+        duration_minutes: 10,
+      })
+
+      // Generate quiz questions from actual content
+      const modQuestions = generateQuestionsFromContent(modTitle, modContent, keyPoints, keyTerms)
+      quizQuestionsList.push(...modQuestions)
+
+      modules.push({
+        title: modTitle,
+        lessons,
+        duration_minutes: lessons.reduce((a, l) => a + l.duration_minutes, 0),
+      })
+    }
+
+    // Final summary module
+    modules.push({
+      title: `${title} — Summary & Assessment`,
+      lessons: [
+        {
+          title: `Course Summary: ${title}`,
+          type: 'text',
+          content: `## Course Complete: ${title}\n\n**Modules Covered:**\n\n${modules.map((m, i) => `${i + 1}. **${m.title}**`).join('\n')}\n\n**Total Content:** ${modules.reduce((a, m) => a + m.lessons.length, 0)} lessons across ${modules.length} modules\n\n**Next Steps:**\n- Review any modules you found challenging\n- Apply the concepts in your daily work\n- Share insights with your team\n- Complete the final assessment for your certificate`,
+          duration_minutes: 5,
+        },
+        {
+          title: `Final Assessment`,
+          type: 'quiz',
+          content: '',
+          duration_minutes: 15,
+        },
+      ],
+      duration_minutes: 20,
+    })
+
+    setParsedDocCourse({
+      title: `${title} — Complete Training`,
+      description: `Course auto-generated from "${filename}" (${Math.round(fullText.length / 1000)}K chars, ${fullText.split(/\s+/).length} words). Contains ${modules.length} modules with ${modules.reduce((a, m) => a + m.lessons.length, 0)} lessons built directly from document content, plus ${quizQuestionsList.length} assessment questions.`,
+      modules,
+      quizQuestions: quizQuestionsList,
+    })
+  }
+
+  function extractKeyPoints(text: string): string[] {
+    const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200)
+    const indicators = ['must', 'should', 'require', 'important', 'essential', 'key', 'critical', 'ensure', 'necessary', 'responsible', 'obligat', 'comply', 'mandatory', 'recommend']
+    const important = sentences.filter(s => indicators.some(ind => s.toLowerCase().includes(ind)))
+    if (important.length >= 3) return important.slice(0, 6)
+    // Fallback: first sentence of each paragraph
+    return text.split(/\n\n+/).map(p => p.split(/[.!?]/)[0]?.trim()).filter(s => s && s.length > 15 && s.length < 200).slice(0, 6)
+  }
+
+  function extractKeyTerms(text: string): string[] {
+    const terms = new Set<string>()
+    // Capitalized multi-word phrases (likely proper nouns / concepts)
+    const capsMatches = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g) || []
+    capsMatches.forEach(m => { if (m.length > 5 && m.length < 60) terms.add(m) })
+    // Bold terms from markdown
+    const boldMatches = text.match(/\*\*([^*]+)\*\*/g) || []
+    boldMatches.forEach(m => terms.add(m.replace(/\*\*/g, '')))
+    return Array.from(terms).slice(0, 10)
+  }
+
+  function buildScenario(modTitle: string, content: string, keyPoints: string[]): string {
+    const topPoints = keyPoints.slice(0, 3)
+    return `## Applied Scenario: ${modTitle}\n\n` +
+      `**Situation:** Your organization is reviewing its approach to ${modTitle.toLowerCase()}. ` +
+      `As the responsible team lead, you need to evaluate current practices against the principles covered in this module.\n\n` +
+      `**Your Task:**\n\n` +
+      topPoints.map((p, i) => `${i + 1}. **Consider:** ${p}\n   - How does this apply to your current context?\n   - What changes would you implement?`).join('\n\n') +
+      `\n\n**Reflection Questions:**\n` +
+      `- What are the biggest gaps between current practice and the standards described?\n` +
+      `- Who are the key stakeholders that need to be involved?\n` +
+      `- What would a 90-day implementation plan look like?\n` +
+      `- How would you measure success?`
+  }
+
+  function generateQuestionsFromContent(
+    modTitle: string,
+    content: string,
+    keyPoints: string[],
+    keyTerms: string[],
+  ): Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> {
+    const questions: Array<{ question: string; type: string; options: string[]; correct_answer: string; points: number }> = []
+
+    // Q1: Multiple choice from a key point
+    if (keyPoints.length > 0) {
+      const point = keyPoints[0]
+      const correctSnippet = point.length > 80 ? point.substring(0, 77) + '...' : point
+      questions.push({
+        question: `According to the "${modTitle}" section, which of the following is correct?`,
+        type: 'multiple_choice',
+        options: [
+          correctSnippet,
+          `${modTitle} has no formal requirements or guidelines`,
+          `Only senior management is responsible for ${modTitle.toLowerCase()}`,
+          `${modTitle} is optional and does not impact operations`,
+        ],
+        correct_answer: correctSnippet,
+        points: 10,
+      })
+    }
+
+    // Q2: True/false from content
+    if (keyPoints.length > 1) {
+      const statement = keyPoints[1]
+      questions.push({
+        question: `True or False: ${statement}`,
+        type: 'true_false',
+        options: ['True', 'False'],
+        correct_answer: 'True',
+        points: 5,
+      })
+    }
+
+    // Q3: Fill-in-the-blank from key terms
+    if (keyTerms.length > 0) {
+      const term = keyTerms[0]
+      questions.push({
+        question: `A key concept in ${modTitle.toLowerCase()} is _____.`,
+        type: 'fill_blank',
+        options: [],
+        correct_answer: term,
+        points: 10,
+      })
+    } else {
+      questions.push({
+        question: `The ${modTitle.toLowerCase()} process requires ongoing _____ and review.`,
+        type: 'fill_blank',
+        options: [],
+        correct_answer: 'monitoring',
+        points: 10,
+      })
+    }
+
+    return questions
   }
 
   function handleSaveDocCourse() {
