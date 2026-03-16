@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
-import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2, X } from 'lucide-react'
+import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2, X, Image, Code, Minus, Quote, ChevronDown, GripVertical, Copy, Trash2, Move, Type, LayoutGrid, Send, MousePointerClick } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
@@ -32,7 +32,7 @@ import InPersonEvents from '@/components/learning/in-person-events'
 import VersionHistory from '@/components/learning/version-history'
 
 export default function LearningPage() {
-  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
+  const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -100,6 +100,15 @@ export default function LearningPage() {
   const [selectedBuilderCourse, setSelectedBuilderCourse] = useState<string>('')
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [blockForm, setBlockForm] = useState({ type: 'text' as string, title: '', content: '', duration_minutes: 10, module_index: 0, order: 0, status: 'draft' as string })
+
+  // Articulate-style authoring state
+  const [authoringMode, setAuthoringMode] = useState(false)
+  const [showNewCourseFlow, setShowNewCourseFlow] = useState(false)
+  const [newCourseForm, setNewCourseForm] = useState({ title: '', description: '', category: 'General', level: 'beginner' as string, cover_color: 'tempo' })
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
+  const [showBlockPicker, setShowBlockPicker] = useState<number | null>(null) // insert position index
+  const [dragBlockId, setDragBlockId] = useState<string | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
   // Quiz Builder state
   const [selectedQuizCourse, setSelectedQuizCourse] = useState<string>('')
@@ -926,15 +935,163 @@ export default function LearningPage() {
   }
 
   // Block type icon helper
-  const blockTypeIcon = (type: string) => {
+  const blockTypeIcon = (type: string, size = 14) => {
     switch (type) {
-      case 'text': return <AlignLeft size={14} />
-      case 'video': return <Play size={14} />
-      case 'quiz': return <HelpCircle size={14} />
-      case 'interactive': return <ListChecks size={14} />
-      case 'download': return <Download size={14} />
-      default: return <FileText size={14} />
+      case 'text': return <AlignLeft size={size} />
+      case 'video': return <Play size={size} />
+      case 'quiz': return <HelpCircle size={size} />
+      case 'interactive': return <ListChecks size={size} />
+      case 'download': return <Download size={size} />
+      case 'image': return <Image size={size} />
+      case 'divider': return <Minus size={size} />
+      case 'callout': return <Quote size={size} />
+      case 'code': return <Code size={size} />
+      case 'accordion': return <ChevronDown size={size} />
+      case 'embed': return <Globe size={size} />
+      case 'heading': return <Type size={size} />
+      case 'columns': return <LayoutGrid size={size} />
+      case 'infographic': return <BarChart3 size={size} />
+      case 'button': return <MousePointerClick size={size} />
+      default: return <FileText size={size} />
     }
+  }
+
+  // Block type categories for the block picker
+  const BLOCK_CATEGORIES = [
+    { label: 'Content', types: [
+      { type: 'text', label: 'Text Block', desc: 'Rich text content with formatting' },
+      { type: 'heading', label: 'Heading', desc: 'Section heading or title' },
+      { type: 'image', label: 'Image', desc: 'Photo, illustration, or graphic' },
+      { type: 'video', label: 'Video Embed', desc: 'YouTube, Vimeo, or uploaded video' },
+      { type: 'callout', label: 'Callout / Tip', desc: 'Highlighted info, warning, or tip' },
+    ]},
+    { label: 'Interactive', types: [
+      { type: 'quiz', label: 'Knowledge Check', desc: 'Multiple choice or true/false question' },
+      { type: 'interactive', label: 'Interactive', desc: 'Sortable, flashcard, or scenario' },
+      { type: 'accordion', label: 'Accordion', desc: 'Expandable content sections' },
+      { type: 'button', label: 'Button / CTA', desc: 'Clickable action button' },
+    ]},
+    { label: 'Layout', types: [
+      { type: 'divider', label: 'Divider', desc: 'Visual separator between sections' },
+      { type: 'columns', label: 'Two Columns', desc: 'Side-by-side content layout' },
+      { type: 'infographic', label: 'Infographic', desc: 'Animated data visualization' },
+    ]},
+    { label: 'Resources', types: [
+      { type: 'download', label: 'File Download', desc: 'Downloadable PDF, DOCX, or asset' },
+      { type: 'embed', label: 'Web Embed', desc: 'External webpage or widget' },
+      { type: 'code', label: 'Code Block', desc: 'Syntax-highlighted code snippet' },
+    ]},
+  ]
+
+  // Handle creating a new course from scratch
+  function handleCreateNewCourse() {
+    if (!newCourseForm.title.trim()) { addToast('Course title is required'); return }
+    addCourse({
+      title: newCourseForm.title,
+      description: newCourseForm.description,
+      category: newCourseForm.category,
+      level: newCourseForm.level,
+      format: 'online',
+      duration_hours: 0,
+      is_mandatory: false,
+      status: 'draft',
+    })
+    // Find the newly created course (last one added)
+    setTimeout(() => {
+      const latest = courses[courses.length - 1]
+      if (latest) {
+        setSelectedBuilderCourse(latest.id)
+        setAuthoringMode(true)
+      }
+    }, 100)
+    setShowNewCourseFlow(false)
+    setNewCourseForm({ title: '', description: '', category: 'General', level: 'beginner', cover_color: 'tempo' })
+  }
+
+  // Insert a new block at a specific position
+  function insertBlockAt(type: string, position: number) {
+    if (!selectedBuilderCourse) return
+    const defaultContent: Record<string, { title: string; content: string; duration: number }> = {
+      text: { title: 'Text Block', content: 'Start writing your content here...', duration: 5 },
+      heading: { title: 'Section Heading', content: 'New Section', duration: 1 },
+      image: { title: 'Image', content: '{"url":"","alt":"Describe this image","caption":""}', duration: 2 },
+      video: { title: 'Video', content: '{"url":"","caption":"Add a video URL (YouTube, Vimeo)"}', duration: 10 },
+      callout: { title: 'Callout', content: '{"style":"info","text":"Add an important note, tip, or warning here."}', duration: 2 },
+      quiz: { title: 'Knowledge Check', content: '{"question":"What did you learn?","options":["Option A","Option B","Option C","Option D"],"correct":0}', duration: 3 },
+      interactive: { title: 'Interactive Activity', content: '{"type":"flashcard","items":[{"front":"Term","back":"Definition"}]}', duration: 5 },
+      accordion: { title: 'Accordion', content: '{"sections":[{"heading":"Section 1","body":"Content here..."},{"heading":"Section 2","body":"More content..."}]}', duration: 3 },
+      divider: { title: 'Divider', content: '{"style":"line"}', duration: 0 },
+      columns: { title: 'Two Columns', content: '{"left":"Left column content...","right":"Right column content..."}', duration: 3 },
+      infographic: { title: 'Infographic', content: '{"items":[{"label":"Metric 1","value":"85%"},{"label":"Metric 2","value":"120+"}]}', duration: 3 },
+      download: { title: 'File Download', content: '{"filename":"resource.pdf","url":"","description":"Download this resource"}', duration: 1 },
+      embed: { title: 'Web Embed', content: '{"url":"","height":400}', duration: 5 },
+      code: { title: 'Code Block', content: '{"language":"javascript","code":"// Your code here\\nconsole.log(\'Hello World\');"}', duration: 3 },
+      button: { title: 'Button', content: '{"label":"Learn More","url":"#","style":"primary"}', duration: 1 },
+    }
+    const def = defaultContent[type] || { title: 'Block', content: '', duration: 5 }
+    // Reorder existing blocks that come after the insertion point
+    const existing = filteredBlocks
+    existing.filter(b => b.order >= position).forEach(b => {
+      updateCourseBlock(b.id, { order: b.order + 1 })
+    })
+    addCourseBlock({
+      course_id: selectedBuilderCourse,
+      module_index: 0,
+      order: position,
+      type,
+      title: def.title,
+      content: def.content,
+      duration_minutes: def.duration,
+      status: 'draft',
+    })
+    setShowBlockPicker(null)
+    setEditingBlockId(null)
+  }
+
+  // Move block via drag-and-drop
+  function moveBlock(blockId: string, newOrder: number) {
+    const block = filteredBlocks.find(b => b.id === blockId)
+    if (!block || block.order === newOrder) return
+    const oldOrder = block.order
+    filteredBlocks.forEach(b => {
+      if (b.id === blockId) return
+      if (oldOrder < newOrder) {
+        // Moving down: shift items between old+1 and new up by 1
+        if (b.order > oldOrder && b.order <= newOrder) updateCourseBlock(b.id, { order: b.order - 1 })
+      } else {
+        // Moving up: shift items between new and old-1 down by 1
+        if (b.order >= newOrder && b.order < oldOrder) updateCourseBlock(b.id, { order: b.order + 1 })
+      }
+    })
+    updateCourseBlock(blockId, { order: newOrder })
+    setDragBlockId(null)
+    setDragOverIdx(null)
+  }
+
+  // Publish all blocks at once
+  function publishAllBlocks() {
+    filteredBlocks.forEach(b => {
+      if (b.status !== 'published') updateCourseBlock(b.id, { status: 'published' })
+    })
+    if (selectedBuilderCourse) {
+      const totalMinutes = filteredBlocks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0)
+      updateCourse(selectedBuilderCourse, { status: 'published', duration_hours: Math.max(1, Math.round(totalMinutes / 60)) })
+    }
+    addToast('Course published successfully!')
+  }
+
+  // Duplicate a block
+  function duplicateBlock(block: any) {
+    addCourseBlock({
+      course_id: block.course_id,
+      module_index: block.module_index,
+      order: block.order + 1,
+      type: block.type,
+      title: block.title + ' (copy)',
+      content: block.content,
+      duration_minutes: block.duration_minutes,
+      status: 'draft',
+    })
   }
 
   // Current employee info for personalized homepage
@@ -3249,50 +3406,28 @@ export default function LearningPage() {
         </div>
       )}
 
-      {/* Course Builder Tab */}
+      {/* Course Builder Tab — Articulate-style Authoring */}
       {activeTab === 'course-builder' && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Course Outline Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <h3 className="text-sm font-semibold text-t1 mb-3">{t('courseOutlineSidebar')}</h3>
-              <div className="space-y-2">
-                {courses.map(course => {
-                  const blocks = courseBlocks.filter(b => b.course_id === course.id)
-                  const isSelected = selectedBuilderCourse === course.id
-                  return (
-                    <button key={course.id} onClick={() => setSelectedBuilderCourse(course.id)}
-                      className={`w-full text-left p-2 rounded-lg text-xs transition-colors ${isSelected ? 'bg-tempo-50 border border-tempo-200' : 'hover:bg-canvas'}`}>
-                      <p className="font-medium text-t1">{course.title}</p>
-                      <p className="text-t3 mt-0.5">{t('blocksCount', { count: blocks.length })} - {course.duration_hours}h</p>
-                    </button>
-                  )
-                })}
-              </div>
-            </Card>
-          </div>
-
-          {/* Content Blocks */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-t1">{t('courseBuilder')}</h3>
-                <p className="text-xs text-t3">{t('courseBuilderDesc')}</p>
-                {/* Collaborative authoring indicator */}
-                {selectedBuilderCourse && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex -space-x-1.5">
-                      <div className="w-5 h-5 rounded-full bg-green-400 border-2 border-surface" />
-                      <div className="w-5 h-5 rounded-full bg-blue-400 border-2 border-surface" />
-                    </div>
-                    <span className="text-[0.6rem] text-green-600 flex items-center gap-1"><Eye size={10} /> {t('liveEditing')} · {t('currentEditors')}: 2</span>
+        <div className="space-y-4">
+          {/* Top toolbar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-semibold text-t1">Course Studio</h3>
+              {selectedBuilderCourse && (() => {
+                const course = courses.find(c => c.id === selectedBuilderCourse)
+                return course ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant={(course as any).status === 'published' ? 'success' : 'default'}>{(course as any).status === 'published' ? 'Live' : 'Draft'}</Badge>
+                    <span className="text-xs text-t3">{filteredBlocks.length} blocks · {filteredBlocks.reduce((s, b) => s + (b.duration_minutes || 0), 0)} min</span>
                   </div>
-                )}
-              </div>
+                ) : null
+              })()}
+            </div>
+            <div className="flex items-center gap-2">
               {selectedBuilderCourse && (
-                <div className="flex gap-2">
+                <>
                   <Button size="sm" variant="outline" onClick={() => setAiWritingOpen(!aiWritingOpen)}>
-                    <Brain size={14} /> AI Assistant
+                    <Sparkles size={14} /> AI Assist
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     const outline = generateCourseOutline(courses.find(c => c.id === selectedBuilderCourse)?.title || 'Course', 'intermediate', 8)
@@ -3302,243 +3437,766 @@ export default function LearningPage() {
                       })
                     })
                   }}>
-                    <Sparkles size={14} /> {t('aiGenerateContent')}
+                    <Sparkles size={14} /> Auto-Generate
                   </Button>
-                  <div className="relative group/bulk-translate">
-                    <Button size="sm" variant="outline"><Globe size={14} /> Translate All</Button>
-                    <div className="absolute right-0 top-full mt-1 bg-surface border border-divider rounded-lg shadow-lg p-2 hidden group-hover/bulk-translate:block z-20 w-36 max-h-48 overflow-y-auto">
-                      {['French', 'Spanish', 'Portuguese', 'Arabic', 'Swahili', 'German', 'Chinese', 'Japanese', 'Hindi'].map(lang => (
-                        <button key={lang} onClick={() => {
-                          const blocks = courseBlocks.filter(b => b.course_id === selectedBuilderCourse)
-                          blocks.forEach((block, i) => {
-                            setTimeout(() => handleTranslateBlock(block.id, lang), i * 300)
-                          })
-                        }} className="w-full text-left text-[0.6rem] px-2 py-1.5 rounded hover:bg-canvas text-t2 hover:text-t1 transition-colors">{lang}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <Button size="sm" onClick={() => setShowBlockModal(true)}><Plus size={14} /> {t('addBlock')}</Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    // Enroll current user and launch player for preview
+                    const existing = enrollments.find(e => e.course_id === selectedBuilderCourse && e.employee_id === currentEmployeeId)
+                    if (existing) {
+                      setPlayerCourseId(selectedBuilderCourse)
+                      setPlayerEnrollmentId(existing.id)
+                    } else {
+                      addEnrollment({ employee_id: currentEmployeeId, course_id: selectedBuilderCourse, status: 'enrolled', progress: 0 })
+                      addToast('Enrolled for preview — click Preview again to launch')
+                    }
+                  }}>
+                    <Eye size={14} /> Preview
+                  </Button>
+                  <Button size="sm" variant="primary" onClick={publishAllBlocks}>
+                    <Send size={14} /> Publish Course
+                  </Button>
+                </>
+              )}
+              <Button size="sm" onClick={() => setShowNewCourseFlow(true)}>
+                <Plus size={14} /> New Course
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            {/* Left Sidebar — Course List + Outline */}
+            <div className="lg:col-span-1 space-y-3">
+              <Card>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-t1">My Courses</h4>
                 </div>
+                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                  {courses.map(course => {
+                    const blocks = courseBlocks.filter(b => b.course_id === course.id)
+                    const isSelected = selectedBuilderCourse === course.id
+                    const publishedCount = blocks.filter(b => b.status === 'published').length
+                    return (
+                      <button key={course.id} onClick={() => { setSelectedBuilderCourse(course.id); setAuthoringMode(true); setEditingBlockId(null) }}
+                        className={`w-full text-left p-2.5 rounded-lg text-xs transition-all ${isSelected ? 'bg-tempo-500/10 border border-tempo-500/20 shadow-sm' : 'hover:bg-canvas border border-transparent'}`}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${(course as any).status === 'published' ? 'bg-green-400' : 'bg-amber-400'}`} />
+                          <p className="font-medium text-t1 truncate flex-1">{course.title}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 ml-4">
+                          <span className="text-[0.6rem] text-t3">{blocks.length} blocks</span>
+                          {blocks.length > 0 && (
+                            <div className="flex-1 h-1 bg-canvas rounded-full overflow-hidden">
+                              <div className="h-full bg-green-400 rounded-full transition-all" style={{ width: `${blocks.length ? (publishedCount / blocks.length) * 100 : 0}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </Card>
+
+              {/* Block outline for selected course */}
+              {selectedBuilderCourse && filteredBlocks.length > 0 && (
+                <Card>
+                  <h4 className="text-xs font-semibold text-t1 mb-2">Outline</h4>
+                  <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                    {filteredBlocks.map((block, idx) => (
+                      <button key={block.id} onClick={() => setEditingBlockId(block.id)}
+                        className={`w-full text-left px-2 py-1.5 rounded text-[0.65rem] transition-colors flex items-center gap-1.5 ${editingBlockId === block.id ? 'bg-tempo-500/10 text-tempo-600' : 'hover:bg-canvas text-t2'}`}>
+                        <span className="text-t3 w-4 text-right shrink-0">{idx + 1}</span>
+                        {blockTypeIcon(block.type, 10)}
+                        <span className="truncate">{block.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
               )}
             </div>
 
-            {/* Sana-inspired AI Writing Assistant Panel */}
-            {aiWritingOpen && (
-              <Card className="border-tempo-200 bg-tempo-50/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-tempo-600" />
-                    <h4 className="text-sm font-semibold text-t1">AI Writing Assistant</h4>
-                    <Badge variant="ai">Claude</Badge>
+            {/* Main Authoring Canvas */}
+            <div className="lg:col-span-4">
+              {/* AI Writing Assistant Panel (collapsible) */}
+              {aiWritingOpen && (
+                <Card className="border-tempo-200 bg-tempo-50/30 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-tempo-600" />
+                      <h4 className="text-sm font-semibold text-t1">AI Writing Assistant</h4>
+                      <Badge variant="ai">Claude</Badge>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => { setAiWritingOpen(false); setAiWritingResult('') }}>×</Button>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => { setAiWritingOpen(false); setAiWritingResult('') }}>×</Button>
-                </div>
-                <Textarea value={aiWritingText} onChange={(e) => setAiWritingText(e.target.value)} placeholder="Paste or type content here for AI assistance..." rows={4} className="mb-3" />
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {[
-                    { action: 'continue', label: 'Continue writing', icon: <PenTool size={12} /> },
-                    { action: 'shorten', label: 'Shorten', icon: <AlignLeft size={12} /> },
-                    { action: 'rephrase', label: 'Rephrase', icon: <Zap size={12} /> },
-                    { action: 'simplify', label: 'Simplify', icon: <BookOpen size={12} /> },
-                    { action: 'add_examples', label: 'Add examples', icon: <ListChecks size={12} /> },
-                    { action: 'generate_quiz', label: 'Generate quiz', icon: <HelpCircle size={12} /> },
-                  ].map(({ action, label, icon }) => (
-                    <Button key={action} size="sm" variant={aiWritingAction === action && aiWritingLoading ? 'primary' : 'outline'}
-                      onClick={() => handleAiWritingAssist(action, aiWritingText)}
-                      disabled={aiWritingLoading || !aiWritingText}>
-                      {aiWritingLoading && aiWritingAction === action ? <AIPulse size="sm" /> : icon} {label}
+                  <Textarea value={aiWritingText} onChange={(e) => setAiWritingText(e.target.value)} placeholder="Paste or type content here for AI assistance..." rows={3} className="mb-3" />
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      { action: 'continue', label: 'Continue', icon: <PenTool size={12} /> },
+                      { action: 'shorten', label: 'Shorten', icon: <AlignLeft size={12} /> },
+                      { action: 'rephrase', label: 'Rephrase', icon: <Zap size={12} /> },
+                      { action: 'simplify', label: 'Simplify', icon: <BookOpen size={12} /> },
+                      { action: 'add_examples', label: 'Examples', icon: <ListChecks size={12} /> },
+                      { action: 'generate_quiz', label: 'Quiz', icon: <HelpCircle size={12} /> },
+                    ].map(({ action, label, icon }) => (
+                      <Button key={action} size="sm" variant={aiWritingAction === action && aiWritingLoading ? 'primary' : 'outline'}
+                        onClick={() => handleAiWritingAssist(action, aiWritingText)}
+                        disabled={aiWritingLoading || !aiWritingText}>
+                        {aiWritingLoading && aiWritingAction === action ? <AIPulse size="sm" /> : icon} {label}
+                      </Button>
+                    ))}
+                  </div>
+                  {aiWritingResult && (
+                    <div className="bg-surface rounded-lg p-3 border border-divider">
+                      <p className="text-xs text-t1 whitespace-pre-wrap">{aiWritingResult}</p>
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="primary" onClick={() => { setAiWritingText(aiWritingResult); setAiWritingResult('') }}>Use this</Button>
+                        <Button size="sm" variant="outline" onClick={() => setAiWritingResult('')}>Discard</Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {!selectedBuilderCourse ? (
+                /* Empty state — no course selected */
+                <Card>
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-tempo-500/10 flex items-center justify-center mx-auto mb-4">
+                      <BookOpen size={28} className="text-tempo-400" />
+                    </div>
+                    <h3 className="text-base font-semibold text-t1 mb-2">Create Your First Course</h3>
+                    <p className="text-xs text-t3 max-w-md mx-auto mb-6">Build interactive courses with text, images, videos, quizzes, and more. Just like Articulate Rise — but built right into Tempo.</p>
+                    <Button onClick={() => setShowNewCourseFlow(true)}>
+                      <Plus size={14} /> New Course
                     </Button>
-                  ))}
-                </div>
-                {aiWritingResult && (
-                  <div className="bg-surface rounded-lg p-3 border border-divider">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles size={12} className="text-tempo-600" />
-                      <span className="text-[0.6rem] text-tempo-600 font-medium uppercase">AI Result</span>
-                    </div>
-                    <p className="text-xs text-t1 whitespace-pre-wrap">{aiWritingResult}</p>
-                    <div className="flex gap-2 mt-3">
-                      <Button size="sm" variant="primary" onClick={() => { setAiWritingText(aiWritingResult); setAiWritingResult('') }}>Use this</Button>
-                      <Button size="sm" variant="outline" onClick={() => setAiWritingResult('')}>Discard</Button>
-                    </div>
                   </div>
-                )}
-              </Card>
-            )}
-
-            {!selectedBuilderCourse ? (
-              <Card><div className="text-center py-12 text-sm text-t3">{t('noCourseSelected')}</div></Card>
-            ) : (
-              <div className="space-y-3">
-                {(() => {
-                  const modules = [...new Set(filteredBlocks.map(b => b.module_index))].sort((a, b) => a - b)
-                  return modules.map(mi => (
-                    <Card key={mi}>
-                      <h4 className="text-xs font-semibold text-t1 mb-3">{t('moduleN', { n: mi + 1 })}</h4>
-                      <div className="space-y-2">
-                        {filteredBlocks.filter(b => b.module_index === mi).map(block => (
-                          <div key={block.id} className="flex items-center gap-3 p-2 rounded-lg bg-canvas group">
-                            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-t3">
-                              {blockTypeIcon(block.type)}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-t1">{block.title}</p>
-                              <p className="text-[0.6rem] text-t3">{block.type} - {block.duration_minutes} {t('minutes')}</p>
-                            </div>
-                            <Badge variant={block.status === 'published' ? 'success' : 'default'}>{block.status === 'published' ? t('statusPublished') : t('statusDraft')}</Badge>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button size="sm" variant="outline" onClick={() => { setAiWritingText(block.content || block.title); setAiWritingOpen(true) }}><Sparkles size={10} /> AI</Button>
-                              <div className="relative group/translate">
-                                <Button size="sm" variant="outline" disabled={translatingBlock === block.id}>
-                                  {translatingBlock === block.id ? <><AIPulse size="sm" /> Translating...</> : <><Globe size={10} /> Translate</>}
-                                </Button>
-                                <div className="absolute right-0 top-full mt-1 bg-surface border border-divider rounded-lg shadow-lg p-2 hidden group-hover/translate:block z-20 w-36 max-h-48 overflow-y-auto">
-                                  {['French', 'Spanish', 'Portuguese', 'Arabic', 'Swahili', 'German', 'Chinese', 'Japanese', 'Hindi', 'Yoruba', 'Hausa', 'Igbo'].map(lang => (
-                                    <button key={lang} onClick={() => handleTranslateBlock(block.id, lang)} className="w-full text-left text-[0.6rem] px-2 py-1.5 rounded hover:bg-canvas text-t2 hover:text-t1 transition-colors">{lang}</button>
-                                  ))}
-                                </div>
-                              </div>
-                              {block.status === 'draft' && (
-                                <Button size="sm" variant="outline" onClick={() => updateCourseBlock(block.id, { status: 'published' })}>{t('publishBlock')}</Button>
-                              )}
-                              <Button size="sm" variant="secondary" onClick={() => confirmDelete('block', block.id, block.title)}>×</Button>
-                            </div>
-                          </div>
-                        ))}
+                </Card>
+              ) : (
+                /* Authoring canvas with blocks */
+                <div className="space-y-0">
+                  {/* Course header card */}
+                  {(() => {
+                    const course = courses.find(c => c.id === selectedBuilderCourse)
+                    if (!course) return null
+                    const coverColors: Record<string, string> = { tempo: 'from-tempo-600 to-orange-500', blue: 'from-blue-600 to-cyan-500', green: 'from-green-600 to-emerald-500', purple: 'from-purple-600 to-pink-500', red: 'from-red-600 to-rose-500' }
+                    return (
+                      <div className={`rounded-xl bg-gradient-to-r ${coverColors[newCourseForm.cover_color] || coverColors.tempo} p-6 mb-4`}>
+                        <input
+                          className="text-lg font-bold text-white bg-transparent border-none outline-none w-full placeholder-white/60"
+                          value={course.title}
+                          onChange={(e) => updateCourse(course.id, { title: e.target.value })}
+                          placeholder="Course Title"
+                        />
+                        <input
+                          className="text-xs text-white/80 bg-transparent border-none outline-none w-full mt-1 placeholder-white/40"
+                          value={course.description || ''}
+                          onChange={(e) => updateCourse(course.id, { description: e.target.value })}
+                          placeholder="Add a description..."
+                        />
+                        <div className="flex items-center gap-3 mt-3">
+                          <Badge className="bg-white/20 text-white border-0 text-[0.6rem]">{course.level || 'Beginner'}</Badge>
+                          <Badge className="bg-white/20 text-white border-0 text-[0.6rem]">{course.category || 'General'}</Badge>
+                          <span className="text-[0.6rem] text-white/60">{filteredBlocks.length} blocks · {filteredBlocks.reduce((s, b) => s + (b.duration_minutes || 0), 0)} min total</span>
+                        </div>
                       </div>
-                    </Card>
-                  ))
-                })()}
-                {filteredBlocks.length === 0 && (
-                  <Card><div className="text-center py-8 text-sm text-t3">{t('selectCourseToEdit')}</div></Card>
-                )}
+                    )
+                  })()}
 
-                {/* SCORM Packages Section */}
-                {selectedBuilderCourse && (
-                  <Card>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-semibold text-t1 flex items-center gap-2"><Layers size={14} className="text-tempo-400" /> SCORM Packages</h4>
-                      <Button size="sm" variant="outline" onClick={() => { setScormUploadCourse(selectedBuilderCourse); setShowScormUploadModal(true) }}><Upload size={12} /> Upload SCORM</Button>
-                    </div>
-                    {scormPackages.filter(p => p.course_id === selectedBuilderCourse).length > 0 ? (
-                      <div className="space-y-2">
-                        {scormPackages.filter(p => p.course_id === selectedBuilderCourse).map(pkg => {
-                          const tracking = scormTracking.filter(t => t.package_id === pkg.id)
-                          return (
-                            <div key={pkg.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
-                              <div className="w-9 h-9 rounded-lg bg-tempo-500/10 flex items-center justify-center"><Layers size={16} className="text-tempo-400" /></div>
-                              <div className="flex-1">
-                                <p className="text-xs font-medium text-t1">{(pkg.metadata as any)?.title || 'SCORM Package'}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <Badge variant="info" className="text-[0.5rem]">{pkg.version === 'scorm_1_2' ? 'SCORM 1.2' : pkg.version === 'scorm_2004' ? 'SCORM 2004' : 'xAPI'}</Badge>
-                                  <span className="text-[0.55rem] text-t3">{(pkg.metadata as any)?.duration || 'N/A'}</span>
-                                  <span className="text-[0.55rem] text-t3">Mastery: {(pkg.metadata as any)?.mastery_score || 'N/A'}%</span>
-                                </div>
-                              </div>
-                              <Badge variant={pkg.status === 'ready' ? 'success' : pkg.status === 'error' ? 'error' : 'default'}>{pkg.status}</Badge>
-                              {pkg.status === 'ready' && (
-                                <Button size="sm" variant="primary" onClick={() => handleLaunchScorm(pkg)}>
-                                  <Play size={12} /> Launch
-                                </Button>
-                              )}
-                              {tracking.length > 0 && (
-                                <div className="text-right">
-                                  <p className="text-[0.6rem] text-t3">{tracking.length} tracked</p>
-                                  <p className="text-[0.55rem] text-t3">{tracking.filter(t => t.lesson_status === 'completed' || t.lesson_status === 'passed').length} completed</p>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
+                  {/* Insert block at top */}
+                  <div className="flex justify-center py-2">
+                    <button onClick={() => setShowBlockPicker(showBlockPicker === 0 ? null : 0)}
+                      className="group flex items-center gap-1 text-t3 hover:text-tempo-500 transition-colors">
+                      <div className="w-6 h-6 rounded-full border-2 border-dashed border-current flex items-center justify-center group-hover:border-solid">
+                        <Plus size={12} />
                       </div>
-                    ) : (
-                      <div className="text-center py-6 text-t3">
-                        <Layers size={24} className="mx-auto mb-2" />
-                        <p className="text-xs">No SCORM packages uploaded for this course</p>
-                        <p className="text-[0.55rem] mt-1">Upload a SCORM 1.2, 2004, or xAPI package</p>
-                      </div>
-                    )}
-                  </Card>
-                )}
-
-                {/* Prerequisites Section */}
-                {selectedBuilderCourse && (
-                  <Card>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-semibold text-t1 flex items-center gap-2"><Lock size={14} className="text-amber-400" /> Prerequisites</h4>
-                      <Button size="sm" variant="outline" onClick={() => { setPrereqForm({ ...prereqForm, course_id: selectedBuilderCourse }); setShowPrereqModal(true) }}><Plus size={12} /> Add</Button>
-                    </div>
-                    {(() => {
-                      const prereqs = getPrerequisitesForCourse(selectedBuilderCourse)
-                      if (prereqs.length === 0) return <p className="text-xs text-t3 text-center py-4">No prerequisites configured</p>
-                      return (
-                        <div className="space-y-2">
-                          {/* Prerequisite Chain Visualization */}
-                          <div className="flex items-center gap-2 flex-wrap mb-3 p-3 bg-white/[0.02] rounded-lg border border-white/5">
-                            {prereqs.map((p, i) => (
-                              <div key={p.id} className="flex items-center gap-2">
-                                <div className={cn('px-2 py-1 rounded text-[0.6rem] font-medium border', p.isCompleted ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20')}>
-                                  {p.prerequisiteCourse?.title || 'Unknown'}
-                                </div>
-                                {i < prereqs.length - 1 && <ArrowRight size={12} className="text-t3" />}
+                      <span className="text-[0.6rem] opacity-0 group-hover:opacity-100 transition-opacity">Add block</span>
+                    </button>
+                  </div>
+                  {showBlockPicker === 0 && (
+                    <div className="mb-2">
+                      <Card className="border-tempo-200">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          {BLOCK_CATEGORIES.map(cat => (
+                            <div key={cat.label}>
+                              <p className="text-[0.6rem] font-semibold text-t3 uppercase tracking-wider mb-2">{cat.label}</p>
+                              <div className="space-y-1">
+                                {cat.types.map(bt => (
+                                  <button key={bt.type} onClick={() => insertBlockAt(bt.type, 0)}
+                                    className="w-full text-left p-2 rounded-lg hover:bg-tempo-50 transition-colors group/bt flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-canvas flex items-center justify-center text-t3 group-hover/bt:text-tempo-500 group-hover/bt:bg-tempo-100 transition-colors">
+                                      {blockTypeIcon(bt.type, 14)}
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-medium text-t1">{bt.label}</p>
+                                      <p className="text-[0.55rem] text-t3">{bt.desc}</p>
+                                    </div>
+                                  </button>
+                                ))}
                               </div>
-                            ))}
-                            <ArrowRight size={12} className="text-t3" />
-                            <div className="px-2 py-1 rounded text-[0.6rem] font-medium bg-tempo-500/10 text-tempo-400 border border-tempo-500/20">
-                              {courses.find(c => c.id === selectedBuilderCourse)?.title}
-                            </div>
-                          </div>
-                          {prereqs.map(p => (
-                            <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] border border-white/5">
-                              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', p.isCompleted ? 'bg-green-500/10' : 'bg-amber-500/10')}>
-                                {p.isCompleted ? <CheckCircle size={14} className="text-green-400" /> : <Lock size={14} className="text-amber-400" />}
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-xs font-medium text-t1">{p.prerequisiteCourse?.title || 'Unknown Course'}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <Badge variant={p.type === 'required' ? 'error' : 'info'} className="text-[0.5rem]">{p.type}</Badge>
-                                  {p.minimum_score && <span className="text-[0.55rem] text-t3">Min. score: {p.minimum_score}%</span>}
-                                </div>
-                              </div>
-                              <Button size="sm" variant="ghost" onClick={() => confirmDelete('prerequisite', p.id, p.prerequisiteCourse?.title || 'Prerequisite')}>x</Button>
                             </div>
                           ))}
                         </div>
-                      )
-                    })()}
-                  </Card>
-                )}
-
-                {/* SCORM Tracking Display (if SCORM packages exist) */}
-                {selectedBuilderCourse && scormTracking.filter(t => scormPackages.some(p => p.course_id === selectedBuilderCourse && p.id === t.package_id)).length > 0 && (
-                  <Card>
-                    <h4 className="text-xs font-semibold text-t1 mb-3 flex items-center gap-2"><BarChart3 size={14} className="text-blue-400" /> SCORM Tracking Data</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead><tr className="border-b border-white/10"><th className="text-left py-2 px-2 text-t3 font-medium">Learner</th><th className="text-left py-2 px-2 text-t3 font-medium">Status</th><th className="text-right py-2 px-2 text-t3 font-medium">Score</th><th className="text-right py-2 px-2 text-t3 font-medium">Time</th><th className="text-right py-2 px-2 text-t3 font-medium">Last Access</th></tr></thead>
-                        <tbody>
-                          {scormTracking.filter(t => scormPackages.some(p => p.course_id === selectedBuilderCourse && p.id === t.package_id)).map(track => {
-                            const enrollment = enrollments.find(e => e.id === track.enrollment_id)
-                            return (
-                              <tr key={track.id} className="border-b border-white/5">
-                                <td className="py-2 px-2">{enrollment ? getEmployeeName(enrollment.employee_id) : 'Unknown'}</td>
-                                <td className="py-2 px-2"><Badge variant={track.lesson_status === 'completed' || track.lesson_status === 'passed' ? 'success' : track.lesson_status === 'failed' ? 'error' : 'default'} className="text-[0.5rem]">{track.lesson_status}</Badge></td>
-                                <td className="py-2 px-2 text-right">{track.score_raw !== null ? `${track.score_raw}/${track.score_max}` : '-'}</td>
-                                <td className="py-2 px-2 text-right text-t3">{track.total_time || '-'}</td>
-                                <td className="py-2 px-2 text-right text-t3">{new Date(track.last_accessed).toLocaleDateString()}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                      </Card>
                     </div>
-                  </Card>
-                )}
-              </div>
-            )}
+                  )}
+
+                  {/* Render each block as a visual card */}
+                  {filteredBlocks.map((block, idx) => {
+                    const isEditing = editingBlockId === block.id
+                    const isDragging = dragBlockId === block.id
+                    const isDragOver = dragOverIdx === idx
+
+                    // Parse JSON content safely
+                    let parsed: any = {}
+                    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = { text: block.content || '' } }
+
+                    return (
+                      <div key={block.id}>
+                        {/* Block card */}
+                        <div
+                          className={`relative group rounded-xl border transition-all ${isEditing ? 'border-tempo-400 shadow-lg shadow-tempo-500/10 ring-1 ring-tempo-400/30' : 'border-divider hover:border-tempo-200'} ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'border-t-2 border-t-tempo-500' : ''} bg-surface`}
+                          draggable
+                          onDragStart={() => setDragBlockId(block.id)}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx) }}
+                          onDragEnd={() => { if (dragBlockId && dragOverIdx !== null) moveBlock(dragBlockId, dragOverIdx); setDragBlockId(null); setDragOverIdx(null) }}
+                          onClick={() => setEditingBlockId(block.id)}
+                        >
+                          {/* Block toolbar — visible on hover or when editing */}
+                          <div className={`absolute -top-3 right-3 flex items-center gap-1 bg-surface border border-divider rounded-lg px-1.5 py-0.5 shadow-sm z-10 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                            <span className="text-[0.55rem] text-t3 px-1 flex items-center gap-1">{blockTypeIcon(block.type, 10)} {block.type}</span>
+                            <div className="w-px h-3 bg-divider" />
+                            <button onClick={(e) => { e.stopPropagation(); setAiWritingText(block.content || block.title); setAiWritingOpen(true) }} className="p-1 rounded hover:bg-canvas text-t3 hover:text-tempo-500" title="AI Assist"><Sparkles size={11} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); duplicateBlock(block) }} className="p-1 rounded hover:bg-canvas text-t3 hover:text-blue-500" title="Duplicate"><Copy size={11} /></button>
+                            <button className="p-1 rounded hover:bg-canvas text-t3 cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={11} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); confirmDelete('block', block.id, block.title) }} className="p-1 rounded hover:bg-canvas text-t3 hover:text-red-500" title="Delete"><Trash2 size={11} /></button>
+                          </div>
+
+                          {/* Block content preview / editor */}
+                          <div className="p-4">
+                            {/* TEXT block */}
+                            {block.type === 'text' && (
+                              <div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <input className="text-sm font-semibold text-t1 bg-transparent border-none outline-none w-full" value={block.title} onChange={(e) => updateCourseBlock(block.id, { title: e.target.value })} />
+                                    <textarea className="text-xs text-t2 bg-canvas rounded-lg p-3 w-full min-h-[120px] border border-divider outline-none focus:border-tempo-400 resize-y" value={block.content || ''} onChange={(e) => updateCourseBlock(block.id, { content: e.target.value })} />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="text-sm font-semibold text-t1 mb-1">{block.title}</p>
+                                    <p className="text-xs text-t2 line-clamp-3 whitespace-pre-wrap">{block.content}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* HEADING block */}
+                            {block.type === 'heading' && (
+                              <div className="py-2">
+                                {isEditing ? (
+                                  <input className="text-lg font-bold text-t1 bg-transparent border-none outline-none w-full border-b-2 border-tempo-200 pb-2" value={block.content || block.title} onChange={(e) => updateCourseBlock(block.id, { content: e.target.value, title: e.target.value })} />
+                                ) : (
+                                  <h2 className="text-lg font-bold text-t1 border-b border-divider pb-2">{block.content || block.title}</h2>
+                                )}
+                              </div>
+                            )}
+
+                            {/* IMAGE block */}
+                            {block.type === 'image' && (
+                              <div>
+                                {parsed.url ? (
+                                  <div className="rounded-lg overflow-hidden">
+                                    <img src={parsed.url} alt={parsed.alt || ''} className="w-full max-h-64 object-cover rounded-lg" />
+                                    {parsed.caption && <p className="text-[0.65rem] text-t3 mt-2 text-center italic">{parsed.caption}</p>}
+                                  </div>
+                                ) : (
+                                  <div className="border-2 border-dashed border-divider rounded-xl p-8 text-center">
+                                    <Image size={32} className="mx-auto text-t3 mb-2" />
+                                    <p className="text-xs text-t3 mb-3">Drop an image or enter URL</p>
+                                    {isEditing && (
+                                      <div className="space-y-2 max-w-sm mx-auto">
+                                        <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full border border-divider outline-none focus:border-tempo-400" placeholder="Image URL (https://...)" onChange={(e) => {
+                                          try { const p = JSON.parse(block.content || '{}'); p.url = e.target.value; updateCourseBlock(block.id, { content: JSON.stringify(p) }) } catch { updateCourseBlock(block.id, { content: JSON.stringify({ url: e.target.value, alt: '', caption: '' }) }) }
+                                        }} />
+                                        <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full border border-divider outline-none focus:border-tempo-400" placeholder="Alt text / caption" onChange={(e) => {
+                                          try { const p = JSON.parse(block.content || '{}'); p.alt = e.target.value; p.caption = e.target.value; updateCourseBlock(block.id, { content: JSON.stringify(p) }) } catch {}
+                                        }} />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* VIDEO block */}
+                            {block.type === 'video' && (
+                              <div>
+                                {parsed.url ? (
+                                  <div className="rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Play size={40} className="text-white/60 mx-auto" />
+                                      <p className="text-xs text-white/40 mt-2">{parsed.url}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="border-2 border-dashed border-divider rounded-xl p-8 text-center">
+                                    <Video size={32} className="mx-auto text-t3 mb-2" />
+                                    <p className="text-xs text-t3 mb-3">Add a video (YouTube, Vimeo, or direct URL)</p>
+                                    {isEditing && (
+                                      <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full max-w-sm mx-auto border border-divider outline-none focus:border-tempo-400" placeholder="Video URL" onChange={(e) => {
+                                        updateCourseBlock(block.id, { content: JSON.stringify({ url: e.target.value, caption: '' }) })
+                                      }} />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* CALLOUT block */}
+                            {block.type === 'callout' && (() => {
+                              const style = parsed.style || 'info'
+                              const styles: Record<string, { bg: string; border: string; icon: React.ReactNode; label: string }> = {
+                                info: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', icon: <AlertTriangle size={16} className="text-blue-400" />, label: 'Info' },
+                                tip: { bg: 'bg-green-500/5', border: 'border-green-500/20', icon: <CheckCircle size={16} className="text-green-400" />, label: 'Tip' },
+                                warning: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', icon: <AlertTriangle size={16} className="text-amber-400" />, label: 'Warning' },
+                                important: { bg: 'bg-red-500/5', border: 'border-red-500/20', icon: <Shield size={16} className="text-red-400" />, label: 'Important' },
+                              }
+                              const s = styles[style] || styles.info
+                              return (
+                                <div className={`${s.bg} border ${s.border} rounded-lg p-4 flex gap-3`}>
+                                  <div className="shrink-0 mt-0.5">{s.icon}</div>
+                                  <div className="flex-1">
+                                    {isEditing ? (
+                                      <div className="space-y-2">
+                                        <div className="flex gap-2 mb-2">
+                                          {Object.keys(styles).map(st => (
+                                            <button key={st} onClick={(e) => { e.stopPropagation(); const p = { ...parsed, style: st }; updateCourseBlock(block.id, { content: JSON.stringify(p) }) }}
+                                              className={`text-[0.6rem] px-2 py-0.5 rounded ${style === st ? 'bg-tempo-500 text-white' : 'bg-canvas text-t3'}`}>{st}</button>
+                                          ))}
+                                        </div>
+                                        <textarea className="text-xs text-t1 bg-transparent w-full min-h-[60px] outline-none resize-y" value={parsed.text || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, text: e.target.value }) })} />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <p className="text-[0.6rem] font-semibold text-t3 uppercase mb-1">{s.label}</p>
+                                        <p className="text-xs text-t1">{parsed.text || 'Add callout text...'}</p>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+
+                            {/* QUIZ block */}
+                            {block.type === 'quiz' && (
+                              <div className="bg-tempo-50/30 rounded-lg p-4 border border-tempo-200">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <HelpCircle size={16} className="text-tempo-500" />
+                                  <span className="text-xs font-semibold text-tempo-600">Knowledge Check</span>
+                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <input className="text-sm font-medium text-t1 bg-transparent w-full outline-none border-b border-tempo-200 pb-1" value={parsed.question || ''} placeholder="Enter your question..." onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, question: e.target.value }) })} />
+                                    <div className="space-y-1.5 mt-2">
+                                      {(parsed.options || ['', '', '', '']).map((opt: string, oi: number) => (
+                                        <div key={oi} className="flex items-center gap-2">
+                                          <button onClick={(e) => { e.stopPropagation(); updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, correct: oi }) }) }}
+                                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${parsed.correct === oi ? 'border-green-500 bg-green-500' : 'border-divider'}`}>
+                                            {parsed.correct === oi && <CheckCircle size={10} className="text-white" />}
+                                          </button>
+                                          <input className="text-xs bg-canvas rounded px-2 py-1.5 flex-1 border border-divider outline-none focus:border-tempo-400" value={opt} placeholder={`Option ${oi + 1}`} onChange={(e) => {
+                                            const opts = [...(parsed.options || ['', '', '', ''])]; opts[oi] = e.target.value
+                                            updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, options: opts }) })
+                                          }} />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="text-sm font-medium text-t1 mb-2">{parsed.question || 'Question...'}</p>
+                                    <div className="space-y-1">
+                                      {(parsed.options || []).map((opt: string, oi: number) => (
+                                        <div key={oi} className={`text-xs px-3 py-1.5 rounded-lg ${parsed.correct === oi ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-canvas text-t2'}`}>
+                                          {String.fromCharCode(65 + oi)}. {opt}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* DIVIDER block */}
+                            {block.type === 'divider' && (
+                              <div className="py-4">
+                                <hr className="border-divider" />
+                              </div>
+                            )}
+
+                            {/* ACCORDION block */}
+                            {block.type === 'accordion' && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-t1 mb-2">{block.title}</p>
+                                {(parsed.sections || []).map((sec: any, si: number) => (
+                                  <div key={si} className="border border-divider rounded-lg overflow-hidden">
+                                    <div className="flex items-center justify-between p-3 bg-canvas cursor-pointer">
+                                      {isEditing ? (
+                                        <input className="text-xs font-medium text-t1 bg-transparent outline-none flex-1" value={sec.heading} onChange={(e) => {
+                                          const secs = [...(parsed.sections || [])]; secs[si] = { ...secs[si], heading: e.target.value }
+                                          updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, sections: secs }) })
+                                        }} />
+                                      ) : (
+                                        <p className="text-xs font-medium text-t1">{sec.heading}</p>
+                                      )}
+                                      <ChevronDown size={14} className="text-t3" />
+                                    </div>
+                                    <div className="p-3 border-t border-divider">
+                                      {isEditing ? (
+                                        <textarea className="text-xs text-t2 bg-transparent w-full min-h-[40px] outline-none resize-y" value={sec.body} onChange={(e) => {
+                                          const secs = [...(parsed.sections || [])]; secs[si] = { ...secs[si], body: e.target.value }
+                                          updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, sections: secs }) })
+                                        }} />
+                                      ) : (
+                                        <p className="text-xs text-t2">{sec.body}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                                {isEditing && (
+                                  <button onClick={(e) => { e.stopPropagation(); const secs = [...(parsed.sections || []), { heading: 'New Section', body: 'Content...' }]; updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, sections: secs }) }) }}
+                                    className="text-[0.65rem] text-tempo-500 hover:text-tempo-600 flex items-center gap-1"><Plus size={12} /> Add section</button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* COLUMNS block */}
+                            {block.type === 'columns' && (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-canvas rounded-lg border border-divider">
+                                  {isEditing ? (
+                                    <textarea className="text-xs text-t2 bg-transparent w-full min-h-[80px] outline-none resize-y" value={parsed.left || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, left: e.target.value }) })} placeholder="Left column..." />
+                                  ) : (
+                                    <p className="text-xs text-t2">{parsed.left || 'Left column'}</p>
+                                  )}
+                                </div>
+                                <div className="p-3 bg-canvas rounded-lg border border-divider">
+                                  {isEditing ? (
+                                    <textarea className="text-xs text-t2 bg-transparent w-full min-h-[80px] outline-none resize-y" value={parsed.right || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, right: e.target.value }) })} placeholder="Right column..." />
+                                  ) : (
+                                    <p className="text-xs text-t2">{parsed.right || 'Right column'}</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* CODE block */}
+                            {block.type === 'code' && (
+                              <div className="bg-[#1e1e1e] rounded-lg overflow-hidden">
+                                <div className="flex items-center justify-between px-3 py-1.5 bg-[#2d2d2d]">
+                                  {isEditing ? (
+                                    <input className="text-[0.6rem] text-gray-400 bg-transparent outline-none" value={parsed.language || 'javascript'} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, language: e.target.value }) })} />
+                                  ) : (
+                                    <span className="text-[0.6rem] text-gray-400">{parsed.language || 'javascript'}</span>
+                                  )}
+                                  <button className="text-[0.6rem] text-gray-400 hover:text-white"><Copy size={10} /> Copy</button>
+                                </div>
+                                {isEditing ? (
+                                  <textarea className="text-xs text-green-400 font-mono bg-transparent w-full p-3 min-h-[100px] outline-none resize-y" value={parsed.code || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, code: e.target.value }) })} />
+                                ) : (
+                                  <pre className="text-xs text-green-400 font-mono p-3 overflow-x-auto"><code>{parsed.code || '// code here'}</code></pre>
+                                )}
+                              </div>
+                            )}
+
+                            {/* DOWNLOAD block */}
+                            {block.type === 'download' && (
+                              <div className="flex items-center gap-3 p-3 bg-canvas rounded-lg border border-divider">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center"><Download size={18} className="text-blue-400" /></div>
+                                <div className="flex-1">
+                                  {isEditing ? (
+                                    <div className="space-y-1">
+                                      <input className="text-xs font-medium text-t1 bg-transparent outline-none w-full" value={parsed.filename || ''} placeholder="File name" onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, filename: e.target.value }), title: e.target.value })} />
+                                      <input className="text-[0.65rem] text-t3 bg-transparent outline-none w-full" value={parsed.description || ''} placeholder="Description" onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, description: e.target.value }) })} />
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <p className="text-xs font-medium text-t1">{parsed.filename || 'resource.pdf'}</p>
+                                      <p className="text-[0.6rem] text-t3">{parsed.description || 'Download this resource'}</p>
+                                    </>
+                                  )}
+                                </div>
+                                <Button size="sm" variant="outline"><Download size={12} /> Download</Button>
+                              </div>
+                            )}
+
+                            {/* EMBED block */}
+                            {block.type === 'embed' && (
+                              <div>
+                                {parsed.url ? (
+                                  <div className="rounded-lg overflow-hidden border border-divider" style={{ height: parsed.height || 400 }}>
+                                    <div className="w-full h-full bg-canvas flex items-center justify-center">
+                                      <div className="text-center">
+                                        <Globe size={24} className="mx-auto text-t3 mb-2" />
+                                        <p className="text-xs text-t3">{parsed.url}</p>
+                                        <p className="text-[0.55rem] text-t3 mt-1">Embedded content</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="border-2 border-dashed border-divider rounded-xl p-8 text-center">
+                                    <Globe size={32} className="mx-auto text-t3 mb-2" />
+                                    <p className="text-xs text-t3">Embed external content</p>
+                                    {isEditing && (
+                                      <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full max-w-sm mx-auto mt-3 border border-divider outline-none focus:border-tempo-400" placeholder="URL to embed" onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ url: e.target.value, height: 400 }) })} />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* BUTTON block */}
+                            {block.type === 'button' && (
+                              <div className="text-center py-4">
+                                {isEditing ? (
+                                  <div className="space-y-2 max-w-xs mx-auto">
+                                    <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full border border-divider outline-none" value={parsed.label || ''} placeholder="Button text" onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, label: e.target.value }), title: e.target.value })} />
+                                    <input className="text-xs bg-canvas rounded-lg px-3 py-2 w-full border border-divider outline-none" value={parsed.url || ''} placeholder="Button URL" onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, url: e.target.value }) })} />
+                                  </div>
+                                ) : (
+                                  <button className="px-6 py-2.5 rounded-lg bg-tempo-500 text-white text-sm font-medium hover:bg-tempo-600 transition-colors">
+                                    {parsed.label || 'Click Here'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* INTERACTIVE block */}
+                            {block.type === 'interactive' && (
+                              <div className="bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-lg p-4 border border-purple-500/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <ListChecks size={16} className="text-purple-400" />
+                                  <span className="text-xs font-semibold text-purple-600">Interactive Activity</span>
+                                </div>
+                                {isEditing ? (
+                                  <textarea className="text-xs text-t2 bg-canvas rounded-lg p-3 w-full min-h-[80px] border border-divider outline-none resize-y" value={block.content || ''} onChange={(e) => updateCourseBlock(block.id, { content: e.target.value })} />
+                                ) : (
+                                  <p className="text-xs text-t2">{block.title}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* INFOGRAPHIC block */}
+                            {block.type === 'infographic' && (
+                              <div className="bg-gradient-to-br from-tempo-500/5 to-orange-500/5 rounded-lg p-4 border border-tempo-500/10">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <BarChart3 size={16} className="text-tempo-500" />
+                                  <span className="text-xs font-semibold text-tempo-600">Infographic</span>
+                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    {(parsed.items || []).map((item: any, ii: number) => (
+                                      <div key={ii} className="flex gap-2">
+                                        <input className="text-xs bg-canvas rounded px-2 py-1 flex-1 border border-divider outline-none" value={item.label} placeholder="Label" onChange={(e) => {
+                                          const items = [...(parsed.items || [])]; items[ii] = { ...items[ii], label: e.target.value }
+                                          updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, items }) })
+                                        }} />
+                                        <input className="text-xs bg-canvas rounded px-2 py-1 w-20 border border-divider outline-none" value={item.value} placeholder="Value" onChange={(e) => {
+                                          const items = [...(parsed.items || [])]; items[ii] = { ...items[ii], value: e.target.value }
+                                          updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, items }) })
+                                        }} />
+                                      </div>
+                                    ))}
+                                    <button onClick={(e) => { e.stopPropagation(); const items = [...(parsed.items || []), { label: 'New', value: '0' }]; updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, items }) }) }}
+                                      className="text-[0.65rem] text-tempo-500 flex items-center gap-1"><Plus size={12} /> Add item</button>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-3 gap-3">
+                                    {(parsed.items || []).map((item: any, ii: number) => (
+                                      <div key={ii} className="text-center p-3 bg-surface rounded-lg">
+                                        <p className="text-lg font-bold text-tempo-500">{item.value}</p>
+                                        <p className="text-[0.6rem] text-t3">{item.label}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Status & duration row */}
+                            {isEditing && (
+                              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-divider">
+                                <div className="flex items-center gap-2">
+                                  <Clock size={11} className="text-t3" />
+                                  <input type="number" className="text-[0.65rem] bg-canvas rounded px-2 py-1 w-14 border border-divider outline-none" value={block.duration_minutes} onChange={(e) => updateCourseBlock(block.id, { duration_minutes: Number(e.target.value) })} />
+                                  <span className="text-[0.6rem] text-t3">min</span>
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); updateCourseBlock(block.id, { status: block.status === 'published' ? 'draft' : 'published' }) }}
+                                  className={`text-[0.65rem] px-2 py-0.5 rounded ${block.status === 'published' ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                                  {block.status === 'published' ? 'Published' : 'Draft'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Insert block between */}
+                        <div className="flex justify-center py-1.5">
+                          <button onClick={() => setShowBlockPicker(showBlockPicker === idx + 1 ? null : idx + 1)}
+                            className="group flex items-center gap-1 text-t3 hover:text-tempo-500 transition-colors">
+                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-current flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Plus size={10} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Block picker dropdown */}
+                        {showBlockPicker === idx + 1 && (
+                          <div className="mb-2">
+                            <Card className="border-tempo-200">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {BLOCK_CATEGORIES.map(cat => (
+                                  <div key={cat.label}>
+                                    <p className="text-[0.6rem] font-semibold text-t3 uppercase tracking-wider mb-2">{cat.label}</p>
+                                    <div className="space-y-1">
+                                      {cat.types.map(bt => (
+                                        <button key={bt.type} onClick={() => insertBlockAt(bt.type, idx + 1)}
+                                          className="w-full text-left p-2 rounded-lg hover:bg-tempo-50 transition-colors group/bt flex items-center gap-2">
+                                          <div className="w-7 h-7 rounded-lg bg-canvas flex items-center justify-center text-t3 group-hover/bt:text-tempo-500 group-hover/bt:bg-tempo-100 transition-colors">
+                                            {blockTypeIcon(bt.type, 14)}
+                                          </div>
+                                          <div>
+                                            <p className="text-xs font-medium text-t1">{bt.label}</p>
+                                            <p className="text-[0.55rem] text-t3">{bt.desc}</p>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* Empty state for course with no blocks */}
+                  {filteredBlocks.length === 0 && (
+                    <Card>
+                      <div className="text-center py-12">
+                        <div className="w-14 h-14 rounded-xl bg-tempo-500/10 flex items-center justify-center mx-auto mb-3">
+                          <Plus size={24} className="text-tempo-400" />
+                        </div>
+                        <h4 className="text-sm font-semibold text-t1 mb-1">Start building your course</h4>
+                        <p className="text-xs text-t3 mb-4">Click the + button above to add your first content block</p>
+                        <div className="flex justify-center gap-2 flex-wrap">
+                          {[{ type: 'text', label: 'Text' }, { type: 'image', label: 'Image' }, { type: 'video', label: 'Video' }, { type: 'quiz', label: 'Quiz' }].map(bt => (
+                            <Button key={bt.type} size="sm" variant="outline" onClick={() => insertBlockAt(bt.type, 0)}>
+                              {blockTypeIcon(bt.type, 12)} {bt.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* SCORM & Prerequisites (collapsed) */}
+                  {selectedBuilderCourse && (
+                    <div className="mt-6 space-y-3">
+                      <details className="group">
+                        <summary className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-t3 hover:text-t1 transition-colors">
+                          <ChevronRight size={14} className="group-open:rotate-90 transition-transform" />
+                          <Layers size={14} className="text-tempo-400" /> SCORM Packages
+                        </summary>
+                        <div className="mt-2 pl-6">
+                          <Card>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs text-t3">{scormPackages.filter(p => p.course_id === selectedBuilderCourse).length} packages</span>
+                              <Button size="sm" variant="outline" onClick={() => { setScormUploadCourse(selectedBuilderCourse); setShowScormUploadModal(true) }}><Upload size={12} /> Upload SCORM</Button>
+                            </div>
+                            {scormPackages.filter(p => p.course_id === selectedBuilderCourse).map(pkg => (
+                              <div key={pkg.id} className="flex items-center gap-3 p-2 rounded-lg bg-canvas mb-1">
+                                <Layers size={14} className="text-tempo-400" />
+                                <span className="text-xs text-t1 flex-1">{(pkg.metadata as any)?.title || 'SCORM Package'}</span>
+                                <Badge variant={pkg.status === 'ready' ? 'success' : 'default'} className="text-[0.5rem]">{pkg.status}</Badge>
+                              </div>
+                            ))}
+                          </Card>
+                        </div>
+                      </details>
+                      <details className="group">
+                        <summary className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-t3 hover:text-t1 transition-colors">
+                          <ChevronRight size={14} className="group-open:rotate-90 transition-transform" />
+                          <Lock size={14} className="text-amber-400" /> Prerequisites
+                        </summary>
+                        <div className="mt-2 pl-6">
+                          <Card>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-t3">{getPrerequisitesForCourse(selectedBuilderCourse).length} prerequisites</span>
+                              <Button size="sm" variant="outline" onClick={() => { setPrereqForm({ ...prereqForm, course_id: selectedBuilderCourse }); setShowPrereqModal(true) }}><Plus size={12} /> Add</Button>
+                            </div>
+                            {getPrerequisitesForCourse(selectedBuilderCourse).map(p => (
+                              <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg bg-canvas mb-1">
+                                {p.isCompleted ? <CheckCircle size={12} className="text-green-400" /> : <Lock size={12} className="text-amber-400" />}
+                                <span className="text-xs text-t1 flex-1">{p.prerequisiteCourse?.title || 'Unknown'}</span>
+                                <Badge variant={p.type === 'required' ? 'error' : 'info'} className="text-[0.5rem]">{p.type}</Badge>
+                              </div>
+                            ))}
+                          </Card>
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* New Course Modal */}
+      <Modal open={showNewCourseFlow} onClose={() => setShowNewCourseFlow(false)} title="Create New Course" size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {[
+              { id: 'tempo', from: 'from-tempo-600', to: 'to-orange-500' },
+              { id: 'blue', from: 'from-blue-600', to: 'to-cyan-500' },
+              { id: 'green', from: 'from-green-600', to: 'to-emerald-500' },
+              { id: 'purple', from: 'from-purple-600', to: 'to-pink-500' },
+              { id: 'red', from: 'from-red-600', to: 'to-rose-500' },
+            ].map(c => (
+              <button key={c.id} onClick={() => setNewCourseForm({ ...newCourseForm, cover_color: c.id })}
+                className={`h-12 rounded-lg bg-gradient-to-r ${c.from} ${c.to} transition-all ${newCourseForm.cover_color === c.id ? 'ring-2 ring-tempo-400 ring-offset-2 ring-offset-surface scale-105' : 'opacity-60 hover:opacity-100'}`} />
+            ))}
+          </div>
+          <Input label="Course Title" value={newCourseForm.title} onChange={(e) => setNewCourseForm({ ...newCourseForm, title: e.target.value })} placeholder="e.g. Introduction to Project Management" />
+          <Textarea label="Description" value={newCourseForm.description} onChange={(e) => setNewCourseForm({ ...newCourseForm, description: e.target.value })} rows={2} placeholder="What will learners gain from this course?" />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Category" value={newCourseForm.category} onChange={(e) => setNewCourseForm({ ...newCourseForm, category: e.target.value })} options={[
+              { value: 'General', label: 'General' },
+              { value: 'Leadership', label: 'Leadership' },
+              { value: 'Technical', label: 'Technical' },
+              { value: 'Compliance', label: 'Compliance' },
+              { value: 'Onboarding', label: 'Onboarding' },
+              { value: 'Sales', label: 'Sales' },
+              { value: 'HR', label: 'HR' },
+              { value: 'Product', label: 'Product' },
+            ]} />
+            <Select label="Level" value={newCourseForm.level} onChange={(e) => setNewCourseForm({ ...newCourseForm, level: e.target.value })} options={[
+              { value: 'beginner', label: 'Beginner' },
+              { value: 'intermediate', label: 'Intermediate' },
+              { value: 'advanced', label: 'Advanced' },
+            ]} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowNewCourseFlow(false)}>Cancel</Button>
+            <Button onClick={handleCreateNewCourse} disabled={!newCourseForm.title.trim()}>
+              <Plus size={14} /> Create &amp; Start Building
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Quiz Builder Tab */}
       {activeTab === 'quiz-builder' && (
