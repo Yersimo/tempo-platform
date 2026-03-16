@@ -10,7 +10,8 @@ import {
   X, ChevronLeft, ChevronRight, CheckCircle, Play, FileText,
   Video, HelpCircle, Zap, Download, Lock, BookOpen, Award,
   AlertTriangle, Clock, Brain, ArrowRight, Trophy, Sparkles,
-  ChevronDown, BarChart3, Target, GraduationCap, Menu, MessageCircle
+  ChevronDown, BarChart3, Target, GraduationCap, Menu, MessageCircle,
+  Image, Code, Minus, Quote, Globe, Type, LayoutGrid, MousePointerClick, Shield, Copy
 } from 'lucide-react'
 import AITutor from '@/components/learning/ai-tutor'
 
@@ -118,7 +119,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
   // Get blocks for this course, sorted by module_index then order
   const blocks = useMemo(() =>
     courseBlocks
-      .filter(b => b.course_id === courseId && b.status === 'published')
+      .filter(b => b.course_id === courseId && (b.status === 'published' || b.status === 'draft'))
       .sort((a, b) => (a.module_index - b.module_index) || (a.order - b.order)),
     [courseBlocks, courseId]
   )
@@ -188,7 +189,25 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
   // Quiz questions for current block
   const currentQuizQuestions = useMemo(() => {
     if (!currentBlock || currentBlock.type !== 'quiz') return []
-    const qIds = (currentBlock.content || '').split(',').map((s: string) => s.trim())
+    const content = (currentBlock.content || '').trim()
+    // Check if content is inline JSON quiz (from course builder templates)
+    if (content.startsWith('{') || content.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(content)
+        const items = Array.isArray(parsed) ? parsed : [parsed]
+        return items.map((item: any, i: number) => ({
+          id: `inline-${currentBlock.id}-${i}`,
+          course_id: courseId,
+          question: item.question || '',
+          type: 'multiple_choice' as const,
+          options: item.options || [],
+          correct_answer: item.options?.[item.correct ?? 0] || '',
+          points: 10,
+          order: i,
+        }))
+      } catch { /* fall through to ID-based lookup */ }
+    }
+    const qIds = content.split(',').map((s: string) => s.trim())
     if (qIds.length === 0 || (qIds.length === 1 && !qIds[0])) {
       return quizQuestions.filter(q => q.course_id === courseId)
     }
@@ -293,6 +312,15 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
       case 'interactive': return <Zap size={size} />
       case 'infographic': return <BarChart3 size={size} />
       case 'download': return <Download size={size} />
+      case 'image': return <Image size={size} />
+      case 'heading': return <Type size={size} />
+      case 'callout': return <Quote size={size} />
+      case 'code': return <Code size={size} />
+      case 'accordion': return <ChevronDown size={size} />
+      case 'columns': return <LayoutGrid size={size} />
+      case 'divider': return <Minus size={size} />
+      case 'embed': return <Globe size={size} />
+      case 'button': return <MousePointerClick size={size} />
       default: return <BookOpen size={size} />
     }
   }
@@ -305,6 +333,15 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
       case 'quiz': return 'Quiz'
       case 'interactive': return 'Activity'
       case 'download': return 'Resource'
+      case 'image': return 'Image'
+      case 'heading': return 'Section'
+      case 'callout': return 'Note'
+      case 'code': return 'Code'
+      case 'accordion': return 'Expand'
+      case 'columns': return 'Columns'
+      case 'divider': return 'Break'
+      case 'embed': return 'Embed'
+      case 'button': return 'Action'
       default: return 'Lesson'
     }
   }
@@ -725,9 +762,223 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
         return renderInfographicBlock(block, status)
       case 'download':
         return renderDownloadBlock(block, status)
+      case 'heading':
+        return renderHeadingBlock(block, status)
+      case 'image':
+        return renderImageBlock(block, status)
+      case 'callout':
+        return renderCalloutBlock(block, status)
+      case 'code':
+        return renderCodeBlock(block, status)
+      case 'accordion':
+        return renderAccordionBlock(block, status)
+      case 'columns':
+        return renderColumnsBlock(block, status)
+      case 'divider':
+        return renderDividerBlock(block, status)
+      case 'embed':
+        return renderEmbedBlock(block, status)
+      case 'button':
+        return renderButtonBlock(block, status)
       default:
         return renderTextBlock(block, status)
     }
+  }
+
+  function renderAutoComplete(status: BlockStatus) {
+    if (status === 'completed') {
+      return (
+        <div className="mt-6 flex items-center gap-2 text-green-500">
+          <CheckCircle size={16} /> <span className="text-sm font-medium">Completed</span>
+        </div>
+      )
+    }
+    return (
+      <div className="mt-8 pt-4 border-t border-divider/40">
+        <Button variant="primary" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
+          <CheckCircle size={14} /> Continue
+        </Button>
+      </div>
+    )
+  }
+
+  function renderHeadingBlock(block: typeof blocks[0], status: BlockStatus) {
+    return (
+      <div className="course-player-prose">
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', borderBottom: '3px solid var(--color-tempo-500, #ea580c)', paddingBottom: '0.75rem' }}>
+          {block.content || block.title}
+        </h1>
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderImageBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = {} }
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+        {parsed.url ? (
+          <div style={{ borderRadius: '12px', overflow: 'hidden', margin: '1.5rem 0' }}>
+            <img src={parsed.url} alt={parsed.alt || block.title} style={{ width: '100%', maxHeight: '500px', objectFit: 'cover' }} />
+            {parsed.caption && <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#888', marginTop: '0.75rem', fontStyle: 'italic' }}>{parsed.caption}</p>}
+          </div>
+        ) : (
+          <div style={{ background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)', borderRadius: '12px', padding: '3rem', textAlign: 'center', margin: '1.5rem 0' }}>
+            <Image size={48} style={{ margin: '0 auto 1rem', color: '#94a3b8' }} />
+            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Image content for this lesson</p>
+          </div>
+        )}
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderCalloutBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = { text: block.content, style: 'info' } }
+    const style = parsed.style || 'info'
+    const styles: Record<string, { bg: string; border: string; icon: React.ReactNode; label: string }> = {
+      info: { bg: '#eff6ff', border: '#3b82f6', icon: <AlertTriangle size={20} style={{ color: '#3b82f6' }} />, label: 'Info' },
+      tip: { bg: '#f0fdf4', border: '#22c55e', icon: <CheckCircle size={20} style={{ color: '#22c55e' }} />, label: 'Tip' },
+      warning: { bg: '#fffbeb', border: '#f59e0b', icon: <AlertTriangle size={20} style={{ color: '#f59e0b' }} />, label: 'Warning' },
+      important: { bg: '#fef2f2', border: '#ef4444', icon: <Shield size={20} style={{ color: '#ef4444' }} />, label: 'Important' },
+    }
+    const s = styles[style] || styles.info
+    return (
+      <div className="course-player-prose">
+        <div style={{ background: s.bg, borderLeft: `4px solid ${s.border}`, borderRadius: '8px', padding: '1.25rem 1.5rem', margin: '1.5rem 0', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+          <div style={{ flexShrink: 0, marginTop: '2px' }}>{s.icon}</div>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', color: s.border }}>{s.label}</p>
+            <div style={{ fontSize: '0.95rem', lineHeight: 1.7 }}>{renderRichContent(parsed.text || '')}</div>
+          </div>
+        </div>
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderCodeBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = { code: block.content, language: 'text' } }
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+        <div style={{ background: '#1e1e1e', borderRadius: '12px', overflow: 'hidden', margin: '1.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', background: '#2d2d2d' }}>
+            <span style={{ fontSize: '0.75rem', color: '#888' }}>{parsed.language || 'code'}</span>
+            <button onClick={() => navigator.clipboard?.writeText(parsed.code || '')} style={{ fontSize: '0.7rem', color: '#888', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Copy size={12} /> Copy
+            </button>
+          </div>
+          <pre style={{ padding: '1.25rem', margin: 0, overflowX: 'auto' }}>
+            <code style={{ color: '#4ec9b0', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: 1.6 }}>{parsed.code || ''}</code>
+          </pre>
+        </div>
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderAccordionBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = { sections: [] } }
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+        <div style={{ margin: '1.5rem 0' }}>
+          {(parsed.sections || []).map((sec: any, i: number) => (
+            <details key={i} style={{ borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '0.5rem', overflow: 'hidden' }}>
+              <summary style={{ padding: '1rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {sec.heading}
+              </summary>
+              <div style={{ padding: '1rem 1.25rem', fontSize: '0.9rem', lineHeight: 1.7, borderTop: '1px solid #e5e7eb' }}>
+                {renderRichContent(sec.body || '')}
+              </div>
+            </details>
+          ))}
+        </div>
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderColumnsBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = {} }
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', margin: '1.5rem 0' }}>
+          <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>{renderRichContent(parsed.left || '')}</div>
+          </div>
+          <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: '0.9rem', lineHeight: 1.7 }}>{renderRichContent(parsed.right || '')}</div>
+          </div>
+        </div>
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderDividerBlock(_block: typeof blocks[0], status: BlockStatus) {
+    return (
+      <div className="course-player-prose" style={{ padding: '3rem 0', textAlign: 'center' }}>
+        <hr style={{ border: 'none', borderTop: '2px solid #e5e7eb', margin: '0 auto', maxWidth: '200px' }} />
+        {status !== 'completed' ? (
+          <Button variant="ghost" size="sm" onClick={markBlockComplete} className="mt-4 text-xs text-t3">Continue</Button>
+        ) : (
+          <div className="mt-2 flex items-center justify-center gap-1 text-green-500"><CheckCircle size={12} /></div>
+        )}
+      </div>
+    )
+  }
+
+  function renderEmbedBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = {} }
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+        {parsed.url ? (
+          <div style={{ borderRadius: '12px', overflow: 'hidden', margin: '1.5rem 0', border: '1px solid #e5e7eb' }}>
+            <iframe src={parsed.url} style={{ width: '100%', height: parsed.height || 400, border: 'none' }} title={block.title} sandbox="allow-scripts allow-same-origin" />
+          </div>
+        ) : (
+          <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '3rem', textAlign: 'center', margin: '1.5rem 0' }}>
+            <Globe size={40} style={{ margin: '0 auto 1rem', color: '#94a3b8' }} />
+            <p style={{ color: '#64748b' }}>Embedded content</p>
+          </div>
+        )}
+        {renderAutoComplete(status)}
+      </div>
+    )
+  }
+
+  function renderButtonBlock(block: typeof blocks[0], status: BlockStatus) {
+    let parsed: any = {}
+    try { parsed = JSON.parse(block.content || '{}') } catch { parsed = {} }
+    return (
+      <div className="course-player-prose" style={{ textAlign: 'center', padding: '2rem 0' }}>
+        <a
+          href={parsed.url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: 'inline-block', padding: '0.75rem 2rem', borderRadius: '8px', background: '#ea580c', color: '#fff', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', transition: 'opacity 0.2s' }}
+          onClick={(e) => { if (!parsed.url || parsed.url === '#') { e.preventDefault(); markBlockComplete() } }}
+        >
+          {parsed.label || 'Continue'}
+        </a>
+        {status === 'completed' && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
+            <CheckCircle size={16} /> <span className="text-sm">Done</span>
+          </div>
+        )}
+      </div>
+    )
   }
 
   function renderRichContent(text: string) {
