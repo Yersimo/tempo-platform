@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAI } from '@/lib/use-ai'
 import { useTranslations } from 'next-intl'
 import { StatCard } from '@/components/ui/stat-card'
@@ -9,15 +9,99 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
+import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import {
   Users, TrendingUp, Banknote, GraduationCap, Briefcase,
   Receipt, UserCheck, Clock, ArrowRight, CheckCircle2,
   AlertTriangle, FileText, CalendarCheck, ChevronRight,
   Megaphone, PartyPopper, Cake, Award, Zap, PlusCircle,
-  Send, BarChart3, Heart
+  Send, BarChart3, Heart, Pencil, Trash2, Pin
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
+
+// ---- Company Updates CRUD (persisted in localStorage) ----
+interface CompanyUpdate {
+  id: string
+  title: string
+  content: string
+  category: 'announcement' | 'news' | 'policy' | 'event' | 'kudos'
+  pinned: boolean
+  author_name: string
+  author_id: string
+  created_at: string
+  updated_at: string
+}
+
+const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  announcement: { label: 'Announcement', icon: <Megaphone size={14} />, color: 'bg-tempo-100 text-tempo-600' },
+  news: { label: 'News', icon: <FileText size={14} />, color: 'bg-blue-100 text-blue-600' },
+  policy: { label: 'Policy Update', icon: <FileText size={14} />, color: 'bg-purple-100 text-purple-600' },
+  event: { label: 'Event', icon: <PartyPopper size={14} />, color: 'bg-green-100 text-green-600' },
+  kudos: { label: 'Kudos', icon: <Heart size={14} />, color: 'bg-pink-100 text-pink-600' },
+}
+
+function useCompanyUpdates() {
+  const [updates, setUpdates] = useState<CompanyUpdate[]>([])
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('tempo_company_updates')
+      if (stored) setUpdates(JSON.parse(stored))
+    } catch { /* ignore */ }
+  }, [])
+
+  const persist = useCallback((next: CompanyUpdate[]) => {
+    setUpdates(next)
+    try { localStorage.setItem('tempo_company_updates', JSON.stringify(next)) } catch { /* ignore */ }
+  }, [])
+
+  const addUpdate = useCallback((data: Omit<CompanyUpdate, 'id' | 'created_at' | 'updated_at'>) => {
+    const now = new Date().toISOString()
+    const item: CompanyUpdate = { ...data, id: `upd-${Date.now()}`, created_at: now, updated_at: now }
+    setUpdates((prev: CompanyUpdate[]) => {
+      const next = [item, ...prev]
+      try { localStorage.setItem('tempo_company_updates', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+    return item
+  }, [])
+
+  const editUpdate = useCallback((id: string, data: Partial<CompanyUpdate>) => {
+    setUpdates((prev: CompanyUpdate[]) => {
+      const next = prev.map(u => u.id === id ? { ...u, ...data, updated_at: new Date().toISOString() } : u)
+      try { localStorage.setItem('tempo_company_updates', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  const deleteUpdate = useCallback((id: string) => {
+    setUpdates((prev: CompanyUpdate[]) => {
+      const next = prev.filter(u => u.id !== id)
+      try { localStorage.setItem('tempo_company_updates', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  const togglePin = useCallback((id: string) => {
+    setUpdates((prev: CompanyUpdate[]) => {
+      const next = prev.map(u => u.id === id ? { ...u, pinned: !u.pinned } : u)
+      try { localStorage.setItem('tempo_company_updates', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  // Sort: pinned first, then by date
+  const sorted = useMemo(() =>
+    [...updates].sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }),
+  [updates])
+
+  return { updates: sorted, addUpdate, editUpdate, deleteUpdate, togglePin }
+}
 import { AIInsightCard, AIRecommendationList, AIAlertBanner } from '@/components/ai'
 import { generateExecutiveSummary, identifyNextBestActions, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import { useRouter } from 'next/navigation'
@@ -38,6 +122,52 @@ export function OrgTab() {
   const router = useRouter()
   const t = useTranslations('dashboard')
   const tc = useTranslations('common')
+
+  // ---- Company Updates CRUD ----
+  const { updates: companyUpdates, addUpdate, editUpdate, deleteUpdate, togglePin } = useCompanyUpdates()
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [editingUpdate, setEditingUpdate] = useState<CompanyUpdate | null>(null)
+  const [updateForm, setUpdateForm] = useState({ title: '', content: '', category: 'announcement' as CompanyUpdate['category'] })
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  const isAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.role === 'hrbp'
+
+  function openNewUpdate() {
+    setEditingUpdate(null)
+    setUpdateForm({ title: '', content: '', category: 'announcement' })
+    setShowUpdateModal(true)
+  }
+
+  function openEditUpdate(upd: CompanyUpdate) {
+    setEditingUpdate(upd)
+    setUpdateForm({ title: upd.title, content: upd.content, category: upd.category })
+    setShowUpdateModal(true)
+  }
+
+  function handleSaveUpdate() {
+    if (!updateForm.title.trim() || !updateForm.content.trim()) return
+    if (editingUpdate) {
+      editUpdate(editingUpdate.id, { title: updateForm.title, content: updateForm.content, category: updateForm.category })
+      addToast('Update saved')
+    } else {
+      addUpdate({
+        title: updateForm.title,
+        content: updateForm.content,
+        category: updateForm.category,
+        pinned: false,
+        author_name: currentUser?.full_name || 'Admin',
+        author_id: currentEmployeeId || '',
+      })
+      addToast('Company update published')
+    }
+    setShowUpdateModal(false)
+  }
+
+  function handleDeleteUpdate(id: string) {
+    deleteUpdate(id)
+    setDeleteConfirmId(null)
+    addToast('Update deleted')
+  }
 
   // Live KPIs
   const headcount = employees.length
@@ -169,104 +299,187 @@ export function OrgTab() {
         </div>
       </div>
 
-      {/* Company Updates - dynamically generated from recent activity */}
+      {/* Company Updates - admin-posted + auto-generated from activity */}
       {(() => {
-        const dynamicUpdates: { id: string; icon: React.ReactNode; title: string; content: string; author: string; date: string; color: string }[] = []
+        // Auto-generated system updates
+        const systemUpdates: { id: string; icon: React.ReactNode; title: string; content: string; author: string; date: string; color: string; isSystem: true }[] = []
 
-        // Recent hires (employees added recently based on audit log)
-        const recentHireEntries = auditLog.filter(e => e.action === 'created' && e.entity_type.toLowerCase().includes('employee')).slice(0, 2)
-        recentHireEntries.forEach((entry, i) => {
-          dynamicUpdates.push({
-            id: `update-hire-${i}`,
-            icon: <UserCheck size={14} />,
-            title: 'New Team Member',
-            content: entry.details || 'A new employee has joined the team.',
-            author: entry.user || 'HR Team',
-            date: new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            color: 'bg-gray-100 text-gray-500',
-          })
-        })
-
-        // Recent payroll run
         if (lastPayroll) {
-          dynamicUpdates.push({
-            id: 'update-payroll',
+          systemUpdates.push({
+            id: 'sys-payroll',
             icon: <Banknote size={14} />,
             title: `${lastPayroll.period} Payroll Processed`,
             content: `Payroll for ${lastPayroll.employee_count || employees.length} employees has been processed. Total net: $${(lastPayroll.total_net / 100).toLocaleString()}.`,
             author: 'Payroll System',
             date: lastPayroll.run_date ? new Date(lastPayroll.run_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
             color: 'bg-gray-100 text-gray-500',
+            isSystem: true,
           })
         }
 
-        // Open positions
         if (openPositions > 0) {
-          dynamicUpdates.push({
-            id: 'update-recruiting',
+          systemUpdates.push({
+            id: 'sys-recruiting',
             icon: <Briefcase size={14} />,
             title: `${openPositions} Open Position${openPositions > 1 ? 's' : ''}`,
             content: `Currently hiring for ${jobPostings.filter(j => j.status === 'open').map(j => j.title).slice(0, 3).join(', ')}${openPositions > 3 ? ` and ${openPositions - 3} more` : ''}.`,
             author: 'Recruiting',
             date: 'Active',
             color: 'bg-gray-100 text-gray-500',
+            isSystem: true,
           })
         }
 
-        // Review cycle activity
-        const incompleteReviewCount = reviews.filter(r => r.status === 'in_progress' || r.status === 'draft').length
-        if (incompleteReviewCount > 0) {
-          dynamicUpdates.push({
-            id: 'update-reviews',
-            icon: <FileText size={14} />,
-            title: 'Performance Reviews In Progress',
-            content: `${incompleteReviewCount} review${incompleteReviewCount > 1 ? 's are' : ' is'} currently in progress. ${reviewCompletion}% of all reviews have been submitted.`,
-            author: 'Performance Team',
-            date: 'Ongoing',
-            color: 'bg-gray-100 text-gray-500',
-          })
-        }
+        const totalCount = companyUpdates.length + systemUpdates.length
 
         return (
-          <Card padding="none" className="mb-6">
-            <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
-              <div className="flex items-center gap-2">
-                <Megaphone size={14} className="text-tempo-600" />
-                <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
-                {dynamicUpdates.length > 0 && <Badge variant="default">{dynamicUpdates.length}</Badge>}
+          <>
+            <Card padding="none" className="mb-6">
+              <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
+                <div className="flex items-center gap-2">
+                  <Megaphone size={14} className="text-tempo-600" />
+                  <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
+                  {totalCount > 0 && <Badge variant="default">{totalCount}</Badge>}
+                </div>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" onClick={openNewUpdate}><PlusCircle size={14} /> Post Update</Button>
+                )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => addToast('Company update posted!')}><PlusCircle size={14} /> Post Update</Button>
-            </div>
-            {dynamicUpdates.length > 0 ? (
-              <div className="divide-y divide-divider">
-                {dynamicUpdates.map(ann => (
-                  <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
-                        {ann.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-xs font-semibold text-t1">{ann.title}</p>
+
+              {/* Admin-posted updates */}
+              {companyUpdates.length > 0 && (
+                <div className="divide-y divide-divider">
+                  {companyUpdates.map(upd => {
+                    const cat = CATEGORY_CONFIG[upd.category] || CATEGORY_CONFIG.announcement
+                    return (
+                      <div key={upd.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors group">
+                        <div className="flex items-start gap-3">
+                          <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', cat.color)}>
+                            {cat.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-xs font-semibold text-t1">{upd.title}</p>
+                              {upd.pinned && <Pin size={10} className="text-tempo-600" />}
+                              <Badge variant="default">{cat.label}</Badge>
+                            </div>
+                            <p className="text-xs text-t2 whitespace-pre-line">{upd.content}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-[0.65rem] text-t3">{upd.author_name}</span>
+                              <span className="text-[0.65rem] text-t3">{new Date(upd.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              {upd.updated_at !== upd.created_at && <span className="text-[0.65rem] text-t3 italic">(edited)</span>}
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => togglePin(upd.id)} className="p-1 rounded hover:bg-gray-100" title={upd.pinned ? 'Unpin' : 'Pin'}>
+                                <Pin size={12} className={upd.pinned ? 'text-tempo-600' : 'text-t3'} />
+                              </button>
+                              <button onClick={() => openEditUpdate(upd)} className="p-1 rounded hover:bg-gray-100" title="Edit">
+                                <Pencil size={12} className="text-t3" />
+                              </button>
+                              <button onClick={() => setDeleteConfirmId(upd.id)} className="p-1 rounded hover:bg-red-50" title="Delete">
+                                <Trash2 size={12} className="text-red-400" />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[0.65rem] text-t3">{ann.author}</span>
-                          <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* System auto-generated updates */}
+              {systemUpdates.length > 0 && (
+                <div className={cn('divide-y divide-divider', companyUpdates.length > 0 && 'border-t border-divider')}>
+                  {companyUpdates.length > 0 && systemUpdates.length > 0 && (
+                    <div className="px-6 py-2 bg-gray-50/50">
+                      <span className="text-[0.6rem] uppercase tracking-wider text-t3 font-medium">System Activity</span>
+                    </div>
+                  )}
+                  {systemUpdates.map(ann => (
+                    <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
+                          {ann.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-t1">{ann.title}</p>
+                          <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[0.65rem] text-t3">{ann.author}</span>
+                            <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-6 py-10 text-center">
-                <Megaphone size={24} className="mx-auto text-t3 mb-2" />
-                <p className="text-xs font-medium text-t2">No company updates yet</p>
-                <p className="text-[0.65rem] text-t3 mt-1">Post an update to share news with your team.</p>
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {totalCount === 0 && (
+                <div className="px-6 py-10 text-center">
+                  <Megaphone size={24} className="mx-auto text-t3 mb-2" />
+                  <p className="text-xs font-medium text-t2">No company updates yet</p>
+                  <p className="text-[0.65rem] text-t3 mt-1">Post an update to share news with your team.</p>
+                  {isAdmin && (
+                    <Button variant="primary" size="sm" className="mt-3" onClick={openNewUpdate}>Post First Update</Button>
+                  )}
+                </div>
+              )}
+            </Card>
+
+            {/* Post / Edit Update Modal */}
+            {showUpdateModal && (
+              <Modal open onClose={() => setShowUpdateModal(false)} title={editingUpdate ? 'Edit Update' : 'Post Company Update'} size="md">
+                <div className="space-y-4">
+                  <Input
+                    label="Title"
+                    value={updateForm.title}
+                    onChange={e => setUpdateForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Q1 All-Hands Meeting this Friday"
+                  />
+                  <Textarea
+                    label="Content"
+                    value={updateForm.content}
+                    onChange={e => setUpdateForm(f => ({ ...f, content: e.target.value }))}
+                    placeholder="Write your update here..."
+                    rows={4}
+                  />
+                  <Select
+                    label="Category"
+                    value={updateForm.category}
+                    onChange={e => setUpdateForm(f => ({ ...f, category: e.target.value as CompanyUpdate['category'] }))}
+                    options={[
+                      { value: 'announcement', label: 'Announcement' },
+                      { value: 'news', label: 'News' },
+                      { value: 'policy', label: 'Policy Update' },
+                      { value: 'event', label: 'Event' },
+                      { value: 'kudos', label: 'Kudos' },
+                    ]}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="secondary" onClick={() => setShowUpdateModal(false)}>Cancel</Button>
+                  <Button variant="primary" onClick={handleSaveUpdate} disabled={!updateForm.title.trim() || !updateForm.content.trim()}>
+                    {editingUpdate ? 'Save Changes' : 'Publish Update'}
+                  </Button>
+                </div>
+              </Modal>
             )}
-          </Card>
+
+            {/* Delete Confirmation */}
+            {deleteConfirmId && (
+              <Modal open onClose={() => setDeleteConfirmId(null)} title="Delete Update" size="sm">
+                <p className="text-sm text-t2">Are you sure you want to delete this update? This action cannot be undone.</p>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="secondary" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                  <Button variant="primary" className="!bg-red-600 hover:!bg-red-700" onClick={() => handleDeleteUpdate(deleteConfirmId)}>Delete</Button>
+                </div>
+              </Modal>
+            )}
+          </>
         )
       })()}
 
