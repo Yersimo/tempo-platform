@@ -31,11 +31,11 @@ export function StatCard({ label, value, change, changeType = 'neutral', icon, c
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="tempo-th text-t3 mb-1">{label}</p>
+          <p className="tempo-th mb-1">{label}</p>
           <p className="tempo-stat text-2xl text-t1">{value}</p>
           {change && (
             <p className={cn(
-              'text-xs mt-1 font-medium',
+              'tempo-small mt-1 font-medium',
               changeType === 'positive' && 'text-success',
               changeType === 'negative' && 'text-error',
               changeType === 'neutral' && 'text-t3',

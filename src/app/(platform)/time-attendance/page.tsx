@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
@@ -775,7 +776,7 @@ export default function TimeAttendancePage() {
                             <p className="text-sm font-semibold text-t1">{formatHours(entry.total_hours || 0)}h</p>
                             {(entry.overtime_hours || 0) > 0 && <p className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)}h OT</p>}
                           </div>
-                          <Badge variant={STATUS_COLORS[entry.status] || 'default'}>{entry.status}</Badge>
+                          <StatusBadge status={entry.status} />
                         </div>
                       </div>
                     ))}
@@ -908,7 +909,7 @@ export default function TimeAttendancePage() {
                           {data.overtime > 0 ? <span className="text-orange-500 font-semibold">{formatHours(data.overtime)}</span> : '-'}
                         </td>
                         <td className="px-3 py-3 text-center">
-                          <Badge variant={STATUS_COLORS[weekStatus] || 'default'} className="text-xs">{weekStatus}</Badge>
+                          <StatusBadge status={weekStatus} />
                         </td>
                       </tr>
                       {expandedTimesheetEmp === empId && (
@@ -925,7 +926,7 @@ export default function TimeAttendancePage() {
                                     <span className="text-xs text-t2">{entry.clock_in ? formatTime(entry.clock_in) : '\u2014'} \u2192 {entry.clock_out ? formatTime(entry.clock_out) : '\u2014'}</span>
                                     <span className="text-xs text-t1">{formatHours(entry.total_hours || 0)}h</span>
                                     {(entry.overtime_hours || 0) > 0 && <span className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)} OT</span>}
-                                    <Badge variant={STATUS_COLORS[entry.status] || 'default'} className="text-xs">{entry.status}</Badge>
+                                    <StatusBadge status={entry.status} />
                                     {canApproveLeave && entry.status === 'pending' && (
                                       <div className="flex gap-1 ml-auto">
                                         <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); updateTimeEntry(entry.id, { status: 'approved', approved_by: currentEmployeeId }); addToast('Entry approved') }}>

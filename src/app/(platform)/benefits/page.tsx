@@ -29,19 +29,20 @@ import {
   recommendBenefitPlan, optimizeBenefitsCost,
   analyzeBenefitEnrollmentTrends, predictLifeEventImpact, scoreBenefitsCompetitiveness,
 } from '@/lib/ai-engine'
+import { STAT_ICON, HEADER_ICON, TABLE_ICON, ICON_SIZE } from '@/lib/design-tokens'
 
 const iconMap: Record<string, React.ReactNode> = {
-  medical: <Heart size={20} />,
-  vision: <Eye size={20} />,
-  retirement: <Wallet size={20} />,
-  life: <Shield size={20} />,
-  dental: <Stethoscope size={20} />,
-  hsa: <Landmark size={20} />,
-  fsa: <CreditCard size={20} />,
-  commuter: <Car size={20} />,
-  disability: <Shield size={20} />,
-  voluntary: <Heart size={20} />,
-  wellness: <Heart size={20} />,
+  medical: <Heart size={STAT_ICON} />,
+  vision: <Eye size={STAT_ICON} />,
+  retirement: <Wallet size={STAT_ICON} />,
+  life: <Shield size={STAT_ICON} />,
+  dental: <Stethoscope size={STAT_ICON} />,
+  hsa: <Landmark size={STAT_ICON} />,
+  fsa: <CreditCard size={STAT_ICON} />,
+  commuter: <Car size={STAT_ICON} />,
+  disability: <Shield size={STAT_ICON} />,
+  voluntary: <Heart size={STAT_ICON} />,
+  wellness: <Heart size={STAT_ICON} />,
 }
 
 const flexAccountLabels: Record<string, string> = {
@@ -53,11 +54,11 @@ const flexAccountLabels: Record<string, string> = {
 }
 
 const flexAccountIcons: Record<string, React.ReactNode> = {
-  hsa: <Landmark size={20} />,
-  fsa_health: <CreditCard size={20} />,
-  fsa_dependent: <Baby size={20} />,
-  commuter_transit: <Car size={20} />,
-  commuter_parking: <ParkingCircle size={20} />,
+  hsa: <Landmark size={STAT_ICON} />,
+  fsa_health: <CreditCard size={STAT_ICON} />,
+  fsa_dependent: <Baby size={STAT_ICON} />,
+  commuter_transit: <Car size={STAT_ICON} />,
+  commuter_parking: <ParkingCircle size={STAT_ICON} />,
 }
 
 const irsLimits2026: Record<string, number> = {
@@ -79,11 +80,11 @@ const coverageLevelMultiplier: Record<string, number> = {
 }
 
 const lifeEventIcons: Record<string, React.ReactNode> = {
-  marriage: <HeartHandshake size={16} />,
-  birth: <Baby size={16} />,
-  adoption: <UserPlus size={16} />,
-  divorce: <Scale size={16} />,
-  death: <Shield size={16} />,
+  marriage: <HeartHandshake size={ICON_SIZE.md} />,
+  birth: <Baby size={ICON_SIZE.md} />,
+  adoption: <UserPlus size={ICON_SIZE.md} />,
+  divorce: <Scale size={ICON_SIZE.md} />,
+  death: <Shield size={ICON_SIZE.md} />,
 }
 
 export default function BenefitsPage() {
@@ -596,7 +597,7 @@ export default function BenefitsPage() {
         <Header
           title={t('title')}
           subtitle={t('subtitle')}
-          actions={<div className="flex gap-2"><Button size="sm" variant="secondary" disabled><Users size={14} /> Bulk Enroll</Button><Button size="sm" disabled><Plus size={14} /> {t('addPlan')}</Button></div>}
+          actions={<div className="flex gap-2"><Button size="sm" variant="secondary" disabled><Users size={HEADER_ICON} /> Bulk Enroll</Button><Button size="sm" disabled><Plus size={HEADER_ICON} /> {t('addPlan')}</Button></div>}
         />
         <div className="p-6"><PageSkeleton /></div>
       </>
@@ -611,10 +612,10 @@ export default function BenefitsPage() {
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => setShowBulkEnrollModal(true)}>
-              <Users size={14} /> Bulk Enroll
+              <Users size={HEADER_ICON} /> Bulk Enroll
             </Button>
             <Button size="sm" onClick={openNewPlan}>
-              <Plus size={14} /> {t('addPlan')}
+              <Plus size={HEADER_ICON} /> {t('addPlan')}
             </Button>
           </div>
         }
@@ -637,7 +638,7 @@ export default function BenefitsPage() {
         <>
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('activePlans')} value={activePlans.length} icon={<Shield size={20} />} />
+            <StatCard label={t('activePlans')} value={activePlans.length} icon={<Shield size={STAT_ICON} />} />
             <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} />
             <StatCard label={t('monthlyEmployerCost')} value={fmtCents(totalEmployerCost)} change={tc('perEmployee')} changeType="neutral" />
             <StatCard label={t('providers')} value={uniqueProviders} change={t('activePartnerships')} changeType="neutral" />
@@ -854,10 +855,10 @@ export default function BenefitsPage() {
       {activeTab === 'enrollment' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('totalEnrollments')} value={activeEnrollments.length} icon={<Users size={20} />} />
-            <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} icon={<BarChart3 size={20} />} />
-            <StatCard label={t('enrolledEmployees')} value={enrolledEmployeeIds.length} change={`${employees.length - enrolledEmployeeIds.length} ${t('notEnrolled')}`} changeType="neutral" icon={<Users size={20} />} />
-            <StatCard label={t('waivedEnrollments')} value={benefitEnrollments.filter(e => (e as any).status === 'waived').length} change={t('optedOut')} changeType="neutral" icon={<Shield size={20} />} />
+            <StatCard label={t('totalEnrollments')} value={activeEnrollments.length} icon={<Users size={STAT_ICON} />} />
+            <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} icon={<BarChart3 size={STAT_ICON} />} />
+            <StatCard label={t('enrolledEmployees')} value={enrolledEmployeeIds.length} change={`${employees.length - enrolledEmployeeIds.length} ${t('notEnrolled')}`} changeType="neutral" icon={<Users size={STAT_ICON} />} />
+            <StatCard label={t('waivedEnrollments')} value={benefitEnrollments.filter(e => (e as any).status === 'waived').length} change={t('optedOut')} changeType="neutral" icon={<Shield size={STAT_ICON} />} />
           </div>
 
           {enrollTrends.insights.length > 0 && <AIAlertBanner insights={enrollTrends.insights} className="mb-4" />}
@@ -979,15 +980,15 @@ export default function BenefitsPage() {
       {activeTab === 'dependents' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('totalDependents')} value={benefitDependents.length} icon={<Users size={20} />} />
-            <StatCard label={t('spouses')} value={benefitDependents.filter(d => (d as any).relationship === 'spouse').length} icon={<HeartHandshake size={20} />} />
-            <StatCard label={t('children')} value={benefitDependents.filter(d => (d as any).relationship === 'child').length} icon={<Baby size={20} />} />
+            <StatCard label={t('totalDependents')} value={benefitDependents.length} icon={<Users size={STAT_ICON} />} />
+            <StatCard label={t('spouses')} value={benefitDependents.filter(d => (d as any).relationship === 'spouse').length} icon={<HeartHandshake size={STAT_ICON} />} />
+            <StatCard label={t('children')} value={benefitDependents.filter(d => (d as any).relationship === 'child').length} icon={<Baby size={STAT_ICON} />} />
             <StatCard
               label={t('employeesWithDependents')}
               value={[...new Set(benefitDependents.map(d => (d as any).employee_id))].length}
               change={`${Math.round(([...new Set(benefitDependents.map(d => (d as any).employee_id))].length / Math.max(employees.length, 1)) * 100)}%`}
               changeType="neutral"
-              icon={<UserPlus size={20} />}
+              icon={<UserPlus size={STAT_ICON} />}
             />
           </div>
 
@@ -1086,9 +1087,9 @@ export default function BenefitsPage() {
               <p className="text-xs text-t3 mb-2">{t('competitivenessScore')}</p>
               <AIScoreBadge score={competitivenessScore} size="lg" showBreakdown />
             </Card>
-            <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} icon={<BarChart3 size={20} />} />
-            <StatCard label={t('monthlyEmployerCost')} value={fmtCents(totalEmployerCost)} change={`${fmtCents(totalEmployerCost * 12)} / ${t('year')}`} changeType="neutral" icon={<Wallet size={20} />} />
-            <StatCard label={t('totalDependents')} value={benefitDependents.length} change={`${[...new Set(benefitDependents.map(d => (d as any).employee_id))].length} ${t('employeesLabel')}`} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label={t('enrollmentRate')} value={`${enrollmentRate}%`} change={enrollmentRate >= 85 ? t('aboveTarget') : t('belowTarget')} changeType={enrollmentRate >= 85 ? 'positive' : 'negative'} icon={<BarChart3 size={STAT_ICON} />} />
+            <StatCard label={t('monthlyEmployerCost')} value={fmtCents(totalEmployerCost)} change={`${fmtCents(totalEmployerCost * 12)} / ${t('year')}`} changeType="neutral" icon={<Wallet size={STAT_ICON} />} />
+            <StatCard label={t('totalDependents')} value={benefitDependents.length} change={`${[...new Set(benefitDependents.map(d => (d as any).employee_id))].length} ${t('employeesLabel')}`} changeType="neutral" icon={<Users size={STAT_ICON} />} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -1198,10 +1199,10 @@ export default function BenefitsPage() {
       {activeTab === 'life-events' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('totalLifeEvents')} value={lifeEvents.length} icon={<Calendar size={20} />} />
-            <StatCard label={t('pendingEvents')} value={pendingLifeEvents.length} change={pendingLifeEvents.length > 0 ? t('requiresAction') : t('allProcessed')} changeType={pendingLifeEvents.length > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
-            <StatCard label={t('processedEvents')} value={lifeEvents.filter(e => (e as any).status === 'processed').length} icon={<CheckCircle2 size={20} />} />
-            <StatCard label={t('thisYear')} value={lifeEvents.filter(e => new Date((e as any).event_date).getFullYear() >= 2026).length} icon={<Calendar size={20} />} />
+            <StatCard label={t('totalLifeEvents')} value={lifeEvents.length} icon={<Calendar size={STAT_ICON} />} />
+            <StatCard label={t('pendingEvents')} value={pendingLifeEvents.length} change={pendingLifeEvents.length > 0 ? t('requiresAction') : t('allProcessed')} changeType={pendingLifeEvents.length > 0 ? 'negative' : 'positive'} icon={<Clock size={STAT_ICON} />} />
+            <StatCard label={t('processedEvents')} value={lifeEvents.filter(e => (e as any).status === 'processed').length} icon={<CheckCircle2 size={STAT_ICON} />} />
+            <StatCard label={t('thisYear')} value={lifeEvents.filter(e => new Date((e as any).event_date).getFullYear() >= 2026).length} icon={<Calendar size={STAT_ICON} />} />
           </div>
 
           {lifeEventInsights.length > 0 && <AIAlertBanner insights={lifeEventInsights} className="mb-4" />}
@@ -1452,13 +1453,13 @@ export default function BenefitsPage() {
       {activeTab === 'open-enrollment' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Active Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'active').length} icon={<Calendar size={20} />} />
-            <StatCard label="Upcoming Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'upcoming').length} icon={<Clock size={20} />} />
-            <StatCard label="Total Eligible" value={employees.length} icon={<Users size={20} />} />
+            <StatCard label="Active Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'active').length} icon={<Calendar size={STAT_ICON} />} />
+            <StatCard label="Upcoming Periods" value={openEnrollmentPeriods.filter(p => (p as any).status === 'upcoming').length} icon={<Clock size={STAT_ICON} />} />
+            <StatCard label="Total Eligible" value={employees.length} icon={<Users size={STAT_ICON} />} />
             <StatCard
               label="Enrollment Progress"
               value={`${openEnrollmentPeriods.filter(p => (p as any).status === 'active').reduce((a, p) => a + ((p as any).enrolled_count || 0), 0)}/${openEnrollmentPeriods.filter(p => (p as any).status === 'active').reduce((a, p) => a + ((p as any).eligible_count || employees.length), 0)}`}
-              icon={<CheckCircle2 size={20} />}
+              icon={<CheckCircle2 size={STAT_ICON} />}
             />
           </div>
 
@@ -1619,22 +1620,22 @@ export default function BenefitsPage() {
         <>
           {/* Account Overview Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Active Accounts" value={flexBenefitAccounts.filter(a => (a as any).status === 'active').length} icon={<Landmark size={20} />} />
+            <StatCard label="Active Accounts" value={flexBenefitAccounts.filter(a => (a as any).status === 'active').length} icon={<Landmark size={STAT_ICON} />} />
             <StatCard
               label="Total Balance"
               value={fmtCents(flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).current_balance || 0), 0))}
-              icon={<DollarSign size={20} />}
+              icon={<DollarSign size={STAT_ICON} />}
             />
             <StatCard
               label="YTD Contributions"
               value={fmtCents(flexBenefitAccounts.reduce((a, acc) => a + ((acc as any).ytd_contributions || 0), 0))}
-              icon={<TrendingUp size={20} />}
+              icon={<TrendingUp size={STAT_ICON} />}
               changeType="positive"
             />
             <StatCard
               label="Pending Expenses"
               value={flexBenefitTransactions.filter(t => (t as any).type === 'expense' && (t as any).status === 'pending').length}
-              icon={<Receipt size={20} />}
+              icon={<Receipt size={STAT_ICON} />}
               change="Awaiting approval"
               changeType="neutral"
             />
@@ -1793,13 +1794,13 @@ export default function BenefitsPage() {
       {activeTab === 'cobra' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="Active COBRA" value={cobraEvents.filter(e => (e as any).status === 'elected').length} icon={<Shield size={20} />} />
-            <StatCard label="Pending Notification" value={cobraEvents.filter(e => (e as any).status === 'pending_notification').length} icon={<Bell size={20} />} change="Requires action" changeType={cobraEvents.filter(e => (e as any).status === 'pending_notification').length > 0 ? 'negative' : 'positive'} />
-            <StatCard label="Election Pending" value={cobraEvents.filter(e => (e as any).status === 'notified').length} icon={<Clock size={20} />} />
+            <StatCard label="Active COBRA" value={cobraEvents.filter(e => (e as any).status === 'elected').length} icon={<Shield size={STAT_ICON} />} />
+            <StatCard label="Pending Notification" value={cobraEvents.filter(e => (e as any).status === 'pending_notification').length} icon={<Bell size={STAT_ICON} />} change="Requires action" changeType={cobraEvents.filter(e => (e as any).status === 'pending_notification').length > 0 ? 'negative' : 'positive'} />
+            <StatCard label="Election Pending" value={cobraEvents.filter(e => (e as any).status === 'notified').length} icon={<Clock size={STAT_ICON} />} />
             <StatCard
               label="Monthly Premiums"
               value={fmtCents(cobraEvents.filter(e => (e as any).status === 'elected').reduce((a, e) => a + ((e as any).monthly_premium || 0), 0))}
-              icon={<DollarSign size={20} />}
+              icon={<DollarSign size={STAT_ICON} />}
             />
           </div>
 
@@ -2092,19 +2093,19 @@ export default function BenefitsPage() {
             return (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <StatCard label="Tracked Employees" value={totalTracked} icon={<Users size={20} />} />
-                  <StatCard label="Full-Time Eligible" value={fullTimeCount} icon={<UserCheck size={20} />} />
+                  <StatCard label="Tracked Employees" value={totalTracked} icon={<Users size={STAT_ICON} />} />
+                  <StatCard label="Full-Time Eligible" value={fullTimeCount} icon={<UserCheck size={STAT_ICON} />} />
                   <StatCard
                     label="1095-C Pending"
                     value={pendingCount}
-                    icon={<FileText size={20} />}
+                    icon={<FileText size={STAT_ICON} />}
                     change={pendingCount > 0 ? 'Action needed' : 'All filed'}
                     changeType={pendingCount > 0 ? 'negative' : 'positive'}
                   />
                   <StatCard
                     label="Offer Rate"
                     value={`${offerRate}%`}
-                    icon={<Shield size={20} />}
+                    icon={<Shield size={STAT_ICON} />}
                     change={offeredCount > 0 ? 'Compliant' : 'Review needed'}
                     changeType={filteredAca.filter(a => !(a as any).offered_coverage && (a as any).aca_status === 'full_time').length === 0 ? 'positive' : 'negative'}
                   />

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
@@ -19,6 +20,7 @@ import { useTempo } from '@/lib/store'
 import { Header } from '@/components/layout/header'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
+import { STAT_ICON, HEADER_ICON, TABLE_ICON, ICON_SIZE } from '@/lib/design-tokens'
 
 const ITEMS_PER_PAGE = 8
 
@@ -422,7 +424,7 @@ export default function CompliancePage() {
         <Header
           title="Compliance Dashboard"
           subtitle="Monitor regulatory compliance across all regions"
-          actions={<div className="flex gap-2"><Button variant="secondary" size="sm" disabled><Download size={14} /> Export Report</Button><Button variant="secondary" size="sm" disabled><Upload size={14} /> Upload Document</Button><Button size="sm" disabled><Plus size={14} /> Add Requirement</Button></div>}
+          actions={<div className="flex gap-2"><Button variant="secondary" size="sm" disabled><Download size={HEADER_ICON} /> Export Report</Button><Button variant="secondary" size="sm" disabled><Upload size={HEADER_ICON} /> Upload Document</Button><Button size="sm" disabled><Plus size={HEADER_ICON} /> Add Requirement</Button></div>}
         />
         <div className="p-6"><PageSkeleton /></div>
       </>
@@ -439,13 +441,13 @@ export default function CompliancePage() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={exportAuditReport}>
-            <Download size={14} /> Export Report
+            <Download size={HEADER_ICON} /> Export Report
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowAddDocModal(true)}>
-            <Upload size={14} /> Upload Document
+            <Upload size={HEADER_ICON} /> Upload Document
           </Button>
           <Button size="sm" onClick={() => setShowAddReqModal(true)}>
-            <Plus size={14} /> Add Requirement
+            <Plus size={HEADER_ICON} /> Add Requirement
           </Button>
         </div>
       </div>
@@ -454,7 +456,7 @@ export default function CompliancePage() {
       {criticalAlerts.length > 0 && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={STAT_ICON} className="text-red-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-red-400">
                 {criticalAlerts.length} Critical Alert{criticalAlerts.length !== 1 ? 's' : ''} Requiring Immediate Action
@@ -476,10 +478,10 @@ export default function CompliancePage() {
         <div className="space-y-6">
           {/* Stat Cards */}
           <ExpandableStats>
-            <StatCard label="Total Requirements" value={totalReqs} icon={<ShieldCheck size={20} />} />
-            <StatCard label="Compliance Score" value={`${complianceScore}%`} icon={<CheckCircle size={20} />} change={`${complianceScore}%`} changeType={complianceScore >= 80 ? 'positive' : 'negative'} />
-            <StatCard label="At Risk" value={atRiskCount} icon={<AlertTriangle size={20} />} />
-            <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={20} />} />
+            <StatCard label="Total Requirements" value={totalReqs} icon={<ShieldCheck size={STAT_ICON} />} />
+            <StatCard label="Compliance Score" value={`${complianceScore}%`} icon={<CheckCircle size={STAT_ICON} />} change={`${complianceScore}%`} changeType={complianceScore >= 80 ? 'positive' : 'negative'} />
+            <StatCard label="At Risk" value={atRiskCount} icon={<AlertTriangle size={STAT_ICON} />} />
+            <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={STAT_ICON} />} />
           </ExpandableStats>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -532,7 +534,7 @@ export default function CompliancePage() {
                     <div key={req.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`p-1.5 rounded ${daysLeft <= 7 ? 'bg-red-500/10' : daysLeft <= 14 ? 'bg-yellow-500/10' : 'bg-blue-500/10'}`}>
-                          <Calendar size={14} className={daysLeft <= 7 ? 'text-red-400' : daysLeft <= 14 ? 'text-yellow-400' : 'text-blue-400'} />
+                          <Calendar size={TABLE_ICON} className={daysLeft <= 7 ? 'text-red-400' : daysLeft <= 14 ? 'text-yellow-400' : 'text-blue-400'} />
                         </div>
                         <div>
                           <p className="text-xs font-medium text-t1">{req.name}</p>
@@ -593,7 +595,7 @@ export default function CompliancePage() {
           {/* Filters */}
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <Search size={TABLE_ICON} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
               <input
                 type="text"
                 placeholder="Search requirements..."
@@ -659,7 +661,7 @@ export default function CompliancePage() {
                       <td className="px-4 py-3 text-t2">{req.country || 'Global'}</td>
                       <td className="px-4 py-3 text-t2 capitalize">{req.frequency.replace(/_/g, ' ')}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={STATUS_VARIANTS[req.status]}>{req.status.replace(/_/g, ' ')}</Badge>
+                        <StatusBadge status={req.status} />
                       </td>
                       <td className="px-4 py-3 text-t2">{req.assigned_to ? getEmployeeName(req.assigned_to) : '-'}</td>
                       <td className="px-4 py-3 text-t2">{req.next_due || '-'}</td>
@@ -670,28 +672,28 @@ export default function CompliancePage() {
                             className="p-1 rounded hover:bg-green-500/10 text-t3 hover:text-green-400 transition-colors"
                             title="Mark Compliant"
                           >
-                            <CheckCircle size={14} />
+                            <CheckCircle size={TABLE_ICON} />
                           </button>
                           <button
                             onClick={() => updateComplianceRequirement(req.id, { status: 'at_risk' })}
                             className="p-1 rounded hover:bg-yellow-500/10 text-t3 hover:text-yellow-400 transition-colors"
                             title="Flag At Risk"
                           >
-                            <AlertTriangle size={14} />
+                            <AlertTriangle size={TABLE_ICON} />
                           </button>
                           <button
                             onClick={() => updateComplianceRequirement(req.id, { status: 'non_compliant' })}
                             className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
                             title="Mark Non-Compliant"
                           >
-                            <XCircle size={14} />
+                            <XCircle size={TABLE_ICON} />
                           </button>
                           <button
                             onClick={() => setShowReqDetail(req.id)}
                             className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
                             title="View Details"
                           >
-                            <Eye size={14} />
+                            <Eye size={TABLE_ICON} />
                           </button>
                           {(req.status === 'non_compliant' || req.status === 'at_risk') && (
                             <Button size="sm" variant="ghost" onClick={() => {
@@ -761,7 +763,7 @@ export default function CompliancePage() {
                       <tr key={doc.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <FileText size={14} className="text-t3" />
+                            <FileText size={TABLE_ICON} className="text-t3" />
                             <span className="text-t1 font-medium">{doc.name}</span>
                           </div>
                         </td>
@@ -783,14 +785,14 @@ export default function CompliancePage() {
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
                             <button className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors" title="Download">
-                              <Download size={14} />
+                              <Download size={TABLE_ICON} />
                             </button>
                             <button
                               onClick={() => setConfirmAction({ show: true, type: 'delete_document', id: doc.id, label: doc.name })}
                               className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
                               title="Delete"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={TABLE_ICON} />
                             </button>
                           </div>
                         </td>
@@ -814,7 +816,7 @@ export default function CompliancePage() {
                 <FileText size={32} className="mx-auto text-t3 mb-3" />
                 <p className="text-xs text-t3">No compliance documents uploaded yet</p>
                 <Button size="sm" className="mt-3" onClick={() => setShowAddDocModal(true)}>
-                  <Upload size={14} /> Upload Document
+                  <Upload size={TABLE_ICON} /> Upload Document
                 </Button>
               </div>
             )}
@@ -949,7 +951,7 @@ export default function CompliancePage() {
                   {country.reqs.map(req => (
                     <div key={req.id} className="flex items-center justify-between">
                       <span className="text-xs text-t2 truncate max-w-[60%]">{req.name}</span>
-                      <Badge variant={STATUS_VARIANTS[req.status]} className="text-[0.6rem]">{req.status.replace(/_/g, ' ')}</Badge>
+                      <StatusBadge status={req.status} />
                     </div>
                   ))}
                 </div>
@@ -964,17 +966,17 @@ export default function CompliancePage() {
         <div className="space-y-6">
           {/* Stat Cards */}
           <ExpandableStats>
-            <StatCard label="Total Scans" value={adTotalScans} icon={<Radar size={20} />} />
-            <StatCard label="Issues Found" value={adIssuesFound} icon={<AlertTriangle size={20} />} />
-            <StatCard label="Auto-Resolved" value={adAutoResolved} icon={<CheckCircle size={20} />} change={adTotalScans > 0 ? `${Math.round((adAutoResolved / adTotalScans) * 100)}%` : '0%'} changeType="positive" />
-            <StatCard label="Pending Review" value={adPendingReview} icon={<Clock size={20} />} change={adPendingReview > 0 ? `${adPendingReview} items` : 'Clear'} changeType={adPendingReview > 0 ? 'negative' : 'positive'} />
+            <StatCard label="Total Scans" value={adTotalScans} icon={<Radar size={STAT_ICON} />} />
+            <StatCard label="Issues Found" value={adIssuesFound} icon={<AlertTriangle size={STAT_ICON} />} />
+            <StatCard label="Auto-Resolved" value={adAutoResolved} icon={<CheckCircle size={STAT_ICON} />} change={adTotalScans > 0 ? `${Math.round((adAutoResolved / adTotalScans) * 100)}%` : '0%'} changeType="positive" />
+            <StatCard label="Pending Review" value={adPendingReview} icon={<Clock size={STAT_ICON} />} change={adPendingReview > 0 ? `${adPendingReview} items` : 'Clear'} changeType={adPendingReview > 0 ? 'negative' : 'positive'} />
           </ExpandableStats>
 
           {/* Run Scan Button */}
           <div className="flex items-center justify-between">
             <p className="text-xs text-t3">Automated compliance scans detect policy violations across all platform modules.</p>
             <Button size="sm" onClick={runNewScan}>
-              <Play size={14} /> Run Scan
+              <Play size={TABLE_ICON} /> Run Scan
             </Button>
           </div>
 
@@ -1002,13 +1004,11 @@ export default function CompliancePage() {
                       </td>
                       <td className="px-4 py-3 text-t1 max-w-[240px] truncate">{scan.rule_violated}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-medium border ${SEVERITY_COLORS[scan.severity]}`}>
-                          {scan.severity}
-                        </span>
+                        <StatusBadge status={scan.severity} />
                       </td>
                       <td className="px-4 py-3 text-t2">{scan.employee}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={AD_STATUS_VARIANTS[scan.status]}>{scan.status.replace(/_/g, ' ')}</Badge>
+                        <StatusBadge status={scan.status} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -1019,21 +1019,21 @@ export default function CompliancePage() {
                                 className="p-1 rounded hover:bg-green-500/10 text-t3 hover:text-green-400 transition-colors"
                                 title="Resolve"
                               >
-                                <CheckCircle size={14} />
+                                <CheckCircle size={TABLE_ICON} />
                               </button>
                               <button
                                 onClick={() => updateAutoDetectionScan(scan.id, { status: 'escalated' })}
                                 className="p-1 rounded hover:bg-red-500/10 text-t3 hover:text-red-400 transition-colors"
                                 title="Escalate"
                               >
-                                <ArrowUpRight size={14} />
+                                <ArrowUpRight size={TABLE_ICON} />
                               </button>
                               <button
                                 onClick={() => updateAutoDetectionScan(scan.id, { status: 'dismissed' })}
                                 className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
                                 title="Dismiss"
                               >
-                                <XCircle size={14} />
+                                <XCircle size={TABLE_ICON} />
                               </button>
                             </>
                           )}
@@ -1043,7 +1043,7 @@ export default function CompliancePage() {
                               className="p-1 rounded hover:bg-white/10 text-t3 hover:text-t1 transition-colors"
                               title="Reopen"
                             >
-                              <RotateCcw size={14} />
+                              <RotateCcw size={TABLE_ICON} />
                             </button>
                           )}
                         </div>
@@ -1131,7 +1131,7 @@ export default function CompliancePage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-t1">{detailReq.name}</h3>
-              <Badge variant={STATUS_VARIANTS[detailReq.status]}>{detailReq.status.replace(/_/g, ' ')}</Badge>
+              <StatusBadge status={detailReq.status} />
             </div>
             {detailReq.description && <p className="text-xs text-t2">{detailReq.description}</p>}
             <div className="grid grid-cols-2 gap-4 text-xs">
@@ -1173,7 +1173,7 @@ export default function CompliancePage() {
               {detailDocs.length > 0 ? detailDocs.map(doc => (
                 <div key={doc.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                   <div className="flex items-center gap-2">
-                    <FileText size={14} className="text-t3" />
+                    <FileText size={TABLE_ICON} className="text-t3" />
                     <div>
                       <p className="text-xs font-medium text-t1">{doc.name}</p>
                       <p className="text-[0.6rem] text-t3">Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</p>
@@ -1190,14 +1190,14 @@ export default function CompliancePage() {
             <div className="flex justify-between pt-2 border-t border-divider">
               <div className="flex gap-2">
                 <Button size="sm" variant="secondary" onClick={() => { updateComplianceRequirement(detailReq.id, { status: 'compliant', last_checked: new Date().toISOString().split('T')[0] }); setShowReqDetail(null) }}>
-                  <CheckCircle size={14} /> Mark Compliant
+                  <CheckCircle size={TABLE_ICON} /> Mark Compliant
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => { updateComplianceRequirement(detailReq.id, { status: 'at_risk' }); setShowReqDetail(null) }}>
-                  <AlertTriangle size={14} /> Flag At Risk
+                  <AlertTriangle size={TABLE_ICON} /> Flag At Risk
                 </Button>
               </div>
               <Button size="sm" variant="secondary" onClick={() => setConfirmAction({ show: true, type: 'delete_requirement', id: detailReq.id, label: detailReq.name })}>
-                <Trash2 size={14} /> Delete
+                <Trash2 size={TABLE_ICON} /> Delete
               </Button>
             </div>
           </div>

@@ -29,7 +29,7 @@ export function AIInsightPanel({
   narrative,
   recommendations = [],
   collapsible = true,
-  defaultExpanded = true,
+  defaultExpanded = false,
   onDismissInsight,
   onAcceptRecommendation,
   className,

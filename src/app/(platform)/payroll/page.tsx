@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
@@ -1132,7 +1133,7 @@ export default function PayrollPage() {
                         <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{fmtCents(run.total_net, COUNTRY_CURRENCY_MAP[(run as any).country] || undefined)}</td>
                         <td className="px-4 py-3 text-xs text-t2 text-right">{run.employee_count}</td>
                         <td className="px-4 py-3 text-center">
-                          <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                          <StatusBadge status={run.status} label={statusCfg.label} />
                         </td>
                         <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                           {renderRunActions(run)}

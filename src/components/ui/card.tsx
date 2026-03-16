@@ -34,7 +34,7 @@ export function CardHeader({ className, children, ...props }: React.HTMLAttribut
 
 export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={cn('text-sm font-semibold text-t1', className)} {...props}>
+    <h3 className={cn('tempo-card-title', className)} {...props}>
       {children}
     </h3>
   )

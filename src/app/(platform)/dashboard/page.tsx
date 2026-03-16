@@ -14,6 +14,7 @@ import { useTempo } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
+import { HEADER_ICON, BUTTON_ICON } from '@/lib/design-tokens'
 import { getAllAppModules } from '@/components/layout/sidebar'
 import { EmployeeDashboard } from '@/components/employee-dashboard'
 import { OrgTab } from '@/components/dashboard/org-tab'
@@ -116,9 +117,9 @@ export default function DashboardPage() {
         actions={
           <div className="flex items-center gap-2">
             {dashboardTab === 'org' && (
-              <Button variant="secondary" size="sm" onClick={() => setShowWidgetModal(true)}><LayoutGrid size={14} /> {t('customizeWidgets')}</Button>
+              <Button variant="secondary" size="sm" onClick={() => setShowWidgetModal(true)}><LayoutGrid size={HEADER_ICON} /> {t('customizeWidgets')}</Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}><Settings size={14} /></Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}><Settings size={HEADER_ICON} /></Button>
           </div>
         }
       />
@@ -132,13 +133,11 @@ export default function DashboardPage() {
               <p className="text-sm text-t3 mt-1">Ghana Payroll Evaluation Environment — Ecobank Transnational</p>
             </div>
             <Link href="/payroll">
-              <button className="px-5 py-2.5 bg-tempo-600 text-white text-sm font-medium rounded-xl hover:bg-tempo-700 transition-colors">
-                Start Payroll Demo →
-              </button>
+              <Button variant="primary" size="md">Start Payroll Demo &rarr;</Button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-xl bg-gray-50">
               <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Payroll Cost (This Month)</p>
               <p className="text-2xl font-semibold text-t1 mt-1">GH₵ 847,500</p>
@@ -235,7 +234,7 @@ function WidgetCustomizationModal({
         <Button variant="ghost" size="sm" onClick={() => {
           const reset = widgetPreferences.widgets.map((w, i) => ({ ...w, enabled: i < 11, position: i }))
           updateWidgetPreferences({ widgets: reset })
-        }}><RotateCcw size={14} /> {t('resetLayout')}</Button>
+        }}><RotateCcw size={BUTTON_ICON} /> {t('resetLayout')}</Button>
       </div>
 
       <div className="space-y-1.5">
@@ -253,7 +252,7 @@ function WidgetCustomizationModal({
               )}
             >
               <div className="cursor-grab active:cursor-grabbing text-t3 hover:text-t2 flex-shrink-0">
-                <GripVertical size={14} />
+                <GripVertical size={BUTTON_ICON} />
               </div>
               <div
                 className="flex items-center justify-between flex-1 cursor-pointer"
@@ -265,7 +264,7 @@ function WidgetCustomizationModal({
                 }}
               >
                 <div className="flex items-center gap-2">
-                  {widget.enabled ? <Eye size={14} className="text-tempo-600" /> : <EyeOff size={14} className="text-t3" />}
+                  {widget.enabled ? <Eye size={BUTTON_ICON} className="text-tempo-600" /> : <EyeOff size={BUTTON_ICON} className="text-t3" />}
                   <span className={cn('text-xs', widget.enabled ? 'font-medium text-t1' : 'text-t3')}>{widget.name}</span>
                   <span className="text-[0.6rem] text-t3 bg-canvas px-1.5 py-0.5 rounded">{widget.category}</span>
                 </div>
@@ -293,8 +292,8 @@ function WidgetCustomizationModal({
 function YourAppsGrid() {
   const allApps = getAllAppModules()
   return (
-    <div className="mt-8">
-      <h2 className="text-lg font-semibold text-t1 mb-4">Your Apps</h2>
+    <div className="mt-6 mb-6">
+      <h2 className="text-lg font-semibold text-t1 mb-3">Your Apps</h2>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
         {allApps.map(app => (
           <Link

@@ -1,8 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
-import { TrendingUp, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { TrendingUp, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import type { AIInsight, AIAnomaly, AIRecommendation, AIScore } from '@/lib/ai-engine'
 
 // ─── Jony Ive–inspired AI severity system ───────────────────────────
@@ -155,6 +155,8 @@ interface AIInsightsCardProps {
   scores?: Array<{ score: AIScore; label: string }>
   title?: string
   maxVisible?: number
+  defaultCollapsed?: boolean
+  storageKey?: string
   className?: string
 }
 
@@ -165,10 +167,37 @@ export function AIInsightsCard({
   scores = [],
   title = 'AI Insights',
   maxVisible = 3,
+  defaultCollapsed = true,
+  storageKey,
   className,
 }: AIInsightsCardProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const [expanded, setExpanded] = useState(false)
   const totalItems = insights.length + anomalies.length + recommendations.length
+
+  // Persist collapse state in localStorage per storageKey
+  useEffect(() => {
+    if (!storageKey) return
+    try {
+      const stored = localStorage.getItem(`ai-insights-collapsed:${storageKey}`)
+      if (stored !== null) {
+        setCollapsed(stored === 'true')
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }, [storageKey])
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev
+      if (storageKey) {
+        try { localStorage.setItem(`ai-insights-collapsed:${storageKey}`, String(next)) } catch { /* ignore */ }
+      }
+      return next
+    })
+  }, [storageKey])
+
   if (totalItems === 0 && scores.length === 0) return null
 
   const sortedInsights = [...insights].sort((a, b) => {
@@ -185,10 +214,16 @@ export function AIInsightsCard({
       'rounded-2xl border border-border/80 bg-white overflow-hidden',
       className
     )}>
-      {/* Header — clean, typographic, no gradient noise */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
+      {/* Header — clickable to toggle collapse */}
+      <button
+        onClick={toggleCollapsed}
+        className={cn(
+          'flex items-center justify-between w-full px-5 py-3.5 text-left hover:bg-canvas/50 transition-colors cursor-pointer',
+          !collapsed && 'border-b border-border/60'
+        )}
+      >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-[10px] bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-[10px] bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center shrink-0">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
@@ -197,38 +232,46 @@ export function AIInsightsCard({
           <h3 className="text-[13px] font-semibold text-t1 tracking-[-0.01em]">{title}</h3>
           <span className="text-[9px] px-1.5 py-[2px] rounded-md bg-tempo-50 text-tempo-600 font-semibold tracking-widest uppercase">AI</span>
         </div>
-        {totalItems > 0 && (
-          <span className="text-[11px] text-t3 tabular-nums">
-            {totalItems} insight{totalItems !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-
-      {/* Scores row */}
-      {scores.length > 0 && (
-        <div className="flex items-center gap-6 px-5 py-3 border-b border-border/60 overflow-x-auto">
-          {scores.map((s, i) => (
-            <AIScoreRing key={i} score={s.score} label={s.label} />
-          ))}
+        <div className="flex items-center gap-2">
+          {totalItems > 0 && (
+            <span className="text-[11px] text-t3 tabular-nums">
+              {totalItems} insight{totalItems !== 1 ? 's' : ''}
+            </span>
+          )}
+          {collapsed ? <ChevronDown size={14} className="text-t3" /> : <ChevronUp size={14} className="text-t3" />}
         </div>
-      )}
+      </button>
 
-      {/* Items */}
-      <div className="p-4 space-y-2">
-        {visibleInsights.map(insight => <InsightItem key={insight.id} insight={insight} />)}
-        {visibleAnomalies.map(anomaly => <AnomalyItem key={anomaly.id} anomaly={anomaly} />)}
-        {visibleRecs.map(rec => <RecommendationItem key={rec.id} rec={rec} />)}
-      </div>
+      {/* Collapsible content */}
+      {!collapsed && (
+        <>
+          {/* Scores row */}
+          {scores.length > 0 && (
+            <div className="flex items-center gap-6 px-5 py-3 border-b border-border/60 overflow-x-auto">
+              {scores.map((s, i) => (
+                <AIScoreRing key={i} score={s.score} label={s.label} />
+              ))}
+            </div>
+          )}
 
-      {/* Show more / less */}
-      {hasMore && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full px-5 py-2.5 text-[11px] font-medium text-tempo-600 hover:bg-tempo-50/50 transition-colors flex items-center justify-center gap-1 border-t border-border/60"
-        >
-          {expanded ? 'Show less' : `Show all ${totalItems} insights`}
-          <ChevronRight size={12} className={cn('transition-transform', expanded && 'rotate-90')} />
-        </button>
+          {/* Items */}
+          <div className="p-4 space-y-2">
+            {visibleInsights.map(insight => <InsightItem key={insight.id} insight={insight} />)}
+            {visibleAnomalies.map(anomaly => <AnomalyItem key={anomaly.id} anomaly={anomaly} />)}
+            {visibleRecs.map(rec => <RecommendationItem key={rec.id} rec={rec} />)}
+          </div>
+
+          {/* Show more / less */}
+          {hasMore && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+              className="w-full px-5 py-2.5 text-[11px] font-medium text-tempo-600 hover:bg-tempo-50/50 transition-colors flex items-center justify-center gap-1 border-t border-border/60"
+            >
+              {expanded ? 'Show less' : `Show all ${totalItems} insights`}
+              <ChevronRight size={12} className={cn('transition-transform', expanded && 'rotate-90')} />
+            </button>
+          )}
+        </>
       )}
     </div>
   )
