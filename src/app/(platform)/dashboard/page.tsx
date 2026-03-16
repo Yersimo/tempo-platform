@@ -100,11 +100,12 @@ export default function DashboardPage() {
   })()
 
   // Tab-specific subtitle
-  const subtitleKey = dashboardTab === 'me' ? 'subtitleMe' : dashboardTab === 'team' ? 'subtitleTeam' : 'subtitleOrg'
+  const subtitleKey = dashboardTab === 'me' ? 'subtitleMe' : dashboardTab === 'team' ? 'subtitleTeam' : dashboardTab === 'apps' ? 'subtitleMe' : 'subtitleOrg'
 
   const dashboardTabs = [
     { id: 'me', label: t('tabMe') },
     { id: 'team', label: t('tabMyTeam') },
+    { id: 'apps', label: 'My Apps' },
     { id: 'org', label: t('tabOrganization') },
   ]
 
@@ -181,10 +182,8 @@ export default function DashboardPage() {
       {/* Tab Content */}
       {dashboardTab === 'me' && <MyOverviewTab />}
       {dashboardTab === 'team' && <MyTeamTab />}
+      {dashboardTab === 'apps' && <YourAppsGrid />}
       {dashboardTab === 'org' && <OrgTab />}
-
-      {/* Your Apps Grid (Rippling-style) */}
-      <YourAppsGrid />
 
       {/* Widget Customization Modal */}
       {showWidgetModal && (
