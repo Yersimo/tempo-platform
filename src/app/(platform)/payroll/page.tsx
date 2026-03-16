@@ -12,6 +12,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Tabs } from '@/components/ui/tabs'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
@@ -970,20 +971,16 @@ export default function PayrollPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-tempo-600 text-tempo-600' : 'border-transparent text-t3 hover:text-t1 hover:border-border'}`}>
-              <Icon size={16} /> {tab.label}
-              {tab.id === 'approvals' && pendingCount > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-amber-500 text-white rounded-full">{pendingCount}</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <Tabs
+        tabs={tabs.map(tab => ({
+          id: tab.id,
+          label: tab.label,
+          count: tab.id === 'approvals' && pendingCount > 0 ? pendingCount : undefined,
+        }))}
+        active={activeTab}
+        onChange={setActiveTab}
+        className="mb-6"
+      />
 
       {/* ============================================================ */}
       {/* TAB 1: PAY RUNS */}

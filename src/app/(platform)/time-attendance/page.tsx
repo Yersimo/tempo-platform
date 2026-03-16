@@ -12,6 +12,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Tabs } from '@/components/ui/tabs'
 import { TempoBarChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -619,17 +620,12 @@ export default function TimeAttendancePage() {
       />
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 overflow-x-auto border-b border-divider">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-tempo-600 text-tempo-600' : 'border-transparent text-t3 hover:text-t1 hover:border-border'}`}>
-              <Icon size={16} /> {tab.label}
-            </button>
-          )
-        })}
-      </div>
+      <Tabs
+        tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
+        active={activeTab}
+        onChange={setActiveTab}
+        className="mb-6"
+      />
 
       {/* AI Insights */}
       <AIInsightsCard
