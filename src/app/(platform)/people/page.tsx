@@ -22,6 +22,7 @@ import {
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
   Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe, FileCheck,
 } from 'lucide-react'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, exportToExcel, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
@@ -550,12 +551,12 @@ export default function PeoplePage() {
       />
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <ExpandableStats>
         <StatCard label={t('totalEmployees')} value={employees.length} change={`${departments.length} ${t('departments')}`} changeType="neutral" icon={<Users size={20} />} />
         <StatCard label={t('countriesPresent')} value={countries.length} change={t('multiCountry')} changeType="neutral" icon={<Building2 size={20} />} />
         <StatCard label={t('documentsOnFile')} value={employeeDocuments.length} change={`${employeeDocuments.filter(d => d.status === 'expired').length} ${t('expired')}`} changeType={employeeDocuments.filter(d => d.status === 'expired').length > 0 ? 'negative' : 'positive'} icon={<FileText size={20} />} />
         <StatCard label={t('attritionAlerts')} value={highRiskCount} change={t('highRiskEmployees')} changeType={highRiskCount > 3 ? 'negative' : 'neutral'} icon={<AlertTriangle size={20} />} />
-      </div>
+      </ExpandableStats>
 
       <AIInsightsCard
         insights={bottlenecks}
@@ -803,12 +804,12 @@ export default function PeoplePage() {
       {activeTab === 'documents' && (
         <>
           {/* Document Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('totalDocuments')} value={employeeDocuments.length} change={t('allTypes')} changeType="neutral" icon={<FolderOpen size={20} />} />
             <StatCard label={t('validDocuments')} value={employeeDocuments.filter(d => d.status === 'valid').length} change={t('upToDate')} changeType="positive" icon={<FileText size={20} />} />
             <StatCard label={t('expiredDocuments')} value={employeeDocuments.filter(d => d.status === 'expired').length} change={t('needsRenewal')} changeType={employeeDocuments.filter(d => d.status === 'expired').length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
             <StatCard label={t('pendingReview')} value={employeeDocuments.filter(d => d.status === 'pending_review').length} change={t('awaitingAction')} changeType="neutral" icon={<Clock size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {/* Filters */}
           <div className="flex flex-wrap gap-3 mb-4">

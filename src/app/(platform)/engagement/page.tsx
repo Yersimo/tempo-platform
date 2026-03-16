@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoSparkArea, ChartLegend, CHART_COLORS, STATUS_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { HeartPulse, TrendingUp, TrendingDown, Plus, BarChart3, Target, ArrowUpRight, ArrowDownRight, Minus, ClipboardList, ChevronDown, ChevronUp, CheckCircle2, Search, Users, Building2, Globe, Send, FileText, Calendar, Zap, MessageSquareText, Copy, Eye, GripVertical, GitBranch, Trash2, Power, Clock, AlertTriangle, Sparkles, ThumbsUp, ThumbsDown, MinusCircle, Hash, Star, ListChecks, LayoutGrid } from 'lucide-react'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Avatar } from '@/components/ui/avatar'
@@ -481,12 +482,12 @@ export default function EngagementPage() {
       />
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <ExpandableStats>
         <StatCard label={t('engagementScore')} value={avgScore} change={t('orgAverage')} changeType="neutral" icon={<HeartPulse size={20} />} />
         <StatCard label={t('enps')} value={`+${avgENPS}`} change={t('vsLastQuarter')} changeType="positive" icon={<TrendingUp size={20} />} />
         <StatCard label={t('responseRate')} value={`${avgResponse}%`} change={t('aboveTarget')} changeType="positive" />
         <StatCard label={t('activeSurveys')} value={activeSurveys} icon={<BarChart3 size={20} />} />
-      </div>
+      </ExpandableStats>
 
       {/* AI Insights Card */}
       {(driverInsights.length > 0 || trendRaw.insights.length > 0) && (
@@ -630,12 +631,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'builder' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Questions" value={builderQuestions.length} icon={<FileText size={20} />} />
             <StatCard label="With Branching" value={builderQuestions.filter(q => q.branchLogic).length} icon={<GitBranch size={20} />} />
             <StatCard label="Required" value={builderQuestions.filter(q => q.required).length} changeType="neutral" />
             <StatCard label="Templates" value={surveyTemplates.length} icon={<Copy size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Survey Details & Question List */}
@@ -765,12 +766,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'templates' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Total Templates" value={surveyTemplates.length} icon={<Copy size={20} />} />
             <StatCard label="Default Templates" value={surveyTemplates.filter((t: any) => t.isDefault).length} changeType="neutral" />
             <StatCard label="Custom Templates" value={surveyTemplates.filter((t: any) => !t.isDefault).length} changeType="neutral" />
             <StatCard label="Total Usage" value={surveyTemplates.reduce((a: number, t: any) => a + (t.usageCount || 0), 0)} icon={<BarChart3 size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {surveyTemplates.length === 0 ? (
             <Card className="text-center py-16">
@@ -844,12 +845,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'schedules' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Active Schedules" value={surveySchedules.filter((s: any) => s.is_active).length} icon={<Calendar size={20} />} changeType="positive" />
             <StatCard label="Total Schedules" value={surveySchedules.length} changeType="neutral" />
             <StatCard label="Next Run" value={(() => { const next = surveySchedules.filter((s: any) => s.is_active && s.next_run_date).sort((a: any, b: any) => a.next_run_date.localeCompare(b.next_run_date))[0]; return next ? (next as any).next_run_date : 'N/A' })()} changeType="neutral" />
             <StatCard label="Frequencies" value={[...new Set(surveySchedules.map((s: any) => s.frequency))].length} changeType="neutral" />
-          </div>
+          </ExpandableStats>
 
           <Card padding="none" className="mb-6">
             <CardHeader>
@@ -927,12 +928,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'triggers' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Active Triggers" value={surveyTriggers.filter((t: any) => t.is_active).length} icon={<Zap size={20} />} changeType="positive" />
             <StatCard label="Total Triggers" value={surveyTriggers.length} changeType="neutral" />
             <StatCard label="Events Covered" value={[...new Set(surveyTriggers.map((t: any) => t.trigger_event))].length} changeType="neutral" />
             <StatCard label="Recent Firings" value={surveyTriggers.reduce((a: number, t: any) => a + (t.recent_firings?.length || 0), 0)} icon={<Send size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <Card padding="none" className="mb-6">
             <CardHeader>
@@ -1103,12 +1104,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'text-analysis' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Total Responses" value={filteredResponses.length} icon={<MessageSquareText size={20} />} />
             <StatCard label="Positive" value={sentimentCounts.positive} changeType="positive" icon={<ThumbsUp size={20} />} />
             <StatCard label="Neutral" value={sentimentCounts.neutral} changeType="neutral" icon={<MinusCircle size={20} />} />
             <StatCard label="Negative" value={sentimentCounts.negative} changeType="negative" icon={<ThumbsDown size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {/* Filters */}
           <Card className="mb-6">
@@ -1234,12 +1235,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'action-plans' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('planned')} value={actionPlans.filter((ap: any) => ap.status === 'planned').length} changeType="neutral" icon={<ClipboardList size={20} />} />
             <StatCard label={t('inProgress')} value={actionPlans.filter((ap: any) => ap.status === 'in_progress').length} changeType="neutral" icon={<TrendingUp size={20} />} />
             <StatCard label={t('completed')} value={actionPlans.filter((ap: any) => ap.status === 'completed').length} changeType="positive" icon={<CheckCircle2 size={20} />} />
             <StatCard label={t('activeSurveys')} value={actionPlans.length} changeType="neutral" icon={<Target size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <Card padding="none" className="mb-6">
             <CardHeader>
@@ -1497,12 +1498,12 @@ export default function EngagementPage() {
       {/* ============================================================ */}
       {activeTab === 'enps' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('enps')} value={`+${avgENPS}`} change={t('orgAverage')} changeType="positive" icon={<TrendingUp size={20} />} />
             <StatCard label={t('promoters')} value={`${Math.round(avgENPS * 0.8 + 35)}%`} changeType="positive" />
             <StatCard label={t('passives')} value={`${Math.round(40 - avgENPS * 0.3)}%`} changeType="neutral" />
             <StatCard label={t('detractors')} value={`${Math.max(5, Math.round(25 - avgENPS * 0.5))}%`} changeType="negative" />
-          </div>
+          </ExpandableStats>
 
           {/* eNPS Org Donut */}
           <Card className="mb-6">

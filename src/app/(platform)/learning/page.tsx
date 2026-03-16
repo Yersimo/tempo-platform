@@ -30,6 +30,7 @@ import ScenarioCards from '@/components/learning/scenario-cards'
 import SmartReviews from '@/components/learning/smart-reviews'
 import InPersonEvents from '@/components/learning/in-person-events'
 import VersionHistory from '@/components/learning/version-history'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
@@ -2758,12 +2759,12 @@ window.onload=function(){
           </div>
 
           {/* Compliance Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label={t('complianceRate')} value={`${complianceStats.complianceRate}%`} icon={<ShieldCheck size={20} />} />
             <StatCard label={t('mandatoryCourses')} value={complianceStats.mandatoryCount} icon={<Shield size={20} />} />
             <StatCard label={t('overdueTrainings')} value={complianceStats.overdueCount} change={complianceStats.overdueCount > 0 ? 'Action required' : 'All clear'} changeType={complianceStats.overdueCount > 0 ? 'negative' : 'positive'} />
             <StatCard label={t('upcomingDue')} value={complianceStats.upcomingCount} change="Next 30 days" changeType="neutral" />
-          </div>
+          </ExpandableStats>
 
           {/* Compliance Trainings */}
           <Card padding="none">
@@ -5040,12 +5041,12 @@ window.onload=function(){
             </div>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label="Total Certifications" value={certifications.length} icon={<Award size={20} />} />
             <StatCard label="Valid" value={certifications.filter(c => c.status === 'valid').length} icon={<CheckCircle size={20} />} />
             <StatCard label="Expiring Soon" value={certifications.filter(c => c.status === 'expiring_soon').length} icon={<AlertTriangle size={20} />} />
             <StatCard label="Expired" value={certifications.filter(c => c.status === 'expired').length} icon={<Shield size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {certifications.length === 0 ? (
             <Card>
@@ -5111,12 +5112,12 @@ window.onload=function(){
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label="Avg Retention" value={`${spacedRepetitionData.length > 0 ? Math.round(spacedRepetitionData.reduce((a, s) => a + s.retentionScore, 0) / spacedRepetitionData.length) : 0}%`} icon={<Brain size={20} />} />
             <StatCard label="Needs Review" value={spacedRepetitionData.filter(s => s.needsReview).length} icon={<AlertTriangle size={20} />} />
             <StatCard label="Strong Retention" value={spacedRepetitionData.filter(s => s.retentionScore >= 80).length} icon={<TrendingUp size={20} />} />
             <StatCard label="Courses Completed" value={spacedRepetitionData.length} icon={<CheckCircle size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {spacedRepetitionData.length === 0 ? (
             <Card>
@@ -5289,12 +5290,12 @@ window.onload=function(){
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label="Total Requests" value={extRequests.length} icon={<Briefcase size={20} />} />
             <StatCard label="Pending" value={extRequests.filter(r => r.status === 'pending' || r.status === 'manager_approved').length} icon={<Clock size={20} />} change="Awaiting approval" changeType="neutral" />
             <StatCard label="Approved" value={extRequests.filter(r => r.status === 'approved').length} icon={<CheckCircle size={20} />} change="Enrolled" changeType="positive" />
             <StatCard label="Total Cost" value={`GHS ${extRequests.filter(r => r.status !== 'rejected').reduce((s, r) => s + (r.cost || 0), 0).toLocaleString()}`} icon={<TrendingUp size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {/* Requests Table */}
           <Card padding="none">

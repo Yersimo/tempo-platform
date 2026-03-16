@@ -14,6 +14,7 @@ import { useTempo } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
+import { getAllAppModules } from '@/components/layout/sidebar'
 import { EmployeeDashboard } from '@/components/employee-dashboard'
 import { OrgTab } from '@/components/dashboard/org-tab'
 import { MyOverviewTab } from '@/components/dashboard/my-overview-tab'
@@ -183,6 +184,9 @@ export default function DashboardPage() {
       {dashboardTab === 'team' && <MyTeamTab />}
       {dashboardTab === 'org' && <OrgTab />}
 
+      {/* Your Apps Grid (Rippling-style) */}
+      <YourAppsGrid />
+
       {/* Widget Customization Modal */}
       {showWidgetModal && (
         <WidgetCustomizationModal
@@ -282,6 +286,32 @@ function WidgetCustomizationModal({
         <Button onClick={onClose}>{t('saveLayout')}</Button>
       </div>
     </Modal>
+  )
+}
+
+// Rippling-style "Your Apps" grid
+function YourAppsGrid() {
+  const allApps = getAllAppModules()
+  return (
+    <div className="mt-8">
+      <h2 className="text-lg font-semibold text-t1 mb-4">Your Apps</h2>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
+        {allApps.map(app => (
+          <Link
+            key={app.href}
+            href={app.href}
+            className="group flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-surface-secondary transition-colors"
+          >
+            <div className="w-12 h-12 rounded-xl bg-chrome flex items-center justify-center text-tempo-400 group-hover:scale-105 transition-transform">
+              {app.icon}
+            </div>
+            <span className="text-[0.7rem] text-t2 text-center leading-tight font-medium truncate w-full">
+              {app.label}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
   )
 }
 

@@ -18,6 +18,7 @@ import {
 import { useTempo } from '@/lib/store'
 import { Header } from '@/components/layout/header'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 
 const ITEMS_PER_PAGE = 8
 
@@ -474,12 +475,12 @@ export default function CompliancePage() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label="Total Requirements" value={totalReqs} icon={<ShieldCheck size={20} />} />
             <StatCard label="Compliance Score" value={`${complianceScore}%`} icon={<CheckCircle size={20} />} change={`${complianceScore}%`} changeType={complianceScore >= 80 ? 'positive' : 'negative'} />
             <StatCard label="At Risk" value={atRiskCount} icon={<AlertTriangle size={20} />} />
             <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Compliance Score Gauge */}
@@ -962,12 +963,12 @@ export default function CompliancePage() {
       {activeTab === 'auto_detection' && (
         <div className="space-y-6">
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ExpandableStats>
             <StatCard label="Total Scans" value={adTotalScans} icon={<Radar size={20} />} />
             <StatCard label="Issues Found" value={adIssuesFound} icon={<AlertTriangle size={20} />} />
             <StatCard label="Auto-Resolved" value={adAutoResolved} icon={<CheckCircle size={20} />} change={adTotalScans > 0 ? `${Math.round((adAutoResolved / adTotalScans) * 100)}%` : '0%'} changeType="positive" />
             <StatCard label="Pending Review" value={adPendingReview} icon={<Clock size={20} />} change={adPendingReview > 0 ? `${adPendingReview} items` : 'Clear'} changeType={adPendingReview > 0 ? 'negative' : 'positive'} />
-          </div>
+          </ExpandableStats>
 
           {/* Run Scan Button */}
           <div className="flex items-center justify-between">

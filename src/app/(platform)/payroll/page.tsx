@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
 import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock } from 'lucide-react'
+import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { calculateLeavePayrollImpact, getStatutoryPayRates, type LeaveRecord, type LeavePayrollImpact } from '@/lib/payroll/leave-integration'
 import { calculateFinalPay, getSeveranceRules, type FinalPayInput, type FinalPayResult } from '@/lib/payroll/final-pay'
 import { checkAutoEnrolmentEligibility, getAutoEnrolmentRules, type AutoEnrolmentResult } from '@/lib/payroll/pension-auto-enroll'
@@ -22,6 +23,7 @@ import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
+import { ValidationChecklist } from '@/components/ui/validation-checklist'
 import { isEvaluatorAccount, getEvaluatorConfig, ghanaEvaluatorEmployees, getPayrollGroupScenarios, SAMUEL_PAYROLL_GROUP, MEISSA_PAYROLL_GROUP, ghanaEmployeeSalaries, ghanaEmployeeBankDetails } from '@/lib/evaluator-demo-data'
 import { EvaluatorWalkthrough, ResumeWalkthroughButton } from '@/components/payroll/evaluator-walkthrough'
 import { PayrollCompletionSummary } from '@/components/payroll/evaluator-completion'
@@ -986,12 +988,12 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'pay-runs' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('totalPayroll')} value={`$${(totalPayroll / 100_000_000).toFixed(1)}M`} change={t('allRuns')} changeType="neutral" icon={<Wallet size={20} />} />
             <StatCard label={t('lastPayRun')} value={lastRun ? `$${(lastRun.total_gross / 100_000_000).toFixed(2)}M` : '-'} change={lastRun?.period || t('noRunsYet')} changeType="neutral" icon={<DollarSign size={20} />} />
             <StatCard label={tc('employees')} value={lastRun?.employee_count || employees.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} href="/people" />
             <StatCard label={t('deductions')} value={`$${(totalDeductions / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <AIInsightsCard
             insights={payrollInsights}
@@ -1328,12 +1330,12 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'employee-payroll' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('totalLaborCost')} value={`$${(mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
             <StatCard label={t('avgSalary')} value={`$${mergedEntries.length > 0 ? (mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / mergedEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
             <StatCard label={t('taxBurden')} value={`${mergedEntries.length > 0 ? Math.round(mergedEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / Math.max(1, mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0)) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
             <StatCard label={tc('employees')} value={mergedEntries.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {/* Search & Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
@@ -1418,12 +1420,12 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'approvals' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label="Pending HR" value={pendingHRRuns.length} change="Awaiting HR review" changeType={pendingHRRuns.length > 0 ? 'negative' : 'positive'} icon={<UserCheck size={20} />} />
             <StatCard label="Pending Finance" value={pendingFinanceRuns.length} change="Awaiting Finance review" changeType={pendingFinanceRuns.length > 0 ? 'negative' : 'positive'} icon={<Building2 size={20} />} />
             <StatCard label="Approved" value={payrollRuns.filter(r => r.status === 'approved').length} change="Ready for processing" changeType="neutral" icon={<CheckCircle2 size={20} />} />
             <StatCard label="Total Runs" value={payrollRuns.length} change="All statuses" changeType="neutral" icon={<Wallet size={20} />} />
-          </div>
+          </ExpandableStats>
 
           {pendingCount === 0 ? (
             <Card className="text-center py-12">
@@ -1575,12 +1577,12 @@ export default function PayrollPage() {
             {reconData && (
               <>
                 {/* Summary cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <ExpandableStats>
                   <StatCard label="Previous Total Gross" value={fmtCents(reconData.totalPreviousGross)} change={reconData.previousPeriod} changeType="neutral" icon={<DollarSign size={20} />} />
                   <StatCard label="Current Total Gross" value={fmtCents(reconData.totalCurrentGross)} change={reconData.currentPeriod} changeType="neutral" icon={<DollarSign size={20} />} />
                   <StatCard label="Total Variance" value={fmtCents(reconData.totalVariance)} change={`${(reconData.totalVariancePercent * 100).toFixed(1)}%`} changeType={reconData.totalVariance > 0 ? 'negative' : reconData.totalVariance < 0 ? 'positive' : 'neutral'} icon={<BarChart3 size={20} />} />
                   <StatCard label="Significant Changes" value={reconData.significantVarianceCount + reconData.newEmployeeCount + reconData.exitedEmployeeCount} change={`${reconData.newEmployeeCount} new, ${reconData.exitedEmployeeCount} exited`} changeType={reconData.significantVarianceCount > 0 ? 'negative' : 'neutral'} icon={<AlertTriangle size={20} />} />
-                </div>
+                </ExpandableStats>
 
                 {/* Export button */}
                 <div className="flex justify-end mb-3">
@@ -1736,12 +1738,12 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'analytics' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('totalLaborCost')} value={`$${(totalPayroll / 100_000_000).toFixed(2)}M`} change={t('allRuns')} changeType="neutral" icon={<DollarSign size={20} />} />
             <StatCard label={t('avgSalary')} value={`$${employeePayrollEntries.length > 0 ? (employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / employeePayrollEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
             <StatCard label={t('taxBurden')} value={`${employeePayrollEntries.length > 0 ? Math.round(employeePayrollEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / Math.max(1, employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0)) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
             <StatCard label={t('monthOverMonth')} value={`${trends.monthOverMonth > 0 ? '+' : ''}${trends.monthOverMonth}%`} change={payrollRuns.length >= 2 ? `${payrollRuns.length} ${t('payRuns').toLowerCase()}` : ''} changeType={trends.monthOverMonth > 3 ? 'negative' : trends.monthOverMonth < 0 ? 'positive' : 'neutral'} icon={<BarChart3 size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card>
@@ -1822,17 +1824,15 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'compliance' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="col-span-1">
-              <Card className="text-center py-4">
-                <p className="text-xs text-t3 mb-2">{t('complianceScore')}</p>
-                <AIScoreBadge score={healthScore} size="lg" showBreakdown />
-              </Card>
-            </div>
+          <ExpandableStats>
+            <Card className="text-center py-4">
+              <p className="text-xs text-t3 mb-2">{t('complianceScore')}</p>
+              <AIScoreBadge score={healthScore} size="lg" showBreakdown />
+            </Card>
             <StatCard label={t('openIssues')} value={complianceIssues.filter(i => (i as any).status !== 'resolved').length} change={`${complianceIssues.filter(i => (i as any).severity === 'critical' && (i as any).status !== 'resolved').length} ${t('critical').toLowerCase()}`} changeType={complianceIssues.filter(i => (i as any).severity === 'critical' && (i as any).status !== 'resolved').length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
             <StatCard label={t('urgentItems')} value={complianceRisks.urgentCount} change={complianceRisks.nextDeadline ? `${t('nextDeadline')}: ${complianceRisks.nextDeadline}` : ''} changeType={complianceRisks.urgentCount > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
             <StatCard label={t('taxFilings')} value={`${taxFilings.filter(f => (f as any).status === 'filed').length}/${taxFilings.length}`} change={`${taxFilings.filter(f => (f as any).status === 'overdue').length} ${t('overdue').toLowerCase()}`} changeType={taxFilings.filter(f => (f as any).status === 'overdue').length > 0 ? 'negative' : 'neutral'} icon={<FileText size={20} />} />
-          </div>
+          </ExpandableStats>
 
           <Card padding="none" className="mb-6">
             <CardHeader><CardTitle>{t('complianceIssues')}</CardTitle></CardHeader>
@@ -1924,7 +1924,7 @@ export default function PayrollPage() {
       {/* ============================================================ */}
       {activeTab === 'contractors' && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ExpandableStats>
             <StatCard label={t('totalContractors')} value={contractorPayments.length} change={t('allCountries')} changeType="neutral" icon={<Briefcase size={20} />} />
             <StatCard label={t('pendingPayments')} value={contractorPayments.filter(cp => (cp as any).status === 'pending' || (cp as any).status === 'approved').length} change={`$${(contractorPayments.filter(cp => (cp as any).status !== 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} changeType="neutral" icon={<Clock size={20} />} />
             <StatCard label={t('totalPaidThisMonth')} value={`$${(contractorPayments.filter(cp => (cp as any).status === 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
@@ -1932,7 +1932,7 @@ export default function PayrollPage() {
               <p className="text-xs text-t3 mb-1">{t('contractorRiskScore')}</p>
               <p className={`text-2xl font-bold ${contractorRisk.riskScore > 50 ? 'text-error' : contractorRisk.riskScore > 30 ? 'text-amber-500' : 'text-emerald-500'}`}>{contractorRisk.riskScore}/100</p>
             </Card>
-          </div>
+          </ExpandableStats>
 
           <Card padding="none" className="mb-6">
             <CardHeader>
@@ -2486,43 +2486,29 @@ export default function PayrollPage() {
       </Modal>
 
       {/* Validation Warning Modal */}
-      <Modal open={showValidationWarning} onClose={() => { setShowValidationWarning(false); setIsProcessing(false) }} title="Payroll Validation Warning">
+      <Modal open={showValidationWarning} onClose={() => { setShowValidationWarning(false); setIsProcessing(false) }} title="Payroll Validation">
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">Some employees are ineligible for this pay run</p>
-              <p className="text-xs text-amber-700 mt-1">The following employees will be excluded if you proceed.</p>
-            </div>
-          </div>
+          {/* Validation checklist summary */}
+          {validationResult && (() => {
+            const checkItems = [
+              (validationResult.eligible || []).length > 0
+                ? { label: `${validationResult.eligible.length} employee${validationResult.eligible.length !== 1 ? 's' : ''} eligible for pay run`, passed: true }
+                : { label: 'No eligible employees found', passed: false, description: 'Add salary records for employees and re-process later' },
+              ...(validationResult.ineligible || []).map(emp => ({
+                label: emp.name,
+                passed: false,
+                description: emp.reason,
+              })),
+            ]
+            return <ValidationChecklist items={checkItems} />
+          })()}
+          {/* Detailed ineligible table (collapsible context) */}
           {validationResult?.ineligible && validationResult.ineligible.length > 0 && (
-            <div className="overflow-x-auto max-h-48 overflow-y-auto border border-border rounded-lg">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-divider bg-canvas sticky top-0">
-                    <th className="text-left px-3 py-2 font-medium text-t3">Employee</th>
-                    <th className="text-left px-3 py-2 font-medium text-t3">Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {validationResult.ineligible.map(emp => (
-                    <tr key={emp.id} className="hover:bg-canvas/50">
-                      <td className="px-3 py-2 text-t1 font-medium">{emp.name}</td>
-                      <td className="px-3 py-2 text-amber-700">{emp.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-700">
+                {validationResult.ineligible.length} ineligible employee{validationResult.ineligible.length !== 1 ? 's' : ''} will be skipped if you proceed.
+              </p>
             </div>
-          )}
-          {validationResult?.eligible && validationResult.eligible.length > 0 ? (
-            <p className="text-sm text-green-700 font-medium">
-              {validationResult.eligible.length} eligible employee{validationResult.eligible.length !== 1 ? 's' : ''} will be included in this pay run. Ineligible employees will be skipped.
-            </p>
-          ) : (
-            <p className="text-sm text-amber-700">
-              No eligible employees found. You can still create the pay run — add salary records for employees and re-process later.
-            </p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => { setShowValidationWarning(false); setIsProcessing(false) }}>{tc('cancel')}</Button>
