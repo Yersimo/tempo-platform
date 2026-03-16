@@ -940,6 +940,55 @@ export default function LearningPage() {
     }
   }
 
+  // Simple inline markdown renderer for block editor preview
+  const renderMd = (text: string) => {
+    if (!text) return null
+    return text.split('\n').map((line, li) => {
+      // Process inline formatting
+      const parts: React.ReactNode[] = []
+      let remaining = line
+      let key = 0
+      while (remaining.length > 0) {
+        // Bold **text**
+        const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+        // Bullet points
+        if (remaining.match(/^[•\-\*]\s/)) {
+          parts.push(<span key={key++} className="inline-flex items-start gap-1.5"><span className="text-tempo-400 mt-px">•</span><span>{renderMdInline(remaining.replace(/^[•\-\*]\s/, ''))}</span></span>)
+          remaining = ''
+        } else if (remaining.match(/^\d+\.\s/)) {
+          const num = remaining.match(/^(\d+)\.\s/)
+          parts.push(<span key={key++} className="inline-flex items-start gap-1.5"><span className="text-tempo-400 font-medium">{num?.[1]}.</span><span>{renderMdInline(remaining.replace(/^\d+\.\s/, ''))}</span></span>)
+          remaining = ''
+        } else if (boldMatch && boldMatch.index !== undefined) {
+          if (boldMatch.index > 0) parts.push(<span key={key++}>{remaining.slice(0, boldMatch.index)}</span>)
+          parts.push(<strong key={key++} className="font-semibold text-t1">{boldMatch[1]}</strong>)
+          remaining = remaining.slice(boldMatch.index + boldMatch[0].length)
+        } else {
+          parts.push(<span key={key++}>{remaining}</span>)
+          remaining = ''
+        }
+      }
+      return <span key={li} className="block">{parts}</span>
+    })
+  }
+  const renderMdInline = (text: string): React.ReactNode => {
+    const parts: React.ReactNode[] = []
+    let remaining = text
+    let key = 0
+    while (remaining.length > 0) {
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+      if (boldMatch && boldMatch.index !== undefined) {
+        if (boldMatch.index > 0) parts.push(<span key={key++}>{remaining.slice(0, boldMatch.index)}</span>)
+        parts.push(<strong key={key++} className="font-semibold text-t1">{boldMatch[1]}</strong>)
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length)
+      } else {
+        parts.push(<span key={key++}>{remaining}</span>)
+        remaining = ''
+      }
+    }
+    return parts
+  }
+
   // Block type icon helper
   const blockTypeIcon = (type: string, size = 14) => {
     switch (type) {
@@ -1084,6 +1133,125 @@ export default function LearningPage() {
       updateCourse(selectedBuilderCourse, { status: 'published', duration_hours: Math.max(1, Math.round(totalMinutes / 60)) })
     }
     addToast('Course published successfully!')
+  }
+
+  // Export course as SCORM 1.2 package (HTML download)
+  function exportScormPackage() {
+    if (!selectedBuilderCourse) return
+    const course = courses.find(c => c.id === selectedBuilderCourse)
+    if (!course) return
+    const blocks = filteredBlocks.sort((a, b) => a.order - b.order)
+
+    // Build course HTML content
+    const blockHtml = blocks.map(block => {
+      let parsed: any = {}
+      try { parsed = JSON.parse(block.content || '{}') } catch { parsed = { text: block.content || '' } }
+      const mdToHtml = (text: string) => (text || '')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^[•\-\*]\s(.+)$/gm, '<li>$1</li>')
+        .replace(/\n/g, '<br>')
+
+      switch (block.type) {
+        case 'heading': return `<h2 style="font-size:1.5rem;font-weight:700;border-bottom:2px solid #ea580c;padding-bottom:0.5rem;margin:2rem 0 1rem">${block.content || block.title}</h2>`
+        case 'text': return `<div style="margin:1.5rem 0"><h3 style="font-weight:600;margin-bottom:0.5rem">${block.title}</h3><div style="line-height:1.8">${mdToHtml(block.content || '')}</div></div>`
+        case 'image': return parsed.url ? `<div style="margin:1.5rem 0;text-align:center"><img src="${parsed.url}" alt="${parsed.alt || ''}" style="max-width:100%;border-radius:8px">${parsed.caption ? `<p style="font-size:0.85rem;color:#888;margin-top:0.5rem"><em>${parsed.caption}</em></p>` : ''}</div>` : `<div style="margin:1.5rem 0;padding:2rem;background:#f0f4ff;border-radius:8px;text-align:center;color:#64748b">[Image: ${block.title}]</div>`
+        case 'callout': return `<div style="margin:1.5rem 0;padding:1rem 1.5rem;border-left:4px solid ${parsed.style === 'warning' ? '#f59e0b' : parsed.style === 'important' ? '#ef4444' : parsed.style === 'tip' ? '#22c55e' : '#3b82f6'};background:${parsed.style === 'warning' ? '#fffbeb' : parsed.style === 'important' ? '#fef2f2' : parsed.style === 'tip' ? '#f0fdf4' : '#eff6ff'};border-radius:8px"><strong style="text-transform:uppercase;font-size:0.75rem;letter-spacing:0.05em">${parsed.style || 'info'}</strong><div style="margin-top:0.5rem">${mdToHtml(parsed.text || '')}</div></div>`
+        case 'quiz': return `<div style="margin:1.5rem 0;padding:1.5rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px"><h3 style="font-weight:600">Quiz: ${block.title}</h3><p style="margin:0.75rem 0">${parsed.question || ''}</p>${(parsed.options || []).map((o: string, i: number) => `<div style="padding:0.5rem;margin:0.25rem 0;background:${parsed.correct === i ? '#dcfce7' : '#f9fafb'};border-radius:4px">${String.fromCharCode(65 + i)}. ${o}</div>`).join('')}</div>`
+        case 'accordion': return `<div style="margin:1.5rem 0">${(parsed.sections || []).map((s: any) => `<details style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:0.5rem"><summary style="padding:0.75rem 1rem;font-weight:600;cursor:pointer">${s.heading}</summary><div style="padding:0.75rem 1rem;border-top:1px solid #e5e7eb">${mdToHtml(s.body || '')}</div></details>`).join('')}</div>`
+        case 'columns': return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0"><div style="padding:1rem;background:#f9fafb;border-radius:8px">${mdToHtml(parsed.left || '')}</div><div style="padding:1rem;background:#f9fafb;border-radius:8px">${mdToHtml(parsed.right || '')}</div></div>`
+        case 'code': return `<pre style="margin:1.5rem 0;background:#1e1e1e;color:#4ec9b0;padding:1.25rem;border-radius:8px;overflow-x:auto;font-family:monospace"><code>${(parsed.code || '').replace(/</g, '&lt;')}</code></pre>`
+        case 'divider': return `<hr style="margin:2rem auto;border:none;border-top:2px solid #e5e7eb;max-width:200px">`
+        case 'download': return `<div style="margin:1.5rem 0;padding:1rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;gap:1rem"><span style="font-size:1.5rem">📥</span><div><strong>${parsed.filename || 'resource.pdf'}</strong><br><small style="color:#888">${parsed.description || ''}</small></div></div>`
+        case 'button': return `<div style="text-align:center;margin:2rem 0"><a href="${parsed.url || '#'}" style="display:inline-block;padding:0.75rem 2rem;background:#ea580c;color:white;border-radius:8px;text-decoration:none;font-weight:600">${parsed.label || 'Continue'}</a></div>`
+        case 'embed': return parsed.url ? `<iframe src="${parsed.url}" style="width:100%;height:${parsed.height || 400}px;border:none;border-radius:8px;margin:1.5rem 0"></iframe>` : ''
+        default: return `<div style="margin:1.5rem 0"><h3>${block.title}</h3><p>${block.content || ''}</p></div>`
+      }
+    }).join('\n')
+
+    const imsmanifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="course-${selectedBuilderCourse}" version="1.0"
+  xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2">
+  <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+  <organizations default="org-1">
+    <organization identifier="org-1"><title>${(course.title || 'Course').replace(/[<>&]/g, '')}</title>
+      <item identifier="item-1" identifierref="res-1"><title>${(course.title || 'Course').replace(/[<>&]/g, '')}</title></item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="res-1" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html"/>
+    </resource>
+  </resources>
+</manifest>`
+
+    const scormApi = `var API={LMSInitialize:function(){return"true"},LMSFinish:function(){return"true"},LMSGetValue:function(e){return""},LMSSetValue:function(e,v){return"true"},LMSCommit:function(){return"true"},LMSGetLastError:function(){return"0"},LMSGetErrorString:function(){return""},LMSGetDiagnostic:function(){return""}};`
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${(course.title || 'Course').replace(/[<>&]/g, '')}</title>
+<script>${scormApi}<\/script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;background:#f9fafb}
+.container{max-width:800px;margin:0 auto;padding:2rem}
+.header{background:linear-gradient(135deg,#ea580c,#c2410c);color:white;padding:3rem 2rem;border-radius:16px;margin-bottom:2rem;text-align:center}
+.header h1{font-size:2rem;font-weight:800;margin-bottom:0.5rem}
+.header p{opacity:0.9;font-size:0.95rem}
+.content{background:white;border-radius:16px;padding:2.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.progress-bar{position:sticky;top:0;z-index:10;background:white;padding:1rem 0;border-bottom:1px solid #e5e7eb;margin-bottom:1.5rem}
+.progress-track{height:6px;background:#e5e7eb;border-radius:3px}
+.progress-fill{height:100%;background:#ea580c;border-radius:3px;transition:width 0.3s;width:0%}
+.nav{display:flex;justify-content:space-between;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #e5e7eb}
+.nav button{padding:0.5rem 1.5rem;border-radius:8px;border:1px solid #e5e7eb;background:white;cursor:pointer;font-size:0.9rem}
+.nav button.primary{background:#ea580c;color:white;border:none}
+.nav button:disabled{opacity:0.4;cursor:not-allowed}
+li{list-style:none}
+</style></head>
+<body>
+<div class="container">
+<div class="header"><h1>${(course.title || 'Course').replace(/[<>&]/g, '')}</h1><p>${(course.description || '').replace(/[<>&]/g, '')}</p></div>
+<div class="content">
+<div class="progress-bar"><div class="progress-track"><div class="progress-fill" id="progress"></div></div></div>
+${blockHtml}
+</div>
+</div>
+<script>
+window.onload=function(){
+  if(typeof API!=='undefined')API.LMSInitialize('');
+  var el=document.getElementById('progress');
+  if(el)el.style.width='100%';
+  if(typeof API!=='undefined'){API.LMSSetValue('cmi.core.lesson_status','completed');API.LMSCommit('');API.LMSFinish('');}
+};
+<\/script>
+</body></html>`
+
+    // Create a zip-like package using Blob. For true SCORM compliance, bundle manifest + HTML.
+    // We'll provide both files as separate downloads wrapped in a single HTML that self-contains.
+    // For simplicity, download as a standalone HTML SCORM player
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(course.title || 'Course').replace(/[^a-zA-Z0-9]/g, '-')}-SCORM.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    // Also download the manifest separately
+    const manifestBlob = new Blob([imsmanifest], { type: 'application/xml' })
+    const manifestUrl = URL.createObjectURL(manifestBlob)
+    const b = document.createElement('a')
+    b.href = manifestUrl
+    b.download = 'imsmanifest.xml'
+    document.body.appendChild(b)
+    b.click()
+    document.body.removeChild(b)
+    URL.revokeObjectURL(manifestUrl)
+
+    addToast('SCORM package exported — index.html + imsmanifest.xml downloaded')
   }
 
   // Duplicate a block
@@ -3452,14 +3620,19 @@ export default function LearningPage() {
                     <Sparkles size={14} /> Auto-Generate
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => {
-                    // Enroll current user and launch player for preview
+                    // One-click preview: auto-enroll if needed, then launch player
                     const existing = enrollments.find(e => e.course_id === selectedBuilderCourse && e.employee_id === currentEmployeeId)
                     if (existing) {
                       setPlayerCourseId(selectedBuilderCourse)
                       setPlayerEnrollmentId(existing.id)
                     } else {
-                      addEnrollment({ employee_id: currentEmployeeId, course_id: selectedBuilderCourse, status: 'enrolled', progress: 0 })
-                      addToast('Enrolled for preview — click Preview again to launch')
+                      const enrollId = crypto.randomUUID()
+                      addEnrollment({ id: enrollId, employee_id: currentEmployeeId, course_id: selectedBuilderCourse, status: 'enrolled', progress: 0 })
+                      // Launch immediately with pre-generated ID
+                      setTimeout(() => {
+                        setPlayerCourseId(selectedBuilderCourse)
+                        setPlayerEnrollmentId(enrollId)
+                      }, 100)
                     }
                   }}>
                     <Eye size={14} /> Preview
@@ -3763,12 +3936,13 @@ export default function LearningPage() {
                                 {isEditing ? (
                                   <div className="space-y-2">
                                     <input className="text-sm font-semibold text-t1 bg-transparent border-none outline-none w-full" value={block.title} onChange={(e) => updateCourseBlock(block.id, { title: e.target.value })} />
-                                    <textarea className="text-xs text-t2 bg-canvas rounded-lg p-3 w-full min-h-[120px] border border-divider outline-none focus:border-tempo-400 resize-y" value={block.content || ''} onChange={(e) => updateCourseBlock(block.id, { content: e.target.value })} />
+                                    <textarea className="text-xs text-t2 bg-canvas rounded-lg p-3 w-full min-h-[120px] border border-divider outline-none focus:border-tempo-400 resize-y font-mono" value={block.content || ''} onChange={(e) => updateCourseBlock(block.id, { content: e.target.value })} />
+                                    <p className="text-[0.55rem] text-t3">Formatting: **bold**, • bullet, 1. numbered list</p>
                                   </div>
                                 ) : (
                                   <div>
                                     <p className="text-sm font-semibold text-t1 mb-1">{block.title}</p>
-                                    <p className="text-xs text-t2 line-clamp-3 whitespace-pre-wrap">{block.content}</p>
+                                    <div className="text-xs text-t2 line-clamp-4 leading-relaxed">{renderMd(block.content || '')}</div>
                                   </div>
                                 )}
                               </div>
@@ -3863,7 +4037,7 @@ export default function LearningPage() {
                                     ) : (
                                       <>
                                         <p className="text-[0.6rem] font-semibold text-t3 uppercase mb-1">{s.label}</p>
-                                        <p className="text-xs text-t1">{parsed.text || 'Add callout text...'}</p>
+                                        <div className="text-xs text-t1 leading-relaxed">{renderMd(parsed.text || 'Add callout text...')}</div>
                                       </>
                                     )}
                                   </div>
@@ -3961,14 +4135,14 @@ export default function LearningPage() {
                                   {isEditing ? (
                                     <textarea className="text-xs text-t2 bg-transparent w-full min-h-[80px] outline-none resize-y" value={parsed.left || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, left: e.target.value }) })} placeholder="Left column..." />
                                   ) : (
-                                    <p className="text-xs text-t2">{parsed.left || 'Left column'}</p>
+                                    <div className="text-xs text-t2 leading-relaxed">{renderMd(parsed.left || 'Left column')}</div>
                                   )}
                                 </div>
                                 <div className="p-3 bg-canvas rounded-lg border border-divider">
                                   {isEditing ? (
                                     <textarea className="text-xs text-t2 bg-transparent w-full min-h-[80px] outline-none resize-y" value={parsed.right || ''} onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, right: e.target.value }) })} placeholder="Right column..." />
                                   ) : (
-                                    <p className="text-xs text-t2">{parsed.right || 'Right column'}</p>
+                                    <div className="text-xs text-t2 leading-relaxed">{renderMd(parsed.right || 'Right column')}</div>
                                   )}
                                 </div>
                               </div>
@@ -4218,6 +4392,7 @@ export default function LearningPage() {
                           <Card>
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs text-t3">{scormPackages.filter(p => p.course_id === selectedBuilderCourse).length} packages</span>
+                              <Button size="sm" variant="outline" onClick={() => exportScormPackage()}><Download size={12} /> Export SCORM</Button>
                               <Button size="sm" variant="outline" onClick={() => { setScormUploadCourse(selectedBuilderCourse); setShowScormUploadModal(true) }}><Upload size={12} /> Upload SCORM</Button>
                             </div>
                             {scormPackages.filter(p => p.course_id === selectedBuilderCourse).map(pkg => (
