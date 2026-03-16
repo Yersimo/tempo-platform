@@ -509,21 +509,24 @@ export default function PayrollPage() {
     setIsProcessing(true)
     setProcessError(null)
     try {
-      // First validate
+      // First validate (non-blocking — if validation fetch fails, proceed anyway)
       const countryCode = resolveCountryCode(payRunForm.country)
-      const valRes = await fetch(`/api/payroll?action=validate-run&country=${countryCode}`)
-      if (valRes.ok) {
-        const validation = await valRes.json()
-        if (validation.ineligible?.length > 0) {
-          setValidationResult(validation)
-          setShowValidationWarning(true)
-          setIsProcessing(false)
-          return
+      try {
+        const valRes = await fetch(`/api/payroll?action=validate-run&country=${countryCode}`)
+        if (valRes.ok) {
+          const validation = await valRes.json()
+          if (validation.ineligible?.length > 0) {
+            setValidationResult(validation)
+            setShowValidationWarning(true)
+            setIsProcessing(false)
+            setSaving(false)
+            return
+          }
         }
-      }
+      } catch { /* validation is optional — proceed to pay run */ }
       await executePayRun()
     } catch (err: any) {
-      setProcessError(err.message || 'Validation failed')
+      setProcessError(err.message || 'Failed to process payroll')
       setIsProcessing(false)
     } finally {
       setSaving(false)
