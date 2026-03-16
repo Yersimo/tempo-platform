@@ -2515,15 +2515,21 @@ export default function PayrollPage() {
               </table>
             </div>
           )}
-          {validationResult?.eligible && (
-            <p className="text-xs text-t3">
-              {validationResult.eligible.length} eligible employee{validationResult.eligible.length !== 1 ? 's' : ''} will be included in this pay run.
+          {validationResult?.eligible && validationResult.eligible.length > 0 ? (
+            <p className="text-sm text-green-700 font-medium">
+              {validationResult.eligible.length} eligible employee{validationResult.eligible.length !== 1 ? 's' : ''} will be included in this pay run. Ineligible employees will be skipped.
+            </p>
+          ) : (
+            <p className="text-sm text-amber-700">
+              No eligible employees found. You can still create the pay run — add salary records for employees and re-process later.
             </p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => { setShowValidationWarning(false); setIsProcessing(false) }}>{tc('cancel')}</Button>
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => executePayRun()}>
-              Proceed Anyway
+            <Button onClick={() => { setShowValidationWarning(false); executePayRun() }}>
+              {validationResult?.eligible && validationResult.eligible.length > 0
+                ? `Proceed with ${validationResult.eligible.length} Employee${validationResult.eligible.length !== 1 ? 's' : ''}`
+                : 'Create Pay Run Anyway'}
             </Button>
           </div>
         </div>
