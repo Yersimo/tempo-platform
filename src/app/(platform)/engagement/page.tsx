@@ -1863,11 +1863,14 @@ export default function EngagementPage() {
               {q.type === 'text' && <div className="border border-divider rounded-lg p-3 bg-canvas text-xs text-t3 min-h-[60px]">Type your answer here...</div>}
               {q.type === 'multiple_choice' && (
                 <div className="space-y-2">
-                  {(q.options?.choices || ['Option 1', 'Option 2', 'Option 3']).map((opt: string, i: number) => (
+                  {(q.options?.choices || ['Option 1', 'Option 2', 'Option 3']).map((opt: any, i: number) => {
+                    const optText = typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt))
+                    return (
                     <label key={i} className="flex items-center gap-2 text-sm text-t2">
-                      <input type="radio" name={`preview-${q.id}`} className="text-tempo-500" disabled /> {opt}
+                      <input type="radio" name={`preview-${q.id}`} className="text-tempo-500" disabled /> {optText}
                     </label>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
               {q.type === 'nps' && (

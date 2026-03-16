@@ -344,9 +344,10 @@ export default function EmployeeDetailPage() {
           className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-t1 focus:outline-none focus:ring-1 focus:ring-tempo-500"
         >
           <option value="">Select...</option>
-          {(def.options as string[]).map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
+          {(def.options as any[]).map(opt => {
+            const text = typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt))
+            return <option key={text} value={text}>{text}</option>
+          })}
         </select>
       )
     }
@@ -354,24 +355,27 @@ export default function EmployeeDetailPage() {
       const selected = editFieldValue ? editFieldValue.split(',').map(s => s.trim()) : []
       return (
         <div className="flex flex-wrap gap-1.5">
-          {(def.options as string[]).map(opt => (
+          {(def.options as any[]).map(opt => {
+            const text = typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt))
+            return (
             <button
-              key={opt}
+              key={text}
               onClick={() => {
-                const next = selected.includes(opt)
-                  ? selected.filter(s => s !== opt)
-                  : [...selected, opt]
+                const next = selected.includes(text)
+                  ? selected.filter(s => s !== text)
+                  : [...selected, text]
                 setEditFieldValue(next.join(', '))
               }}
               className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                selected.includes(opt)
+                selected.includes(text)
                   ? 'bg-tempo-500/20 border-tempo-500 text-tempo-400'
                   : 'border-white/10 text-t3 hover:border-white/20'
               }`}
             >
-              {opt}
+              {text}
             </button>
-          ))}
+            )
+          })}
         </div>
       )
     }

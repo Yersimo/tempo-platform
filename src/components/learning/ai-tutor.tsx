@@ -331,7 +331,7 @@ function QuizView({ quiz, onAnswer, onSubmit }: {
                 )}
               >
                 <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
-                {opt}
+                {typeof opt === 'string' ? opt : ((opt as any)?.text || (opt as any)?.label || String(opt))}
               </button>
             )
           })}
