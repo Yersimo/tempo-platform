@@ -923,17 +923,28 @@ function coerceDates(obj: Record<string, any>): Record<string, any> {
  * - For employees: flattens the nested `profile` object into top-level fields
  */
 function prepareData(entity: string, data: Record<string, any>): Record<string, any> {
-  // For employees, flatten the profile object if present
-  if (entity === 'employees' && data.profile) {
-    const { profile, ...rest } = data
-    const flattened = {
-      ...rest,
-      full_name: profile.full_name ?? profile.fullName,
-      email: profile.email,
-      avatar_url: profile.avatar_url ?? profile.avatarUrl,
-      phone: profile.phone,
+  // For employees, flatten the profile object and clean up non-DB fields
+  if (entity === 'employees') {
+    let cleaned = { ...data }
+    // Flatten nested profile object
+    if (cleaned.profile) {
+      const { profile, ...rest } = cleaned
+      cleaned = {
+        ...rest,
+        full_name: profile.full_name ?? profile.fullName,
+        email: profile.email,
+        avatar_url: profile.avatar_url ?? profile.avatarUrl,
+        phone: profile.phone,
+      }
     }
-    return sanitizeUuids(coerceDates(keysToCamel(flattened)))
+    // Convert status → is_active (DB uses boolean is_active, not string status)
+    if ('status' in cleaned) {
+      cleaned.is_active = cleaned.status === 'active'
+      delete cleaned.status
+    }
+    // Remove fields that don't exist in the employees table
+    delete cleaned.credentials
+    return sanitizeUuids(coerceDates(keysToCamel(cleaned)))
   }
 
   // For mentoring sessions, map UI field names → DB column names
@@ -1115,6 +1126,58 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // ─── BULK CREATE ──────────────────────────────────────────────────
+      // Store sends { bulk: true, employees: [...] } for bulk imports
+      if (data.bulk && Array.isArray(data.employees || data.items)) {
+        const records = (data.employees || data.items) as Record<string, any>[]
+        const created: any[] = []
+        const errors: string[] = []
+
+        // Audit the bulk operation once
+        try {
+          await withRetry(() => db.insert(schema.auditLog).values({
+            orgId,
+            userId: auditUserId,
+            action: 'create',
+            entityType: entity,
+            entityId: 'bulk-import',
+            details: JSON.stringify({ bulk: true, count: records.length }),
+          }))
+        } catch (auditErr) {
+          console.error('[AUDIT FAIL] Bulk audit write failed:', auditErr)
+          return NextResponse.json(
+            { error: 'Audit trail write failed. Mutation blocked for compliance.' },
+            { status: 500 },
+          )
+        }
+
+        for (const record of records) {
+          try {
+            const prepared = prepareData(entity, record)
+            if (prepared.id && !UUID_FORMAT.test(prepared.id)) {
+              delete prepared.id
+            }
+            if (entity !== 'expenseItems' && !prepared.orgId) {
+              prepared.orgId = orgId
+            }
+            // Remove non-DB fields
+            delete prepared.credentials
+            const rows = await withRetry(() => db.insert(table).values(prepared).returning()) as any[]
+            if (rows[0]) created.push(rows[0])
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            console.error(`[BULK CREATE] Failed to insert ${entity} record:`, msg)
+            errors.push(msg)
+          }
+        }
+
+        return NextResponse.json(
+          { created: created.length, errors: errors.length, items: created },
+          { status: 201 },
+        )
+      }
+
+      // ─── SINGLE CREATE ────────────────────────────────────────────────
       const prepared = prepareData(entity, data)
       // Strip non-UUID id values so the DB generates proper UUIDs via defaultRandom()
       // (Store-generated IDs like "audit-12345-abc" are only for local state)

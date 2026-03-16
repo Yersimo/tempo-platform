@@ -1212,11 +1212,10 @@ async function apiPost(entity: string, action: 'create' | 'update' | 'delete', d
       body: JSON.stringify({ action, entity, id, data }),
     })
     if (!res.ok) {
-      // 401/500 are expected in demo mode (no org context / no DB) — don't spam console
-      // The store uses optimistic updates so the UI works regardless
-      if (res.status !== 401 && res.status !== 500) {
-        const err = await res.json().catch(() => ({}))
-        console.error(`API ${action} ${entity} failed:`, err)
+      const err = await res.json().catch(() => ({}))
+      // 401 is expected in demo mode (no org context) — don't spam console
+      if (res.status !== 401) {
+        console.error(`API ${action} ${entity} failed (${res.status}):`, err)
       }
     }
     return res
