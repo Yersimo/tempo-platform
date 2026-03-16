@@ -823,10 +823,16 @@ export default function LearningPage() {
     })
 
     const totalLessons = generatedOutline.modules.reduce((a, m) => a + m.lessons.length, 0)
-    addToast(`Course "${generatedOutline.title}" created with ${totalLessons} lessons and ${generatedOutline.modules.length * 2} quiz questions`)
+    addToast(`Course "${generatedOutline.title}" created with ${totalLessons} lessons — opening in Studio`)
     setShowBuilderModal(false)
     setGeneratedOutline(null)
     setBuilderForm({ topic: '', level: 'beginner', duration: 8 })
+    // Switch to Course Studio and select the new course for editing
+    setTimeout(() => {
+      setSelectedBuilderCourse(courseId)
+      setAuthoringMode(true)
+      setActiveTab('course-builder')
+    }, 200)
   }
 
   function submitSession() {
@@ -986,7 +992,9 @@ export default function LearningPage() {
   // Handle creating a new course from scratch
   function handleCreateNewCourse() {
     if (!newCourseForm.title.trim()) { addToast('Course title is required'); return }
+    const courseId = crypto.randomUUID()
     addCourse({
+      id: courseId,
       title: newCourseForm.title,
       description: newCourseForm.description,
       category: newCourseForm.category,
@@ -996,16 +1004,14 @@ export default function LearningPage() {
       is_mandatory: false,
       status: 'draft',
     })
-    // Find the newly created course (last one added)
-    setTimeout(() => {
-      const latest = courses[courses.length - 1]
-      if (latest) {
-        setSelectedBuilderCourse(latest.id)
-        setAuthoringMode(true)
-      }
-    }, 100)
     setShowNewCourseFlow(false)
     setNewCourseForm({ title: '', description: '', category: 'General', level: 'beginner', cover_color: 'tempo' })
+    // Immediately select the new course for editing
+    setTimeout(() => {
+      setSelectedBuilderCourse(courseId)
+      setAuthoringMode(true)
+      setEditingBlockId(null)
+    }, 100)
   }
 
   // Insert a new block at a specific position
@@ -1025,7 +1031,7 @@ export default function LearningPage() {
       infographic: { title: 'Infographic', content: '{"items":[{"label":"Metric 1","value":"85%"},{"label":"Metric 2","value":"120+"}]}', duration: 3 },
       download: { title: 'File Download', content: '{"filename":"resource.pdf","url":"","description":"Download this resource"}', duration: 1 },
       embed: { title: 'Web Embed', content: '{"url":"","height":400}', duration: 5 },
-      code: { title: 'Code Block', content: '{"language":"javascript","code":"// Your code here\\nconsole.log(\'Hello World\');"}', duration: 3 },
+      code: { title: 'Code Block', content: '{"language":"javascript","code":"// Your code here\\nconsole.log(\\"Hello World\\");"}', duration: 3 },
       button: { title: 'Button', content: '{"label":"Learn More","url":"#","style":"primary"}', duration: 1 },
     }
     const def = defaultContent[type] || { title: 'Block', content: '', duration: 5 }
@@ -1686,11 +1692,17 @@ export default function LearningPage() {
       })
     })
 
-    addToast(`Course "${parsedDocCourse.title}" created with ${parsedDocCourse.modules.reduce((a, m) => a + m.lessons.length, 0)} lessons and ${parsedDocCourse.quizQuestions.length} quiz questions`)
+    addToast(`Course "${parsedDocCourse.title}" created — opening in Studio for editing`)
     setDocUploadState('idle')
     setParsedDocCourse(null)
     setUploadedFileName('')
     setUploadedFileContent('')
+    // Switch to Course Studio and select the new course for editing
+    setTimeout(() => {
+      setSelectedBuilderCourse(courseId)
+      setAuthoringMode(true)
+      setActiveTab('course-builder')
+    }, 200)
   }
 
   // Assessment handlers
@@ -3558,18 +3570,91 @@ export default function LearningPage() {
 
               {!selectedBuilderCourse ? (
                 /* Empty state — no course selected */
-                <Card>
-                  <div className="text-center py-16">
-                    <div className="w-16 h-16 rounded-2xl bg-tempo-500/10 flex items-center justify-center mx-auto mb-4">
-                      <BookOpen size={28} className="text-tempo-400" />
+                <div className="space-y-4">
+                  <Card>
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-2xl bg-tempo-500/10 flex items-center justify-center mx-auto mb-4">
+                        <BookOpen size={28} className="text-tempo-400" />
+                      </div>
+                      <h3 className="text-base font-semibold text-t1 mb-2">Create Your First Course</h3>
+                      <p className="text-xs text-t3 max-w-md mx-auto mb-6">Build interactive courses with text, images, videos, quizzes, and more. Just like Articulate Rise — but built right into Tempo.</p>
+                      <div className="flex justify-center gap-3">
+                        <Button onClick={() => setShowNewCourseFlow(true)}>
+                          <Plus size={14} /> Start from Scratch
+                        </Button>
+                        <Button variant="outline" onClick={() => setActiveTab('builder')}>
+                          <Sparkles size={14} /> Generate with AI
+                        </Button>
+                      </div>
                     </div>
-                    <h3 className="text-base font-semibold text-t1 mb-2">Create Your First Course</h3>
-                    <p className="text-xs text-t3 max-w-md mx-auto mb-6">Build interactive courses with text, images, videos, quizzes, and more. Just like Articulate Rise — but built right into Tempo.</p>
-                    <Button onClick={() => setShowNewCourseFlow(true)}>
-                      <Plus size={14} /> New Course
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+
+                  {/* Starter Templates */}
+                  <Card>
+                    <h4 className="text-sm font-semibold text-t1 mb-1">Quick Start Templates</h4>
+                    <p className="text-[0.65rem] text-t3 mb-4">Pick a template to get started instantly — customize everything after</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { title: 'Employee Onboarding', desc: 'Welcome pack, policies, role setup', icon: <UserCheck size={20} />, color: 'from-green-500 to-emerald-500', blocks: [
+                          { type: 'heading', title: 'Welcome to the Team', content: 'Welcome to the Team' },
+                          { type: 'text', title: 'Company Overview', content: 'Welcome to our company! This section introduces our mission, values, and culture.\n\n**Our Mission:** To deliver exceptional value to our customers and communities.\n\n**Core Values:**\n• Integrity in everything we do\n• Innovation and continuous improvement\n• Collaboration and teamwork\n• Customer-first mindset' },
+                          { type: 'image', title: 'Office & Team', content: '{"url":"","alt":"Our office and team","caption":"Meet your new colleagues"}' },
+                          { type: 'accordion', title: 'Key Policies', content: '{"sections":[{"heading":"Working Hours & Flexibility","body":"Our standard working hours are 9am-5pm with flexible start times. Remote work is available 2 days per week."},{"heading":"Leave & Time Off","body":"You are entitled to 25 days annual leave plus public holidays. Leave requests should be submitted at least 2 weeks in advance."},{"heading":"Code of Conduct","body":"We maintain a professional, inclusive workplace. Please review the full code of conduct in the employee handbook."}]}' },
+                          { type: 'callout', title: 'Important Tip', content: '{"style":"tip","text":"Set up your IT accounts, Slack workspace, and email signature in your first week. Ask your buddy if you need help!"}' },
+                          { type: 'quiz', title: 'Onboarding Check', content: '{"question":"What is the best way to request time off?","options":["Email your manager","Submit through the leave system","Text a colleague","Skip work without notice"],"correct":1}' },
+                          { type: 'download', title: 'Employee Handbook', content: '{"filename":"Employee-Handbook.pdf","url":"","description":"Complete employee handbook with all policies and procedures"}' },
+                        ]},
+                        { title: 'Compliance Training', desc: 'Policies, regulations, assessments', icon: <Shield size={20} />, color: 'from-blue-500 to-indigo-500', blocks: [
+                          { type: 'heading', title: 'Compliance Training', content: 'Annual Compliance Training' },
+                          { type: 'text', title: 'Why Compliance Matters', content: 'Compliance training is essential for protecting our organization, our clients, and ourselves.\n\n**Key Areas:**\n• Regulatory requirements\n• Data privacy and protection\n• Anti-money laundering (AML)\n• Anti-bribery and corruption\n• Workplace safety' },
+                          { type: 'callout', title: 'Regulatory Notice', content: '{"style":"important","text":"This training is mandatory for all employees and must be completed within 30 days. Failure to complete may result in restricted system access."}' },
+                          { type: 'text', title: 'Data Privacy Essentials', content: 'Protecting personal data is a legal obligation under GDPR, CCPA, and other regulations.\n\n**Key Principles:**\n1. Only collect data you genuinely need\n2. Store data securely with encryption\n3. Never share personal data without authorization\n4. Report any data breaches immediately\n5. Delete data when no longer needed' },
+                          { type: 'quiz', title: 'Compliance Check', content: '{"question":"What should you do if you suspect a data breach?","options":["Ignore it","Report it immediately to the compliance team","Try to fix it yourself","Wait until the next meeting"],"correct":1}' },
+                          { type: 'quiz', title: 'AML Knowledge Check', content: '{"question":"Which of these is a red flag for potential money laundering?","options":["A customer makes regular monthly payments","A customer makes unusually large cash deposits","A customer opens a savings account","A customer asks about interest rates"],"correct":1}' },
+                        ]},
+                        { title: 'Skills Workshop', desc: 'Lessons, exercises, certification', icon: <Target size={20} />, color: 'from-purple-500 to-pink-500', blocks: [
+                          { type: 'heading', title: 'Skills Workshop', content: 'Skills Workshop' },
+                          { type: 'text', title: 'Workshop Overview', content: "Welcome to this skills development workshop. By the end of this course, you will have practical skills you can apply immediately.\n\n**What You'll Learn:**\n• Core concepts and frameworks\n• Hands-on techniques\n• Real-world application strategies\n• Self-assessment tools" },
+                          { type: 'columns', title: 'Key Concepts', content: '{"left":"**Theory:** Understand the fundamental principles that drive success in this area. We will cover the latest research and proven frameworks.","right":"**Practice:** Apply what you have learned through guided exercises and real-world scenarios. Each activity builds on the previous one."}' },
+                          { type: 'interactive', title: 'Hands-on Exercise', content: '{"type":"scenario","items":[{"front":"Apply the framework to a real scenario","back":"Follow the step-by-step guide to practice"}]}' },
+                          { type: 'quiz', title: 'Skills Assessment', content: '{"question":"What is the most effective way to develop a new skill?","options":["Read about it once","Practice consistently with feedback","Watch others do it","Attend a single workshop"],"correct":1}' },
+                          { type: 'button', title: 'Get Certified', content: '{"label":"Complete & Get Certificate","url":"#","style":"primary"}' },
+                        ]},
+                      ].map(template => (
+                        <button key={template.title} onClick={() => {
+                          const courseId = crypto.randomUUID()
+                          addCourse({
+                            id: courseId,
+                            title: template.title,
+                            description: template.desc,
+                            category: template.title.includes('Compliance') ? 'Compliance' : template.title.includes('Onboard') ? 'Onboarding' : 'General',
+                            level: 'beginner',
+                            format: 'online',
+                            duration_hours: 1,
+                            is_mandatory: template.title.includes('Compliance'),
+                            status: 'draft',
+                          })
+                          template.blocks.forEach((b, i) => {
+                            addCourseBlock({ course_id: courseId, module_index: 0, order: i, type: b.type, title: b.title, content: b.content, duration_minutes: b.type === 'heading' ? 1 : b.type === 'quiz' ? 3 : 5, status: 'draft' })
+                          })
+                          setTimeout(() => {
+                            setSelectedBuilderCourse(courseId)
+                            setAuthoringMode(true)
+                            addToast(`"${template.title}" template loaded — customize it to fit your needs`)
+                          }, 150)
+                        }}
+                          className="text-left p-4 rounded-xl border border-divider hover:border-tempo-200 hover:shadow-md transition-all group">
+                          <div className={`w-full h-16 rounded-lg bg-gradient-to-r ${template.color} mb-3 flex items-center justify-center text-white opacity-80 group-hover:opacity-100 transition-opacity`}>
+                            {template.icon}
+                          </div>
+                          <p className="text-sm font-semibold text-t1">{template.title}</p>
+                          <p className="text-[0.65rem] text-t3 mt-0.5">{template.desc}</p>
+                          <p className="text-[0.6rem] text-tempo-500 mt-2 flex items-center gap-1"><Sparkles size={10} /> {template.blocks.length} blocks ready</p>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
               ) : (
                 /* Authoring canvas with blocks */
                 <div className="space-y-0">
@@ -4089,9 +4174,9 @@ export default function LearningPage() {
                           <Plus size={24} className="text-tempo-400" />
                         </div>
                         <h4 className="text-sm font-semibold text-t1 mb-1">Start building your course</h4>
-                        <p className="text-xs text-t3 mb-4">Click the + button above to add your first content block</p>
+                        <p className="text-xs text-t3 mb-4">Add blocks to build your lesson — text, images, quizzes, and more</p>
                         <div className="flex justify-center gap-2 flex-wrap">
-                          {[{ type: 'text', label: 'Text' }, { type: 'image', label: 'Image' }, { type: 'video', label: 'Video' }, { type: 'quiz', label: 'Quiz' }].map(bt => (
+                          {[{ type: 'text', label: 'Text' }, { type: 'heading', label: 'Heading' }, { type: 'image', label: 'Image' }, { type: 'video', label: 'Video' }, { type: 'callout', label: 'Callout' }, { type: 'quiz', label: 'Quiz' }, { type: 'accordion', label: 'Accordion' }, { type: 'columns', label: 'Columns' }].map(bt => (
                             <Button key={bt.type} size="sm" variant="outline" onClick={() => insertBlockAt(bt.type, 0)}>
                               {blockTypeIcon(bt.type, 12)} {bt.label}
                             </Button>
@@ -4099,6 +4184,26 @@ export default function LearningPage() {
                         </div>
                       </div>
                     </Card>
+                  )}
+
+                  {/* Quick-add toolbar (visible when blocks exist) */}
+                  {filteredBlocks.length > 0 && (
+                    <div className="sticky bottom-4 z-20 flex justify-center">
+                      <div className="bg-surface/95 backdrop-blur-sm border border-divider rounded-2xl shadow-lg px-3 py-2 flex items-center gap-1.5">
+                        <span className="text-[0.55rem] text-t3 px-1">Quick add:</span>
+                        {[{ type: 'text', label: 'Text' }, { type: 'image', label: 'Image' }, { type: 'callout', label: 'Callout' }, { type: 'quiz', label: 'Quiz' }, { type: 'divider', label: 'Divider' }].map(bt => (
+                          <button key={bt.type} onClick={() => insertBlockAt(bt.type, filteredBlocks.length)}
+                            className="flex items-center gap-1 text-[0.6rem] text-t2 hover:text-tempo-500 px-2 py-1.5 rounded-lg hover:bg-tempo-50 transition-colors" title={`Add ${bt.label}`}>
+                            {blockTypeIcon(bt.type, 11)} {bt.label}
+                          </button>
+                        ))}
+                        <div className="w-px h-4 bg-divider mx-0.5" />
+                        <button onClick={() => setShowBlockPicker(filteredBlocks.length)}
+                          className="flex items-center gap-1 text-[0.6rem] text-tempo-500 font-medium px-2 py-1.5 rounded-lg hover:bg-tempo-50 transition-colors">
+                          <Plus size={11} /> All blocks
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   {/* SCORM & Prerequisites (collapsed) */}
