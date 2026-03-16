@@ -449,21 +449,21 @@ export default function SmartReviews({ courses, enrollments, quizQuestions, addT
                   {(sessionQuestions[currentQIdx]?.options || []).map((option, oi) => {
                     const optionText = typeof option === 'string' ? option : ((option as any)?.text || (option as any)?.label || String(option))
                     return (
-                    <button
-                      key={oi}
-                      onClick={() => !isFlipped && setSelectedAnswer(optionText)}
-                      className={cn(
-                        'w-full text-left px-4 py-3 rounded-xl border text-sm transition-all',
-                        selectedAnswer === optionText
-                          ? 'border-tempo-500 bg-tempo-500/10 text-tempo-600 font-medium ring-1 ring-tempo-500/30'
-                          : 'border-border hover:border-tempo-300 hover:bg-canvas text-t2'
-                      )}
-                    >
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[0.6rem] font-bold mr-2.5 bg-canvas border border-border">
-                        {String.fromCharCode(65 + oi)}
-                      </span>
-                      {optionText}
-                    </button>
+                      <button
+                        key={oi}
+                        onClick={() => !isFlipped && setSelectedAnswer(optionText)}
+                        className={cn(
+                          'w-full text-left px-4 py-3 rounded-xl border text-sm transition-all',
+                          selectedAnswer === optionText
+                            ? 'border-tempo-500 bg-tempo-500/10 text-tempo-600 font-medium ring-1 ring-tempo-500/30'
+                            : 'border-border hover:border-tempo-300 hover:bg-canvas text-t2'
+                        )}
+                      >
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[0.6rem] font-bold mr-2.5 bg-canvas border border-border">
+                          {String.fromCharCode(65 + oi)}
+                        </span>
+                        {optionText}
+                      </button>
                     )
                   })}
                 </div>
