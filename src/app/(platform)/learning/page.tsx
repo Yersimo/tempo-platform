@@ -940,6 +940,9 @@ export default function LearningPage() {
     }
   }
 
+  // Safe option text extractor — handles both string and {id, text} object formats
+  const optText = (opt: any): string => typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt))
+
   // Simple inline markdown renderer for block editor preview
   const renderMd = (text: string) => {
     if (!text) return null
@@ -2869,12 +2872,12 @@ window.onload=function(){
                   {(currentQ.type === 'multiple_choice' || currentQ.type === 'true_false') && (
                     <div className="space-y-2">
                       {(currentQ.type === 'true_false' ? ['True', 'False'] : currentQ.options).map((opt, i) => (
-                        <button key={i} onClick={() => setActiveAssessment(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: opt } } : null)}
+                        <button key={i} onClick={() => setActiveAssessment(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: optText(opt) } } : null)}
                           className={cn('w-full text-left p-3 rounded-lg border text-sm transition-colors',
-                            activeAssessment.answers[currentQ.id] === opt
+                            activeAssessment.answers[currentQ.id] === optText(opt)
                               ? 'border-tempo-500 bg-tempo-50 text-tempo-700'
                               : 'border-divider hover:border-tempo-300')}>
-                          {opt}
+                          {optText(opt)}
                         </button>
                       ))}
                     </div>
@@ -4056,13 +4059,13 @@ window.onload=function(){
                                   <div className="space-y-2">
                                     <input className="text-sm font-medium text-t1 bg-transparent w-full outline-none border-b border-tempo-200 pb-1" value={parsed.question || ''} placeholder="Enter your question..." onChange={(e) => updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, question: e.target.value }) })} />
                                     <div className="space-y-1.5 mt-2">
-                                      {(parsed.options || ['', '', '', '']).map((opt: string, oi: number) => (
+                                      {(parsed.options || ['', '', '', '']).map((opt: any, oi: number) => (
                                         <div key={oi} className="flex items-center gap-2">
                                           <button onClick={(e) => { e.stopPropagation(); updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, correct: oi }) }) }}
                                             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${parsed.correct === oi ? 'border-green-500 bg-green-500' : 'border-divider'}`}>
                                             {parsed.correct === oi && <CheckCircle size={10} className="text-white" />}
                                           </button>
-                                          <input className="text-xs bg-canvas rounded px-2 py-1.5 flex-1 border border-divider outline-none focus:border-tempo-400" value={opt} placeholder={`Option ${oi + 1}`} onChange={(e) => {
+                                          <input className="text-xs bg-canvas rounded px-2 py-1.5 flex-1 border border-divider outline-none focus:border-tempo-400" value={optText(opt)} placeholder={`Option ${oi + 1}`} onChange={(e) => {
                                             const opts = [...(parsed.options || ['', '', '', ''])]; opts[oi] = e.target.value
                                             updateCourseBlock(block.id, { content: JSON.stringify({ ...parsed, options: opts }) })
                                           }} />
@@ -4074,9 +4077,9 @@ window.onload=function(){
                                   <div>
                                     <p className="text-sm font-medium text-t1 mb-2">{parsed.question || 'Question...'}</p>
                                     <div className="space-y-1">
-                                      {(parsed.options || []).map((opt: string, oi: number) => (
+                                      {(parsed.options || []).map((opt: any, oi: number) => (
                                         <div key={oi} className={`text-xs px-3 py-1.5 rounded-lg ${parsed.correct === oi ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-canvas text-t2'}`}>
-                                          {String.fromCharCode(65 + oi)}. {opt}
+                                          {String.fromCharCode(65 + oi)}. {optText(opt)}
                                         </div>
                                       ))}
                                     </div>
@@ -4542,8 +4545,8 @@ window.onload=function(){
                       {q.options.length > 0 && q.type !== 'essay' && (
                         <div className="mt-2 grid grid-cols-2 gap-1">
                           {q.options.map((opt, i) => (
-                            <span key={i} className={`text-[0.6rem] px-2 py-0.5 rounded ${opt === q.correct_answer ? 'bg-green-50 text-green-700 font-medium' : 'text-t3'}`}>
-                              {opt.includes(':') ? opt : opt}
+                            <span key={i} className={`text-[0.6rem] px-2 py-0.5 rounded ${optText(opt) === q.correct_answer ? 'bg-green-50 text-green-700 font-medium' : 'text-t3'}`}>
+                              {optText(opt)}
                             </span>
                           ))}
                         </div>
@@ -5989,11 +5992,11 @@ window.onload=function(){
               <div className="space-y-2">
                 {(questionForm.type === 'true_false' ? ['True', 'False'] : questionForm.options).map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <input type="radio" name="correct" checked={questionForm.correct_answer === opt} onChange={() => setQuestionForm({ ...questionForm, correct_answer: opt })} className="text-tempo-600" />
+                    <input type="radio" name="correct" checked={questionForm.correct_answer === optText(opt)} onChange={() => setQuestionForm({ ...questionForm, correct_answer: optText(opt) })} className="text-tempo-600" />
                     {questionForm.type === 'true_false' ? (
-                      <span className="text-xs text-t1">{opt}</span>
+                      <span className="text-xs text-t1">{optText(opt)}</span>
                     ) : (
-                      <Input value={opt} onChange={(e) => { const opts = [...questionForm.options]; opts[i] = e.target.value; setQuestionForm({ ...questionForm, options: opts }) }} placeholder={`Option ${i + 1}`} />
+                      <Input value={optText(opt)} onChange={(e) => { const opts = [...questionForm.options]; opts[i] = e.target.value; setQuestionForm({ ...questionForm, options: opts }) }} placeholder={`Option ${i + 1}`} />
                     )}
                   </div>
                 ))}
@@ -6045,7 +6048,7 @@ window.onload=function(){
                       {q.options.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {q.options.map((opt, j) => (
-                            <span key={j} className={`text-[0.6rem] px-1.5 py-0.5 rounded ${opt === q.correct_answer ? 'bg-green-50 text-green-700' : 'bg-canvas text-t3'}`}>{opt}</span>
+                            <span key={j} className={`text-[0.6rem] px-1.5 py-0.5 rounded ${optText(opt) === q.correct_answer ? 'bg-green-50 text-green-700' : 'bg-canvas text-t3'}`}>{optText(opt)}</span>
                           ))}
                         </div>
                       )}

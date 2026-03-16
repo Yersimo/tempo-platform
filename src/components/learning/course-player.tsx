@@ -113,6 +113,9 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
     updateEnrollment, addAssessmentAttempt, currentEmployeeId, addToast,
   } = useTempo()
 
+  // Safe option text extractor — handles both string and {id, text} object formats
+  const optText = (opt: any): string => typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt))
+
   const course = courses.find(c => c.id === courseId)
   const enrollment = enrollments.find(e => e.id === enrollmentId)
 
@@ -1303,22 +1306,22 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
           {/* Multiple choice / True-false */}
           {(currentQ.type === 'multiple_choice' || currentQ.type === 'true_false') && (
             <div className="space-y-2.5">
-              {(currentQ.type === 'true_false' ? ['True', 'False'] : (currentQ.options || [])).map((opt: string, i: number) => (
+              {(currentQ.type === 'true_false' ? ['True', 'False'] : (currentQ.options || [])).map((opt: any, i: number) => (
                 <button
                   key={i}
-                  onClick={() => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: opt } } : null)}
+                  onClick={() => setQuizState(prev => prev ? { ...prev, answers: { ...prev.answers, [currentQ.id]: optText(opt) } } : null)}
                   className={cn(
                     'cp-quiz-option',
-                    quizState.answers[currentQ.id] === opt && 'cp-quiz-option-selected',
+                    quizState.answers[currentQ.id] === optText(opt) && 'cp-quiz-option-selected',
                   )}
                 >
                   <div className={cn(
                     'cp-quiz-option-indicator',
-                    quizState.answers[currentQ.id] === opt && 'cp-quiz-option-indicator-selected',
+                    quizState.answers[currentQ.id] === optText(opt) && 'cp-quiz-option-indicator-selected',
                   )}>
-                    {quizState.answers[currentQ.id] === opt && <CheckCircle size={12} className="text-white" />}
+                    {quizState.answers[currentQ.id] === optText(opt) && <CheckCircle size={12} className="text-white" />}
                   </div>
-                  <span>{opt}</span>
+                  <span>{optText(opt)}</span>
                 </button>
               ))}
             </div>
@@ -1349,8 +1352,8 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
           {currentQ.type === 'matching' && (
             <div className="space-y-2 text-sm text-t2">
               <p className="text-xs text-t3 mb-2">Match the items correctly:</p>
-              {(currentQ.options || []).map((pair: string, i: number) => {
-                const [term, def] = pair.split(':')
+              {(currentQ.options || []).map((pair: any, i: number) => {
+                const [term, def] = optText(pair).split(':')
                 return (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-divider/60 cp-hover-lift">
                     <span className="font-medium text-t1 w-1/2">{term}</span>
