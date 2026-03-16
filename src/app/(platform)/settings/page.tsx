@@ -84,15 +84,7 @@ interface BillingSubscription {
   trialEnd: string | null
 }
 
-// Mock billing history data
-const MOCK_INVOICES = [
-  { id: 'INV-2026-001', date: '2026-02-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - February 2026' },
-  { id: 'INV-2026-002', date: '2026-01-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - January 2026' },
-  { id: 'INV-2025-012', date: '2025-12-01', amount: 1440, status: 'paid' as const, description: 'Professional Plan - December 2025' },
-  { id: 'INV-2025-011', date: '2025-11-01', amount: 1280, status: 'paid' as const, description: 'Professional Plan - November 2025' },
-  { id: 'INV-2025-010', date: '2025-10-01', amount: 1280, status: 'paid' as const, description: 'Professional Plan - October 2025' },
-  { id: 'INV-2025-009', date: '2025-09-01', amount: 960, status: 'paid' as const, description: 'Starter Plan - September 2025' },
-]
+// Billing invoices are loaded from the store (storeInvoices)
 
 // Mock usage metrics
 const MOCK_USAGE = {
@@ -115,7 +107,7 @@ export default function SettingsPage() {
   const ti = useTranslations('integrations')
   const tc = useTranslations('common')
   const searchParams = useSearchParams()
-  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded } = useTempo()
+  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded, invoices: storeInvoices } = useTempo()
   const initialTab = searchParams.get('tab') || 'general'
   const [pageLoading, setPageLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -1298,41 +1290,49 @@ export default function SettingsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {MOCK_INVOICES.map(invoice => (
-                          <tr key={invoice.id} className="hover:bg-canvas/50 transition-colors">
+                        {storeInvoices.length > 0 ? storeInvoices.map((invoice: Record<string, unknown>) => (
+                          <tr key={invoice.id as string} className="hover:bg-canvas/50 transition-colors">
                             <td className="px-6 py-3">
-                              <span className="text-xs font-medium text-t1">{invoice.id}</span>
+                              <span className="text-xs font-medium text-t1">{(invoice.invoice_number || invoice.id) as string}</span>
                             </td>
                             <td className="px-4 py-3 text-xs text-t2">
-                              {new Date(invoice.date).toLocaleDateString('en-US', {
+                              {new Date((invoice.issued_date || invoice.created_at || '') as string).toLocaleDateString('en-US', {
                                 month: 'short', day: 'numeric', year: 'numeric',
                               })}
                             </td>
-                            <td className="px-4 py-3 text-xs text-t2">{invoice.description}</td>
+                            <td className="px-4 py-3 text-xs text-t2">{(invoice.description || '') as string}</td>
                             <td className="px-4 py-3 text-xs font-medium text-t1 text-right">
-                              ${(invoice.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              ${((invoice.amount as number) / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'pending' ? 'warning' : 'error'}>
-                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                              <Badge variant={(invoice.status as string) === 'paid' ? 'success' : (invoice.status as string) === 'pending' || (invoice.status as string) === 'sent' ? 'warning' : 'error'}>
+                                {((invoice.status as string) || '').charAt(0).toUpperCase() + ((invoice.status as string) || '').slice(1)}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
                               <button
                                 className="inline-flex items-center gap-1 text-xs text-tempo-600 hover:text-tempo-700 dark:text-tempo-400 dark:hover:text-tempo-300 font-medium"
-                                onClick={() => addToast(`Downloading receipt for ${invoice.id}...`, 'info')}
+                                onClick={() => addToast(`Downloading receipt for ${(invoice.invoice_number || invoice.id) as string}...`, 'info')}
                               >
                                 <Download size={12} />
                                 PDF
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-10 text-center">
+                              <Receipt size={24} className="mx-auto text-t3 mb-2" />
+                              <p className="text-xs font-medium text-t2">No invoices yet</p>
+                              <p className="text-[0.65rem] text-t3 mt-1">Billing invoices will appear here once generated.</p>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
                   <div className="px-6 py-3 border-t border-divider bg-canvas flex items-center justify-between">
-                    <p className="text-xs text-t3">Showing {MOCK_INVOICES.length} most recent invoices</p>
+                    <p className="text-xs text-t3">{storeInvoices.length > 0 ? `Showing ${storeInvoices.length} most recent invoices` : 'No invoices'}</p>
                     <Button
                       variant="outline"
                       size="sm"

@@ -125,43 +125,55 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Evaluator Dashboard Banner */}
-      {isEvaluator && evaluatorConfig && (
-        <div className="rounded-2xl border border-border/80 bg-white p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-t1">Welcome, {evaluatorConfig.firstName}</h2>
-              <p className="text-sm text-t3 mt-1">Ghana Payroll Evaluation Environment — Ecobank Transnational</p>
-            </div>
-            <Link href="/payroll">
-              <Button variant="primary" size="md">Start Payroll Demo &rarr;</Button>
-            </Link>
-          </div>
+      {/* Evaluator Dashboard Banner - dynamic data from store */}
+      {isEvaluator && evaluatorConfig && (() => {
+        const latestPayroll = payrollRuns?.[payrollRuns.length - 1]
+        const payrollCost = latestPayroll ? `$${(latestPayroll.total_net / 100).toLocaleString()}` : '$0'
+        const payrollPeriod = latestPayroll?.period || 'No payroll runs'
+        const employeeCount = employees?.length || 0
+        const pendingLeaveCount = leaveRequests?.filter((l: { status: string }) => l.status === 'pending').length || 0
+        const pendingExpenseCount = expenseReports?.filter((e: { status: string }) => e.status === 'submitted' || e.status === 'pending_approval').length || 0
+        const totalPendingApprovals = pendingLeaveCount + pendingExpenseCount
+        const countriesSet = new Set((employees || []).map((e: { country?: string }) => e.country).filter(Boolean))
+        const countriesList = Array.from(countriesSet).slice(0, 3).join(' \u2022 ')
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-gray-50">
-              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Payroll Cost (This Month)</p>
-              <p className="text-2xl font-semibold text-t1 mt-1">GH₵ 847,500</p>
-              <p className="text-xs text-t3">Ghana • Nigeria • Kenya</p>
+        return (
+          <div className="rounded-2xl border border-border/80 bg-white p-6 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-t1">Welcome, {evaluatorConfig.firstName}</h2>
+                <p className="text-sm text-t3 mt-1">Evaluation Environment{countriesList ? ` \u2014 ${countriesList}` : ''}</p>
+              </div>
+              <Link href="/payroll">
+                <Button variant="primary" size="md">Start Payroll Demo &rarr;</Button>
+              </Link>
             </div>
-            <div className="p-4 rounded-xl bg-gray-50">
-              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Compa Ratio</p>
-              <p className="text-2xl font-semibold text-t1 mt-1">0.96</p>
-              <p className="text-xs text-t3">Within 4% of market P50</p>
-            </div>
-            <div className="p-4 rounded-xl bg-gray-50">
-              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Benefits Enrollment</p>
-              <p className="text-2xl font-semibold text-t1 mt-1">87%</p>
-              <p className="text-xs text-emerald-600">+3% vs Q4</p>
-            </div>
-            <div className="p-4 rounded-xl bg-gray-50">
-              <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Pending Approvals</p>
-              <p className="text-2xl font-semibold text-tempo-600 mt-1">1</p>
-              <p className="text-xs text-t3">April payroll ready</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Payroll Cost ({payrollPeriod})</p>
+                <p className="text-2xl font-semibold text-t1 mt-1">{payrollCost}</p>
+                <p className="text-xs text-t3">{countriesList || 'No employee data'}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Active Employees</p>
+                <p className="text-2xl font-semibold text-t1 mt-1">{employeeCount}</p>
+                <p className="text-xs text-t3">Across {countriesSet.size} {countriesSet.size === 1 ? 'country' : 'countries'}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Departments</p>
+                <p className="text-2xl font-semibold text-t1 mt-1">{departments?.length || 0}</p>
+                <p className="text-xs text-t3">Organization structure</p>
+              </div>
+              <div className="p-4 rounded-xl bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wider text-t3 font-medium">Pending Approvals</p>
+                <p className="text-2xl font-semibold text-tempo-600 mt-1">{totalPendingApprovals}</p>
+                <p className="text-xs text-t3">{totalPendingApprovals === 0 ? 'All clear' : 'Requires attention'}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Oracle Fusion-style Me / My Team / Organization tabs */}
       <Tabs

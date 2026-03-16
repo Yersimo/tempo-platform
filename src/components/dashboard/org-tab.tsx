@@ -169,45 +169,103 @@ export function OrgTab() {
         </div>
       </div>
 
-      {/* Company Announcements - BambooHR/HiBob style */}
+      {/* Company Updates - dynamically generated from recent activity */}
       {(() => {
-        const announcements = [
-          { id: 'ann-1', type: 'announcement' as const, icon: <Megaphone size={14} />, title: 'Q1 All-Hands Meeting', content: 'Join us for our quarterly all-hands this Friday at 2 PM WAT. CEO will share company updates and Q2 roadmap.', author: 'Amara Kone', date: '2 hours ago', color: 'bg-gray-100 text-gray-500' },
-          { id: 'ann-2', type: 'celebration' as const, icon: <Award size={14} />, title: 'Kudos to Product Team!', content: 'Congratulations on launching the new mobile app — 4.8★ rating in the first week!', author: 'Folake Adebayo', date: '1 day ago', color: 'bg-gray-100 text-gray-500' },
-          { id: 'ann-3', type: 'policy' as const, icon: <FileText size={14} />, title: 'Updated Remote Work Policy', content: 'We\'ve expanded our flexible work policy to include 3 remote days per week. See the full policy in the handbook.', author: 'Kofi Mensah', date: '3 days ago', color: 'bg-gray-100 text-gray-500' },
-        ]
+        const dynamicUpdates: { id: string; icon: React.ReactNode; title: string; content: string; author: string; date: string; color: string }[] = []
+
+        // Recent hires (employees added recently based on audit log)
+        const recentHireEntries = auditLog.filter(e => e.action === 'created' && e.entity_type.toLowerCase().includes('employee')).slice(0, 2)
+        recentHireEntries.forEach((entry, i) => {
+          dynamicUpdates.push({
+            id: `update-hire-${i}`,
+            icon: <UserCheck size={14} />,
+            title: 'New Team Member',
+            content: entry.details || 'A new employee has joined the team.',
+            author: entry.user || 'HR Team',
+            date: new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            color: 'bg-gray-100 text-gray-500',
+          })
+        })
+
+        // Recent payroll run
+        if (lastPayroll) {
+          dynamicUpdates.push({
+            id: 'update-payroll',
+            icon: <Banknote size={14} />,
+            title: `${lastPayroll.period} Payroll Processed`,
+            content: `Payroll for ${lastPayroll.employee_count || employees.length} employees has been processed. Total net: $${(lastPayroll.total_net / 100).toLocaleString()}.`,
+            author: 'Payroll System',
+            date: lastPayroll.run_date ? new Date(lastPayroll.run_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+            color: 'bg-gray-100 text-gray-500',
+          })
+        }
+
+        // Open positions
+        if (openPositions > 0) {
+          dynamicUpdates.push({
+            id: 'update-recruiting',
+            icon: <Briefcase size={14} />,
+            title: `${openPositions} Open Position${openPositions > 1 ? 's' : ''}`,
+            content: `Currently hiring for ${jobPostings.filter(j => j.status === 'open').map(j => j.title).slice(0, 3).join(', ')}${openPositions > 3 ? ` and ${openPositions - 3} more` : ''}.`,
+            author: 'Recruiting',
+            date: 'Active',
+            color: 'bg-gray-100 text-gray-500',
+          })
+        }
+
+        // Review cycle activity
+        const incompleteReviewCount = reviews.filter(r => r.status === 'in_progress' || r.status === 'draft').length
+        if (incompleteReviewCount > 0) {
+          dynamicUpdates.push({
+            id: 'update-reviews',
+            icon: <FileText size={14} />,
+            title: 'Performance Reviews In Progress',
+            content: `${incompleteReviewCount} review${incompleteReviewCount > 1 ? 's are' : ' is'} currently in progress. ${reviewCompletion}% of all reviews have been submitted.`,
+            author: 'Performance Team',
+            date: 'Ongoing',
+            color: 'bg-gray-100 text-gray-500',
+          })
+        }
+
         return (
           <Card padding="none" className="mb-6">
             <div className="px-6 py-3 flex items-center justify-between border-b border-divider">
               <div className="flex items-center gap-2">
                 <Megaphone size={14} className="text-tempo-600" />
                 <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Company Updates</h3>
-                <Badge variant="default">{announcements.length}</Badge>
+                {dynamicUpdates.length > 0 && <Badge variant="default">{dynamicUpdates.length}</Badge>}
               </div>
               <Button variant="ghost" size="sm" onClick={() => addToast('Company update posted!')}><PlusCircle size={14} /> Post Update</Button>
             </div>
-            <div className="divide-y divide-divider">
-              {announcements.map(ann => (
-                <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
-                      {ann.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-xs font-semibold text-t1">{ann.title}</p>
+            {dynamicUpdates.length > 0 ? (
+              <div className="divide-y divide-divider">
+                {dynamicUpdates.map(ann => (
+                  <div key={ann.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className={cn('flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5', ann.color)}>
+                        {ann.icon}
                       </div>
-                      <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[0.65rem] text-t3">{ann.author}</span>
-                        <span className="text-[0.65rem] text-t3">·</span>
-                        <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-xs font-semibold text-t1">{ann.title}</p>
+                        </div>
+                        <p className="text-xs text-t2 line-clamp-2">{ann.content}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[0.65rem] text-t3">{ann.author}</span>
+                          <span className="text-[0.65rem] text-t3">{ann.date}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-10 text-center">
+                <Megaphone size={24} className="mx-auto text-t3 mb-2" />
+                <p className="text-xs font-medium text-t2">No company updates yet</p>
+                <p className="text-[0.65rem] text-t3 mt-1">Post an update to share news with your team.</p>
+              </div>
+            )}
           </Card>
         )
       })()}
@@ -542,22 +600,39 @@ export function OrgTab() {
                 <Cake size={14} className="text-gray-400" />
                 <span className="text-xs font-semibold text-t1">Upcoming Birthdays</span>
               </div>
-              <div className="space-y-2">
-                {employees.slice(0, 3).map((emp, i) => {
-                  const months = ['Mar', 'Mar', 'Apr']
-                  const days = [2 + i * 5, 8 + i * 3, 1 + i * 7]
+              {(() => {
+                const empsWithBirthdays = employees.filter((emp: Record<string, unknown>) => emp.date_of_birth)
+                if (empsWithBirthdays.length === 0) {
                   return (
-                    <div key={`bday-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
-                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
-                        <p className="text-[0.65rem] text-t3">{months[i]} {days[i]}</p>
-                      </div>
-                      <span className="text-lg">🎂</span>
+                    <div className="text-center py-6">
+                      <Cake size={20} className="mx-auto text-t3 mb-2" />
+                      <p className="text-xs text-t3">No upcoming birthdays</p>
+                      <p className="text-[0.6rem] text-t3 mt-0.5">Employee birth dates are not yet configured.</p>
                     </div>
                   )
-                })}
-              </div>
+                }
+                const now = new Date()
+                const currentMonth = now.getMonth()
+                const currentDay = now.getDate()
+                return (
+                  <div className="space-y-2">
+                    {empsWithBirthdays.slice(0, 3).map((emp: Record<string, unknown>) => {
+                      const bd = new Date(emp.date_of_birth as string)
+                      const month = bd.toLocaleDateString('en-US', { month: 'short' })
+                      const day = bd.getDate()
+                      return (
+                        <div key={`bday-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                          <Avatar name={(emp.profile as Record<string, string>)?.full_name || (emp.id as string)} size="sm" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-t1">{(emp.profile as Record<string, string>)?.full_name}</p>
+                            <p className="text-[0.65rem] text-t3">{month} {day}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
             {/* Work Anniversaries */}
             <div className="p-4">
@@ -565,21 +640,37 @@ export function OrgTab() {
                 <Award size={14} className="text-gray-400" />
                 <span className="text-xs font-semibold text-t1">Work Anniversaries</span>
               </div>
-              <div className="space-y-2">
-                {employees.slice(3, 6).map((emp, i) => {
-                  const years = [5, 3, 1]
+              {(() => {
+                const empsWithHireDate = employees.filter((emp: Record<string, unknown>) => emp.hire_date)
+                if (empsWithHireDate.length === 0) {
                   return (
-                    <div key={`anni-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
-                      <Avatar name={emp.profile?.full_name || emp.id} size="sm" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-t1">{emp.profile?.full_name}</p>
-                        <p className="text-[0.65rem] text-t3">{years[i]} year{years[i] > 1 ? 's' : ''} this month</p>
-                      </div>
-                      <Badge variant="success">{years[i]}y</Badge>
+                    <div className="text-center py-6">
+                      <Award size={20} className="mx-auto text-t3 mb-2" />
+                      <p className="text-xs text-t3">No upcoming work anniversaries</p>
+                      <p className="text-[0.6rem] text-t3 mt-0.5">Employee hire dates are not yet configured.</p>
                     </div>
                   )
-                })}
-              </div>
+                }
+                const now = new Date()
+                return (
+                  <div className="space-y-2">
+                    {empsWithHireDate.slice(0, 3).map((emp: Record<string, unknown>) => {
+                      const hd = new Date(emp.hire_date as string)
+                      const years = Math.floor((now.getTime() - hd.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+                      return (
+                        <div key={`anni-${emp.id}`} className="flex items-center gap-3 bg-canvas rounded-lg px-3 py-2">
+                          <Avatar name={(emp.profile as Record<string, string>)?.full_name || (emp.id as string)} size="sm" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-t1">{(emp.profile as Record<string, string>)?.full_name}</p>
+                            <p className="text-[0.65rem] text-t3">{years > 0 ? `${years} year${years > 1 ? 's' : ''}` : 'Less than a year'}</p>
+                          </div>
+                          {years > 0 && <Badge variant="success">{years}y</Badge>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </Card>
