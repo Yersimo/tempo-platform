@@ -223,7 +223,7 @@ function WidgetCustomizationModal({
   t: ReturnType<typeof useTranslations>
   tc: ReturnType<typeof useTranslations>
 }) {
-  const sortedWidgets = [...widgetPreferences.widgets].sort((a, b) => a.position - b.position)
+  const sortedWidgets = [...(widgetPreferences?.widgets || [])].sort((a, b) => a.position - b.position)
 
   const { getItemHandlers, dragIndex, overIndex } = useSortable({
     items: sortedWidgets,

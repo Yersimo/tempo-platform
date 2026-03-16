@@ -90,31 +90,17 @@ export default function EmployeeDetailPage() {
     emergency_contact_name: '', emergency_contact_phone: '',
   })
 
-  if (pageLoading) {
-    return (
-      <div className="p-6"><PageSkeleton /></div>
-    )
-  }
-
-  if (!emp) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-t3 mb-4">{t('employeeNotFound')}</p>
-        <Link href="/people"><Button variant="secondary">{t('backToPeople')}</Button></Link>
-      </div>
-    )
-  }
-
-  const empGoals = goals.filter(g => g.employee_id === id)
-  const empReviews = reviews.filter(r => r.employee_id === id)
-  const empEnrollments = enrollments.filter(e => e.employee_id === id)
-  const empLeave = leaveRequests.filter(lr => lr.employee_id === id)
-  const empDevices = devices.filter(d => d.assigned_to === id)
-  const empExpenses = expenseReports.filter(e => e.employee_id === id)
-  const empFeedback = feedback.filter(f => f.to_id === id)
-  const empContacts = emergencyContacts.filter(c => c.employee_id === id)
+  // Move filtered data before hooks to avoid conditional hook calls
+  const empGoals = emp ? goals.filter(g => g.employee_id === id) : []
+  const empReviews = emp ? reviews.filter(r => r.employee_id === id) : []
+  const empEnrollments = emp ? enrollments.filter(e => e.employee_id === id) : []
+  const empLeave = emp ? leaveRequests.filter(lr => lr.employee_id === id) : []
+  const empDevices = emp ? devices.filter(d => d.assigned_to === id) : []
+  const empExpenses = emp ? expenseReports.filter(e => e.employee_id === id) : []
+  const empFeedback = emp ? feedback.filter(f => f.to_id === id) : []
+  const empContacts = emp ? emergencyContacts.filter(c => c.employee_id === id) : []
   const empFieldDefs = customFieldDefinitions.filter(d => d.entity_type === 'employee')
-  const empFieldValues = customFieldValues.filter(v => v.entity_id === id)
+  const empFieldValues = emp ? customFieldValues.filter(v => v.entity_id === id) : []
 
   // Group custom fields by groupName
   const fieldGroups = useMemo(() => {
@@ -159,6 +145,22 @@ export default function EmployeeDetailPage() {
   const enhancedCareer = Array.isArray(rawEnhancedCareer)
     ? rawEnhancedCareer.map((rec: any) => ({ ...rec, title: typeof rec.title === 'string' ? rec.title : String(rec.title ?? '') }))
     : rawEnhancedCareer
+
+  // Early returns AFTER all hooks to satisfy Rules of Hooks
+  if (pageLoading) {
+    return (
+      <div className="p-6"><PageSkeleton /></div>
+    )
+  }
+
+  if (!emp) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-t3 mb-4">{t('employeeNotFound')}</p>
+        <Link href="/people"><Button variant="secondary">{t('backToPeople')}</Button></Link>
+      </div>
+    )
+  }
 
   const tabs = [
     { id: 'overview', label: t('tabOverview') },
