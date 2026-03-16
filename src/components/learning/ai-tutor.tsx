@@ -525,22 +525,9 @@ export default function AITutor({
     { mode: 'socratic', icon: Zap, label: 'Socratic' },
   ]
 
-  // ------ Floating trigger button ------
+  // ------ Floating trigger button (hidden — DraggableAITutorButton in course-player handles this) ------
   if (!isOpen) {
-    return (
-      <button
-        onClick={onToggle}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/25 flex items-center justify-center text-white hover:scale-105 transition-transform group"
-        title="Open AI Tutor"
-      >
-        <Brain className="h-6 w-6" />
-        {/* pulse ring */}
-        <span className="absolute inset-0 rounded-full bg-violet-400 opacity-0 group-hover:opacity-20 animate-ping" />
-        <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-zinc-950 flex items-center justify-center">
-          <Sparkles className="h-2 w-2 text-emerald-900" />
-        </span>
-      </button>
-    )
+    return null
   }
 
   // ------ Panel ------
@@ -555,8 +542,8 @@ export default function AITutor({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/95 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-            <Brain className="h-4 w-4 text-white" />
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-tempo-500 to-tempo-700 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white leading-tight">AI Tutor</h3>

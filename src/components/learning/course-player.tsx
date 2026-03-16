@@ -30,6 +30,82 @@ function estimateReadingTime(text: string): number {
   return Math.max(1, Math.ceil(words / 200)) // 200 wpm average
 }
 
+// Draggable AI Tutor button — can be repositioned by the user, collapsible to a thin bar
+function DraggableAITutorButton({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
+  const [pos, setPos] = useState({ x: 16, y: 80 }) // top-right default (16px from right, 80px from top)
+  const [isDragging, setIsDragging] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
+  const btnRef = useRef<HTMLDivElement>(null)
+  const wasDragged = useRef(false)
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    setIsDragging(true)
+    wasDragged.current = false
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }, [pos])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging || !dragRef.current) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) wasDragged.current = true
+    const newX = Math.max(0, Math.min(window.innerWidth - 56, dragRef.current.startPosX - dx))
+    const newY = Math.max(0, Math.min(window.innerHeight - 56, dragRef.current.startPosY + dy))
+    setPos({ x: newX, y: newY })
+  }, [isDragging])
+
+  const handlePointerUp = useCallback(() => {
+    setIsDragging(false)
+    dragRef.current = null
+  }, [])
+
+  if (isOpen) return null // hide button when panel is open
+
+  return (
+    <div
+      ref={btnRef}
+      className="fixed z-[60] select-none"
+      style={{ right: pos.x, top: pos.y, touchAction: 'none' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    >
+      {collapsed ? (
+        // Collapsed: thin vertical bar
+        <button
+          onClick={() => { if (!wasDragged.current) setCollapsed(false) }}
+          className="w-6 h-14 rounded-full bg-white/90 border border-divider shadow-md flex flex-col items-center justify-center gap-1 hover:bg-tempo-50 transition-colors cursor-grab active:cursor-grabbing"
+          title="Expand AI Tutor"
+        >
+          <Sparkles size={10} className="text-tempo-600" />
+          <span className="text-[6px] text-tempo-600 font-bold">AI</span>
+        </button>
+      ) : (
+        // Expanded: floating pill button
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => { if (!wasDragged.current) onToggle() }}
+            className="h-10 px-3 rounded-l-full bg-white border border-r-0 border-divider shadow-md flex items-center gap-2 hover:bg-tempo-50 transition-colors cursor-grab active:cursor-grabbing group"
+            title="Open AI Tutor"
+          >
+            <Sparkles size={14} className="text-tempo-600" />
+            <span className="text-xs font-medium text-t1 group-hover:text-tempo-600">AI Tutor</span>
+          </button>
+          <button
+            onClick={() => setCollapsed(true)}
+            className="h-10 w-7 rounded-r-full bg-white border border-l-0 border-divider shadow-md flex items-center justify-center hover:bg-red-50 transition-colors"
+            title="Minimize"
+          >
+            <ChevronRight size={12} className="text-t3" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseCompleted, onQuizPassed }: CoursePlayerProps) {
   const {
     courses, courseBlocks, quizQuestions, enrollments,
@@ -215,6 +291,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
       case 'video': return <Video size={size} />
       case 'quiz': return <HelpCircle size={size} />
       case 'interactive': return <Zap size={size} />
+      case 'infographic': return <BarChart3 size={size} />
       case 'download': return <Download size={size} />
       default: return <BookOpen size={size} />
     }
@@ -224,6 +301,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
     switch (type) {
       case 'text': return 'Reading'
       case 'video': return 'Video'
+      case 'infographic': return 'Visual Summary'
       case 'quiz': return 'Quiz'
       case 'interactive': return 'Activity'
       case 'download': return 'Resource'
@@ -531,6 +609,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
                   <div className={cn(
                     'cp-block-type-pill',
                     currentBlock.type === 'text' && 'cp-pill-reading',
+                    currentBlock.type === 'infographic' && 'cp-pill-video',
                     currentBlock.type === 'video' && 'cp-pill-video',
                     currentBlock.type === 'quiz' && 'cp-pill-quiz',
                     currentBlock.type === 'interactive' && 'cp-pill-activity',
@@ -610,17 +689,11 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
           </div>
         </div>
 
-        {/* AI Tutor floating button */}
-        <button
-          onClick={() => setShowAITutor(!showAITutor)}
-          className={cn(
-            'fixed bottom-24 right-6 z-[60] w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110',
-            showAITutor ? 'bg-tempo-600 text-white' : 'bg-white border border-divider text-tempo-600 hover:bg-tempo-50'
-          )}
-          title="AI Tutor"
-        >
-          <MessageCircle size={20} />
-        </button>
+        {/* AI Tutor — draggable floating button (positioned top-right, away from Next) */}
+        <DraggableAITutorButton
+          isOpen={showAITutor}
+          onToggle={() => setShowAITutor(!showAITutor)}
+        />
 
         {/* AI Tutor panel */}
         <AITutor
@@ -648,6 +721,8 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
         return renderQuizBlock(block, status)
       case 'interactive':
         return renderInteractiveBlock(block, status)
+      case 'infographic':
+        return renderInfographicBlock(block, status)
       case 'download':
         return renderDownloadBlock(block, status)
       default:
@@ -738,6 +813,100 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
             <CheckCircle size={16} /> Completed
           </div>
         )}
+      </div>
+    )
+  }
+
+  function renderInfographicBlock(block: typeof blocks[0], status: BlockStatus) {
+    // Parse infographic data from content if available
+    let infographic: { title: string; points: { id: number; text: string; color: string }[]; terms: string[]; checkQuestions: string[] } | null = null
+    const match = block.content.match(/<!--INFOGRAPHIC:(.*?)-->/)
+    if (match) {
+      try { infographic = JSON.parse(match[1]) } catch {}
+    }
+
+    // Fallback to rendering as rich text if no infographic data
+    const textContent = block.content.replace(/<!--INFOGRAPHIC:.*?-->\n?\n?/, '')
+
+    return (
+      <div className="course-player-prose">
+        <h2 className="cp-block-title">{block.title}</h2>
+
+        {/* Animated infographic cards */}
+        {infographic && (
+          <div className="my-6 space-y-4">
+            {/* Key points as animated cards */}
+            <div className="grid gap-3">
+              {infographic.points.map((point, i) => (
+                <div
+                  key={point.id}
+                  className="flex items-start gap-3 p-3 rounded-xl border border-divider/30 bg-surface/50 transition-all duration-500 hover:shadow-md hover:scale-[1.01]"
+                  style={{ animationDelay: `${i * 150}ms`, animation: 'fadeSlideUp 0.5s ease-out both' }}
+                >
+                  <div
+                    className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: point.color }}
+                  >
+                    {point.id}
+                  </div>
+                  <p className="text-sm text-t1 leading-relaxed">{point.text}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Key terms as animated pills */}
+            {infographic.terms.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-t2 mb-2 uppercase tracking-wide">Key Concepts</p>
+                <div className="flex flex-wrap gap-2">
+                  {infographic.terms.map((term, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 transition-all duration-300 hover:bg-violet-100 hover:shadow-sm"
+                      style={{ animationDelay: `${(infographic!.points.length + i) * 100}ms`, animation: 'fadeSlideUp 0.4s ease-out both' }}
+                    >
+                      {term}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reflection questions */}
+            {infographic.checkQuestions.length > 0 && (
+              <div className="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-xs font-semibold text-amber-800 mb-2">Reflection Questions</p>
+                {infographic.checkQuestions.map((q, i) => (
+                  <p key={i} className="text-sm text-amber-700 mb-1">• {q}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Fallback text content */}
+        {!infographic && <div className="cp-rich-content">{renderRichContent(textContent)}</div>}
+
+        {status !== 'completed' && (
+          <div className="mt-10 pt-6 border-t border-divider/40">
+            <Button variant="primary" onClick={markBlockComplete} className="cp-hover-lift cp-complete-btn">
+              <CheckCircle size={14} /> Mark as Read
+            </Button>
+          </div>
+        )}
+        {status === 'completed' && (
+          <div className="mt-10 pt-6 border-t border-divider/40 cp-completed-badge">
+            <CheckCircle size={16} /> Completed
+          </div>
+        )}
+
+        {/* CSS animation keyframes */}
+        <style>{`
+          @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </div>
     )
   }

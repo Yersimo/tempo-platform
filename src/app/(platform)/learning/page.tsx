@@ -1152,6 +1152,25 @@ export default function LearningPage() {
     }
   }
 
+  // Duration formatting — use ranges for estimates instead of exact times
+  function formatLessonDuration(mins: number): string {
+    if (mins <= 1) return '~1m'
+    if (mins <= 3) return '1-3m'
+    if (mins <= 5) return '3-5m'
+    if (mins <= 8) return '5-8m'
+    if (mins <= 12) return '8-12m'
+    if (mins <= 15) return '10-15m'
+    if (mins <= 20) return '15-20m'
+    return `${Math.floor(mins / 5) * 5}-${Math.ceil(mins / 5) * 5}m`
+  }
+
+  function formatDurationRange(totalMins: number): string {
+    if (totalMins < 60) return `${Math.max(1, Math.floor(totalMins * 0.8))}-${Math.ceil(totalMins * 1.2)} min`
+    const lowH = Math.max(1, Math.floor((totalMins * 0.8) / 60))
+    const highH = Math.ceil((totalMins * 1.2) / 60)
+    return lowH === highH ? `~${lowH}h` : `${lowH}-${highH}h`
+  }
+
   // Decode HTML entities and clean up extracted text
   function cleanText(text: string): string {
     return text
@@ -1274,20 +1293,34 @@ export default function LearningPage() {
         duration_minutes: Math.max(5, Math.min(30, Math.ceil(wordCount / 200))),
       })
 
-      // Lesson 2: Key Takeaways & Summary (replaces empty video)
+      // Lesson 2: Visual Infographic — key points with embedded SVG graphics
       const keyPoints = extractKeyPoints(modContent)
       const keyTerms = extractKeyTerms(modContent)
-      const summaryContent = `## Key Takeaways: ${modTitle}\n\n` +
+
+      // Generate SVG infographic data as JSON (rendered by course player)
+      const infographicData = {
+        type: 'infographic',
+        title: `Key Takeaways: ${modTitle}`,
+        points: keyPoints.map((p, i) => ({ id: i + 1, text: p, color: ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#EF4444', '#EC4899'][i % 6] })),
+        terms: keyTerms,
+        checkQuestions: [
+          `Can you explain the main purpose of ${modTitle.toLowerCase()}?`,
+          `What are the critical success factors?`,
+          `How does this connect to the broader context?`,
+        ],
+      }
+      const summaryContent = `<!--INFOGRAPHIC:${JSON.stringify(infographicData)}-->\n\n` +
+        `## Key Takeaways: ${modTitle}\n\n` +
         (keyPoints.length > 0
           ? `**What You Need to Know:**\n\n${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n\n')}`
           : `**Summary:**\n\n${modContent.split(/[.!?]+/).filter(s => s.trim().length > 20).slice(0, 4).map((s, i) => `${i + 1}. ${s.trim()}`).join('\n\n')}`) +
         (keyTerms.length > 0 ? `\n\n---\n\n**Key Concepts:**\n\n${keyTerms.map(t => `- **${t}**`).join('\n')}` : '') +
         `\n\n---\n\n**Learning Check:**\n- Can you explain the main purpose of ${modTitle.toLowerCase()}?\n- What are the critical success factors?\n- How does this connect to the broader context?`
       lessons.push({
-        title: `${shortLabel} — Key Takeaways`,
-        type: 'text',
+        title: `${shortLabel} — Visual Summary`,
+        type: 'infographic',
         content: summaryContent,
-        duration_minutes: 8,
+        duration_minutes: 6,
       })
 
       // Lesson 3: Applied Scenario (only if enough content)
@@ -2709,41 +2742,84 @@ export default function LearningPage() {
             {docUploadState === 'done' && parsedDocCourse && (
               <div className="space-y-4">
                 <div className="bg-canvas rounded-xl p-4">
+                  {/* Editable course title */}
                   <div className="flex items-center gap-2 mb-2">
                     <FileText size={16} className="text-tempo-600" />
-                    <h4 className="text-sm font-semibold text-t1">{parsedDocCourse.title}</h4>
+                    <input
+                      className="text-sm font-semibold text-t1 bg-transparent border-b border-transparent hover:border-divider focus:border-tempo-500 focus:outline-none transition-colors flex-1"
+                      value={parsedDocCourse.title}
+                      onChange={(e) => setParsedDocCourse({ ...parsedDocCourse, title: e.target.value })}
+                    />
                     <Badge variant="success">Ready to Create</Badge>
                   </div>
-                  <p className="text-xs text-t3 mb-3">{parsedDocCourse.description}</p>
+                  {/* Editable description */}
+                  <textarea
+                    className="text-xs text-t3 mb-3 w-full bg-transparent border border-transparent hover:border-divider focus:border-tempo-500 focus:outline-none rounded px-1 py-0.5 resize-none transition-colors"
+                    rows={2}
+                    value={parsedDocCourse.description}
+                    onChange={(e) => setParsedDocCourse({ ...parsedDocCourse, description: e.target.value })}
+                  />
                   <div className="flex items-center gap-4 text-xs text-t3 mb-3">
                     <span className="flex items-center gap-1"><BookOpen size={12} /> {parsedDocCourse.modules.length} modules</span>
                     <span className="flex items-center gap-1"><FileText size={12} /> {parsedDocCourse.modules.reduce((a, m) => a + m.lessons.length, 0)} lessons</span>
                     <span className="flex items-center gap-1"><HelpCircle size={12} /> {parsedDocCourse.quizQuestions.length} quiz questions</span>
-                    <span className="flex items-center gap-1"><Clock size={12} /> {Math.ceil(parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0) / 60)}h total</span>
+                    <span className="flex items-center gap-1"><Clock size={12} /> {formatDurationRange(parsedDocCourse.modules.reduce((a, m) => a + m.duration_minutes, 0))} total</span>
                   </div>
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {parsedDocCourse.modules.map((mod, i) => (
-                      <div key={i} className="bg-surface rounded-lg p-3">
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {parsedDocCourse.modules.map((mod, mi) => (
+                      <div key={mi} className="bg-surface rounded-lg p-3 group/mod">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-t1">Module {i + 1}: {mod.title}</p>
-                          <span className="text-[0.6rem] text-t3">{mod.duration_minutes} min</span>
+                          <input
+                            className="text-xs font-semibold text-t1 bg-transparent border-b border-transparent hover:border-divider focus:border-tempo-500 focus:outline-none flex-1 mr-2 transition-colors"
+                            value={`Module ${mi + 1}: ${mod.title}`}
+                            onChange={(e) => {
+                              const newTitle = e.target.value.replace(/^Module \d+:\s*/, '')
+                              const updated = { ...parsedDocCourse, modules: parsedDocCourse.modules.map((m, i) => i === mi ? { ...m, title: newTitle } : m) }
+                              setParsedDocCourse(updated)
+                            }}
+                          />
+                          <span className="text-[0.6rem] text-t3 shrink-0">{formatDurationRange(mod.duration_minutes)}</span>
                         </div>
                         <div className="space-y-1">
-                          {mod.lessons.map((lesson, j) => (
-                            <div key={j} className="flex items-center gap-2 text-[0.65rem] text-t2">
+                          {mod.lessons.map((lesson, li) => (
+                            <div key={li} className="flex items-center gap-2 text-[0.65rem] text-t2 group/lesson">
                               {lesson.type === 'text' && <FileText size={10} className="text-blue-500 shrink-0" />}
+                              {lesson.type === 'infographic' && <BarChart3 size={10} className="text-violet-500 shrink-0" />}
                               {lesson.type === 'video' && <Video size={10} className="text-purple-500 shrink-0" />}
                               {lesson.type === 'interactive' && <Zap size={10} className="text-amber-500 shrink-0" />}
                               {lesson.type === 'quiz' && <HelpCircle size={10} className="text-green-500 shrink-0" />}
                               {lesson.type === 'download' && <Download size={10} className="text-gray-500 shrink-0" />}
-                              <span>{lesson.title}</span>
-                              <span className="text-t3 ml-auto shrink-0">{lesson.duration_minutes}m</span>
+                              <input
+                                className="flex-1 bg-transparent border-b border-transparent hover:border-divider focus:border-tempo-500 focus:outline-none transition-colors text-[0.65rem]"
+                                value={lesson.title}
+                                onChange={(e) => {
+                                  const updated = { ...parsedDocCourse, modules: parsedDocCourse.modules.map((m, i) =>
+                                    i === mi ? { ...m, lessons: m.lessons.map((l, j) => j === li ? { ...l, title: e.target.value } : l) } : m
+                                  )}
+                                  setParsedDocCourse(updated)
+                                }}
+                              />
+                              <span className="text-t3 shrink-0">{formatLessonDuration(lesson.duration_minutes)}</span>
+                              <button
+                                className="opacity-0 group-hover/lesson:opacity-100 text-red-400 hover:text-red-600 transition-opacity shrink-0"
+                                title="Remove lesson"
+                                onClick={() => {
+                                  const newLessons = mod.lessons.filter((_, j) => j !== li)
+                                  const updated = { ...parsedDocCourse, modules: parsedDocCourse.modules.map((m, i) =>
+                                    i === mi ? { ...m, lessons: newLessons, duration_minutes: newLessons.reduce((a, l) => a + l.duration_minutes, 0) } : m
+                                  ).filter(m => m.lessons.length > 0) }
+                                  setParsedDocCourse(updated)
+                                }}
+                              >
+                                <X size={10} />
+                              </button>
                             </div>
                           ))}
                         </div>
                       </div>
                     ))}
                   </div>
+                  <p className="text-[0.6rem] text-t3 mt-2 italic">Click any title to edit. Hover lessons to remove.</p>
                 </div>
                 {uploadedFileName && (
                   <div className="flex items-center gap-2 text-xs text-t3 bg-canvas rounded-lg px-3 py-2">
