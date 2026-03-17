@@ -2130,7 +2130,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     const timer = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
       toastTimers.current.delete(id)
-    }, 4000)
+    }, 3000)
     toastTimers.current.set(id, timer)
   }, [])
 
