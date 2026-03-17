@@ -395,101 +395,109 @@ function HomeTab({ data, onTabChange }: { data: AcademyData; onTabChange: (tab: 
         )}
       </Card>
 
-      {/* Next Session */}
-      {nextSession && (
-        <Card>
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar size={14} className="text-t3" />
-            <span className="text-xs font-semibold text-t2 uppercase tracking-wide">Next Session</span>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-t1 mb-1">{nextSession.title}</h3>
-              <p className="text-xs text-t3 mb-1">
-                {formatDate(nextSession.date)} at {nextSession.time}
-              </p>
-              <div className="flex items-center gap-2">
-                <SessionTypeBadge type={nextSession.type} />
-                <CountdownDisplay dateStr={nextSession.date} />
+      {/* Two-Column Layout: Session + Assignment | Community + Certificates */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left Column */}
+        <div className="space-y-5">
+          {/* Next Session */}
+          {nextSession && (
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar size={14} className="text-t3" />
+                <span className="text-xs font-semibold text-t2 uppercase tracking-wide">Next Session</span>
               </div>
-            </div>
-            <Button size="sm" variant={nextSession.rsvpd ? 'secondary' : 'primary'}>
-              {nextSession.rsvpd ? 'Joined' : 'Join'}
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Pending Assignment Alert */}
-      {pendingAssignment && (
-        <Card
-          className="border-amber-200 bg-amber-50/50 cursor-pointer"
-          onClick={() => onTabChange('assignments')}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-              <ClipboardList size={16} className="text-amber-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-t1">{pendingAssignment.title}</h3>
-              <p className="text-xs text-t3">Due {formatDate(pendingAssignment.dueDate)}</p>
-            </div>
-            <ChevronRight size={16} className="text-t3 shrink-0" />
-          </div>
-        </Card>
-      )}
-
-      {/* Community Highlights */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold text-t2 uppercase tracking-wide">Community Highlights</h3>
-          <button
-            onClick={() => onTabChange('community')}
-            className="text-xs text-tempo-600 font-medium hover:underline"
-          >
-            View All
-          </button>
-        </div>
-        <div className="space-y-3">
-          {recentPosts.map(post => (
-            <Card key={post.id} className="!p-4">
-              <div className="flex items-start gap-3">
-                <Avatar name={post.author} size="sm" />
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-t1">{post.author}</span>
-                    {post.isFacilitator && <Badge variant="ai">Facilitator</Badge>}
-                    <span className="text-[0.6rem] text-t3">{post.timestamp}</span>
-                  </div>
-                  <p className="text-xs text-t2 line-clamp-2">{post.content}</p>
-                  <div className="flex items-center gap-1 mt-1.5 text-t3">
-                    <MessageSquare size={12} />
-                    <span className="text-[0.6rem]">{post.replyCount} replies</span>
+                  <h3 className="text-sm font-semibold text-t1 mb-1">{nextSession.title}</h3>
+                  <p className="text-xs text-t3 mb-1">
+                    {formatDate(nextSession.date)} at {nextSession.time}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <SessionTypeBadge type={nextSession.type} />
+                    <CountdownDisplay dateStr={nextSession.date} />
                   </div>
                 </div>
+                <Button size="sm" variant={nextSession.rsvpd ? 'secondary' : 'primary'}>
+                  {nextSession.rsvpd ? 'Joined' : 'Join'}
+                </Button>
               </div>
             </Card>
-          ))}
+          )}
+
+          {/* Pending Assignment Alert */}
+          {pendingAssignment && (
+            <Card
+              className="border-amber-200 bg-amber-50/50 cursor-pointer"
+              onClick={() => onTabChange('assignments')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <ClipboardList size={16} className="text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-t1">{pendingAssignment.title}</h3>
+                  <p className="text-xs text-t3">Due {formatDate(pendingAssignment.dueDate)}</p>
+                </div>
+                <ChevronRight size={16} className="text-t3 shrink-0" />
+              </div>
+            </Card>
+          )}
+
+          {/* Certificate Status */}
+          <Card>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                <Award size={16} className="text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-t1">Certificate Progress</h3>
+                <p className="text-xs text-t3">
+                  {earnedCerts} of {totalCerts} certificates earned
+                </p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => onTabChange('certificates')}>
+                View <ChevronRight size={14} />
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Column - Community */}
+        <div className="space-y-5">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-t2 uppercase tracking-wide">Community Highlights</h3>
+              <button
+                onClick={() => onTabChange('community')}
+                className="text-xs text-tempo-600 font-medium hover:underline"
+              >
+                View All
+              </button>
+            </div>
+            <div className="space-y-3">
+              {recentPosts.map(post => (
+                <Card key={post.id} className="!p-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar name={post.author} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-t1">{post.author}</span>
+                        {post.isFacilitator && <Badge variant="ai">Facilitator</Badge>}
+                        <span className="text-[0.6rem] text-t3">{post.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-t2 line-clamp-2">{post.content}</p>
+                      <div className="flex items-center gap-1 mt-1.5 text-t3">
+                        <MessageSquare size={12} />
+                        <span className="text-[0.6rem]">{post.replyCount} replies</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Certificate Status */}
-      <Card>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-            <Award size={16} className="text-green-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-t1">Certificate Progress</h3>
-            <p className="text-xs text-t3">
-              {earnedCerts} of {totalCerts} certificates earned
-            </p>
-          </div>
-          <Button size="sm" variant="ghost" onClick={() => onTabChange('certificates')}>
-            View <ChevronRight size={14} />
-          </Button>
-        </div>
-      </Card>
     </div>
   )
 }
@@ -1101,7 +1109,7 @@ function ResourcesTab({ data }: { data: AcademyData }) {
       {Object.entries(grouped).map(([moduleTitle, resources]) => (
         <div key={moduleTitle}>
           <h3 className="text-xs font-semibold text-t2 uppercase tracking-wide mb-3">{moduleTitle}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {resources.map(resource => (
               <Card key={resource.id}>
                 <div className="flex items-start gap-3">
@@ -1426,7 +1434,7 @@ export default function AcademyWorkspacePage() {
     >
       {/* Top bar */}
       <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-divider">
-        <div className="max-w-5xl mx-auto px-4 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <div className="flex items-center gap-3 py-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -1442,13 +1450,13 @@ export default function AcademyWorkspacePage() {
             tabs={ACADEMY_TABS}
             active={activeTab}
             onChange={handleTabChange}
-            maxVisible={4}
+            maxVisible={6}
           />
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 lg:px-8 pt-5">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-5">
         {activeTab === 'home' && <HomeTab data={academy} onTabChange={handleTabChange} />}
         {activeTab === 'curriculum' && <CurriculumTab data={academy} />}
         {activeTab === 'calendar' && <CalendarTab data={academy} />}

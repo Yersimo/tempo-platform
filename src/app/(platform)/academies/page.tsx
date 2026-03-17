@@ -643,13 +643,16 @@ export default function AcademiesPage() {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {academies.map(academy => {
               const participantCount = academy.cohorts.reduce((sum, c) => sum + c.participant_ids.length, 0)
               const acParticipants = participants.filter(p => p.academy_id === academy.id)
               const acCompletion = acParticipants.length > 0
                 ? Math.round((acParticipants.filter(p => p.status === 'completed').length / acParticipants.length) * 100)
                 : 0
+              const activeCount = acParticipants.filter(p => p.status === 'active').length
+              const completedCount = acParticipants.filter(p => p.status === 'completed').length
+              const atRiskCount = acParticipants.filter(p => p.status === 'inactive').length
 
               return (
                 <Card
@@ -661,49 +664,76 @@ export default function AcademiesPage() {
                   }}
                   className="group"
                 >
-                  <div className="flex items-start gap-4">
+                  {/* Header */}
+                  <div className="flex items-start gap-4 mb-4">
                     <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm"
                       style={{ backgroundColor: academy.brand_color }}
                     >
                       {academy.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-t1 truncate">{academy.name}</h3>
+                        <h3 className="text-base font-semibold text-t1 truncate">{academy.name}</h3>
                         {renderStatusBadge(academy.status)}
                       </div>
-                      <p className="text-xs text-t3 line-clamp-2 mb-3">{academy.description}</p>
-
-                      <div className="grid grid-cols-3 gap-3 text-center">
-                        <div>
-                          <p className="text-lg font-bold text-t1">{participantCount}</p>
-                          <p className="text-[0.65rem] text-t3 uppercase tracking-wider">Participants</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-t1">{academy.cohorts.length}</p>
-                          <p className="text-[0.65rem] text-t3 uppercase tracking-wider">Cohorts</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-t1">{acCompletion}%</p>
-                          <p className="text-[0.65rem] text-t3 uppercase tracking-wider">Completion</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <Progress value={acCompletion} showLabel={false} size="sm" color="orange" />
-                      </div>
+                      <p className="text-sm text-t3 line-clamp-2">{academy.description}</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-divider flex items-center justify-between">
-                    <div className="flex items-center gap-1">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-4 gap-3 mb-4 bg-canvas rounded-xl p-3">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-t1">{participantCount}</p>
+                      <p className="text-[0.6rem] text-t3 uppercase tracking-wider">Enrolled</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-green-600">{activeCount}</p>
+                      <p className="text-[0.6rem] text-t3 uppercase tracking-wider">Active</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-t1">{academy.cohorts.length}</p>
+                      <p className="text-[0.6rem] text-t3 uppercase tracking-wider">Cohorts</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-t1">{acCompletion}%</p>
+                      <p className="text-[0.6rem] text-t3 uppercase tracking-wider">Completion</p>
+                    </div>
+                  </div>
+
+                  {/* Progress + At Risk */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs text-t3">{completedCount} completed · {atRiskCount > 0 ? `${atRiskCount} at risk` : 'none at risk'}</span>
+                      <span className="text-xs font-bold text-t1">{acCompletion}%</span>
+                    </div>
+                    <Progress value={acCompletion} showLabel={false} size="sm" color="orange" />
+                  </div>
+
+                  {/* Cohort Snapshots */}
+                  <div className="space-y-2 mb-4">
+                    {academy.cohorts.slice(0, 2).map(c => (
+                      <div key={c.id} className="flex items-center gap-2 text-xs text-t2">
+                        <span className={cn(
+                          'w-1.5 h-1.5 rounded-full shrink-0',
+                          c.status === 'active' ? 'bg-green-500' : c.status === 'upcoming' ? 'bg-blue-400' : 'bg-gray-300'
+                        )} />
+                        <span className="font-medium truncate">{c.name}</span>
+                        <span className="text-t3 ml-auto shrink-0">{c.participant_ids.length} participants · {c.facilitator_name}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="pt-3 border-t border-divider flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
                       {academy.languages.map(l => (
                         <span key={l} className="text-[0.6rem] uppercase bg-canvas px-1.5 py-0.5 rounded font-medium text-t3">{l}</span>
                       ))}
+                      <span className="text-[0.6rem] text-t3 ml-2">{academy.enrollment_type === 'private' ? '🔒 Private' : '🌐 Public'}</span>
                     </div>
-                    <span className="text-xs text-t3 flex items-center gap-1 group-hover:text-tempo-600 transition-colors">
-                      View <ChevronRight size={12} />
+                    <span className="text-xs text-t3 flex items-center gap-1 group-hover:text-tempo-600 transition-colors font-medium">
+                      Open Dashboard <ChevronRight size={12} />
                     </span>
                   </div>
                 </Card>
@@ -764,7 +794,7 @@ export default function AcademiesPage() {
             </div>
           </div>
 
-          <div className="p-6 min-h-[400px]">
+          <div className="p-6 min-h-[280px]">
             {wizardStep === 0 && renderStep1Brand()}
             {wizardStep === 1 && renderStep2Enrollment()}
             {wizardStep === 2 && renderStep3Curriculum()}
@@ -1447,7 +1477,7 @@ export default function AcademiesPage() {
         {selectedAcademy && (
           <>
             {/* Stat Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <StatCard
                 label="Total Enrolled"
                 value={totalParticipantCount}
@@ -1563,7 +1593,8 @@ export default function AcademiesPage() {
               </div>
             </Card>
 
-            {/* Engagement Chart Placeholder */}
+            {/* Two-Column: Engagement + Flagged */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -1591,8 +1622,6 @@ export default function AcademiesPage() {
                 })}
               </div>
             </Card>
-
-            {/* Flagged Participants */}
             <Card padding="none">
               <CardHeader className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1634,6 +1663,7 @@ export default function AcademiesPage() {
                 </div>
               )}
             </Card>
+            </div>
           </>
         )}
       </div>
@@ -2014,7 +2044,7 @@ export default function AcademiesPage() {
           </div>
 
           {/* Step Content */}
-          <div className="min-h-[350px]">
+          <div className="min-h-[280px]">
             {wizardStep === 0 && renderStep1Brand()}
             {wizardStep === 1 && renderStep2Enrollment()}
             {wizardStep === 2 && renderStep3Curriculum()}
