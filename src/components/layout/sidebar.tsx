@@ -119,6 +119,7 @@ export function Sidebar() {
         { label: t('performance'), href: '/performance', icon: <TrendingUp size={18} />, badge: 3 },
         { label: t('compensation'), href: '/compensation', icon: <Banknote size={18} />, requiredPermissions: ['compensation:read'] },
         { label: t('learning'), href: '/learning', icon: <GraduationCap size={18} /> },
+        { label: 'Academies', href: '/academies', icon: <BookOpen size={18} />, requiredPermissions: ['learning:read'] },
         { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
         { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
         { label: 'Journeys', href: '/journeys', icon: <Route size={18} /> },
