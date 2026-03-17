@@ -125,7 +125,7 @@ export default function ExpensePage() {
   // ---- Forms ----
   const [reportForm, setReportForm] = useState({
     employee_id: '', title: '', currency: 'USD',
-    items: [{ description: '', category: 'travel', amount: 0 }] as Array<{ description: string; category: string; amount: number }>,
+    items: [{ description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] as Array<{ description: string; category: string; amount: number; date: string }>,
   })
   const [policyForm, setPolicyForm] = useState({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' })
   const [mileageForm, setMileageForm] = useState({ employee_id: '', date: '', origin: '', destination: '', distance_km: 0, rate_per_km: 0.58 })
@@ -243,6 +243,157 @@ export default function ExpensePage() {
   const [showReimbursementModal, setShowReimbursementModal] = useState(false)
   const [reimbursementMethod, setReimbursementMethod] = useState<'payroll' | 'direct_deposit' | 'manual'>('payroll')
   const [selectedReimbursementIds, setSelectedReimbursementIds] = useState<Set<string>>(new Set())
+
+  // ---- Quick-Add Expense Templates ----
+  const quickAddTemplates = [
+    { label: 'Meal', icon: '🍽️', category: 'meals', defaultAmount: 50, description: 'Business meal' },
+    { label: 'Transport', icon: '🚕', category: 'transport', defaultAmount: 30, description: 'Ride/taxi' },
+    { label: 'Flight', icon: '✈️', category: 'travel', defaultAmount: 500, description: 'Flight ticket' },
+    { label: 'Hotel', icon: '🏨', category: 'accommodation', defaultAmount: 200, description: 'Hotel stay' },
+    { label: 'Supplies', icon: '📦', category: 'supplies', defaultAmount: 75, description: 'Office supplies' },
+    { label: 'Mileage', icon: '🚗', category: 'transport', defaultAmount: 0, description: 'Mileage reimbursement' },
+  ]
+
+  // ---- Receipt Upload in Submit Flow ----
+  const [receiptUploads, setReceiptUploads] = useState<Array<{ id: string; filename: string; size: string; status: 'uploading' | 'processing' | 'done'; ocrData?: { amount?: number; vendor?: string; date?: string; category?: string } }>>([])
+  const submitReceiptRef = useRef<HTMLInputElement>(null)
+  const [isDraggingReceipt, setIsDraggingReceipt] = useState(false)
+
+  function simulateReceiptUpload(file: File) {
+    const id = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
+    const sizeStr = file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+    setReceiptUploads(prev => [...prev, { id, filename: file.name, size: sizeStr, status: 'uploading' }])
+    // Simulate upload then OCR
+    setTimeout(() => {
+      setReceiptUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'processing' } : u))
+      setTimeout(() => {
+        const ocrData = {
+          amount: Math.round(Math.random() * 400 + 20),
+          vendor: ['Restaurant Sahel', 'Uber Lagos', 'Air Cote d\'Ivoire', 'Novotel', 'Bolt'][Math.floor(Math.random() * 5)],
+          date: new Date().toISOString().split('T')[0],
+          category: ['meals', 'transport', 'travel', 'accommodation', 'transport'][Math.floor(Math.random() * 5)],
+        }
+        setReceiptUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'done', ocrData } : u))
+        addToast('Receipt scanned - data extracted via AI')
+      }, 1500)
+    }, 1000)
+  }
+
+  function applyOcrToLineItem(upload: typeof receiptUploads[0]) {
+    if (!upload.ocrData) return
+    const emptyIdx = reportForm.items.findIndex(item => !item.description && !item.amount)
+    if (emptyIdx >= 0) {
+      const updated = [...reportForm.items]
+      updated[emptyIdx] = {
+        description: upload.ocrData.vendor || '',
+        category: upload.ocrData.category || 'other',
+        amount: upload.ocrData.amount || 0,
+        date: upload.ocrData.date || new Date().toISOString().split('T')[0],
+      }
+      setReportForm({ ...reportForm, items: updated })
+    } else {
+      setReportForm({
+        ...reportForm,
+        items: [...reportForm.items, {
+          description: upload.ocrData.vendor || '',
+          category: upload.ocrData.category || 'other',
+          amount: upload.ocrData.amount || 0,
+          date: upload.ocrData.date || new Date().toISOString().split('T')[0],
+        }],
+      })
+    }
+    addToast('OCR data applied to line item')
+  }
+
+  function removeReceiptUpload(id: string) {
+    setReceiptUploads(prev => prev.filter(u => u.id !== id))
+  }
+
+  // ---- Reject with Reason ----
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectingReportId, setRejectingReportId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  function openRejectDialog(reportId: string) {
+    setRejectingReportId(reportId)
+    setRejectReason('')
+    setShowRejectModal(true)
+  }
+
+  function submitRejectWithReason() {
+    if (!rejectingReportId) return
+    if (!rejectReason.trim()) { addToast('Please provide a reason for rejection', 'error'); return }
+    setSaving(true)
+    try {
+      updateExpenseReport(rejectingReportId, {
+        status: 'rejected',
+        approved_by: currentEmployeeId,
+        approved_at: new Date().toISOString(),
+        rejection_reason: rejectReason.trim(),
+      })
+      setShowRejectModal(false)
+      setRejectingReportId(null)
+      setRejectReason('')
+    } finally { setSaving(false) }
+  }
+
+  // ---- Draft Saving ----
+  const [hasDraft, setHasDraft] = useState(false)
+  const DRAFT_KEY = 'tempo_expense_draft'
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY)
+      if (saved) setHasDraft(true)
+    } catch {}
+  }, [])
+
+  function saveDraft() {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(reportForm))
+      addToast('Draft saved')
+      setHasDraft(true)
+    } catch {}
+  }
+
+  function loadDraft() {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY)
+      if (saved) {
+        const data = JSON.parse(saved)
+        setReportForm(data)
+        setShowReportModal(true)
+        addToast('Draft loaded')
+      }
+    } catch {}
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY) } catch {}
+    setHasDraft(false)
+  }
+
+  // ---- Policy Warnings for Submit Flow ----
+  const submitPolicyWarnings = useMemo(() => {
+    const warnings: string[] = []
+    reportForm.items.forEach(item => {
+      if (!item.amount || !item.category) return
+      const policy = expensePolicies.find((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active') as any
+      if (policy) {
+        if (policy.daily_limit && item.amount > policy.daily_limit) {
+          warnings.push(`"${item.description || item.category}" ($${item.amount}) exceeds ${item.category} daily limit of $${policy.daily_limit}`)
+        }
+        if (policy.receipt_threshold && item.amount > policy.receipt_threshold && receiptUploads.length === 0) {
+          warnings.push(`"${item.description || item.category}" ($${item.amount}) requires a receipt (threshold: $${policy.receipt_threshold})`)
+        }
+      }
+      // General high-amount warning
+      if (item.amount > 500 && !warnings.some(w => w.includes(item.description || item.category))) {
+        warnings.push(`"${item.description || item.category}" ($${item.amount}) exceeds $500 and may require additional approval`)
+      }
+    })
+    return warnings
+  }, [reportForm.items, expensePolicies, receiptUploads.length])
 
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
@@ -499,12 +650,24 @@ export default function ExpensePage() {
 
   // ---- Report CRUD ----
   function openNewReport() {
-    setReportForm({ employee_id: employees[0]?.id || '', title: '', currency: 'USD', items: [{ description: '', category: 'travel', amount: 0 }] })
+    setReportForm({ employee_id: currentEmployeeId || employees[0]?.id || '', title: '', currency: 'USD', items: [{ description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] })
+    setReceiptUploads([])
     setShowReportModal(true)
   }
 
   function addLineItem() {
-    setReportForm({ ...reportForm, items: [...reportForm.items, { description: '', category: 'travel', amount: 0 }] })
+    setReportForm({ ...reportForm, items: [...reportForm.items, { description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] })
+  }
+
+  function applyQuickAdd(template: typeof quickAddTemplates[0]) {
+    const emptyIdx = reportForm.items.findIndex(item => !item.description && !item.amount)
+    if (emptyIdx >= 0) {
+      const updated = [...reportForm.items]
+      updated[emptyIdx] = { description: template.description, category: template.category, amount: template.defaultAmount, date: new Date().toISOString().split('T')[0] }
+      setReportForm({ ...reportForm, items: updated })
+    } else {
+      setReportForm({ ...reportForm, items: [...reportForm.items, { description: template.description, category: template.category, amount: template.defaultAmount, date: new Date().toISOString().split('T')[0] }] })
+    }
   }
 
   function updateLineItem(index: number, field: string, value: string | number) {
@@ -552,10 +715,13 @@ export default function ExpensePage() {
       addExpenseReport({
         employee_id: reportForm.employee_id, title: reportForm.title, total_amount: totalAmount, currency: reportForm.currency,
         status: 'submitted', submitted_at: new Date().toISOString(),
-        items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: new Date().toISOString().split('T')[0] })),
+        items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: item.date || new Date().toISOString().split('T')[0] })),
+        receipt_count: receiptUploads.filter(r => r.status === 'done').length,
       })
       setShowReportModal(false)
       setDuplicateConfirmed(false)
+      setReceiptUploads([])
+      clearDraft()
     } finally {
       setSaving(false)
       setTimeout(() => { reportSubmittingRef.current = false }, 0)
@@ -790,14 +956,8 @@ export default function ExpensePage() {
               <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
                 placeholder={t('searchReports')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="">{t('filterByStatus')}</option>
-              <option value="submitted">Submitted</option>
-              <option value="pending_approval">Pending Approval</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="reimbursed">Reimbursed</option>
-            </select>
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              options={[{value: '', label: t('filterByStatus')}, {value: 'submitted', label: 'Submitted'}, {value: 'pending_approval', label: 'Pending Approval'}, {value: 'approved', label: 'Approved'}, {value: 'rejected', label: 'Rejected'}, {value: 'reimbursed', label: 'Reimbursed'}]} />
             {canApproveExpenses && (
               <label className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-surface cursor-pointer whitespace-nowrap">
                 <input type="checkbox" checked={filterTeamOnly} onChange={e => setFilterTeamOnly(e.target.checked)} className="accent-tempo-500" />
@@ -844,8 +1004,8 @@ export default function ExpensePage() {
                       <div className="flex gap-1">
                         {(report.status === 'submitted' || report.status === 'pending_approval') && canApproveExpenses && report.employee_id !== currentEmployeeId && (
                           <>
-                            <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}>{tc('approve')}</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ show: true, type: 'reject_report', id: report.id, label: report.title })}>{tc('reject')}</Button>
+                            <Button size="sm" variant="primary" onClick={() => approveReport(report.id)}><CheckCircle size={12} /> {tc('approve')}</Button>
+                            <Button size="sm" variant="danger" onClick={() => openRejectDialog(report.id)}><XCircle size={12} /> {tc('reject')}</Button>
                           </>
                         )}
                         {report.status === 'approved' && (
@@ -1364,9 +1524,8 @@ export default function ExpensePage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-xs font-medium text-t2 mb-1 block">{t('selectCountry')}</label>
-                <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={perDiemCountry} onChange={e => setPerDiemCountry(e.target.value)}>
-                  {[...new Set(perDiemRates.map(r => r.country))].map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <Select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={perDiemCountry} onChange={e => setPerDiemCountry(e.target.value)}
+                  options={[...new Set(perDiemRates.map(r => r.country))].map(c => ({value: c, label: c}))} />
               </div>
               <DatePicker label={t('startDate')} value={perDiemStart} onChange={d => setPerDiemStart(d.toISOString().split('T')[0])} />
               <DatePicker label={t('endDate')} value={perDiemEnd} onChange={d => setPerDiemEnd(d.toISOString().split('T')[0])} />

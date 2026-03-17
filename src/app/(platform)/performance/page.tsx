@@ -45,7 +45,7 @@ function MeritAllocationSection({ employees, reviews, departments, getDepartment
         const avgRating = empReviews.length > 0
           ? empReviews.reduce((a: number, r: any) => a + (r.overall_rating || 0), 0) / empReviews.length
           : 0
-        const salary = emp.salary || 0
+        const salary = (emp.salary || 0) / 100 // salary stored in cents, convert to dollars
         const recommendedPct = getRecommendedRaise(avgRating)
         const appliedPct = meritRaises[emp.id] ?? null
         const raisePct = appliedPct !== null ? appliedPct : 0

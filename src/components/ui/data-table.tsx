@@ -206,25 +206,32 @@ export function DataTable<T extends Record<string, any>>({
             <p className="text-sm text-t3">{emptyMessage}</p>
           </div>
         )}
-        <div className="divide-y divide-divider">
+        <div className="space-y-2 p-3">
           {sorted.map((row, i) => (
             <div
               key={rowKey ? rowKey(row, i) : i}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={cn(
-                'px-4 py-4 space-y-2 transition-colors',
-                'hover:bg-black/[0.015]',
-                onRowClick && 'cursor-pointer',
+                'bg-card border border-border rounded-xl px-4 py-3.5 space-y-2 transition-all min-h-[44px]',
+                onRowClick && 'cursor-pointer active:scale-[0.98] active:transition-transform active:duration-100',
               )}
             >
-              {columns.map(col => (
-                <div key={col.key}>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-t3">
-                    {col.label}
-                  </p>
-                  <div className="text-[13px] text-t1 mt-0.5">
-                    {cellValue(row, col, i)}
-                  </div>
+              {columns.map((col, colIdx) => (
+                <div key={col.key} className={cn(colIdx === 0 ? 'mb-1' : 'flex items-baseline justify-between gap-2')}>
+                  {colIdx === 0 ? (
+                    <div className="text-[14px] font-medium text-t1">
+                      {cellValue(row, col, i)}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-t3 shrink-0">
+                        {col.label}
+                      </p>
+                      <div className="text-[13px] text-t1 text-right">
+                        {cellValue(row, col, i)}
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

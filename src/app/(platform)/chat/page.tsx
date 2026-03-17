@@ -24,6 +24,9 @@ import {
   RefreshCw,
   Trash2,
   AlertTriangle,
+  Megaphone,
+  X,
+  UserPlus,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { cn } from '@/lib/utils/cn'
@@ -48,9 +51,7 @@ function formatDate(ts: string): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// Normalize DB row (snake_case) → component shape
-// DB: { id, channelId, senderId, content, createdAt, isPinned, ... }
-// Component: { id, channel_id, sender_id, content, timestamp, is_pinned, reactions }
+// Normalize DB row (snake_case) -> component shape
 function normalizeMessage(row: any): any {
   return {
     id: row.id,
@@ -71,12 +72,54 @@ function normalizeChannel(row: any): any {
   return {
     id: row.id,
     name: row.name,
-    type: row.type === 'direct' ? 'private' : row.type === 'announcement' ? 'public' : row.type || 'public',
+    type: row.type === 'direct' ? 'dm' : row.type === 'announcement' ? 'announcement' : row.type || 'public',
     description: row.description || '',
     member_count: row.memberCount ?? row.member_count ?? 0,
     last_message_at: row.lastMessageAt || row.last_message_at,
     unread_count: row.unreadCount ?? row.unread_count ?? 0,
+    member_ids: row.memberIds || row.member_ids || [],
   }
+}
+
+// ---------- Seed data when API & store are empty ----------
+function buildSeedChannels(employeeId: string): any[] {
+  return [
+    { id: 'seed-general', name: 'general', type: 'public', description: 'Company-wide discussions', member_count: 25 },
+    { id: 'seed-random', name: 'random', type: 'public', description: 'Water cooler chat', member_count: 18 },
+    { id: 'seed-announcements', name: 'announcements', type: 'announcement', description: 'Company announcements from leadership', member_count: 50 },
+    { id: 'seed-engineering', name: 'engineering', type: 'public', description: 'Engineering team discussions', member_count: 12 },
+    { id: 'seed-design', name: 'design', type: 'public', description: 'Design team channel', member_count: 6 },
+  ]
+}
+
+function buildSeedMessages(channelId: string, employees: any[]): any[] {
+  const now = new Date()
+  const ago = (mins: number) => new Date(now.getTime() - mins * 60000).toISOString()
+  const emp1 = employees[0]?.id || 'emp-1'
+  const emp2 = employees[1]?.id || 'emp-2'
+  const emp3 = employees[2]?.id || 'emp-3'
+
+  if (channelId === 'seed-general') {
+    return [
+      { id: 'seed-msg-1', channel_id: channelId, sender_id: emp1, content: 'Good morning team! Hope everyone is having a great start to the week.', timestamp: ago(120), is_pinned: false, reactions: [{ emoji: '\u{1F44B}', count: 3 }] },
+      { id: 'seed-msg-2', channel_id: channelId, sender_id: emp2, content: 'Morning! Quick reminder - the all-hands is at 2pm today.', timestamp: ago(90), is_pinned: true, reactions: [{ emoji: '\u{1F44D}', count: 5 }] },
+      { id: 'seed-msg-3', channel_id: channelId, sender_id: emp3, content: 'Thanks for the heads up! I\'ll make sure to prepare my updates.', timestamp: ago(60), is_pinned: false, reactions: [] },
+      { id: 'seed-msg-4', channel_id: channelId, sender_id: emp1, content: 'Also, we just hit our Q1 revenue target early! Great work everyone!', timestamp: ago(30), is_pinned: false, reactions: [{ emoji: '\u{1F389}', count: 8 }, { emoji: '\u{1F525}', count: 4 }] },
+    ]
+  }
+  if (channelId === 'seed-announcements') {
+    return [
+      { id: 'seed-ann-1', channel_id: channelId, sender_id: emp1, content: 'Welcome to the announcements channel. Important company updates will be posted here.', timestamp: ago(1440), is_pinned: true, reactions: [] },
+      { id: 'seed-ann-2', channel_id: channelId, sender_id: emp1, content: 'We are excited to announce our new benefits package starting next month. Check the benefits page for details.', timestamp: ago(720), is_pinned: false, reactions: [{ emoji: '\u{1F389}', count: 12 }] },
+    ]
+  }
+  if (channelId === 'seed-random') {
+    return [
+      { id: 'seed-rnd-1', channel_id: channelId, sender_id: emp2, content: 'Anyone up for lunch at the new Thai place?', timestamp: ago(45), is_pinned: false, reactions: [{ emoji: '\u{1F37C}', count: 2 }] },
+      { id: 'seed-rnd-2', channel_id: channelId, sender_id: emp3, content: 'Count me in! 12:30 works?', timestamp: ago(30), is_pinned: false, reactions: [] },
+    ]
+  }
+  return []
 }
 
 // ---------- API helpers ----------
@@ -91,7 +134,7 @@ async function chatAPI(method: 'GET' | 'POST' | 'PUT' | 'DELETE', params?: Recor
     method,
     headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include', // sends httpOnly session cookie → middleware injects x-org-id
+    credentials: 'include',
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -103,7 +146,8 @@ async function chatAPI(method: 'GET' | 'POST' | 'PUT' | 'DELETE', params?: Recor
 // ---------- component ----------
 export default function ChatPage() {
   const { employees, currentUser, chatChannels, chatMessages, addToast } = useTempo()
-  const employeeId = currentUser?.employee_id || ''
+  const employeeId = currentUser?.employee_id || (employees[0]?.id ?? 'demo-user')
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'owner'
 
   // Whether we're in "live API" mode or "seed data" fallback
   const [isLive, setIsLive] = useState(false)
@@ -113,8 +157,8 @@ export default function ChatPage() {
   const [channels, setChannels] = useState<any[]>([])
   const [activeChannelId, setActiveChannelId] = useState('')
 
-  // Messages for the active channel
-  const [messages, setMessages] = useState<any[]>([])
+  // Messages for the active channel (keyed by channel)
+  const [messagesByChannel, setMessagesByChannel] = useState<Record<string, any[]>>({})
   const [messagesLoading, setMessagesLoading] = useState(false)
 
   // Unread counts
@@ -123,12 +167,16 @@ export default function ChatPage() {
   // UI state
   const [messageInput, setMessageInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [showCreateChannel, setShowCreateChannel] = useState(false)
+  const [showNewMessage, setShowNewMessage] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const [newChannelType, setNewChannelType] = useState<'public' | 'private'>('public')
   const [newChannelDesc, setNewChannelDesc] = useState('')
   const [sidebarSection, setSidebarSection] = useState<'channels' | 'dms'>('channels')
   const [dmSearch, setDmSearch] = useState('')
+  const [newMsgSearch, setNewMsgSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [typingUsers, setTypingUsers] = useState<Record<string, number>>({})
   const [threadMessage, setThreadMessage] = useState<any>(null)
@@ -143,12 +191,23 @@ export default function ChatPage() {
   const eventSourceRef = useRef<EventSource | null>(null)
   const lastFetchRef = useRef<string>('')
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Current messages for active channel
+  const messages = messagesByChannel[activeChannelId] || []
+  const setMessages = useCallback((updater: any[] | ((prev: any[]) => any[])) => {
+    setMessagesByChannel(prev => {
+      const current = prev[activeChannelId] || []
+      const next = typeof updater === 'function' ? updater(current) : updater
+      return { ...prev, [activeChannelId]: next }
+    })
+  }, [activeChannelId])
 
   // ---- Load channels from API on mount ----
   useEffect(() => {
     let cancelled = false
     async function loadChannels() {
-      if (!employeeId) { setLoading(false); return }
+      if (!employeeId) { loadFallback(); setLoading(false); return }
       try {
         const data = await chatAPI('GET', { action: 'channels', employeeId })
         if (cancelled) return
@@ -157,7 +216,6 @@ export default function ChatPage() {
           setChannels(normalized)
           setActiveChannelId(normalized[0].id)
           setIsLive(true)
-          // Also load unread counts
           try {
             const unread = await chatAPI('GET', { action: 'unread', employeeId })
             if (!cancelled && unread.channels) {
@@ -167,63 +225,76 @@ export default function ChatPage() {
             }
           } catch { /* non-critical */ }
         } else {
-          // No channels in DB — use store data as fallback
-          if (chatChannels.length > 0) {
-            const normalized = chatChannels.map(normalizeChannel)
-            setChannels(normalized)
-            setActiveChannelId(normalized[0].id)
-          }
-          setIsLive(false)
+          loadFallback()
         }
       } catch {
-        // API unavailable — use store data as fallback
-        if (chatChannels.length > 0) {
-          const normalized = chatChannels.map(normalizeChannel)
-          setChannels(normalized)
-          setActiveChannelId(normalized[0].id)
-        }
-        setIsLive(false)
+        loadFallback()
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
+
+    function loadFallback() {
+      if (chatChannels.length > 0) {
+        const normalized = chatChannels.map(normalizeChannel)
+        setChannels(normalized)
+        setActiveChannelId(normalized[0].id)
+      } else {
+        // Build seed channels when both API and store are empty
+        const seed = buildSeedChannels(employeeId)
+        setChannels(seed)
+        setActiveChannelId(seed[0].id)
+      }
+      setIsLive(false)
+    }
+
     loadChannels()
     return () => { cancelled = true }
-  }, [employeeId, chatChannels])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId])
 
   // ---- Load messages when active channel changes ----
   const fetchMessages = useCallback(async (channelId: string) => {
-    if (!employeeId) return
+    if (!employeeId || !channelId) return
     if (!isLive) {
-      // Store data mode — filter from store chatMessages
+      // Store data mode -- filter from store chatMessages, or use seed
       const storeFiltered = chatMessages
         .map(normalizeMessage)
         .filter((m: any) => m.channel_id === channelId)
-      setMessages(storeFiltered)
+      if (storeFiltered.length > 0) {
+        setMessagesByChannel(prev => ({ ...prev, [channelId]: storeFiltered }))
+      } else {
+        // Seed messages
+        const seed = buildSeedMessages(channelId, employees)
+        setMessagesByChannel(prev => ({ ...prev, [channelId]: seed }))
+      }
       return
     }
     setMessagesLoading(true)
     try {
       const data = await chatAPI('GET', { action: 'messages', channelId, employeeId, limit: '100' })
       const msgs = (data.messages || data || []).map(normalizeMessage)
-      setMessages(msgs)
+      setMessagesByChannel(prev => ({ ...prev, [channelId]: msgs }))
       lastFetchRef.current = channelId
-      // Mark as read
       chatAPI('POST', undefined, { action: 'mark-read', channelId, employeeId }).catch(() => {})
       setUnreadCounts(prev => ({ ...prev, [channelId]: 0 }))
     } catch {
-      // Fallback to store chatMessages
       const storeFiltered = chatMessages
         .map(normalizeMessage)
         .filter((m: any) => m.channel_id === channelId)
-      setMessages(storeFiltered)
+      if (storeFiltered.length > 0) {
+        setMessagesByChannel(prev => ({ ...prev, [channelId]: storeFiltered }))
+      } else {
+        const seed = buildSeedMessages(channelId, employees)
+        setMessagesByChannel(prev => ({ ...prev, [channelId]: seed }))
+      }
     } finally {
       setMessagesLoading(false)
     }
-  }, [employeeId, isLive, chatMessages])
+  }, [employeeId, isLive, chatMessages, employees])
 
   useEffect(() => {
-    fetchMessages(activeChannelId)
+    if (activeChannelId) fetchMessages(activeChannelId)
   }, [activeChannelId, fetchMessages])
 
   // ---- SSE for real-time chat updates ----
@@ -236,17 +307,30 @@ export default function ChatPage() {
     es.addEventListener('message', (e) => {
       try {
         const data = JSON.parse(e.data)
+        const targetChannel = data.channelId || data.channel_id
         if (data.deleted) {
-          setMessages(prev => prev.filter(m => m.id !== data.id))
-        } else if (data.edited) {
-          setMessages(prev => prev.map(m => m.id === data.id ? normalizeMessage(data) : m))
-        } else {
-          // New message
-          const normalized = normalizeMessage(data)
-          setMessages(prev => {
-            if (prev.some(m => m.id === normalized.id)) return prev
-            return [...prev, normalized]
+          setMessagesByChannel(prev => {
+            const msgs = prev[targetChannel || activeChannelId] || []
+            return { ...prev, [targetChannel || activeChannelId]: msgs.filter(m => m.id !== data.id) }
           })
+        } else if (data.edited) {
+          setMessagesByChannel(prev => {
+            const ch = targetChannel || activeChannelId
+            const msgs = prev[ch] || []
+            return { ...prev, [ch]: msgs.map(m => m.id === data.id ? normalizeMessage(data) : m) }
+          })
+        } else {
+          const normalized = normalizeMessage(data)
+          const ch = normalized.channel_id || activeChannelId
+          setMessagesByChannel(prev => {
+            const msgs = prev[ch] || []
+            if (msgs.some(m => m.id === normalized.id)) return prev
+            return { ...prev, [ch]: [...msgs, normalized] }
+          })
+          // Increment unread for channels that are not active
+          if (ch !== activeChannelId) {
+            setUnreadCounts(prev => ({ ...prev, [ch]: (prev[ch] || 0) + 1 }))
+          }
         }
       } catch { /* ignore parse errors */ }
     })
@@ -256,7 +340,6 @@ export default function ChatPage() {
         const data = JSON.parse(e.data)
         if (data.employeeId !== employeeId) {
           setTypingUsers(prev => ({ ...prev, [data.employeeId]: Date.now() }))
-          // Clear typing indicator after 3 seconds
           setTimeout(() => {
             setTypingUsers(prev => {
               const next = { ...prev }
@@ -271,21 +354,23 @@ export default function ChatPage() {
     es.addEventListener('reaction', (e) => {
       try {
         const data = JSON.parse(e.data)
-        setMessages(prev => prev.map(m =>
-          m.id === data.messageId ? { ...m, reactions: data.reactions || m.reactions } : m
-        ))
+        const ch = data.channelId || data.channel_id || activeChannelId
+        setMessagesByChannel(prev => {
+          const msgs = prev[ch] || []
+          return { ...prev, [ch]: msgs.map(m =>
+            m.id === data.messageId ? { ...m, reactions: data.reactions || m.reactions } : m
+          )}
+        })
       } catch { /* ignore */ }
     })
 
-    es.onerror = () => {
-      // SSE connection lost, will auto-reconnect
-    }
+    es.onerror = () => { /* SSE will auto-reconnect */ }
 
     return () => {
       es.close()
       eventSourceRef.current = null
     }
-  }, [isLive, employeeId, channels])
+  }, [isLive, employeeId, channels, activeChannelId])
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -315,45 +400,139 @@ export default function ChatPage() {
     return groups
   }, [messages])
 
-  // Filtered channels for search
-  const filteredChannels = useMemo(
-    () => channels.filter(
-      c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-    [channels, searchQuery]
+  // Separate channel types for sidebar
+  const publicChannels = useMemo(
+    () => channels.filter(c => c.type === 'public' || c.type === 'announcement'),
+    [channels]
+  )
+  const dmChannels = useMemo(
+    () => channels.filter(c => c.type === 'dm'),
+    [channels]
   )
 
-  // Derive DM contacts from employees list
+  // Filtered channels for search
+  const filteredChannels = useMemo(
+    () => publicChannels.filter(
+      c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    [publicChannels, searchQuery]
+  )
+
+  // Filtered DM channels
+  const filteredDMChannels = useMemo(
+    () => dmChannels.filter(
+      c => c.name?.toLowerCase().includes(dmSearch.toLowerCase())
+    ),
+    [dmChannels, dmSearch]
+  )
+
+  // Derive DM contacts from employees list (people you can message)
   const dmContacts = useMemo(
     () => employees
       .filter(e => e.id !== employeeId)
-      .slice(0, 20)
       .map((e, idx) => ({
         id: e.id || `dm-${idx}`,
         name: e.profile?.full_name || (e as any).full_name || 'Unknown',
+        job_title: e.job_title || '',
+        department_id: e.department_id || '',
         status: (idx % 3 === 0 ? 'online' : idx % 3 === 1 ? 'away' : 'offline') as 'online' | 'away' | 'offline',
       })),
     [employees, employeeId]
   )
 
-  // Filtered DM contacts
-  const filteredDMs = useMemo(
+  // Filtered DM contacts for DM sidebar search
+  const filteredDMContacts = useMemo(
     () => dmContacts.filter(d => d.name.toLowerCase().includes(dmSearch.toLowerCase())),
     [dmContacts, dmSearch]
+  )
+
+  // Filtered contacts for new message modal search
+  const filteredNewMsgContacts = useMemo(
+    () => newMsgSearch.trim()
+      ? dmContacts.filter(d => d.name.toLowerCase().includes(newMsgSearch.toLowerCase()))
+      : dmContacts.slice(0, 15),
+    [dmContacts, newMsgSearch]
   )
 
   // Sender name lookup
   function getSenderName(senderId: string): string {
     const emp = employees.find(e => e.id === senderId)
     if (emp) return emp.profile?.full_name || (emp as any).full_name || 'Unknown'
+    if (senderId === employeeId) return currentUser?.full_name || 'You'
     return 'Unknown User'
+  }
+
+  // ---- Start or open a DM conversation with a person ----
+  function startOrOpenDM(contactId: string, contactName: string) {
+    // Check if a DM channel already exists with this person
+    const existing = channels.find(c =>
+      c.type === 'dm' && (
+        c.name === contactName ||
+        (c.member_ids && c.member_ids.includes(contactId) && c.member_ids.includes(employeeId))
+      )
+    )
+    if (existing) {
+      setActiveChannelId(existing.id)
+      setSidebarSection('dms')
+      setShowNewMessage(false)
+      return
+    }
+
+    // Create a new local DM channel
+    const dmChannel = {
+      id: `dm-${contactId}-${Date.now()}`,
+      name: contactName,
+      type: 'dm' as const,
+      description: '',
+      member_count: 2,
+      member_ids: [employeeId, contactId],
+    }
+
+    // If live, also try to create via API
+    if (isLive) {
+      chatAPI('POST', undefined, {
+        action: 'create-channel',
+        createdBy: employeeId,
+        name: contactName,
+        type: 'direct',
+        memberIds: [employeeId, contactId],
+      }).then(result => {
+        const ch = normalizeChannel(result.channel || result)
+        ch.type = 'dm'
+        ch.name = contactName
+        // Replace local channel with server one
+        setChannels(prev => prev.map(c => c.id === dmChannel.id ? ch : c))
+        setActiveChannelId(ch.id)
+      }).catch(() => { /* keep local */ })
+    }
+
+    setChannels(prev => [...prev, dmChannel])
+    setActiveChannelId(dmChannel.id)
+    setMessagesByChannel(prev => ({ ...prev, [dmChannel.id]: [] }))
+    setSidebarSection('dms')
+    setShowNewMessage(false)
+    inputRef.current?.focus()
   }
 
   // ---- Send message (real API or local) ----
   async function handleSend() {
     const content = messageInput.trim()
-    if (!content || sending) return
+    if (!content || sending || !activeChannelId) return
     setSending(true)
+
+    // Optimistic update - add message immediately
+    const optimisticMsg = {
+      id: `msg-local-${Date.now()}`,
+      channel_id: activeChannelId,
+      sender_id: employeeId || 'emp-1',
+      content,
+      timestamp: new Date().toISOString(),
+      is_pinned: false,
+      reactions: [],
+    }
+    setMessages(prev => [...prev, optimisticMsg])
+    setMessageInput('')
+
     try {
       if (isLive) {
         const result = await chatAPI('POST', undefined, {
@@ -362,37 +541,21 @@ export default function ChatPage() {
           senderId: employeeId,
           content,
         })
-        // Add to local messages immediately
-        setMessages(prev => [...prev, normalizeMessage(result.message || result)])
-      } else {
-        // Seed data mode — add locally
-        const newMsg = {
-          id: `msg-local-${Date.now()}`,
-          channel_id: activeChannelId,
-          sender_id: employeeId || 'emp-1',
-          content,
-          timestamp: new Date().toISOString(),
-          is_pinned: false,
-          reactions: [],
-        }
-        setMessages(prev => [...prev, newMsg])
+        // Replace optimistic with server message
+        const serverMsg = normalizeMessage(result.message || result)
+        setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? serverMsg : m))
       }
     } catch {
-      // If API fails, add locally anyway for UX
-      setMessages(prev => [...prev, {
-        id: `msg-local-${Date.now()}`,
-        channel_id: activeChannelId,
-        sender_id: employeeId || 'emp-1',
-        content,
-        timestamp: new Date().toISOString(),
-        is_pinned: false,
-        reactions: [],
-      }])
+      // Keep the optimistic message
     } finally {
-      setMessageInput('')
       setSending(false)
       inputRef.current?.focus()
     }
+
+    // Update channel last_message_at for sorting
+    setChannels(prev => prev.map(c =>
+      c.id === activeChannelId ? { ...c, last_message_at: new Date().toISOString() } : c
+    ))
   }
 
   // ---- Create channel (real API or local) ----
@@ -414,14 +577,13 @@ export default function ChatPage() {
         setChannels(prev => [...prev, ch])
         setActiveChannelId(ch.id)
       } else {
-        const ch = { id: `chan-${name}`, name, type: newChannelType, description: newChannelDesc.trim(), member_count: 1 }
+        const ch = { id: `chan-${name}-${Date.now()}`, name, type: newChannelType, description: newChannelDesc.trim(), member_count: 1 }
         setChannels(prev => [...prev, ch])
         setActiveChannelId(ch.id)
       }
       addToast('Channel created', 'success')
     } catch {
-      // Local fallback
-      const ch = { id: `chan-${name}`, name, type: newChannelType, description: newChannelDesc.trim(), member_count: 1 }
+      const ch = { id: `chan-${name}-${Date.now()}`, name, type: newChannelType, description: newChannelDesc.trim(), member_count: 1 }
       setChannels(prev => [...prev, ch])
       setActiveChannelId(ch.id)
     } finally {
@@ -430,6 +592,64 @@ export default function ChatPage() {
     setNewChannelName('')
     setNewChannelDesc('')
     setShowCreateChannel(false)
+    setSidebarSection('channels')
+  }
+
+  // ---- Admin broadcast to All Company ----
+  async function handleCreateAnnouncement() {
+    const allIds = employees.map(e => e.id).filter(Boolean)
+    if (allIds.length === 0) { addToast('No employees found', 'error'); return }
+
+    // Check if announcement channel already exists
+    const existing = channels.find(c => c.type === 'announcement' || c.name === 'announcements')
+    if (existing) {
+      setActiveChannelId(existing.id)
+      setSidebarSection('channels')
+      addToast('Switched to announcements channel', 'success')
+      return
+    }
+
+    setSavingChannel(true)
+    try {
+      if (isLive) {
+        const result = await chatAPI('POST', undefined, {
+          action: 'create-announcement',
+          createdBy: employeeId,
+          name: 'announcements',
+          description: 'Company-wide announcements from leadership',
+          memberIds: allIds,
+          adminIds: [employeeId],
+        })
+        const ch = normalizeChannel(result.channel || result)
+        ch.type = 'announcement'
+        setChannels(prev => [...prev, ch])
+        setActiveChannelId(ch.id)
+      } else {
+        const ch = {
+          id: `chan-announcements-${Date.now()}`,
+          name: 'announcements',
+          type: 'announcement',
+          description: 'Company-wide announcements from leadership',
+          member_count: allIds.length,
+        }
+        setChannels(prev => [...prev, ch])
+        setActiveChannelId(ch.id)
+      }
+      addToast('Announcements channel created', 'success')
+    } catch {
+      const ch = {
+        id: `chan-announcements-${Date.now()}`,
+        name: 'announcements',
+        type: 'announcement',
+        description: 'Company-wide announcements from leadership',
+        member_count: allIds.length,
+      }
+      setChannels(prev => [...prev, ch])
+      setActiveChannelId(ch.id)
+    } finally {
+      setSavingChannel(false)
+      setSidebarSection('channels')
+    }
   }
 
   // ---- Pin/unpin message ----
@@ -467,7 +687,6 @@ export default function ChatPage() {
   // ---- Open thread view ----
   function openThread(msg: any) {
     setThreadMessage(msg)
-    // Load existing thread replies from messages with this thread_id
     const replies = messages.filter(m => m.thread_id === msg.id)
     setThreadReplies(replies)
     setThreadInput('')
@@ -527,7 +746,11 @@ export default function ChatPage() {
   async function handleDeleteMessage(msgId: string) {
     if (isLive) {
       try {
-        await chatAPI('DELETE', undefined, { action: 'delete-message', messageId: msgId })
+        await chatAPI('DELETE', {
+          messageId: msgId,
+          channelId: activeChannelId,
+          deletedBy: employeeId,
+        })
       } catch { /* fall through to local delete */ }
     }
     setMessages(prev => prev.filter(m => m.id !== msgId))
@@ -538,7 +761,10 @@ export default function ChatPage() {
   async function handleDeleteChannel(channelId: string) {
     if (isLive) {
       try {
-        await chatAPI('DELETE', undefined, { action: 'delete-channel', channelId })
+        await chatAPI('DELETE', {
+          channelId,
+          deletedBy: employeeId,
+        })
       } catch { /* fall through to local delete */ }
     }
     setChannels(prev => prev.filter(c => c.id !== channelId))
@@ -547,6 +773,37 @@ export default function ChatPage() {
       setActiveChannelId(remaining[0]?.id || '')
     }
     addToast('Channel deleted', 'success')
+  }
+
+  // ---- Search messages ----
+  function handleSearch(query: string) {
+    setSearchQuery(query)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+
+    if (!query.trim()) {
+      setSearchResults(null)
+      return
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setSearchLoading(true)
+      if (isLive) {
+        try {
+          const result = await chatAPI('GET', { action: 'search', employeeId, query: query.trim(), limit: '20' })
+          setSearchResults((result.messages || []).map(normalizeMessage))
+          setSearchLoading(false)
+          return
+        } catch { /* fall through to local search */ }
+      }
+
+      // Local search across all channels
+      const allMessages = Object.values(messagesByChannel).flat()
+      const filtered = allMessages.filter(m =>
+        m.content?.toLowerCase().includes(query.toLowerCase())
+      )
+      setSearchResults(filtered)
+      setSearchLoading(false)
+    }, 300)
   }
 
   // ---- Execute confirmation action ----
@@ -567,10 +824,17 @@ export default function ChatPage() {
 
   const pinnedCount = messages.filter(m => m.is_pinned).length
 
+  // Channel icon helper
+  function getChannelIcon(channel: any, size = 14) {
+    if (channel.type === 'announcement') return <Megaphone size={size} className="flex-shrink-0 text-amber-500" />
+    if (channel.type === 'dm') return <MessageSquare size={size} className="flex-shrink-0 text-t3" />
+    if (channel.type === 'private') return <Lock size={size} className="flex-shrink-0 text-t3" />
+    return <Hash size={size} className="flex-shrink-0 text-t3" />
+  }
+
   if (loading) {
     return (
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-surface animate-in fade-in duration-300">
-        {/* Channel list skeleton */}
         <div className="w-64 border-r border-border p-4 space-y-3 hidden md:block">
           <Skeleton height="h-8" width="w-full" className="rounded-lg mb-4" />
           {Array.from({ length: 8 }).map((_, i) => (
@@ -580,7 +844,6 @@ export default function ChatPage() {
             </div>
           ))}
         </div>
-        {/* Messages skeleton */}
         <div className="flex-1 p-6 space-y-5">
           <Skeleton height="h-6" width="w-36" className="mb-6" />
           {Array.from({ length: 5 }).map((_, i) => (
@@ -599,7 +862,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-surface">
-      {/* ──────── LEFT SIDEBAR ──────── */}
+      {/* -------- LEFT SIDEBAR -------- */}
       <div className="w-64 flex-shrink-0 bg-card border-r border-divider flex flex-col">
         {/* Workspace header */}
         <div className="px-4 py-3 border-b border-divider">
@@ -611,9 +874,14 @@ export default function ChatPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 ml-1" title="Connected to server" />
               )}
             </h2>
-            <Button variant="ghost" size="sm" className="p-1" onClick={() => setShowCreateChannel(true)}>
-              <Plus size={14} />
-            </Button>
+            <div className="flex items-center gap-0.5">
+              <Button variant="ghost" size="sm" className="p-1" onClick={() => setShowNewMessage(true)} title="New message">
+                <UserPlus size={14} />
+              </Button>
+              <Button variant="ghost" size="sm" className="p-1" onClick={() => setShowCreateChannel(true)} title="New channel">
+                <Plus size={14} />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -623,13 +891,54 @@ export default function ChatPage() {
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-t3" />
             <input
               type="text"
-              placeholder="Search channels..."
+              placeholder="Search messages..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-canvas border border-divider rounded-md text-t1 placeholder:text-t3 focus:outline-none focus:ring-1 focus:ring-tempo-600/30 focus:border-tempo-600"
             />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(''); setSearchResults(null) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-t3 hover:text-t1"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Search results dropdown */}
+        {searchResults !== null && (
+          <div className="px-3 pb-2">
+            <div className="bg-canvas border border-divider rounded-md max-h-60 overflow-y-auto">
+              {searchLoading && (
+                <div className="p-3 text-xs text-t3 text-center">Searching...</div>
+              )}
+              {!searchLoading && searchResults.length === 0 && (
+                <div className="p-3 text-xs text-t3 text-center">No messages found</div>
+              )}
+              {!searchLoading && searchResults.map(msg => (
+                <button
+                  key={msg.id}
+                  onClick={() => {
+                    if (msg.channel_id) {
+                      setActiveChannelId(msg.channel_id)
+                    }
+                    setSearchQuery('')
+                    setSearchResults(null)
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-surface/50 border-b border-divider last:border-0 transition-colors"
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-medium text-t1 truncate">{getSenderName(msg.sender_id)}</span>
+                    <span className="text-[0.6rem] text-t3">{formatTime(msg.timestamp)}</span>
+                  </div>
+                  <p className="text-xs text-t2 truncate mt-0.5">{msg.content}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Section tabs */}
         <div className="flex px-3 gap-1 mb-1">
@@ -671,11 +980,7 @@ export default function ChatPage() {
                         : 'text-t2 hover:bg-canvas hover:text-t1'
                     )}
                   >
-                    {channel.type === 'private' ? (
-                      <Lock size={14} className="flex-shrink-0 text-t3" />
-                    ) : (
-                      <Hash size={14} className="flex-shrink-0 text-t3" />
-                    )}
+                    {getChannelIcon(channel)}
                     <span className={cn('text-xs truncate flex-1', unread > 0 && !isActive && 'font-semibold text-t1')}>
                       {channel.name}
                     </span>
@@ -687,6 +992,17 @@ export default function ChatPage() {
                   </button>
                 )
               })}
+
+              {/* Admin broadcast button */}
+              {isAdmin && !channels.some(c => c.type === 'announcement' || c.name === 'announcements') && (
+                <button
+                  onClick={handleCreateAnnouncement}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors mt-2"
+                >
+                  <Megaphone size={14} className="flex-shrink-0" />
+                  <span className="text-xs font-medium">Create Announcements</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -704,9 +1020,53 @@ export default function ChatPage() {
                   />
                 </div>
               </div>
-              {filteredDMs.map(dm => (
+
+              {/* Existing DM conversations */}
+              {filteredDMChannels.map(dm => {
+                const isActive = dm.id === activeChannelId
+                const unread = unreadCounts[dm.id] || 0
+                return (
+                  <button
+                    key={dm.id}
+                    onClick={() => setActiveChannelId(dm.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-left transition-colors',
+                      isActive
+                        ? 'bg-tempo-600/10 text-tempo-400'
+                        : 'text-t2 hover:bg-canvas hover:text-t1'
+                    )}
+                  >
+                    <div className="relative">
+                      <div className="w-6 h-6 rounded-full bg-tempo-600/15 flex items-center justify-center">
+                        <span className="text-[0.6rem] font-semibold text-tempo-600">{getInitials(dm.name)}</span>
+                      </div>
+                    </div>
+                    <span className={cn('text-xs truncate flex-1', unread > 0 && !isActive && 'font-semibold text-t1')}>
+                      {dm.name}
+                    </span>
+                    {unread > 0 && !isActive && (
+                      <Badge variant="orange" className="text-[0.6rem] px-1.5 py-0 min-w-[18px] text-center">
+                        {unread}
+                      </Badge>
+                    )}
+                  </button>
+                )
+              })}
+
+              {/* Separator if there are both DM channels and contacts */}
+              {filteredDMChannels.length > 0 && filteredDMContacts.length > 0 && (
+                <div className="flex items-center gap-2 px-2.5 py-2">
+                  <div className="flex-1 h-px bg-divider" />
+                  <span className="text-[0.6rem] text-t3 uppercase tracking-wider">People</span>
+                  <div className="flex-1 h-px bg-divider" />
+                </div>
+              )}
+
+              {/* People to start a DM with */}
+              {filteredDMContacts.map(dm => (
                 <button
                   key={dm.id}
+                  onClick={() => startOrOpenDM(dm.id, dm.name)}
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-left text-t2 hover:bg-canvas hover:text-t1 transition-colors"
                 >
                   <div className="relative">
@@ -729,12 +1089,21 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Create channel button */}
-        <div className="px-3 py-3 border-t border-divider">
+        {/* Bottom actions */}
+        <div className="px-3 py-3 border-t border-divider space-y-1.5">
           <Button
             variant="secondary"
             size="sm"
             className="w-full justify-center"
+            onClick={() => setShowNewMessage(true)}
+          >
+            <UserPlus size={14} />
+            New Message
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center text-t3"
             onClick={() => setShowCreateChannel(true)}
           >
             <Plus size={14} />
@@ -743,23 +1112,27 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* ──────── MAIN CHAT AREA ──────── */}
+      {/* -------- MAIN CHAT AREA -------- */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Channel header */}
         <div className="flex-shrink-0 px-5 py-3 border-b border-divider bg-card flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-1.5">
-              {activeChannel?.type === 'private' ? (
-                <Lock size={16} className="text-t2" />
-              ) : (
-                <Hash size={18} className="text-t2 font-bold" />
-              )}
-              <h1 className="text-sm font-bold text-t1 truncate">{activeChannel?.name}</h1>
+              {activeChannel && getChannelIcon(activeChannel, 16)}
+              <h1 className="text-sm font-bold text-t1 truncate">
+                {activeChannel?.type === 'dm' ? activeChannel?.name : activeChannel?.name}
+              </h1>
             </div>
             {activeChannel?.description && (
               <>
                 <span className="text-divider">|</span>
                 <p className="text-xs text-t3 truncate max-w-md">{activeChannel.description}</p>
+              </>
+            )}
+            {activeChannel?.type === 'announcement' && (
+              <>
+                <span className="text-divider">|</span>
+                <Badge variant="orange" className="text-[0.6rem]">Announcement</Badge>
               </>
             )}
           </div>
@@ -813,9 +1186,20 @@ export default function ChatPage() {
           {!messagesLoading && messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-14 h-14 rounded-xl bg-tempo-600/10 flex items-center justify-center mb-4">
-                <Hash size={28} className="text-tempo-600" />
+                {activeChannel?.type === 'dm' ? (
+                  <MessageSquare size={28} className="text-tempo-600" />
+                ) : activeChannel?.type === 'announcement' ? (
+                  <Megaphone size={28} className="text-tempo-600" />
+                ) : (
+                  <Hash size={28} className="text-tempo-600" />
+                )}
               </div>
-              <h3 className="text-base font-semibold text-t1 mb-1">Welcome to #{activeChannel?.name}</h3>
+              <h3 className="text-base font-semibold text-t1 mb-1">
+                {activeChannel?.type === 'dm'
+                  ? `Start a conversation with ${activeChannel?.name}`
+                  : `Welcome to #${activeChannel?.name}`
+                }
+              </h3>
               <p className="text-sm text-t3 max-w-md">
                 {activeChannel?.description || 'This is the start of the conversation. Send a message to get things going!'}
               </p>
@@ -843,6 +1227,7 @@ export default function ChatPage() {
                   ? (new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime()) / 60000
                   : Infinity
                 const showHeader = !isSameSender || timeDiff > 5
+                const isOwnMessage = msg.sender_id === employeeId
 
                 return (
                   <div
@@ -911,7 +1296,7 @@ export default function ChatPage() {
                     {/* Hover actions */}
                     <div className="absolute right-2 top-1 hidden group-hover:flex items-center gap-0.5 bg-card border border-divider rounded-md shadow-sm px-1 py-0.5">
                       <button
-                        onClick={() => handleReaction(msg.id, '👍')}
+                        onClick={() => handleReaction(msg.id, '\u{1F44D}')}
                         className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors"
                         title="React"
                       >
@@ -941,7 +1326,7 @@ export default function ChatPage() {
                       >
                         <Star size={14} />
                       </button>
-                      {msg.sender_id === employeeId && (
+                      {isOwnMessage && (
                         <button
                           onClick={() => setConfirmAction({ show: true, type: 'delete-message', id: msg.id, label: 'this message' })}
                           className="p-1 hover:bg-red-50 rounded text-t3 hover:text-error transition-colors"
@@ -981,12 +1366,15 @@ export default function ChatPage() {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder={`Message #${activeChannel?.name || 'channel'}...`}
+                  placeholder={
+                    activeChannel?.type === 'dm'
+                      ? `Message ${activeChannel?.name}...`
+                      : `Message #${activeChannel?.name || 'channel'}...`
+                  }
                   value={messageInput}
                   onChange={e => {
                     setMessageInput(e.target.value)
-                    // Send typing indicator (debounced)
-                    if (!typingTimeoutRef.current && isLive) {
+                    if (!typingTimeoutRef.current && isLive && activeChannelId) {
                       chatAPI('POST', undefined, { action: 'typing', channelId: activeChannelId, employeeId }).catch(() => {})
                       typingTimeoutRef.current = setTimeout(() => { typingTimeoutRef.current = null }, 2000)
                     }
@@ -1019,15 +1407,14 @@ export default function ChatPage() {
           <p className="text-[0.6rem] text-t3 mt-1.5 ml-1">
             Press <kbd className="px-1 py-0.5 bg-canvas border border-divider rounded text-[0.6rem] font-mono">Enter</kbd> to send,{' '}
             <kbd className="px-1 py-0.5 bg-canvas border border-divider rounded text-[0.6rem] font-mono">Shift+Enter</kbd> for new line
-            {isLive && <span className="ml-2 text-green-500">• Live</span>}
+            {isLive && <span className="ml-2 text-green-500">&#8226; Live</span>}
           </p>
         </div>
       </div>
 
-      {/* ──────── THREAD PANEL ──────── */}
+      {/* -------- THREAD PANEL -------- */}
       {threadMessage && (
         <div className="w-80 flex-shrink-0 bg-card border-l border-divider flex flex-col">
-          {/* Thread header */}
           <div className="px-4 py-3 border-b border-divider flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-t1">Thread</h3>
@@ -1037,11 +1424,10 @@ export default function ChatPage() {
               onClick={closeThread}
               className="p-1 hover:bg-canvas rounded text-t3 hover:text-t1 transition-colors"
             >
-              <span className="text-lg leading-none">&times;</span>
+              <X size={16} />
             </button>
           </div>
 
-          {/* Original message */}
           <div className="px-4 py-3 border-b border-divider bg-canvas/50">
             <div className="flex items-start gap-2">
               <div className="w-8 h-8 rounded-lg bg-tempo-600/15 flex items-center justify-center flex-shrink-0">
@@ -1057,7 +1443,6 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Thread replies */}
           <div className="flex-1 overflow-y-auto px-4 py-2">
             {threadReplies.length === 0 && (
               <p className="text-xs text-t3 text-center py-4">No replies yet. Start the conversation!</p>
@@ -1078,7 +1463,6 @@ export default function ChatPage() {
             ))}
           </div>
 
-          {/* Thread input */}
           <div className="px-3 py-2 border-t border-divider">
             <div className="flex items-center gap-2">
               <input
@@ -1097,7 +1481,83 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* ──────── CREATE CHANNEL MODAL ──────── */}
+      {/* -------- NEW MESSAGE MODAL -------- */}
+      <Modal open={showNewMessage} onClose={() => { setShowNewMessage(false); setNewMsgSearch('') }} title="New Message" size="sm">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-t1 mb-1">To</label>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input
+                type="text"
+                placeholder="Search for a person..."
+                value={newMsgSearch}
+                onChange={e => setNewMsgSearch(e.target.value)}
+                autoFocus
+                className="w-full pl-9 pr-3 py-2 text-sm bg-surface border border-divider rounded-md text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto border border-divider rounded-md">
+            {filteredNewMsgContacts.length === 0 && (
+              <div className="p-4 text-center text-xs text-t3">No people found</div>
+            )}
+            {filteredNewMsgContacts.map(contact => (
+              <button
+                key={contact.id}
+                onClick={() => startOrOpenDM(contact.id, contact.name)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-canvas text-left transition-colors border-b border-divider last:border-0"
+              >
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-tempo-600/15 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-tempo-600">{getInitials(contact.name)}</span>
+                  </div>
+                  <span
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card',
+                      contact.status === 'online' && 'bg-green-500',
+                      contact.status === 'away' && 'bg-amber-400',
+                      contact.status === 'offline' && 'bg-gray-300'
+                    )}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-t1 truncate">{contact.name}</p>
+                  {contact.job_title && (
+                    <p className="text-xs text-t3 truncate">{contact.job_title}</p>
+                  )}
+                </div>
+                <MessageSquare size={14} className="text-t3 flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+
+          {/* Admin broadcast option */}
+          {isAdmin && (
+            <div className="border-t border-divider pt-3">
+              <button
+                onClick={() => {
+                  setShowNewMessage(false)
+                  setNewMsgSearch('')
+                  handleCreateAnnouncement()
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center">
+                  <Megaphone size={16} className="text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium text-t1">Send to All Employees</p>
+                  <p className="text-xs text-t3">Broadcast an announcement to everyone</p>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* -------- CREATE CHANNEL MODAL -------- */}
       <Modal open={showCreateChannel} onClose={() => setShowCreateChannel(false)} title="Create a Channel" size="sm">
         <div className="space-y-4">
           <div>
@@ -1166,7 +1626,7 @@ export default function ChatPage() {
         </div>
       </Modal>
 
-      {/* ──────── CONFIRMATION MODAL ──────── */}
+      {/* -------- CONFIRMATION MODAL -------- */}
       <Modal open={!!confirmAction?.show} onClose={() => setConfirmAction(null)} title="Confirm Delete" size="sm">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">

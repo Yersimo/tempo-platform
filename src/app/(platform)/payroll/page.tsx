@@ -1436,14 +1436,10 @@ export default function PayrollPage() {
               <input className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-500/30"
                 placeholder={t('searchEmployees')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
-              <option value="">{t('allDepartments')}</option>
-              {entryDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
-              <option value="">{t('allCountries')}</option>
-              {countries.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}
+              options={[{value: '', label: t('allDepartments')}, ...entryDepartments.map(d => ({value: d, label: d}))]} />
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
+              options={[{value: '', label: t('allCountries')}, ...countries.map(c => ({value: c, label: c}))]} />
             <Button size="sm" onClick={() => setShowAdjustmentModal(true)}><Plus size={14} /> {t('addAdjustment')}</Button>
           </div>
 
@@ -1640,23 +1636,15 @@ export default function PayrollPage() {
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex-1 min-w-[200px]">
                   <label className="block text-xs font-medium text-t3 mb-1">Previous Period</label>
-                  <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                    value={reconPrevRunId} onChange={e => setReconPrevRunId(e.target.value)}>
-                    <option value="">Select a paid run...</option>
-                    {paidRuns.map((r: any) => (
-                      <option key={r.id} value={r.id}>{r.period} — {r.country || 'All'} ({fmtCents(r.total_gross)})</option>
-                    ))}
-                  </select>
+                  <Select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+                    value={reconPrevRunId} onChange={e => setReconPrevRunId(e.target.value)}
+                    options={[{value: '', label: 'Select a paid run...'}, ...paidRuns.map((r: any) => ({value: r.id, label: `${r.period} — ${r.country || 'All'} (${fmtCents(r.total_gross)})`}))]} />
                 </div>
                 <div className="flex-1 min-w-[200px]">
                   <label className="block text-xs font-medium text-t3 mb-1">Current Period</label>
-                  <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                    value={reconCurrRunId} onChange={e => setReconCurrRunId(e.target.value)}>
-                    <option value="">Select a paid run...</option>
-                    {paidRuns.map((r: any) => (
-                      <option key={r.id} value={r.id}>{r.period} — {r.country || 'All'} ({fmtCents(r.total_gross)})</option>
-                    ))}
-                  </select>
+                  <Select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+                    value={reconCurrRunId} onChange={e => setReconCurrRunId(e.target.value)}
+                    options={[{value: '', label: 'Select a paid run...'}, ...paidRuns.map((r: any) => ({value: r.id, label: `${r.period} — ${r.country || 'All'} (${fmtCents(r.total_gross)})`}))]} />
                 </div>
                 <Button onClick={handleCompare} disabled={!reconPrevRunId || !reconCurrRunId || reconLoading}>
                   {reconLoading ? 'Comparing...' : 'Compare'}
@@ -1753,19 +1741,15 @@ export default function PayrollPage() {
               <div className="flex flex-wrap items-end gap-4">
                 <div>
                   <label className="block text-xs font-medium text-t3 mb-1">Year</label>
-                  <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                    value={yearEndYear} onChange={e => setYearEndYear(Number(e.target.value))}>
-                    {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+                    value={String(yearEndYear)} onChange={e => setYearEndYear(Number(e.target.value))}
+                    options={[2024, 2025, 2026].map(y => ({value: String(y), label: String(y)}))} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-t3 mb-1">Country</label>
-                  <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                    value={yearEndCountry} onChange={e => setYearEndCountry(e.target.value)}>
-                    <option value="KE">Kenya (P9A)</option>
-                    <option value="NG">Nigeria (Form H1)</option>
-                    <option value="GH">Ghana (PAYE Return)</option>
-                  </select>
+                  <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+                    value={yearEndCountry} onChange={e => setYearEndCountry(e.target.value)}
+                    options={[{value: 'KE', label: 'Kenya (P9A)'}, {value: 'NG', label: 'Nigeria (Form H1)'}, {value: 'GH', label: 'Ghana (PAYE Return)'}]} />
                 </div>
                 <Button onClick={loadYearEnd} disabled={yearEndLoading}>
                   {yearEndLoading ? 'Loading...' : 'Load Employees'}
@@ -2131,11 +2115,9 @@ export default function PayrollPage() {
               <div className="flex flex-wrap items-end gap-4">
                 <div>
                   <label className="block text-xs font-medium text-t3 mb-1">Country</label>
-                  <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
-                    value={taxConfigCountry} onChange={e => setTaxConfigCountry(e.target.value)}>
-                    <option value="">All Countries</option>
-                    {allCountries.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
+                    value={taxConfigCountry} onChange={e => setTaxConfigCountry(e.target.value)}
+                    options={[{value: '', label: 'All Countries'}, ...allCountries.map(c => ({value: c, label: c}))]} />
                 </div>
                 <Button onClick={loadTaxConfigs} disabled={taxConfigLoading}>
                   {taxConfigLoading ? 'Loading...' : 'Load Tax Configs'}
@@ -2380,9 +2362,8 @@ export default function PayrollPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-medium text-t2 mb-1 block">{t('selectCountry')}</label>
-                <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={simCountry} onChange={e => setSimCountry(e.target.value as SupportedCountry)}>
-                  {(['US', 'UK', 'DE', 'FR', 'CA', 'AU'] as const).map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <Select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={simCountry} onChange={e => setSimCountry(e.target.value as SupportedCountry)}
+                  options={(['US', 'UK', 'DE', 'FR', 'CA', 'AU'] as const).map(c => ({value: c, label: c}))} />
               </div>
               <div>
                 <label className="text-xs font-medium text-t2 mb-1 block">{t('enterGrossSalary')}</label>
@@ -2426,14 +2407,12 @@ export default function PayrollPage() {
           {/* Country selector */}
           <div>
             <label className="text-xs font-medium text-t2 mb-1 block">Country *</label>
-            <select
+            <Select
               className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
               value={payRunForm.country}
               onChange={e => handleCountryChange(e.target.value)}
-            >
-              <option value="">Select country...</option>
-              {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              options={[{value: '', label: 'Select country...'}, ...availableCountries.map(c => ({value: c, label: c}))]}
+            />
             {payRunForm.country && (
               <p className="text-xs text-t3 mt-1">
                 {employees.filter(e => resolveCountryCode(e.country || '') === resolveCountryCode(payRunForm.country) && (e as any).is_active !== false).length} active employees in {payRunForm.country} · Currency: {payRunForm.currency}
@@ -2443,15 +2422,12 @@ export default function PayrollPage() {
           {/* Gap 1: Pay frequency selector */}
           <div>
             <label className="text-xs font-medium text-t2 mb-1 block">Pay Frequency *</label>
-            <select
+            <Select
               className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1"
               value={payRunForm.frequency}
               onChange={e => setPayRunForm({ ...payRunForm, frequency: e.target.value as any })}
-            >
-              <option value="weekly">Weekly</option>
-              <option value="fortnightly">Fortnightly (Bi-weekly)</option>
-              <option value="monthly">Monthly</option>
-            </select>
+              options={[{value: 'weekly', label: 'Weekly'}, {value: 'fortnightly', label: 'Fortnightly (Bi-weekly)'}, {value: 'monthly', label: 'Monthly'}]}
+            />
             <p className="text-xs text-t3 mt-1">
               {payRunForm.frequency === 'weekly' ? 'Employees are paid every week (52 pay periods/year)' :
                payRunForm.frequency === 'fortnightly' ? 'Employees are paid every two weeks (26 pay periods/year)' :
@@ -3256,16 +3232,13 @@ export default function PayrollPage() {
                           <td className="px-3 py-2 font-medium text-t1">{header}</td>
                           <td className="px-3 py-2 text-t3">→</td>
                           <td className="px-3 py-2">
-                            <select className="text-xs border border-border rounded px-2 py-1 bg-surface text-t1" value={mapping?.targetColumn || ''} onChange={e => {
+                            <Select className="text-xs border border-border rounded px-2 py-1 bg-surface text-t1" value={mapping?.targetColumn || ''} onChange={e => {
                               const newMappings = migrationMappings.filter(m => m.sourceColumn !== header)
                               if (e.target.value) newMappings.push({ sourceColumn: header, targetColumn: e.target.value })
                               setMigrationMappings(newMappings)
-                            }}>
-                              <option value="">(skip)</option>
-                              {MIGRATION_COLUMNS.map(col => (
-                                <option key={col.key} value={col.key}>{col.label}{col.required ? ' *' : ''}</option>
-                              ))}
-                            </select>
+                            }}
+                              options={[{value: '', label: '(skip)'}, ...MIGRATION_COLUMNS.map(col => ({value: col.key, label: `${col.label}${col.required ? ' *' : ''}`}))]}
+                            />
                           </td>
                         </tr>
                       )

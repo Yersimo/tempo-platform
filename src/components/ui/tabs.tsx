@@ -88,7 +88,7 @@ export function Tabs({ tabs, active, onChange, className, maxVisible = 5 }: Tabs
             )}
           </button>
           {dropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 min-w-[180px] bg-white border border-border rounded-lg shadow-lg z-50 py-1">
+            <div className="absolute top-full left-0 mt-1 min-w-[180px] max-h-64 overflow-y-auto bg-white border border-border rounded-xl shadow-lg z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
               {overflowTabs.map(tab => (
                 <button
                   key={tab.id}

@@ -337,12 +337,8 @@ export default function MentoringPage() {
       {activeTab === 'programs' && (
         <>
         <div className="flex gap-3 mb-4">
-          <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={programStatusFilter} onChange={e => setProgramStatusFilter(e.target.value as any)}>
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="paused">Paused</option>
-          </select>
+          <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={programStatusFilter} onChange={e => setProgramStatusFilter(e.target.value as any)}
+            options={[{value: 'all', label: 'All Statuses'}, {value: 'active', label: 'Active'}, {value: 'completed', label: 'Completed'}, {value: 'paused', label: 'Paused'}]} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mentoringPrograms.length === 0 ? (
@@ -584,10 +580,8 @@ export default function MentoringPage() {
           </div>
 
           <div className="flex gap-3 mb-4">
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={sessionFilterPair} onChange={e => setSessionFilterPair(e.target.value)}>
-              <option value="">{t('filterByPair')}</option>
-              {mentoringPairs.map(p => <option key={p.id} value={p.id}>{getPairLabel(p.id)}</option>)}
-            </select>
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={sessionFilterPair} onChange={e => setSessionFilterPair(e.target.value)}
+              options={[{value: '', label: t('filterByPair')}, ...mentoringPairs.map(p => ({value: p.id, label: getPairLabel(p.id)}))]} />
             <div className="flex-1" />
             <Button size="sm" onClick={() => setShowSessionModal(true)}><Plus size={14} /> {t('addSession')}</Button>
           </div>
@@ -659,16 +653,10 @@ export default function MentoringPage() {
           </div>
 
           <div className="flex gap-3 mb-4">
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={goalFilterPair} onChange={e => setGoalFilterPair(e.target.value)}>
-              <option value="">{t('filterByPair')}</option>
-              {mentoringPairs.map(p => <option key={p.id} value={p.id}>{getPairLabel(p.id)}</option>)}
-            </select>
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={goalFilterStatus} onChange={e => setGoalFilterStatus(e.target.value)}>
-              <option value="">{t('filterByStatus')}</option>
-              <option value="not_started">{t('statusNotStarted')}</option>
-              <option value="in_progress">{t('statusInProgress')}</option>
-              <option value="completed">{t('statusCompleted')}</option>
-            </select>
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={goalFilterPair} onChange={e => setGoalFilterPair(e.target.value)}
+              options={[{value: '', label: t('filterByPair')}, ...mentoringPairs.map(p => ({value: p.id, label: getPairLabel(p.id)}))]} />
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={goalFilterStatus} onChange={e => setGoalFilterStatus(e.target.value)}
+              options={[{value: '', label: t('filterByStatus')}, {value: 'not_started', label: t('statusNotStarted')}, {value: 'in_progress', label: t('statusInProgress')}, {value: 'completed', label: t('statusCompleted')}]} />
             <div className="flex-1" />
             <Button size="sm" onClick={() => setShowGoalModal(true)}><Plus size={14} /> {t('addGoal')}</Button>
           </div>

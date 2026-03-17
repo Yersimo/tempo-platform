@@ -70,8 +70,14 @@ export function Sidebar() {
   const { currentUser, logout, switchUser, org } = useTempo()
   const [showSwitcher, setShowSwitcher] = useState(false)
   const [showMoreApps, setShowMoreApps] = useState(false)
+  const [showMobileMore, setShowMobileMore] = useState(false)
   const t = useTranslations('nav')
   const tCommon = useTranslations('common')
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setShowMobileMore(false)
+  }, [pathname])
 
   // Persist collapsed state in localStorage, default to collapsed (true)
   const [collapsed, setCollapsed] = useState(true)
@@ -587,15 +593,14 @@ export function Sidebar() {
         />
       )}
 
-      {/* Mobile Bottom Nav (unchanged) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-chrome border-t border-dark-border z-50 px-2 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex justify-around py-2">
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-chrome/95 backdrop-blur-lg border-t border-dark-border z-50 pb-[env(safe-area-inset-bottom)]" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
+        <div className="flex justify-around items-end pt-1.5 pb-1">
           {[
-            { label: t('mobileHome'), href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-            { label: t('peopleLabel'), href: '/people', icon: <Users size={20} /> },
-            { label: t('mobilePerform'), href: '/performance', icon: <TrendingUp size={20} /> },
-            { label: t('mobileFinance'), href: '/finance/invoices', icon: <Wallet size={20} /> },
-            { label: t('mobileMore'), href: '/settings', icon: <Menu size={20} /> },
+            { label: 'Home', href: '/dashboard', icon: <LayoutDashboard size={22} /> },
+            { label: 'People', href: '/people', icon: <Users size={22} /> },
+            { label: 'Payroll', href: '/payroll', icon: <Wallet size={22} /> },
+            { label: 'Chat', href: '/chat', icon: <MessageSquare size={22} /> },
           ].map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
@@ -603,17 +608,147 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-1',
-                  isActive ? 'text-tempo-400' : 'text-white/50'
+                  'flex flex-col items-center justify-center gap-0.5 min-w-[56px] min-h-[44px] relative',
+                  isActive ? 'text-tempo-400' : 'text-white/45'
                 )}
               >
+                {isActive && (
+                  <span className="absolute -top-1.5 w-5 h-[3px] rounded-full bg-tempo-500" />
+                )}
                 {item.icon}
-                <span className="text-[0.55rem]">{item.label}</span>
+                <span className={cn('text-[0.6rem] leading-none', isActive && 'font-medium')}>{item.label}</span>
               </Link>
             )
           })}
+          {/* More tab - opens full-screen menu */}
+          <button
+            onClick={() => setShowMobileMore(prev => !prev)}
+            className={cn(
+              'flex flex-col items-center justify-center gap-0.5 min-w-[56px] min-h-[44px] relative',
+              showMobileMore ? 'text-tempo-400' : 'text-white/45'
+            )}
+          >
+            {showMobileMore ? <X size={22} /> : <Grid3X3 size={22} />}
+            <span className={cn('text-[0.6rem] leading-none', showMobileMore && 'font-medium')}>More</span>
+          </button>
         </div>
       </nav>
+
+      {/* Mobile "More" full-screen overlay menu */}
+      {showMobileMore && (
+        <div className="lg:hidden fixed inset-0 z-40 flex flex-col">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 mobile-menu-enter"
+            style={{ animationDuration: '0.2s' }}
+            onClick={() => setShowMobileMore(false)}
+          />
+          {/* Menu panel */}
+          <div
+            className="mobile-menu-enter absolute bottom-0 left-0 right-0 bg-chrome rounded-t-2xl max-h-[85vh] flex flex-col"
+            style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-9 h-1 rounded-full bg-white/20" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-3">
+              <span className="text-base font-semibold text-white">All Apps</span>
+              <button
+                onClick={() => setShowMobileMore(false)}
+                className="text-white/40 hover:text-white p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {/* User info */}
+              <div className="flex items-center gap-3 px-2 py-3 mb-3 border-b border-white/10">
+                <div className="w-10 h-10 rounded-full bg-tempo-600/20 flex items-center justify-center text-tempo-400 text-sm font-semibold">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">{displayName}</div>
+                  <div className="text-xs text-white/40 truncate">{displayTitle}</div>
+                </div>
+                <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded bg-tempo-600/20 text-tempo-400 uppercase">
+                  {roleBadge}
+                </span>
+              </div>
+
+              {/* Nav groups */}
+              {navGroups.map(group => (
+                <div key={group.title} className="mb-4">
+                  <div className="px-2 py-2 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-white/30">
+                    {group.title}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {group.items.map(item => {
+                      const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setShowMobileMore(false)}
+                          className={cn(
+                            'flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl transition-colors min-h-[72px] justify-center',
+                            isActive
+                              ? 'bg-tempo-600/15 text-tempo-400'
+                              : 'text-white/50 active:bg-white/[0.06]'
+                          )}
+                        >
+                          <span className="flex items-center justify-center w-8 h-8">
+                            {item.icon}
+                          </span>
+                          <span className={cn('text-[0.6rem] leading-tight text-center', isActive && 'font-medium')}>
+                            {item.label}
+                          </span>
+                          {!!(item.badge && item.badge > 0 && ACTIONABLE_BADGE_HREFS.has(item.href)) && (
+                            <span className="absolute -top-0.5 -right-0.5 bg-tempo-600 text-white text-[0.5rem] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Quick actions */}
+              <div className="border-t border-white/10 pt-3 mt-2 space-y-1">
+                <Link
+                  href="/settings"
+                  onClick={() => setShowMobileMore(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/60 active:bg-white/[0.06]"
+                >
+                  <Settings size={20} />
+                  <span className="text-sm">Settings</span>
+                </Link>
+                <Link
+                  href="/help"
+                  onClick={() => setShowMobileMore(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/60 active:bg-white/[0.06]"
+                >
+                  <BookOpen size={20} />
+                  <span className="text-sm">Help Center</span>
+                </Link>
+                <button
+                  onClick={() => { setShowMobileMore(false); handleLogout() }}
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400/80 active:bg-white/[0.06]"
+                >
+                  <LogOut size={20} />
+                  <span className="text-sm">Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

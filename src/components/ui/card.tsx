@@ -13,8 +13,8 @@ export function Card({ className, padding = 'md', clickable, children, onClick, 
     <div
       className={cn(
         'bg-card border border-border rounded-[var(--radius-card)]',
-        padding === 'none' ? 'p-0' : 'p-6',
-        isClickable && 'cursor-pointer hover:shadow-md hover:border-tempo-200 transition-all duration-200',
+        padding === 'none' ? 'p-0' : 'p-6 max-lg:p-4',
+        isClickable && 'cursor-pointer hover:shadow-md hover:border-tempo-200 transition-all duration-200 active:scale-[0.98] active:transition-transform active:duration-100',
         className
       )}
       onClick={onClick}

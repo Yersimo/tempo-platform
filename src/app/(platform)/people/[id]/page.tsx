@@ -52,7 +52,7 @@ export default function EmployeeDetailPage() {
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
-    ensureModulesLoaded?.(['employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    ensureModulesLoaded?.(['employees', 'departments', 'goals', 'reviews', 'enrollments', 'leaveRequests', 'devices', 'expenseReports', 'feedback', 'mentoringPairs', 'salaryReviews', 'compBands', 'customFieldDefinitions', 'customFieldValues', 'emergencyContacts'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
     const t = setTimeout(() => setPageLoading(false), 2000)
     return () => clearTimeout(t)
   }, [])

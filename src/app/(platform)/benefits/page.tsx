@@ -117,7 +117,7 @@ export default function BenefitsPage() {
   async function carrierAPI(action: string, data: Record<string, any> = {}) {
     const res = await fetch('/api/carrier-integrations', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-org-id': org.id },
+      headers: { 'Content-Type': 'application/json', 'x-org-id': org?.id || '' },
       body: JSON.stringify({ action, ...data }),
     })
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Request failed') }
@@ -127,7 +127,7 @@ export default function BenefitsPage() {
   async function benefitsAPI(action: string, data: Record<string, any> = {}) {
     const res = await fetch('/api/benefits', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-org-id': org.id },
+      headers: { 'Content-Type': 'application/json', 'x-org-id': org?.id || '' },
       body: JSON.stringify({ action, ...data }),
     })
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Request failed') }
@@ -715,18 +715,11 @@ export default function BenefitsPage() {
                 className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
               />
             </div>
-            <select
+            <Select
               className="border border-divider rounded-lg px-3 py-2 text-sm bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600"
               value={planTypeFilter} onChange={e => setPlanTypeFilter(e.target.value)}
-            >
-              <option value="all">All Types</option>
-              <option value="medical">Health</option>
-              <option value="dental">Dental</option>
-              <option value="vision">Vision</option>
-              <option value="life">Life</option>
-              <option value="disability">Disability</option>
-              <option value="retirement">Retirement</option>
-            </select>
+              options={[{value: 'all', label: 'All Types'}, {value: 'medical', label: 'Health'}, {value: 'dental', label: 'Dental'}, {value: 'vision', label: 'Vision'}, {value: 'life', label: 'Life'}, {value: 'disability', label: 'Disability'}, {value: 'retirement', label: 'Retirement'}]}
+            />
           </div>
 
           {/* Plan Comparison (when 2 plans selected) */}
@@ -2118,16 +2111,12 @@ export default function BenefitsPage() {
             return (
               <div className="flex items-center gap-3 mb-6">
                 <label className="text-sm font-medium text-t2">Tax Year</label>
-                <select
+                <Select
                   className="border border-divider rounded-lg px-3 py-1.5 text-sm bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600"
                   value={acaTaxYearFilter === 'all' ? 'all' : String(acaTaxYearFilter)}
                   onChange={e => setAcaTaxYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                >
-                  <option value="all">All Years</option>
-                  {availableYears.map(year => (
-                    <option key={year} value={String(year)}>{year}</option>
-                  ))}
-                </select>
+                  options={[{value: 'all', label: 'All Years'}, ...availableYears.map(year => ({value: String(year), label: String(year)}))]}
+                />
               </div>
             )
           })()}
@@ -2849,13 +2838,10 @@ export default function BenefitsPage() {
               {/* Coverage Level Selector */}
               <div>
                 <label className="block text-xs font-medium text-t2 mb-1.5">Coverage Level</label>
-                <select className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
-                  value={bulkCoverage} onChange={(e) => setBulkCoverage(e.target.value)}>
-                  <option value="employee_only">Employee Only</option>
-                  <option value="employee_spouse">Employee + Spouse</option>
-                  <option value="employee_child">Employee + Child</option>
-                  <option value="family">Family</option>
-                </select>
+                <Select className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  value={bulkCoverage} onChange={(e) => setBulkCoverage(e.target.value)}
+                  options={[{value: 'employee_only', label: 'Employee Only'}, {value: 'employee_spouse', label: 'Employee + Spouse'}, {value: 'employee_child', label: 'Employee + Child'}, {value: 'family', label: 'Family'}]}
+                />
               </div>
 
               {/* Enrollment Summary */}

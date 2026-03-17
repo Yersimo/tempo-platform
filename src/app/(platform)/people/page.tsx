@@ -585,18 +585,12 @@ export default function PeoplePage() {
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1) }}>
-              <option value="all">{t('allDepartments')}</option>
-              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={countryFilter} onChange={(e) => { setCountryFilter(e.target.value); setCurrentPage(1) }}>
-              <option value="all">{t('allCountries')}</option>
-              {countries.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setCurrentPage(1) }}>
-              <option value="all">{t('allLevels')}</option>
-              {levels.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1) }}
+              options={[{value: 'all', label: t('allDepartments')}, ...departments.map(d => ({value: d.id, label: d.name}))]} />
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={countryFilter} onChange={(e) => { setCountryFilter(e.target.value); setCurrentPage(1) }}
+              options={[{value: 'all', label: t('allCountries')}, ...countries.map(c => ({value: c, label: c}))]} />
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setCurrentPage(1) }}
+              options={[{value: 'all', label: t('allLevels')}, ...levels.map(l => ({value: l, label: l}))]} />
             {(search || deptFilter !== 'all' || countryFilter !== 'all' || levelFilter !== 'all') && (
               <Button variant="ghost" size="sm" onClick={resetFilters}>{t('clearFilters')}</Button>
             )}
@@ -813,18 +807,10 @@ export default function PeoplePage() {
 
           {/* Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={docTypeFilter} onChange={(e) => setDocTypeFilter(e.target.value)}>
-              <option value="all">{t('allDocTypes')}</option>
-              <option value="contract">{t('docContract')}</option>
-              <option value="id">{t('docId')}</option>
-              <option value="certificate">{t('docCertificate')}</option>
-            </select>
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={docStatusFilter} onChange={(e) => setDocStatusFilter(e.target.value)}>
-              <option value="all">{t('allStatuses')}</option>
-              <option value="valid">{t('docValid')}</option>
-              <option value="expired">{t('docExpired')}</option>
-              <option value="pending_review">{t('docPendingReview')}</option>
-            </select>
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={docTypeFilter} onChange={(e) => setDocTypeFilter(e.target.value)}
+              options={[{value: 'all', label: t('allDocTypes')}, {value: 'contract', label: t('docContract')}, {value: 'id', label: t('docId')}, {value: 'certificate', label: t('docCertificate')}]} />
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={docStatusFilter} onChange={(e) => setDocStatusFilter(e.target.value)}
+              options={[{value: 'all', label: t('allStatuses')}, {value: 'valid', label: t('docValid')}, {value: 'expired', label: t('docExpired')}, {value: 'pending_review', label: t('docPendingReview')}]} />
             <div className="ml-auto flex gap-2">
               <Button size="sm" variant="secondary" onClick={() => {
                 const input = document.createElement('input')
@@ -899,20 +885,10 @@ export default function PeoplePage() {
       {activeTab === 'timeline' && (
         <>
           <div className="flex flex-wrap gap-3 mb-6">
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={timelineTypeFilter} onChange={(e) => setTimelineTypeFilter(e.target.value)}>
-              <option value="all">{t('allEventTypes')}</option>
-              <option value="hire">{t('eventHire')}</option>
-              <option value="promotion">{t('eventPromotion')}</option>
-              <option value="transfer">{t('eventTransfer')}</option>
-              <option value="salary_change">{t('eventSalaryChange')}</option>
-              <option value="training">{t('eventTraining')}</option>
-            </select>
-            <select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={timelineEmployeeFilter} onChange={(e) => setTimelineEmployeeFilter(e.target.value)}>
-              <option value="">{t('allEmployees')}</option>
-              {employees.slice(0, 30).map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.profile.full_name}</option>
-              ))}
-            </select>
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={timelineTypeFilter} onChange={(e) => setTimelineTypeFilter(e.target.value)}
+              options={[{value: 'all', label: t('allEventTypes')}, {value: 'hire', label: t('eventHire')}, {value: 'promotion', label: t('eventPromotion')}, {value: 'transfer', label: t('eventTransfer')}, {value: 'salary_change', label: t('eventSalaryChange')}, {value: 'training', label: t('eventTraining')}]} />
+            <Select className="px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t2" value={timelineEmployeeFilter} onChange={(e) => setTimelineEmployeeFilter(e.target.value)}
+              options={[{value: '', label: t('allEmployees')}, ...employees.slice(0, 30).map(emp => ({value: emp.id, label: emp.profile.full_name}))]} />
           </div>
 
           <div className="space-y-1">

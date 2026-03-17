@@ -2517,25 +2517,15 @@ window.onload=function(){
                 </button>
               )}
             </div>
-            <select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)}
-              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
-              <option value="all">{t('allCategories')}</option>
-              {catalogCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-            <select value={catalogLevel} onChange={(e) => setCatalogLevel(e.target.value)}
-              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
-              <option value="all">{t('allLevels')}</option>
-              <option value="beginner">{t('levelBeginner')}</option>
-              <option value="intermediate">{t('levelIntermediate')}</option>
-              <option value="advanced">{t('levelAdvanced')}</option>
-            </select>
-            <select value={catalogFormat} onChange={(e) => setCatalogFormat(e.target.value)}
-              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400">
-              <option value="all">{t('allFormats')}</option>
-              <option value="online">{t('formatOnline')}</option>
-              <option value="classroom">{t('formatClassroom')}</option>
-              <option value="blended">{t('formatBlended')}</option>
-            </select>
+            <Select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400"
+              options={[{value: 'all', label: t('allCategories')}, ...catalogCategories.map(cat => ({value: cat, label: cat}))]} />
+            <Select value={catalogLevel} onChange={(e) => setCatalogLevel(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400"
+              options={[{value: 'all', label: t('allLevels')}, {value: 'beginner', label: t('levelBeginner')}, {value: 'intermediate', label: t('levelIntermediate')}, {value: 'advanced', label: t('levelAdvanced')}]} />
+            <Select value={catalogFormat} onChange={(e) => setCatalogFormat(e.target.value)}
+              className="text-xs bg-canvas border border-divider rounded-lg px-3 py-2 focus:outline-none focus:border-tempo-400"
+              options={[{value: 'all', label: t('allFormats')}, {value: 'online', label: t('formatOnline')}, {value: 'classroom', label: t('formatClassroom')}, {value: 'blended', label: t('formatBlended')}]} />
             {(catalogSearch || catalogCategory !== 'all' || catalogLevel !== 'all' || catalogFormat !== 'all') && (
               <button onClick={() => { setCatalogSearch(''); setCatalogCategory('all'); setCatalogLevel('all'); setCatalogFormat('all') }}
                 className="text-xs text-tempo-600 hover:text-tempo-700 font-medium">
@@ -5722,18 +5712,12 @@ window.onload=function(){
                   <input type="text" placeholder={t('searchCoursesPlaceholder')} value={enrollCourseSearch} onChange={(e) => setEnrollCourseSearch(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600" />
                 </div>
-                <select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
-                  value={enrollCourseCategory} onChange={(e) => setEnrollCourseCategory(e.target.value)}>
-                  <option value="all">{t('allCategories')}</option>
-                  {courseCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-                <select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
-                  value={enrollCourseLevel} onChange={(e) => setEnrollCourseLevel(e.target.value)}>
-                  <option value="all">{t('allLevels')}</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
+                <Select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+                  value={enrollCourseCategory} onChange={(e) => setEnrollCourseCategory(e.target.value)}
+                  options={[{value: 'all', label: t('allCategories')}, ...courseCategories.map(cat => ({value: cat, label: cat}))]} />
+                <Select className="px-3 py-2 text-xs bg-white border border-divider rounded-lg text-t2 focus:outline-none focus:ring-2 focus:ring-tempo-600/20"
+                  value={enrollCourseLevel} onChange={(e) => setEnrollCourseLevel(e.target.value)}
+                  options={[{value: 'all', label: t('allLevels')}, {value: 'beginner', label: 'Beginner'}, {value: 'intermediate', label: 'Intermediate'}, {value: 'advanced', label: 'Advanced'}]} />
               </div>
 
               {/* Course Radio List */}

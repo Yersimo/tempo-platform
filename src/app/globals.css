@@ -40,9 +40,9 @@
 
   /* Radius */
   --radius-card: 14px;
-  --radius-button: 8px;
+  --radius-button: 12px;
   --radius-pill: 100px;
-  --radius-input: 8px;
+  --radius-input: 12px;
 }
 
 /* ─── Base Resets ─── */
@@ -52,6 +52,40 @@ body {
   color: var(--color-t1);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Modern Form Controls ─── */
+/* Hide native number spinners globally */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+/* Style native selects that escape our custom Select component */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+  border-radius: 12px;
+  transition: all 0.2s ease-out;
+}
+select:hover { border-color: #d1d5db; }
+select:focus {
+  border-color: var(--color-tempo-500, #e8590c);
+  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.12), 0 1px 3px rgba(0,0,0,0.04);
+  outline: none;
+}
+
+/* All interactive elements get smooth transitions */
+button, a, input, select, textarea {
+  transition: all 0.2s ease-out;
 }
 
 ::-webkit-scrollbar {
@@ -75,6 +109,118 @@ body {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
+}
+
+/* ══════════════════════════════════════════════════
+   MOBILE NATIVE APP FEEL
+   ══════════════════════════════════════════════════ */
+
+/* Prevent tap highlight on all interactive elements */
+@media (max-width: 1023px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Smooth momentum scrolling */
+  html {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+
+  /* Prevent text selection on UI chrome (nav, buttons, tabs) */
+  button,
+  nav,
+  [role="tablist"],
+  [role="tab"],
+  .tempo-tab,
+  .tempo-tab-active {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Optimize touch targets: min 44px for tappable elements */
+  button:not([class*="p-0"]),
+  a[role="button"],
+  [role="menuitem"] {
+    min-height: 44px;
+  }
+
+  /* Better touch-action for scroll containers */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  [style*="overflow"] {
+    touch-action: pan-y;
+  }
+
+  /* Cards get slightly smaller radius on mobile for density */
+  .bg-card {
+    border-radius: 12px;
+  }
+
+  /* Bottom safe area padding for pages with bottom nav */
+  main,
+  [role="main"] {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Native-feeling transitions: use spring-like curves */
+  .transition-all,
+  .transition-colors,
+  .transition-transform {
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+}
+
+/* Active state feedback for touch (press-down effect) */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a:active,
+  [role="button"]:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
+  }
+
+  /* Cards get a subtle press effect */
+  .card-hover:active,
+  .cursor-pointer:active {
+    transform: scale(0.98) !important;
+    transition: transform 0.1s ease !important;
+  }
+}
+
+/* Mobile bottom tab bar slide-up menu animation */
+@keyframes mobile-menu-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes mobile-menu-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.mobile-menu-enter {
+  animation: mobile-menu-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards,
+             mobile-menu-fade-in 0.2s ease forwards;
+}
+@keyframes mobile-menu-slide-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+.mobile-menu-exit {
+  animation: mobile-menu-slide-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
 /* ══════════════════════════════════════════════════
@@ -250,9 +396,19 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-in { animation-duration: 500ms; animation-fill-mode: both; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-in { animation-duration: 200ms; animation-fill-mode: both; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 .slide-in-from-bottom-4 { animation-name: slide-in-from-bottom-4; }
 .slide-in-from-top-2 { animation-name: slide-in-from-top-2; }
+@keyframes slide-in-from-top-1 {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
+.fade-in { animation-name: fade-in; }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

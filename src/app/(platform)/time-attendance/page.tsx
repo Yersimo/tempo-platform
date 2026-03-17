@@ -848,16 +848,10 @@ export default function TimeAttendancePage() {
             </div>
             <DatePicker value={dateRangeFrom} onChange={d => setDateRangeFrom(d.toISOString().split('T')[0])} placeholder="From date" />
             <DatePicker value={dateRangeTo} onChange={d => setDateRangeTo(d.toISOString().split('T')[0])} placeholder="To date" />
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
-              <option value="">All Departments</option>
-              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterDept} onChange={e => setFilterDept(e.target.value)}
+              options={[{value: '', label: 'All Departments'}, ...departments.map(d => ({value: d.id, label: d.name}))]} />
+            <Select className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-t1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              options={[{value: '', label: 'All Status'}, {value: 'pending', label: 'Pending'}, {value: 'approved', label: 'Approved'}, {value: 'rejected', label: 'Rejected'}]} />
           </div>
 
           {/* Timesheet Grid */}
