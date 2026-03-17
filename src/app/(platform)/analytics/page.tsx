@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
-import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
@@ -43,6 +43,12 @@ export default function AnalyticsPage() {
   const [queryFollowUps, setQueryFollowUps] = useState<string[]>([])
   const [queryLoading, setQueryLoading] = useState(false)
   const [queryHighlight, setQueryHighlight] = useState('')
+
+  // Report Builder state
+  const [rbSource, setRbSource] = useState<string>('workforce')
+  const [rbMetrics, setRbMetrics] = useState<string[]>([])
+  const [rbViz, setRbViz] = useState<string>('bar')
+  const [rbPreview, setRbPreview] = useState(false)
 
   // AI-powered analytics
   const boardNarrative = useMemo(() => generateBoardNarrative({ employees: employees || [], goals: goals || [], reviews: reviews || [], engagementScores: engagementScores || [], jobPostings: jobPostings || [], payrollRuns: payrollRuns || [], salaryReviews: salaryReviews || [] }), [employees, goals, reviews, salaryReviews])
@@ -138,6 +144,7 @@ export default function AnalyticsPage() {
     { id: 'recruiting', label: 'Recruiting' },
     { id: 'diversity', label: 'Diversity' },
     { id: 'executive', label: 'Executive' },
+    { id: 'builder', label: 'Report Builder' },
   ]
 
   // Filter employees by department and search query
@@ -864,6 +871,403 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             </Card>
+          </div>
+        )
+      })()}
+
+      {/* Report Builder */}
+      {activeTab === 'builder' && (() => {
+        const dataSources: { id: string; label: string; description: string; icon: React.ReactNode; count: number }[] = [
+          { id: 'workforce', label: 'Workforce', description: 'Employee demographics, departments, and org structure', icon: <Users size={16} />, count: employees.length },
+          { id: 'payroll', label: 'Payroll', description: 'Compensation, salary bands, and payroll runs', icon: <DollarSign size={16} />, count: payrollRuns.length },
+          { id: 'performance', label: 'Performance', description: 'Reviews, goals, and ratings', icon: <Target size={16} />, count: reviews.length + goals.length },
+          { id: 'recruiting', label: 'Recruiting', description: 'Job postings, applications, and pipeline', icon: <UserPlus size={16} />, count: jobPostings.length },
+          { id: 'time', label: 'Time & Attendance', description: 'Leave requests, hours logged, and absences', icon: <Clock size={16} />, count: leaveRequests.length },
+          { id: 'expenses', label: 'Expenses', description: 'Expense reports, categories, and spend', icon: <CreditCard size={16} />, count: expenseReports.length },
+        ]
+
+        const metricsMap: Record<string, { id: string; label: string }[]> = {
+          workforce: [
+            { id: 'headcount', label: 'Headcount' },
+            { id: 'dept_distribution', label: 'Department Distribution' },
+            { id: 'country_distribution', label: 'Country Distribution' },
+            { id: 'level_distribution', label: 'Level Distribution' },
+            { id: 'tenure', label: 'Tenure' },
+          ],
+          payroll: [
+            { id: 'total_cost', label: 'Total Cost' },
+            { id: 'avg_salary', label: 'Average Salary' },
+            { id: 'cost_by_dept', label: 'Cost by Department' },
+            { id: 'cost_by_country', label: 'Cost by Country' },
+          ],
+          performance: [
+            { id: 'avg_rating', label: 'Average Rating' },
+            { id: 'goal_completion', label: 'Goal Completion' },
+            { id: 'review_completion', label: 'Review Completion' },
+          ],
+          recruiting: [
+            { id: 'open_positions', label: 'Open Positions' },
+            { id: 'applications', label: 'Applications' },
+            { id: 'time_to_hire', label: 'Time to Hire' },
+            { id: 'offer_rate', label: 'Offer Rate' },
+          ],
+          time: [
+            { id: 'hours_logged', label: 'Hours Logged' },
+            { id: 'overtime', label: 'Overtime Hours' },
+            { id: 'absence_rate', label: 'Absence Rate' },
+          ],
+          expenses: [
+            { id: 'total_spend', label: 'Total Spend' },
+            { id: 'avg_per_employee', label: 'Average per Employee' },
+            { id: 'by_category', label: 'By Category' },
+          ],
+        }
+
+        const vizOptions: { id: string; label: string; icon: React.ReactNode }[] = [
+          { id: 'bar', label: 'Bar Chart', icon: <BarChart3 size={20} /> },
+          { id: 'donut', label: 'Pie / Donut', icon: <PieChart size={20} /> },
+          { id: 'table', label: 'Table', icon: <Table2 size={20} /> },
+          { id: 'kpi', label: 'KPI Card', icon: <Hash size={20} /> },
+        ]
+
+        const availableMetrics = metricsMap[rbSource] || []
+
+        // Generate preview data based on selections
+        const generatePreviewData = () => {
+          if (rbMetrics.length === 0) return null
+          const metric = rbMetrics[0]
+
+          if (rbSource === 'workforce') {
+            if (metric === 'headcount' || metric === 'dept_distribution') {
+              return { type: 'distribution', data: departments.map(d => ({ name: d.name, value: employees.filter(e => e.department_id === d.id).length })).sort((a, b) => b.value - a.value), label: 'Employees', total: employees.length, totalLabel: 'Total Headcount' }
+            }
+            if (metric === 'country_distribution') {
+              const cc = Object.entries(employees.reduce((acc, e) => { acc[e.country] = (acc[e.country] || 0) + 1; return acc }, {} as Record<string, number>)).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+              return { type: 'distribution', data: cc, label: 'Employees', total: employees.length, totalLabel: 'Total Headcount' }
+            }
+            if (metric === 'level_distribution') {
+              const levels = ['Executive', 'Director', 'Senior Manager', 'Senior', 'Manager', 'Mid', 'Junior', 'Associate']
+              return { type: 'distribution', data: levels.map(l => ({ name: l, value: employees.filter(e => e.level === l).length })).filter(d => d.value > 0), label: 'Employees', total: employees.length, totalLabel: 'Total Headcount' }
+            }
+            if (metric === 'tenure') {
+              const now = Date.now()
+              const buckets = [
+                { name: '< 1 year', min: 0, max: 365 },
+                { name: '1-2 years', min: 365, max: 730 },
+                { name: '2-5 years', min: 730, max: 1825 },
+                { name: '5+ years', min: 1825, max: Infinity },
+              ]
+              return { type: 'distribution' as const, data: buckets.map(b => ({ name: b.name, value: employees.filter(e => { const days = (e as any).hire_date ? (now - new Date((e as any).hire_date).getTime()) / 86400000 : 500; return days >= b.min && days < b.max }).length })), label: 'Employees', total: employees.length, totalLabel: 'Total Headcount' }
+            }
+          }
+
+          if (rbSource === 'payroll') {
+            const bandByLevel = new Map<string, number>()
+            compBands.forEach(b => { if (!bandByLevel.has(b.level)) bandByLevel.set(b.level, b.mid_salary) })
+            const salaryMap = new Map<string, number>()
+            salaryReviews.forEach(sr => { if (sr.current_salary && !salaryMap.has(sr.employee_id)) salaryMap.set(sr.employee_id, sr.current_salary) })
+            const getSalary = (emp: typeof employees[0]) => salaryMap.get(emp.id) || bandByLevel.get(emp.level) || 50000
+            const salaries = employees.map(e => getSalary(e))
+            const totalComp = salaries.reduce((a, s) => a + s, 0)
+            const avgSal = salaries.length > 0 ? Math.round(totalComp / salaries.length) : 0
+
+            if (metric === 'total_cost') return { type: 'kpi', value: `$${(totalComp / 1000000).toFixed(2)}M`, label: 'Total Payroll Cost', sub: 'Annual' }
+            if (metric === 'avg_salary') return { type: 'kpi', value: `$${(avgSal / 1000).toFixed(0)}K`, label: 'Average Salary', sub: 'Per employee' }
+            if (metric === 'cost_by_dept') {
+              return { type: 'distribution', data: departments.map(d => { const dEmps = employees.filter(e => e.department_id === d.id); const avg = dEmps.length > 0 ? Math.round(dEmps.map(e => getSalary(e)).reduce((a, s) => a + s, 0) / dEmps.length) : 0; return { name: d.name, value: avg } }).sort((a, b) => b.value - a.value), label: 'Avg Salary', total: `$${(avgSal / 1000).toFixed(0)}K`, totalLabel: 'Org Average' }
+            }
+            if (metric === 'cost_by_country') {
+              const byCountry = Object.entries(employees.reduce((acc, e) => { const s = getSalary(e); acc[e.country] = acc[e.country] || { total: 0, count: 0 }; acc[e.country].total += s; acc[e.country].count++; return acc }, {} as Record<string, { total: number; count: number }>)).map(([name, v]) => ({ name, value: Math.round(v.total / v.count) })).sort((a, b) => b.value - a.value)
+              return { type: 'distribution', data: byCountry, label: 'Avg Salary', total: `$${(avgSal / 1000).toFixed(0)}K`, totalLabel: 'Org Average' }
+            }
+          }
+
+          if (rbSource === 'performance') {
+            if (metric === 'avg_rating') {
+              const avg = reviews.length > 0 ? (reviews.reduce((a, r) => a + (r.overall_rating || 0), 0) / reviews.length).toFixed(1) : '0'
+              return { type: 'kpi', value: `${avg}/5`, label: 'Average Rating', sub: `${reviews.length} reviews` }
+            }
+            if (metric === 'goal_completion') {
+              return { type: 'distribution', data: [{ name: 'On Track', value: goals.filter(g => g.status === 'on_track').length }, { name: 'At Risk', value: goals.filter(g => g.status === 'at_risk').length }, { name: 'Behind', value: goals.filter(g => g.status === 'behind').length }, { name: 'Completed', value: goals.filter(g => g.status === 'completed').length }].filter(d => d.value > 0), label: 'Goals', total: goals.length, totalLabel: 'Total Goals' }
+            }
+            if (metric === 'review_completion') {
+              const completed = reviews.filter(r => r.status === 'submitted').length
+              return { type: 'kpi', value: `${reviews.length > 0 ? Math.round((completed / reviews.length) * 100) : 0}%`, label: 'Review Completion', sub: `${completed} of ${reviews.length} reviews` }
+            }
+          }
+
+          if (rbSource === 'recruiting') {
+            if (metric === 'open_positions') return { type: 'kpi', value: String(jobPostings.filter(j => j.status === 'open').length), label: 'Open Positions', sub: `${jobPostings.length} total postings` }
+            if (metric === 'applications') {
+              const totalApps = jobPostings.reduce((a, j) => a + (j.application_count || 0), 0)
+              return { type: 'distribution', data: jobPostings.slice(0, 8).map(j => ({ name: j.title?.slice(0, 20) || 'Role', value: j.application_count || 0 })).sort((a, b) => b.value - a.value), label: 'Applications', total: totalApps, totalLabel: 'Total Applications' }
+            }
+            if (metric === 'time_to_hire') return { type: 'kpi', value: '32 days', label: 'Avg Time to Hire', sub: 'Last 90 days' }
+            if (metric === 'offer_rate') return { type: 'kpi', value: '8.5%', label: 'Offer Rate', sub: 'Applications to offers' }
+          }
+
+          if (rbSource === 'time') {
+            const pendingLeave = leaveRequests.filter(l => l.status === 'pending').length
+            const approvedLeave = leaveRequests.filter(l => l.status === 'approved').length
+            if (metric === 'hours_logged') return { type: 'kpi', value: `${(employees.length * 160).toLocaleString()}`, label: 'Hours Logged', sub: 'This month (est.)' }
+            if (metric === 'overtime') return { type: 'kpi', value: `${Math.round(employees.length * 4.2)}`, label: 'Overtime Hours', sub: 'This month (est.)' }
+            if (metric === 'absence_rate') return { type: 'distribution', data: [{ name: 'Pending', value: pendingLeave }, { name: 'Approved', value: approvedLeave }, { name: 'Rejected', value: leaveRequests.filter(l => l.status === 'rejected').length }].filter(d => d.value > 0), label: 'Requests', total: leaveRequests.length, totalLabel: 'Leave Requests' }
+          }
+
+          if (rbSource === 'expenses') {
+            const totalSpend = expenseReports.reduce((a, e) => a + (e.total_amount || 0), 0)
+            if (metric === 'total_spend') return { type: 'kpi', value: `$${(totalSpend / 100).toLocaleString()}`, label: 'Total Spend', sub: `${expenseReports.length} reports` }
+            if (metric === 'avg_per_employee') return { type: 'kpi', value: employees.length > 0 ? `$${Math.round(totalSpend / 100 / employees.length).toLocaleString()}` : '$0', label: 'Avg per Employee', sub: 'All time' }
+            if (metric === 'by_category') {
+              const cats = Object.entries(expenseReports.reduce((acc, e) => { const cat = (e as any).category || 'Other'; acc[cat] = (acc[cat] || 0) + (e.total_amount || 0); return acc }, {} as Record<string, number>)).map(([name, value]) => ({ name, value: Math.round(value / 100) })).sort((a, b) => b.value - a.value)
+              return { type: 'distribution', data: cats, label: 'Amount ($)', total: `$${(totalSpend / 100).toLocaleString()}`, totalLabel: 'Total Spend' }
+            }
+          }
+
+          return { type: 'kpi', value: '-', label: 'No data', sub: 'Select metrics to preview' }
+        }
+
+        const previewData = rbPreview ? generatePreviewData() : null
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
+            {/* Left Panel: Steps 1-3 */}
+            <div className="space-y-4">
+              {/* Step 1: Data Source */}
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tempo-100 text-tempo-700 text-[0.6rem] font-bold">1</span>
+                  <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Choose Data Source</h3>
+                </div>
+                <div className="space-y-1.5">
+                  {dataSources.map(ds => (
+                    <label key={ds.id} className={`flex items-start gap-3 rounded-lg px-3 py-2.5 cursor-pointer transition-all border ${rbSource === ds.id ? 'border-tempo-300 bg-tempo-50/50' : 'border-transparent hover:bg-canvas'}`}>
+                      <input type="radio" name="rb-source" checked={rbSource === ds.id} onChange={() => { setRbSource(ds.id); setRbMetrics([]); setRbPreview(false) }} className="mt-0.5 accent-tempo-600" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-t2">{ds.icon}</span>
+                          <span className="text-xs font-semibold text-t1">{ds.label}</span>
+                          <span className="text-[0.6rem] text-t3 ml-auto">{ds.count} records</span>
+                        </div>
+                        <p className="text-[0.6rem] text-t3 mt-0.5 leading-relaxed">{ds.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Step 2: Metrics */}
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tempo-100 text-tempo-700 text-[0.6rem] font-bold">2</span>
+                  <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Select Metrics</h3>
+                </div>
+                <div className="space-y-1">
+                  {availableMetrics.map(m => (
+                    <label key={m.id} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer transition-all ${rbMetrics.includes(m.id) ? 'bg-tempo-50/50' : 'hover:bg-canvas'}`}>
+                      <input type="checkbox" checked={rbMetrics.includes(m.id)} onChange={(e) => { if (e.target.checked) { setRbMetrics(prev => [...prev, m.id]) } else { setRbMetrics(prev => prev.filter(x => x !== m.id)) }; setRbPreview(false) }} className="accent-tempo-600" />
+                      <span className="text-xs text-t1">{m.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Step 3: Visualization */}
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tempo-100 text-tempo-700 text-[0.6rem] font-bold">3</span>
+                  <h3 className="text-xs font-semibold text-t1 uppercase tracking-wider">Visualization</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {vizOptions.map(v => (
+                    <button key={v.id} onClick={() => { setRbViz(v.id); setRbPreview(false) }}
+                      className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 transition-all ${rbViz === v.id ? 'border-tempo-400 bg-tempo-50/50 text-tempo-700' : 'border-divider bg-surface text-t2 hover:border-tempo-200 hover:bg-canvas'}`}>
+                      {v.icon}
+                      <span className="text-[0.6rem] font-medium">{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Right Panel: Preview & Controls */}
+            <div className="space-y-4">
+              {/* Controls */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" disabled={rbMetrics.length === 0} onClick={() => setRbPreview(true)}>
+                  <LayoutGrid size={14} className="mr-1" /> Generate Report
+                </Button>
+                <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report exported', 'success')}>
+                  <Download size={14} className="mr-1" /> Export
+                </Button>
+                <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report scheduling coming soon')}>
+                  <CalendarClock size={14} className="mr-1" /> Schedule
+                </Button>
+                <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report saved to dashboard', 'success')}>
+                  <Save size={14} className="mr-1" /> Save to Dashboard
+                </Button>
+              </div>
+
+              {/* Preview Area */}
+              {!rbPreview && (
+                <Card>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-canvas flex items-center justify-center mb-4">
+                      <BarChart3 size={28} className="text-t3" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-t1 mb-1">Report Preview</h3>
+                    <p className="text-xs text-t3 max-w-xs">
+                      {rbMetrics.length === 0
+                        ? 'Select a data source and at least one metric, then click Generate Report to see a preview.'
+                        : 'Click Generate Report to preview your report.'}
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              {rbPreview && previewData && (
+                <Card>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-t1">
+                      {dataSources.find(ds => ds.id === rbSource)?.label} Report
+                    </h3>
+                    <Badge variant="default">{rbMetrics.length} metric{rbMetrics.length !== 1 ? 's' : ''}</Badge>
+                  </div>
+
+                  {/* KPI visualization */}
+                  {(rbViz === 'kpi' || previewData.type === 'kpi') && previewData.type === 'kpi' && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-t1">{previewData.value}</p>
+                        <p className="text-sm text-t2 mt-1">{previewData.label}</p>
+                        <p className="text-xs text-t3 mt-0.5">{previewData.sub}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bar chart visualization */}
+                  {rbViz === 'bar' && previewData.type === 'distribution' && previewData.data && (
+                    <TempoBarChart
+                      data={previewData.data as Record<string, any>[]}
+                      bars={[{ dataKey: 'value', name: previewData.label, color: CHART_COLORS.primary }]}
+                      xKey="name"
+                      layout="horizontal"
+                      height={Math.max(200, (previewData.data as any[]).length * 36)}
+                      showGrid={false}
+                    />
+                  )}
+
+                  {/* Donut chart visualization */}
+                  {rbViz === 'donut' && previewData.type === 'distribution' && previewData.data && (
+                    <TempoDonutChart
+                      data={previewData.data as { name: string; value: number }[]}
+                      centerLabel={String(previewData.total)}
+                      centerSub={previewData.totalLabel}
+                      height={260}
+                      colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, CHART_COLORS.emerald, '#8b5cf6', '#ec4899', '#14b8a6']}
+                    />
+                  )}
+
+                  {/* Table visualization */}
+                  {rbViz === 'table' && previewData.type === 'distribution' && previewData.data && (() => {
+                    const tableData = previewData.data as { name: string; value: number }[]
+                    const tableTotal = typeof previewData.total === 'number' ? previewData.total : tableData.reduce((a, d) => a + d.value, 0)
+                    return (
+                      <div className="overflow-hidden rounded-lg border border-divider">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-canvas">
+                              <th className="text-left px-4 py-2.5 font-semibold text-t2 uppercase tracking-wider text-[0.6rem]">Name</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-t2 uppercase tracking-wider text-[0.6rem]">{previewData.label}</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-t2 uppercase tracking-wider text-[0.6rem]">%</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-divider">
+                            {tableData.map((row, i) => {
+                              const pct = tableTotal > 0 ? Math.round((row.value / tableTotal) * 100) : 0
+                              return (
+                                <tr key={i} className="hover:bg-canvas/50 transition-colors">
+                                  <td className="px-4 py-2 text-t1 font-medium">{row.name}</td>
+                                  <td className="px-4 py-2 text-right text-t1 tabular-nums">{row.value.toLocaleString()}</td>
+                                  <td className="px-4 py-2 text-right text-t3 tabular-nums">{pct}%</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-canvas font-semibold">
+                              <td className="px-4 py-2 text-t1">Total</td>
+                              <td className="px-4 py-2 text-right text-t1 tabular-nums">{tableTotal.toLocaleString()}</td>
+                              <td className="px-4 py-2 text-right text-t1">100%</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )
+                  })()}
+
+                  {/* KPI card for distribution data when KPI viz is selected */}
+                  {rbViz === 'kpi' && previewData.type === 'distribution' && previewData.data && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {(previewData.data as { name: string; value: number }[]).slice(0, 6).map((row, i) => (
+                        <div key={i} className="bg-canvas rounded-lg px-4 py-3 text-center">
+                          <p className="text-lg font-bold text-t1">{row.value.toLocaleString()}</p>
+                          <p className="text-[0.65rem] text-t3 mt-0.5">{row.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Bar chart fallback for KPI data */}
+                  {rbViz === 'bar' && previewData.type === 'kpi' && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-t1">{previewData.value}</p>
+                        <p className="text-sm text-t2 mt-1">{previewData.label}</p>
+                        <p className="text-xs text-t3 mt-0.5">{previewData.sub}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Donut/Table fallback for KPI data */}
+                  {(rbViz === 'donut' || rbViz === 'table') && previewData.type === 'kpi' && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-t1">{previewData.value}</p>
+                        <p className="text-sm text-t2 mt-1">{previewData.label}</p>
+                        <p className="text-xs text-t3 mt-0.5">{previewData.sub}</p>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* Additional metrics preview cards when multiple metrics selected */}
+              {rbPreview && rbMetrics.length > 1 && (() => {
+                const additionalMetrics = rbMetrics.slice(1)
+                const additionalData = additionalMetrics.map(metricId => {
+                  const savedSource = rbSource
+                  const savedMetrics = rbMetrics
+                  // Temporarily set to generate each metric
+                  const singleMetric = [metricId]
+                  // Inline generation for additional metrics
+                  const m = metricsMap[rbSource]?.find(x => x.id === metricId)
+                  return { id: metricId, label: m?.label || metricId }
+                })
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {additionalData.map(ad => (
+                      <Card key={ad.id}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="default">{ad.label}</Badge>
+                        </div>
+                        <p className="text-xs text-t3">Included in report. Switch primary metric to preview this visualization.</p>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
           </div>
         )
       })()}

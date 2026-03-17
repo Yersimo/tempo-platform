@@ -173,6 +173,14 @@ export default function BenefitsPage() {
   const [planSearch, setPlanSearch] = useState('')
   const [planTypeFilter, setPlanTypeFilter] = useState('all')
 
+  // ---- Enrollment Wizard State ----
+  const [showEnrollWizard, setShowEnrollWizard] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardEmployeeId, setWizardEmployeeId] = useState('')
+  const [wizardMedicalPlanId, setWizardMedicalPlanId] = useState<string | 'skip'>('')
+  const [wizardAdditionalPlanIds, setWizardAdditionalPlanIds] = useState<Set<string>>(new Set())
+  const [wizardCoverage, setWizardCoverage] = useState('employee_only')
+
   // ---- Forms ----
   const [planForm, setPlanForm] = useState({
     name: '', type: 'medical' as string, provider: '',
@@ -550,6 +558,53 @@ export default function BenefitsPage() {
     setBulkPlanId(''); setBulkCoverage('employee_only'); setBulkPlanSearch('')
   }
 
+  function resetEnrollWizard() {
+    setShowEnrollWizard(false); setWizardStep(1); setWizardEmployeeId('')
+    setWizardMedicalPlanId(''); setWizardAdditionalPlanIds(new Set()); setWizardCoverage('employee_only')
+  }
+
+  function toggleWizardAdditionalPlan(planId: string) {
+    setWizardAdditionalPlanIds(prev => {
+      const next = new Set(prev); if (next.has(planId)) next.delete(planId); else next.add(planId); return next
+    })
+  }
+
+  const wizardMedicalPlans = activePlans.filter(p => p.type === 'medical')
+  const wizardAdditionalPlans = activePlans.filter(p => ['dental', 'vision', 'retirement', 'life'].includes(p.type))
+  const wizardSelectedPlans = useMemo(() => {
+    const plans: typeof activePlans = []
+    if (wizardMedicalPlanId && wizardMedicalPlanId !== 'skip') {
+      const p = activePlans.find(pl => pl.id === wizardMedicalPlanId)
+      if (p) plans.push(p)
+    }
+    wizardAdditionalPlanIds.forEach(id => {
+      const p = activePlans.find(pl => pl.id === id)
+      if (p) plans.push(p)
+    })
+    return plans
+  }, [wizardMedicalPlanId, wizardAdditionalPlanIds, activePlans])
+  const wizardTotalEmployeeCost = wizardSelectedPlans.reduce((a, p) => a + p.cost_employee, 0)
+  const wizardTotalEmployerCost = wizardSelectedPlans.reduce((a, p) => a + p.cost_employer, 0)
+
+  async function submitEnrollWizard() {
+    if (!wizardEmployeeId) { addToast('Please select an employee'); return }
+    if (wizardSelectedPlans.length === 0) { addToast('No plans selected'); return }
+    setSaving(true)
+    for (const plan of wizardSelectedPlans) {
+      const data = {
+        employee_id: wizardEmployeeId, plan_id: plan.id,
+        coverage_level: wizardCoverage, status: 'active',
+        enrolled_date: new Date().toISOString().split('T')[0],
+        effective_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      }
+      try { await carrierAPI('enroll', data) } catch { /* fallback */ }
+      addBenefitEnrollment(data)
+    }
+    setSaving(false)
+    addToast(`Successfully enrolled in ${wizardSelectedPlans.length} plan${wizardSelectedPlans.length > 1 ? 's' : ''}`)
+    resetEnrollWizard()
+  }
+
   async function submitBulkEnroll() {
     if (!bulkPlanId || bulkNewEnrollees.length === 0) return
     const enrollments = bulkNewEnrollees.map(emp => ({
@@ -867,7 +922,10 @@ export default function BenefitsPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{t('enrollmentRecords')}</CardTitle>
-                <Button size="sm" onClick={() => setShowEnrollmentModal(true)}><Plus size={14} /> {t('newEnrollment')}</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setShowEnrollWizard(true)}><ArrowRight size={14} /> Start Enrollment Wizard</Button>
+                  <Button size="sm" onClick={() => setShowEnrollmentModal(true)}><Plus size={14} /> {t('newEnrollment')}</Button>
+                </div>
               </div>
             </CardHeader>
             <div className="overflow-x-auto">
@@ -3039,6 +3097,296 @@ export default function BenefitsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowFlexExpenseModal(false)} disabled={saving}>{tc('cancel')}</Button>
             <Button onClick={submitFlexExpense} disabled={saving}>{saving ? 'Saving...' : 'Submit Expense'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Enrollment Wizard Modal */}
+      <Modal open={showEnrollWizard} onClose={resetEnrollWizard} size="xl">
+        <div className="space-y-6">
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-0">
+            {[
+              { num: 1, label: 'Welcome' },
+              { num: 2, label: 'Medical' },
+              { num: 3, label: 'Additional' },
+              { num: 4, label: 'Review' },
+            ].map((s, i) => (
+              <div key={s.num} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors',
+                    wizardStep === s.num ? 'bg-tempo-600 text-white' :
+                    wizardStep > s.num ? 'bg-tempo-100 text-tempo-700 border-2 border-tempo-500' :
+                    'bg-canvas text-t3 border border-divider'
+                  )}>
+                    {wizardStep > s.num ? <CheckCircle2 size={16} /> : s.num}
+                  </div>
+                  <span className={cn('text-[10px] mt-1', wizardStep === s.num ? 'text-tempo-600 font-medium' : 'text-t3')}>{s.label}</span>
+                </div>
+                {i < 3 && <div className={cn('w-16 h-0.5 mx-2 mb-4', wizardStep > s.num ? 'bg-tempo-500' : 'bg-divider')} />}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Welcome */}
+          {wizardStep === 1 && (
+            <div className="text-center space-y-6">
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-tempo-50 flex items-center justify-center mx-auto mb-4">
+                  <Heart size={28} className="text-tempo-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-t1 mb-1">Let&apos;s set up your benefits</h2>
+                <p className="text-sm text-t3 max-w-md mx-auto">We&apos;ll guide you through selecting your benefit plans step by step. You can skip any category you don&apos;t need.</p>
+              </div>
+
+              <Select
+                label="Select Employee"
+                value={wizardEmployeeId}
+                onChange={e => setWizardEmployeeId(e.target.value)}
+                options={[
+                  { value: '', label: 'Choose an employee...' },
+                  ...employees.slice(0, 50).map(emp => ({ value: emp.id, label: emp.profile.full_name })),
+                ]}
+              />
+
+              <Select
+                label="Coverage Level"
+                value={wizardCoverage}
+                onChange={e => setWizardCoverage(e.target.value)}
+                options={[
+                  { value: 'employee_only', label: coverageLevelLabels.employee_only },
+                  { value: 'employee_spouse', label: coverageLevelLabels.employee_spouse },
+                  { value: 'employee_child', label: coverageLevelLabels.employee_child },
+                  { value: 'family', label: coverageLevelLabels.family },
+                ]}
+              />
+
+              <div className="grid grid-cols-5 gap-3 pt-2">
+                {[
+                  { icon: <Heart size={20} />, label: 'Medical' },
+                  { icon: <Stethoscope size={20} />, label: 'Dental' },
+                  { icon: <Eye size={20} />, label: 'Vision' },
+                  { icon: <Wallet size={20} />, label: 'Retirement' },
+                  { icon: <Shield size={20} />, label: 'Life Insurance' },
+                ].map(cat => (
+                  <div key={cat.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-canvas border border-divider">
+                    <span className="text-tempo-600">{cat.icon}</span>
+                    <span className="text-xs text-t2 font-medium">{cat.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Medical */}
+          {wizardStep === 2 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-t1 flex items-center gap-2"><Heart size={18} className="text-tempo-600" /> Choose a Medical Plan</h2>
+                <p className="text-xs text-t3 mt-0.5">Select one medical plan or skip if not needed.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {wizardMedicalPlans.length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-8">No medical plans available.</p>
+                ) : wizardMedicalPlans.map(plan => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setWizardMedicalPlanId(plan.id)}
+                    className={cn(
+                      'w-full text-left p-4 rounded-xl border-2 transition-all',
+                      wizardMedicalPlanId === plan.id
+                        ? 'border-tempo-500 bg-tempo-50'
+                        : 'border-divider bg-card hover:border-tempo-200'
+                    )}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={cn(
+                            'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                            wizardMedicalPlanId === plan.id ? 'border-tempo-600' : 'border-gray-300'
+                          )}>
+                            {wizardMedicalPlanId === plan.id && <div className="w-2 h-2 rounded-full bg-tempo-600" />}
+                          </div>
+                          <p className="text-sm font-semibold text-t1">{plan.name}</p>
+                        </div>
+                        <p className="text-xs text-t3 ml-6">{plan.provider}</p>
+                        {plan.description && <p className="text-xs text-t3 ml-6 mt-1">{plan.description}</p>}
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <p className="text-sm font-semibold text-t1">{fmtCents(plan.cost_employee)}<span className="text-xs text-t3 font-normal">/mo</span></p>
+                        <p className="text-[10px] text-t3">You pay</p>
+                        <div className="mt-1 pt-1 border-t border-divider">
+                          <p className="text-xs text-green-600">{fmtCents(plan.cost_employer)}<span className="text-[10px] text-t3">/mo employer</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+
+                {/* Skip option */}
+                <button
+                  type="button"
+                  onClick={() => setWizardMedicalPlanId('skip')}
+                  className={cn(
+                    'w-full text-left p-4 rounded-xl border-2 transition-all',
+                    wizardMedicalPlanId === 'skip'
+                      ? 'border-tempo-500 bg-tempo-50'
+                      : 'border-divider bg-card hover:border-tempo-200'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                      wizardMedicalPlanId === 'skip' ? 'border-tempo-600' : 'border-gray-300'
+                    )}>
+                      {wizardMedicalPlanId === 'skip' && <div className="w-2 h-2 rounded-full bg-tempo-600" />}
+                    </div>
+                    <p className="text-sm font-medium text-t3">Skip medical coverage</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Additional Benefits */}
+          {wizardStep === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-t1 flex items-center gap-2"><Layers size={18} className="text-tempo-600" /> Additional Benefits</h2>
+                <p className="text-xs text-t3 mt-0.5">Toggle on any additional plans you want to enroll in.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {wizardAdditionalPlans.length === 0 ? (
+                  <p className="text-sm text-t3 text-center py-8">No additional plans available.</p>
+                ) : wizardAdditionalPlans.map(plan => {
+                  const isSelected = wizardAdditionalPlanIds.has(plan.id)
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => toggleWizardAdditionalPlan(plan.id)}
+                      className={cn(
+                        'w-full text-left p-4 rounded-xl border-2 transition-all',
+                        isSelected ? 'border-tempo-500 bg-tempo-50' : 'border-divider bg-card hover:border-tempo-200'
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                            isSelected ? 'bg-tempo-600 border-tempo-600' : 'border-gray-300'
+                          )}>
+                            {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-tempo-600">{iconMap[plan.type] || <Shield size={16} />}</span>
+                              <p className="text-sm font-semibold text-t1">{plan.name}</p>
+                              <Badge variant="info">{plan.type}</Badge>
+                            </div>
+                            <p className="text-xs text-t3 mt-0.5 ml-6">{plan.provider}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          <p className="text-sm font-semibold text-t1">{fmtCents(plan.cost_employee)}<span className="text-xs text-t3 font-normal">/mo</span></p>
+                          <p className="text-xs text-green-600">{fmtCents(plan.cost_employer)}<span className="text-[10px] text-t3"> employer</span></p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Review & Confirm */}
+          {wizardStep === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-t1 flex items-center gap-2"><CheckCircle size={18} className="text-tempo-600" /> Review Your Selections</h2>
+                <p className="text-xs text-t3 mt-0.5">Confirm your benefit elections below.</p>
+              </div>
+
+              {/* Employee info */}
+              <div className="p-3 rounded-xl bg-canvas border border-divider">
+                <p className="text-xs text-t3 mb-0.5">Employee</p>
+                <p className="text-sm font-medium text-t1">{getEmployeeName(wizardEmployeeId) || 'Not selected'}</p>
+                <p className="text-xs text-t3 mt-0.5">Coverage: {coverageLevelLabels[wizardCoverage]}</p>
+              </div>
+
+              {/* Selected plans */}
+              {wizardSelectedPlans.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-t3">No plans selected. Go back to choose at least one plan.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {wizardSelectedPlans.map(plan => (
+                    <div key={plan.id} className="flex items-center justify-between p-3 rounded-xl border border-divider bg-card">
+                      <div className="flex items-center gap-3">
+                        <span className="text-tempo-600">{iconMap[plan.type] || <Shield size={16} />}</span>
+                        <div>
+                          <p className="text-sm font-medium text-t1">{plan.name}</p>
+                          <p className="text-xs text-t3">{plan.provider} &middot; {plan.type}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-t1">{fmtCents(plan.cost_employee)}<span className="text-xs text-t3 font-normal">/mo</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cost summary */}
+              {wizardSelectedPlans.length > 0 && (
+                <div className="rounded-xl border border-tempo-200 bg-tempo-50 p-4 space-y-2">
+                  <h3 className="text-xs font-semibold text-tempo-700 uppercase tracking-wider">Monthly Cost Summary</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-t2">Your Cost</span>
+                    <span className="text-sm font-semibold text-t1">{fmtCents(wizardTotalEmployeeCost)}/mo</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-t2">Employer Contribution</span>
+                    <span className="text-sm font-semibold text-green-600">{fmtCents(wizardTotalEmployerCost)}/mo</span>
+                  </div>
+                  <div className="border-t border-tempo-200 pt-2 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-t1">Total</span>
+                    <span className="text-base font-bold text-tempo-700">{fmtCents(wizardTotalEmployeeCost + wizardTotalEmployerCost)}/mo</span>
+                  </div>
+                  <p className="text-[10px] text-t3 pt-1">Annual employee cost: {fmtCents(wizardTotalEmployeeCost * 12)}/yr</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          <div className="flex items-center justify-between pt-2 border-t border-divider">
+            <div>
+              {wizardStep > 1 && (
+                <Button variant="secondary" onClick={() => setWizardStep(s => (s - 1) as any)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={resetEnrollWizard}>Cancel</Button>
+              {wizardStep < 4 ? (
+                <Button
+                  onClick={() => setWizardStep(s => (s + 1) as any)}
+                  disabled={wizardStep === 1 && !wizardEmployeeId}
+                >
+                  {wizardStep === 2 && !wizardMedicalPlanId ? 'Skip' : 'Next'}
+                </Button>
+              ) : (
+                <Button onClick={submitEnrollWizard} disabled={saving || wizardSelectedPlans.length === 0}>
+                  {saving ? 'Enrolling...' : 'Confirm Enrollment'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

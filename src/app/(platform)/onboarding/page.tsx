@@ -408,6 +408,77 @@ export default function OnboardingPage() {
   const [planRole, setPlanRole] = useState('')
   const [planDepartment, setPlanDepartment] = useState('')
 
+  // ─── 30/60/90 Day Milestone State ────────────────────────────────────
+  const [milestoneChecks, setMilestoneChecks] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('tempo_milestone_checks')
+        if (saved) return JSON.parse(saved)
+      } catch {}
+    }
+    // Simulate: user started ~15 days ago, a few Day-30 items already done
+    return { 'd30-0': true, 'd30-1': true }
+  })
+
+  // Persist milestone checks
+  useEffect(() => {
+    try {
+      localStorage.setItem('tempo_milestone_checks', JSON.stringify(milestoneChecks))
+    } catch {}
+  }, [milestoneChecks])
+
+  const toggleMilestone = useCallback((key: string) => {
+    setMilestoneChecks(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  const milestonePhases = useMemo(() => [
+    {
+      day: 30,
+      label: 'Foundation',
+      status: 'current' as const,
+      badge: 'Manager check-in sent',
+      badgeIcon: <Mail size={10} />,
+      items: [
+        'Complete all required training',
+        'Set up workstation & tools',
+        'Meet team members',
+        'Understand team processes',
+      ],
+    },
+    {
+      day: 60,
+      label: 'Growth',
+      status: 'future' as const,
+      badge: null,
+      badgeIcon: null,
+      items: [
+        'Complete first project/assignment',
+        'Shadow senior team member',
+        'Receive first manager feedback',
+        'Attend department meeting',
+      ],
+    },
+    {
+      day: 90,
+      label: 'Impact',
+      status: 'future' as const,
+      badge: 'Performance review scheduled',
+      badgeIcon: <FileText size={10} />,
+      items: [
+        'Present work to team',
+        'Set quarterly goals with manager',
+        'Complete probation review',
+        'Receive performance baseline',
+      ],
+    },
+  ], [])
+
+  const milestoneOverallProgress = useMemo(() => {
+    const totalItems = milestonePhases.reduce((sum, p) => sum + p.items.length, 0)
+    const checkedItems = Object.values(milestoneChecks).filter(Boolean).length
+    return totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0
+  }, [milestoneChecks, milestonePhases])
+
   // ─── Production-grade: Confirm, Search/Filter, Saving ─────────────
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: string; id: string; label: string } | null>(null)
   const [onboardingSearch, setOnboardingSearch] = useState('')
@@ -1462,6 +1533,162 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 </Card>
+
+                {/* ─── 30/60/90 Day Milestones ─────────────────────── */}
+                <Card>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-tempo-50 flex items-center justify-center text-tempo-600">
+                          <Target size={20} />
+                        </div>
+                        <div>
+                          <h2 className="text-sm font-semibold text-t1">30/60/90 Day Milestones</h2>
+                          <p className="text-xs text-t3">Your onboarding roadmap</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-tempo-600">{milestoneOverallProgress}%</span>
+                    </div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <Progress value={milestoneOverallProgress} size="md" className="flex-1" />
+                      <span className="text-xs text-t3 shrink-0">
+                        {Object.values(milestoneChecks).filter(Boolean).length} of {milestonePhases.reduce((s, p) => s + p.items.length, 0)} items
+                      </span>
+                    </div>
+
+                    {/* Vertical Timeline */}
+                    <div className="relative">
+                      {milestonePhases.map((phase, pi) => {
+                        const prefix = `d${phase.day}`
+                        const phaseChecked = phase.items.filter((_, ii) => milestoneChecks[`${prefix}-${ii}`]).length
+                        const phasePct = Math.round((phaseChecked / phase.items.length) * 100)
+                        const isCompleted = phasePct === 100
+                        const isCurrent = phase.status === 'current' && !isCompleted
+                        const isFuture = phase.status === 'future' && !isCompleted
+
+                        return (
+                          <div key={phase.day} className="relative flex gap-4 pb-8 last:pb-0">
+                            {/* Timeline line */}
+                            {pi < milestonePhases.length - 1 && (
+                              <div
+                                className={`absolute left-[15px] top-[36px] w-0.5 ${
+                                  isCompleted ? 'bg-green-400' : isCurrent ? 'bg-gradient-to-b from-tempo-400 to-border' : 'bg-border'
+                                }`}
+                                style={{ height: 'calc(100% - 20px)' }}
+                              />
+                            )}
+
+                            {/* Timeline circle */}
+                            <div className="relative z-10 shrink-0">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                                  isCompleted
+                                    ? 'bg-green-500 border-green-500 text-white'
+                                    : isCurrent
+                                    ? 'bg-tempo-500 border-tempo-500 text-white ring-4 ring-tempo-100'
+                                    : 'bg-surface border-border text-t3'
+                                }`}
+                              >
+                                {isCompleted ? <Check size={14} /> : phase.day}
+                              </div>
+                            </div>
+
+                            {/* Phase card */}
+                            <div className={`flex-1 rounded-xl border p-4 ${
+                              isCompleted
+                                ? 'bg-green-50 border-green-200'
+                                : isCurrent
+                                ? 'bg-tempo-50/50 border-tempo-200 shadow-sm'
+                                : 'bg-canvas border-border'
+                            }`}>
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <h3 className={`text-sm font-semibold ${
+                                    isCompleted ? 'text-green-700' : isCurrent ? 'text-tempo-700' : 'text-t2'
+                                  }`}>
+                                    Day {phase.day} &mdash; {phase.label}
+                                  </h3>
+                                  {isCurrent && (
+                                    <Badge variant="warning" className="text-[0.6rem]">Current</Badge>
+                                  )}
+                                  {isCompleted && (
+                                    <Badge variant="success" className="text-[0.6rem]">Complete</Badge>
+                                  )}
+                                </div>
+                                <span className={`text-xs font-semibold ${
+                                  isCompleted ? 'text-green-600' : isCurrent ? 'text-tempo-600' : 'text-t3'
+                                }`}>
+                                  {phasePct}%
+                                </span>
+                              </div>
+
+                              {/* Progress bar for phase */}
+                              <div className="mb-3">
+                                <div className="w-full h-1.5 bg-white/60 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-300 ${
+                                      isCompleted ? 'bg-green-500' : isCurrent ? 'bg-tempo-500' : 'bg-gray-300'
+                                    }`}
+                                    style={{ width: `${phasePct}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Checklist items */}
+                              <div className="space-y-2">
+                                {phase.items.map((item, ii) => {
+                                  const key = `${prefix}-${ii}`
+                                  const checked = !!milestoneChecks[key]
+                                  return (
+                                    <button
+                                      key={key}
+                                      onClick={() => toggleMilestone(key)}
+                                      className="flex items-center gap-3 w-full text-left group"
+                                    >
+                                      <div
+                                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                          checked
+                                            ? 'bg-green-500 border-green-500 text-white'
+                                            : isCurrent
+                                            ? 'border-tempo-300 group-hover:border-tempo-500'
+                                            : 'border-border group-hover:border-gray-400'
+                                        }`}
+                                      >
+                                        {checked && <Check size={12} />}
+                                      </div>
+                                      <span
+                                        className={`text-sm transition-colors ${
+                                          checked ? 'text-t3 line-through' : isCurrent ? 'text-t1' : 'text-t2'
+                                        }`}
+                                      >
+                                        {item}
+                                      </span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+
+                              {/* Auto-trigger badge */}
+                              {phase.badge && (
+                                <div className="mt-3 pt-3 border-t border-dashed border-current/10">
+                                  <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[0.65rem] font-medium ${
+                                    isCompleted || isCurrent
+                                      ? 'bg-white/70 text-tempo-700'
+                                      : 'bg-gray-100 text-t3'
+                                  }`}>
+                                    {phase.badgeIcon}
+                                    {phase.badge}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </Card>
+
               </>
             )
           })()}

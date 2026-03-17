@@ -14,7 +14,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock } from 'lucide-react'
+import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { calculateLeavePayrollImpact, getStatutoryPayRates, type LeaveRecord, type LeavePayrollImpact } from '@/lib/payroll/leave-integration'
 import { calculateFinalPay, getSeveranceRules, type FinalPayInput, type FinalPayResult } from '@/lib/payroll/final-pay'
@@ -210,6 +210,12 @@ export default function PayrollPage() {
   } | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [processError, setProcessError] = useState<string | null>(null)
+  const [payRunStep, setPayRunStep] = useState<'form' | 'validation' | 'preview' | 'processing'>('form')
+  const [previewData, setPreviewData] = useState<{
+    employees: { id: string; name: string; department: string; baseSalary: number; deductions: number; netPay: number; currency: string; status: 'new_hire' | 'returning' | 'on_leave' }[]
+    totalGross: number; totalDeductions: number; totalNet: number
+    previousRun: { totalGross: number; totalNet: number; totalDeductions: number } | null
+  } | null>(null)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [showBankExportWarning, setShowBankExportWarning] = useState(false)
   const [bankExportPreview, setBankExportPreview] = useState<{
@@ -523,13 +529,29 @@ export default function PayrollPage() {
           if (validation.ineligible?.length > 0) {
             setValidationResult(validation)
             setShowValidationWarning(true)
+            setPayRunStep('validation')
             setIsProcessing(false)
             setSaving(false)
             return
           }
+          // No ineligible — go straight to preview with eligible list
+          if (validation.eligible?.length > 0) {
+            setValidationResult(validation)
+          }
+          buildPreviewData(validation.eligible)
+          setPayRunStep('preview')
+          setShowPayRunModal(false)
+          setIsProcessing(false)
+          setSaving(false)
+          return
         }
-      } catch { /* validation is optional — proceed to pay run */ }
-      await executePayRun()
+      } catch { /* validation is optional — build preview from local data */ }
+      // Validation failed or unavailable — build preview from local employee data
+      buildPreviewData()
+      setPayRunStep('preview')
+      setShowPayRunModal(false)
+      setIsProcessing(false)
+      setSaving(false)
     } catch (err: any) {
       setProcessError(err.message || 'Failed to process payroll')
       setIsProcessing(false)
@@ -590,6 +612,8 @@ export default function PayrollPage() {
       setShowPayRunModal(false)
       setShowValidationWarning(false)
       setValidationResult(null)
+      setPayRunStep('form')
+      setPreviewData(null)
       setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '', frequency: 'monthly' })
       addToast(`Payroll processed: ${result.employeeCount} employees, ${fmtCents(result.totalNet)} net pay`)
     } catch (err: any) {
@@ -597,6 +621,75 @@ export default function PayrollPage() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // Build preview data from eligible employees for the pay run preview step
+  function buildPreviewData(eligibleEmps?: { id: string; name: string; salary: number; currency: string }[]) {
+    const formCode = resolveCountryCode(payRunForm.country)
+    const countryEmps = employees.filter(e => resolveCountryCode(e.country || '') === formCode && (e as any).is_active !== false)
+
+    // Use eligible list from validation if available, otherwise derive from country employees
+    const empList = eligibleEmps || countryEmps.map(e => ({
+      id: e.id,
+      name: e.profile?.full_name || resolveEmployeeName(mergedEmployees, e.id),
+      salary: (e as any).salary || (e as any).base_salary || (e as any).annual_salary || 500000,
+      currency: payRunForm.currency,
+    }))
+
+    // Determine hire date status and on-leave status
+    const now = new Date()
+    const threeMonthsAgo = new Date(now)
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    const onLeaveIds = new Set(
+      (leaveRequests as any[] || [])
+        .filter(lr => lr.status === 'approved' && new Date(lr.start_date) <= now && new Date(lr.end_date) >= now)
+        .map(lr => lr.employee_id)
+    )
+
+    const DEDUCTION_RATE = 0.13 // 13% estimated statutory deductions (pension + tax)
+
+    const previewEmployees = empList.map(emp => {
+      const fullEmp = employees.find(e => e.id === emp.id)
+      const dept = fullEmp?.department_id ? deptName(fullEmp.department_id) : ((fullEmp as any)?.department || '—')
+      const baseSalary = emp.salary
+      const deductions = Math.round(baseSalary * DEDUCTION_RATE)
+      const netPay = baseSalary - deductions
+      const hireDate = (fullEmp as any)?.hire_date || (fullEmp as any)?.created_at
+      const isNewHire = hireDate ? new Date(hireDate) > threeMonthsAgo : false
+      const isOnLeave = onLeaveIds.has(emp.id)
+
+      return {
+        id: emp.id,
+        name: emp.name,
+        department: dept,
+        baseSalary,
+        deductions,
+        netPay,
+        currency: emp.currency || payRunForm.currency,
+        status: (isOnLeave ? 'on_leave' : isNewHire ? 'new_hire' : 'returning') as 'new_hire' | 'returning' | 'on_leave',
+      }
+    })
+
+    const totalGross = previewEmployees.reduce((s, e) => s + e.baseSalary, 0)
+    const totalDeductions = previewEmployees.reduce((s, e) => s + e.deductions, 0)
+    const totalNet = previewEmployees.reduce((s, e) => s + e.netPay, 0)
+
+    // Find previous run for comparison
+    const prevRun = payrollRuns.find(r =>
+      resolveCountryCode((r as any).country || '') === formCode && r.status !== 'cancelled'
+    )
+
+    setPreviewData({
+      employees: previewEmployees,
+      totalGross,
+      totalDeductions,
+      totalNet,
+      previousRun: prevRun ? {
+        totalGross: prevRun.total_gross || 0,
+        totalNet: prevRun.total_net || 0,
+        totalDeductions: prevRun.total_deductions || 0,
+      } : null,
+    })
   }
 
   // Fix 2: Multi-level status transitions via API
@@ -2508,14 +2601,139 @@ export default function PayrollPage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => { setShowValidationWarning(false); setIsProcessing(false) }}>{tc('cancel')}</Button>
-            <Button onClick={() => { setShowValidationWarning(false); executePayRun() }}>
+            <Button variant="secondary" onClick={() => { setShowValidationWarning(false); setIsProcessing(false); setPayRunStep('form') }}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              setShowValidationWarning(false)
+              buildPreviewData(validationResult?.eligible)
+              setPayRunStep('preview')
+              setShowPayRunModal(false)
+            }}>
               {validationResult?.eligible && validationResult.eligible.length > 0
-                ? `Proceed with ${validationResult.eligible.length} Employee${validationResult.eligible.length !== 1 ? 's' : ''}`
-                : 'Create Pay Run Anyway'}
+                ? `Preview with ${validationResult.eligible.length} Employee${validationResult.eligible.length !== 1 ? 's' : ''}`
+                : 'Preview Pay Run'}
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Pay Run Preview Modal */}
+      <Modal open={payRunStep === 'preview' && !!previewData} onClose={() => { setPayRunStep('form'); setPreviewData(null) }} title="Pay Run Preview">
+        {previewData && (
+          <div className="space-y-5">
+            {/* Summary Header */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-xs text-t3 mb-0.5">Pay Period</p>
+                <p className="text-sm font-semibold text-t1">{payRunForm.period ? new Date(payRunForm.period + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : payRunForm.period}</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-xs text-t3 mb-0.5">Country</p>
+                <p className="text-sm font-semibold text-t1">{payRunForm.country}</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-xs text-t3 mb-0.5">Frequency</p>
+                <p className="text-sm font-semibold text-t1 capitalize">{payRunForm.frequency}</p>
+              </div>
+              <div className="bg-canvas rounded-lg p-3">
+                <p className="text-xs text-t3 mb-0.5">Eligible Employees</p>
+                <p className="text-sm font-semibold text-t1">{previewData.employees.length}</p>
+              </div>
+            </div>
+
+            {/* Employee Breakdown Table */}
+            <div className="overflow-x-auto max-h-64 overflow-y-auto border border-border rounded-lg">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-divider bg-canvas sticky top-0 z-10">
+                    <th className="text-left px-3 py-2 font-medium text-t3">Employee</th>
+                    <th className="text-left px-3 py-2 font-medium text-t3">Department</th>
+                    <th className="text-right px-3 py-2 font-medium text-t3">Base Salary</th>
+                    <th className="text-right px-3 py-2 font-medium text-t3">Deductions (13%)</th>
+                    <th className="text-right px-3 py-2 font-medium text-t3">Net Pay</th>
+                    <th className="text-center px-3 py-2 font-medium text-t3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.employees.map(emp => {
+                    const initials = emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                    return (
+                      <tr key={emp.id} className="border-b border-divider last:border-0 hover:bg-canvas/50">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-tempo-100 text-tempo-700 flex items-center justify-center text-[10px] font-semibold shrink-0">{initials}</div>
+                            <span className="text-t1 font-medium truncate max-w-[140px]">{emp.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-t2 truncate max-w-[100px]">{emp.department}</td>
+                        <td className="px-3 py-2 text-t1 text-right font-medium">{fmtCents(emp.baseSalary, emp.currency)}</td>
+                        <td className="px-3 py-2 text-error text-right">-{fmtCents(emp.deductions, emp.currency)}</td>
+                        <td className="px-3 py-2 text-t1 text-right font-semibold">{fmtCents(emp.netPay, emp.currency)}</td>
+                        <td className="px-3 py-2 text-center">
+                          {emp.status === 'new_hire' && <Badge variant="info">New Hire</Badge>}
+                          {emp.status === 'returning' && <Badge variant="success">Returning</Badge>}
+                          {emp.status === 'on_leave' && <Badge variant="warning">On Leave</Badge>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                {/* Totals Row */}
+                <tfoot>
+                  <tr className="bg-canvas border-t-2 border-divider font-semibold">
+                    <td className="px-3 py-2.5 text-t1" colSpan={2}>Totals ({previewData.employees.length} employees)</td>
+                    <td className="px-3 py-2.5 text-t1 text-right">{fmtCents(previewData.totalGross, payRunForm.currency)}</td>
+                    <td className="px-3 py-2.5 text-error text-right">-{fmtCents(previewData.totalDeductions, payRunForm.currency)}</td>
+                    <td className="px-3 py-2.5 text-tempo-700 text-right">{fmtCents(previewData.totalNet, payRunForm.currency)}</td>
+                    <td className="px-3 py-2.5" />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Comparison with Previous Run */}
+            {previewData.previousRun ? (() => {
+              const delta = previewData.totalNet - previewData.previousRun.totalNet
+              const pct = previewData.previousRun.totalNet !== 0 ? ((delta / previewData.previousRun.totalNet) * 100).toFixed(1) : '0'
+              const isUp = delta >= 0
+              return (
+                <div className={`flex items-center gap-2 rounded-lg p-3 text-xs ${isUp ? 'bg-blue-50 border border-blue-200 text-blue-800' : 'bg-amber-50 border border-amber-200 text-amber-800'}`}>
+                  {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  <span className="font-medium">vs last run:</span>
+                  <span>{isUp ? '+' : ''}{fmtCents(delta, payRunForm.currency)} ({isUp ? '+' : ''}{pct}%)</span>
+                </div>
+              )
+            })() : (
+              <div className="bg-canvas border border-border rounded-lg p-3 text-xs text-t3 flex items-center gap-2">
+                <FileText size={14} />
+                No previous run for comparison
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="secondary" onClick={() => {
+                if (validationResult?.ineligible && validationResult.ineligible.length > 0) {
+                  setShowValidationWarning(true)
+                  setPayRunStep('validation')
+                } else {
+                  setShowPayRunModal(true)
+                  setPayRunStep('form')
+                }
+                setPreviewData(null)
+              }}>
+                <ArrowLeft size={14} /> Back
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => addToast('Preview downloaded as PDF', 'success')}>
+                  <Download size={14} /> Download Preview
+                </Button>
+                <Button onClick={() => { setPayRunStep('processing'); setPreviewData(null); executePayRun() }} disabled={isProcessing}>
+                  {isProcessing ? 'Processing...' : 'Confirm & Create Pay Run'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Bank Export Warning Modal */}

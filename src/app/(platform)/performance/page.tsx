@@ -20,6 +20,188 @@ import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
 
+function getRecommendedRaise(rating: number): number {
+  if (rating >= 4.5) return 9
+  if (rating >= 4) return 6
+  if (rating >= 3) return 3
+  return 0
+}
+
+function MeritAllocationSection({ employees, reviews, departments, getDepartmentName }: {
+  employees: any[]
+  reviews: any[]
+  departments: any[]
+  getDepartmentName: (id: string) => string
+}) {
+  const [meritRaises, setMeritRaises] = useState<Record<string, number>>({})
+  const [meritDeptFilter, setMeritDeptFilter] = useState('')
+  const MERIT_BUDGET = 50000
+
+  const meritEmployees = useMemo(() => {
+    return employees
+      .filter(emp => !meritDeptFilter || emp.department_id === meritDeptFilter)
+      .map(emp => {
+        const empReviews = reviews.filter((r: any) => r.employee_id === emp.id && r.overall_rating)
+        const avgRating = empReviews.length > 0
+          ? empReviews.reduce((a: number, r: any) => a + (r.overall_rating || 0), 0) / empReviews.length
+          : 0
+        const salary = emp.salary || 0
+        const recommendedPct = getRecommendedRaise(avgRating)
+        const appliedPct = meritRaises[emp.id] ?? null
+        const raisePct = appliedPct !== null ? appliedPct : 0
+        const raiseAmount = Math.round(salary * raisePct / 100)
+        const newSalary = salary + raiseAmount
+        return {
+          id: emp.id,
+          name: emp.profile?.full_name || 'Unknown',
+          initials: (emp.profile?.full_name || '').split(' ').map((n: string) => n[0]).join(''),
+          rating: Math.round(avgRating * 10) / 10,
+          salary,
+          recommendedPct,
+          raisePct,
+          raiseAmount,
+          newSalary,
+          departmentId: emp.department_id,
+        }
+      })
+  }, [employees, reviews, meritRaises, meritDeptFilter])
+
+  const totalAllocated = meritEmployees.reduce((sum, e) => sum + e.raiseAmount, 0)
+  const remaining = MERIT_BUDGET - totalAllocated
+  const pctUsed = MERIT_BUDGET > 0 ? Math.round((totalAllocated / MERIT_BUDGET) * 100) : 0
+  const budgetColor = pctUsed > 100 ? 'red' : pctUsed >= 80 ? 'yellow' : 'green'
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2"><DollarSign size={18} /> Merit Allocation</CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={meritDeptFilter} onChange={(e: any) => setMeritDeptFilter(e.target.value)} options={[{ value: '', label: 'All Departments' }, ...departments.map((d: any) => ({ value: d.id, label: d.name }))]} />
+            <Button size="sm" variant="secondary" onClick={() => {
+              const newRaises: Record<string, number> = {}
+              meritEmployees.forEach(e => { newRaises[e.id] = e.recommendedPct })
+              setMeritRaises(prev => ({ ...prev, ...newRaises }))
+            }}>Apply Recommendations</Button>
+            <Button size="sm" variant="secondary" onClick={() => setMeritRaises({})}>Reset</Button>
+          </div>
+        </div>
+      </CardHeader>
+      <div className="px-6 pb-6">
+        {/* Budget Summary Bar */}
+        <div className={`rounded-lg border p-4 mb-6 ${budgetColor === 'green' ? 'bg-green-50 border-green-200' : budgetColor === 'yellow' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs text-t3">Total Budget</p>
+                <p className="text-lg font-semibold text-t1">${MERIT_BUDGET.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-t3">Allocated</p>
+                <p className="text-lg font-semibold text-t1">${totalAllocated.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-t3">Remaining</p>
+                <p className={`text-lg font-semibold ${remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>${remaining.toLocaleString()}</p>
+              </div>
+            </div>
+            <span className="text-sm font-medium text-t2">{pctUsed}% used</span>
+          </div>
+          <div className="w-full bg-white/60 rounded-full h-2.5">
+            <div
+              className={`h-2.5 rounded-full transition-all ${budgetColor === 'green' ? 'bg-green-500' : budgetColor === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'}`}
+              style={{ width: `${Math.min(pctUsed, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Merit Allocation Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-divider">
+                <th className="tempo-th-cell">Employee</th>
+                <th className="tempo-th-cell text-center">Rating</th>
+                <th className="tempo-th-cell text-right">Current Salary</th>
+                <th className="tempo-th-cell text-center">Raise %</th>
+                <th className="tempo-th-cell text-right">Raise Amount</th>
+                <th className="tempo-th-cell text-right">New Salary</th>
+                <th className="tempo-th-cell text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {meritEmployees.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-t3">No employees found</td></tr>
+              )}
+              {meritEmployees.map(emp => {
+                const overBudget = remaining < 0
+                return (
+                  <tr key={emp.id} className="border-b border-divider hover:bg-canvas/50 transition-colors">
+                    <td className="tempo-td px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-tempo-100 flex items-center justify-center text-xs font-bold text-tempo-700">
+                          {emp.initials}
+                        </div>
+                        <span className="text-sm font-medium text-t1">{emp.name}</span>
+                      </div>
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Star size={14} className={emp.rating >= 1 ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
+                        <span className="text-sm text-t2">{emp.rating > 0 ? emp.rating.toFixed(1) : '\u2014'}</span>
+                        <span className="text-xs text-t3">/ 5</span>
+                      </div>
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-right text-sm text-t2">
+                      {emp.salary > 0 ? `$${emp.salary.toLocaleString()}` : '\u2014'}
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          value={meritRaises[emp.id] ?? ''}
+                          placeholder={emp.recommendedPct.toString()}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value)
+                            setMeritRaises(prev => ({
+                              ...prev,
+                              [emp.id]: isNaN(val) ? 0 : val,
+                            }))
+                          }}
+                          className="w-16 text-center text-sm border border-divider rounded px-1 py-0.5 bg-surface focus:outline-none focus:ring-1 focus:ring-tempo-500"
+                        />
+                        <span className="text-xs text-t3">%</span>
+                      </div>
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-right text-sm text-t2">
+                      {emp.raiseAmount > 0 ? `$${emp.raiseAmount.toLocaleString()}` : '\u2014'}
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-right text-sm font-medium text-t1">
+                      {emp.newSalary > emp.salary ? `$${emp.newSalary.toLocaleString()}` : '\u2014'}
+                    </td>
+                    <td className="tempo-td px-4 py-3 text-center">
+                      {emp.raisePct > 0 ? (
+                        <Badge variant={overBudget ? 'error' : 'success'}>
+                          {overBudget ? 'Over Budget' : 'Within Budget'}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-t3">\u2014</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 export default function PerformancePage() {
   const {
     goals, employees, departments, reviewCycles, reviews, feedback,
@@ -84,9 +266,27 @@ export default function PerformancePage() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [fbForm, setFbForm] = useState({ to_id: '', type: 'recognition' as string, content: '', is_public: true })
 
-  // Review cycle modal
+  // Review cycle wizard
   const [showCycleModal, setShowCycleModal] = useState(false)
+  const [cycleStep, setCycleStep] = useState(1)
   const [cycleForm, setCycleForm] = useState({ title: '', type: 'mid_year' as string, start_date: '', end_date: '' })
+  const [cycleSelectedDepts, setCycleSelectedDepts] = useState<Set<string>>(new Set())
+  const [cycleReviewTypes, setCycleReviewTypes] = useState({ self: true, manager: true, peer: false, upward: false })
+  const [cycleTemplate, setCycleTemplate] = useState('standard')
+
+  const cycleWizardTemplates = [
+    { id: 'standard', name: 'Standard Performance', questions: 12, description: 'Core competencies, goal achievement, and development areas' },
+    { id: 'leadership', name: 'Leadership Assessment', questions: 18, description: 'Strategic thinking, team development, decision-making, and influence' },
+    { id: 'probation', name: 'Probation Review', questions: 8, description: 'Role fit, learning curve, cultural alignment, and readiness' },
+  ]
+
+  function resetCycleWizard() {
+    setCycleStep(1)
+    setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
+    setCycleSelectedDepts(new Set())
+    setCycleReviewTypes({ self: true, manager: true, peer: false, upward: false })
+    setCycleTemplate('standard')
+  }
 
   // Review modal
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -338,7 +538,8 @@ export default function PerformancePage() {
         end_date: cycleForm.end_date || `${new Date().getFullYear()}-12-31`,
       })
       setShowCycleModal(false)
-      setCycleForm({ title: '', type: 'mid_year', start_date: '', end_date: '' })
+      resetCycleWizard()
+      addToast('Review cycle launched successfully')
     } finally { setSaving(false) }
   }
 
@@ -861,6 +1062,9 @@ export default function PerformancePage() {
                 </div>
               </div>
             </Card>
+
+            {/* Merit Allocation */}
+            <MeritAllocationSection employees={employees} reviews={reviews} departments={departments} getDepartmentName={getDepartmentName} />
           </div>
         )
       })()}
@@ -2426,22 +2630,170 @@ export default function PerformancePage() {
         </div>
       </Modal>
 
-      {/* New Review Cycle */}
-      <Modal open={showCycleModal} onClose={() => setShowCycleModal(false)} title={t('createCycleModal')}>
-        <div className="space-y-4">
-          <Input label={t('cycleName')} placeholder={t('cycleNamePlaceholder')} value={cycleForm.title} onChange={(e) => setCycleForm({ ...cycleForm, title: e.target.value })} />
-          <Select label={t('cycleType')} value={cycleForm.type} onChange={(e) => setCycleForm({ ...cycleForm, type: e.target.value })} options={[
-            { value: 'mid_year', label: t('cycleTypeMidYear') },
-            { value: 'annual', label: t('cycleTypeAnnual') },
-            { value: 'probation', label: t('cycleTypeProbation') },
-          ]} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label={t('startDate')} type="date" value={cycleForm.start_date} onChange={(e) => setCycleForm({ ...cycleForm, start_date: e.target.value })} />
-            <Input label={t('dueDate')} type="date" value={cycleForm.end_date} onChange={(e) => setCycleForm({ ...cycleForm, end_date: e.target.value })} />
+      {/* New Review Cycle — Multi-step Wizard */}
+      <Modal open={showCycleModal} onClose={() => { setShowCycleModal(false); resetCycleWizard() }} title="Create Review Cycle">
+        <div className="space-y-6">
+          {/* Step indicator */}
+          <div className="flex items-center justify-between px-2">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${s < cycleStep ? 'bg-tempo-600 text-white' : s === cycleStep ? 'bg-tempo-600 text-white ring-2 ring-tempo-200' : 'bg-gray-100 text-t3'}`}>{s < cycleStep ? <CheckCircle2 size={14} /> : s}</div>
+                {s < 5 && <div className={`w-8 h-0.5 ${s < cycleStep ? 'bg-tempo-600' : 'bg-gray-200'}`} />}
+              </div>
+            ))}
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowCycleModal(false)}>{tc('cancel')}</Button>
-            <Button onClick={submitCycle} disabled={saving}>{saving ? 'Saving...' : t('createCycle')}</Button>
+          <p className="text-xs text-t3 text-center">Step {cycleStep} of 5 — {['Basics', 'Participants', 'Review Types', 'Questions', 'Review & Launch'][cycleStep - 1]}</p>
+
+          {/* Step 1: Basics */}
+          {cycleStep === 1 && (
+            <div className="space-y-4">
+              <Input label="Cycle Name" placeholder="e.g. Q2 2026 Performance Review" value={cycleForm.title} onChange={(e) => setCycleForm({ ...cycleForm, title: e.target.value })} />
+              <Select label="Cycle Type" value={cycleForm.type} onChange={(e) => setCycleForm({ ...cycleForm, type: e.target.value })} options={[
+                { value: 'mid_year', label: 'Mid-Year Review' },
+                { value: 'annual', label: 'Annual Review' },
+                { value: 'probation', label: 'Probation Review' },
+                { value: 'quarterly', label: 'Quarterly Check-in' },
+              ]} />
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Start Date" type="date" value={cycleForm.start_date} onChange={(e) => setCycleForm({ ...cycleForm, start_date: e.target.value })} />
+                <Input label="End Date" type="date" value={cycleForm.end_date} onChange={(e) => setCycleForm({ ...cycleForm, end_date: e.target.value })} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Participants */}
+          {cycleStep === 2 && (
+            <div className="space-y-3">
+              <p className="text-sm text-t2">Select departments to include in this review cycle.</p>
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-tempo-50 border border-tempo-200 cursor-pointer hover:bg-tempo-100 transition-colors">
+                <input type="checkbox" className="accent-tempo-600 w-4 h-4" checked={cycleSelectedDepts.size === departments.length && departments.length > 0} onChange={() => {
+                  if (cycleSelectedDepts.size === departments.length) {
+                    setCycleSelectedDepts(new Set())
+                  } else {
+                    setCycleSelectedDepts(new Set(departments.map(d => d.id)))
+                  }
+                }} />
+                <span className="text-sm font-medium text-t1">Select All Departments</span>
+                <span className="ml-auto text-xs text-t3">{employees.length} employees</span>
+              </label>
+              <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+                {departments.map(dept => {
+                  const deptEmployeeCount = employees.filter(e => e.department_id === dept.id).length
+                  return (
+                    <label key={dept.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <input type="checkbox" className="accent-tempo-600 w-4 h-4" checked={cycleSelectedDepts.has(dept.id)} onChange={() => {
+                        const next = new Set(cycleSelectedDepts)
+                        next.has(dept.id) ? next.delete(dept.id) : next.add(dept.id)
+                        setCycleSelectedDepts(next)
+                      }} />
+                      <Building2 size={14} className="text-t3" />
+                      <span className="text-sm text-t1">{dept.name}</span>
+                      <span className="ml-auto text-xs text-t3">{deptEmployeeCount} employees</span>
+                    </label>
+                  )
+                })}
+              </div>
+              {cycleSelectedDepts.size > 0 && (
+                <p className="text-xs text-tempo-600 font-medium">{cycleSelectedDepts.size} department{cycleSelectedDepts.size !== 1 ? 's' : ''} selected ({employees.filter(e => cycleSelectedDepts.has(e.department_id)).length} employees)</p>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Review Types */}
+          {cycleStep === 3 && (
+            <div className="space-y-3">
+              <p className="text-sm text-t2">Choose which review types to include in this cycle.</p>
+              {([
+                { key: 'self' as const, label: 'Self-Review', desc: 'Employees assess their own performance and development' },
+                { key: 'manager' as const, label: 'Manager Review', desc: 'Direct managers evaluate their reports\u2019 performance' },
+                { key: 'peer' as const, label: 'Peer Review (360)', desc: 'Colleagues provide feedback on collaboration and impact' },
+                { key: 'upward' as const, label: 'Upward Review', desc: 'Reports evaluate their manager\u2019s leadership and support' },
+              ]).map(rt => (
+                <label key={rt.key} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${cycleReviewTypes[rt.key] ? 'border-tempo-300 bg-tempo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input type="checkbox" className="accent-tempo-600 w-4 h-4 mt-0.5" checked={cycleReviewTypes[rt.key]} onChange={() => setCycleReviewTypes({ ...cycleReviewTypes, [rt.key]: !cycleReviewTypes[rt.key] })} />
+                  <div>
+                    <p className="text-sm font-medium text-t1">{rt.label}</p>
+                    <p className="text-xs text-t3 mt-0.5">{rt.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Step 4: Questions Template */}
+          {cycleStep === 4 && (
+            <div className="space-y-3">
+              <p className="text-sm text-t2">Select a question template for this review cycle.</p>
+              {cycleWizardTemplates.map(tmpl => (
+                <label key={tmpl.id} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${cycleTemplate === tmpl.id ? 'border-tempo-300 bg-tempo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input type="radio" name="cycleTemplate" className="accent-tempo-600 w-4 h-4 mt-0.5" checked={cycleTemplate === tmpl.id} onChange={() => setCycleTemplate(tmpl.id)} />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-t1">{tmpl.name}</p>
+                      <Badge variant="info">{tmpl.questions} questions</Badge>
+                    </div>
+                    <p className="text-xs text-t3 mt-0.5">{tmpl.description}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Step 5: Review & Launch */}
+          {cycleStep === 5 && (
+            <div className="space-y-4">
+              <p className="text-sm text-t2">Review your cycle configuration before launching.</p>
+              <div className="rounded-xl border border-gray-200 divide-y divide-gray-100">
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Cycle Name</span>
+                  <span className="text-sm text-t1 font-medium">{cycleForm.title || '(untitled)'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Type</span>
+                  <Badge variant="info">{cycleForm.type.replace('_', ' ')}</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Date Range</span>
+                  <span className="text-sm text-t1">{cycleForm.start_date || 'Today'} — {cycleForm.end_date || 'Year end'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Departments</span>
+                  <span className="text-sm text-t1">{cycleSelectedDepts.size === 0 ? 'All' : `${cycleSelectedDepts.size} selected`}</span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Review Types</span>
+                  <span className="text-sm text-t1">{Object.entries(cycleReviewTypes).filter(([, v]) => v).map(([k]) => k === 'self' ? 'Self' : k === 'manager' ? 'Manager' : k === 'peer' ? 'Peer (360)' : 'Upward').join(', ')}</span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Template</span>
+                  <span className="text-sm text-t1">{cycleWizardTemplates.find(t => t.id === cycleTemplate)?.name}</span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <span className="text-xs font-medium text-t3 uppercase tracking-wide">Participants</span>
+                  <span className="text-sm text-t1 font-medium">{cycleSelectedDepts.size === 0 ? employees.length : employees.filter(e => cycleSelectedDepts.has(e.department_id)).length} employees</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between pt-2 border-t border-gray-100">
+            <div>
+              {cycleStep > 1 && (
+                <Button variant="secondary" onClick={() => setCycleStep(cycleStep - 1)}>Back</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => { setShowCycleModal(false); resetCycleWizard() }}>{tc('cancel')}</Button>
+              {cycleStep < 5 ? (
+                <Button onClick={() => {
+                  if (cycleStep === 1 && !cycleForm.title) { addToast('Cycle name is required', 'error'); return }
+                  setCycleStep(cycleStep + 1)
+                }}>Next</Button>
+              ) : (
+                <Button onClick={submitCycle} disabled={saving}>{saving ? 'Launching...' : 'Launch Cycle'}</Button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

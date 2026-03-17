@@ -15,7 +15,7 @@ import { TempoBarChart, TempoDonutChart, TempoSparkArea, CHART_COLORS, CHART_SER
 import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
-import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers } from 'lucide-react'
+import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers, MessageCircle, Send } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -148,6 +148,80 @@ export default function ExpensePage() {
   const [policySummary, setPolicySummary] = useState<{
     documentTitle: string; effectiveDate: string; keyHighlights: string[]; totalRulesExtracted: number
   } | null>(null)
+
+  // ---- Inline Comment Threads on Expense Reports ----
+  const [reportComments, setReportComments] = useState<Record<string, Array<{ id: string; author: string; text: string; timestamp: string }>>>({})
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
+
+  function addComment(reportId: string) {
+    const text = (commentInputs[reportId] || '').trim()
+    if (!text) return
+    const authorName = currentUser?.full_name || currentUser?.email || 'You'
+    const newComment = { id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, author: authorName, text, timestamp: new Date().toISOString() }
+    setReportComments(prev => ({ ...prev, [reportId]: [...(prev[reportId] || []), newComment] }))
+    setCommentInputs(prev => ({ ...prev, [reportId]: '' }))
+  }
+
+  // ---- Conditional Approval Rules (Policies Tab) ----
+  const [approvalRules, setApprovalRules] = useState<Array<{
+    id: string; enabled: boolean
+    conditionType: 'amount' | 'category' | 'department'
+    conditionOperator: '>' | '<' | '='
+    conditionValue: string | number
+    action: 'route_manager' | 'route_vp' | 'route_finance' | 'route_cfo' | 'auto_approve' | 'flag_review'
+  }>>([
+    { id: 'ar-1', enabled: true, conditionType: 'amount', conditionOperator: '>', conditionValue: 1000, action: 'route_vp' },
+    { id: 'ar-2', enabled: true, conditionType: 'category', conditionOperator: '=', conditionValue: 'travel', action: 'route_finance' },
+    { id: 'ar-3', enabled: false, conditionType: 'amount', conditionOperator: '<', conditionValue: 100, action: 'auto_approve' },
+    { id: 'ar-4', enabled: true, conditionType: 'department', conditionOperator: '=', conditionValue: 'Engineering', action: 'route_manager' },
+  ])
+  const [showApprovalRuleBuilder, setShowApprovalRuleBuilder] = useState(false)
+  const [newApprovalRule, setNewApprovalRule] = useState<{
+    conditionType: 'amount' | 'category' | 'department'
+    conditionOperator: '>' | '<' | '='
+    conditionValue: string | number
+    action: 'route_manager' | 'route_vp' | 'route_finance' | 'route_cfo' | 'auto_approve' | 'flag_review'
+  }>({ conditionType: 'amount', conditionOperator: '>', conditionValue: 0, action: 'route_manager' })
+
+  function addApprovalRule() {
+    if (newApprovalRule.conditionType === 'amount' && !newApprovalRule.conditionValue) return
+    if (newApprovalRule.conditionType !== 'amount' && !newApprovalRule.conditionValue) return
+    setApprovalRules(prev => [...prev, { ...newApprovalRule, id: `ar-${Date.now()}`, enabled: true }])
+    setNewApprovalRule({ conditionType: 'amount', conditionOperator: '>', conditionValue: 0, action: 'route_manager' })
+    setShowApprovalRuleBuilder(false)
+  }
+
+  function toggleApprovalRule(id: string) {
+    setApprovalRules(prev => prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r))
+  }
+
+  function deleteApprovalRule(id: string) {
+    setApprovalRules(prev => prev.filter(r => r.id !== id))
+  }
+
+  const approvalRuleActionLabels: Record<string, string> = {
+    route_manager: 'Route to Manager',
+    route_vp: 'Require VP Approval',
+    route_finance: 'Finance Review',
+    route_cfo: 'Route to CFO',
+    auto_approve: 'Auto-approve',
+    flag_review: 'Flag for Review',
+  }
+
+  const approvalRuleActionColors: Record<string, string> = {
+    route_manager: 'border-l-blue-500',
+    route_vp: 'border-l-purple-500',
+    route_finance: 'border-l-emerald-500',
+    route_cfo: 'border-l-red-500',
+    auto_approve: 'border-l-green-500',
+    flag_review: 'border-l-amber-500',
+  }
+
+  function formatCondition(rule: typeof approvalRules[0]) {
+    if (rule.conditionType === 'amount') return `Amount ${rule.conditionOperator} $${Number(rule.conditionValue).toLocaleString()}`
+    if (rule.conditionType === 'category') return `Category = ${String(rule.conditionValue).charAt(0).toUpperCase() + String(rule.conditionValue).slice(1)}`
+    return `Department = ${rule.conditionValue}`
+  }
 
   // ---- Receipt Management (new) ----
   const [showDuplicateDetail, setShowDuplicateDetail] = useState<string | null>(null)
@@ -804,6 +878,67 @@ export default function ExpensePage() {
                             {compliance.map(c => <AIInsightCard key={c.id} insight={c} compact />)}
                           </div>
                         )}
+
+                        {/* Inline Comment Thread */}
+                        <div className="mt-4 border-t border-divider pt-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <MessageCircle size={14} className="text-t3" />
+                            <span className="text-xs font-semibold text-t1">Comments</span>
+                            {(reportComments[report.id]?.length || 0) > 0 && (
+                              <Badge variant="default">{reportComments[report.id].length}</Badge>
+                            )}
+                          </div>
+
+                          {/* Comment list */}
+                          <div className="space-y-3 mb-3">
+                            {(reportComments[report.id] || []).map(comment => {
+                              const initials = comment.author.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                              return (
+                                <div key={comment.id} className="flex items-start gap-3">
+                                  <div className="w-7 h-7 rounded-full bg-tempo-100 dark:bg-tempo-900/40 flex items-center justify-center shrink-0">
+                                    <span className="text-[10px] font-semibold text-tempo-700 dark:text-tempo-300">{initials}</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="text-xs font-medium text-t1">{comment.author}</span>
+                                      <span className="text-[10px] text-t3">{new Date(comment.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <p className="text-xs text-t2 mt-0.5 bg-canvas rounded-lg rounded-tl-none px-3 py-2">{comment.text}</p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {(!reportComments[report.id] || reportComments[report.id].length === 0) && (
+                              <p className="text-[10px] text-t3 italic">No comments yet. Start the discussion below.</p>
+                            )}
+                          </div>
+
+                          {/* Add comment input */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-tempo-100 dark:bg-tempo-900/40 flex items-center justify-center shrink-0">
+                              <span className="text-[10px] font-semibold text-tempo-700 dark:text-tempo-300">
+                                {(currentUser?.full_name || 'Y').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </span>
+                            </div>
+                            <div className="flex-1 flex items-center gap-2 bg-canvas rounded-lg border border-border px-3 py-1.5">
+                              <input
+                                type="text"
+                                className="flex-1 bg-transparent text-xs text-t1 placeholder:text-t3 outline-none"
+                                placeholder="Add a comment..."
+                                value={commentInputs[report.id] || ''}
+                                onChange={e => setCommentInputs(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(report.id) } }}
+                              />
+                              <button
+                                onClick={() => addComment(report.id)}
+                                disabled={!(commentInputs[report.id] || '').trim()}
+                                className="p-1 rounded text-tempo-600 hover:text-tempo-700 disabled:text-t3 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <Send size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1845,6 +1980,178 @@ export default function ExpensePage() {
               </div>
             </div>
           </Card>
+
+          {/* ---- Conditional Approval Rules ---- */}
+          <Card padding="none" className="mt-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowRight size={16} className="text-tempo-600" />
+                  <CardTitle>Approval Rules</CardTitle>
+                  <Badge variant="default">{approvalRules.filter(r => r.enabled).length} active</Badge>
+                </div>
+                <Button size="sm" onClick={() => setShowApprovalRuleBuilder(true)}>
+                  <Plus size={14} /> Add Rule
+                </Button>
+              </div>
+            </CardHeader>
+
+            <div className="p-6 space-y-3">
+              {approvalRules.length === 0 && (
+                <div className="text-center py-8 text-sm text-t3">No approval rules configured. Add a rule to automate expense routing.</div>
+              )}
+              {approvalRules.map(rule => (
+                <div
+                  key={rule.id}
+                  className={cn(
+                    'border-l-4 rounded-lg bg-canvas border border-border p-4 transition-opacity',
+                    approvalRuleActionColors[rule.action] || 'border-l-gray-400',
+                    !rule.enabled && 'opacity-50'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      {/* Condition */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-border">
+                        <p className="text-[10px] uppercase text-t3 font-medium mb-0.5">If</p>
+                        <p className="text-xs font-semibold text-t1">{formatCondition(rule)}</p>
+                      </div>
+
+                      {/* Arrow */}
+                      <ArrowRight size={16} className="text-t3 shrink-0" />
+
+                      {/* Action */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-border">
+                        <p className="text-[10px] uppercase text-t3 font-medium mb-0.5">Then</p>
+                        <p className="text-xs font-semibold text-t1">{approvalRuleActionLabels[rule.action]}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      {/* Toggle */}
+                      <button
+                        onClick={() => toggleApprovalRule(rule.id)}
+                        className={cn(
+                          'relative w-9 h-5 rounded-full transition-colors',
+                          rule.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                        )}
+                      >
+                        <div className={cn(
+                          'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                          rule.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                        )} />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => deleteApprovalRule(rule.id)}
+                        className="p-1.5 text-t3 hover:text-error hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Add Approval Rule Builder Modal */}
+          <Modal open={showApprovalRuleBuilder} onClose={() => setShowApprovalRuleBuilder(false)} title="Add Approval Rule" size="md">
+            <div className="space-y-5">
+              {/* Condition Section */}
+              <div>
+                <p className="text-xs font-semibold text-t1 mb-3 uppercase tracking-wider">Condition</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-t3 mb-1">Type</label>
+                    <Select
+                      value={newApprovalRule.conditionType}
+                      onChange={e => setNewApprovalRule(prev => ({ ...prev, conditionType: e.target.value as any, conditionValue: e.target.value === 'amount' ? 0 : '' }))}
+                      options={[{ value: 'amount', label: 'Amount' }, { value: 'category', label: 'Category' }, { value: 'department', label: 'Department' }]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-t3 mb-1">Operator</label>
+                    <Select
+                      value={newApprovalRule.conditionOperator}
+                      onChange={e => setNewApprovalRule(prev => ({ ...prev, conditionOperator: e.target.value as any }))}
+                      options={[{ value: '>', label: 'Greater than' }, { value: '<', label: 'Less than' }, { value: '=', label: 'Equals' }]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-t3 mb-1">Value</label>
+                    {newApprovalRule.conditionType === 'amount' ? (
+                      <Input
+                        type="number"
+                        placeholder="1000"
+                        value={newApprovalRule.conditionValue}
+                        onChange={e => setNewApprovalRule(prev => ({ ...prev, conditionValue: Number(e.target.value) }))}
+                      />
+                    ) : newApprovalRule.conditionType === 'category' ? (
+                      <Select
+                        value={String(newApprovalRule.conditionValue)}
+                        onChange={e => setNewApprovalRule(prev => ({ ...prev, conditionValue: e.target.value }))}
+                        options={[{ value: '', label: 'Select...' }, { value: 'travel', label: 'Travel' }, { value: 'meals', label: 'Meals' }, { value: 'supplies', label: 'Supplies' }, { value: 'equipment', label: 'Equipment' }, { value: 'accommodation', label: 'Accommodation' }, { value: 'transport', label: 'Transport' }, { value: 'other', label: 'Other' }]}
+                      />
+                    ) : (
+                      <Select
+                        value={String(newApprovalRule.conditionValue)}
+                        onChange={e => setNewApprovalRule(prev => ({ ...prev, conditionValue: e.target.value }))}
+                        options={[{ value: '', label: 'Select...' }, ...departments.map((d: any) => ({ value: d.name, label: d.name }))]}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="flex items-center gap-3 p-3 bg-canvas rounded-lg border border-border">
+                <div className="bg-white dark:bg-gray-800 rounded px-2.5 py-1.5 border border-border">
+                  <p className="text-xs font-medium text-t1">
+                    {newApprovalRule.conditionType === 'amount'
+                      ? `Amount ${newApprovalRule.conditionOperator} $${Number(newApprovalRule.conditionValue || 0).toLocaleString()}`
+                      : newApprovalRule.conditionType === 'category'
+                        ? `Category = ${String(newApprovalRule.conditionValue || '...').charAt(0).toUpperCase() + String(newApprovalRule.conditionValue || '...').slice(1)}`
+                        : `Department = ${newApprovalRule.conditionValue || '...'}`
+                    }
+                  </p>
+                </div>
+                <ArrowRight size={14} className="text-t3 shrink-0" />
+                <div className="bg-white dark:bg-gray-800 rounded px-2.5 py-1.5 border border-border">
+                  <p className="text-xs font-medium text-t1">{approvalRuleActionLabels[newApprovalRule.action]}</p>
+                </div>
+              </div>
+
+              {/* Action Section */}
+              <div>
+                <p className="text-xs font-semibold text-t1 mb-3 uppercase tracking-wider">Action</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.entries(approvalRuleActionLabels) as Array<[string, string]>).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setNewApprovalRule(prev => ({ ...prev, action: key as any }))}
+                      className={cn(
+                        'text-left px-3 py-2.5 rounded-lg border text-xs font-medium transition-all',
+                        newApprovalRule.action === key
+                          ? 'border-tempo-500 bg-tempo-50 dark:bg-tempo-900/20 text-tempo-700 dark:text-tempo-300 ring-1 ring-tempo-500/30'
+                          : 'border-border bg-canvas text-t2 hover:border-tempo-300 hover:text-t1'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="secondary" onClick={() => setShowApprovalRuleBuilder(false)}>Cancel</Button>
+                <Button onClick={addApprovalRule}>
+                  <Plus size={14} /> Add Rule
+                </Button>
+              </div>
+            </div>
+          </Modal>
         </>
       )}
 
