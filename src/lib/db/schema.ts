@@ -3740,3 +3740,387 @@ export const dynamicGroups = pgTable('dynamic_groups', {
   modules: jsonb('modules'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// ACADEMIES: External Learning Academies
+// ============================================================
+
+export const academyStatusEnum = pgEnum('academy_status', ['draft', 'active', 'archived'])
+export const academyEnrollmentTypeEnum = pgEnum('academy_enrollment_type', ['public', 'private'])
+export const cohortStatusEnum = pgEnum('cohort_status', ['upcoming', 'active', 'completed'])
+export const academyParticipantStatusEnum = pgEnum('academy_participant_status', ['active', 'inactive', 'completed', 'dropped'])
+export const academySessionTypeEnum = pgEnum('academy_session_type', ['webinar', 'workshop', 'mentoring', 'lecture', 'qa'])
+export const academyAssignmentStatusEnum = pgEnum('academy_assignment_status', ['pending', 'submitted', 'graded', 'overdue'])
+export const academyCommTypeEnum = pgEnum('academy_comm_type', ['broadcast', 'automated'])
+export const academyCommStatusEnum = pgEnum('academy_comm_status', ['sent', 'scheduled', 'failed', 'draft'])
+export const academyCertStatusEnum = pgEnum('academy_cert_status', ['earned', 'in_progress', 'revoked'])
+
+// Core academy entity — white-label learning programs for external participants
+export const academies = pgTable('academies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 500 }).notNull(),
+  description: text('description'),
+  slug: varchar('slug', { length: 200 }).notNull(), // URL-friendly, unique per org
+  logoUrl: text('logo_url'),
+  brandColor: varchar('brand_color', { length: 20 }).default('#2563eb').notNull(),
+  welcomeMessage: text('welcome_message'),
+  enrollmentType: academyEnrollmentTypeEnum('enrollment_type').default('private').notNull(),
+  status: academyStatusEnum('status').default('draft').notNull(),
+  communityEnabled: boolean('community_enabled').default(true).notNull(),
+  languages: jsonb('languages').default('["en"]').notNull(), // string[]
+  completionRules: jsonb('completion_rules'), // { min_courses, require_assessment, require_certificate }
+  curriculumCourseIds: jsonb('curriculum_course_ids').default('[]').notNull(), // string[] — FK to courses
+  curriculumPathIds: jsonb('curriculum_path_ids').default('[]').notNull(), // string[] — FK to learning_paths
+  createdBy: uuid('created_by').references(() => employees.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Cohorts within an academy — time-bound groups of participants
+export const academyCohorts = pgTable('academy_cohorts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  facilitatorName: varchar('facilitator_name', { length: 255 }),
+  facilitatorEmail: varchar('facilitator_email', { length: 255 }),
+  maxParticipants: integer('max_participants'),
+  status: cohortStatusEnum('status').default('upcoming').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// External participants — separate from employees, with their own auth
+export const academyParticipants = pgTable('academy_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  cohortId: uuid('cohort_id').references(() => academyCohorts.id),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 50 }),
+  avatarUrl: text('avatar_url'),
+  businessName: varchar('business_name', { length: 255 }),
+  country: varchar('country', { length: 100 }),
+  language: varchar('language', { length: 10 }).default('en').notNull(),
+  passwordHash: text('password_hash'), // for participant portal auth
+  status: academyParticipantStatusEnum('status').default('active').notNull(),
+  progress: integer('progress').default(0).notNull(), // 0-100 overall
+  enrolledDate: date('enrolled_date').defaultNow().notNull(),
+  lastActiveAt: timestamp('last_active_at'),
+  invitationToken: varchar('invitation_token', { length: 500 }),
+  invitationSentAt: timestamp('invitation_sent_at'),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Join table: which courses are assigned to which academy (with ordering)
+export const academyCourses = pgTable('academy_courses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }).notNull(),
+  moduleNumber: integer('module_number').default(1).notNull(), // ordering within academy
+  isRequired: boolean('is_required').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Participant progress on individual courses within an academy
+export const academyParticipantProgress = pgTable('academy_participant_progress', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  academyCourseId: uuid('academy_course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  status: blockProgressStatusEnum('status').default('not_started').notNull(),
+  progress: integer('progress').default(0).notNull(), // 0-100
+  score: integer('score'), // assessment score if applicable
+  timeSpentMinutes: integer('time_spent_minutes').default(0).notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Live sessions — webinars, workshops, mentoring within an academy
+export const academySessions = pgTable('academy_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  cohortId: uuid('cohort_id').references(() => academyCohorts.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  type: academySessionTypeEnum('type').default('webinar').notNull(),
+  scheduledDate: date('scheduled_date').notNull(),
+  scheduledTime: varchar('scheduled_time', { length: 50 }), // e.g., "10:00 AM WAT"
+  durationMinutes: integer('duration_minutes').default(60).notNull(),
+  instructor: varchar('instructor', { length: 255 }),
+  meetingUrl: text('meeting_url'),
+  recordingUrl: text('recording_url'),
+  maxAttendees: integer('max_attendees'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// RSVP tracking for sessions
+export const academySessionRsvps = pgTable('academy_session_rsvps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  sessionId: uuid('session_id').references(() => academySessions.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  attended: boolean('attended').default(false).notNull(),
+  rsvpdAt: timestamp('rsvpd_at').defaultNow().notNull(),
+})
+
+// Assignments — graded work within an academy
+export const academyAssignments = pgTable('academy_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  academyCourseId: uuid('academy_course_id').references(() => academyCourses.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  dueDate: date('due_date'),
+  maxScore: integer('max_score').default(100).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Participant assignment submissions
+export const academyAssignmentSubmissions = pgTable('academy_assignment_submissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  assignmentId: uuid('assignment_id').references(() => academyAssignments.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  status: academyAssignmentStatusEnum('status').default('pending').notNull(),
+  submissionUrl: text('submission_url'),
+  submissionText: text('submission_text'),
+  score: integer('score'),
+  feedback: text('feedback'),
+  submittedAt: timestamp('submitted_at'),
+  gradedAt: timestamp('graded_at'),
+  gradedBy: uuid('graded_by').references(() => employees.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Community discussion posts
+export const academyDiscussions = pgTable('academy_discussions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }),
+  parentId: uuid('parent_id'), // self-ref for replies, FK managed at DB level
+  content: text('content').notNull(),
+  moduleTag: varchar('module_tag', { length: 255 }),
+  isPinned: boolean('is_pinned').default(false).notNull(),
+  isFacilitator: boolean('is_facilitator').default(false).notNull(), // posted by facilitator/admin
+  facilitatorName: varchar('facilitator_name', { length: 255 }), // only if isFacilitator
+  replyCount: integer('reply_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Resources — downloadable files and links
+export const academyResources = pgTable('academy_resources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  academyCourseId: uuid('academy_course_id').references(() => academyCourses.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  type: varchar('type', { length: 50 }).default('pdf').notNull(), // pdf, link, video, document
+  url: text('url'),
+  fileSize: integer('file_size'), // bytes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Certificates earned by participants
+export const academyCertificates = pgTable('academy_certificates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 500 }).notNull(), // e.g., "SME Academy Certificate of Completion"
+  certificateNumber: varchar('certificate_number', { length: 100 }).notNull(),
+  certificateUrl: text('certificate_url'), // PDF download URL
+  status: academyCertStatusEnum('status').default('in_progress').notNull(),
+  requirements: jsonb('requirements'), // { label: string, met: boolean }[]
+  issuedAt: timestamp('issued_at'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Communication logs — broadcast emails, automated triggers
+export const academyCommunications = pgTable('academy_communications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  type: academyCommTypeEnum('type').default('broadcast').notNull(),
+  triggerName: varchar('trigger_name', { length: 255 }), // e.g., "Enrollment Confirmation"
+  subject: varchar('subject', { length: 500 }).notNull(),
+  body: text('body'),
+  recipientCount: integer('recipient_count').default(0).notNull(),
+  status: academyCommStatusEnum('status').default('draft').notNull(),
+  scheduledAt: timestamp('scheduled_at'),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Automated communication triggers — templates for auto-sends
+export const academyCommTriggers = pgTable('academy_comm_triggers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(), // e.g., "Enrollment Confirmation"
+  triggerEvent: varchar('trigger_event', { length: 100 }).notNull(), // enrollment, session_reminder_24h, etc.
+  subjectTemplate: varchar('subject_template', { length: 500 }).notNull(),
+  bodyTemplate: text('body_template'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// GAMIFICATION — Badges, Points, Leaderboard
+// ============================================================
+
+// Badge definitions per academy
+export const academyBadges = pgTable('academy_badges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  iconUrl: text('icon_url'),
+  iconEmoji: varchar('icon_emoji', { length: 10 }),
+  criteria: jsonb('criteria'), // { type: 'course_complete', courseId: '...' } or { type: 'points_threshold', points: 100 }
+  pointsAwarded: integer('points_awarded').default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Badges earned by participants
+export const academyParticipantBadges = pgTable('academy_participant_badges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  badgeId: uuid('badge_id').references(() => academyBadges.id, { onDelete: 'cascade' }).notNull(),
+  earnedAt: timestamp('earned_at').defaultNow().notNull(),
+})
+
+// Point transactions — immutable ledger of all points earned
+export const academyPoints = pgTable('academy_points', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  points: integer('points').notNull(),
+  reason: varchar('reason', { length: 255 }).notNull(), // course_completed, assignment_graded, session_attended, badge_earned, etc.
+  entityId: uuid('entity_id'), // reference to course/assignment/session that earned points
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ACADEMY WEBHOOKS
+// ============================================================
+
+export const academyWebhookStatusEnum = pgEnum('academy_webhook_status', ['active', 'inactive', 'failed'])
+
+export const academyWebhooks = pgTable('academy_webhooks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  url: text('url').notNull(),
+  secret: varchar('secret', { length: 500 }).notNull(),
+  events: jsonb('events').default('[]').notNull(), // array of subscribed event names
+  status: academyWebhookStatusEnum('status').default('active').notNull(),
+  lastTriggeredAt: timestamp('last_triggered_at'),
+  failCount: integer('fail_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const academyWebhookLogs = pgTable('academy_webhook_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  webhookId: uuid('webhook_id').references(() => academyWebhooks.id, { onDelete: 'cascade' }).notNull(),
+  event: varchar('event', { length: 100 }).notNull(),
+  payload: jsonb('payload'),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  success: boolean('success').default(false).notNull(),
+  attemptNumber: integer('attempt_number').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ACADEMY CUSTOM DOMAINS (White-Label)
+// ============================================================
+
+export const academyDomainStatusEnum = pgEnum('academy_domain_status', ['pending', 'verifying', 'active', 'failed', 'expired'])
+
+export const academyCustomDomains = pgTable('academy_custom_domains', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  domain: varchar('domain', { length: 500 }).notNull(), // e.g., academy.ecobank.com
+  status: academyDomainStatusEnum('status').default('pending').notNull(),
+  sslStatus: varchar('ssl_status', { length: 50 }).default('pending').notNull(),
+  verificationToken: varchar('verification_token', { length: 500 }),
+  verificationMethod: varchar('verification_method', { length: 50 }).default('cname').notNull(), // cname or txt
+  verifiedAt: timestamp('verified_at'),
+  sslIssuedAt: timestamp('ssl_issued_at'),
+  sslExpiresAt: timestamp('ssl_expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ACADEMY SCORM PACKAGES
+// ============================================================
+
+export const academyScormPackages = pgTable('academy_scorm_packages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  academyCourseId: uuid('academy_course_id').references(() => academyCourses.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  version: varchar('version', { length: 50 }).default('1.2').notNull(), // SCORM 1.2 or 2004
+  packageUrl: text('package_url').notNull(),
+  launchUrl: text('launch_url'), // relative path within package to launch file
+  manifestData: jsonb('manifest_data'), // parsed imsmanifest.xml
+  status: varchar('status', { length: 50 }).default('processing').notNull(), // processing, ready, error
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// SCORM attempt tracking — CMI data model for learner progress
+export const academyScormAttempts = pgTable('academy_scorm_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  packageId: uuid('package_id').references(() => academyScormPackages.id, { onDelete: 'cascade' }).notNull(),
+  participantId: uuid('participant_id').references(() => academyParticipants.id, { onDelete: 'cascade' }).notNull(),
+  cmiData: jsonb('cmi_data').default('{}').notNull(), // SCORM CMI data model
+  score: integer('score'),
+  status: varchar('status', { length: 50 }).default('not attempted').notNull(),
+  timeSpent: integer('time_spent').default(0).notNull(), // seconds
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ACADEMY TRANSLATIONS — multi-language content
+// ============================================================
+
+export const academyTranslations = pgTable('academy_translations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  academyId: uuid('academy_id').references(() => academies.id, { onDelete: 'cascade' }).notNull(),
+  entityType: varchar('entity_type', { length: 50 }).notNull(), // academy, course, session, assignment, resource
+  entityId: uuid('entity_id').notNull(),
+  field: varchar('field', { length: 100 }).notNull(), // name, description, title, body, etc.
+  language: varchar('language', { length: 10 }).notNull(), // en, fr, es, pt, ar, sw
+  value: text('value').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})

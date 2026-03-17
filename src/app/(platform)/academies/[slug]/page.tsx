@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useTempo } from '@/lib/store'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1405,13 +1406,106 @@ export default function AcademyWorkspacePage() {
   const params = useParams()
   const slug = params.slug as string
   const [activeTab, setActiveTab] = useState('home')
+  const [apiAcademy, setApiAcademy] = useState<AcademyData | null>(null)
+  const [apiLoading, setApiLoading] = useState(true)
 
-  const academy = DEMO_ACADEMIES[slug]
+  // Try to load from API first (production mode)
+  useEffect(() => {
+    async function loadFromAPI() {
+      try {
+        const res = await fetch(`/api/academy?action=get-by-slug&slug=${encodeURIComponent(slug)}`)
+        if (!res.ok) throw new Error('Not found')
+        const { data: acad } = await res.json()
+        if (!acad) throw new Error('No data')
+
+        // Fetch related data in parallel
+        const [coursesRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes, certsRes] = await Promise.all([
+          fetch(`/api/academy?action=courses&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=sessions&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=assignments&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=discussions&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=resources&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=certificates&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
+        ])
+
+        const brandColor = acad.brandColor || acad.brand_color || '#00567A'
+
+        setApiAcademy({
+          name: acad.name,
+          brandColor,
+          brandColorLight: `${brandColor}15`,
+          description: acad.description || '',
+          participantName: 'Participant', // Will be updated when participant auth is integrated
+          modules: (coursesRes.data || []).map((c: any, i: number) => ({
+            id: c.id, number: c.moduleNumber || c.module_number || i + 1,
+            title: c.title || `Module ${i + 1}`, duration: `${c.durationHours || 6} hours`,
+            status: 'locked' as const, progress: 0, lessons: 8, completedLessons: 0,
+          })),
+          sessions: (sessionsRes.data || []).map((s: any) => ({
+            id: s.id, title: s.title,
+            date: s.scheduledDate || s.scheduled_date || '',
+            time: s.scheduledTime || s.scheduled_time || '',
+            type: s.type || 'webinar', instructor: s.instructor || '',
+            rsvpd: false, isPast: new Date(s.scheduledDate || s.scheduled_date) < new Date(),
+            recordingUrl: s.recordingUrl || s.recording_url,
+          })),
+          assignments: (assignmentsRes.data || []).map((a: any) => ({
+            id: a.id, title: a.title,
+            dueDate: a.dueDate || a.due_date || '',
+            moduleTitle: '', status: 'pending' as const,
+            maxScore: a.maxScore || a.max_score || 100,
+          })),
+          posts: (discussionsRes.data || []).map((d: any) => ({
+            id: d.id, author: d.facilitatorName || d.facilitator_name || 'Participant',
+            content: d.content, timestamp: 'Recently',
+            replyCount: d.replyCount || d.reply_count || 0,
+            isPinned: d.isPinned || d.is_pinned || false,
+            isFacilitator: d.isFacilitator || d.is_facilitator || false,
+            moduleTag: d.moduleTag || d.module_tag,
+          })),
+          resources: (resourcesRes.data || []).map((r: any) => ({
+            id: r.id, title: r.title, description: r.description || '',
+            type: r.type || 'pdf', moduleTitle: '', url: r.url,
+          })),
+          certificates: (certsRes.data || []).map((c: any) => ({
+            id: c.id, name: c.name,
+            dateEarned: c.issuedAt || c.issued_at,
+            status: c.status || 'in_progress',
+            requirements: (() => {
+              try {
+                const reqs = typeof c.requirements === 'string' ? JSON.parse(c.requirements) : c.requirements
+                return Array.isArray(reqs) ? reqs : []
+              } catch { return [] }
+            })(),
+          })),
+        })
+      } catch {
+        // API not available or academy not in DB — fall through to demo data
+      } finally {
+        setApiLoading(false)
+      }
+    }
+    loadFromAPI()
+  }, [slug])
+
+  // Use API data if available, otherwise fall back to demo
+  const academy = apiAcademy || DEMO_ACADEMIES[slug]
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
+
+  if (apiLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-tempo-300 border-t-tempo-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-t3">Loading academy...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!academy) {
     return (

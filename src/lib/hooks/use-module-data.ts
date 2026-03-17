@@ -180,6 +180,21 @@ export const MODULE_SLUGS: Record<string, string> = {
   appDataSources: 'app-data-sources',
   // Sandbox
   sandboxEnvironments: 'sandbox-environments',
+  // Academies
+  academies: 'academies',
+  academyCohorts: 'academy-cohorts',
+  academyParticipants: 'academy-participants',
+  academyCourses: 'academy-courses',
+  academyParticipantProgress: 'academy-participant-progress',
+  academySessions: 'academy-sessions',
+  academySessionRsvps: 'academy-session-rsvps',
+  academyAssignments: 'academy-assignments',
+  academyAssignmentSubmissions: 'academy-assignment-submissions',
+  academyDiscussions: 'academy-discussions',
+  academyResources: 'academy-resources',
+  academyCertificates: 'academy-certificates',
+  academyCommunications: 'academy-communications',
+  academyCommTriggers: 'academy-comm-triggers',
 }
 
 // ---------------------------------------------------------------------------

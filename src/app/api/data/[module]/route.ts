@@ -188,6 +188,21 @@ const MODULE_CONFIG: Record<string, {
   'app-data-sources':      { table: schema.appDataSources, hasOrgId: false, defaultLimit: 50 },
   // Sandbox
   'sandbox-environments':  { table: schema.sandboxEnvironments, hasOrgId: true, defaultLimit: 20 },
+  // Academies
+  'academies':                      { table: schema.academies, hasOrgId: true, defaultLimit: 50 },
+  'academy-cohorts':                { table: schema.academyCohorts, hasOrgId: true, defaultLimit: 50 },
+  'academy-participants':           { table: schema.academyParticipants, hasOrgId: true, defaultLimit: 100 },
+  'academy-courses':                { table: schema.academyCourses, hasOrgId: true, defaultLimit: 50 },
+  'academy-participant-progress':   { table: schema.academyParticipantProgress, hasOrgId: true, defaultLimit: 100 },
+  'academy-sessions':               { table: schema.academySessions, hasOrgId: true, defaultLimit: 50 },
+  'academy-session-rsvps':          { table: schema.academySessionRsvps, hasOrgId: true, defaultLimit: 100 },
+  'academy-assignments':            { table: schema.academyAssignments, hasOrgId: true, defaultLimit: 50 },
+  'academy-assignment-submissions': { table: schema.academyAssignmentSubmissions, hasOrgId: true, defaultLimit: 100 },
+  'academy-discussions':            { table: schema.academyDiscussions, hasOrgId: true, defaultLimit: 50 },
+  'academy-resources':              { table: schema.academyResources, hasOrgId: true, defaultLimit: 50 },
+  'academy-certificates':           { table: schema.academyCertificates, hasOrgId: true, defaultLimit: 50 },
+  'academy-communications':         { table: schema.academyCommunications, hasOrgId: true, defaultLimit: 50 },
+  'academy-comm-triggers':          { table: schema.academyCommTriggers, hasOrgId: true, defaultLimit: 50 },
 }
 
 export async function GET(

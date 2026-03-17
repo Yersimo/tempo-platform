@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
 import { useTempo } from '@/lib/store'
+import { useAcademyData } from '@/lib/hooks/use-academy-data'
 import { cn } from '@/lib/utils/cn'
 import {
   GraduationCap, Plus, Users, BarChart3, Calendar, Award,
@@ -300,7 +301,10 @@ function emptyCohort(): Cohort {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AcademiesPage() {
-  const { courses, learningPaths, employees, departments, addToast, currentUser } = useTempo()
+  const { courses, learningPaths, employees, departments, addToast, currentUser, org } = useTempo()
+
+  // ── Academy Data Hook (API when production, localStorage for demo) ──
+  const academyAPI = useAcademyData({ orgId: (org as any)?.id })
 
   // ── Persisted State ──
   const [academies, setAcademies] = useState<Academy[]>([])
@@ -339,56 +343,89 @@ export default function AcademiesPage() {
     { id: 'cohort_start_24h', name: 'Cohort Start (24h)', description: 'Sent 24 hours before a cohort begins', icon: <Calendar size={16} />, enabled: false },
   ])
 
-  // ── Load from localStorage ──
+  // ── Load data: API-first (production), localStorage fallback (demo) ──
   useEffect(() => {
-    try {
-      const storedA = localStorage.getItem(STORAGE_KEY)
-      const storedP = localStorage.getItem(PARTICIPANTS_KEY)
-      const storedC = localStorage.getItem(COMMS_KEY)
-      if (storedA) {
-        setAcademies(JSON.parse(storedA))
+    async function loadData() {
+      if (academyAPI.isProduction) {
+        // Production mode: fetch from database via API
+        try {
+          const [apiAcademies, apiParticipants] = await Promise.all([
+            academyAPI.fetchAcademies(),
+            academyAPI.fetchParticipants(),
+          ])
+          if (apiAcademies) setAcademies(apiAcademies)
+          if (apiParticipants) setParticipants(apiParticipants)
+          // Communications loaded per-academy when selected
+        } catch (err) {
+          console.warn('[Academies] API fetch failed, falling back to localStorage', err)
+          loadFromLocalStorage()
+        }
       } else {
-        const seed = createSeedAcademies()
-        setAcademies(seed)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(seed))
+        // Demo mode: use localStorage
+        loadFromLocalStorage()
       }
-      if (storedP) {
-        setParticipants(JSON.parse(storedP))
-      } else {
-        const seedP = createSeedParticipantsFull()
-        setParticipants(seedP)
-        localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(seedP))
-      }
-      if (storedC) {
-        setCommunications(JSON.parse(storedC))
-      } else {
-        const seedC = createSeedCommunications()
-        setCommunications(seedC)
-        localStorage.setItem(COMMS_KEY, JSON.stringify(seedC))
-      }
-    } catch {
-      setAcademies(createSeedAcademies())
-      setParticipants(createSeedParticipantsFull())
-      setCommunications(createSeedCommunications())
+      setLoaded(true)
     }
-    setLoaded(true)
-  }, [])
 
-  // ── Persist changes ──
+    function loadFromLocalStorage() {
+      try {
+        const storedA = localStorage.getItem(STORAGE_KEY)
+        const storedP = localStorage.getItem(PARTICIPANTS_KEY)
+        const storedC = localStorage.getItem(COMMS_KEY)
+        if (storedA) {
+          setAcademies(JSON.parse(storedA))
+        } else {
+          const seed = createSeedAcademies()
+          setAcademies(seed)
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(seed))
+        }
+        if (storedP) {
+          setParticipants(JSON.parse(storedP))
+        } else {
+          const seedP = createSeedParticipantsFull()
+          setParticipants(seedP)
+          localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(seedP))
+        }
+        if (storedC) {
+          setCommunications(JSON.parse(storedC))
+        } else {
+          const seedC = createSeedCommunications()
+          setCommunications(seedC)
+          localStorage.setItem(COMMS_KEY, JSON.stringify(seedC))
+        }
+      } catch {
+        setAcademies(createSeedAcademies())
+        setParticipants(createSeedParticipantsFull())
+        setCommunications(createSeedCommunications())
+      }
+    }
+
+    loadData()
+  }, [academyAPI.isProduction]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load communications when selected academy changes (production mode) ──
   useEffect(() => {
-    if (!loaded) return
+    if (!academyAPI.isProduction || !selectedAcademyId || !loaded) return
+    academyAPI.fetchCommunications(selectedAcademyId).then(comms => {
+      if (comms) setCommunications(comms)
+    }).catch(() => {})
+  }, [selectedAcademyId, academyAPI.isProduction, loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Persist changes (demo mode only) ──
+  useEffect(() => {
+    if (!loaded || academyAPI.isProduction) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(academies))
-  }, [academies, loaded])
+  }, [academies, loaded, academyAPI.isProduction])
 
   useEffect(() => {
-    if (!loaded) return
+    if (!loaded || academyAPI.isProduction) return
     localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(participants))
-  }, [participants, loaded])
+  }, [participants, loaded, academyAPI.isProduction])
 
   useEffect(() => {
-    if (!loaded) return
+    if (!loaded || academyAPI.isProduction) return
     localStorage.setItem(COMMS_KEY, JSON.stringify(communications))
-  }, [communications, loaded])
+  }, [communications, loaded, academyAPI.isProduction])
 
   // ── Auto-select academy for dashboard ──
   useEffect(() => {

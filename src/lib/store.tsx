@@ -104,6 +104,22 @@ interface TempoState {
   learnerPoints: WidenArray<DemoData['demoLearnerPoints']>
   certificateTemplates: WidenArray<DemoData['demoCertificateTemplates']>
 
+  // Academies
+  academies: any[]
+  academyCohorts: any[]
+  academyParticipants: any[]
+  academyCourses: any[]
+  academyParticipantProgress: any[]
+  academySessions: any[]
+  academySessionRsvps: any[]
+  academyAssignments: any[]
+  academyAssignmentSubmissions: any[]
+  academyDiscussions: any[]
+  academyResources: any[]
+  academyCertificates: any[]
+  academyCommunications: any[]
+  academyCommTriggers: any[]
+
   // Engagement
   surveys: WidenArray<DemoData['demoSurveys']>
   engagementScores: DemoData['demoEngagementScores']
@@ -1287,6 +1303,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [learnerBadges, setLearnerBadges] = useState<any[]>([])
   const [learnerPoints, setLearnerPoints] = useState<any[]>([])
   const [certificateTemplates, setCertificateTemplates] = useState<any[]>([])
+  // Academies
+  const [academies, setAcademies] = useState<any[]>([])
+  const [academyCohorts, setAcademyCohorts] = useState<any[]>([])
+  const [academyParticipants, setAcademyParticipants] = useState<any[]>([])
+  const [academyCourses, setAcademyCourses] = useState<any[]>([])
+  const [academyParticipantProgress, setAcademyParticipantProgress] = useState<any[]>([])
+  const [academySessions, setAcademySessions] = useState<any[]>([])
+  const [academySessionRsvps, setAcademySessionRsvps] = useState<any[]>([])
+  const [academyAssignments, setAcademyAssignments] = useState<any[]>([])
+  const [academyAssignmentSubmissions, setAcademyAssignmentSubmissions] = useState<any[]>([])
+  const [academyDiscussions, setAcademyDiscussions] = useState<any[]>([])
+  const [academyResources, setAcademyResources] = useState<any[]>([])
+  const [academyCertificates, setAcademyCertificates] = useState<any[]>([])
+  const [academyCommunications, setAcademyCommunications] = useState<any[]>([])
+  const [academyCommTriggers, setAcademyCommTriggers] = useState<any[]>([])
   const [surveys, setSurveys] = useState<any[]>([])
   const [engagementScores, setEngagementScores] = useState<any[]>([])
   const [actionPlans, setActionPlans] = useState<any[]>([])
@@ -1947,6 +1978,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       appDataSources: (d) => setAppDataSources(d),
       // Sandbox
       sandboxEnvironments: (d) => setSandboxEnvironments(d),
+      // Academies
+      academies: (d) => setAcademies(d),
+      academyCohorts: (d) => setAcademyCohorts(d),
+      academyParticipants: (d) => setAcademyParticipants(d),
+      academyCourses: (d) => setAcademyCourses(d),
+      academyParticipantProgress: (d) => setAcademyParticipantProgress(d),
+      academySessions: (d) => setAcademySessions(d),
+      academySessionRsvps: (d) => setAcademySessionRsvps(d),
+      academyAssignments: (d) => setAcademyAssignments(d),
+      academyAssignmentSubmissions: (d) => setAcademyAssignmentSubmissions(d),
+      academyDiscussions: (d) => setAcademyDiscussions(d),
+      academyResources: (d) => setAcademyResources(d),
+      academyCertificates: (d) => setAcademyCertificates(d),
+      academyCommunications: (d) => setAcademyCommunications(d),
+      academyCommTriggers: (d) => setAcademyCommTriggers(d),
     }
   }
 
@@ -5692,6 +5738,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     scimProviders, addScimProvider, updateScimProvider, deleteScimProvider,
     autoDetectionScans, addAutoDetectionScan, updateAutoDetectionScan, deleteAutoDetectionScan,
     shadowITDetections, addShadowITDetection, updateShadowITDetection, deleteShadowITDetection,
+    academies, academyCohorts, academyParticipants, academyCourses, academyParticipantProgress,
+    academySessions, academySessionRsvps, academyAssignments, academyAssignmentSubmissions,
+    academyDiscussions, academyResources, academyCertificates, academyCommunications, academyCommTriggers,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }
