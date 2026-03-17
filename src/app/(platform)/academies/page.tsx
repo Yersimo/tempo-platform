@@ -810,7 +810,7 @@ export default function AcademiesPage() {
 
   function renderStep1Brand() {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Brand Your Academy</h3>
           <p className="text-sm text-t3">Define how your academy looks and feels to participants.</p>
@@ -905,7 +905,7 @@ export default function AcademiesPage() {
 
   function renderStep2Enrollment() {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Enrollment Settings</h3>
           <p className="text-sm text-t3">Control how participants discover and join your academy.</p>
@@ -995,7 +995,7 @@ export default function AcademiesPage() {
     const availablePaths = learningPaths || []
 
     return (
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Build Your Curriculum</h3>
           <p className="text-sm text-t3">Select courses and learning paths to include in this academy.</p>
@@ -1114,7 +1114,7 @@ export default function AcademiesPage() {
 
   function renderStep4Cohorts() {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Set Up Your First Cohort</h3>
           <p className="text-sm text-t3">Group participants into cohorts for structured learning.</p>
@@ -1195,7 +1195,7 @@ export default function AcademiesPage() {
 
   function renderStep5Settings() {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Academy Settings</h3>
           <p className="text-sm text-t3">Configure community features and completion rules.</p>
@@ -1300,7 +1300,7 @@ export default function AcademiesPage() {
 
   function renderStep6Review() {
     return (
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Review & Launch</h3>
           <p className="text-sm text-t3">Review your academy configuration before going live.</p>

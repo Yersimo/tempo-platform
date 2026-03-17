@@ -1426,7 +1426,7 @@ export default function AcademyWorkspacePage() {
     >
       {/* Top bar */}
       <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-divider">
-        <div className="max-w-2xl mx-auto px-4">
+        <div className="max-w-5xl mx-auto px-4 lg:px-8">
           <div className="flex items-center gap-3 py-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -1448,7 +1448,7 @@ export default function AcademyWorkspacePage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 pt-5">
+      <div className="max-w-5xl mx-auto px-4 lg:px-8 pt-5">
         {activeTab === 'home' && <HomeTab data={academy} onTabChange={handleTabChange} />}
         {activeTab === 'curriculum' && <CurriculumTab data={academy} />}
         {activeTab === 'calendar' && <CalendarTab data={academy} />}
