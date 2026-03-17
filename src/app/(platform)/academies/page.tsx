@@ -158,7 +158,7 @@ function createSeedAcademies(): Academy[] {
       id: 'acad_ecobank_sme',
       name: 'Ecobank SME Academy',
       description: 'A comprehensive programme designed to equip small and medium enterprise owners with the financial literacy, digital tools, and business acumen needed to scale their operations across West Africa.',
-      slug: 'ecobank-sme-academy',
+      slug: 'ecobank-sme-2026',
       logo_url: '',
       brand_color: '#2563eb',
       welcome_message: 'Welcome to the Ecobank SME Academy! Over the next 12 weeks, you will gain practical skills in financial management, digital marketing, and business strategy.',
