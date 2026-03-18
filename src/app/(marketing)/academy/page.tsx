@@ -1,8 +1,35 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, Star, ChevronRight, Users, BarChart3, Award, BookOpen, Globe2, Zap, Shield, Sparkles, MessageCircle } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Star, ChevronDown, Users, BarChart3, Award, BookOpen, Globe2, Zap, Shield, Sparkles, MessageCircle, Menu, X } from 'lucide-react'
+
+/* ─── Nav dropdown component ─────────────────────────────────────────────── */
+function NavDropdown({ label, items }: { label: string; items: { href: string; title: string; desc: string }[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close)
+  }, [])
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition flex items-center gap-1">
+        {label} <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[300px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.1)] border border-black/[0.04] p-2 z-50">
+          {items.map((item, i) => (
+            <Link key={i} href={item.href} onClick={() => setOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-[#F5F5F5] transition group">
+              <p className="text-[14px] font-semibold text-[#1a1a1a] group-hover:text-[#E8590C] transition">{item.title}</p>
+              <p className="text-[12px] text-[#1a1a1a]/40 mt-0.5">{item.desc}</p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ─── Reveal ─────────────────────────────────────────────────────────────── */
 function useReveal(threshold = 0.08) {
@@ -39,28 +66,78 @@ function Counter({ end, suffix = '' }: { end: number; suffix?: string }) {
   return <span ref={ref}>{count}{suffix}</span>
 }
 
+/* ─── Shared nav ─────────────────────────────────────────────────────────── */
+function AcademyNav() {
+  const [mobileOpen, setMobileOpen] = useState(false)
+  return (
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.03]">
+        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
+          <Link href="/academy" className="flex items-center gap-2">
+            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></span>
+          </Link>
+
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-7">
+            <NavDropdown label="Solutions" items={[
+              { href: '#for-enterprise', title: 'For Enterprise & Teams', desc: 'Workplace learning that drives performance' },
+              { href: '#for-smes', title: 'For SME Programmes', desc: 'Capability building at continental scale' },
+              { href: '#capabilities', title: 'Platform Capabilities', desc: 'Courses, certificates, analytics & more' },
+            ]} />
+            <NavDropdown label="About" items={[
+              { href: '#impact', title: 'Impact Stories', desc: 'How organisations use Tempo Academy' },
+              { href: '/academy/diagnostic', title: 'Readiness Assessment', desc: 'See if your organisation is ready' },
+            ]} />
+            <Link href="/academy/login" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Log in</Link>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link href="/academy/get-started" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition hidden sm:block">
+              Get Started
+            </Link>
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden w-10 h-10 flex items-center justify-center">
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-white pt-[64px]">
+          <div className="px-6 py-6 space-y-1">
+            <p className="text-[11px] font-semibold text-[#1a1a1a]/30 uppercase tracking-wider px-4 mb-2">Solutions</p>
+            {[
+              { href: '#for-enterprise', label: 'For Enterprise & Teams' },
+              { href: '#for-smes', label: 'For SME Programmes' },
+              { href: '#capabilities', label: 'Platform Capabilities' },
+            ].map((item, i) => (
+              <Link key={i} href={item.href} onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[16px] font-medium text-[#1a1a1a] hover:bg-[#F5F5F5] rounded-xl transition">{item.label}</Link>
+            ))}
+            <div className="h-px bg-black/5 my-4" />
+            <p className="text-[11px] font-semibold text-[#1a1a1a]/30 uppercase tracking-wider px-4 mb-2">About</p>
+            {[
+              { href: '#impact', label: 'Impact Stories' },
+              { href: '/academy/diagnostic', label: 'Readiness Assessment' },
+            ].map((item, i) => (
+              <Link key={i} href={item.href} onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[16px] font-medium text-[#1a1a1a] hover:bg-[#F5F5F5] rounded-xl transition">{item.label}</Link>
+            ))}
+            <div className="h-px bg-black/5 my-4" />
+            <Link href="/academy/login" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[16px] font-medium text-[#1a1a1a]/60 rounded-xl">Log in</Link>
+            <Link href="/academy/get-started" onClick={() => setMobileOpen(false)} className="block mt-3 bg-[#1a1a1a] text-white text-center text-[16px] font-medium py-3.5 rounded-full">Get Started</Link>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function AcademyPage() {
   return (
     <div className="min-h-screen bg-white antialiased overflow-x-hidden">
 
-      {/* ═══ Nav — Revolut-style: clean, floating, white pill CTA ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl">
-        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="#for-enterprise" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Enterprise</Link>
-            <Link href="#for-smes" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">SME Programmes</Link>
-            <Link href="#capabilities" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Platform</Link>
-            <Link href="#impact" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Impact</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/academy/login" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition hidden sm:block">Log in</Link>
-            <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition">Sign up</Link>
-          </div>
-        </div>
-      </nav>
+      {/* ═══ Nav ═══ */}
+      <AcademyNav />
 
       {/* ═══ HERO — Revolut-style: gradient bg, massive text, floating product mockup ═══ */}
       <section className="relative min-h-[100vh] flex items-center pt-16" style={{
@@ -81,7 +158,7 @@ export default function AcademyPage() {
             </R>
             <R d={200}>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-7 py-3.5 rounded-full transition inline-flex items-center gap-2 justify-center">
+                <Link href="/academy/get-started" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-7 py-3.5 rounded-full transition inline-flex items-center gap-2 justify-center">
                   Get started <ArrowRight size={18} />
                 </Link>
                 <Link href="/academy/diagnostic" className="text-[#1a1a1a] text-[16px] font-medium px-7 py-3.5 rounded-full border-2 border-[#1a1a1a]/15 hover:border-[#1a1a1a]/30 transition inline-flex items-center gap-2 justify-center">
@@ -216,7 +293,7 @@ export default function AcademyPage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/academy/login" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
+                <Link href="/academy/get-started" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
                   Learn more <ArrowRight size={16} />
                 </Link>
               </div>
@@ -247,7 +324,7 @@ export default function AcademyPage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/academy/login" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
+                <Link href="/academy/get-started" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
                   Learn more <ArrowRight size={16} />
                 </Link>
               </div>
@@ -411,10 +488,10 @@ export default function AcademyPage() {
           </R>
           <R d={100}>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
-              <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-8 py-4 rounded-full transition inline-flex items-center gap-2 justify-center">
+              <Link href="/academy/get-started" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-8 py-4 rounded-full transition inline-flex items-center gap-2 justify-center">
                 Get started — it&rsquo;s free <ArrowRight size={18} />
               </Link>
-              <Link href="/academy/login" className="text-[#1a1a1a] text-[16px] font-medium px-8 py-4 rounded-full border-2 border-[#1a1a1a]/15 hover:border-[#1a1a1a]/30 transition">
+              <Link href="/academy/get-started" className="text-[#1a1a1a] text-[16px] font-medium px-8 py-4 rounded-full border-2 border-[#1a1a1a]/15 hover:border-[#1a1a1a]/30 transition">
                 Schedule a demo
               </Link>
             </div>
