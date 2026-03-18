@@ -108,8 +108,8 @@ export default function AcademyLandingPage() {
             <span className="font-semibold text-gray-900 text-lg">tempo <span className="text-orange-500">academy</span></span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition hidden sm:block">Sign In</Link>
-            <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition shadow-sm hover:shadow">
+            <Link href="/academy/login" className="text-sm text-gray-600 hover:text-gray-900 transition hidden sm:block">Sign In</Link>
+            <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition shadow-sm hover:shadow">
               Request a Demo
             </Link>
           </div>
@@ -147,7 +147,7 @@ export default function AcademyLandingPage() {
 
           <RevealSection delay="delay-300">
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
+              <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
                 Start Building Your Academy <ArrowRight size={18} />
               </Link>
               <Link href="/solutions/academy-diagnostic" className="text-gray-700 hover:text-orange-600 font-medium px-6 py-3.5 rounded-full border border-gray-200 hover:border-orange-200 transition text-base flex items-center gap-2">
@@ -419,10 +419,10 @@ export default function AcademyLandingPage() {
 
           <RevealSection delay="delay-200">
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
+              <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
                 Start Building Your Academy <ArrowRight size={18} />
               </Link>
-              <Link href="/login" className="text-gray-300 hover:text-white font-medium px-6 py-4 rounded-full border border-gray-700 hover:border-gray-500 transition text-base">
+              <Link href="/academy/login" className="text-gray-300 hover:text-white font-medium px-6 py-4 rounded-full border border-gray-700 hover:border-gray-500 transition text-base">
                 Schedule a Demo
               </Link>
             </div>
