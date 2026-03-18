@@ -74,7 +74,7 @@ function AcademyNav() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.03]">
         <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
           <Link href="/academy" className="flex items-center gap-2">
-            <img src="/images/brand/logo-black-400.png" alt="tempo" className="h-6" />
+            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></span>
           </Link>
 
           {/* Desktop nav */}
@@ -503,7 +503,7 @@ export default function AcademyPage() {
       {/* ═══ Footer — minimal ═══ */}
       <footer className="bg-[#1a1a1a] py-8">
         <div className="max-w-[1200px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-white/20">
-          <img src="/images/brand/logo-dark-200.png" alt="tempo" className="h-5 opacity-60" />
+          <span className="text-[16px] font-bold text-white/40">tempo<span className="text-[#E8590C]">.</span></span>
           <p>&copy; {new Date().getFullYear()} Tempo. Building capable businesses across Africa and beyond.</p>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-white/50 transition">Privacy</Link>
