@@ -2828,6 +2828,7 @@ export default function AcademiesPage() {
         {activeTab === 'dashboard' && renderDashboardTab()}
         {activeTab === 'communications' && renderCommunicationsTab()}
         {activeTab === 'participants' && renderParticipantsTab()}
+        {activeTab === 'settings' && renderSettingsTab()}
       </div>
 
       {/* Wizard Modal (also accessible from Create button) */}

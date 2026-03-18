@@ -73,7 +73,7 @@ async function checkRateLimit(
 }
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events', '/api/academy/auth', '/academy/login']
+const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events', '/api/academy/auth', '/academy/login', '/verify', '/solutions', '/api/academy/certificate']
 
 // ─── Security Headers ────────────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
