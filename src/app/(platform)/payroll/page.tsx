@@ -461,7 +461,7 @@ export default function PayrollPage() {
       if (eid) entryMap.set(eid, e)
     })
     // For employees without a payroll entry, generate a placeholder from their profile
-    const LEVEL_SALARY: Record<string, number> = { Executive: 16000, Director: 14000, 'Senior Manager': 10000, Manager: 7500, Senior: 7000, Mid: 4500, Associate: 3300, Junior: 2900 }
+    const LEVEL_SALARY: Record<string, number> = { Executive: 1600000, Director: 1400000, 'Senior Manager': 1000000, Manager: 750000, Senior: 700000, Mid: 450000, Associate: 330000, Junior: 290000 }
     employees.forEach(emp => {
       if (!entryMap.has(emp.id)) {
         const base = LEVEL_SALARY[emp.level] || 5000
@@ -471,7 +471,7 @@ export default function PayrollPage() {
           id: `gen-${emp.id}`, employee_id: emp.id, employee_name: emp.profile?.full_name || '',
           department: '', country: emp.country, base_pay: base, gross_pay: base,
           federal_tax: fedTax, total_deductions: totalDed, net_pay: base - totalDed,
-          currency: 'USD', pay_date: '2026-01-28',
+          currency: COUNTRY_CURRENCY_MAP[resolveCountryCode(emp.country || '')] || 'USD', pay_date: '2026-01-28',
         })
       }
     })
