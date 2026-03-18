@@ -12,6 +12,7 @@ if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
 const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 const COOKIE_NAME = 'tempo_session'
 const ADMIN_COOKIE_NAME = 'tempo_admin_session'
+const ACADEMY_COOKIE_NAME = 'tempo_academy_session'
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────
 // Use Upstash Redis when configured (persists across cold starts),
@@ -72,7 +73,7 @@ async function checkRateLimit(
 }
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events']
+const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events', '/api/academy/auth', '/academy/login']
 
 // ─── Security Headers ────────────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
@@ -180,6 +181,35 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
     } catch {
       const response = NextResponse.redirect(new URL('/admin/login', request.url))
       response.cookies.set(ADMIN_COOKIE_NAME, '', { maxAge: 0, path: '/' })
+      return response
+    }
+  }
+
+  // ─── Academy Routes ──────────────────────────────────────────────────────
+  // Academy login page is public (already in PUBLIC_ROUTES)
+  // Academy participant pages require tempo_academy_session JWT
+
+  if (pathname.startsWith('/academy/') && pathname !== '/academy/login') {
+    const academyCookie = request.cookies.get(ACADEMY_COOKIE_NAME)
+    if (!academyCookie?.value) {
+      return NextResponse.redirect(new URL('/academy/login', request.url))
+    }
+    try {
+      const { payload } = await jwtVerify(academyCookie.value, JWT_SECRET)
+      if (!payload.participantId) {
+        return NextResponse.redirect(new URL('/academy/login', request.url))
+      }
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('x-participant-id', payload.participantId as string)
+      requestHeaders.set('x-academy-id', payload.academyId as string)
+      requestHeaders.set('x-org-id', payload.orgId as string)
+      if (payload.academySlug) {
+        requestHeaders.set('x-academy-slug', payload.academySlug as string)
+      }
+      return NextResponse.next({ request: { headers: requestHeaders } })
+    } catch {
+      const response = NextResponse.redirect(new URL('/academy/login', request.url))
+      response.cookies.set(ACADEMY_COOKIE_NAME, '', { maxAge: 0, path: '/' })
       return response
     }
   }

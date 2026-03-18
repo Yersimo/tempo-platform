@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { useTempo } from '@/lib/store'
+import { useAcademy } from '@/lib/academy-store'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1405,6 +1405,7 @@ const ACADEMY_TABS = [
 export default function AcademyWorkspacePage() {
   const params = useParams()
   const slug = params.slug as string
+  const { session: academySession } = useAcademy()
   const [activeTab, setActiveTab] = useState('home')
   const [apiAcademy, setApiAcademy] = useState<AcademyData | null>(null)
   const [apiLoading, setApiLoading] = useState(true)
@@ -1435,7 +1436,7 @@ export default function AcademyWorkspacePage() {
           brandColor,
           brandColorLight: `${brandColor}15`,
           description: acad.description || '',
-          participantName: 'Participant', // Will be updated when participant auth is integrated
+          participantName: academySession?.participant?.fullName || 'Participant',
           modules: (coursesRes.data || []).map((c: any, i: number) => ({
             id: c.id, number: c.moduleNumber || c.module_number || i + 1,
             title: c.title || `Module ${i + 1}`, duration: `${c.durationHours || 6} hours`,
@@ -1526,20 +1527,6 @@ export default function AcademyWorkspacePage() {
       className="min-h-screen pb-8"
       style={{ '--academy-brand': academy.brandColor, '--academy-brand-light': academy.brandColorLight } as React.CSSProperties}
     >
-      {/* Admin preview banner */}
-      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
-        <p className="text-xs text-amber-800">
-          <span className="font-semibold">Admin Preview</span> — This is how participants see this academy.
-        </p>
-        <a
-          href={`/academy/${slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-medium text-amber-700 hover:text-amber-900 underline"
-        >
-          Open standalone view →
-        </a>
-      </div>
       {/* Top bar */}
       <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-divider">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">

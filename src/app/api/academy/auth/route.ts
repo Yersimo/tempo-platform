@@ -77,11 +77,22 @@ export async function POST(request: NextRequest) {
           .set({ lastActiveAt: new Date() })
           .where(eq(schema.academyParticipants.id, participant.id))
 
+        // Fetch academy slug for redirect
+        let academySlug = ''
+        try {
+          const [acad] = await db.select({ slug: schema.academies.slug })
+            .from(schema.academies)
+            .where(eq(schema.academies.id, participant.academyId))
+            .limit(1)
+          if (acad) academySlug = acad.slug
+        } catch { /* ignore */ }
+
         // Create JWT
         const token = await new SignJWT({
           participantId: participant.id,
           orgId: participant.orgId,
           academyId: participant.academyId,
+          academySlug,
           email: participant.email,
         })
           .setProtectedHeader({ alg: 'HS256' })
@@ -90,11 +101,12 @@ export async function POST(request: NextRequest) {
           .sign(JWT_SECRET)
 
         const response = NextResponse.json({
-          data: {
+          participant: {
             id: participant.id,
             fullName: participant.fullName,
             email: participant.email,
             academyId: participant.academyId,
+            academySlug,
             cohortId: participant.cohortId,
             progress: participant.progress,
           },
@@ -135,11 +147,22 @@ export async function POST(request: NextRequest) {
           .set({ invitationToken: null, lastActiveAt: new Date() })
           .where(eq(schema.academyParticipants.id, participant.id))
 
+        // Fetch academy slug for redirect
+        let inviteAcademySlug = ''
+        try {
+          const [acad] = await db.select({ slug: schema.academies.slug })
+            .from(schema.academies)
+            .where(eq(schema.academies.id, participant.academyId))
+            .limit(1)
+          if (acad) inviteAcademySlug = acad.slug
+        } catch { /* ignore */ }
+
         // Auto-login: create JWT
         const jwt = await new SignJWT({
           participantId: participant.id,
           orgId: participant.orgId,
           academyId: participant.academyId,
+          academySlug: inviteAcademySlug,
           email: participant.email,
         })
           .setProtectedHeader({ alg: 'HS256' })
@@ -148,11 +171,12 @@ export async function POST(request: NextRequest) {
           .sign(JWT_SECRET)
 
         const response = NextResponse.json({
-          data: {
+          participant: {
             id: participant.id,
             fullName: participant.fullName,
             email: participant.email,
             academyId: participant.academyId,
+            academySlug: inviteAcademySlug,
             cohortId: participant.cohortId,
             progress: participant.progress,
           },
@@ -207,13 +231,17 @@ export async function GET(request: NextRequest) {
       return response
     }
 
+    // Fetch academy slug
+    const academySlug = (payload.academySlug as string) || ''
+
     return NextResponse.json({
-      data: {
+      participant: {
         id: participant.id,
         fullName: participant.fullName,
         email: participant.email,
         avatarUrl: participant.avatarUrl,
         academyId: participant.academyId,
+        academySlug,
         cohortId: participant.cohortId,
         progress: participant.progress,
         language: participant.language,
