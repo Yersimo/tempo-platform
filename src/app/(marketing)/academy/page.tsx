@@ -150,7 +150,7 @@ export default function AcademyLandingPage() {
               <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
                 Start Building Your Academy <ArrowRight size={18} />
               </Link>
-              <Link href="/solutions/academy-diagnostic" className="text-gray-700 hover:text-orange-600 font-medium px-6 py-3.5 rounded-full border border-gray-200 hover:border-orange-200 transition text-base flex items-center gap-2">
+              <Link href="/academy/diagnostic" className="text-gray-700 hover:text-orange-600 font-medium px-6 py-3.5 rounded-full border border-gray-200 hover:border-orange-200 transition text-base flex items-center gap-2">
                 Take the Readiness Assessment <ChevronRight size={16} />
               </Link>
             </div>

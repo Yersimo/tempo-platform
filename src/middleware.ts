@@ -186,10 +186,15 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
   }
 
   // ─── Academy Routes ──────────────────────────────────────────────────────
-  // Academy login page is public (already in PUBLIC_ROUTES)
+  // Academy marketing pages are public (landing page + diagnostic)
   // Academy participant pages require tempo_academy_session JWT
 
-  if (pathname.startsWith('/academy/') && pathname !== '/academy/login') {
+  const publicAcademyPages = ['/academy', '/academy/login', '/academy/diagnostic']
+  if (publicAcademyPages.includes(pathname)) {
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/academy/') && !publicAcademyPages.includes(pathname)) {
     const academyCookie = request.cookies.get(ACADEMY_COOKIE_NAME)
     if (!academyCookie?.value) {
       return NextResponse.redirect(new URL('/academy/login', request.url))

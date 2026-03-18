@@ -15,8 +15,9 @@ function AcademyAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return
 
-    // Check if we're on the login page — don't guard it
-    if (window.location.pathname === '/academy/login') {
+    // Check if we're on a public academy page — don't guard it
+    const publicAcademyPaths = ['/academy/login', '/academy', '/academy/diagnostic']
+    if (publicAcademyPaths.includes(window.location.pathname)) {
       setReady(true)
       return
     }
