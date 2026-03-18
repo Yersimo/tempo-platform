@@ -189,7 +189,7 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
   // Academy marketing pages are public (landing page + diagnostic)
   // Academy participant pages require tempo_academy_session JWT
 
-  const publicAcademyPages = ['/academy', '/academy/login', '/academy/diagnostic']
+  const publicAcademyPages = ['/academy', '/academy/login', '/academy/diagnostic', '/academy/get-started']
   if (publicAcademyPages.includes(pathname)) {
     return NextResponse.next()
   }
