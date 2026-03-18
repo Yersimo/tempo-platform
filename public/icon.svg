@@ -1,5 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="108" fill="#1a1a1a"/>
-  <text x="100" y="380" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="400" fill="white" letter-spacing="-15">t</text>
-  <circle cx="395" cy="370" r="40" fill="#E8590C"/>
+  <rect x="80" y="185" width="210" height="42" rx="21" fill="white"/>
+  <rect x="148" y="60" width="42" height="370" rx="21" fill="white"/>
+  <path d="M190,430 Q190,450 210,455 Q260,468 300,440" stroke="white" stroke-width="42" fill="none" stroke-linecap="round"/>
+  <circle cx="390" cy="385" r="44" fill="#E8590C"/>
 </svg>
