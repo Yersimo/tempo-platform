@@ -302,9 +302,7 @@ export default function LandingPage() {
       <nav className="l-nav" ref={navRef}>
         <div className="l-nav-left">
           <a href="#" className="l-nav-logo" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-            <TempoSvgMark width={16} />
-            <span style={{ width: 4, display: 'inline-block' }} />
-            <span className="l-nav-wordmark" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.035em' }}>tempo</span>
+            <span className="l-nav-wordmark" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span>
           </a>
           <div className="l-nav-links">
             <a href="#platform" onClick={(e) => handleAnchorClick(e, 'platform')}>Platform</a>
@@ -340,15 +338,13 @@ export default function LandingPage() {
             <div className="l-topbar">
               <div className="l-topbar-dot" /><div className="l-topbar-dot" /><div className="l-topbar-dot" />
               <span style={{ flex: 1 }} />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.12)' }}>tempo &mdash; Dashboard</span>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.12)' }}>tempo<span style={{ color: 'rgba(234,88,12,.3)' }}>.</span> &mdash; Dashboard</span>
               <span style={{ flex: 1 }} />
             </div>
             <div className="l-product-body">
               <div className="l-sidebar">
                 <div className="l-sidebar-logo">
-                  <TempoSvgMark width={10} />
-                  <span style={{ width: 2, display: 'inline-block' }} />
-                  <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: '-.035em', color: '#fff' }}>tempo</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.02em', color: '#fff' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span>
                 </div>
                 <div className="l-sidebar-label">Modules</div>
                 {([
@@ -846,7 +842,7 @@ export default function LandingPage() {
       {/* ═══ CTA ═══ */}
       <section className="l-cta-section" id="demo">
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <TempoSvgMark width={40} className="mx-auto" />
+          <div className="mx-auto" style={{ textAlign: 'center' }}><span style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.4)' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span></div>
           <div style={{ marginTop: 20, fontSize: 'clamp(28px,4vw,48px)', fontWeight: 300, color: '#fff', letterSpacing: '-.025em', marginBottom: 12 }}>
             Ready to see Tempo?
           </div>
@@ -861,10 +857,8 @@ export default function LandingPage() {
       {/* ═══ FOOTER ═══ */}
       <footer className="l-footer">
         <div className="l-footer-inner">
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0 }}>
-            <TempoSvgMark width={10} />
-            <span style={{ width: 2, display: 'inline-block' }} />
-            <span style={{ fontSize: 16, fontWeight: 500, letterSpacing: '-.035em', color: 'rgba(255,255,255,.3)' }}>tempo</span>
+          <div>
+            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.3)' }}>tempo<span style={{ color: 'rgba(234,88,12,.5)' }}>.</span></span>
           </div>
           <div className="l-footer-links">
             <a href="#platform" onClick={(e) => handleAnchorClick(e, 'platform')}>Platform</a>
