@@ -2,409 +2,435 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import {
-  ArrowRight, ChevronRight, CheckCircle2, Star, Quote,
-  Users, Target, Heart, Lightbulb,
-  Globe2, Award, BookOpen, Sparkles, BarChart3,
-  Shield, Zap, MessageCircle, GraduationCap,
-  Building2, Rocket, ArrowUpRight, Play,
-} from 'lucide-react'
+import { ArrowRight, CheckCircle2, Star, ChevronRight, Users, BarChart3, Award, BookOpen, Globe2, Zap, Shield, Sparkles, MessageCircle } from 'lucide-react'
 
-/* ─── Scroll reveal ──────────────────────────────────────────────────────── */
-function useReveal() {
+/* ─── Reveal ─────────────────────────────────────────────────────────────── */
+function useReveal(threshold = 0.08) {
   const ref = useRef<HTMLDivElement>(null)
   const [v, setV] = useState(false)
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const o = new IntersectionObserver(([e]) => { if (e.isIntersecting) setV(true) }, { threshold: 0.08 })
-    o.observe(el)
-    return () => o.disconnect()
-  }, [])
+    const el = ref.current; if (!el) return
+    const o = new IntersectionObserver(([e]) => { if (e.isIntersecting) setV(true) }, { threshold })
+    o.observe(el); return () => o.disconnect()
+  }, [threshold])
   return { ref, v }
 }
-function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+function R({ children, d = 0, className = '' }: { children: React.ReactNode; d?: number; className?: string }) {
   const { ref, v } = useReveal()
-  return <div ref={ref} className={`transition-all duration-700 ease-out ${v ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`} style={{ transitionDelay: `${delay}ms` }}>{children}</div>
+  return <div ref={ref} className={`transition-all duration-[900ms] ease-out ${v ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`} style={{ transitionDelay: `${d}ms` }}>{children}</div>
 }
 
-/* ─── Data ─────────────────────────────────────────────────────────────── */
-const audiences = [
-  { icon: Building2, label: 'Upskill my team & workforce', color: 'bg-blue-50 text-blue-700 border-blue-100' },
-  { icon: Rocket, label: 'Train SMEs & Entrepreneurs', color: 'bg-orange-50 text-orange-700 border-orange-100' },
-  { icon: Lightbulb, label: 'Grow my own business', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-  { icon: GraduationCap, label: 'Build professional skills', color: 'bg-purple-50 text-purple-700 border-purple-100' },
-]
-
-const stats = [
-  { value: '90%', label: 'of African jobs', sub: 'created by MSMEs', source: 'IFC' },
-  { value: '50M+', label: 'small businesses', sub: 'across the continent', source: 'AfDB' },
-  { value: '3x', label: 'more likely to grow', sub: 'with structured training', source: 'ILO' },
-  { value: '70%', label: 'of GDP growth', sub: 'driven by SMEs globally', source: 'OECD' },
-]
-
-const capabilities = [
-  { icon: BookOpen, title: 'Structured Programmes', text: 'Multi-week learning journeys with modules, live sessions, and assessments.' },
-  { icon: Users, title: 'Cohort-Based Delivery', text: 'Time-bound cohorts for accountability, peer learning, and community.' },
-  { icon: Award, title: 'Verified Certificates', text: 'QR-verified, LinkedIn-shareable credentials that build real credibility.' },
-  { icon: BarChart3, title: 'Impact Analytics', text: 'Real-time dashboards: completion rates, engagement, at-risk participants.' },
-  { icon: MessageCircle, title: 'Community & Forums', text: 'Peer discussions, facilitator Q&A, and cohort accountability spaces.' },
-  { icon: Zap, title: 'Smart Automation', text: 'Enrolment, reminders, nudges, and certificate delivery — all automated.' },
-  { icon: Globe2, title: 'Multi-Language', text: 'English, French, Portuguese — reach every corner of the continent.' },
-  { icon: Sparkles, title: 'AI Course Builder', text: 'Describe a topic, get a course outline, quizzes, and assignments in seconds.' },
-  { icon: Shield, title: 'White-Label Domains', text: 'Your brand, your domain. Participants see your academy, not ours.' },
-]
-
-const testimonials = [
-  { quote: 'We trained 340 SME owners across 6 West African countries in 4 months. The cohort model kept completion above 90%.', author: 'Head of Enterprise Development', org: 'Pan-African Development Finance Institution' },
-  { quote: 'For the first time, our entrepreneurs have a structured path. The verified certificates give them credibility with lenders.', author: 'Director of SME Programmes', org: 'Regional Chamber of Commerce' },
-  { quote: 'We replaced three tools with one. The academy lives inside our HR platform — our team manages everything from one place.', author: 'Chief People Officer', org: 'Leading African Fintech' },
-]
+/* ─── Animated counter ───────────────────────────────────────────────────── */
+function Counter({ end, suffix = '' }: { end: number; suffix?: string }) {
+  const [count, setCount] = useState(0)
+  const { ref, v } = useReveal()
+  useEffect(() => {
+    if (!v) return
+    let start = 0; const duration = 1200; const startTime = Date.now()
+    const tick = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setCount(Math.round(eased * end))
+      if (progress < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [v, end])
+  return <span ref={ref}>{count}{suffix}</span>
+}
 
 export default function AcademyPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white antialiased overflow-x-hidden">
 
-      {/* ═══ Nav ═══ */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">/</span>
-            </div>
-            <span className="text-lg tracking-tight"><span className="font-semibold text-gray-900">tempo</span> <span className="font-medium text-orange-500">academy</span></span>
+      {/* ═══ Nav — Revolut-style: clean, floating, white pill CTA ═══ */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl">
+        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></span>
           </Link>
-          <div className="flex items-center gap-5">
-            <Link href="/academy/login" className="text-sm text-gray-500 hover:text-gray-900 transition hidden sm:block">Sign In</Link>
-            <Link href="/academy/login" className="bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium px-5 py-2 rounded-full transition">Get Started</Link>
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="#for-enterprise" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Enterprise</Link>
+            <Link href="#for-smes" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">SME Programmes</Link>
+            <Link href="#capabilities" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Platform</Link>
+            <Link href="#impact" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Impact</Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/academy/login" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition hidden sm:block">Log in</Link>
+            <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition">Sign up</Link>
           </div>
         </div>
       </nav>
 
-      {/* ═══ HERO — Full-width photo grid with overlay text ═══ */}
-      <section className="relative">
-        {/* Photo grid background */}
-        <div className="grid grid-cols-2 lg:grid-cols-4">
-          <div className="aspect-[4/3] relative overflow-hidden">
-            <img src="/images/academy/sme-empowerment.png" alt="African entrepreneurs" className="w-full h-full object-cover object-[0%_0%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-          </div>
-          <div className="aspect-[4/3] relative overflow-hidden">
-            <img src="/images/academy/sme-empowerment.png" alt="Farmer with tablet" className="w-full h-full object-cover object-[100%_0%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-          </div>
-          <div className="aspect-[4/3] relative overflow-hidden hidden lg:block">
-            <img src="/images/academy/sme-empowerment.png" alt="Market vendors" className="w-full h-full object-cover object-[0%_100%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-          </div>
-          <div className="aspect-[4/3] relative overflow-hidden hidden lg:block">
-            <img src="/images/academy/sme-empowerment.png" alt="Business handshake" className="w-full h-full object-cover object-[100%_100%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-          </div>
-        </div>
-
-        {/* Overlay content */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <Reveal>
-              <p className="text-orange-400 font-semibold text-sm tracking-widest uppercase mb-4">
-                Learning & Advisory for Small Business Transformation
-              </p>
-            </Reveal>
-            <Reveal delay={100}>
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                Powering the growth of Africa&rsquo;s most ambitious businesses.
+      {/* ═══ HERO — Revolut-style: gradient bg, massive text, floating product mockup ═══ */}
+      <section className="relative min-h-[100vh] flex items-center pt-16" style={{
+        background: 'linear-gradient(165deg, #FFF7ED 0%, #FFEDD5 25%, #FED7AA 50%, #FDBA74 75%, #FB923C 100%)'
+      }}>
+        <div className="max-w-[1200px] mx-auto px-6 w-full grid lg:grid-cols-2 gap-8 items-center py-16 lg:py-0">
+          {/* Left — text */}
+          <div className="max-w-[560px]">
+            <R>
+              <h1 className="text-[48px] sm:text-[64px] lg:text-[76px] font-bold text-[#1a1a1a] leading-[0.95] tracking-[-0.03em] mb-6">
+                Change the way you build businesses.
               </h1>
-            </Reveal>
-            <Reveal delay={200}>
-              <p className="text-white/80 text-lg sm:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
-                Structured training and advisory programmes that equip entrepreneurs, SME owners, and teams with the capabilities they need to thrive.
+            </R>
+            <R d={100}>
+              <p className="text-[18px] sm:text-[20px] text-[#1a1a1a]/60 leading-[1.5] mb-8 max-w-[440px]">
+                Training and advisory programmes that equip entrepreneurs with the tools to grow. Launch your academy for free, in minutes.
               </p>
-            </Reveal>
-            <Reveal delay={300}>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full transition shadow-lg hover:shadow-xl flex items-center gap-2 justify-center">
-                  Start Building Your Academy <ArrowRight size={18} />
+            </R>
+            <R d={200}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-7 py-3.5 rounded-full transition inline-flex items-center gap-2 justify-center">
+                  Get started <ArrowRight size={18} />
                 </Link>
-                <Link href="/academy/diagnostic" className="text-white font-medium px-8 py-4 rounded-full border border-white/40 hover:border-white/80 hover:bg-white/10 transition flex items-center gap-2 justify-center">
-                  Take the Assessment <ChevronRight size={16} />
+                <Link href="/academy/diagnostic" className="text-[#1a1a1a] text-[16px] font-medium px-7 py-3.5 rounded-full border-2 border-[#1a1a1a]/15 hover:border-[#1a1a1a]/30 transition inline-flex items-center gap-2 justify-center">
+                  Take the assessment
                 </Link>
               </div>
-            </Reveal>
+            </R>
           </div>
-        </div>
-      </section>
 
-      {/* ═══ "I want to..." ═══ */}
-      <section className="py-10 border-b border-gray-100 bg-gray-50/50">
-        <div className="max-w-6xl mx-auto px-6">
-          <p className="text-center text-gray-400 text-sm font-medium tracking-widest uppercase mb-5">I want to&hellip;</p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {audiences.map((a, i) => (
-              <Reveal key={i} delay={i * 60}>
-                <div className={`flex items-center gap-3 p-4 rounded-xl bg-white border hover:shadow-sm transition cursor-pointer group ${a.color}`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-current/10"><a.icon size={18} /></div>
-                  <span className="text-sm font-medium text-gray-800 group-hover:text-orange-600 transition flex-1">{a.label}</span>
-                  <ArrowUpRight size={14} className="text-gray-300 group-hover:text-orange-500 transition" />
+          {/* Right — floating product mockup + person photo */}
+          <R d={200} className="relative flex justify-center lg:justify-end">
+            <div className="relative w-[340px] sm:w-[420px]">
+              {/* Person photo behind */}
+              <div className="rounded-[28px] overflow-hidden shadow-2xl">
+                <img
+                  src="/images/academy/sme-banners-cta.png"
+                  alt="African entrepreneur with tablet in her bakery"
+                  className="w-full aspect-[3/4] object-cover object-[0%_0%]"
+                />
+              </div>
+              {/* Floating dashboard card */}
+              <div className="absolute -bottom-6 -left-10 sm:-left-16 bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-5 w-[240px] sm:w-[280px]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[11px] font-semibold text-[#1a1a1a]/40 uppercase tracking-wider">Academy</span>
+                  <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
                 </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ Impact Stats ═══ */}
-      <section className="py-20 sm:py-24 bg-[#0F1B2D] text-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
-            <Reveal>
-              <div>
-                <p className="text-orange-400 font-semibold text-sm tracking-wide uppercase mb-4">The Opportunity</p>
-                <h2 className="text-3xl sm:text-4xl font-bold leading-tight mb-5" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  Small businesses are the engine of every economy. Most lack the support to reach their potential.
-                </h2>
-                <p className="text-gray-400 text-lg leading-relaxed">
-                  MSMEs create the majority of jobs, drive innovation, and sustain communities across Africa and emerging markets.
-                </p>
-              </div>
-            </Reveal>
-            <div className="grid grid-cols-2 gap-4">
-              {stats.map((s, i) => (
-                <Reveal key={i} delay={i * 80}>
-                  <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
-                    <div className="text-3xl font-bold text-orange-400 mb-1">{s.value}</div>
-                    <div className="text-white/90 text-sm font-medium">{s.label}</div>
-                    <div className="text-white/50 text-xs">{s.sub}</div>
-                    <div className="text-white/30 text-[10px] mt-2 uppercase tracking-wider">{s.source}</div>
+                <p className="text-[13px] font-semibold text-[#1a1a1a] mb-1">SME Growth Programme</p>
+                <div className="text-[28px] font-bold text-[#1a1a1a] tracking-[-0.02em] mb-3">342 <span className="text-[14px] font-normal text-[#1a1a1a]/40">enrolled</span></div>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-[#F5F5F5] rounded-lg p-2 text-center">
+                    <div className="text-[16px] font-bold text-[#E8590C]">91%</div>
+                    <div className="text-[10px] text-[#1a1a1a]/40">completion</div>
                   </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ Offerings with real photos ═══ */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-orange-500 font-semibold text-sm tracking-wide uppercase mb-3">What We Enable</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                Learning solutions for organisations that invest in people.
-              </h2>
-            </div>
-          </Reveal>
-
-          {/* Enterprise */}
-          <Reveal>
-            <div className="grid lg:grid-cols-2 gap-10 items-center mb-20">
-              <div className="rounded-2xl overflow-hidden shadow-xl">
-                <img src="/images/academy/sme-classroom-bakery.png" alt="Professional training and business growth" className="w-full h-[380px] object-cover object-top" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-3">For Enterprise & Teams</p>
-                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  Workplace learning that drives performance.
-                </h3>
-                <p className="text-gray-600 leading-relaxed mb-6">
-                  Design custom training academies for your employees, managers, and leaders. From onboarding to leadership development, deliver structured programmes that build the capabilities your organisation needs.
-                </p>
-                <ul className="space-y-2.5 mb-6">
-                  {['Custom branded academies', 'Cohort-based delivery', 'Impact analytics & reporting', 'Multi-language support'].map((f, j) => (
-                    <li key={j} className="flex items-center gap-2.5 text-sm text-gray-700"><CheckCircle2 size={16} className="text-blue-500 shrink-0" /> {f}</li>
-                  ))}
-                </ul>
-                <Link href="/academy/login" className="inline-flex items-center gap-2 text-blue-600 font-medium text-sm hover:gap-3 transition-all">Learn more <ArrowRight size={15} /></Link>
-              </div>
-            </div>
-          </Reveal>
-
-          {/* SME */}
-          <Reveal>
-            <div className="grid lg:grid-cols-2 gap-10 items-center">
-              <div className="lg:order-2 rounded-2xl overflow-hidden shadow-xl">
-                <img src="/images/academy/sme-banners-cta.png" alt="Small business owners learning and growing" className="w-full h-[380px] object-cover" />
-              </div>
-              <div className="lg:order-1">
-                <p className="text-sm font-semibold uppercase tracking-wide text-orange-600 mb-3">For SME & Entrepreneurship Programmes</p>
-                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  Capability building at continental scale.
-                </h3>
-                <p className="text-gray-600 leading-relaxed mb-6">
-                  Train thousands of small business owners across countries with programmes that combine online learning, live sessions, mentoring, and peer community. Issue verified certificates that build credibility with lenders and investors.
-                </p>
-                <ul className="space-y-2.5 mb-6">
-                  {['Financial literacy programmes', 'Business growth academies', 'Verified certificates with QR codes', 'Peer learning communities'].map((f, j) => (
-                    <li key={j} className="flex items-center gap-2.5 text-sm text-gray-700"><CheckCircle2 size={16} className="text-orange-500 shrink-0" /> {f}</li>
-                  ))}
-                </ul>
-                <Link href="/academy/login" className="inline-flex items-center gap-2 text-orange-600 font-medium text-sm hover:gap-3 transition-all">Learn more <ArrowRight size={15} /></Link>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ═══ Capabilities ═══ */}
-      <section className="py-20 sm:py-28 bg-[#FAFAF8]">
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="max-w-2xl mb-14">
-              <p className="text-orange-500 font-semibold text-sm tracking-wide uppercase mb-3">Platform Capabilities</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                Everything you need. Nothing you don&rsquo;t.
-              </h2>
-              <p className="text-gray-600 text-lg leading-relaxed">From programme design to certificate issuance, Tempo Academy handles the entire learning lifecycle.</p>
-            </div>
-          </Reveal>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {capabilities.map((c, i) => (
-              <Reveal key={i} delay={Math.min(i * 50, 350)}>
-                <div className="bg-white rounded-xl p-6 border border-gray-100 hover:border-orange-200 hover:shadow-sm transition group">
-                  <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition"><c.icon size={20} /></div>
-                  <h3 className="font-semibold text-gray-900 mb-1.5 text-[15px]">{c.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{c.text}</p>
+                  <div className="flex-1 bg-[#F5F5F5] rounded-lg p-2 text-center">
+                    <div className="text-[16px] font-bold text-[#1a1a1a]">6</div>
+                    <div className="text-[10px] text-[#1a1a1a]/40">countries</div>
+                  </div>
+                  <div className="flex-1 bg-[#F5F5F5] rounded-lg p-2 text-center">
+                    <div className="text-[16px] font-bold text-emerald-600">4.8</div>
+                    <div className="text-[10px] text-[#1a1a1a]/40">rating</div>
+                  </div>
                 </div>
-              </Reveal>
-            ))}
+              </div>
+              {/* Floating certificate badge */}
+              <div className="absolute -top-4 -right-4 sm:-right-8 bg-white rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#E8590C]/10 flex items-center justify-center"><Award size={16} className="text-[#E8590C]" /></div>
+                <div>
+                  <p className="text-[11px] font-semibold text-[#1a1a1a]">Certificate Issued</p>
+                  <p className="text-[10px] text-[#1a1a1a]/40">Amina K. — Financial Literacy</p>
+                </div>
+              </div>
+            </div>
+          </R>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 rounded-full border-2 border-[#1a1a1a]/20 flex items-start justify-center p-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#1a1a1a]/30" />
           </div>
         </div>
       </section>
 
-      {/* ═══ How It Works — photo cards ═══ */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-orange-500 font-semibold text-sm tracking-wide uppercase mb-3">How It Works</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>From idea to live programme in days.</h2>
-            </div>
-          </Reveal>
+      {/* ═══ Social proof bar ═══ */}
+      <section className="py-8 bg-white border-b border-black/[0.04]">
+        <div className="max-w-[1200px] mx-auto px-6 flex flex-wrap justify-center items-center gap-x-10 gap-y-3 text-[13px] text-[#1a1a1a]/30 font-medium">
+          <span>Trusted by leading institutions across</span>
+          <span className="text-[#1a1a1a] font-bold">39+ countries</span>
+          <span className="hidden sm:inline">&bull;</span>
+          <span className="text-[#1a1a1a] font-bold">100,000+</span>
+          <span>entrepreneurs trained</span>
+          <span className="hidden sm:inline">&bull;</span>
+          <span className="text-[#1a1a1a] font-bold">90%+</span>
+          <span>completion rate</span>
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-3 gap-8">
+      {/* ═══ Stats — massive, Revolut-bold ═══ */}
+      <section className="py-24 sm:py-32 bg-[#1a1a1a] text-white">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <R>
+            <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-bold leading-[1.05] tracking-[-0.03em] max-w-[700px] mb-20">
+              Small businesses are the backbone of every economy.
+            </h2>
+          </R>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { step: '01', title: 'Design Your Programme', text: 'Choose from ready-made templates or build from scratch. Use AI to generate course outlines and assessments in seconds.', img: '/images/academy/sme-banners-cta.png', pos: 'object-[0%_0%]' },
-              { step: '02', title: 'Enrol Participants', text: 'Send branded invitations. Participants join through a clean, mobile-friendly portal — no app downloads needed.', img: '/images/academy/sme-real-businesses.png', pos: 'object-[100%_0%]' },
-              { step: '03', title: 'Deliver & Measure Impact', text: 'Track progress in real-time, issue verified certificates, and measure real business outcomes.', img: '/images/academy/sme-real-businesses.png', pos: 'object-[100%_100%]' },
+              { end: 90, suffix: '%', label: 'of African jobs', sub: 'created by MSMEs', source: 'IFC' },
+              { end: 50, suffix: 'M+', label: 'small businesses', sub: 'across the continent', source: 'AfDB' },
+              { end: 3, suffix: 'x', label: 'more likely to grow', sub: 'with structured training', source: 'ILO' },
+              { end: 70, suffix: '%', label: 'of GDP growth', sub: 'driven by SMEs globally', source: 'OECD' },
             ].map((s, i) => (
-              <Reveal key={i} delay={i * 120}>
-                <div className="group">
-                  <div className="rounded-xl overflow-hidden mb-5 shadow-md group-hover:shadow-lg transition">
-                    <img src={s.img} alt={s.title} className={`w-full h-52 object-cover group-hover:scale-105 transition duration-500 ${s.pos}`} />
+              <R key={i} d={i * 80}>
+                <div>
+                  <div className="text-[56px] sm:text-[72px] font-bold tracking-[-0.04em] leading-none text-[#E8590C] mb-2">
+                    <Counter end={s.end} suffix={s.suffix} />
                   </div>
-                  <div className="text-xs font-bold text-orange-400 tracking-widest mb-2">STEP {s.step}</div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{s.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{s.text}</p>
+                  <p className="text-[16px] text-white/80 font-medium mb-1">{s.label}</p>
+                  <p className="text-[13px] text-white/30">{s.sub}</p>
+                  <p className="text-[10px] text-white/15 mt-2 uppercase tracking-widest">{s.source}</p>
                 </div>
-              </Reveal>
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ For Enterprise — photo left, text right ═══ */}
+      <section id="for-enterprise" className="py-24 sm:py-32">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <R>
+              <div className="rounded-[28px] overflow-hidden">
+                <img src="/images/academy/sme-classroom-bakery.png" alt="Professional training workshops" className="w-full aspect-[4/3] object-cover object-top" />
+              </div>
+            </R>
+            <R d={100}>
+              <div>
+                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-[12px] font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
+                  For Enterprise & Teams
+                </div>
+                <h2 className="text-[32px] sm:text-[44px] font-bold text-[#1a1a1a] leading-[1.05] tracking-[-0.02em] mb-5">
+                  Workplace learning that actually works.
+                </h2>
+                <p className="text-[17px] text-[#1a1a1a]/50 leading-[1.6] mb-8">
+                  Design custom training academies for your people. From onboarding to leadership — structured programmes that build capabilities your organisation needs to compete.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {['Custom branded academies', 'Cohort-based delivery', 'Real-time impact analytics', 'Multi-language support'].map((f, i) => (
+                    <div key={i} className="flex items-center gap-3 text-[15px] text-[#1a1a1a]/70">
+                      <CheckCircle2 size={18} className="text-blue-500 shrink-0" /> {f}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/academy/login" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
+                  Learn more <ArrowRight size={16} />
+                </Link>
+              </div>
+            </R>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ For SMEs — text left, photo right ═══ */}
+      <section id="for-smes" className="py-24 sm:py-32 bg-[#FAFAFA]">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <R>
+              <div>
+                <div className="inline-flex items-center gap-2 bg-orange-50 text-[#E8590C] text-[12px] font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
+                  For SME & Entrepreneurship Programmes
+                </div>
+                <h2 className="text-[32px] sm:text-[44px] font-bold text-[#1a1a1a] leading-[1.05] tracking-[-0.02em] mb-5">
+                  Capability building at continental scale.
+                </h2>
+                <p className="text-[17px] text-[#1a1a1a]/50 leading-[1.6] mb-8">
+                  Train thousands of small business owners across countries. Combine online learning, live sessions, mentoring, and community. Issue verified certificates that build real credibility with lenders and investors.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {['Financial literacy & business growth', 'Verified certificates with QR codes', 'Peer learning communities', 'Offline-ready, mobile-first'].map((f, i) => (
+                    <div key={i} className="flex items-center gap-3 text-[15px] text-[#1a1a1a]/70">
+                      <CheckCircle2 size={18} className="text-[#E8590C] shrink-0" /> {f}
+                    </div>
+                  ))}
+                </div>
+                <Link href="/academy/login" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#1a1a1a] hover:gap-3 transition-all">
+                  Learn more <ArrowRight size={16} />
+                </Link>
+              </div>
+            </R>
+            <R d={100}>
+              <div className="rounded-[28px] overflow-hidden">
+                <img src="/images/academy/sme-empowerment.png" alt="Entrepreneurs across tech, farming, markets" className="w-full aspect-[4/3] object-cover" />
+              </div>
+            </R>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Full-bleed photo break ═══ */}
+      <R>
+        <img src="/images/academy/sme-real-businesses.png" alt="Empowering businesses across Africa" className="w-full h-[300px] sm:h-[420px] lg:h-[500px] object-cover" />
+      </R>
+
+      {/* ═══ Capabilities — Revolut card grid ═══ */}
+      <section id="capabilities" className="py-24 sm:py-32 bg-[#1a1a1a] text-white">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <R>
+            <div className="max-w-[600px] mb-16">
+              <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-bold leading-[1.05] tracking-[-0.03em] mb-5">
+                One platform. Everything you need.
+              </h2>
+              <p className="text-[17px] text-white/40 leading-[1.6]">
+                From programme design to certificate issuance — the entire learning lifecycle.
+              </p>
+            </div>
+          </R>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { icon: BookOpen, title: 'Structured Programmes', text: 'Multi-week learning journeys with modules, live sessions, and assessments.' },
+              { icon: Users, title: 'Cohort-Based Delivery', text: 'Time-bound cohorts for accountability, peer learning, and community.' },
+              { icon: Award, title: 'Verified Certificates', text: 'QR-verified, LinkedIn-shareable credentials that carry real weight.' },
+              { icon: BarChart3, title: 'Impact Analytics', text: 'Real-time dashboards: completion, engagement, at-risk participants.' },
+              { icon: MessageCircle, title: 'Community & Forums', text: 'Peer discussions, facilitator Q&A, accountability spaces.' },
+              { icon: Zap, title: 'Smart Automation', text: 'Enrolment, reminders, nudges, certificates — all automated.' },
+              { icon: Globe2, title: 'Multi-Language', text: 'English, French, Portuguese — every corner of the continent.' },
+              { icon: Sparkles, title: 'AI Course Builder', text: 'Describe a topic. Get outlines, quizzes, and assignments in seconds.' },
+              { icon: Shield, title: 'White-Label Domains', text: 'Your brand, your domain. Participants see your academy, not ours.' },
+            ].map((c, i) => (
+              <R key={i} d={Math.min(i * 40, 280)}>
+                <div className="bg-white/[0.05] hover:bg-white/[0.08] rounded-2xl p-7 h-full transition-colors duration-300 border border-white/[0.06]">
+                  <c.icon size={22} className="text-[#E8590C] mb-4" />
+                  <h3 className="text-[16px] font-semibold text-white mb-2">{c.title}</h3>
+                  <p className="text-[14px] text-white/35 leading-[1.6]">{c.text}</p>
+                </div>
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ How It Works — 3 bold steps ═══ */}
+      <section className="py-24 sm:py-32">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <R>
+            <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-bold text-center leading-[1.05] tracking-[-0.03em] mb-20">
+              Live in days, not months.
+            </h2>
+          </R>
+          <div className="grid md:grid-cols-3 gap-10">
+            {[
+              { n: '01', title: 'Design', text: 'Pick a template or build from scratch. AI generates outlines and assessments in seconds.', color: 'text-[#E8590C]' },
+              { n: '02', title: 'Enrol', text: 'Send branded invitations. Participants join a clean, mobile-friendly portal. No app needed.', color: 'text-[#E8590C]' },
+              { n: '03', title: 'Measure', text: 'Track progress in real-time. Issue certificates. See the impact on real business outcomes.', color: 'text-[#E8590C]' },
+            ].map((s, i) => (
+              <R key={i} d={i * 120}>
+                <div>
+                  <div className={`text-[80px] font-bold tracking-[-0.04em] leading-none ${s.color} opacity-20 mb-4`}>{s.n}</div>
+                  <h3 className="text-[24px] font-bold text-[#1a1a1a] mb-3 tracking-[-0.01em]">{s.title}</h3>
+                  <p className="text-[15px] text-[#1a1a1a]/45 leading-[1.6]">{s.text}</p>
+                </div>
+              </R>
             ))}
           </div>
         </div>
       </section>
 
       {/* ═══ Testimonials ═══ */}
-      <section className="py-20 sm:py-28 bg-[#FAFAF8]">
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-14">
-              <p className="text-orange-500 font-semibold text-sm tracking-wide uppercase mb-3">Impact Stories</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                Trusted by organisations building the future of African enterprise.
-              </h2>
-            </div>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <Reveal key={i} delay={i * 80}>
-                <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm flex flex-col h-full">
-                  <div className="flex gap-0.5 mb-4">{[1,2,3,4,5].map(j => <Star key={j} size={14} className="fill-orange-400 text-orange-400" />)}</div>
-                  <p className="text-gray-700 leading-relaxed flex-1 mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>&ldquo;{t.quote}&rdquo;</p>
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="font-semibold text-gray-900 text-sm">{t.author}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">{t.org}</p>
+      <section id="impact" className="py-24 sm:py-32 bg-[#FAFAFA]">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <R>
+            <h2 className="text-[32px] sm:text-[44px] font-bold text-center leading-[1.05] tracking-[-0.02em] mb-16">
+              Trusted across the continent.
+            </h2>
+          </R>
+          <div className="grid lg:grid-cols-3 gap-5">
+            {[
+              { q: 'We trained 340 SME owners across 6 countries in 4 months. Completion stayed above 90%.', a: 'Head of Enterprise Development', o: 'Pan-African DFI' },
+              { q: 'Our entrepreneurs finally have a structured path. The verified certificates give them credibility with lenders.', a: 'Director of SME Programmes', o: 'Regional Chamber of Commerce' },
+              { q: 'We replaced three tools with one. The academy lives inside our HR platform — one place for everything.', a: 'Chief People Officer', o: 'Leading African Fintech' },
+            ].map((t, i) => (
+              <R key={i} d={i * 80}>
+                <div className="bg-white rounded-2xl p-8 h-full flex flex-col border border-black/[0.04]">
+                  <div className="flex gap-0.5 mb-5">{[1,2,3,4,5].map(j => <Star key={j} size={14} className="fill-[#E8590C] text-[#E8590C]" />)}</div>
+                  <p className="text-[17px] text-[#1a1a1a]/80 leading-[1.55] flex-1 mb-6">&ldquo;{t.q}&rdquo;</p>
+                  <div className="border-t border-black/[0.04] pt-4">
+                    <p className="text-[14px] font-semibold text-[#1a1a1a]">{t.a}</p>
+                    <p className="text-[12px] text-[#1a1a1a]/30 mt-0.5">{t.o}</p>
                   </div>
                 </div>
-              </Reveal>
+              </R>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ Why Tempo — with real photo ═══ */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
-            <Reveal>
-              <div className="rounded-2xl overflow-hidden shadow-xl">
-                <img src="/images/academy/sme-empowerment.png" alt="African entrepreneurs thriving" className="w-full h-[420px] object-cover" />
+      {/* ═══ Why Tempo — image + text ═══ */}
+      <section className="py-24 sm:py-32">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <R>
+              <div className="rounded-[28px] overflow-hidden">
+                <img src="/images/academy/sme-empowerment.png" alt="Entrepreneurs thriving" className="w-full aspect-square object-cover" />
               </div>
-            </Reveal>
-            <Reveal delay={100}>
+            </R>
+            <R d={100}>
               <div>
-                <p className="text-orange-500 font-semibold text-sm tracking-wide uppercase mb-3">Why Tempo Academy</p>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                <h2 className="text-[32px] sm:text-[40px] font-bold text-[#1a1a1a] leading-[1.05] tracking-[-0.02em] mb-8">
                   Not just a platform. A partner in building capable businesses.
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {[
-                    ['Built for Africa, ready for the world', 'Low bandwidth, mobile-first, offline-capable, multi-language. Powerful enough for any market.'],
-                    ['Embedded in your HR ecosystem', 'One system for people management and learning. Zero integration headaches.'],
-                    ['Cohort-first, not content-first', 'Learning happens in community. Built around peer learning and facilitator-led experiences.'],
-                    ['From free to enterprise scale', 'Start with 25 participants for free. Scale to thousands as your impact grows.'],
+                    ['Built for Africa, ready for the world', 'Mobile-first, low-bandwidth, offline-capable, multi-language.'],
+                    ['Embedded in your HR ecosystem', 'One system for people management and learning. No integrations to manage.'],
+                    ['Cohort-first, not content-first', 'Real learning happens in community. Built for peer accountability.'],
+                    ['From free to enterprise scale', 'Start with 25 participants free. Scale to thousands.'],
                   ].map(([title, text], i) => (
-                    <div key={i} className="flex gap-3">
-                      <CheckCircle2 size={18} className="text-orange-500 shrink-0 mt-0.5" />
-                      <div><h4 className="font-semibold text-gray-900 text-sm">{title}</h4><p className="text-gray-500 text-sm leading-relaxed">{text}</p></div>
+                    <div key={i} className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-[#E8590C]/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <CheckCircle2 size={16} className="text-[#E8590C]" />
+                      </div>
+                      <div>
+                        <h4 className="text-[15px] font-semibold text-[#1a1a1a] mb-0.5">{title}</h4>
+                        <p className="text-[14px] text-[#1a1a1a]/40 leading-[1.5]">{text}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </Reveal>
+            </R>
           </div>
         </div>
       </section>
 
-      {/* ═══ Final CTA — photo background ═══ */}
-      <section className="relative py-24 sm:py-32 overflow-hidden">
-        <div className="absolute inset-0">
-          <img src="/images/academy/sme-real-businesses.png" alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gray-900/80" />
-        </div>
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <Reveal>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-              The next generation of African entrepreneurs is waiting.
+      {/* ═══ Final CTA — Revolut gradient style ═══ */}
+      <section className="py-24 sm:py-32 relative overflow-hidden" style={{
+        background: 'linear-gradient(165deg, #FFF7ED 0%, #FFEDD5 30%, #FED7AA 60%, #FDBA74 100%)'
+      }}>
+        <div className="max-w-[680px] mx-auto px-6 text-center relative z-10">
+          <R>
+            <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-bold text-[#1a1a1a] leading-[1.05] tracking-[-0.03em] mb-6">
+              The next generation of entrepreneurs is waiting.
             </h2>
-            <p className="text-gray-300 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-              Give them the structured learning, mentorship, and credentials they need to build businesses that create jobs and transform communities.
+            <p className="text-[17px] text-[#1a1a1a]/50 leading-[1.5] mb-10 max-w-[480px] mx-auto">
+              Give them the learning, mentorship, and credentials they need to build businesses that transform communities.
             </p>
-          </Reveal>
-          <Reveal delay={150}>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link href="/academy/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
-                Start Building Your Academy <ArrowRight size={18} />
+          </R>
+          <R d={100}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
+              <Link href="/academy/login" className="bg-[#1a1a1a] hover:bg-[#333] text-white text-[16px] font-medium px-8 py-4 rounded-full transition inline-flex items-center gap-2 justify-center">
+                Get started — it&rsquo;s free <ArrowRight size={18} />
               </Link>
-              <Link href="/academy/login" className="text-white/90 hover:text-white font-medium px-6 py-4 rounded-full border border-white/30 hover:border-white/60 transition text-base">
-                Schedule a Demo
+              <Link href="/academy/login" className="text-[#1a1a1a] text-[16px] font-medium px-8 py-4 rounded-full border-2 border-[#1a1a1a]/15 hover:border-[#1a1a1a]/30 transition">
+                Schedule a demo
               </Link>
             </div>
-            <p className="text-gray-400 text-sm">Free for up to 25 participants. No credit card required.</p>
-          </Reveal>
+            <p className="text-[13px] text-[#1a1a1a]/30">Free for up to 25 participants. No credit card required.</p>
+          </R>
         </div>
       </section>
 
-      {/* ═══ Footer ═══ */}
-      <footer className="bg-[#0A1220] text-gray-500 py-10 border-t border-gray-800">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center"><span className="text-white font-bold text-xs">/</span></div>
-            <span className="text-sm text-gray-400">tempo academy</span>
-          </div>
-          <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Tempo. Building capable businesses across Africa and beyond.</p>
+      {/* ═══ Footer — minimal ═══ */}
+      <footer className="bg-[#1a1a1a] py-8">
+        <div className="max-w-[1200px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-white/20">
+          <span className="text-[16px] font-bold text-white/40">tempo<span className="text-[#E8590C]">.</span></span>
+          <p>&copy; {new Date().getFullYear()} Tempo. Building capable businesses across Africa and beyond.</p>
           <div className="flex gap-6">
-            <Link href="/privacy" className="text-xs hover:text-gray-300 transition">Privacy</Link>
-            <Link href="/terms" className="text-xs hover:text-gray-300 transition">Terms</Link>
+            <Link href="/privacy" className="hover:text-white/50 transition">Privacy</Link>
+            <Link href="/terms" className="hover:text-white/50 transition">Terms</Link>
           </div>
         </div>
       </footer>
