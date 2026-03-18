@@ -103,11 +103,58 @@ async function buildCertificateData(
 
 export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url)
+    const action = url.searchParams.get('action') || 'preview'
+
+    // ── Public verify action — no auth required ──
+    if (action === 'verify') {
+      const certificateNumber = url.searchParams.get('certificateNumber')
+      if (!certificateNumber) {
+        return NextResponse.json({ error: 'certificateNumber is required' }, { status: 400 })
+      }
+
+      // Query certificate by number (public — no org filter)
+      const [certRow] = await db.select().from(schema.academyCertificates)
+        .where(eq(schema.academyCertificates.certificateNumber, certificateNumber))
+
+      if (!certRow) {
+        return NextResponse.json({ error: 'Certificate not found' }, { status: 404 })
+      }
+
+      const cert = certRow as CertificateRecord
+
+      // Fetch participant name and academy name (non-sensitive data only)
+      const [[participant], [academy]] = await Promise.all([
+        db.select({ fullName: schema.academyParticipants.fullName })
+          .from(schema.academyParticipants)
+          .where(eq(schema.academyParticipants.id, cert.participantId)),
+        db.select({
+          name: schema.academies.name,
+          logoUrl: schema.academies.logoUrl,
+          brandColor: schema.academies.brandColor,
+        })
+          .from(schema.academies)
+          .where(eq(schema.academies.id, cert.academyId)),
+      ])
+
+      return NextResponse.json({
+        data: {
+          participantName: participant?.fullName || 'Participant',
+          academyName: academy?.name || 'Academy',
+          academyLogoUrl: academy?.logoUrl || null,
+          academyBrandColor: academy?.brandColor || '#2563eb',
+          certificateName: cert.name,
+          issuedAt: cert.issuedAt,
+          certificateNumber: cert.certificateNumber,
+          status: cert.status,
+        },
+      })
+    }
+
+    // ── All other actions require auth ──
     const orgId = request.headers.get('x-org-id')
     if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const url = new URL(request.url)
-    const action = url.searchParams.get('action') || 'preview'
     const certificateId = url.searchParams.get('certificateId')
     const academyId = url.searchParams.get('academyId')
     const participantId = url.searchParams.get('participantId')
@@ -121,7 +168,7 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'preview': {
-        const html = generateCertificateHTML(certData)
+        const html = await generateCertificateHTML(certData)
         return new NextResponse(html, {
           status: 200,
           headers: { 'Content-Type': 'text/html; charset=utf-8' },

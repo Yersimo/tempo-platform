@@ -11,6 +11,8 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
+import { FileUpload } from '@/components/ui/file-upload'
+import { Skeleton, SkeletonCard, SkeletonStatCard, SkeletonTable } from '@/components/ui/skeleton'
 import { useTempo } from '@/lib/store'
 import { useAcademyData } from '@/lib/hooks/use-academy-data'
 import { cn } from '@/lib/utils/cn'
@@ -21,8 +23,12 @@ import {
   Send, Bell, Mail, Clock, AlertTriangle, Search,
   ArrowUp, ArrowDown, X, Hash, FileText, Zap,
   TrendingUp, Activity, CheckCircle2, XCircle, Filter,
-  MoreHorizontal, Copy, ExternalLink, Sparkles
+  MoreHorizontal, Copy, ExternalLink, Sparkles,
+  Webhook, Languages, Package, Link2, Trash2, RefreshCw,
+  Wand2, DollarSign, Monitor, LayoutTemplate, Loader2
 } from 'lucide-react'
+import { generateCourseOutline, generateQuizQuestions, type CourseOutline, type GeneratedQuizQuestion } from '@/lib/ai-engine'
+import { ACADEMY_TEMPLATES, type AcademyTemplate } from '@/lib/academy-templates'
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -333,6 +339,15 @@ export default function AcademiesPage() {
   const [emailsPaste, setEmailsPaste] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
 
+  // ── AI Course Builder State ──
+  const [aiTopic, setAiTopic] = useState('')
+  const [aiLevel, setAiLevel] = useState('beginner')
+  const [aiDuration, setAiDuration] = useState(12)
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiOutline, setAiOutline] = useState<CourseOutline | null>(null)
+  const [aiModuleQuizzes, setAiModuleQuizzes] = useState<Record<number, GeneratedQuizQuestion[]>>({})
+  const [aiQuizGenerating, setAiQuizGenerating] = useState<number | null>(null)
+
   // ── Triggers state ──
   const [triggers, setTriggers] = useState<AutomatedTrigger[]>([
     { id: 'enrollment_confirm', name: 'Enrollment Confirmation', description: 'Sent when a participant enrolls in the academy', icon: <CheckCircle2 size={16} />, enabled: true },
@@ -490,62 +505,155 @@ export default function AcademiesPage() {
     setWizardOpen(true)
   }, [])
 
-  const saveAcademy = useCallback((status: 'draft' | 'active') => {
+  const [saving, setSaving] = useState(false)
+
+  const saveAcademy = useCallback(async (status: 'draft' | 'active') => {
     const newAcademy: Academy = { ...draft, status, created_at: new Date().toISOString() }
     if (newAcademy.cohorts.length === 0 && draftCohort.name) {
       newAcademy.cohorts = [draftCohort]
     }
-    setAcademies(prev => [...prev, newAcademy])
+
+    if (academyAPI.isProduction) {
+      setSaving(true)
+      try {
+        const created = await academyAPI.createAcademyAPI({
+          name: newAcademy.name,
+          description: newAcademy.description,
+          slug: newAcademy.slug,
+          logoUrl: newAcademy.logo_url,
+          brandColor: newAcademy.brand_color,
+          welcomeMessage: newAcademy.welcome_message,
+          enrollmentType: newAcademy.enrollment_type,
+          status: newAcademy.status,
+          communityEnabled: newAcademy.community_enabled,
+          languages: newAcademy.languages,
+          completionRules: newAcademy.completion_rules,
+          curriculumCourseIds: newAcademy.curriculum_course_ids,
+          curriculumPathIds: newAcademy.curriculum_path_ids,
+        })
+        if (created) {
+          newAcademy.id = created.id || newAcademy.id
+        }
+        // Create cohort if provided
+        if (draftCohort.name && created) {
+          await academyAPI.createCohortAPI({
+            academyId: created.id || newAcademy.id,
+            name: draftCohort.name,
+            start_date: draftCohort.start_date,
+            end_date: draftCohort.end_date,
+            facilitator_name: draftCohort.facilitator_name,
+          })
+        }
+        // Refresh academies from API
+        const refreshed = await academyAPI.fetchAcademies()
+        if (refreshed) setAcademies(refreshed)
+      } catch (err) {
+        console.error('[Academies] Failed to create academy via API', err)
+        addToast('Failed to create academy. Please try again.', 'error')
+        setSaving(false)
+        return
+      }
+      setSaving(false)
+    } else {
+      setAcademies(prev => [...prev, newAcademy])
+    }
+
     setWizardOpen(false)
     addToast(status === 'active' ? `${newAcademy.name} launched successfully!` : `${newAcademy.name} saved as draft`, 'success')
-  }, [draft, draftCohort, addToast])
+  }, [draft, draftCohort, addToast, academyAPI])
 
-  const sendBroadcast = useCallback(() => {
+  const sendBroadcast = useCallback(async () => {
     if (!selectedAcademy || !broadcastSubject) return
     const recipientCount = broadcastRecipient === 'all' ? totalParticipantCount : 1
-    const newComm: CommunicationLog = {
-      id: `comm_${Date.now()}`,
-      academy_id: selectedAcademy.id,
-      type: 'broadcast',
-      subject: broadcastSubject,
-      recipient_count: recipientCount,
-      status: 'sent',
-      sent_at: new Date().toISOString(),
+
+    if (academyAPI.isProduction) {
+      try {
+        const result = await academyAPI.sendBroadcastAPI({
+          academy_id: selectedAcademy.id,
+          subject: broadcastSubject,
+          body: broadcastBody,
+          recipient_count: recipientCount,
+        })
+        if (result) {
+          setCommunications(prev => [result, ...prev])
+        }
+        // Refresh comms
+        const refreshed = await academyAPI.fetchCommunications(selectedAcademy.id)
+        if (refreshed) setCommunications(refreshed)
+      } catch (err) {
+        console.error('[Academies] Failed to send broadcast via API', err)
+        addToast('Failed to send broadcast. Please try again.', 'error')
+        return
+      }
+    } else {
+      const newComm: CommunicationLog = {
+        id: `comm_${Date.now()}`,
+        academy_id: selectedAcademy.id,
+        type: 'broadcast',
+        subject: broadcastSubject,
+        recipient_count: recipientCount,
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+      }
+      setCommunications(prev => [newComm, ...prev])
     }
-    setCommunications(prev => [newComm, ...prev])
+
     setBroadcastOpen(false)
     setBroadcastSubject('')
     setBroadcastBody('')
     addToast(`Broadcast sent to ${recipientCount} participants`, 'success')
-  }, [selectedAcademy, broadcastSubject, broadcastRecipient, totalParticipantCount, addToast])
+  }, [selectedAcademy, broadcastSubject, broadcastBody, broadcastRecipient, totalParticipantCount, addToast, academyAPI])
 
   const sendNudge = useCallback((participant: Participant) => {
     addToast(`Nudge sent to ${participant.name}`, 'success')
   }, [addToast])
 
-  const inviteParticipant = useCallback(() => {
+  const inviteParticipant = useCallback(async () => {
     if (!inviteName || !inviteEmail || !selectedAcademy) return
-    const newP: Participant = {
-      id: `part_${Date.now()}`,
-      name: inviteName,
-      email: inviteEmail,
-      business_name: inviteBusiness,
-      country: 'Unknown',
-      language: 'English',
-      academy_id: selectedAcademy.id,
-      cohort_id: selectedAcademy.cohorts[0]?.id || '',
-      progress: 0,
-      status: 'active',
-      enrolled_date: new Date().toISOString().slice(0, 10),
-      last_active: new Date().toISOString(),
+
+    if (academyAPI.isProduction) {
+      try {
+        const created = await academyAPI.createParticipantAPI({
+          academy_id: selectedAcademy.id,
+          cohort_id: selectedAcademy.cohorts[0]?.id || '',
+          name: inviteName,
+          email: inviteEmail,
+          business_name: inviteBusiness,
+          country: 'Unknown',
+          language: 'English',
+        })
+        if (created) {
+          setParticipants(prev => [...prev, created])
+        }
+      } catch (err) {
+        console.error('[Academies] Failed to create participant via API', err)
+        addToast('Failed to invite participant. Please try again.', 'error')
+        return
+      }
+    } else {
+      const newP: Participant = {
+        id: `part_${Date.now()}`,
+        name: inviteName,
+        email: inviteEmail,
+        business_name: inviteBusiness,
+        country: 'Unknown',
+        language: 'English',
+        academy_id: selectedAcademy.id,
+        cohort_id: selectedAcademy.cohorts[0]?.id || '',
+        progress: 0,
+        status: 'active',
+        enrolled_date: new Date().toISOString().slice(0, 10),
+        last_active: new Date().toISOString(),
+      }
+      setParticipants(prev => [...prev, newP])
     }
-    setParticipants(prev => [...prev, newP])
+
     setInviteOpen(false)
     setInviteName('')
     setInviteEmail('')
     setInviteBusiness('')
     addToast(`Invitation sent to ${inviteName}`, 'success')
-  }, [inviteName, inviteEmail, inviteBusiness, selectedAcademy, addToast])
+  }, [inviteName, inviteEmail, inviteBusiness, selectedAcademy, addToast, academyAPI])
 
   const updateDraft = useCallback((updates: Partial<Academy>) => {
     setDraft(prev => ({ ...prev, ...updates }))
@@ -594,6 +702,72 @@ export default function AcademiesPage() {
     setTriggers(prev => prev.map(t => t.id === triggerId ? { ...t, enabled: !t.enabled } : t))
   }, [])
 
+  // ── Settings State ──
+  const [settingsSubTab, setSettingsSubTab] = useState<'scorm' | 'domains' | 'webhooks' | 'translations'>('scorm')
+  const [domains, setDomains] = useState<any[]>([])
+  const [newDomain, setNewDomain] = useState('')
+  const [domainLoading, setDomainLoading] = useState(false)
+  const [webhooks, setWebhooks] = useState<any[]>([])
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookEvents, setWebhookEvents] = useState<string[]>([])
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [webhookLoading, setWebhookLoading] = useState(false)
+  const [webhookLogs, setWebhookLogs] = useState<any[]>([])
+  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null)
+  const [translations, setTranslations] = useState<Record<string, string>>({})
+  const [translationLocale, setTranslationLocale] = useState('fr')
+  const [translationKey, setTranslationKey] = useState('')
+  const [translationValue, setTranslationValue] = useState('')
+  const [translationLoading, setTranslationLoading] = useState(false)
+
+  // ── Settings Data Loaders ──
+  const loadDomains = useCallback(async () => {
+    if (!academyAPI.isProduction || !selectedAcademyId) return
+    setDomainLoading(true)
+    try {
+      const res = await fetch(`/api/academy/domains?action=list&academyId=${selectedAcademyId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setDomains(data.data || [])
+      }
+    } catch { /* ignore */ }
+    setDomainLoading(false)
+  }, [academyAPI.isProduction, selectedAcademyId])
+
+  const loadWebhooks = useCallback(async () => {
+    if (!academyAPI.isProduction || !selectedAcademyId) return
+    setWebhookLoading(true)
+    try {
+      const res = await fetch(`/api/academy/webhooks?action=list&academyId=${selectedAcademyId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setWebhooks(data.data || [])
+      }
+    } catch { /* ignore */ }
+    setWebhookLoading(false)
+  }, [academyAPI.isProduction, selectedAcademyId])
+
+  const loadTranslations = useCallback(async () => {
+    if (!academyAPI.isProduction || !selectedAcademyId) return
+    setTranslationLoading(true)
+    try {
+      const res = await fetch(`/api/academy/i18n?action=translations&academyId=${selectedAcademyId}&locale=${translationLocale}`)
+      if (res.ok) {
+        const data = await res.json()
+        setTranslations(data.data || {})
+      }
+    } catch { /* ignore */ }
+    setTranslationLoading(false)
+  }, [academyAPI.isProduction, selectedAcademyId, translationLocale])
+
+  // Load settings data when settings tab is active
+  useEffect(() => {
+    if (activeTab !== 'settings' || !selectedAcademyId) return
+    if (settingsSubTab === 'domains') loadDomains()
+    if (settingsSubTab === 'webhooks') loadWebhooks()
+    if (settingsSubTab === 'translations') loadTranslations()
+  }, [activeTab, settingsSubTab, selectedAcademyId, loadDomains, loadWebhooks, loadTranslations])
+
   // ── Tabs Config ──
   const tabs = [
     { id: 'academies', label: 'Academies' },
@@ -601,6 +775,7 @@ export default function AcademiesPage() {
     { id: 'dashboard', label: 'Programme Dashboard' },
     { id: 'communications', label: 'Communications' },
     { id: 'participants', label: 'Participants' },
+    { id: 'settings', label: 'Settings' },
   ]
 
   // ── Wizard Steps ──
@@ -615,8 +790,15 @@ export default function AcademiesPage() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-tempo-600 border-t-transparent rounded-full" />
+      <div className="min-h-screen">
+        <Header title="Academies" subtitle="Create and manage learning programmes for external participants" />
+        <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
+          <Skeleton height="h-10" width="w-96" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={4} />
+          </div>
+        </div>
       </div>
     )
   }
@@ -1057,15 +1239,258 @@ export default function AcademiesPage() {
 
   // ─── Step 3: Curriculum ───────────────────────────────────────────────────
 
+  function handleGenerateOutline() {
+    if (!aiTopic.trim()) return
+    setAiGenerating(true)
+    setAiModuleQuizzes({})
+    // Simulate async to show loading state
+    setTimeout(() => {
+      const outline = generateCourseOutline(aiTopic.trim(), aiLevel, aiDuration)
+      setAiOutline(outline)
+      setAiGenerating(false)
+    }, 600)
+  }
+
+  function handleGenerateQuiz(moduleIndex: number, moduleTopic: string) {
+    setAiQuizGenerating(moduleIndex)
+    setTimeout(() => {
+      const questions = generateQuizQuestions(moduleTopic, 5)
+      setAiModuleQuizzes(prev => ({ ...prev, [moduleIndex]: questions }))
+      setAiQuizGenerating(null)
+    }, 400)
+  }
+
+  function handleAddAiCourseToAcademy() {
+    if (!aiOutline) return
+    // Create a synthetic course ID and add to curriculum
+    const courseId = `ai_course_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    setDraft(prev => ({
+      ...prev,
+      curriculum_course_ids: [...prev.curriculum_course_ids, courseId],
+    }))
+    addToast(`"${aiOutline.title}" added to curriculum`, 'success')
+    setAiOutline(null)
+    setAiTopic('')
+    setAiModuleQuizzes({})
+  }
+
+  function handleDeployTemplate(template: AcademyTemplate) {
+    const durationWeeks = parseInt(template.duration) || 12
+    const startDate = new Date()
+    const endDate = new Date(startDate.getTime() + durationWeeks * 7 * 86400000)
+    setDraft(prev => ({
+      ...prev,
+      name: template.name,
+      description: template.description,
+      slug: template.id,
+      brand_color: template.icon === 'DollarSign' ? '#059669' : template.icon === 'Users' ? '#9333ea' : '#2563eb',
+      welcome_message: `Welcome to the ${template.name}! This programme is designed for ${template.targetAudience}.`,
+      languages: template.languages,
+      enrollment_type: 'private',
+    }))
+    setDraftCohort(prev => ({
+      ...prev,
+      name: `${template.name} - Cohort 1`,
+      start_date: startDate.toISOString().slice(0, 10),
+      end_date: endDate.toISOString().slice(0, 10),
+    }))
+    addToast(`Template "${template.name}" loaded. Review and customise each step.`, 'success')
+    setWizardStep(0)
+  }
+
   function renderStep3Curriculum() {
     const availableCourses = courses || []
     const availablePaths = learningPaths || []
+
+    const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
+      DollarSign: <DollarSign size={20} />,
+      Users: <Users size={20} />,
+      Monitor: <Monitor size={20} />,
+    }
 
     return (
       <div className="max-w-4xl space-y-6">
         <div>
           <h3 className="text-base font-semibold text-t1 mb-1">Build Your Curriculum</h3>
-          <p className="text-sm text-t3">Select courses and learning paths to include in this academy.</p>
+          <p className="text-sm text-t3">Select courses and learning paths, use AI to generate new content, or start from a template.</p>
+        </div>
+
+        {/* ── AI Course Generator ─────────────────────────────── */}
+        <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+              <Wand2 size={16} className="text-purple-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-t1">AI Course Generator</h4>
+              <p className="text-xs text-t3">Generate a full course outline with modules and quizzes using AI</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-3 sm:col-span-1">
+              <Input
+                label="Topic"
+                id="ai-topic"
+                placeholder="e.g., Financial Literacy for SME Owners"
+                value={aiTopic}
+                onChange={e => setAiTopic(e.target.value)}
+              />
+            </div>
+            <div>
+              <Select
+                label="Level"
+                value={aiLevel}
+                onChange={e => setAiLevel(e.target.value)}
+                options={[
+                  { value: 'beginner', label: 'Beginner' },
+                  { value: 'intermediate', label: 'Intermediate' },
+                  { value: 'advanced', label: 'Advanced' },
+                ]}
+              />
+            </div>
+            <div>
+              <Input
+                label="Duration (hours)"
+                id="ai-duration"
+                type="number"
+                value={aiDuration}
+                onChange={e => setAiDuration(Number(e.target.value) || 1)}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleGenerateOutline}
+            disabled={!aiTopic.trim() || aiGenerating}
+            variant="secondary"
+          >
+            {aiGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {aiGenerating ? 'Generating...' : 'Generate Course Outline'}
+          </Button>
+
+          {/* Generated Outline */}
+          {aiOutline && (
+            <div className="mt-4 space-y-3 border-t border-purple-200 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="text-sm font-semibold text-t1">{aiOutline.title}</h5>
+                  <p className="text-xs text-t3 mt-0.5">{aiOutline.description}</p>
+                </div>
+                <Badge variant="info">{aiOutline.total_duration_hours}h total</Badge>
+              </div>
+
+              <div className="space-y-2">
+                {aiOutline.modules.map((mod, idx) => (
+                  <div key={idx} className="rounded-lg border border-gray-200 bg-white p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-t1">{mod.title}</p>
+                        <p className="text-xs text-t3 mt-0.5">
+                          {mod.lessons.length} lessons &middot; {mod.duration_minutes} min
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleGenerateQuiz(idx, mod.title.replace(/^Module \d+: /, ''))}
+                        disabled={aiQuizGenerating === idx}
+                      >
+                        {aiQuizGenerating === idx ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <FileText size={14} />
+                        )}
+                        {aiModuleQuizzes[idx] ? 'Regenerate Quiz' : 'Generate Quiz'}
+                      </Button>
+                    </div>
+
+                    {/* Lessons */}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {mod.lessons.map((lesson, li) => (
+                        <span key={li} className="text-[0.65rem] bg-gray-50 text-t3 px-2 py-0.5 rounded">
+                          {lesson}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Quiz Questions */}
+                    {aiModuleQuizzes[idx] && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                        <p className="text-xs font-medium text-t2 uppercase tracking-wide">Quiz Questions ({aiModuleQuizzes[idx].length})</p>
+                        {aiModuleQuizzes[idx].map((q, qi) => (
+                          <div key={qi} className="text-xs p-2 bg-green-50 rounded-lg border border-green-100">
+                            <p className="font-medium text-t1">{q.question}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="success">{q.type.replace('_', ' ')}</Badge>
+                              <span className="text-t3">{q.points} pts</span>
+                              <span className="text-green-700 font-medium">Answer: {q.correct_answer}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleAddAiCourseToAcademy}>
+                  <Plus size={16} />
+                  Add to Academy Curriculum
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Pre-Built Templates ─────────────────────────────── */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <LayoutTemplate size={16} className="text-t3" />
+            <h4 className="text-sm font-semibold text-t1">Quick Start Templates</h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {ACADEMY_TEMPLATES.map(template => (
+              <div
+                key={template.id}
+                className="rounded-xl border border-gray-200 p-4 hover:border-tempo-300 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center text-t2 group-hover:bg-tempo-50 group-hover:text-tempo-600 transition-colors">
+                    {TEMPLATE_ICONS[template.icon] || <BookOpen size={20} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-t1 truncate">{template.name}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-t3 line-clamp-2 mb-3">{template.description}</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <Badge variant="default">{template.modules} modules</Badge>
+                  <Badge variant="default">{template.duration}</Badge>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => handleDeployTemplate(template)}
+                >
+                  <Rocket size={14} />
+                  Deploy Template
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Divider ─────────────────────────────── */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-divider" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-card px-3 text-xs text-t3 uppercase tracking-wide">Or select existing courses</span>
+          </div>
         </div>
 
         {/* Selected Count */}
@@ -2021,6 +2446,360 @@ export default function AcademiesPage() {
     )
   }
 
+  // ─── Render: Tab 6 — Settings (SCORM, Domains, Webhooks, Translations) ───
+
+  function renderSettingsTab() {
+    const SETTINGS_WEBHOOK_EVENTS = [
+      'participant.enrolled', 'participant.completed', 'participant.dropped',
+      'course.completed', 'session.started', 'certificate.issued',
+    ]
+
+    const addDomain = async () => {
+      if (!newDomain || !selectedAcademyId) return
+      setDomainLoading(true)
+      try {
+        const res = await fetch('/api/academy/domains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add-domain', academyId: selectedAcademyId, domain: newDomain }),
+        })
+        if (res.ok) {
+          setNewDomain('')
+          addToast(`Domain ${newDomain} added. Please configure DNS.`, 'success')
+          await loadDomains()
+        } else { addToast('Failed to add domain', 'error') }
+      } catch { addToast('Failed to add domain', 'error') }
+      setDomainLoading(false)
+    }
+
+    const verifyDomain = async (domainId: string) => {
+      setDomainLoading(true)
+      try {
+        const res = await fetch('/api/academy/domains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify-domain', domainId }),
+        })
+        if (res.ok) { addToast('Domain verification initiated', 'success'); await loadDomains() }
+      } catch { /* ignore */ }
+      setDomainLoading(false)
+    }
+
+    const createWebhook = async () => {
+      if (!webhookUrl || webhookEvents.length === 0 || !selectedAcademyId) return
+      setWebhookLoading(true)
+      try {
+        const res = await fetch('/api/academy/webhooks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create', academyId: selectedAcademyId, url: webhookUrl, events: webhookEvents, secret: webhookSecret }),
+        })
+        if (res.ok) { setWebhookUrl(''); setWebhookEvents([]); setWebhookSecret(''); addToast('Webhook created', 'success'); await loadWebhooks() }
+      } catch { addToast('Failed to create webhook', 'error') }
+      setWebhookLoading(false)
+    }
+
+    const deleteWebhook = async (whId: string) => {
+      try {
+        await fetch('/api/academy/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', webhookId: whId }) })
+        addToast('Webhook deleted', 'success'); await loadWebhooks()
+      } catch { /* ignore */ }
+    }
+
+    const viewWebhookLogs = async (whId: string) => {
+      setSelectedWebhookId(whId)
+      try {
+        const res = await fetch(`/api/academy/webhooks?action=logs&webhookId=${whId}`)
+        if (res.ok) { const data = await res.json(); setWebhookLogs(data.data || []) }
+      } catch { /* ignore */ }
+    }
+
+    const saveTranslation = async () => {
+      if (!translationKey || !translationValue || !selectedAcademyId) return
+      try {
+        const res = await fetch('/api/academy/i18n', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set-translation', academyId: selectedAcademyId, locale: translationLocale, key: translationKey, value: translationValue }),
+        })
+        if (res.ok) { setTranslations(prev => ({ ...prev, [translationKey]: translationValue })); setTranslationKey(''); setTranslationValue(''); addToast('Translation saved', 'success') }
+      } catch { addToast('Failed to save translation', 'error') }
+    }
+
+    const toggleWHEvent = (event: string) => {
+      setWebhookEvents(prev => prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event])
+    }
+
+    const domainStatusVariant = (status: string) => {
+      if (status === 'active' || status === 'verified') return 'success' as const
+      if (status === 'failed') return 'error' as const
+      return 'warning' as const
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-t1">Academy Settings</h2>
+            <p className="text-sm text-t3 mt-0.5">Configure SCORM, domains, webhooks, and translations</p>
+          </div>
+          {academies.length > 1 && (
+            <div className="w-64">
+              <Select value={selectedAcademyId} onChange={e => setSelectedAcademyId(e.target.value)} options={academies.map(a => ({ value: a.id, label: a.name }))} placeholder="Select Academy" />
+            </div>
+          )}
+        </div>
+
+        {/* Sub-tab navigation */}
+        <div className="flex gap-2 border-b border-divider pb-px">
+          {([
+            { id: 'scorm' as const, label: 'SCORM Packages', icon: <Package size={14} /> },
+            { id: 'domains' as const, label: 'Custom Domains', icon: <Globe size={14} /> },
+            { id: 'webhooks' as const, label: 'Webhooks', icon: <Webhook size={14} /> },
+            { id: 'translations' as const, label: 'Translations', icon: <Languages size={14} /> },
+          ]).map(tab => (
+            <button key={tab.id} onClick={() => setSettingsSubTab(tab.id)} className={cn(
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              settingsSubTab === tab.id ? 'border-tempo-600 text-tempo-700' : 'border-transparent text-t3 hover:text-t1'
+            )}>
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* SCORM Upload */}
+        {settingsSubTab === 'scorm' && (
+          <div className="space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-1">Upload SCORM Package</h3>
+              <p className="text-xs text-t3 mb-4">Upload a SCORM 1.2 or SCORM 2004 package (.zip) to add interactive e-learning content to this academy.</p>
+              <FileUpload accept=".zip" maxSizeMB={200} entityType="scorm-package" entityId={selectedAcademyId} onUploaded={async (result) => {
+                try {
+                  await fetch('/api/academy/scorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'upload-package', academyId: selectedAcademyId, fileUrl: result.url, fileName: result.name, fileSize: result.size }) })
+                  addToast(`SCORM package "${result.name}" uploaded successfully`, 'success')
+                } catch { addToast('Failed to process SCORM package', 'error') }
+              }} />
+            </Card>
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-2">SCORM Requirements</h3>
+              <ul className="space-y-2 text-xs text-t2">
+                <li className="flex items-center gap-2"><CheckCircle2 size={12} className="text-green-500" /> SCORM 1.2 and SCORM 2004 (3rd/4th edition) supported</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={12} className="text-green-500" /> Maximum file size: 200 MB</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={12} className="text-green-500" /> Package must contain imsmanifest.xml</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={12} className="text-green-500" /> Progress and completion tracking automatically enabled</li>
+              </ul>
+            </Card>
+          </div>
+        )}
+
+        {/* Custom Domains */}
+        {settingsSubTab === 'domains' && (
+          <div className="space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-1">Add Custom Domain</h3>
+              <p className="text-xs text-t3 mb-4">Use your own domain (e.g., academy.yourcompany.com) for a branded experience.</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1"><Input placeholder="academy.yourcompany.com" value={newDomain} onChange={e => setNewDomain(e.target.value)} icon={<Globe size={14} />} /></div>
+                <Button onClick={addDomain} disabled={!newDomain || domainLoading}>
+                  {domainLoading ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
+                  Add Domain
+                </Button>
+              </div>
+            </Card>
+            <Card padding="none">
+              <CardHeader><CardTitle>Configured Domains</CardTitle></CardHeader>
+              {domainLoading && domains.length === 0 ? (
+                <div className="p-6"><SkeletonTable columns={3} rows={2} /></div>
+              ) : domains.length === 0 ? (
+                <div className="p-8 text-center"><Globe size={24} className="mx-auto text-t3 opacity-30 mb-2" /><p className="text-sm text-t3">No custom domains configured yet.</p></div>
+              ) : (
+                <div className="divide-y divide-divider">
+                  {domains.map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Link2 size={16} className="text-t3" />
+                        <div>
+                          <p className="text-sm font-medium text-t1">{d.domain}</p>
+                          <p className="text-xs text-t3">Added {d.createdAt ? formatDate(d.createdAt) : '--'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={domainStatusVariant(d.status)}>{(d.status || 'pending').charAt(0).toUpperCase() + (d.status || 'pending').slice(1)}</Badge>
+                        {d.status !== 'active' && d.status !== 'verified' && (
+                          <Button size="sm" variant="secondary" onClick={() => verifyDomain(d.id)}><RefreshCw size={12} /> Verify</Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+            <Card className="bg-blue-50/50 border-blue-200">
+              <h3 className="text-sm font-semibold text-blue-800 mb-2">DNS Configuration</h3>
+              <div className="space-y-2 text-xs text-blue-700">
+                <p>To connect your domain, add the following DNS records:</p>
+                <div className="bg-white rounded-lg p-3 font-mono text-xs space-y-1">
+                  <p><span className="text-t3">Type:</span> CNAME</p>
+                  <p><span className="text-t3">Name:</span> academy (or your subdomain)</p>
+                  <p><span className="text-t3">Value:</span> academy.tempo.com</p>
+                  <p><span className="text-t3">TTL:</span> 300</p>
+                </div>
+                <p>DNS changes may take up to 48 hours to propagate. Click &quot;Verify&quot; to check status.</p>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Webhooks */}
+        {settingsSubTab === 'webhooks' && (
+          <div className="space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-1">Create Webhook</h3>
+              <p className="text-xs text-t3 mb-4">Receive real-time notifications when events occur in your academy.</p>
+              <div className="space-y-4">
+                <Input label="Endpoint URL" placeholder="https://yourapp.com/webhooks/academy" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} icon={<Link2 size={14} />} />
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-t2 tracking-wide uppercase">Events</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SETTINGS_WEBHOOK_EVENTS.map(event => (
+                      <button key={event} onClick={() => toggleWHEvent(event)} className={cn(
+                        'px-3 py-1.5 rounded-lg text-xs font-medium transition-all border',
+                        webhookEvents.includes(event) ? 'border-tempo-300 bg-tempo-50 text-tempo-700' : 'border-gray-200 text-t3 hover:border-gray-300'
+                      )}>
+                        {webhookEvents.includes(event) && <Check size={10} className="inline mr-1" />}
+                        {event}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Input label="Signing Secret (optional)" placeholder="whsec_..." value={webhookSecret} onChange={e => setWebhookSecret(e.target.value)} />
+                <div className="flex justify-end">
+                  <Button onClick={createWebhook} disabled={!webhookUrl || webhookEvents.length === 0 || webhookLoading}>
+                    {webhookLoading ? <RefreshCw size={14} className="animate-spin" /> : <Webhook size={14} />}
+                    Create Webhook
+                  </Button>
+                </div>
+              </div>
+            </Card>
+            <Card padding="none">
+              <CardHeader><CardTitle>Active Webhooks</CardTitle></CardHeader>
+              {webhookLoading && webhooks.length === 0 ? (
+                <div className="p-6"><SkeletonTable columns={3} rows={2} /></div>
+              ) : webhooks.length === 0 ? (
+                <div className="p-8 text-center"><Webhook size={24} className="mx-auto text-t3 opacity-30 mb-2" /><p className="text-sm text-t3">No webhooks configured.</p></div>
+              ) : (
+                <div className="divide-y divide-divider">
+                  {webhooks.map((wh: any) => (
+                    <div key={wh.id} className="flex items-center justify-between px-6 py-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-mono text-t1 truncate">{wh.url}</p>
+                        <div className="flex gap-1.5 mt-1">{(wh.events || []).map((e: string) => <Badge key={e} variant="default">{e}</Badge>)}</div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button size="sm" variant="ghost" onClick={() => viewWebhookLogs(wh.id)}><FileText size={12} /> Logs</Button>
+                        <Button size="sm" variant="ghost" className="text-error" onClick={() => deleteWebhook(wh.id)}><Trash2 size={12} /></Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+            {selectedWebhookId && (
+              <Card padding="none">
+                <CardHeader>
+                  <div className="flex items-center justify-between w-full">
+                    <CardTitle>Delivery Logs</CardTitle>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedWebhookId(null)}><X size={12} /> Close</Button>
+                  </div>
+                </CardHeader>
+                {webhookLogs.length === 0 ? (
+                  <div className="p-8 text-center"><p className="text-sm text-t3">No delivery logs found.</p></div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr className="border-b border-divider">
+                        <th className="text-left px-6 py-3 text-xs font-medium text-t3 uppercase">Timestamp</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-t3 uppercase">Event</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-t3 uppercase">Status</th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-t3 uppercase">Duration</th>
+                      </tr></thead>
+                      <tbody>
+                        {webhookLogs.map((log: any, i: number) => (
+                          <tr key={i} className="border-b border-divider last:border-0">
+                            <td className="px-6 py-3 text-sm text-t2">{log.timestamp ? formatDate(log.timestamp) : '--'}</td>
+                            <td className="px-6 py-3 text-sm text-t1">{log.event || '--'}</td>
+                            <td className="px-6 py-3 text-right"><Badge variant={log.statusCode && log.statusCode < 400 ? 'success' : 'error'}>{log.statusCode || 'N/A'}</Badge></td>
+                            <td className="px-6 py-3 text-right text-sm text-t3">{log.duration || '--'}ms</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Translations */}
+        {settingsSubTab === 'translations' && (
+          <div className="space-y-4">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-1">Multi-language Content</h3>
+              <p className="text-xs text-t3 mb-4">Manage translations for your academy content in different languages.</p>
+              <div className="flex items-center gap-3 mb-6">
+                <label className="text-xs font-medium text-t2">Language:</label>
+                <div className="flex gap-2">
+                  {[{ id: 'en', label: 'English' }, { id: 'fr', label: 'French' }, { id: 'pt', label: 'Portuguese' }].map(lang => (
+                    <button key={lang.id} onClick={() => setTranslationLocale(lang.id)} className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all border',
+                      translationLocale === lang.id ? 'border-tempo-300 bg-tempo-50 text-tempo-700' : 'border-gray-200 text-t3 hover:border-gray-300'
+                    )}>{lang.label}</button>
+                  ))}
+                </div>
+                <Button size="sm" variant="ghost" onClick={loadTranslations} disabled={translationLoading}>
+                  <RefreshCw size={12} className={translationLoading ? 'animate-spin' : ''} />
+                </Button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input label="Translation Key" placeholder="e.g., welcome_message, module_1_title" value={translationKey} onChange={e => setTranslationKey(e.target.value)} />
+                  <Input label="Translated Value" placeholder="Enter translation..." value={translationValue} onChange={e => setTranslationValue(e.target.value)} />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={saveTranslation} disabled={!translationKey || !translationValue}><Check size={14} /> Save Translation</Button>
+                </div>
+              </div>
+            </Card>
+            <Card padding="none">
+              <CardHeader><CardTitle>Translations ({translationLocale.toUpperCase()})</CardTitle></CardHeader>
+              {translationLoading ? (
+                <div className="p-6"><SkeletonTable columns={2} rows={3} /></div>
+              ) : Object.keys(translations).length === 0 ? (
+                <div className="p-8 text-center"><Languages size={24} className="mx-auto text-t3 opacity-30 mb-2" /><p className="text-sm text-t3">No translations for {translationLocale.toUpperCase()} yet.</p></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead><tr className="border-b border-divider"><th className="text-left px-6 py-3 text-xs font-medium text-t3 uppercase">Key</th><th className="text-left px-6 py-3 text-xs font-medium text-t3 uppercase">Value</th></tr></thead>
+                    <tbody>
+                      {Object.entries(translations).map(([tkey, tval]) => (
+                        <tr key={tkey} className="border-b border-divider last:border-0 hover:bg-canvas/50">
+                          <td className="px-6 py-3 text-sm font-mono text-t2">{tkey}</td>
+                          <td className="px-6 py-3 text-sm text-t1">{tval}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // ─── Main Render ───────────────────────────────────────────────────────────
 
   return (
@@ -2041,7 +2820,7 @@ export default function AcademiesPage() {
           tabs={tabs}
           active={activeTab}
           onChange={setActiveTab}
-          maxVisible={5}
+          maxVisible={6}
         />
 
         {activeTab === 'academies' && renderAcademiesList()}

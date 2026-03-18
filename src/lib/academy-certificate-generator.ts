@@ -14,6 +14,7 @@
  */
 
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib'
+import QRCode from 'qrcode'
 
 // ============================================================
 // TYPES
@@ -50,6 +51,44 @@ function formatDate(d: Date | string): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+  })
+}
+
+// ============================================================
+// VERIFICATION URL
+// ============================================================
+
+const VERIFICATION_BASE_URL = 'https://theworktempo.com/verify'
+
+function getVerificationUrl(certificateNumber: string): string {
+  return `${VERIFICATION_BASE_URL}/${encodeURIComponent(certificateNumber)}`
+}
+
+/**
+ * Generate a QR code as a PNG buffer for embedding in PDF.
+ */
+async function generateQRCodeBuffer(url: string): Promise<Buffer> {
+  const dataUrl = await QRCode.toDataURL(url, {
+    width: 120,
+    margin: 1,
+    color: { dark: '#333333', light: '#ffffff' },
+    errorCorrectionLevel: 'M',
+  })
+  // Strip the data URL prefix to get raw base64
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
+  return Buffer.from(base64, 'base64')
+}
+
+/**
+ * Generate a QR code as an SVG string for embedding in HTML.
+ */
+async function generateQRCodeSVG(url: string): Promise<string> {
+  return QRCode.toString(url, {
+    type: 'svg',
+    width: 80,
+    margin: 1,
+    color: { dark: '#333333', light: '#ffffff' },
+    errorCorrectionLevel: 'M',
   })
 }
 
@@ -182,6 +221,29 @@ export async function generateCertificatePDF(data: CertificateData): Promise<Buf
   // ---- BOTTOM DECORATIVE LINE ----
   page.drawLine({ start: { x: 120, y: 75 }, end: { x: pageWidth - 120, y: 75 }, thickness: 1.5, color: goldRgb })
 
+  // ---- QR CODE (bottom-right corner) ----
+  try {
+    const verificationUrl = getVerificationUrl(data.certificateNumber)
+    const qrBuffer = await generateQRCodeBuffer(verificationUrl)
+    const qrImage = await doc.embedPng(qrBuffer)
+    const qrSize = 65
+    const qrX = pageWidth - borderInset - 15 - qrSize
+    const qrY = borderInset + 15
+    page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize })
+    // Label under QR
+    const qrLabel = 'Scan to verify'
+    const qrLabelWidth = fontSans.widthOfTextAtSize(qrLabel, 7)
+    page.drawText(qrLabel, {
+      x: qrX + (qrSize - qrLabelWidth) / 2,
+      y: qrY - 9,
+      size: 7,
+      font: fontSans,
+      color: mediumRgb,
+    })
+  } catch {
+    // QR generation failed silently — certificate is still valid without it
+  }
+
   // Serialize
   const pdfBytes = await doc.save()
   return Buffer.from(pdfBytes)
@@ -272,12 +334,20 @@ function drawSeal(
  * Generate an HTML string that renders the certificate.
  * Suitable for browser preview and print-to-PDF.
  */
-export function generateCertificateHTML(data: CertificateData): string {
+export async function generateCertificateHTML(data: CertificateData): Promise<string> {
   const brandColor = data.brandColor || '#2563eb'
   const goldColor = '#C29A3A'
   const issuedDate = formatDate(data.issuedAt)
   const sigName = data.signatoryName || 'Program Director'
   const sigTitle = data.signatoryTitle || 'Academy Administration'
+  const verificationUrl = getVerificationUrl(data.certificateNumber)
+
+  let qrSvg = ''
+  try {
+    qrSvg = await generateQRCodeSVG(verificationUrl)
+  } catch {
+    // QR generation failed — proceed without it
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -522,6 +592,27 @@ export function generateCertificateHTML(data: CertificateData): string {
     margin-top: 6px;
   }
 
+  /* QR Code */
+  .qr-section {
+    position: absolute;
+    bottom: 28px;
+    right: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .qr-section svg {
+    width: 65px;
+    height: 65px;
+  }
+  .qr-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 7px;
+    color: #999;
+    letter-spacing: 0.5px;
+  }
+
   @media print {
     body { background: white; }
     .certificate { box-shadow: none; }
@@ -606,6 +697,11 @@ export function generateCertificateHTML(data: CertificateData): string {
     <div class="bottom-decorative-line"></div>
     <div class="cert-number">Certificate No. ${escapeHtml(data.certificateNumber)}</div>
   </div>
+
+  ${qrSvg ? `<div class="qr-section">
+    ${qrSvg}
+    <span class="qr-label">Scan to verify</span>
+  </div>` : ''}
 </div>
 </body>
 </html>`

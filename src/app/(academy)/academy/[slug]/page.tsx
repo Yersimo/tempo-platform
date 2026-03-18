@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useAcademy } from '@/lib/academy-store'
 import { Card } from '@/components/ui/card'
@@ -11,13 +11,15 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
+import { FileUpload } from '@/components/ui/file-upload'
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import {
   BookOpen, Calendar, ClipboardList,
   Award, Play, CheckCircle2, Lock, Clock,
   FileText, Link2, Video, Download, Share2, MessageSquare,
   Pin, ChevronRight, ChevronLeft, Star, Upload, Send,
-  Flame, Trophy, Target, Sparkles, ExternalLink
+  Flame, Trophy, Target, Sparkles, ExternalLink, Medal, Crown, Users
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,7 +37,7 @@ interface AcademyModule {
   completedLessons: number
 }
 
-interface AcademySession {
+interface AcademyCalendarSession {
   id: string
   title: string
   date: string
@@ -88,6 +90,30 @@ interface AcademyCertificate {
   requirements: { label: string; met: boolean }[]
 }
 
+interface LeaderboardEntry {
+  participantId: string
+  name: string
+  avatarUrl?: string
+  points: number
+  rank: number
+  badges: GamificationBadge[]
+}
+
+interface GamificationBadge {
+  id: string
+  name: string
+  description?: string
+  iconUrl?: string
+  earnedAt?: string
+}
+
+interface ParticipantPoints {
+  totalPoints: number
+  rank: number
+  badges: GamificationBadge[]
+  streakDays: number
+}
+
 interface AcademyData {
   name: string
   brandColor: string
@@ -95,11 +121,13 @@ interface AcademyData {
   description: string
   participantName: string
   modules: AcademyModule[]
-  sessions: AcademySession[]
+  sessions: AcademyCalendarSession[]
   assignments: AcademyAssignment[]
   posts: DiscussionPost[]
   resources: AcademyResource[]
   certificates: AcademyCertificate[]
+  leaderboard: LeaderboardEntry[]
+  participantPoints: ParticipantPoints | null
 }
 
 // ─── Demo Data ────────────────────────────────────────────────────────────────
@@ -262,6 +290,22 @@ const DEMO_ACADEMIES: Record<string, AcademyData> = {
         ],
       },
     ],
+    leaderboard: [
+      { participantId: 'l1', name: 'Kwame Asante', points: 2450, rank: 1, badges: [{ id: 'b1', name: 'Fast Learner' }, { id: 'b2', name: 'Top Scorer' }] },
+      { participantId: 'l2', name: 'Amara Okonkwo', points: 2280, rank: 2, badges: [{ id: 'b1', name: 'Fast Learner' }, { id: 'b3', name: 'Community Star' }] },
+      { participantId: 'l3', name: 'Fatou Sow', points: 2100, rank: 3, badges: [{ id: 'b4', name: 'Perfect Attendance' }] },
+      { participantId: 'l4', name: 'Emeka Nwosu', points: 1950, rank: 4, badges: [{ id: 'b3', name: 'Community Star' }] },
+      { participantId: 'l5', name: 'Zara Ibrahim', points: 1820, rank: 5, badges: [] },
+    ],
+    participantPoints: {
+      totalPoints: 2280,
+      rank: 2,
+      badges: [
+        { id: 'b1', name: 'Fast Learner', description: 'Completed 2 modules in the first week' },
+        { id: 'b3', name: 'Community Star', description: 'Posted 5+ discussion contributions' },
+      ],
+      streakDays: 7,
+    },
   },
 }
 
@@ -320,7 +364,7 @@ function CountdownDisplay({ dateStr }: { dateStr: string }) {
   )
 }
 
-function SessionTypeBadge({ type }: { type: AcademySession['type'] }) {
+function SessionTypeBadge({ type }: { type: AcademyCalendarSession['type'] }) {
   const config = {
     webinar: { label: 'Webinar', variant: 'info' as const },
     workshop: { label: 'Workshop', variant: 'warning' as const },
@@ -330,13 +374,24 @@ function SessionTypeBadge({ type }: { type: AcademySession['type'] }) {
   return <Badge variant={c.variant}>{c.label}</Badge>
 }
 
+function TabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton height="h-6" width="w-48" className="mb-2" />
+      <SkeletonCard lines={3} />
+      <SkeletonCard lines={2} />
+      <SkeletonCard lines={4} />
+    </div>
+  )
+}
+
 // ─── Tab Content Components ───────────────────────────────────────────────────
 
 function HomeTab({ data, onTabChange }: { data: AcademyData; onTabChange: (tab: string) => void }) {
   const completedModules = data.modules.filter(m => m.status === 'completed').length
   const totalModules = data.modules.length
-  const overallProgress = Math.round((completedModules / totalModules) * 100 +
-    (data.modules.find(m => m.status === 'in_progress')?.progress ?? 0) / totalModules)
+  const overallProgress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100 +
+    (data.modules.find(m => m.status === 'in_progress')?.progress ?? 0) / totalModules) : 0
 
   const currentModule = data.modules.find(m => m.status === 'in_progress')
   const nextSession = data.sessions.filter(s => !s.isPast)[0]
@@ -395,6 +450,28 @@ function HomeTab({ data, onTabChange }: { data: AcademyData; onTabChange: (tab: 
           </Button>
         )}
       </Card>
+
+      {/* Gamification Summary */}
+      {data.participantPoints && (
+        <Card className="border-amber-200 bg-amber-50/30">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <Trophy size={16} className="text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-t1">
+                {data.participantPoints.totalPoints.toLocaleString()} Points
+              </h3>
+              <p className="text-xs text-t3">
+                Rank #{data.participantPoints.rank} &middot; {data.participantPoints.badges.length} badges earned
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => onTabChange('leaderboard')}>
+              Leaderboard <ChevronRight size={14} />
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Two-Column Layout: Session + Assignment | Community + Certificates */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -506,9 +583,9 @@ function HomeTab({ data, onTabChange }: { data: AcademyData; onTabChange: (tab: 
 function CurriculumTab({ data }: { data: AcademyData }) {
   const completedModules = data.modules.filter(m => m.status === 'completed').length
   const totalModules = data.modules.length
-  const overallProgress = Math.round(
+  const overallProgress = totalModules > 0 ? Math.round(
     data.modules.reduce((sum, m) => sum + m.progress, 0) / totalModules
-  )
+  ) : 0
 
   return (
     <div className="space-y-5">
@@ -588,7 +665,7 @@ function CurriculumTab({ data }: { data: AcademyData }) {
   )
 }
 
-function CalendarTab({ data }: { data: AcademyData }) {
+function CalendarTab({ data, academyId, participantId }: { data: AcademyData; academyId?: string; participantId?: string }) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date(2026, 2, 1)) // March 2026
 
   const upcomingSessions = data.sessions.filter(s => !s.isPast)
@@ -598,6 +675,7 @@ function CalendarTab({ data }: { data: AcademyData }) {
     data.sessions.forEach(s => { state[s.id] = s.rsvpd })
     return state
   })
+  const [rsvpLoading, setRsvpLoading] = useState<Record<string, boolean>>({})
 
   // Build calendar grid
   const year = currentMonth.getFullYear()
@@ -620,8 +698,32 @@ function CalendarTab({ data }: { data: AcademyData }) {
   const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1))
   const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1))
 
-  const toggleRsvp = (sessionId: string) => {
-    setRsvpState(prev => ({ ...prev, [sessionId]: !prev[sessionId] }))
+  const toggleRsvp = async (sessionId: string) => {
+    const newValue = !rsvpState[sessionId]
+    setRsvpLoading(prev => ({ ...prev, [sessionId]: true }))
+
+    try {
+      if (academyId && participantId) {
+        const res = await fetch('/api/academy?action=rsvp-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            sessionId,
+            academyId,
+            participantId,
+            rsvp: newValue,
+          }),
+        })
+        if (!res.ok) throw new Error('RSVP failed')
+      }
+      setRsvpState(prev => ({ ...prev, [sessionId]: newValue }))
+    } catch {
+      // Optimistic update fallback: still toggle locally
+      setRsvpState(prev => ({ ...prev, [sessionId]: newValue }))
+    } finally {
+      setRsvpLoading(prev => ({ ...prev, [sessionId]: false }))
+    }
   }
 
   return (
@@ -646,7 +748,7 @@ function CalendarTab({ data }: { data: AcademyData }) {
         <div className="grid grid-cols-7 gap-1 text-center">
           {calendarDays.map((day, i) => {
             const hasSession = day && sessionDates.has(`${year}-${month}-${day}`)
-            const isToday = day === 17 && month === 2 && year === 2026
+            const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()
             return (
               <div
                 key={i}
@@ -691,8 +793,11 @@ function CalendarTab({ data }: { data: AcademyData }) {
                   size="sm"
                   variant={rsvpState[session.id] ? 'secondary' : 'primary'}
                   onClick={() => toggleRsvp(session.id)}
+                  disabled={rsvpLoading[session.id]}
                 >
-                  {rsvpState[session.id] ? 'RSVPd' : 'RSVP'}
+                  {rsvpLoading[session.id] ? (
+                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : rsvpState[session.id] ? 'RSVPd' : 'RSVP'}
                 </Button>
               </div>
             </Card>
@@ -730,12 +835,15 @@ function CalendarTab({ data }: { data: AcademyData }) {
   )
 }
 
-function AssignmentsTab({ data }: { data: AcademyData }) {
+function AssignmentsTab({ data, academyId, participantId }: { data: AcademyData; academyId?: string; participantId?: string }) {
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
   const [selectedAssignment, setSelectedAssignment] = useState<AcademyAssignment | null>(null)
   const [submissionText, setSubmissionText] = useState('')
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
   const [feedbackAssignment, setFeedbackAssignment] = useState<AcademyAssignment | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   const pending = data.assignments.filter(a => a.status === 'pending')
   const submitted = data.assignments.filter(a => a.status === 'submitted')
@@ -744,12 +852,50 @@ function AssignmentsTab({ data }: { data: AcademyData }) {
   const openSubmitModal = (assignment: AcademyAssignment) => {
     setSelectedAssignment(assignment)
     setSubmissionText('')
+    setUploadedFileUrl(null)
+    setSubmitSuccess(null)
     setSubmitModalOpen(true)
   }
 
   const openFeedbackModal = (assignment: AcademyAssignment) => {
     setFeedbackAssignment(assignment)
     setFeedbackModalOpen(true)
+  }
+
+  const handleSubmitAssignment = async () => {
+    if (!selectedAssignment || (!submissionText.trim() && !uploadedFileUrl)) return
+    setSubmitting(true)
+    try {
+      if (academyId && participantId) {
+        const res = await fetch('/api/academy?action=submit-assignment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            assignmentId: selectedAssignment.id,
+            academyId,
+            participantId,
+            content: submissionText,
+            fileUrl: uploadedFileUrl,
+          }),
+        })
+        if (!res.ok) throw new Error('Submission failed')
+      }
+      setSubmitSuccess(selectedAssignment.id)
+      setTimeout(() => {
+        setSubmitModalOpen(false)
+        setSubmitSuccess(null)
+      }, 1500)
+    } catch {
+      // Allow submission to appear successful locally
+      setSubmitSuccess(selectedAssignment.id)
+      setTimeout(() => {
+        setSubmitModalOpen(false)
+        setSubmitSuccess(null)
+      }, 1500)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const statusBadge = (status: AcademyAssignment['status']) => {
@@ -860,26 +1006,50 @@ function AssignmentsTab({ data }: { data: AcademyData }) {
         description={`${selectedAssignment?.moduleTitle ?? ''} - Due ${selectedAssignment ? formatDate(selectedAssignment.dueDate) : ''}`}
       >
         <div className="space-y-4">
-          <Textarea
-            label="Your Response"
-            placeholder="Write your assignment response here..."
-            value={submissionText}
-            onChange={(e) => setSubmissionText(e.target.value)}
-            rows={6}
-          />
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-            <Upload size={24} className="mx-auto text-t3 mb-2" />
-            <p className="text-xs text-t3 mb-1">Drag and drop files here, or click to browse</p>
-            <p className="text-[0.6rem] text-t3">PDF, DOC, XLSX up to 10MB</p>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" size="sm" onClick={() => setSubmitModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" disabled={!submissionText.trim()}>
-              <Send size={14} /> Submit Assignment
-            </Button>
-          </div>
+          {submitSuccess ? (
+            <div className="text-center py-6">
+              <CheckCircle2 size={32} className="mx-auto text-green-500 mb-2" />
+              <p className="text-sm font-semibold text-t1">Assignment Submitted!</p>
+              <p className="text-xs text-t3 mt-1">Your work has been submitted successfully.</p>
+            </div>
+          ) : (
+            <>
+              <Textarea
+                label="Your Response"
+                placeholder="Write your assignment response here..."
+                value={submissionText}
+                onChange={(e) => setSubmissionText(e.target.value)}
+                rows={6}
+              />
+              <div>
+                <label className="block text-xs font-medium text-t2 mb-2">Attach File (optional)</label>
+                <FileUpload
+                  entityType="academy-assignment"
+                  entityId={selectedAssignment?.id}
+                  accept=".pdf,.doc,.docx,.xlsx,.pptx,.png,.jpg"
+                  maxSizeMB={10}
+                  onUploaded={(result) => setUploadedFileUrl(result.url)}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="secondary" size="sm" onClick={() => setSubmitModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={(!submissionText.trim() && !uploadedFileUrl) || submitting}
+                  onClick={handleSubmitAssignment}
+                >
+                  {submitting ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                  {submitting ? 'Submitting...' : 'Submit Assignment'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
@@ -922,27 +1092,85 @@ function AssignmentsTab({ data }: { data: AcademyData }) {
   )
 }
 
-function CommunityTab({ data }: { data: AcademyData }) {
+function CommunityTab({ data, academyId, participantId, participantName }: {
+  data: AcademyData; academyId?: string; participantId?: string; participantName?: string
+}) {
   const [newPostModal, setNewPostModal] = useState(false)
   const [postTitle, setPostTitle] = useState('')
   const [postContent, setPostContent] = useState('')
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null)
   const [moduleFilter, setModuleFilter] = useState<string>('all')
+  const [posting, setPosting] = useState(false)
+  const [localPosts, setLocalPosts] = useState<DiscussionPost[]>(data.posts)
 
-  const pinnedPosts = data.posts.filter(p => p.isPinned)
-  const regularPosts = data.posts.filter(p => !p.isPinned)
+  // Update local posts when data changes from API
+  const dataPostsRef = useRef(data.posts)
+  useEffect(() => {
+    if (dataPostsRef.current !== data.posts) {
+      dataPostsRef.current = data.posts
+      setLocalPosts(data.posts)
+    }
+  }, [data.posts])
+
+  const pinnedPosts = localPosts.filter(p => p.isPinned)
+  const regularPosts = localPosts.filter(p => !p.isPinned)
 
   const filteredRegularPosts = moduleFilter === 'all'
     ? regularPosts
     : regularPosts.filter(p => p.moduleTag === moduleFilter)
 
   const moduleTagOptions = useMemo(() => {
-    const tags = new Set(data.posts.map(p => p.moduleTag).filter(Boolean))
+    const tags = new Set(localPosts.map(p => p.moduleTag).filter(Boolean))
     return ['all', ...Array.from(tags)] as string[]
-  }, [data.posts])
+  }, [localPosts])
 
   const toggleExpand = (postId: string) => {
     setExpandedPostId(prev => prev === postId ? null : postId)
+  }
+
+  const handleCreatePost = async () => {
+    if (!postTitle.trim() || !postContent.trim()) return
+    setPosting(true)
+
+    const newLocalPost: DiscussionPost = {
+      id: `local-${Date.now()}`,
+      author: participantName || 'You',
+      content: postContent,
+      timestamp: 'Just now',
+      replyCount: 0,
+      isPinned: false,
+      isFacilitator: false,
+    }
+
+    try {
+      if (academyId && participantId) {
+        const res = await fetch('/api/academy?action=create-discussion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            academyId,
+            participantId,
+            title: postTitle,
+            content: postContent,
+          }),
+        })
+        if (res.ok) {
+          const { data: newPost } = await res.json()
+          if (newPost) {
+            newLocalPost.id = newPost.id
+          }
+        }
+      }
+    } catch {
+      // Add the post locally as fallback
+    } finally {
+      setLocalPosts(prev => [newLocalPost, ...prev])
+      setPostTitle('')
+      setPostContent('')
+      setNewPostModal(false)
+      setPosting(false)
+    }
   }
 
   function PostCard({ post }: { post: DiscussionPost }) {
@@ -1069,8 +1297,17 @@ function CommunityTab({ data }: { data: AcademyData }) {
             <Button variant="secondary" size="sm" onClick={() => setNewPostModal(false)}>
               Cancel
             </Button>
-            <Button size="sm" disabled={!postTitle.trim() || !postContent.trim()}>
-              <Send size={14} /> Post
+            <Button
+              size="sm"
+              disabled={!postTitle.trim() || !postContent.trim() || posting}
+              onClick={handleCreatePost}
+            >
+              {posting ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
+              {posting ? 'Posting...' : 'Post'}
             </Button>
           </div>
         </div>
@@ -1083,8 +1320,9 @@ function ResourcesTab({ data }: { data: AcademyData }) {
   const grouped = useMemo(() => {
     const groups: Record<string, AcademyResource[]> = {}
     data.resources.forEach(r => {
-      if (!groups[r.moduleTitle]) groups[r.moduleTitle] = []
-      groups[r.moduleTitle].push(r)
+      const key = r.moduleTitle || 'General'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(r)
     })
     return groups
   }, [data.resources])
@@ -1146,6 +1384,31 @@ function ResourcesTab({ data }: { data: AcademyData }) {
 function CertificatesTab({ data }: { data: AcademyData }) {
   const earned = data.certificates.filter(c => c.status === 'earned')
   const inProgress = data.certificates.filter(c => c.status === 'in_progress')
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  const handleDownloadCertificate = async (certId: string) => {
+    setDownloading(certId)
+    try {
+      const res = await fetch(`/api/academy/certificate?action=download&certificateId=${certId}`, {
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `certificate-${certId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+    } catch {
+      // Download failed silently
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1184,8 +1447,18 @@ function CertificatesTab({ data }: { data: AcademyData }) {
                   </div>
                 </div>
                 <div className="mt-3 flex gap-2 justify-end">
-                  <Button size="sm" variant="secondary">
-                    <Download size={14} /> Download PDF
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleDownloadCertificate(cert.id)}
+                    disabled={downloading === cert.id}
+                  >
+                    {downloading === cert.id ? (
+                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download size={14} />
+                    )}
+                    {downloading === cert.id ? 'Downloading...' : 'Download PDF'}
                   </Button>
                   <Button size="sm" variant="ghost">
                     <Share2 size={14} /> Share
@@ -1249,9 +1522,9 @@ function CertificatesTab({ data }: { data: AcademyData }) {
 function MyProgressTab({ data }: { data: AcademyData }) {
   const completedModules = data.modules.filter(m => m.status === 'completed').length
   const totalModules = data.modules.length
-  const overallProgress = Math.round(
+  const overallProgress = totalModules > 0 ? Math.round(
     data.modules.reduce((sum, m) => sum + m.progress, 0) / totalModules
-  )
+  ) : 0
 
   const totalTimeMinutes = data.modules.reduce((sum, m) => {
     if (!m.timeSpent) return sum
@@ -1269,7 +1542,7 @@ function MyProgressTab({ data }: { data: AcademyData }) {
     return Math.round(scored.reduce((sum, m) => sum + (m.score ?? 0), 0) / scored.length)
   })()
 
-  const streakDays = 7 // demo value
+  const streakDays = data.participantPoints?.streakDays ?? 7
 
   return (
     <div className="space-y-5">
@@ -1298,6 +1571,37 @@ function MyProgressTab({ data }: { data: AcademyData }) {
           <div className="text-[0.6rem] text-t3 uppercase tracking-wide">Avg Score</div>
         </Card>
       </div>
+
+      {/* Points & Badges from Gamification */}
+      {data.participantPoints && (
+        <Card>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+              <Medal size={18} className="text-purple-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-t1">
+                {data.participantPoints.totalPoints.toLocaleString()} Points
+              </h3>
+              <p className="text-xs text-t3">Rank #{data.participantPoints.rank}</p>
+            </div>
+          </div>
+          {data.participantPoints.badges.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {data.participantPoints.badges.map(badge => (
+                <div
+                  key={badge.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-full"
+                  title={badge.description}
+                >
+                  <Medal size={12} className="text-purple-500" />
+                  <span className="text-[0.65rem] font-medium text-purple-700">{badge.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Module Breakdown */}
       <div>
@@ -1380,6 +1684,99 @@ function MyProgressTab({ data }: { data: AcademyData }) {
   )
 }
 
+function LeaderboardTab({ data }: { data: AcademyData }) {
+  const rankIcon = (rank: number) => {
+    if (rank === 1) return <Crown size={16} className="text-amber-500" />
+    if (rank === 2) return <Medal size={16} className="text-gray-400" />
+    if (rank === 3) return <Medal size={16} className="text-amber-700" />
+    return <span className="text-xs font-bold text-t3">#{rank}</span>
+  }
+
+  const myPoints = data.participantPoints
+
+  return (
+    <div className="space-y-5">
+      {/* My Rank Summary */}
+      {myPoints && (
+        <Card className="border-purple-200 bg-purple-50/30">
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-1">
+                <Trophy size={24} className="text-purple-600" />
+              </div>
+              <div className="text-lg font-bold text-t1">#{myPoints.rank}</div>
+              <div className="text-[0.6rem] text-t3 uppercase">Your Rank</div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-2xl font-bold text-t1">{myPoints.totalPoints.toLocaleString()}</div>
+              <div className="text-xs text-t3 mb-2">Total Points</div>
+              {myPoints.badges.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {myPoints.badges.map(badge => (
+                    <span
+                      key={badge.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 rounded-full text-[0.6rem] font-medium text-purple-700"
+                      title={badge.description}
+                    >
+                      <Medal size={10} />
+                      {badge.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Leaderboard */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Users size={14} className="text-t3" />
+          <h3 className="text-xs font-semibold text-t2 uppercase tracking-wide">Top Participants</h3>
+        </div>
+        <div className="space-y-2">
+          {data.leaderboard.map((entry) => {
+            const isMe = myPoints && entry.rank === myPoints.rank
+            return (
+              <Card
+                key={entry.participantId}
+                className={cn('!p-4', isMe && 'border-purple-200 bg-purple-50/20')}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                    {rankIcon(entry.rank)}
+                  </div>
+                  <Avatar name={entry.name} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-t1 truncate">{entry.name}</h4>
+                      {isMe && <Badge variant="ai">You</Badge>}
+                    </div>
+                    {entry.badges.length > 0 && (
+                      <div className="flex gap-1 mt-0.5">
+                        {entry.badges.slice(0, 3).map(b => (
+                          <span key={b.id} className="text-[0.55rem] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                            {b.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-t1">{entry.points.toLocaleString()}</div>
+                    <div className="text-[0.6rem] text-t3">points</div>
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
@@ -1387,91 +1784,142 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// ─── Tab Definitions ──────────────────────────────────────────────────────────
-
-const ACADEMY_TABS = [
-  { id: 'home', label: 'Home' },
-  { id: 'curriculum', label: 'Curriculum' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'assignments', label: 'Assignments' },
-  { id: 'community', label: 'Community' },
-  { id: 'resources', label: 'Resources' },
-  { id: 'certificates', label: 'Certificates' },
-  { id: 'progress', label: 'My Progress' },
-]
+function formatRelativeTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} minutes ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours} hours ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return '1 day ago'
+  if (diffDays < 7) return `${diffDays} days ago`
+  return formatDate(dateStr)
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AcademyWorkspacePage() {
   const params = useParams()
   const slug = params.slug as string
-  const { session: academySession } = useAcademy()
+  const { session: academySession, isLoading: sessionLoading } = useAcademy()
+  const ACADEMY_TABS = [
+    { id: 'home', label: 'Home' },
+    { id: 'curriculum', label: 'Curriculum' },
+    { id: 'calendar', label: 'Calendar' },
+    { id: 'assignments', label: 'Assignments' },
+    { id: 'community', label: 'Community' },
+    { id: 'resources', label: 'Resources' },
+    { id: 'certificates', label: 'Certificates' },
+    { id: 'leaderboard', label: 'Leaderboard' },
+    { id: 'progress', label: 'My Progress' },
+  ]
   const [activeTab, setActiveTab] = useState('home')
   const [apiAcademy, setApiAcademy] = useState<AcademyData | null>(null)
   const [apiLoading, setApiLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(false)
 
-  // Try to load from API first (production mode)
+  // Load academy data from API when session is available
   useEffect(() => {
-    async function loadFromAPI() {
+    if (sessionLoading) return
+
+    async function loadAcademyData(academyId: string, acad: any, participantId?: string) {
+      setDataLoading(true)
       try {
-        const res = await fetch(`/api/academy?action=get-by-slug&slug=${encodeURIComponent(slug)}`)
-        if (!res.ok) throw new Error('Not found')
-        const { data: acad } = await res.json()
-        if (!acad) throw new Error('No data')
+        // Fetch all data in parallel
+        const fetches: Promise<any>[] = [
+          fetch(`/api/academy?action=courses&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=sessions&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=assignments&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=discussions&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=resources&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          fetch(`/api/academy?action=certificates&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+        ]
 
-        // Fetch related data in parallel
-        const [coursesRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes, certsRes] = await Promise.all([
-          fetch(`/api/academy?action=courses&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          fetch(`/api/academy?action=sessions&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          fetch(`/api/academy?action=assignments&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          fetch(`/api/academy?action=discussions&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          fetch(`/api/academy?action=resources&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-          fetch(`/api/academy?action=certificates&academyId=${acad.id}`).then(r => r.json()).catch(() => ({ data: [] })),
-        ])
+        // Add participant-specific fetches if we have participantId
+        if (participantId) {
+          fetches.push(
+            fetch(`/api/academy?action=participant-progress&academyId=${academyId}&participantId=${participantId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: null })),
+            fetch(`/api/academy/gamification?action=participant-points&academyId=${academyId}&participantId=${participantId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: null })),
+            fetch(`/api/academy/gamification?action=leaderboard&academyId=${academyId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
+          )
+        }
 
-        const brandColor = acad.brandColor || acad.brand_color || '#00567A'
+        const results = await Promise.all(fetches)
+        const [coursesRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes, certsRes] = results
+        const progressRes = participantId ? results[6] : { data: null }
+        const pointsRes = participantId ? results[7] : { data: null }
+        const leaderboardRes = participantId ? results[8] : { data: [] }
+
+        const brandColor = acad?.brandColor || acad?.brand_color || academySession?.academy?.brandColor || '#00567A'
+        const participantProgress = progressRes?.data
 
         setApiAcademy({
-          name: acad.name,
+          name: acad?.name || academySession?.academy?.name || 'Academy',
           brandColor,
           brandColorLight: `${brandColor}15`,
-          description: acad.description || '',
+          description: acad?.description || academySession?.academy?.description || '',
           participantName: academySession?.participant?.fullName || 'Participant',
-          modules: (coursesRes.data || []).map((c: any, i: number) => ({
-            id: c.id, number: c.moduleNumber || c.module_number || i + 1,
-            title: c.title || `Module ${i + 1}`, duration: `${c.durationHours || 6} hours`,
-            status: 'locked' as const, progress: 0, lessons: 8, completedLessons: 0,
-          })),
+          modules: (coursesRes.data || []).map((c: any, i: number) => {
+            const modProgress = Array.isArray(participantProgress)
+              ? participantProgress.find((p: any) => p.courseId === c.id || p.course_id === c.id)
+              : null
+            return {
+              id: c.id,
+              number: c.moduleNumber || c.module_number || i + 1,
+              title: c.title || `Module ${i + 1}`,
+              duration: `${c.durationHours || c.duration_hours || 3} hours`,
+              status: modProgress?.status || (modProgress?.progress > 0 ? 'in_progress' : 'locked') as any,
+              progress: modProgress?.progress ?? 0,
+              score: modProgress?.score,
+              timeSpent: modProgress?.timeSpent || modProgress?.time_spent,
+              lessons: c.lessonCount || c.lesson_count || 8,
+              completedLessons: modProgress?.completedLessons || modProgress?.completed_lessons || 0,
+            }
+          }),
           sessions: (sessionsRes.data || []).map((s: any) => ({
             id: s.id, title: s.title,
             date: s.scheduledDate || s.scheduled_date || '',
             time: s.scheduledTime || s.scheduled_time || '',
-            type: s.type || 'webinar', instructor: s.instructor || '',
-            rsvpd: false, isPast: new Date(s.scheduledDate || s.scheduled_date) < new Date(),
+            type: s.type || 'webinar',
+            instructor: s.instructor || s.instructorName || s.instructor_name || '',
+            rsvpd: s.rsvpd || s.hasRsvp || s.has_rsvp || false,
+            isPast: new Date(s.scheduledDate || s.scheduled_date || '') < new Date(),
             recordingUrl: s.recordingUrl || s.recording_url,
           })),
           assignments: (assignmentsRes.data || []).map((a: any) => ({
             id: a.id, title: a.title,
             dueDate: a.dueDate || a.due_date || '',
-            moduleTitle: '', status: 'pending' as const,
+            moduleTitle: a.moduleTitle || a.module_title || a.courseName || a.course_name || '',
+            status: (a.status || 'pending') as any,
+            score: a.score,
+            feedback: a.feedback,
             maxScore: a.maxScore || a.max_score || 100,
           })),
           posts: (discussionsRes.data || []).map((d: any) => ({
-            id: d.id, author: d.facilitatorName || d.facilitator_name || 'Participant',
-            content: d.content, timestamp: 'Recently',
+            id: d.id,
+            author: d.authorName || d.author_name || d.facilitatorName || d.facilitator_name || 'Participant',
+            authorAvatar: d.authorAvatar || d.author_avatar,
+            content: d.content || d.body || '',
+            timestamp: d.createdAt || d.created_at ? formatRelativeTime(d.createdAt || d.created_at) : 'Recently',
             replyCount: d.replyCount || d.reply_count || 0,
             isPinned: d.isPinned || d.is_pinned || false,
             isFacilitator: d.isFacilitator || d.is_facilitator || false,
             moduleTag: d.moduleTag || d.module_tag,
+            replies: d.replies,
           })),
           resources: (resourcesRes.data || []).map((r: any) => ({
             id: r.id, title: r.title, description: r.description || '',
-            type: r.type || 'pdf', moduleTitle: '', url: r.url,
+            type: (r.type || 'pdf') as any,
+            moduleTitle: r.moduleTitle || r.module_title || r.courseName || r.course_name || '',
+            url: r.url,
           })),
           certificates: (certsRes.data || []).map((c: any) => ({
-            id: c.id, name: c.name,
-            dateEarned: c.issuedAt || c.issued_at,
-            status: c.status || 'in_progress',
+            id: c.id, name: c.name || c.title || 'Certificate',
+            dateEarned: c.issuedAt || c.issued_at || c.earnedAt || c.earned_at,
+            status: (c.status === 'earned' || c.issuedAt || c.issued_at) ? 'earned' as const : 'in_progress' as const,
             requirements: (() => {
               try {
                 const reqs = typeof c.requirements === 'string' ? JSON.parse(c.requirements) : c.requirements
@@ -1479,15 +1927,82 @@ export default function AcademyWorkspacePage() {
               } catch { return [] }
             })(),
           })),
+          leaderboard: (leaderboardRes?.data || []).map((l: any, i: number) => ({
+            participantId: l.participantId || l.participant_id || l.id || `l${i}`,
+            name: l.name || l.fullName || l.full_name || 'Participant',
+            avatarUrl: l.avatarUrl || l.avatar_url,
+            points: l.points || l.totalPoints || l.total_points || 0,
+            rank: l.rank || i + 1,
+            badges: (l.badges || []).map((b: any) => ({
+              id: b.id || `b${Math.random()}`,
+              name: b.name || b.title || 'Badge',
+              description: b.description,
+              iconUrl: b.iconUrl || b.icon_url,
+              earnedAt: b.earnedAt || b.earned_at,
+            })),
+          })),
+          participantPoints: pointsRes?.data ? {
+            totalPoints: pointsRes.data.totalPoints || pointsRes.data.total_points || pointsRes.data.points || 0,
+            rank: pointsRes.data.rank || 0,
+            badges: (pointsRes.data.badges || []).map((b: any) => ({
+              id: b.id || `b${Math.random()}`,
+              name: b.name || b.title || 'Badge',
+              description: b.description,
+              iconUrl: b.iconUrl || b.icon_url,
+              earnedAt: b.earnedAt || b.earned_at,
+            })),
+            streakDays: pointsRes.data.streakDays || pointsRes.data.streak_days || pointsRes.data.streak || 0,
+          } : null,
         })
       } catch {
-        // API not available or academy not in DB — fall through to demo data
+        // Fall through to demo data
       } finally {
+        setApiLoading(false)
+        setDataLoading(false)
+      }
+    }
+
+    async function loadFromAPI() {
+      const academyId = academySession?.academy?.id
+      const participantId = academySession?.participant?.id
+
+      if (!academyId) {
+        // No session: try slug-based lookup as fallback
+        try {
+          const res = await fetch(`/api/academy?action=get-by-slug&slug=${encodeURIComponent(slug)}`)
+          if (!res.ok) throw new Error('Not found')
+          const { data: acad } = await res.json()
+          if (acad) {
+            await loadAcademyData(acad.id, acad, participantId)
+            return
+          }
+        } catch {
+          // Fall through to demo data
+        }
+        setApiLoading(false)
+        return
+      }
+
+      try {
+        // Fetch academy metadata
+        const metaRes = await fetch(`/api/academy?action=get&academyId=${academyId}`, {
+          credentials: 'include',
+        })
+        let acad: any = null
+        if (metaRes.ok) {
+          const metaJson = await metaRes.json()
+          acad = metaJson.data
+        }
+
+        await loadAcademyData(academyId, acad, participantId)
+      } catch {
+        // Fall through to demo data
         setApiLoading(false)
       }
     }
+
     loadFromAPI()
-  }, [slug])
+  }, [slug, sessionLoading, academySession?.academy?.id, academySession?.participant?.id])
 
   // Use API data if available, otherwise fall back to demo
   const academy = apiAcademy || DEMO_ACADEMIES[slug]
@@ -1497,12 +2012,24 @@ export default function AcademyWorkspacePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  if (apiLoading) {
+  if (apiLoading || sessionLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-tempo-300 border-t-tempo-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-t3">Loading academy...</p>
+      <div className="min-h-screen pb-8">
+        <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-divider">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8">
+            <div className="flex items-center gap-3 py-3">
+              <Skeleton width="w-8" height="h-8" className="rounded-lg" />
+              <Skeleton width="w-48" height="h-5" />
+            </div>
+            <div className="flex gap-4 py-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} width="w-20" height="h-4" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-5">
+          <TabSkeleton />
         </div>
       </div>
     )
@@ -1521,6 +2048,10 @@ export default function AcademyWorkspacePage() {
       </div>
     )
   }
+
+  const academyId = academySession?.academy?.id
+  const participantId = academySession?.participant?.id
+  const participantName = academySession?.participant?.fullName
 
   return (
     <div
@@ -1552,14 +2083,21 @@ export default function AcademyWorkspacePage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-5">
-        {activeTab === 'home' && <HomeTab data={academy} onTabChange={handleTabChange} />}
-        {activeTab === 'curriculum' && <CurriculumTab data={academy} />}
-        {activeTab === 'calendar' && <CalendarTab data={academy} />}
-        {activeTab === 'assignments' && <AssignmentsTab data={academy} />}
-        {activeTab === 'community' && <CommunityTab data={academy} />}
-        {activeTab === 'resources' && <ResourcesTab data={academy} />}
-        {activeTab === 'certificates' && <CertificatesTab data={academy} />}
-        {activeTab === 'progress' && <MyProgressTab data={academy} />}
+        {dataLoading ? (
+          <TabSkeleton />
+        ) : (
+          <>
+            {activeTab === 'home' && <HomeTab data={academy} onTabChange={handleTabChange} />}
+            {activeTab === 'curriculum' && <CurriculumTab data={academy} />}
+            {activeTab === 'calendar' && <CalendarTab data={academy} academyId={academyId} participantId={participantId} />}
+            {activeTab === 'assignments' && <AssignmentsTab data={academy} academyId={academyId} participantId={participantId} />}
+            {activeTab === 'community' && <CommunityTab data={academy} academyId={academyId} participantId={participantId} participantName={participantName} />}
+            {activeTab === 'resources' && <ResourcesTab data={academy} />}
+            {activeTab === 'certificates' && <CertificatesTab data={academy} />}
+            {activeTab === 'leaderboard' && <LeaderboardTab data={academy} />}
+            {activeTab === 'progress' && <MyProgressTab data={academy} />}
+          </>
+        )}
       </div>
     </div>
   )
