@@ -58,7 +58,7 @@ export default function GetStartedPage() {
         {/* Nav */}
         <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.04]">
           <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
-            <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></Link>
+            <Link href="/academy"><img src="/images/brand/logo-black-400.png" alt="tempo" className="h-6" /></Link>
           </div>
         </nav>
 
@@ -88,7 +88,7 @@ export default function GetStartedPage() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.04]">
         <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
-          <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></Link>
+          <Link href="/academy"><img src="/images/brand/logo-black-400.png" alt="tempo" className="h-6" /></Link>
           <Link href="/academy/login" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Already have an account? Sign in</Link>
         </div>
       </nav>
