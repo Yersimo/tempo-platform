@@ -283,7 +283,7 @@ export function Sidebar() {
         <div className={cn('flex items-center py-5', collapsed ? 'justify-center px-2' : 'justify-between px-4')}>
           {!collapsed && (
             <div className="flex flex-col">
-              <TempoLockup variant="color" size="sm" className="[&>span]:text-white" />
+              <TempoLockup variant="white" size="sm" />
               <span className="text-[0.6rem] text-white/50 mt-0.5 pl-0.5">{org.name}</span>
             </div>
           )}

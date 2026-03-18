@@ -1,7 +1,5 @@
 'use client'
 
-import { TempoMark } from './tempo-mark'
-
 interface TempoLockupProps {
   variant?: 'color' | 'white' | 'mono'
   size?: 'sm' | 'md' | 'lg' | 'xl'
@@ -9,23 +7,19 @@ interface TempoLockupProps {
 }
 
 const sizes = {
-  sm: { mark: 20, text: 'text-sm', gap: 'gap-1' },
-  md: { mark: 24, text: 'text-xl', gap: 'gap-1.5' },
-  lg: { mark: 32, text: 'text-2xl', gap: 'gap-2' },
-  xl: { mark: 48, text: 'text-4xl', gap: 'gap-3' },
+  sm: 'text-[16px]',
+  md: 'text-[20px]',
+  lg: 'text-[26px]',
+  xl: 'text-[36px]',
 }
 
 export function TempoLockup({ variant = 'color', size = 'md', className = '' }: TempoLockupProps) {
-  const s = sizes[size]
-  const textColor = variant === 'white' ? 'text-white' : variant === 'mono' ? 'text-t1' : 'text-t1'
-  const showCrossbar = true
+  const textColor = variant === 'white' ? 'text-white' : 'text-[#1a1a1a]'
+  const dotColor = variant === 'mono' ? 'text-[#1a1a1a]/40' : 'text-[#E8590C]'
 
   return (
-    <div className={`inline-flex items-end ${s.gap} ${className}`}>
-      <TempoMark variant={variant} size={s.mark} showCrossbar={showCrossbar} />
-      <span className={`tempo-wordmark ${s.text} ${textColor} leading-none`}>
-        tempo
-      </span>
-    </div>
+    <span className={`font-bold tracking-[-0.02em] ${sizes[size]} ${textColor} ${className}`}>
+      tempo<span className={dotColor}>.</span>
+    </span>
   )
 }
