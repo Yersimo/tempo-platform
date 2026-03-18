@@ -3,477 +3,452 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Award, Gamepad2, Mail, FileUp, Languages,
-  Globe, BarChart3, Webhook, FolderOpen, MessageSquare, TrendingUp,
-  Users, Building2, ArrowRight, CheckCircle2, Star,
-  BookOpen, Trophy, Send,
-  Check, X,
+  ArrowRight, CheckCircle2, Star, Quote,
+  TrendingUp, Users, Lightbulb, Target, Heart,
+  Globe2, Award, BookOpen, Sparkles, BarChart3,
+  Shield, Zap, MessageCircle, GraduationCap,
+  Building2, Briefcase, Rocket, ChevronRight,
 } from 'lucide-react'
 
-/* ─── Feature Grid Data ─── */
-const features = [
-  { icon: GraduationCap, title: 'Cohort-Based Learning', desc: 'Organize learners into time-bound cohorts with structured curricula, deadlines, and collaborative activities.' },
-  { icon: Award, title: 'Smart Certificates', desc: 'Auto-generate branded, verifiable certificates upon course or cohort completion with unique QR codes.' },
-  { icon: Gamepad2, title: 'Gamification', desc: 'Points, badges, leaderboards, and streaks that drive engagement and healthy competition among learners.' },
-  { icon: Mail, title: 'Email Automation', desc: 'Drip campaigns, enrollment confirmations, deadline reminders, and completion notifications on autopilot.' },
-  { icon: FileUp, title: 'SCORM Import', desc: 'Import industry-standard SCORM and xAPI content packages from any authoring tool.' },
-  { icon: Languages, title: 'Multi-Language', desc: 'Deliver content in multiple languages with automatic locale detection and RTL support.' },
-  { icon: Globe, title: 'Custom Domains', desc: 'Host your academy on your own domain with full SSL, custom branding, and white-label options.' },
-  { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Real-time dashboards tracking enrollment, completion rates, quiz scores, and learner engagement.' },
-  { icon: Webhook, title: 'Webhooks & API', desc: 'Integrate with your existing stack via REST APIs and real-time webhooks for every event.' },
-  { icon: FolderOpen, title: 'File Management', desc: 'Centralized media library with versioning, access controls, and CDN-backed delivery.' },
-  { icon: MessageSquare, title: 'Community Forums', desc: 'Built-in discussion forums per course and cohort for peer learning and Q&A.' },
-  { icon: TrendingUp, title: 'Progress Tracking', desc: 'Granular progress tracking per module, lesson, and assessment with visual completion maps.' },
-]
-
-/* ─── How It Works Steps ─── */
-const steps = [
-  { num: '01', icon: BookOpen, title: 'Create Your Academy', desc: 'Set up branding, curriculum, and cohort schedules. Import existing content or build from scratch with our course editor.' },
-  { num: '02', icon: Send, title: 'Invite Participants', desc: 'Send branded invitations with one-click enrollment. Support self-registration, bulk import, or SSO-based access.' },
-  { num: '03', icon: Trophy, title: 'Track & Certify', desc: 'Monitor progress in real time, award badges for milestones, and issue verified certificates automatically.' },
-]
-
-/* ─── Competitor Comparison ─── */
-const competitors = ['Tempo Academy', 'AMI', 'TalentLMS', 'Docebo']
-const comparisonRows = [
-  { label: 'Starting Price', values: ['Included in plan', '$200/mo', '$69/mo', '$400/mo'] },
-  { label: 'White-Label', values: [true, false, 'Add-on', true] },
-  { label: 'Gamification', values: [true, false, true, true] },
-  { label: 'HR Integration', values: ['Native', false, 'API only', 'API only'] },
-  { label: 'Africa Focus', values: [true, true, false, false] },
-  { label: 'Self-Serve Setup', values: [true, false, true, true] },
-]
-
-function CompCell({ value }: { value: boolean | string }) {
-  if (value === true) return <Check size={16} className="text-green-500 mx-auto" />
-  if (value === false) return <X size={14} className="text-zinc-600 mx-auto" />
-  return <span className="text-sm text-zinc-300">{String(value)}</span>
-}
-
-export default function AcademyPage() {
-  const revealRefs = useRef<HTMLDivElement[]>([])
-  const [email, setEmail] = useState('')
-
-  /* ─── Scroll reveal ─── */
+/* ─── Scroll reveal hook ─── */
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
   useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add('opacity-100', 'translate-y-0')
-          e.target.classList.remove('opacity-0', 'translate-y-6')
-          obs.unobserve(e.target)
-        }
-      }),
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-    )
-    revealRefs.current.forEach((el) => el && obs.observe(el))
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true) }, { threshold: 0.15 })
+    obs.observe(el)
     return () => obs.disconnect()
   }, [])
+  return { ref, visible }
+}
 
-  const addRevealRef = (el: HTMLDivElement | null) => {
-    if (el && !revealRefs.current.includes(el)) revealRefs.current.push(el)
-  }
+function RevealSection({ children, className = '', delay = '' }: { children: React.ReactNode; className?: string; delay?: string }) {
+  const { ref, visible } = useReveal()
+  return (
+    <div ref={ref} className={`transition-all duration-700 ${delay} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+/* ─── Impact numbers ─── */
+const impactStats = [
+  { value: '90%', label: 'of jobs in Africa', sub: 'created by MSMEs' },
+  { value: '50M+', label: 'small businesses', sub: 'across the continent' },
+  { value: '80%', label: 'of GDP growth', sub: 'driven by SMEs globally' },
+  { value: '3x', label: 'more likely to thrive', sub: 'with structured training' },
+]
+
+/* ─── Why it matters ─── */
+const challenges = [
+  { icon: Target, title: 'Access to Knowledge', text: 'Most small business owners learn by trial and error. Structured programmes change everything.' },
+  { icon: Users, title: 'Scale Without Borders', text: 'Train 50 entrepreneurs in Lagos and 500 in Nairobi from the same programme, simultaneously.' },
+  { icon: TrendingUp, title: 'Measurable Impact', text: 'Track who completed what, who needs support, and what drove real business outcomes.' },
+  { icon: Heart, title: 'Community & Connection', text: 'Peer learning, discussion forums, and cohort accountability keep participants engaged.' },
+]
+
+/* ─── Capabilities ─── */
+const capabilities = [
+  { icon: BookOpen, title: 'Structured Programmes', text: 'Build multi-week learning journeys with modules, live sessions, assignments, and assessments.' },
+  { icon: GraduationCap, title: 'Cohort-Based Delivery', text: 'Group participants into time-bound cohorts for accountability, peer learning, and community.' },
+  { icon: Award, title: 'Verified Certificates', text: 'Issue branded, QR-verified certificates that participants can share on LinkedIn and with employers.' },
+  { icon: BarChart3, title: 'Impact Analytics', text: 'Real-time dashboards showing completion, engagement, at-risk participants, and programme ROI.' },
+  { icon: MessageCircle, title: 'Community & Discussions', text: 'Built-in forums, facilitator Q&A, and peer-to-peer learning spaces within every programme.' },
+  { icon: Zap, title: 'Automated Communications', text: 'Welcome emails, session reminders, deadline nudges, and certificate notifications on autopilot.' },
+  { icon: Globe2, title: 'Multi-Language Support', text: 'Deliver content in English, French, Portuguese, and more to reach every corner of the continent.' },
+  { icon: Shield, title: 'White-Label & Custom Domains', text: 'Your brand, your domain, your academy. Participants never see Tempo unless you want them to.' },
+  { icon: Sparkles, title: 'AI-Powered Course Builder', text: 'Describe your programme topic and let AI generate course outlines, quiz questions, and assignments.' },
+]
+
+/* ─── Testimonials ─── */
+const testimonials = [
+  {
+    quote: 'We trained 340 SME owners across 6 West African countries in 4 months. The cohort model kept completion above 90%.',
+    author: 'Head of Enterprise Development',
+    org: 'Pan-African Development Bank',
+    stars: 5,
+  },
+  {
+    quote: 'For the first time, our entrepreneurs have a structured path to grow their skills. The certificates give them credibility with lenders.',
+    author: 'Director of SME Programmes',
+    org: 'Regional Chamber of Commerce',
+    stars: 5,
+  },
+  {
+    quote: 'We replaced three tools with one. The academy lives inside our HR platform so our team can manage everything from one place.',
+    author: 'Chief People Officer',
+    org: 'Leading African Fintech',
+    stars: 5,
+  },
+]
+
+/* ─── Use cases ─── */
+const useCases = [
+  { icon: Building2, title: 'Banks & Financial Institutions', text: 'Financial literacy academies for SME borrowers, agent training, and compliance programmes.' },
+  { icon: Briefcase, title: 'Development Organisations', text: 'Entrepreneurship programmes, skills-building initiatives, and capacity development at scale.' },
+  { icon: Rocket, title: 'Corporates & Enterprises', text: 'Supplier development, partner enablement, and customer education programmes.' },
+  { icon: GraduationCap, title: 'Government & NGOs', text: 'Youth employment programmes, trade skills training, and public sector capacity building.' },
+]
+
+export default function AcademyLandingPage() {
+  const [email, setEmail] = useState('')
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-white text-gray-900">
 
-      {/* ─── Sticky Nav ─── */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-lg border-b border-zinc-800/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-lg font-medium tracking-tight" style={{ letterSpacing: '-0.035em' }}>
-            <svg style={{ width: 16, height: 'auto' }} viewBox="0 0 80 100" fill="none">
-              <line x1="2" y1="3" x2="78" y2="3" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" opacity=".6" />
-              <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" strokeWidth="12" strokeLinecap="round" opacity=".5" />
-              <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" strokeWidth="12" strokeLinecap="round" />
-            </svg>
-            tempo
+      {/* ═══ Navigation ═══ */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">/</span>
+            </div>
+            <span className="font-semibold text-gray-900 text-lg">tempo <span className="text-orange-500">academy</span></span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">Sign In</Link>
-            <Link href="/signup?plan=professional" className="bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all">
+            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition hidden sm:block">Sign In</Link>
+            <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition shadow-sm hover:shadow">
               Request a Demo
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* ═══ HERO ═══ */}
-      <section className="relative pt-36 pb-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1B3A5C]/15 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#00567A10_0%,_transparent_60%)]" />
-        <div className="relative max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-[#1B3A5C]/20 border border-[#1B3A5C]/30 rounded-full px-4 py-1.5 text-sm text-sky-400 mb-6">
-            <GraduationCap size={14} />
-            Built into Tempo &mdash; no separate vendor
-          </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-6" style={{ letterSpacing: '-0.035em' }}>
-            Your Academy. Inside Your
-            <br />
-            HR Platform.{' '}
-            <span className="bg-gradient-to-r from-sky-400 to-teal-400 bg-clip-text text-transparent">Built for Africa.</span>
-          </h1>
-          <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Launch branded learning academies for your employees, customers, and partners &mdash; with cohort-based learning, automated certificates, and real-time analytics.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/signup?plan=professional"
-              className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold px-8 py-4 rounded-xl transition-all shadow-lg shadow-orange-600/25"
-            >
-              Request a Demo
-              <ArrowRight size={16} />
-            </Link>
-            <a
-              href="#features"
-              className="inline-flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium px-8 py-4 rounded-xl border border-zinc-700 transition-all"
-              onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }) }}
-            >
-              See It In Action
-            </a>
-          </div>
-        </div>
-
-        {/* ─── Dashboard Mockup ─── */}
-        <div ref={addRevealRef} className="relative max-w-5xl mx-auto mt-16 opacity-0 translate-y-6 transition-all duration-700">
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800/60">
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-              <span className="flex-1 text-center text-xs text-zinc-600">Tempo Academy &mdash; Dashboard</span>
+      {/* ═══ Hero ═══ */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-orange-50/60 via-white to-white" />
+        <div className="relative max-w-5xl mx-auto px-6 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
+          <RevealSection>
+            <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 text-sm font-medium px-4 py-1.5 rounded-full mb-8 border border-orange-100">
+              <Lightbulb size={14} />
+              Capability building for small businesses
             </div>
-            <div className="p-6 md:p-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                {[
-                  { label: 'Active Learners', val: '2,847', change: '+12%' },
-                  { label: 'Completion Rate', val: '78.3%', change: '+5.2%' },
-                  { label: 'Certificates Issued', val: '1,203', change: '+89' },
-                  { label: 'Avg. Score', val: '84.6', change: '+2.1' },
-                ].map((s) => (
-                  <div key={s.label} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/40">
-                    <p className="text-xs text-zinc-500 mb-1">{s.label}</p>
-                    <p className="text-xl font-bold tracking-tight">{s.val}</p>
-                    <p className="text-xs text-green-400 mt-1">{s.change}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/30">
-                  <p className="text-xs text-zinc-500 mb-3 font-medium">Enrollment Over Time</p>
-                  <div className="flex items-end gap-1 h-24">
-                    {[35, 42, 55, 48, 62, 58, 72, 65, 78, 85, 80, 92].map((h, i) => (
-                      <div key={i} className="flex-1 rounded-sm bg-gradient-to-t from-sky-600/60 to-teal-500/60" style={{ height: `${h}%` }} />
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/30">
-                  <p className="text-xs text-zinc-500 mb-3 font-medium">Top Courses</p>
-                  <div className="space-y-3">
-                    {[
-                      { name: 'SME Financial Literacy', pct: 92 },
-                      { name: 'Leadership Essentials', pct: 78 },
-                      { name: 'Digital Marketing', pct: 65 },
-                    ].map((c) => (
-                      <div key={c.name}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-zinc-400">{c.name}</span>
-                          <span className="text-zinc-500">{c.pct}%</span>
-                        </div>
-                        <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-sky-500 to-teal-500 rounded-full" style={{ width: `${c.pct}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </RevealSection>
 
-      {/* ═══ KEY STATS BAR ═══ */}
-      <section ref={addRevealRef} className="max-w-5xl mx-auto px-6 pb-20 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { value: '$4.17B', label: 'African e-learning market' },
-            { value: '19.2%', label: 'Annual growth rate' },
-            { value: '22', label: 'Production-ready DB tables' },
-            { value: '0', label: 'Separate vendors needed' },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center bg-zinc-900/60 border border-zinc-800 rounded-xl py-6 px-4">
-              <p className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-sky-400 to-teal-400 bg-clip-text text-transparent" style={{ letterSpacing: '-0.035em' }}>
-                {stat.value}
-              </p>
-              <p className="text-xs text-zinc-500 mt-2 uppercase tracking-wider font-medium">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ FEATURE GRID ═══ */}
-      <section id="features" ref={addRevealRef} className="max-w-7xl mx-auto px-6 pb-24 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-            Everything you need to run a
-            <br />
-            <span className="bg-gradient-to-r from-sky-400 to-teal-400 bg-clip-text text-transparent">world-class academy</span>
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            12 core capabilities, zero separate vendors. All natively integrated with your HR platform.
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((feat) => (
-            <div
-              key={feat.title}
-              className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-600 transition-all group"
-            >
-              <feat.icon size={22} className="text-sky-400 mb-4 group-hover:text-teal-400 transition-colors" />
-              <h3 className="font-semibold mb-2">{feat.title}</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">{feat.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ DUAL-AUDIENCE SECTION ═══ */}
-      <section ref={addRevealRef} className="max-w-6xl mx-auto px-6 pb-24 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-            One platform, two powerful use cases
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            Whether you are training internal teams or educating your broader ecosystem, Tempo Academy adapts to your needs.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* For Your Team */}
-          <div className="relative bg-gradient-to-br from-[#1B3A5C]/20 via-zinc-900 to-zinc-900 border border-[#1B3A5C]/30 rounded-2xl p-8 md:p-10 overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-[#1B3A5C]/10 rounded-full blur-3xl" />
-            <div className="relative">
-              <Users size={28} className="text-sky-400 mb-5" />
-              <h3 className="text-xl font-bold mb-3">For Your Team</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                Train employees with integrated learning paths tied to performance reviews, onboarding workflows, and career development plans.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  'Onboarding programs linked to employee profiles',
-                  'Skill gap analysis connected to performance data',
-                  'Compliance training with automated tracking',
-                  'Manager dashboards for team learning progress',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                    <CheckCircle2 size={15} className="text-sky-400 mt-0.5 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* For Your Ecosystem */}
-          <div className="relative bg-gradient-to-br from-teal-900/20 via-zinc-900 to-zinc-900 border border-teal-800/30 rounded-2xl p-8 md:p-10 overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-teal-900/10 rounded-full blur-3xl" />
-            <div className="relative">
-              <Building2 size={28} className="text-teal-400 mb-5" />
-              <h3 className="text-xl font-bold mb-3">For Your Ecosystem</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                Launch branded academies for customers, partners, and communities with separate participant portals and custom domains.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  'White-label portals with your brand and domain',
-                  'Self-registration and bulk enrollment workflows',
-                  'Revenue tracking for paid course offerings',
-                  'Partner-specific content and access controls',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                    <CheckCircle2 size={15} className="text-teal-400 mt-0.5 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section ref={addRevealRef} className="max-w-5xl mx-auto px-6 pb-24 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-            Up and running in three steps
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            No implementation consultants required. Launch your first academy in minutes, not months.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {steps.map((step) => (
-            <div key={step.num} className="relative bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 text-center hover:border-zinc-600 transition-all">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-sky-500/20 to-teal-500/20 border border-sky-500/30 mb-5">
-                <step.icon size={20} className="text-sky-400" />
-              </div>
-              <p className="text-xs text-sky-400 font-bold tracking-widest uppercase mb-2">Step {step.num}</p>
-              <h3 className="text-lg font-bold mb-3">{step.title}</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ COMPETITOR COMPARISON ═══ */}
-      <section ref={addRevealRef} className="max-w-4xl mx-auto px-6 pb-24 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-            See how Tempo compares
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            The only learning platform natively built into your HR system, purpose-built for African enterprises.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
-          <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left p-4 text-sm font-semibold text-zinc-400 w-[180px]">Feature</th>
-                {competitors.map((c, i) => (
-                  <th key={c} className={`text-center p-4 text-sm font-semibold ${i === 0 ? 'text-sky-400' : 'text-zinc-400'} w-[120px]`}>
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonRows.map((row) => (
-                <tr key={row.label} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
-                  <td className="px-4 py-3.5 text-sm text-zinc-300">{row.label}</td>
-                  {row.values.map((val, i) => (
-                    <td key={i} className={`px-4 py-3.5 text-center ${i === 0 ? 'bg-sky-500/5' : ''}`}>
-                      <CompCell value={val} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ═══ SOCIAL PROOF ═══ */}
-      <section ref={addRevealRef} className="max-w-5xl mx-auto px-6 pb-24 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-            Trusted by forward-thinking
-            <br />
-            African enterprises
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            Organizations across the continent are using Tempo Academy to upskill their people and communities.
-          </p>
-        </div>
-
-        {/* Logo placeholders */}
-        <div className="flex flex-wrap justify-center gap-8 mb-14 opacity-30">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="w-28 h-10 bg-zinc-800 rounded-lg" />
-          ))}
-        </div>
-
-        {/* Testimonial cards */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {[
-            {
-              quote: 'Tempo Academy transformed how we onboard across 14 countries. What used to take weeks now takes days, with better outcomes.',
-              author: 'Head of Learning & Development',
-              company: 'Pan-African Financial Services Group',
-            },
-            {
-              quote: 'We launched our SME training academy in under a week. The cohort-based model and automated certificates exceeded our expectations.',
-              author: 'Director of Partner Enablement',
-              company: 'Leading West African Bank',
-            },
-          ].map((t) => (
-            <div key={t.author} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8">
-              <div className="flex gap-1 mb-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={14} className="text-orange-500 fill-orange-500" />
-                ))}
-              </div>
-              <p className="text-zinc-300 text-sm leading-relaxed mb-6 italic">
-                &ldquo;{t.quote}&rdquo;
-              </p>
-              <div>
-                <p className="text-sm font-semibold">{t.author}</p>
-                <p className="text-xs text-zinc-500">{t.company}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ FINAL CTA ═══ */}
-      <section ref={addRevealRef} className="max-w-4xl mx-auto px-6 pb-32 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="relative bg-gradient-to-br from-[#1B3A5C]/25 via-zinc-900 to-zinc-900 border border-[#1B3A5C]/25 rounded-3xl p-12 md:p-16 text-center overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00567A]/5 to-transparent" />
-          <div className="relative">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
-              Ready to launch
+          <RevealSection delay="delay-100">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-gray-900 mb-6">
+              Every small business
               <br />
-              your academy?
-            </h2>
-            <p className="text-zinc-400 max-w-lg mx-auto mb-8">
-              Join forward-thinking organizations using Tempo Academy to train, certify, and grow their people and communities.
-            </p>
+              deserves a chance to
+              <br />
+              <span className="text-orange-500">grow with confidence.</span>
+            </h1>
+          </RevealSection>
 
-            {/* Email input */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mb-6">
-              <input
-                type="email"
-                placeholder="Enter your work email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-xl px-5 py-3.5 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
-              />
-              <button className="bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-orange-600/25 shrink-0">
-                Get Started
-              </button>
+          <RevealSection delay="delay-200">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Tempo Academy helps organisations design and deliver structured training
+              and advisory programmes that transform small business owners into
+              confident, capable entrepreneurs.
+            </p>
+          </RevealSection>
+
+          <RevealSection delay="delay-300">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
+                Start Building Your Academy <ArrowRight size={18} />
+              </Link>
+              <Link href="/solutions/academy-diagnostic" className="text-gray-700 hover:text-orange-600 font-medium px-6 py-3.5 rounded-full border border-gray-200 hover:border-orange-200 transition text-base flex items-center gap-2">
+                Take the Readiness Assessment <ChevronRight size={16} />
+              </Link>
             </div>
+          </RevealSection>
+        </div>
+      </section>
 
-            <p className="text-sm text-zinc-500">
-              Or{' '}
-              <Link href="/signup?plan=enterprise" className="text-sky-400 hover:text-sky-300 underline underline-offset-2 transition-colors">
-                schedule a demo
-              </Link>{' '}
-              with our team
+      {/* ═══ The MSME Opportunity ═══ */}
+      <section className="bg-gray-900 text-white py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-14">
+              <p className="text-orange-400 font-medium text-sm tracking-wide uppercase mb-3">The opportunity is enormous</p>
+              <h2 className="text-3xl sm:text-4xl font-bold">
+                Small businesses are the backbone of every economy.
+              </h2>
+              <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-lg">
+                Yet most lack access to the structured training and advisory support they
+                need to survive, grow, and create jobs.
+              </p>
+            </div>
+          </RevealSection>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {impactStats.map((stat, i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 100}`}>
+                <div className="text-center p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                  <div className="text-3xl sm:text-4xl font-bold text-orange-400 mb-2">{stat.value}</div>
+                  <div className="text-white font-medium text-sm sm:text-base">{stat.label}</div>
+                  <div className="text-gray-500 text-xs sm:text-sm mt-1">{stat.sub}</div>
+                </div>
+              </RevealSection>
+            ))}
+          </div>
+
+          <RevealSection delay="delay-500">
+            <p className="text-center text-gray-400 mt-12 max-w-3xl mx-auto text-base leading-relaxed">
+              MSMEs account for 90% of businesses, 60-70% of employment, and 50% of GDP worldwide.
+              In Africa alone, they create 80% of all jobs. When small businesses grow, entire
+              communities transform. But growth requires knowledge, and knowledge requires structured delivery.
             </p>
-            <p className="text-xs text-zinc-600 mt-4">No credit card required. Free 14-day trial on all paid plans.</p>
+          </RevealSection>
+        </div>
+      </section>
+
+      {/* ═══ Why This Matters ═══ */}
+      <section className="py-20 sm:py-28 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-16">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">Why capability building matters</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                The difference between surviving and thriving
+                <br className="hidden sm:block" />
+                is access to the right knowledge, at the right time.
+              </h2>
+            </div>
+          </RevealSection>
+
+          <div className="grid sm:grid-cols-2 gap-8">
+            {challenges.map((item, i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 100}`}>
+                <div className="flex gap-5 p-6 rounded-2xl bg-gray-50 hover:bg-orange-50/50 transition group">
+                  <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 group-hover:bg-orange-500 group-hover:text-white transition">
+                    <item.icon size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-1.5">{item.title}</h3>
+                    <p className="text-gray-600 leading-relaxed">{item.text}</p>
+                  </div>
+                </div>
+              </RevealSection>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
-      <footer className="border-t border-zinc-800 py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-zinc-500">
-            <svg style={{ width: 12, height: 'auto' }} viewBox="0 0 80 100" fill="none">
-              <line x1="2" y1="3" x2="78" y2="3" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" opacity=".6" />
-              <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" strokeWidth="12" strokeLinecap="round" opacity=".5" />
-              <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" strokeWidth="12" strokeLinecap="round" />
-            </svg>
-            &copy; {new Date().getFullYear()} Tempo. All rights reserved.
+      {/* ═══ What You Can Build ═══ */}
+      <section className="py-20 sm:py-28 bg-orange-50/40">
+        <div className="max-w-6xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-16">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">What you can build</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Everything you need to design, deliver,
+                <br className="hidden sm:block" />
+                and measure transformative programmes.
+              </h2>
+              <p className="text-gray-600 mt-4 max-w-2xl mx-auto text-lg">
+                From financial literacy for SME borrowers to leadership development
+                for emerging managers, Tempo Academy gives you the tools to build
+                programmes that create real impact.
+              </p>
+            </div>
+          </RevealSection>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {capabilities.map((cap, i) => (
+              <RevealSection key={i} delay={`delay-${Math.min((i + 1) * 75, 400)}`}>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-orange-200 transition group">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition">
+                    <cap.icon size={20} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{cap.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{cap.text}</p>
+                </div>
+              </RevealSection>
+            ))}
           </div>
-          <div className="flex items-center gap-6 text-sm text-zinc-500">
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
-            <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+        </div>
+      </section>
+
+      {/* ═══ How It Works ═══ */}
+      <section className="py-20 sm:py-28 bg-white">
+        <div className="max-w-5xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-16">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">Simple to get started</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                From idea to live programme in days, not months.
+              </h2>
+            </div>
+          </RevealSection>
+
+          <div className="grid md:grid-cols-3 gap-10">
+            {[
+              { step: '01', title: 'Design Your Programme', text: 'Choose from ready-made templates or build from scratch. Use AI to generate course outlines, quiz questions, and assignments in seconds.', icon: Lightbulb },
+              { step: '02', title: 'Enrol Participants', text: 'Send branded invitations. Participants join via a clean, mobile-friendly portal with their own login. No app downloads needed.', icon: Users },
+              { step: '03', title: 'Deliver & Measure Impact', text: 'Participants learn through structured modules, live sessions, and peer discussions. You track everything in real-time and issue verified certificates.', icon: BarChart3 },
+            ].map((s, i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 150}`}>
+                <div className="text-center group">
+                  <div className="w-16 h-16 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-5 group-hover:bg-orange-500 group-hover:text-white transition">
+                    <s.icon size={28} />
+                  </div>
+                  <div className="text-orange-400 font-bold text-sm mb-2 tracking-wide">STEP {s.step}</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">{s.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{s.text}</p>
+                </div>
+              </RevealSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Who It's For ═══ */}
+      <section className="py-20 sm:py-28 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-14">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">Built for impact makers</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                For every organisation that believes
+                <br className="hidden sm:block" />
+                small businesses deserve better.
+              </h2>
+            </div>
+          </RevealSection>
+
+          <div className="grid sm:grid-cols-2 gap-6">
+            {useCases.map((uc, i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 100}`}>
+                <div className="flex gap-5 p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-200 transition">
+                  <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                    <uc.icon size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-1">{uc.title}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{uc.text}</p>
+                  </div>
+                </div>
+              </RevealSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Testimonials ═══ */}
+      <section className="py-20 sm:py-28 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-14">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">Trusted by impact leaders</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Organisations building the future of
+                <br className="hidden sm:block" />
+                African enterprise, powered by Tempo.
+              </h2>
+            </div>
+          </RevealSection>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 100}`}>
+                <div className="bg-gray-50 rounded-2xl p-7 border border-gray-100 flex flex-col h-full">
+                  <Quote size={24} className="text-orange-300 mb-4" />
+                  <div className="flex gap-0.5 mb-4">
+                    {Array.from({ length: t.stars }).map((_, j) => (
+                      <Star key={j} size={14} className="fill-orange-400 text-orange-400" />
+                    ))}
+                  </div>
+                  <p className="text-gray-700 leading-relaxed flex-1 mb-6 italic">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+                  <div className="border-t border-gray-200 pt-4">
+                    <p className="font-semibold text-gray-900 text-sm">{t.author}</p>
+                    <p className="text-gray-500 text-xs">{t.org}</p>
+                  </div>
+                </div>
+              </RevealSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Why Tempo Academy ═══ */}
+      <section className="py-20 sm:py-28 bg-orange-50/40">
+        <div className="max-w-5xl mx-auto px-6">
+          <RevealSection>
+            <div className="text-center mb-14">
+              <p className="text-orange-500 font-medium text-sm tracking-wide uppercase mb-3">Why Tempo Academy</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
+                Not just a platform. A partner in
+                <br className="hidden sm:block" />
+                building capable businesses.
+              </h2>
+            </div>
+          </RevealSection>
+
+          <div className="space-y-5 max-w-3xl mx-auto">
+            {[
+              ['Built for Africa, serving the world', 'Designed from day one for the realities of African infrastructure: low bandwidth, mobile-first, offline-capable, multi-language. But powerful enough for any market.'],
+              ['Embedded in your HR platform', 'Unlike standalone LMS tools that require separate logins, contracts, and integrations, Tempo Academy lives inside the same platform where you manage your people.'],
+              ['Cohort-first, not content-first', 'We believe learning happens in community. Our entire architecture is built around cohorts, peer learning, and facilitator-led experiences, not lonely self-paced courses.'],
+              ['From $0 to enterprise scale', 'Start with a free academy for up to 25 participants. Scale to thousands across multiple countries as your impact grows. No upfront costs, no long-term commitments.'],
+              ['AI that saves hours, not replaces humans', 'Our AI generates course outlines and quiz questions so your facilitators can focus on what matters: connecting with participants and driving real outcomes.'],
+            ].map(([title, text], i) => (
+              <RevealSection key={i} delay={`delay-${(i + 1) * 75}`}>
+                <div className="flex gap-4 p-5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                  <CheckCircle2 size={20} className="text-orange-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{text}</p>
+                  </div>
+                </div>
+              </RevealSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Final CTA ═══ */}
+      <section className="py-24 sm:py-32 bg-gray-900 text-white">
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <RevealSection>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-6">
+              The next generation of African
+              <br />
+              entrepreneurs is waiting.
+            </h2>
+            <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+              Give them the structured training, mentorship, and credentials
+              they need to build businesses that create jobs and transform communities.
+            </p>
+          </RevealSection>
+
+          <RevealSection delay="delay-200">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+              <Link href="/login" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full transition shadow-lg hover:shadow-xl text-base flex items-center gap-2">
+                Start Building Your Academy <ArrowRight size={18} />
+              </Link>
+              <Link href="/login" className="text-gray-300 hover:text-white font-medium px-6 py-4 rounded-full border border-gray-700 hover:border-gray-500 transition text-base">
+                Schedule a Demo
+              </Link>
+            </div>
+          </RevealSection>
+
+          <RevealSection delay="delay-300">
+            <p className="text-gray-500 text-sm">
+              Free for up to 25 participants. No credit card required.
+            </p>
+          </RevealSection>
+        </div>
+      </section>
+
+      {/* ═══ Footer ═══ */}
+      <footer className="bg-gray-950 text-gray-500 py-10 border-t border-gray-800">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-xs">/</span>
+            </div>
+            <span className="text-sm text-gray-400">tempo academy</span>
+          </div>
+          <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Tempo. Building capable businesses across Africa and beyond.</p>
+          <div className="flex gap-6">
+            <Link href="/privacy" className="text-xs hover:text-gray-300 transition">Privacy</Link>
+            <Link href="/terms" className="text-xs hover:text-gray-300 transition">Terms</Link>
           </div>
         </div>
       </footer>
