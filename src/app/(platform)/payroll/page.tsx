@@ -43,10 +43,13 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 /** Format a cents integer as a currency string, e.g. 1250000 → "GH₵12,500.00" */
 function fmtCents(cents: number | null | undefined, currency?: string): string {
-  if (cents == null) return '$0.00'
-  const symbol = currency ? (CURRENCY_SYMBOLS[currency] || currency + ' ') : '$'
+  const cur = currency || _activeCurrency || 'USD'
+  const symbol = CURRENCY_SYMBOLS[cur] || cur + ' '
+  if (cents == null) return symbol + '0.00'
   return symbol + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+/** Module-level active currency — set when pay run country changes */
+let _activeCurrency = 'USD'
 
 // Country name → code resolver (client-side mirror of server resolveCountryCode)
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
@@ -381,6 +384,7 @@ export default function PayrollPage() {
   const handleCountryChange = useCallback((country: string) => {
     const code = resolveCountryCode(country)
     const currency = COUNTRY_CURRENCY_MAP[code] || 'USD'
+    _activeCurrency = currency
     setPayRunForm(prev => ({ ...prev, country, currency }))
   }, [])
 
@@ -665,7 +669,7 @@ export default function PayrollPage() {
         baseSalary,
         deductions,
         netPay,
-        currency: emp.currency || payRunForm.currency,
+        currency: payRunForm.currency,
         status: (isOnLeave ? 'on_leave' : isNewHire ? 'new_hire' : 'returning') as 'new_hire' | 'returning' | 'on_leave',
       }
     })
