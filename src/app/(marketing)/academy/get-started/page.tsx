@@ -201,44 +201,13 @@ export default function GetStartedPage() {
           </div>
         </div>
 
-        {/* Right — visual panel (desktop only) */}
-        <div className="hidden lg:flex w-[480px] shrink-0 relative overflow-hidden" style={{
-          background: 'linear-gradient(165deg, #FFF7ED 0%, #FFEDD5 30%, #FED7AA 60%, #FDBA74 100%)'
-        }}>
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-10">
-            {/* Floating cards */}
-            <div className="w-full max-w-[320px] space-y-4">
-              <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-sm">
-                <p className="text-[13px] font-semibold text-[#1a1a1a]/40 uppercase tracking-wider mb-3">What you get</p>
-                <div className="space-y-3">
-                  {[
-                    'Branded academy portal',
-                    'Cohort management tools',
-                    'AI-powered course builder',
-                    'Verified certificates',
-                    'Impact analytics dashboard',
-                    'Email automation',
-                    'Community & forums',
-                    'Multi-language support',
-                  ].map((f, i) => (
-                    <div key={i} className="flex items-center gap-2.5 text-[14px] text-[#1a1a1a]/70">
-                      <CheckCircle2 size={15} className="text-emerald-500 shrink-0" /> {f}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center gap-1 mb-2">
-                  {[1,2,3,4,5].map(i => <Star key={i} size={12} className="fill-[#E8590C] text-[#E8590C]" />)}
-                </div>
-                <p className="text-[14px] text-[#1a1a1a]/70 leading-[1.5] mb-3 italic">
-                  &ldquo;We launched our SME academy in 3 days. 340 entrepreneurs enrolled across 6 countries.&rdquo;
-                </p>
-                <p className="text-[12px] text-[#1a1a1a]/30">Head of Enterprise Development</p>
-              </div>
-            </div>
-          </div>
+        {/* Right — photo panel (desktop only) */}
+        <div className="hidden lg:block w-[480px] shrink-0 relative overflow-hidden">
+          <img
+            src="/images/academy/confident-entrepreneur.png"
+            alt="Confident African entrepreneur"
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
         </div>
       </div>
     </div>
