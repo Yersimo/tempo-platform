@@ -88,6 +88,7 @@ export interface SessionPayload {
   role: string
   orgId: string
   sessionId: string
+  capabilities?: string // comma-separated capability tags e.g. 'payroll_officer,finance_approver'
 }
 
 export async function createToken(payload: SessionPayload): Promise<string> {
@@ -109,7 +110,7 @@ export async function verifyToken(token: string): Promise<SessionPayload | null>
 
 // ─── Session Management (DB-backed) ──────────────────────────────────────
 
-export async function createSession(employeeId: string, orgId: string, email: string, role: string): Promise<string> {
+export async function createSession(employeeId: string, orgId: string, email: string, role: string, capabilities?: string): Promise<string> {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
 
   // Create session record
@@ -126,6 +127,7 @@ export async function createSession(employeeId: string, orgId: string, email: st
     role,
     orgId,
     sessionId: session.id,
+    ...(capabilities ? { capabilities } : {}),
   })
 
   // Update session with actual JWT token

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
-import { getPermissionsForRole, hasAnyPermission } from '@/lib/security/permissions'
+import { getPermissionsForRoles, hasAnyPermission } from '@/lib/security/permissions'
 import { getRequiredPermissions } from '@/lib/security/route-permissions'
 
 const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
@@ -322,7 +322,9 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
 
     // ─── RBAC Authorization ──────────────────────────────────────────────
     const employeeRole = (payload.role as string) || 'employee'
-    const userPermissions = getPermissionsForRole(employeeRole)
+    const capabilitiesStr = (payload.capabilities as string) || ''
+    const capabilities = capabilitiesStr ? capabilitiesStr.split(',').map(c => c.trim()).filter(Boolean) : []
+    const userPermissions = getPermissionsForRoles([employeeRole], capabilities)
 
     // Forward permissions so API routes can perform their own checks
     requestHeaders.set('x-employee-permissions', userPermissions.join(','))

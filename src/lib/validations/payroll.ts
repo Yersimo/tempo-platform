@@ -96,6 +96,45 @@ export const updateTaxConfigBody = z.object({
   effectiveDate: z.string().optional(),
 })
 
+// Feature B: Update bank details
+export const updateBankDetailsBody = z.object({
+  action: z.literal('update-bank-details'),
+  employeeId: z.string().min(1),
+  bankName: z.string().optional(),
+  bankCode: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankCountry: z.string().optional(),
+  mobileMoneyProvider: z.string().optional(),
+  mobileMoneyNumber: z.string().optional(),
+})
+
+// Feature C: Adjust payroll entry
+export const adjustEntryBody = z.object({
+  action: z.literal('adjust-entry'),
+  entryId: z.string().min(1),
+  adHocBonus: z.number().optional(),
+  additionalDeductionName: z.string().optional(),
+  additionalDeductionAmount: z.number().optional(),
+  overrideBenefitsAmount: z.number().optional(),
+})
+
+// Feature D: Save reconciliation notes
+export const saveReconNotesBody = z.object({
+  action: z.literal('save-reconciliation-notes'),
+  comments: z.record(z.string(), z.string()).optional(),
+  verified: z.record(z.string(), z.boolean()).optional(),
+})
+
+// Feature F: Authorize payment
+export const authorizePaymentBody = z.object({
+  action: z.literal('authorize-payment'),
+  payrollRunId: z.string().min(1),
+  paymentReference: z.string().min(1),
+  authorizationCode: z.string().optional(),
+  authorizerId: z.string().optional(),
+})
+
 export const payrollPostBody = z.discriminatedUnion('action', [
   processPayrollBody,
   generatePayStubBody,
@@ -108,6 +147,10 @@ export const payrollPostBody = z.discriminatedUnion('action', [
   markPaidBody,
   cancelPayrollBody,
   updateTaxConfigBody,
+  updateBankDetailsBody,
+  adjustEntryBody,
+  saveReconNotesBody,
+  authorizePaymentBody,
 ])
 
 // GET query param validation

@@ -163,7 +163,8 @@ export async function POST(request: NextRequest) {
         employee.id,
         employee.orgId,
         employee.email,
-        employee.role
+        employee.role,
+        (employee as any).capabilities || undefined
       )
 
       // Get department name

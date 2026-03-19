@@ -107,6 +107,7 @@ export const employees = pgTable('employees', {
   // Tax & Employment Lifecycle
   taxIdNumber: varchar('tax_id_number', { length: 100 }), // TIN / KRA PIN / SSNIT number for tax forms
   terminationDate: date('termination_date'), // For pro-rata final pay calculations
+  capabilities: varchar('capabilities', { length: 500 }), // comma-separated capability tags: payroll_officer,finance_approver,it_manager,recruiter
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

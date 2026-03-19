@@ -98,6 +98,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'leave:read', 'leave:approve',
     'expense:read',
     'benefits:read', 'benefits:manage',
+    'payroll:read', 'payroll:run', 'payroll:approve',
     'time:read',
     'analytics:read',
     'compliance:read', 'compliance:manage',
@@ -111,6 +112,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'performance:read', 'performance:write',
     'expense:read', 'expense:submit', 'expense:approve',
     'leave:read', 'leave:submit', 'leave:approve',
+    'payroll:read',
     'time:read',
     'onboarding:read',
     'analytics:read',
@@ -158,6 +160,16 @@ export const CAPABILITY_PERMISSIONS: Record<string, Permission[]> = {
     'people:read',
     'onboarding:read', 'onboarding:manage',
     'analytics:read',
+  ],
+
+  payroll_officer: [
+    'payroll:read', 'payroll:run', 'payroll:approve',
+    'people:read',
+    'compensation:read',
+    'benefits:read',
+    'finance:read',
+    'analytics:read',
+    'compliance:read',
   ],
 }
 

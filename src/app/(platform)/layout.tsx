@@ -7,6 +7,7 @@ import { TempoProvider, useTempo } from '@/lib/store'
 import { ToastContainer } from '@/components/ui/toast'
 import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { SessionTimeout } from '@/components/session-timeout'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,7 @@ export default function PlatformLayout({
     <TempoProvider>
       <AuthGuard>
         <ImpersonationBanner />
+        <SessionTimeout />
         <div className="flex min-h-screen bg-canvas">
           <Sidebar />
           <main className="flex-1 min-w-0">
