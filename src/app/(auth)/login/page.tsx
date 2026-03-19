@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { TempoMark } from '@/components/brand/tempo-mark'
 import { useTempo } from '@/lib/store'
 import { KeyRound, ArrowLeft, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
 
@@ -142,10 +141,9 @@ export default function LoginPage() {
   if (mfaRequired) {
     return (
       <div className="animate-in fade-in duration-300">
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-2.5 mb-10">
-          <TempoMark variant="color" size={36} />
-          <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+        {/* Mobile logo — text wordmark only, matching landing page */}
+        <div className="lg:hidden mb-10">
+          <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
             tempo<span className="text-[#E8590C]">.</span>
           </span>
         </div>
@@ -270,10 +268,9 @@ export default function LoginPage() {
 
     return (
       <div className="animate-in fade-in duration-300">
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-2.5 mb-10">
-          <TempoMark variant="color" size={36} />
-          <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+        {/* Mobile logo — text wordmark only, matching landing page */}
+        <div className="lg:hidden mb-10">
+          <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
             tempo<span className="text-[#E8590C]">.</span>
           </span>
         </div>
@@ -343,10 +340,9 @@ export default function LoginPage() {
   // ─── Standard Login Form ──────────────────────────────────────────
   return (
     <div className="animate-in fade-in duration-300">
-      {/* Mobile logo */}
-      <div className="lg:hidden flex items-center gap-2.5 mb-10">
-        <TempoMark variant="color" size={36} />
-        <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+      {/* Mobile logo — text wordmark only, matching landing page */}
+      <div className="lg:hidden mb-10">
+        <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
           tempo<span className="text-[#E8590C]">.</span>
         </span>
       </div>

@@ -1,6 +1,5 @@
 'use client'
 
-import { TempoMark } from '@/components/brand/tempo-mark'
 import { TempoProvider } from '@/lib/store'
 import { Shield } from 'lucide-react'
 
@@ -16,14 +15,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Noise texture overlay */}
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'1\'/%3E%3C/svg%3E")' }} />
 
-          {/* Top: Logo */}
+          {/* Top: Logo — text wordmark only, matching landing page */}
           <div className="relative z-10 px-10 pt-10">
-            <div className="flex items-center gap-3">
-              <TempoMark variant="white" size={40} />
-              <span className="font-bold text-[20px] tracking-[-0.02em] text-white">
-                tempo<span className="text-[#E8590C]">.</span>
-              </span>
-            </div>
+            <span className="font-bold text-[22px] tracking-[-0.02em] text-white">
+              tempo<span className="text-[#E8590C]">.</span>
+            </span>
           </div>
 
           {/* Center: Hero */}
