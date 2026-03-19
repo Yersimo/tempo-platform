@@ -3,10 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Button } from '@/components/ui/button'
-import { TempoLockup } from '@/components/brand/tempo-lockup'
+import { TempoMark } from '@/components/brand/tempo-mark'
 import { useTempo } from '@/lib/store'
-import { KeyRound, ArrowLeft, CheckCircle } from 'lucide-react'
+import { KeyRound, ArrowLeft, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [forgotMode, setForgotMode] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotSent, setForgotSent] = useState(false)
@@ -69,7 +69,6 @@ export default function LoginPage() {
       setMfaCode(['', '', '', '', '', ''])
       setBackupCode('')
       setLoading(false)
-      // Re-focus first input
       if (!useBackupCode) {
         mfaInputRefs.current[0]?.focus()
       }
@@ -77,18 +76,15 @@ export default function LoginPage() {
   }, [mfaToken, verifyMFA, router, t, useBackupCode])
 
   const handleMFAInput = (index: number, value: string) => {
-    // Only allow digits
     const digit = value.replace(/\D/g, '').slice(-1)
     const newCode = [...mfaCode]
     newCode[index] = digit
     setMfaCode(newCode)
 
     if (digit && index < 5) {
-      // Move to next input
       mfaInputRefs.current[index + 1]?.focus()
     }
 
-    // Auto-submit when all 6 digits are entered
     if (digit && index === 5) {
       const fullCode = newCode.join('')
       if (fullCode.length === 6) {
@@ -112,12 +108,8 @@ export default function LoginPage() {
         newCode[i] = pastedData[i]
       }
       setMfaCode(newCode)
-
-      // Focus the next empty input or last input
       const nextEmpty = pastedData.length < 6 ? pastedData.length : 5
       mfaInputRefs.current[nextEmpty]?.focus()
-
-      // Auto-submit if all 6 digits pasted
       if (pastedData.length === 6) {
         submitMFACode(pastedData)
       }
@@ -141,102 +133,113 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  // Shared input class
+  const inputClass = 'w-full h-11 px-4 text-[14px] bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#E8590C]/15 focus:border-[#E8590C]/40 transition-all duration-200'
+  const labelClass = 'block text-[13px] font-medium text-gray-700 mb-1.5'
+  const btnPrimary = 'w-full h-11 bg-[#E8590C] text-white text-[14px] font-medium rounded-xl hover:bg-[#d14e0a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#E8590C]/20 hover:shadow-md hover:shadow-[#E8590C]/25 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2'
+
   // ─── MFA Verification Step ────────────────────────────────────────
   if (mfaRequired) {
     return (
-      <div>
-        <div className="lg:hidden flex justify-center mb-8">
-          <TempoLockup variant="color" size="md" />
+      <div className="animate-in fade-in duration-300">
+        {/* Mobile logo */}
+        <div className="lg:hidden flex items-center gap-2.5 mb-10">
+          <TempoMark variant="color" size={36} />
+          <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+            tempo<span className="text-[#E8590C]">.</span>
+          </span>
         </div>
-        <div className="bg-card rounded-[14px] border border-border p-8">
-          <button
-            onClick={resetMFA}
-            className="flex items-center gap-1.5 text-xs text-t3 hover:text-t1 transition-colors mb-6"
-          >
-            <ArrowLeft size={14} />
-            {t('mfaBackToLogin')}
-          </button>
 
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center">
-              <KeyRound size={24} className="text-tempo-600" />
-            </div>
+        <button
+          onClick={resetMFA}
+          className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 transition-colors mb-8"
+        >
+          <ArrowLeft size={15} />
+          {t('mfaBackToLogin')}
+        </button>
+
+        <div className="flex justify-center mb-5">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+            <KeyRound size={22} className="text-[#E8590C]" />
           </div>
-
-          <h2 className="text-xl font-semibold text-t1 mb-1 text-center">{t('mfaTitle')}</h2>
-          <p className="text-sm text-t3 mb-8 text-center">
-            {useBackupCode ? t('mfaEnterBackupCode') : t('mfaEnterCode')}
-          </p>
-
-          {!useBackupCode ? (
-            <div>
-              {/* 6-digit code input */}
-              <div className="flex justify-center gap-2 mb-6" onPaste={handleMFAPaste}>
-                {mfaCode.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(el) => { mfaInputRefs.current[index] = el }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleMFAInput(index, e.target.value)}
-                    onKeyDown={(e) => handleMFAKeyDown(index, e)}
-                    disabled={loading}
-                    className="w-11 h-13 text-center text-lg font-semibold bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600 disabled:opacity-50 transition-all"
-                    autoComplete="one-time-code"
-                  />
-                ))}
-              </div>
-
-              {error && (
-                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4 text-center">{error}</p>
-              )}
-
-              {loading && (
-                <p className="text-xs text-t3 text-center mb-4">{t('mfaVerifying')}</p>
-              )}
-
-              <button
-                onClick={() => { setUseBackupCode(true); setError('') }}
-                className="block w-full text-center text-xs text-tempo-600 hover:text-tempo-700 transition-colors mt-4"
-              >
-                {t('mfaUseBackupCode')}
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleBackupSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-t1 mb-1">{t('mfaBackupCodeLabel')}</label>
-                <input
-                  type="text"
-                  value={backupCode}
-                  onChange={(e) => setBackupCode(e.target.value)}
-                  placeholder={t('mfaBackupCodePlaceholder')}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600 font-mono"
-                  autoFocus
-                  disabled={loading}
-                />
-              </div>
-
-              {error && (
-                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-              )}
-
-              <Button type="submit" className="w-full" disabled={loading || !backupCode.trim()}>
-                {loading ? t('mfaVerifying') : t('mfaVerifyButton')}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => { setUseBackupCode(false); setError('') }}
-                className="block w-full text-center text-xs text-tempo-600 hover:text-tempo-700 transition-colors"
-              >
-                {t('mfaUseTOTPCode')}
-              </button>
-            </form>
-          )}
         </div>
+
+        <h2 className="text-[22px] font-semibold text-gray-900 text-center tracking-[-0.01em]">{t('mfaTitle')}</h2>
+        <p className="text-[14px] text-gray-400 mt-2 mb-8 text-center leading-relaxed">
+          {useBackupCode ? t('mfaEnterBackupCode') : t('mfaEnterCode')}
+        </p>
+
+        {!useBackupCode ? (
+          <div>
+            <div className="flex justify-center gap-2.5 mb-6" onPaste={handleMFAPaste}>
+              {mfaCode.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { mfaInputRefs.current[index] = el }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleMFAInput(index, e.target.value)}
+                  onKeyDown={(e) => handleMFAKeyDown(index, e)}
+                  disabled={loading}
+                  className="w-12 h-14 text-center text-[18px] font-semibold bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#E8590C]/15 focus:border-[#E8590C]/40 disabled:opacity-50 transition-all duration-200"
+                  autoComplete="one-time-code"
+                />
+              ))}
+            </div>
+
+            {error && (
+              <p className="text-[13px] text-red-600 bg-red-50 rounded-xl px-4 py-2.5 mb-4 text-center">{error}</p>
+            )}
+
+            {loading && (
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Loader2 size={14} className="animate-spin text-gray-400" />
+                <p className="text-[13px] text-gray-400">{t('mfaVerifying')}</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => { setUseBackupCode(true); setError('') }}
+              className="block w-full text-center text-[13px] text-[#E8590C] hover:text-[#d14e0a] transition-colors mt-6 font-medium"
+            >
+              {t('mfaUseBackupCode')}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleBackupSubmit} className="space-y-4">
+            <div>
+              <label className={labelClass}>{t('mfaBackupCodeLabel')}</label>
+              <input
+                type="text"
+                value={backupCode}
+                onChange={(e) => setBackupCode(e.target.value)}
+                placeholder={t('mfaBackupCodePlaceholder')}
+                className={`${inputClass} font-mono`}
+                autoFocus
+                disabled={loading}
+              />
+            </div>
+
+            {error && (
+              <p className="text-[13px] text-red-600 bg-red-50 rounded-xl px-4 py-2.5">{error}</p>
+            )}
+
+            <button type="submit" className={btnPrimary} disabled={loading || !backupCode.trim()}>
+              {loading && <Loader2 size={15} className="animate-spin" />}
+              {loading ? t('mfaVerifying') : t('mfaVerifyButton')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setUseBackupCode(false); setError('') }}
+              className="block w-full text-center text-[13px] text-[#E8590C] hover:text-[#d14e0a] transition-colors font-medium"
+            >
+              {t('mfaUseTOTPCode')}
+            </button>
+          </form>
+        )}
       </div>
     )
   }
@@ -256,7 +259,6 @@ export default function LoginPage() {
         if (res.ok) {
           setForgotSent(true)
         } else {
-          // Still show success to not leak email existence
           setForgotSent(true)
         }
       } catch {
@@ -267,132 +269,162 @@ export default function LoginPage() {
     }
 
     return (
-      <div>
-        <div className="lg:hidden flex justify-center mb-8">
-          <TempoLockup variant="color" size="md" />
+      <div className="animate-in fade-in duration-300">
+        {/* Mobile logo */}
+        <div className="lg:hidden flex items-center gap-2.5 mb-10">
+          <TempoMark variant="color" size={36} />
+          <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+            tempo<span className="text-[#E8590C]">.</span>
+          </span>
         </div>
-        <div className="bg-card rounded-[14px] border border-border p-8">
-          <button
-            onClick={() => { setForgotMode(false); setForgotSent(false); setError('') }}
-            className="flex items-center gap-1.5 text-xs text-t3 hover:text-t1 transition-colors mb-6"
-          >
-            <ArrowLeft size={14} />
-            Back to login
-          </button>
 
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center">
-              <KeyRound size={24} className="text-tempo-600" />
-            </div>
+        <button
+          onClick={() => { setForgotMode(false); setForgotSent(false); setError('') }}
+          className="flex items-center gap-1.5 text-[13px] text-gray-400 hover:text-gray-700 transition-colors mb-8"
+        >
+          <ArrowLeft size={15} />
+          Back to login
+        </button>
+
+        <div className="flex justify-center mb-5">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+            <KeyRound size={22} className="text-[#E8590C]" />
           </div>
-
-          <h2 className="text-xl font-semibold text-t1 mb-1 text-center">Reset Password</h2>
-          <p className="text-sm text-t3 mb-6 text-center">
-            {forgotSent
-              ? 'If an account with that email exists, we\'ve sent a reset link.'
-              : 'Enter your email address and we\'ll send you a reset link.'
-            }
-          </p>
-
-          {forgotSent ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center gap-2 p-4 rounded-lg bg-green-50 border border-green-200">
-                <CheckCircle size={18} className="text-green-600" />
-                <p className="text-sm text-green-700">Check your email for a reset link</p>
-              </div>
-              <Button
-                onClick={() => { setForgotMode(false); setForgotSent(false) }}
-                className="w-full"
-              >
-                Back to Login
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleForgotSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-t1 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
-                  required
-                  autoFocus
-                />
-              </div>
-              {error && (
-                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Reset Link'}
-              </Button>
-            </form>
-          )}
         </div>
+
+        <h2 className="text-[22px] font-semibold text-gray-900 text-center tracking-[-0.01em]">Reset your password</h2>
+        <p className="text-[14px] text-gray-400 mt-2 mb-8 text-center leading-relaxed">
+          {forgotSent
+            ? 'If an account with that email exists, we\'ve sent a reset link.'
+            : 'Enter your email and we\'ll send you a link to reset it.'
+          }
+        </p>
+
+        {forgotSent ? (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+              <CheckCircle size={18} className="text-emerald-500 shrink-0" />
+              <p className="text-[13px] text-emerald-700">Check your email for a reset link</p>
+            </div>
+            <button
+              onClick={() => { setForgotMode(false); setForgotSent(false) }}
+              className={btnPrimary}
+            >
+              Back to login
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleForgotSubmit} className="space-y-5">
+            <div>
+              <label className={labelClass}>Email address</label>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@company.com"
+                className={inputClass}
+                required
+                autoFocus
+              />
+            </div>
+            {error && (
+              <p className="text-[13px] text-red-600 bg-red-50 rounded-xl px-4 py-2.5">{error}</p>
+            )}
+            <button type="submit" className={btnPrimary} disabled={loading}>
+              {loading && <Loader2 size={15} className="animate-spin" />}
+              {loading ? 'Sending...' : 'Send reset link'}
+            </button>
+          </form>
+        )}
       </div>
     )
   }
 
   // ─── Standard Login Form ──────────────────────────────────────────
   return (
-    <div>
-      <div className="lg:hidden flex justify-center mb-8">
-        <TempoLockup variant="color" size="md" />
+    <div className="animate-in fade-in duration-300">
+      {/* Mobile logo */}
+      <div className="lg:hidden flex items-center gap-2.5 mb-10">
+        <TempoMark variant="color" size={36} />
+        <span className="font-bold text-[20px] tracking-[-0.02em] text-gray-900">
+          tempo<span className="text-[#E8590C]">.</span>
+        </span>
       </div>
-      <div className="bg-card rounded-[14px] border border-border p-8">
-        <h2 className="text-xl font-semibold text-t1 mb-1">{t('welcomeBack')}</h2>
-        <p className="text-sm text-t3 mb-6">{t('signInSubtitle')}</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-t1 mb-1">{t('emailLabel')}</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('emailPlaceholder')}
-              className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
-              required
-            />
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-[26px] font-semibold text-gray-900 tracking-[-0.02em]">{t('welcomeBack')}</h2>
+        <p className="text-[14px] text-gray-400 mt-1.5">{t('signInSubtitle')}</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email */}
+        <div>
+          <label className={labelClass}>{t('emailLabel')}</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t('emailPlaceholder')}
+            className={inputClass}
+            required
+          />
+        </div>
+
+        {/* Password */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[13px] font-medium text-gray-700">{t('passwordLabel')}</label>
+            <button
+              type="button"
+              onClick={() => setForgotMode(true)}
+              className="text-[12px] text-[#E8590C] hover:text-[#d14e0a] font-medium transition-colors"
+            >
+              Forgot password?
+            </button>
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-t1">{t('passwordLabel')}</label>
-              <button
-                type="button"
-                onClick={() => setForgotMode(true)}
-                className="text-xs text-tempo-600 hover:text-tempo-700 font-medium transition-colors"
-              >
-                Forgot password?
-              </button>
-            </div>
+          <div className="relative">
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('passwordPlaceholder')}
-              className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+              className={`${inputClass} pr-11`}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
+        </div>
 
-          {error && (
-            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-          )}
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-red-50 border border-red-100">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+            <p className="text-[13px] text-red-600">{error}</p>
+          </div>
+        )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? t('signingIn') : t('signIn')}
-          </Button>
-        </form>
+        {/* Submit */}
+        <button type="submit" className={btnPrimary} disabled={loading}>
+          {loading && <Loader2 size={15} className="animate-spin" />}
+          {loading ? t('signingIn') : t('signIn')}
+        </button>
+      </form>
 
-        <p className="text-[0.6rem] text-t3 text-center mt-6">
-          Don&apos;t have an account?{' '}
-          <a href="/signup" className="text-tempo-600 hover:text-tempo-700 font-medium transition-colors">
-            Request access
-          </a>
-        </p>
-      </div>
+      {/* Footer */}
+      <p className="text-[12px] text-gray-400 text-center mt-8">
+        Don&apos;t have an account?{' '}
+        <a href="/signup" className="text-[#E8590C] hover:text-[#d14e0a] font-medium transition-colors">
+          Request access
+        </a>
+      </p>
     </div>
   )
 }
