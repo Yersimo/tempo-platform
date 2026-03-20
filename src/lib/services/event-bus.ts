@@ -139,6 +139,64 @@ export interface LearningCourseCompletedPayload {
   completedAt?: string
 }
 
+export interface RecruitingCandidateHiredPayload {
+  employeeId?: string
+  candidateName: string
+  applicationId: string
+  jobPostingId: string
+  departmentId: string
+  jobTitle: string
+  level?: string
+  startDate?: string
+  hiredBy?: string
+}
+
+export interface OnboardingInitiatedPayload {
+  employeeId: string
+  onboardingId: string
+  employeeName: string
+  departmentId: string
+  jobTitle: string
+  startDate: string
+  managerId?: string
+}
+
+export interface HeadcountPositionApprovedPayload {
+  positionId: string
+  planId: string
+  departmentId: string
+  jobTitle: string
+  level: string
+  location?: string
+  budgetCents: number
+  currency: string
+  approvedBy?: string
+}
+
+export interface BenefitsEnrollmentChangedPayload {
+  employeeId: string
+  enrollmentId: string
+  planId: string
+  planType: string
+  planName: string
+  action: 'enrolled' | 'changed' | 'cancelled'
+  previousPlanId?: string
+  effectiveDate: string
+  employeeCostCents?: number
+  employerCostCents?: number
+}
+
+export interface CompensationSalaryApprovedPayload {
+  employeeId: string
+  salaryReviewId: string
+  previousSalaryCents: number
+  newSalaryCents: number
+  currency: string
+  effectiveDate: string
+  approvedBy?: string
+  reason?: string
+}
+
 // ---------------------------------------------------------------------------
 // Event map — single source of truth for event name -> payload type
 // ---------------------------------------------------------------------------
@@ -157,6 +215,11 @@ export interface EventMap {
   'expense:report_submitted': ExpenseReportSubmittedPayload
   'expense:report_approved': ExpenseReportApprovedPayload
   'learning:course_completed': LearningCourseCompletedPayload
+  'recruiting:candidate_hired': RecruitingCandidateHiredPayload
+  'onboarding:initiated': OnboardingInitiatedPayload
+  'headcount:position_approved': HeadcountPositionApprovedPayload
+  'benefits:enrollment_changed': BenefitsEnrollmentChangedPayload
+  'compensation:salary_approved': CompensationSalaryApprovedPayload
 }
 
 export type EventName = keyof EventMap

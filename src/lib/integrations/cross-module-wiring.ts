@@ -6,12 +6,19 @@
  * automatic workflows between modules.
  *
  * Integrations:
- * 1. Performance → Compensation: review completion auto-generates merit proposals
- * 2. Offboarding → Revocation: offboarding initiation auto-revokes access
- * 3. Travel → Expense: approved travel auto-generates expense drafts
- * 4. Time → Payroll: timesheet approval feeds into payroll calculations
- * 5. Cross-module notifications: all events forward to notification system
- * 6. Learning → Performance: course completion updates competency scores and goal progress
+ *  1. Performance → Compensation: review completion auto-generates merit proposals
+ *  2. Offboarding → Revocation: offboarding initiation auto-revokes access
+ *  3. Travel → Expense: approved travel auto-generates expense drafts
+ *  4. Time → Payroll: timesheet approval feeds into payroll calculations
+ *  5. Cross-module notifications: all events forward to notification system
+ *  6. Learning → Performance: course completion updates competency scores and goal progress
+ *  7. Recruiting → Onboarding: hired candidates get auto-generated onboarding checklists
+ *  8. Onboarding → Learning: new hires auto-enrolled in mandatory/dept courses
+ *  9. Headcount → Recruiting: approved positions auto-create job postings
+ * 10. Expense → Payroll: approved expenses queued for payroll reimbursement
+ * 11. Benefits → Payroll: enrollment changes create payroll deduction adjustments
+ * 12. Compensation → Payroll: salary changes create payroll rate change entries
+ * 13. Offboarding → Payroll: offboarding triggers final pay calculation
  */
 
 import { eventBus } from '@/lib/services/event-bus'
@@ -46,6 +53,36 @@ import {
   type CompetencyRating,
   type LearningAssignment,
 } from './learning-performance'
+import {
+  generateOnboardingChecklist,
+  applyOnboardingChecklist,
+} from './recruiting-onboarding'
+import {
+  determineOnboardingEnrollments,
+  applyOnboardingEnrollments,
+} from './onboarding-learning'
+import {
+  generateJobPostingFromHeadcount,
+  applyJobPostingFromHeadcount,
+  type HeadcountPosition,
+} from './headcount-recruiting'
+import {
+  processApprovedExpenseForPayroll,
+  applyExpenseReimbursements,
+  batchProcessExpensesForPayroll,
+} from './expense-payroll'
+import {
+  processEnrollmentChange,
+  applyBenefitDeductions,
+} from './benefits-payroll'
+import {
+  processSalaryChangeForPayroll,
+  applySalaryChangeToPayroll,
+} from './compensation-payroll'
+import {
+  processOffboardingForPayroll,
+  applyOffboardingPayroll,
+} from '@/lib/payroll/offboarding-payroll'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +142,34 @@ interface IntegrationStoreSlice {
   addCompetencyRating?: (data: Record<string, unknown>) => void
   updateCompetencyRating?: (id: string, data: Record<string, unknown>) => void
 
+  // Recruiting & Onboarding
+  jobPostings?: Array<Record<string, unknown>>
+  headcountPositions?: Array<Record<string, unknown>>
+  addJobPosting?: (data: Record<string, unknown>) => void
+  updateHeadcountPosition?: (id: string, data: Record<string, unknown>) => void
+  addPreboardingTask?: (data: Record<string, unknown>) => void
+  addOnboardingProcess?: (data: Record<string, unknown>) => void
+  addEnrollment?: (data: Record<string, unknown>) => void
+
+  // Expenses & Payroll
+  expenseReports?: Array<Record<string, unknown>>
+  addEmployeePayrollEntry?: (data: Record<string, unknown>) => void
+  updateExpenseReport?: (id: string, data: Record<string, unknown>) => void
+
+  // Benefits & Payroll
+  benefitPlans?: Array<Record<string, unknown>>
+  benefitEnrollments?: Array<Record<string, unknown>>
+
+  // Compensation & Payroll
+  salaryReviews?: Array<Record<string, unknown>>
+  updateEmployee?: (id: string, data: Record<string, unknown>) => void
+  updateSalaryReview?: (id: string, data: Record<string, unknown>) => void
+
+  // Offboarding Payroll
+  leaveBalances?: Array<Record<string, unknown>>
+  leaveRequests?: Array<Record<string, unknown>>
+  addPayrollRun?: (data: Record<string, unknown>) => void
+
   // Notifications
   addToast?: (toast: { type: string; title: string; description?: string }) => void
 }
@@ -135,9 +200,16 @@ export function registerAllIntegrations(): void {
   registerTravelToExpense()
   registerTimesheetToPayroll()
   registerLearningToPerformance()
+  registerRecruitingToOnboarding()
+  registerOnboardingToLearning()
+  registerHeadcountToRecruiting()
+  registerExpenseToPayroll()
+  registerBenefitsToPayroll()
+  registerCompensationToPayroll()
+  registerOffboardingToPayroll()
   registerCrossModuleNotifications()
 
-  console.info('[Integrations] All cross-module integrations registered')
+  console.info('[Integrations] All cross-module integrations registered (13 integration handlers)')
 }
 
 // ── 1. Performance → Compensation ────────────────────────────────────────────
@@ -441,7 +513,311 @@ function registerLearningToPerformance(): void {
   })
 }
 
-// ── 6. Cross-Module Notifications ────────────────────────────────────────────
+// ── 7. Recruiting → Onboarding ────────────────────────────────────────────────
+
+function registerRecruitingToOnboarding(): void {
+  eventBus.on('recruiting:candidate_hired', async (payload) => {
+    if (!_store) return
+
+    const { candidateName, departmentId, jobTitle, startDate } = payload
+
+    console.info(`[Integration] Candidate "${candidateName}" hired for ${jobTitle} — generating onboarding checklist`)
+
+    // Resolve department name
+    const dept = _store.departments.find(d => d.id === departmentId)
+    const departmentName = dept?.name || 'General'
+
+    // Generate the checklist
+    const checklist = generateOnboardingChecklist(
+      candidateName,
+      departmentId,
+      departmentName,
+      jobTitle,
+    )
+
+    // If we have an employee ID (already created), apply the checklist
+    const employeeId = payload.employeeId
+    if (employeeId) {
+      const storeSlice = _store as unknown as Parameters<typeof applyOnboardingChecklist>[3]
+      const tasksCreated = applyOnboardingChecklist(
+        checklist,
+        employeeId,
+        startDate || new Date().toISOString().split('T')[0],
+        storeSlice,
+      )
+
+      console.info(`[Integration] Onboarding checklist created: ${tasksCreated} tasks across ${Object.keys(checklist.byCategory).length} categories`)
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Onboarding Checklist Created',
+        description: `${checklist.totalTasks} tasks generated for ${candidateName} (IT: ${checklist.byCategory['it_setup'] || 0}, HR: ${checklist.byCategory['hr'] || 0}, Manager: ${checklist.byCategory['manager'] || 0}, Dept: ${checklist.byCategory['department'] || 0})`,
+      })
+    } else {
+      console.info(`[Integration] Onboarding checklist prepared (${checklist.totalTasks} tasks) — will be applied when employee record is created`)
+    }
+  })
+}
+
+// ── 8. Onboarding → Learning ──────────────────────────────────────────────────
+
+function registerOnboardingToLearning(): void {
+  eventBus.on('onboarding:initiated', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, employeeName, departmentId, startDate } = payload
+
+    console.info(`[Integration] Onboarding initiated for ${employeeName} — determining learning enrollments`)
+
+    // Resolve department name
+    const dept = _store.departments.find(d => d.id === departmentId)
+    const departmentName = dept?.name || 'General'
+
+    const courses = (_store.courses || []) as Parameters<typeof determineOnboardingEnrollments>[4]
+
+    // Determine enrollments
+    const result = determineOnboardingEnrollments(
+      employeeId,
+      employeeName,
+      departmentId,
+      departmentName,
+      courses,
+      _store.enrollments || [],
+    )
+
+    if (result.totalEnrollments > 0) {
+      const storeSlice = _store as unknown as Parameters<typeof applyOnboardingEnrollments>[2]
+      const created = applyOnboardingEnrollments(result, startDate, storeSlice)
+
+      console.info(
+        `[Integration] Auto-enrolled ${employeeName} in ${created} courses ` +
+        `(${result.mandatoryCount} mandatory, ${result.totalEnrollments - result.mandatoryCount} recommended)`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Learning Auto-Enrollment',
+        description: `${created} courses assigned to ${employeeName}: ${result.mandatoryCount} mandatory, ${result.totalEnrollments - result.mandatoryCount} recommended`,
+      })
+    } else {
+      console.info(`[Integration] No matching courses found for ${employeeName} onboarding enrollment`)
+    }
+  })
+}
+
+// ── 9. Headcount → Recruiting ─────────────────────────────────────────────────
+
+function registerHeadcountToRecruiting(): void {
+  eventBus.on('headcount:position_approved', async (payload) => {
+    if (!_store) return
+
+    const { positionId, departmentId, jobTitle, level } = payload
+
+    console.info(`[Integration] Headcount position approved: ${jobTitle} (${level}) — auto-creating job posting`)
+
+    // Find the position in the store
+    const position = (_store.headcountPositions || []).find(
+      p => (p as Record<string, unknown>).id === positionId,
+    ) as unknown as HeadcountPosition | undefined
+
+    if (!position) {
+      console.warn(`[Integration] Headcount position ${positionId} not found — skipping job posting creation`)
+      return
+    }
+
+    // Resolve department name
+    const dept = _store.departments.find(d => d.id === departmentId)
+    const departmentName = dept?.name || 'Unknown Department'
+
+    // Generate the job posting
+    const result = generateJobPostingFromHeadcount(position, departmentName)
+
+    // Apply to store
+    const storeSlice = _store as unknown as Parameters<typeof applyJobPostingFromHeadcount>[1]
+    const created = applyJobPostingFromHeadcount(result, storeSlice)
+
+    if (created) {
+      const salaryRange = result.salaryRange
+      console.info(
+        `[Integration] Job posting created for "${jobTitle}" — salary range: ${(salaryRange.min / 100).toFixed(0)}-${(salaryRange.max / 100).toFixed(0)} ${salaryRange.currency}`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Job Posting Auto-Created',
+        description: `Draft job posting for "${jobTitle}" created from headcount approval. Review and publish when ready.`,
+      })
+    }
+  })
+}
+
+// ── 10. Expense → Payroll ─────────────────────────────────────────────────────
+
+function registerExpenseToPayroll(): void {
+  eventBus.on('expense:report_approved', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, reportId, totalAmountCents, currency } = payload
+
+    console.info(
+      `[Integration] Expense report ${reportId} approved for employee ${employeeId}: ` +
+      `${(totalAmountCents / 100).toFixed(2)} ${currency} — queuing for payroll`,
+    )
+
+    const storeSlice = _store as unknown as Parameters<typeof processApprovedExpenseForPayroll>[1]
+    const entry = processApprovedExpenseForPayroll(reportId, storeSlice)
+
+    if (entry) {
+      // Create the payroll entry and mark the expense as queued
+      const result = {
+        reimbursementEntries: [entry],
+        totalReimbursementCents: entry.amount,
+        reportsProcessed: 1,
+        employeeCount: 1,
+        skipped: [],
+      }
+      const applyStore = _store as unknown as Parameters<typeof applyExpenseReimbursements>[1]
+      const created = applyExpenseReimbursements(result, applyStore)
+
+      if (created > 0) {
+        console.info(`[Integration] Expense reimbursement queued for payroll: ${(entry.amount / 100).toFixed(2)} ${currency}`)
+
+        _store.addToast?.({
+          type: 'success',
+          title: 'Expense Queued for Payroll',
+          description: `Reimbursement of ${(totalAmountCents / 100).toFixed(2)} ${currency} added to next payroll run.`,
+        })
+      }
+    }
+  })
+}
+
+// ── 11. Benefits → Payroll ────────────────────────────────────────────────────
+
+function registerBenefitsToPayroll(): void {
+  eventBus.on('benefits:enrollment_changed', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, enrollmentId, planName, action, effectiveDate } = payload
+
+    console.info(
+      `[Integration] Benefit enrollment ${action} for employee ${employeeId}: ${planName} — updating payroll deductions`,
+    )
+
+    const storeSlice = _store as unknown as Parameters<typeof processEnrollmentChange>[3]
+    const result = processEnrollmentChange(
+      employeeId,
+      enrollmentId,
+      action,
+      storeSlice,
+      {
+        previousPlanId: payload.previousPlanId,
+        effectiveDate,
+      },
+    )
+
+    if (result.adjustments.length > 0) {
+      const applyStore = _store as unknown as Parameters<typeof applyBenefitDeductions>[1]
+      const created = applyBenefitDeductions(result, applyStore)
+
+      const netChangeStr = result.netChange >= 0
+        ? `+${(result.netChange / 100).toFixed(2)}`
+        : `${(result.netChange / 100).toFixed(2)}`
+
+      console.info(
+        `[Integration] Payroll deductions updated: ${result.adjustments.length} adjustment(s), net change: ${netChangeStr}/month` +
+        (result.prorationApplied ? ' (prorated)' : ''),
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Payroll Deductions Updated',
+        description: `${planName} enrollment ${action}: ${result.adjustments.length} payroll adjustment(s) created${result.prorationApplied ? ' (prorated for mid-period change)' : ''}.`,
+      })
+    }
+  })
+}
+
+// ── 12. Compensation → Payroll ────────────────────────────────────────────────
+
+function registerCompensationToPayroll(): void {
+  eventBus.on('compensation:salary_approved', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, salaryReviewId, previousSalaryCents, newSalaryCents, currency } = payload
+
+    const increasePercent = previousSalaryCents > 0
+      ? Math.round(((newSalaryCents - previousSalaryCents) / previousSalaryCents) * 10000) / 100
+      : 0
+
+    console.info(
+      `[Integration] Salary change approved for employee ${employeeId}: ` +
+      `${(previousSalaryCents / 100).toFixed(2)} → ${(newSalaryCents / 100).toFixed(2)} ${currency} (${increasePercent >= 0 ? '+' : ''}${increasePercent}%) — updating payroll`,
+    )
+
+    const storeSlice = _store as unknown as Parameters<typeof processSalaryChangeForPayroll>[1]
+    const result = processSalaryChangeForPayroll(salaryReviewId, storeSlice, {
+      effectiveDate: payload.effectiveDate,
+    })
+
+    if (result) {
+      const applyStore = _store as unknown as Parameters<typeof applySalaryChangeToPayroll>[1]
+      applySalaryChangeToPayroll(result, applyStore)
+
+      console.info(
+        `[Integration] Payroll rate change applied for ${employeeId}: new monthly rate ${(result.rateChange.new_monthly_rate / 100).toFixed(2)} ${currency}` +
+        (result.prorationApplied ? ` (prorated adjustment: ${((result.prorationDetails?.adjustmentAmount || 0) / 100).toFixed(2)})` : ''),
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Payroll Rate Updated',
+        description: `Salary change applied: ${(newSalaryCents / 100).toFixed(2)} ${currency}/year. Tax withholding adjusted.${result.prorationApplied ? ' Mid-period proration applied.' : ''}`,
+      })
+    }
+  })
+}
+
+// ── 13. Offboarding → Payroll ─────────────────────────────────────────────────
+
+function registerOffboardingToPayroll(): void {
+  eventBus.on('offboarding:initiated', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, offboardingId, lastDay, reason } = payload
+
+    console.info(`[Integration] Offboarding initiated for ${employeeId} (last day: ${lastDay}) — calculating final pay`)
+
+    try {
+      const storeSlice = _store as unknown as Parameters<typeof processOffboardingForPayroll>[1]
+      const result = processOffboardingForPayroll(offboardingId, storeSlice, {
+        terminationType: (reason as any) || 'resignation',
+      })
+
+      if (result) {
+        const applyStore = _store as unknown as Parameters<typeof applyOffboardingPayroll>[1]
+        applyOffboardingPayroll(result, applyStore)
+
+        console.info(
+          `[Integration] Final pay calculated for ${result.employeeName}: ` +
+          `net ${(result.finalPay.netFinalPay / 100).toFixed(2)} ${result.finalPay.currency}` +
+          (result.outstandingExpenses > 0 ? ` + ${(result.outstandingExpenses / 100).toFixed(2)} expense reimbursements` : '') +
+          (result.benefitsTerminated > 0 ? ` (${result.benefitsTerminated} benefit plan(s) terminated)` : ''),
+        )
+
+        _store.addToast?.({
+          type: 'success',
+          title: 'Final Pay Calculated',
+          description: `Final paycheck for ${result.employeeName}: net ${(result.finalPay.netFinalPay / 100).toFixed(2)} ${result.finalPay.currency}. Scheduled for ${lastDay}.`,
+        })
+      }
+    } catch (err) {
+      console.error('[Integration] Offboarding→Payroll calculation failed:', err)
+    }
+  })
+}
+
+// ── 14. Cross-Module Notifications ────────────────────────────────────────────
 
 function registerCrossModuleNotifications(): void {
   // Forward all events to notification system

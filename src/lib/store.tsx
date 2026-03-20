@@ -2146,6 +2146,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       updateCompetencyRating: updateCompetencyRating as any,
       updateEnrollment: updateEnrollment as any,
       updateLearningAssignment: updateLearningAssignment as any,
+      offboardingProcesses, offboardingTasks,
+      updateOffboardingTask: updateOffboardingTask as any,
+      getEmployeeName,
       addToast: (t: { type: string; title: string; description?: string }) => addToast(t.description || t.title),
     } as any)
   })
@@ -2236,6 +2239,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       setPreboardingTasks(prev => [...prev, { id: taskId, org_id: orgIdRef.current, ...task }] as typeof prev)
       apiPost('preboarding_tasks', 'create', task)
     }
+    // Cross-module: emit onboarding:initiated for auto-enrollment in learning courses
+    eventBus.emit('onboarding:initiated', {
+      employeeId: id,
+      onboardingId: genId('onb'),
+      employeeName: data.profile?.full_name || 'New Employee',
+      departmentId: data.department_id || '',
+      jobTitle: data.job_title || '',
+      startDate: data.start_date || new Date().toISOString().split('T')[0],
+      managerId: data.manager_id || undefined,
+    })
   }, [logAudit, addToast])
 
   const updateEmployee = useCallback((id: string, data: AnyRecord) => {
@@ -3161,6 +3174,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'headcount_position', id, 'Updated position')
     addToast('Position updated')
     apiPost('headcountPositions', 'update', data, id)
+    // Cross-module: emit headcount:position_approved when position is approved
+    if (data.status === 'approved') {
+      eventBus.emit('headcount:position_approved', {
+        positionId: id,
+        planId: data.plan_id || '',
+        departmentId: data.department_id || '',
+        jobTitle: data.job_title || '',
+        level: data.level || '',
+        location: data.location || undefined,
+        budgetCents: data.budget_amount || 0,
+        currency: data.currency || 'USD',
+        approvedBy: data.approved_by || undefined,
+      })
+    }
   }, [logAudit, addToast])
   const deleteHeadcountPosition = useCallback((id: string) => {
     setHeadcountPositions(prev => prev.filter(p => p.id !== id) as typeof prev)
@@ -3558,6 +3585,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'salary_review', id, `${action} salary review`)
     addToast(`Salary review ${action.toLowerCase()}`)
     apiPost('salaryReviews', 'update', data, id)
+    // Cross-module: emit compensation:salary_approved for payroll rate change
+    if (data.status === 'approved') {
+      eventBus.emit('compensation:salary_approved', {
+        employeeId: data.employee_id || '',
+        salaryReviewId: id,
+        previousSalaryCents: data.current_salary || 0,
+        newSalaryCents: data.proposed_salary || 0,
+        currency: data.currency || 'USD',
+        effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
+        approvedBy: data.approved_by || undefined,
+        reason: data.justification || undefined,
+      })
+    }
   }, [logAudit, addToast])
   const addEquityGrant = useCallback((data: AnyRecord) => {
     const id = genId('eq')
@@ -3918,6 +3958,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'benefit_enrollment', id, 'Created benefit enrollment')
     addToast('Benefit enrollment created')
     apiPost('benefitEnrollments', 'create', data)
+    // Cross-module: emit benefits:enrollment_changed for payroll deduction setup
+    eventBus.emit('benefits:enrollment_changed', {
+      employeeId: data.employee_id || '',
+      enrollmentId: id,
+      planId: data.plan_id || '',
+      planType: data.plan_type || '',
+      planName: data.plan_name || '',
+      action: 'enrolled' as const,
+      effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
+      employeeCostCents: data.employee_contribution || undefined,
+      employerCostCents: data.employer_contribution || undefined,
+    })
   }, [logAudit, addToast])
 
   const updateBenefitEnrollment = useCallback((id: string, data: AnyRecord) => {
@@ -3925,6 +3977,22 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'benefit_enrollment', id, 'Updated benefit enrollment')
     addToast('Benefit enrollment updated')
     apiPost('benefitEnrollments', 'update', data, id)
+    // Cross-module: emit benefits:enrollment_changed for payroll deduction updates
+    if (data.status === 'active' || data.status === 'cancelled') {
+      const action = data.status === 'active' ? (data._isChange ? 'changed' : 'enrolled') : 'cancelled'
+      eventBus.emit('benefits:enrollment_changed', {
+        employeeId: data.employee_id || '',
+        enrollmentId: id,
+        planId: data.plan_id || '',
+        planType: data.plan_type || '',
+        planName: data.plan_name || '',
+        action: action as 'enrolled' | 'changed' | 'cancelled',
+        previousPlanId: data.previous_plan_id || undefined,
+        effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
+        employeeCostCents: data.employee_contribution || undefined,
+        employerCostCents: data.employer_contribution || undefined,
+      })
+    }
   }, [logAudit, addToast])
 
   // ---- CRUD: Benefit Dependents ----
@@ -3975,7 +4043,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addToast(`Expense report ${action.toLowerCase()}`)
     apiPost('expenseReports', 'update', data, id)
     // Notify the employee when their expense is approved/rejected
-    if (data.status === 'approved') notifyEvent('expense_approved', id, 'expense_report')
+    if (data.status === 'approved') {
+      notifyEvent('expense_approved', id, 'expense_report')
+      // Cross-module: emit expense:report_approved for payroll reimbursement
+      eventBus.emit('expense:report_approved', {
+        employeeId: data.employee_id || '',
+        reportId: id,
+        totalAmountCents: data.total_amount || 0,
+        currency: data.currency || 'USD',
+        approvedBy: data.approved_by || undefined,
+        approvedAt: new Date().toISOString(),
+      })
+    }
     if (data.status === 'rejected') notifyEvent('expense_rejected', id, 'expense_report', { reason: data.rejection_reason || data.reason || '' })
   }, [logAudit, addToast])
 
@@ -4050,6 +4129,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'application', id, `Updated application status to ${data.status || data.stage || 'updated'}`)
     addToast('Application updated')
     apiPost('applications', 'update', data, id)
+    // Cross-module: emit recruiting:candidate_hired when application status changes to 'hired'
+    if (data.status === 'hired') {
+      eventBus.emit('recruiting:candidate_hired', {
+        candidateName: data.candidate_name || '',
+        applicationId: id,
+        jobPostingId: data.job_id || '',
+        departmentId: data.department_id || '',
+        jobTitle: data.job_title || '',
+        level: data.level || '',
+        startDate: data.start_date || '',
+        employeeId: data.employee_id || undefined,
+        hiredBy: data.hired_by || '',
+      })
+    }
   }, [logAudit, addToast])
 
   // ---- CRUD: Career Site ----
