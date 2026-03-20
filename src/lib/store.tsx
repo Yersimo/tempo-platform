@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { fetchModules as fetchModulesFromAPI, MODULE_SLUGS, clearModuleCache } from '@/lib/hooks/use-module-data'
+import { eventBus } from '@/lib/services/event-bus'
+import { registerAllIntegrations, setIntegrationStore } from '@/lib/integrations/cross-module-wiring'
 // Type-only imports: erased at compile time, no bundle impact
 import type { DemoRole } from './demo-data'
 // DemoData gives us the types of all demo exports without including the runtime data (~323KB)
@@ -2121,6 +2123,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     initSession()
   }, [])
 
+  // ── Cross-module integration bootstrap ──
+  // Register event handlers once at mount; sync store ref every render
+  // so handlers always see current state.
+  useEffect(() => { registerAllIntegrations() }, [])
+  useEffect(() => {
+    setIntegrationStore({
+      employees, departments, reviews, reviewCycles,
+      devices, softwareLicenses, appAssignments,
+      travelRequests, travelBookings, timeEntries,
+      courses, enrollments, goals, competencyFramework, competencyRatings,
+      learningAssignments,
+      addMeritRecommendation: addMeritRecommendation as any,
+      addSalaryReview: addSalaryReview as any,
+      updateDevice: updateDevice as any,
+      updateSoftwareLicense: updateSoftwareLicense as any,
+      addOffboardingTask: addOffboardingTask as any,
+      updateOffboardingProcess: updateOffboardingProcess as any,
+      addExpenseReport: addExpenseReport as any,
+      updateGoal: updateGoal as any,
+      addCompetencyRating: addCompetencyRating as any,
+      updateCompetencyRating: updateCompetencyRating as any,
+      updateEnrollment: updateEnrollment as any,
+      updateLearningAssignment: updateLearningAssignment as any,
+      addToast: (t: { type: string; title: string; description?: string }) => addToast(t.description || t.title),
+    } as any)
+  })
+
   // Remap journey employee IDs when DB employees have different IDs (UUIDs vs demo emp-N)
   useEffect(() => {
     if (!isLoading && employees.length > 0 && employees[0]?.id && !employees[0].id.startsWith('emp-')) {
@@ -2346,6 +2375,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'offboarding_process', id, `Initiated offboarding for ${getEmployeeName(data.employee_id)}`)
     addToast('Offboarding process initiated')
     apiPost('offboardingProcesses', 'create', data)
+    // Cross-module: emit offboarding initiated event for auto-revocation
+    eventBus.emit('offboarding:initiated', {
+      employeeId: data.employee_id || '',
+      offboardingId: id,
+      lastDay: data.last_day || data.end_date || '',
+      reason: data.reason || '',
+      initiatedBy: data.initiated_by || '',
+    })
   }, [logAudit, addToast, getEmployeeName])
 
   const updateOffboardingProcess = useCallback((id: string, data: AnyRecord) => {
@@ -2385,12 +2422,33 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'time_entry', id, 'Logged time entry')
     addToast('Time entry recorded')
     apiPost('timeEntries', 'create', data)
+    // Cross-module: emit overtime event when hours exceed standard day (8h)
+    const hours = Number(data.hours) || 0
+    if (hours > 8) {
+      eventBus.emit('time:overtime_logged', {
+        employeeId: data.employee_id || '',
+        timesheetId: id,
+        date: data.date || new Date().toISOString().split('T')[0],
+        overtimeHours: hours - 8,
+      })
+    }
   }, [logAudit, addToast])
   const updateTimeEntry = useCallback((id: string, data: AnyRecord) => {
     setTimeEntries(prev => prev.map(te => te.id === id ? { ...te, ...data } : te) as typeof prev)
     logAudit('update', 'time_entry', id, 'Updated time entry')
     addToast('Time entry updated')
     apiPost('timeEntries', 'update', data, id)
+    // Cross-module: emit timesheet approved event for payroll integration
+    if (data.status === 'approved' && data.employee_id) {
+      eventBus.emit('time:timesheet_approved', {
+        employeeId: data.employee_id,
+        timesheetId: id,
+        periodStart: data.period_start || data.date || '',
+        periodEnd: data.period_end || data.date || '',
+        totalHours: Number(data.hours) || 0,
+        approvedBy: data.approved_by || '',
+      })
+    }
   }, [logAudit, addToast])
   const deleteTimeEntry = useCallback((id: string) => {
     setTimeEntries(prev => prev.filter(te => te.id !== id))
@@ -3384,6 +3442,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('reviews', 'update', data, id)
     // Notify the employee when a review is assigned to them
     if (data.status === 'assigned' || data.status === 'in_progress') notifyEvent('review_assigned', id, 'review')
+    // Cross-module: emit event when review is completed
+    if (data.status === 'completed') {
+      eventBus.emit('performance:review_completed', {
+        employeeId: data.employee_id || '',
+        reviewId: id,
+        rating: data.overall_rating || 0,
+        cycleId: data.cycle_id || '',
+        completedAt: new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
 
   // ---- CRUD: Review Cycles ----
@@ -3548,7 +3616,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'enrollment', id, 'Updated enrollment')
     addToast('Enrollment updated')
     apiPost('enrollments', 'update', data, id)
-  }, [logAudit, addToast])
+    // Cross-module: emit learning completion event for performance integration
+    if (data.status === 'completed') {
+      // Find the course name for a better event payload
+      const enrollment = enrollments.find(e => e.id === id)
+      const course = courses.find(c => c.id === (data.course_id || enrollment?.course_id))
+      eventBus.emit('learning:course_completed', {
+        employeeId: data.employee_id || enrollment?.employee_id || '',
+        courseId: data.course_id || enrollment?.course_id || '',
+        courseName: course?.title || 'Unknown Course',
+        completedAt: new Date().toISOString(),
+      })
+    }
+  }, [logAudit, addToast, enrollments, courses])
 
   // ---- CRUD: Learning Paths ----
   const addLearningPath = useCallback((data: AnyRecord) => {
@@ -4701,6 +4781,25 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'travel_booking', id, 'Updated travel booking')
     addToast('Travel booking updated')
     apiPost('travelBookings', 'update', data, id)
+    // Cross-module: emit travel events for expense integration
+    if (data.status === 'approved') {
+      eventBus.emit('travel:booking_approved', {
+        employeeId: data.employee_id || '',
+        bookingId: id,
+        destination: data.destination || '',
+        departureDate: data.departure_date || '',
+        returnDate: data.return_date || '',
+        approvedBy: data.approved_by || '',
+      })
+    }
+    if (data.status === 'completed') {
+      eventBus.emit('travel:booking_completed', {
+        employeeId: data.employee_id || '',
+        bookingId: id,
+        destination: data.destination || '',
+        returnDate: data.return_date || '',
+      })
+    }
   }, [logAudit, addToast])
   const addTravelPolicy = useCallback((data: AnyRecord) => {
     const id = genId('tpol')

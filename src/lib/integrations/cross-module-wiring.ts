@@ -11,11 +11,11 @@
  * 3. Travel → Expense: approved travel auto-generates expense drafts
  * 4. Time → Payroll: timesheet approval feeds into payroll calculations
  * 5. Cross-module notifications: all events forward to notification system
+ * 6. Learning → Performance: course completion updates competency scores and goal progress
  */
 
 import { eventBus } from '@/lib/services/event-bus'
 import {
-  generateMeritRecommendationsFromReviews,
   syncReviewsToCompensation,
   type PerformanceReview,
   type ReviewCycle,
@@ -23,7 +23,6 @@ import {
 } from './performance-compensation'
 import {
   executeAutoRevocation,
-  generateRevocationChecklist,
 } from './offboarding-revocation'
 import {
   generateExpenseFromTravel,
@@ -33,9 +32,20 @@ import {
 import {
   calculateTimesheetPayrollImpact,
   deriveHourlyRate,
-  validateTimesheetsForPayroll,
   type TimeEntry,
 } from '@/lib/payroll/timesheet-integration'
+import {
+  calculateCompetencyBoostFromCourse,
+  calculateGoalProgressFromCourse,
+  applyCompetencyUpdates,
+  applyGoalProgressUpdates,
+  completeLearningAssignments,
+  type Course,
+  type Goal,
+  type CompetencyDefinition,
+  type CompetencyRating,
+  type LearningAssignment,
+} from './learning-performance'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,11 +69,18 @@ interface IntegrationStoreSlice {
   appAssignments?: Array<Record<string, unknown>>
   ssoApps?: Array<Record<string, unknown>>
   identityProviders?: Array<Record<string, unknown>>
+  appCatalog?: Array<Record<string, unknown>>
+  samlApps?: Array<Record<string, unknown>>
+  idpConfigurations?: Array<Record<string, unknown>>
+  offboardingProcesses?: Array<Record<string, unknown>>
+  offboardingTasks?: Array<Record<string, unknown>>
   updateDevice?: (id: string, data: Record<string, unknown>) => void
   updateSoftwareLicense?: (id: string, data: Record<string, unknown>) => void
   updateAppAssignment?: (id: string, data: Record<string, unknown>) => void
   addOffboardingTask?: (data: Record<string, unknown>) => void
   updateOffboardingProcess?: (id: string, data: Record<string, unknown>) => void
+  updateOffboardingTask?: (id: string, data: Record<string, unknown>) => void
+  getEmployeeName?: (id: string) => string
 
   // Travel & Expense
   travelRequests?: TravelRequest[]
@@ -72,6 +89,21 @@ interface IntegrationStoreSlice {
 
   // Time & Attendance
   timeEntries?: TimeEntry[]
+
+  // Learning
+  courses?: Course[]
+  enrollments?: Array<Record<string, unknown>>
+  learningAssignments?: LearningAssignment[]
+  updateEnrollment?: (id: string, data: Record<string, unknown>) => void
+  updateLearningAssignment?: (id: string, data: Record<string, unknown>) => void
+
+  // Performance (competencies & goals)
+  goals?: Goal[]
+  competencyFramework?: CompetencyDefinition[]
+  competencyRatings?: CompetencyRating[]
+  updateGoal?: (id: string, data: Record<string, unknown>) => void
+  addCompetencyRating?: (data: Record<string, unknown>) => void
+  updateCompetencyRating?: (id: string, data: Record<string, unknown>) => void
 
   // Notifications
   addToast?: (toast: { type: string; title: string; description?: string }) => void
@@ -102,6 +134,7 @@ export function registerAllIntegrations(): void {
   registerOffboardingRevocation()
   registerTravelToExpense()
   registerTimesheetToPayroll()
+  registerLearningToPerformance()
   registerCrossModuleNotifications()
 
   console.info('[Integrations] All cross-module integrations registered')
@@ -113,7 +146,7 @@ function registerPerformanceToCompensation(): void {
   eventBus.on('performance:review_completed', async (payload) => {
     if (!_store) return
 
-    const { cycleId, employeeId, rating } = payload
+    const { cycleId, employeeId } = payload
 
     // Find the review cycle
     const cycle = _store.reviewCycles?.find(c => c.id === cycleId)
@@ -317,11 +350,102 @@ function registerTimesheetToPayroll(): void {
   })
 }
 
-// ── 5. Cross-Module Notifications ────────────────────────────────────────────
+// ── 5. Learning → Performance ────────────────────────────────────────────────
+
+function registerLearningToPerformance(): void {
+  eventBus.on('learning:course_completed', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, courseId, courseName, score } = payload
+
+    console.info(
+      `[Integration] Course "${courseName}" completed by employee ${employeeId}` +
+      (score != null ? ` (score: ${score})` : ''),
+    )
+
+    // Find the course in the catalog
+    const course = (_store.courses || []).find(c => c.id === courseId)
+    if (!course) {
+      console.warn(`[Integration] Course ${courseId} not found in catalog — skipping competency/goal updates`)
+      return
+    }
+
+    const results: string[] = []
+
+    // 1. Update competency scores based on course category
+    if (_store.competencyRatings && _store.competencyFramework) {
+      const competencyResult = calculateCompetencyBoostFromCourse(
+        employeeId,
+        course,
+        _store.competencyRatings,
+        _store.competencyFramework,
+      )
+
+      if (competencyResult.updatedCompetencies.length > 0) {
+        // Apply to store using the LearningPerformanceStoreSlice interface
+        const lpStore = _store as unknown as Parameters<typeof applyCompetencyUpdates>[1]
+        applyCompetencyUpdates(competencyResult, lpStore)
+
+        const names = competencyResult.updatedCompetencies
+          .map(c => `${c.competencyName} (+${c.boost})`)
+          .join(', ')
+        results.push(`Competencies updated: ${names}`)
+
+        const gapsClosed = competencyResult.updatedCompetencies.filter(c => c.gapClosed).length
+        if (gapsClosed > 0) {
+          results.push(`${gapsClosed} competency gap(s) fully closed`)
+        }
+      }
+    }
+
+    // 2. Advance development goals linked to this course's topic
+    if (_store.goals) {
+      const goalUpdates = calculateGoalProgressFromCourse(
+        employeeId,
+        course,
+        _store.goals,
+      )
+
+      if (goalUpdates.length > 0) {
+        const lpStore = _store as unknown as Parameters<typeof applyGoalProgressUpdates>[1]
+        applyGoalProgressUpdates(goalUpdates, lpStore)
+
+        for (const update of goalUpdates) {
+          results.push(
+            `Goal "${update.goalTitle}" → ${update.newProgress}%` +
+            (update.completed ? ' ✓ COMPLETED' : ''),
+          )
+        }
+      }
+    }
+
+    // 3. Mark any linked learning assignments as completed
+    const lpStore = _store as unknown as Parameters<typeof completeLearningAssignments>[2]
+    const assignmentsCompleted = completeLearningAssignments(employeeId, courseId, lpStore)
+    if (assignmentsCompleted > 0) {
+      results.push(`${assignmentsCompleted} learning assignment(s) marked complete`)
+    }
+
+    // Notify user
+    if (results.length > 0) {
+      _store.addToast?.({
+        type: 'success',
+        title: 'Learning Impact Applied',
+        description: results.join('. ') + '.',
+      })
+
+      console.info(
+        `[Integration] Learning→Performance for ${employeeId}: ${results.join('; ')}`,
+      )
+    }
+  })
+}
+
+// ── 6. Cross-Module Notifications ────────────────────────────────────────────
 
 function registerCrossModuleNotifications(): void {
   // Forward all events to notification system
-  eventBus.onAny(async (event, payload) => {
+  eventBus.onAny(async (event, payload, meta) => {
     try {
       await fetch('/api/notifications/dispatch', {
         method: 'POST',
@@ -333,6 +457,7 @@ function registerCrossModuleNotifications(): void {
                     (payload as unknown as Record<string, unknown>).processId || 'unknown',
           entityType: event.split(':')[0],
           metadata: payload,
+          _eventId: meta.eventId,
         }),
       })
     } catch {
@@ -340,7 +465,3 @@ function registerCrossModuleNotifications(): void {
     }
   })
 }
-
-// ── Exports ──────────────────────────────────────────────────────────────────
-
-export { eventBus }
