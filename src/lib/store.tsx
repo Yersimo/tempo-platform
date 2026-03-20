@@ -2144,6 +2144,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       benefitPlans, benefitEnrollments,
       // Compensation & Payroll
       salaryReviews,
+      // Engagement & Surveys
+      surveys, surveyResponses, engagementScores,
       // Offboarding Payroll
       leaveBalances: [] as any[], leaveRequests,
       // Offboarding
