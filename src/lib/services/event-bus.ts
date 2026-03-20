@@ -197,6 +197,207 @@ export interface CompensationSalaryApprovedPayload {
   reason?: string
 }
 
+export interface RecruitingOfferExtendedPayload {
+  employeeId?: string
+  candidateName: string
+  applicationId: string
+  jobPostingId: string
+  departmentId: string
+  jobTitle: string
+  level?: string
+  proposedSalaryCents: number
+  currency: string
+  extendedBy?: string
+}
+
+export interface WorkersCompClaimFiledPayload {
+  employeeId: string
+  claimId: string
+  injuryType: string
+  injuryDate: string
+  restrictionType?: 'light_duty' | 'modified_schedule' | 'no_work'
+  maxHoursPerDay?: number
+  expectedReturnDate?: string
+}
+
+export interface EngagementSurveyCompletedPayload {
+  surveyId: string
+  surveyTitle: string
+  departmentId?: string
+  responseCount: number
+  averageScore: number
+  completedAt?: string
+}
+
+export interface ComplianceRequirementChangedPayload {
+  requirementId: string
+  requirementTitle: string
+  regulationType: string
+  affectedDepartments?: string[]
+  affectedLocations?: string[]
+  deadlineDate: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+}
+
+export interface GeofenceEventPayload {
+  employeeId: string
+  zoneId: string
+  zoneName: string
+  eventType: 'enter' | 'exit'
+  timestamp: string
+  latitude?: number
+  longitude?: number
+}
+
+export interface ShadowITDetectedPayload {
+  detectionId: string
+  appName: string
+  appCategory: string
+  detectedBy: string
+  employeeCount: number
+  dataAccessLevel: 'none' | 'read' | 'write' | 'admin'
+  detectedAt?: string
+}
+
+export interface HeadcountPositionFilledPayload {
+  positionId: string
+  planId: string
+  departmentId: string
+  jobTitle: string
+  level: string
+  candidateName: string
+  applicationId: string
+  hireDate: string
+  actualSalaryCents: number
+  budgetCents: number
+  currency: string
+}
+
+export interface ProjectAssignmentChangedPayload {
+  projectId: string
+  projectName: string
+  employeeId: string
+  role: string
+  allocationPercent: number
+  action: 'assigned' | 'updated' | 'removed'
+  startDate?: string
+  endDate?: string
+}
+
+export interface EORDataChangedPayload {
+  eorEntityId: string
+  employeeId: string
+  country: string
+  changeType: 'onboarded' | 'salary_changed' | 'terminated' | 'contract_renewed'
+  localSalaryCents: number
+  localCurrency: string
+  effectiveDate: string
+}
+
+export interface MentoringSessionCompletedPayload {
+  employeeId: string
+  mentorId: string
+  menteeId: string
+  sessionId: string
+  relationshipId: string
+  sessionType: 'regular' | 'milestone' | 'final'
+  topicsCovered?: string[]
+  milestoneReached?: boolean
+  milestoneName?: string
+  completedAt?: string
+}
+
+export interface DeviceProvisionedPayload {
+  employeeId: string
+  deviceId: string
+  deviceType: 'laptop' | 'desktop' | 'monitor' | 'phone' | 'tablet' | 'accessory'
+  deviceName: string
+  serialNumber?: string
+  orderId?: string
+  costCents?: number
+  currency?: string
+  provisionedAt?: string
+}
+
+export interface LifeEventReportedPayload {
+  employeeId: string
+  eventId: string
+  eventType: 'marriage' | 'divorce' | 'birth' | 'adoption' | 'death_of_dependent' | 'disability' | 'relocation' | 'other'
+  eventDate: string
+  description?: string
+  affectsBenefits: boolean
+  affectsTax: boolean
+  reportedAt?: string
+}
+
+export interface StrategyInitiativeUpdatedPayload {
+  initiativeId: string
+  orgId: string
+  title: string
+  status: 'draft' | 'active' | 'on_hold' | 'completed'
+  action: 'created' | 'updated' | 'milestones_changed'
+  milestones?: Array<{
+    id: string
+    title: string
+    targetDate: string
+    status: string
+  }>
+  okrs?: Array<{
+    id: string
+    objective: string
+    keyResults: Array<{ id: string; title: string; target: number; current: number }>
+  }>
+  ownerId?: string
+  departmentId?: string
+}
+
+export interface ComplianceTrainingStatusChangedPayload {
+  employeeId: string
+  trainingId: string
+  courseId: string
+  courseName: string
+  requirementId: string
+  status: 'completed' | 'overdue' | 'expiring_soon' | 'assigned'
+  completedAt?: string
+  dueDate?: string
+  regulationType?: string
+}
+
+export interface PayrollRunCompletedPayload {
+  payrollRunId: string
+  orgId: string
+  periodStart: string
+  periodEnd: string
+  totalGrossCents: number
+  totalNetCents: number
+  totalDeductionsCents: number
+  totalTaxCents: number
+  currency: string
+  employeeCount: number
+  departmentBreakdown?: Array<{
+    departmentId: string
+    departmentName: string
+    totalGrossCents: number
+    headcount: number
+  }>
+  completedAt: string
+}
+
+export interface AcademyCoursePublishedPayload {
+  courseId: string
+  orgId: string
+  title: string
+  description?: string
+  category: string
+  durationHours?: number
+  format?: 'online' | 'classroom' | 'blended'
+  level?: 'beginner' | 'intermediate' | 'advanced'
+  targetDepartments?: string[]
+  targetRoles?: string[]
+  publishedBy?: string
+  publishedAt?: string
+}
+
 // ---------------------------------------------------------------------------
 // Event map — single source of truth for event name -> payload type
 // ---------------------------------------------------------------------------
@@ -220,6 +421,22 @@ export interface EventMap {
   'headcount:position_approved': HeadcountPositionApprovedPayload
   'benefits:enrollment_changed': BenefitsEnrollmentChangedPayload
   'compensation:salary_approved': CompensationSalaryApprovedPayload
+  'recruiting:offer_extended': RecruitingOfferExtendedPayload
+  'workers_comp:claim_filed': WorkersCompClaimFiledPayload
+  'engagement:survey_completed': EngagementSurveyCompletedPayload
+  'compliance:requirement_changed': ComplianceRequirementChangedPayload
+  'geofencing:event_detected': GeofenceEventPayload
+  'shadow_it:app_detected': ShadowITDetectedPayload
+  'headcount:position_filled': HeadcountPositionFilledPayload
+  'project:assignment_changed': ProjectAssignmentChangedPayload
+  'eor:data_changed': EORDataChangedPayload
+  'mentoring:session_completed': MentoringSessionCompletedPayload
+  'device:provisioned': DeviceProvisionedPayload
+  'employee:life_event_reported': LifeEventReportedPayload
+  'strategy:initiative_updated': StrategyInitiativeUpdatedPayload
+  'compliance:training_status_changed': ComplianceTrainingStatusChangedPayload
+  'payroll:run_completed': PayrollRunCompletedPayload
+  'academy:course_published': AcademyCoursePublishedPayload
 }
 
 export type EventName = keyof EventMap

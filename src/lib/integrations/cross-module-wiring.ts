@@ -19,6 +19,23 @@
  * 11. Benefits → Payroll: enrollment changes create payroll deduction adjustments
  * 12. Compensation → Payroll: salary changes create payroll rate change entries
  * 13. Offboarding → Payroll: offboarding triggers final pay calculation
+ * 14. Recruiting → Compensation: offer validation against salary bands
+ * 15. Workers' Comp → Time: work restrictions and modified schedules
+ * 16. Engagement → Performance: survey results map to performance flags
+ * 17. Compliance → Learning: regulation changes auto-assign training
+ * 18. Geofencing → Time: geofence events auto clock-in/out
+ * 19. Shadow IT → Compliance: detected apps create risk assessments
+ * 20. Recruiting → Headcount: hired candidates fulfill headcount positions
+ * 21. Projects → Time: assignment changes generate time entry templates
+ * 22. EOR → Payroll: EOR data changes sync country payroll rules
+ * 23. Mentoring → Performance: session completion updates soft-skill competencies and goals
+ * 24. Device Store → IT Asset: provisioned devices auto-create asset records
+ * 25. Life Events → Multiple: life events trigger benefits windows, tax suggestions, HR tasks
+ * 26. Strategy → Projects: initiative milestones generate project tasks and KPI linkages
+ * 27. Compliance Training → Compliance: training status changes update compliance records
+ * 28. Expense → Finance: approved expenses generate GL journal entries
+ * 29. Payroll → Finance: completed payroll runs generate GL journal entries
+ * 30. Academy → Learning: published courses auto-create learning catalog entries
  */
 
 import { eventBus } from '@/lib/services/event-bus'
@@ -83,6 +100,78 @@ import {
   processOffboardingForPayroll,
   applyOffboardingPayroll,
 } from '@/lib/payroll/offboarding-payroll'
+import {
+  validateOfferAgainstBands,
+  getCompensationBandForRole,
+} from './recruiting-compensation'
+import {
+  applyWorkRestrictions,
+  generateModifiedSchedule,
+} from './workers-comp-time'
+import {
+  mapEngagementToPerformance,
+  generateEngagementAlerts,
+} from './engagement-performance'
+import {
+  assignComplianceTraining,
+  checkComplianceTrainingStatus,
+} from './compliance-learning'
+import {
+  processGeofenceEvent,
+  reconcileGeofenceWithTimeEntries,
+  type GeofenceTimeEntry,
+} from './geofencing-time'
+import {
+  assessShadowITRisk,
+  generateRemediationPlan,
+} from './shadow-it-compliance'
+import {
+  fulfillHeadcountPosition,
+  calculateTimeToFill,
+} from './recruiting-headcount'
+import {
+  syncProjectAssignments,
+  generateTimeEntryTemplates,
+} from './projects-time'
+import {
+  syncEORPayrollRules,
+  calculateCountryPayrollCost,
+} from '@/lib/payroll/eor-payroll'
+import {
+  calculateMentoringCompetencyBoost,
+  calculateMentoringGoalProgress,
+  applyMentoringCompetencyUpdates,
+  applyMentoringGoalUpdates,
+} from './mentoring-performance'
+import {
+  generateITAssetFromProvision,
+  applyITAssetCreation,
+} from './device-store-asset'
+import {
+  processLifeEvent,
+  applyLifeEventActions,
+  type LifeEventType,
+} from './life-events-multi'
+import {
+  generateProjectTasksFromStrategy,
+  applyStrategyProjectTasks,
+} from './strategy-projects'
+import {
+  processComplianceTrainingChange,
+  applyComplianceTrainingAlerts,
+} from './compliance-training'
+import {
+  generateExpenseJournalEntry,
+  applyExpenseJournalEntry,
+} from './expense-finance'
+import {
+  generatePayrollJournalEntries,
+  applyPayrollJournalEntry,
+} from './payroll-finance'
+import {
+  processAcademyCoursePublication,
+  applyAcademyCatalogEntry,
+} from './academy-learning'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -170,6 +259,51 @@ interface IntegrationStoreSlice {
   leaveRequests?: Array<Record<string, unknown>>
   addPayrollRun?: (data: Record<string, unknown>) => void
 
+  // Compensation bands
+  compBands?: Array<Record<string, unknown>>
+
+  // Workers' Comp
+  workersCompClaims?: Array<Record<string, unknown>>
+
+  // Engagement
+  surveys?: Array<Record<string, unknown>>
+  surveyResponses?: Array<Record<string, unknown>>
+  engagementScores?: Array<Record<string, unknown>>
+  addActionPlan?: (data: Record<string, unknown>) => void
+
+  // Compliance
+  complianceRequirements?: Array<Record<string, unknown>>
+  addLearningAssignment?: (data: Record<string, unknown>) => void
+  addComplianceAlert?: (data: Record<string, unknown>) => void
+
+  // Geofencing
+  geofenceZones?: Array<Record<string, unknown>>
+  geofenceEvents?: Array<Record<string, unknown>>
+  addGeofenceEvent?: (data: Record<string, unknown>) => void
+
+  // Shadow IT
+  shadowITDetections?: Array<Record<string, unknown>>
+
+  // Projects
+  projects?: Array<Record<string, unknown>>
+  tasks?: Array<Record<string, unknown>>
+  addTask?: (data: Record<string, unknown>) => void
+
+  // EOR
+  eorEntities?: Array<Record<string, unknown>>
+  eorEmployees?: Array<Record<string, unknown>>
+  eorContracts?: Array<Record<string, unknown>>
+
+  // Time entries (extended)
+  addTimeEntry?: (data: Record<string, unknown>) => void
+  updateTimeEntry?: (id: string, data: Record<string, unknown>) => void
+
+  // Finance / GL
+  addJournalEntry?: (data: Record<string, unknown>) => void
+
+  // Academy / Learning catalog
+  addCourse?: (data: Record<string, unknown>) => void
+
   // Notifications
   addToast?: (toast: { type: string; title: string; description?: string }) => void
 }
@@ -207,9 +341,26 @@ export function registerAllIntegrations(): void {
   registerBenefitsToPayroll()
   registerCompensationToPayroll()
   registerOffboardingToPayroll()
+  registerRecruitingToCompensation()
+  registerWorkersCompToTime()
+  registerEngagementToPerformance()
+  registerComplianceToLearning()
+  registerGeofencingToTime()
+  registerShadowITToCompliance()
+  registerRecruitingToHeadcount()
+  registerProjectsToTime()
+  registerEORToPayroll()
+  registerMentoringToPerformance()
+  registerDeviceStoreToAsset()
+  registerLifeEventsMulti()
+  registerStrategyToProjects()
+  registerComplianceTrainingToCompliance()
+  registerExpenseToFinance()
+  registerPayrollToFinance()
+  registerAcademyToLearning()
   registerCrossModuleNotifications()
 
-  console.info('[Integrations] All cross-module integrations registered (13 integration handlers)')
+  console.info('[Integrations] All cross-module integrations registered (30 integration handlers)')
 }
 
 // ── 1. Performance → Compensation ────────────────────────────────────────────
@@ -817,7 +968,830 @@ function registerOffboardingToPayroll(): void {
   })
 }
 
-// ── 14. Cross-Module Notifications ────────────────────────────────────────────
+// ── 14. Recruiting → Compensation ──────────────────────────────────────────────
+
+function registerRecruitingToCompensation(): void {
+  eventBus.on('recruiting:offer_extended', async (payload) => {
+    if (!_store) return
+
+    const { candidateName, jobTitle, level, departmentId, proposedSalaryCents, currency } = payload
+
+    console.info(`[Integration] Offer being extended to "${candidateName}" for ${jobTitle} — validating against compensation bands`)
+
+    const compBands = (_store.compBands || []) as unknown as Parameters<typeof validateOfferAgainstBands>[5]
+
+    const result = validateOfferAgainstBands(
+      candidateName,
+      jobTitle,
+      level,
+      departmentId,
+      proposedSalaryCents,
+      compBands,
+    )
+
+    if (!result.bandFound) {
+      console.info(`[Integration] No compensation band found for "${jobTitle}" — skipping validation`)
+      _store.addToast?.({
+        type: 'warning',
+        title: 'No Compensation Band',
+        description: `No salary band found for "${jobTitle}". Consider setting one up before extending the offer.`,
+      })
+      return
+    }
+
+    const salaryFormatted = (proposedSalaryCents / 100).toFixed(0)
+
+    if (result.status === 'within_band') {
+      console.info(`[Integration] Offer of ${salaryFormatted} ${currency} is within band (${result.percentile}th percentile)`)
+      _store.addToast?.({
+        type: 'success',
+        title: 'Offer Within Band',
+        description: `${salaryFormatted} ${currency} for "${jobTitle}" is at the ${result.percentile}th percentile.`,
+      })
+    } else {
+      console.warn(`[Integration] Offer of ${salaryFormatted} ${currency} is ${result.status}: ${result.recommendation}`)
+      _store.addToast?.({
+        type: result.riskLevel === 'high' ? 'error' : 'warning',
+        title: result.status === 'below_band' ? 'Offer Below Band' : 'Offer Above Band',
+        description: result.recommendation,
+      })
+    }
+  })
+}
+
+// ── 15. Workers' Comp → Time ──────────────────────────────────────────────────
+
+function registerWorkersCompToTime(): void {
+  eventBus.on('workers_comp:claim_filed', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, claimId, injuryType, injuryDate, restrictionType, maxHoursPerDay, expectedReturnDate } = payload
+
+    const employee = _store.employees.find(e => e.id === employeeId)
+    const employeeName = employee?.profile?.full_name || employeeId
+
+    console.info(`[Integration] Workers' comp claim ${claimId} filed for ${employeeName} (${injuryType}) — applying work restrictions`)
+
+    const result = applyWorkRestrictions(
+      employeeId,
+      claimId,
+      injuryDate,
+      restrictionType || 'light_duty',
+      maxHoursPerDay,
+      expectedReturnDate,
+    )
+
+    console.info(
+      `[Integration] Work restrictions applied for ${employeeName}: ` +
+      `${result.restriction.restriction_type}, max ${result.newMaxHours}h/day, ` +
+      `${result.daysAffected} work days affected`,
+    )
+
+    _store.addToast?.({
+      type: 'warning',
+      title: 'Work Restrictions Applied',
+      description: `${employeeName}: ${result.restriction.restriction_type} duty, max ${result.newMaxHours}h/day for ${result.daysAffected} days.`,
+    })
+  })
+}
+
+// ── 16. Engagement → Performance ──────────────────────────────────────────────
+
+function registerEngagementToPerformance(): void {
+  eventBus.on('engagement:survey_completed', async (payload) => {
+    if (!_store) return
+
+    const { surveyId, surveyTitle, averageScore } = payload
+
+    console.info(`[Integration] Engagement survey "${surveyTitle}" completed (avg score: ${averageScore}) — mapping to performance`)
+
+    const storeSlice = _store as unknown as Parameters<typeof mapEngagementToPerformance>[2]
+    const result = mapEngagementToPerformance(surveyId, surveyTitle, storeSlice)
+
+    if (result.actionItems.length > 0) {
+      const alertStore = _store as unknown as Parameters<typeof generateEngagementAlerts>[1]
+      const created = generateEngagementAlerts(result, alertStore)
+
+      console.info(
+        `[Integration] Engagement→Performance for "${surveyTitle}": ` +
+        `${result.departmentsAtRisk} dept(s) at risk, ${result.performanceFlags.length} flag(s), ` +
+        `${created} action item(s) created`,
+      )
+
+      _store.addToast?.({
+        type: result.departmentsAtRisk > 0 ? 'warning' : 'success',
+        title: 'Engagement Analysis Complete',
+        description: `${result.departmentsAtRisk} department(s) at risk. ${created} action item(s) created for managers.`,
+      })
+    } else {
+      console.info(`[Integration] Engagement survey "${surveyTitle}": all departments within healthy range (overall: ${result.overallScore}/100)`)
+    }
+  })
+}
+
+// ── 17. Compliance → Learning ─────────────────────────────────────────────────
+
+function registerComplianceToLearning(): void {
+  eventBus.on('compliance:requirement_changed', async (payload) => {
+    if (!_store) return
+
+    const { requirementId, requirementTitle, regulationType, affectedDepartments, affectedLocations, deadlineDate, severity } = payload
+
+    console.info(
+      `[Integration] Compliance requirement changed: "${requirementTitle}" (${regulationType}, ${severity}) — assigning training`,
+    )
+
+    const storeSlice = _store as unknown as Parameters<typeof assignComplianceTraining>[6]
+    const result = assignComplianceTraining(
+      requirementId,
+      requirementTitle,
+      regulationType,
+      affectedDepartments || [],
+      affectedLocations || [],
+      deadlineDate,
+      storeSlice,
+    )
+
+    if (result.totalAssignments > 0 && _store.addLearningAssignment) {
+      for (const assignment of result.assignments) {
+        _store.addLearningAssignment({
+          employee_id: assignment.employee_id,
+          course_id: assignment.course_id,
+          requirement_id: assignment.requirement_id,
+          compliance_requirement_id: assignment.requirement_id,
+          deadline: assignment.deadline,
+          priority: assignment.priority,
+          mandatory: assignment.mandatory,
+          status: 'assigned',
+          source: 'compliance-learning-integration',
+          auto_generated: true,
+        })
+      }
+
+      console.info(
+        `[Integration] Compliance training assigned: ${result.totalAssignments} assignment(s) ` +
+        `across ${result.affectedEmployees} employee(s), ${result.coursesMapped} course(s) matched`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Compliance Training Assigned',
+        description: `${result.totalAssignments} training assignment(s) for "${requirementTitle}". Deadline: ${deadlineDate}.`,
+      })
+    } else if (result.coursesMapped === 0) {
+      console.warn(`[Integration] No courses found matching regulation type "${regulationType}" — manual assignment needed`)
+
+      _store.addToast?.({
+        type: 'warning',
+        title: 'No Matching Courses',
+        description: `No training courses found for "${regulationType}". Please create or assign courses manually.`,
+      })
+    }
+  })
+}
+
+// ── 18. Geofencing → Time ─────────────────────────────────────────────────────
+
+function registerGeofencingToTime(): void {
+  eventBus.on('geofencing:event_detected', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, zoneId, zoneName, eventType, timestamp } = payload
+
+    const employee = _store.employees.find(e => e.id === employeeId)
+    const employeeName = employee?.profile?.full_name || employeeId
+    const eventDate = timestamp.split('T')[0]
+
+    // Get recent geofence events for this employee today
+    const recentEvents = ((_store.geofenceEvents || []) as Array<Record<string, unknown>>)
+      .filter(e => {
+        const ev = e as Record<string, unknown>
+        return ev.employee_id === employeeId &&
+          (ev.timestamp as string || '').startsWith(eventDate)
+      })
+      .map(e => {
+        const ev = e as Record<string, unknown>
+        return {
+          employee_id: ev.employee_id as string,
+          zone_id: ev.zone_id as string,
+          zone_name: ev.zone_name as string,
+          event_type: ev.event_type as 'enter' | 'exit',
+          timestamp: ev.timestamp as string,
+        }
+      })
+
+    // Get existing geofence time entries for today
+    const existingEntries = ((_store.timeEntries || []) as unknown as Array<Record<string, unknown>>)
+      .filter(e => {
+        return (e as Record<string, unknown>).employee_id === employeeId &&
+          (e as Record<string, unknown>).date === eventDate &&
+          (e as Record<string, unknown>).source === 'geofence'
+      })
+      .map(e => e as unknown as GeofenceTimeEntry)
+
+    const result = processGeofenceEvent(
+      { employee_id: employeeId, zone_id: zoneId, zone_name: zoneName, event_type: eventType, timestamp },
+      recentEvents,
+      existingEntries,
+    )
+
+    if (result.action === 'clock_in' && result.timeEntry && _store.addTimeEntry) {
+      _store.addTimeEntry(result.timeEntry as unknown as Record<string, unknown>)
+      console.info(`[Integration] Geofence auto clock-in: ${employeeName} entered ${zoneName}`)
+    } else if (result.action === 'clock_out' && result.timeEntry) {
+      // Find the active entry to update
+      const activeEntry = existingEntries.find(e => e.clock_out === null)
+      if (activeEntry && _store.updateTimeEntry) {
+        _store.updateTimeEntry((activeEntry as unknown as Record<string, unknown>).id as string, {
+          clock_out: timestamp,
+          total_hours: result.hoursLogged,
+          needs_review: result.timeEntry.needs_review,
+          review_reason: result.timeEntry.review_reason,
+        })
+        console.info(`[Integration] Geofence auto clock-out: ${employeeName} left ${zoneName} (${result.hoursLogged}h)`)
+      }
+    } else {
+      console.info(`[Integration] Geofence event ignored for ${employeeName}: ${result.reason}`)
+    }
+  })
+}
+
+// ── 19. Shadow IT → Compliance ────────────────────────────────────────────────
+
+function registerShadowITToCompliance(): void {
+  eventBus.on('shadow_it:app_detected', async (payload) => {
+    if (!_store) return
+
+    const { detectionId, appName, appCategory, dataAccessLevel, employeeCount } = payload
+
+    console.info(`[Integration] Shadow IT detected: "${appName}" (${appCategory}) — ${employeeCount} user(s), ${dataAccessLevel} access`)
+
+    const assessment = assessShadowITRisk(
+      detectionId,
+      appName,
+      appCategory,
+      dataAccessLevel,
+      employeeCount,
+    )
+
+    const plan = generateRemediationPlan(assessment)
+
+    // Create compliance alerts for each remediation task
+    if (_store.addComplianceAlert) {
+      for (const task of plan.tasks) {
+        _store.addComplianceAlert({
+          title: task.title,
+          description: task.description,
+          type: 'shadow_it',
+          severity: task.priority,
+          status: 'open',
+          source: 'shadow-it-compliance-integration',
+          detection_id: detectionId,
+          app_name: appName,
+          action: task.action,
+          auto_generated: true,
+        })
+      }
+    }
+
+    console.info(
+      `[Integration] Shadow IT risk assessment for "${appName}": ` +
+      `score ${assessment.riskScore}/100 (${assessment.riskLevel}), ` +
+      `${plan.totalTasks} remediation task(s), recommended action: ${plan.recommendedAction}`,
+    )
+
+    _store.addToast?.({
+      type: assessment.riskLevel === 'critical' || assessment.riskLevel === 'high' ? 'error' : 'warning',
+      title: `Shadow IT: ${appName}`,
+      description: `Risk: ${assessment.riskLevel} (${assessment.riskScore}/100). ${plan.totalTasks} remediation task(s) created. Action: ${plan.recommendedAction}.`,
+    })
+  })
+}
+
+// ── 20. Recruiting → Headcount ────────────────────────────────────────────────
+
+function registerRecruitingToHeadcount(): void {
+  eventBus.on('headcount:position_filled', async (payload) => {
+    if (!_store) return
+
+    const { positionId, candidateName, applicationId, hireDate, actualSalaryCents, budgetCents, currency, jobTitle } = payload
+
+    console.info(`[Integration] Headcount position filled: "${jobTitle}" by ${candidateName} — updating position and calculating metrics`)
+
+    const storeSlice = _store as unknown as Parameters<typeof fulfillHeadcountPosition>[5]
+    const result = fulfillHeadcountPosition(
+      positionId,
+      candidateName,
+      applicationId,
+      hireDate,
+      actualSalaryCents,
+      storeSlice,
+    )
+
+    if (result) {
+      const ttf = result.timeToFill
+      const budget = result.budgetUtilization
+
+      console.info(
+        `[Integration] Position "${jobTitle}" fulfilled: ` +
+        `time-to-fill ${ttf.daysToFill} days (${ttf.performance}), ` +
+        `budget utilization ${budget.utilizationPercent}% (${budget.variance})`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Headcount Position Filled',
+        description: `${candidateName} hired for "${jobTitle}". Time-to-fill: ${ttf.daysToFill} days. Budget: ${budget.utilizationPercent}%.`,
+      })
+    }
+  })
+}
+
+// ── 21. Projects → Time ───────────────────────────────────────────────────────
+
+function registerProjectsToTime(): void {
+  eventBus.on('project:assignment_changed', async (payload) => {
+    if (!_store) return
+
+    const { projectId, projectName, employeeId, role, allocationPercent, action, startDate, endDate } = payload
+
+    const employee = _store.employees.find(e => e.id === employeeId)
+    const employeeName = employee?.profile?.full_name || employeeId
+
+    console.info(
+      `[Integration] Project assignment ${action}: ${employeeName} ${action === 'removed' ? 'from' : 'to'} "${projectName}" ` +
+      `(${allocationPercent}% allocation)`,
+    )
+
+    const storeSlice = _store as unknown as Parameters<typeof syncProjectAssignments>[6]
+    const result = syncProjectAssignments(
+      projectId,
+      projectName,
+      employeeId,
+      role,
+      allocationPercent,
+      action,
+      storeSlice,
+      { startDate, endDate },
+    )
+
+    if (action === 'removed') {
+      _store.addToast?.({
+        type: 'info',
+        title: 'Project Assignment Removed',
+        description: `${employeeName} removed from "${projectName}".`,
+      })
+      return
+    }
+
+    if (result.templates.length > 0) {
+      console.info(
+        `[Integration] ${result.templates.length} time entry template(s) created for ${employeeName} on "${projectName}"`,
+      )
+    }
+
+    if (result.hoursTracker) {
+      console.info(
+        `[Integration] Project hours tracker for ${employeeName}: ` +
+        `${result.hoursTracker.loggedHours}/${result.hoursTracker.budgetHours}h (${result.hoursTracker.utilizationPercent}%)`,
+      )
+    }
+
+    _store.addToast?.({
+      type: 'success',
+      title: action === 'assigned' ? 'Project Assignment' : 'Assignment Updated',
+      description: `${employeeName} ${action} to "${projectName}" at ${allocationPercent}% allocation. ${result.templates.length} time template(s) ready.`,
+    })
+  })
+}
+
+// ── 22. EOR → Payroll ─────────────────────────────────────────────────────────
+
+function registerEORToPayroll(): void {
+  eventBus.on('eor:data_changed', async (payload) => {
+    if (!_store) return
+
+    const { eorEntityId, employeeId, country, changeType, localSalaryCents, localCurrency, effectiveDate } = payload
+
+    const employee = _store.employees.find(e => e.id === employeeId)
+    const employeeName = employee?.profile?.full_name || employeeId
+
+    console.info(
+      `[Integration] EOR data changed for ${employeeName} (${country}): ${changeType} — syncing payroll rules`,
+    )
+
+    const result = syncEORPayrollRules(
+      eorEntityId,
+      employeeId,
+      country,
+      localSalaryCents,
+      localCurrency,
+      changeType,
+    )
+
+    const totalCostFormatted = (result.cost.totalCostCents / 100).toFixed(2)
+    const netSalaryFormatted = (result.cost.netSalaryCents / 100).toFixed(2)
+
+    console.info(
+      `[Integration] EOR payroll sync for ${employeeName} (${country}): ` +
+      `gross ${(localSalaryCents / 100).toFixed(2)} ${localCurrency}, ` +
+      `net ${netSalaryFormatted}, total employer cost ${totalCostFormatted} ${localCurrency}`,
+    )
+
+    if (_store.addEmployeePayrollEntry) {
+      _store.addEmployeePayrollEntry({
+        employee_id: employeeId,
+        type: 'eor_payroll_sync',
+        country,
+        local_salary: localSalaryCents,
+        local_currency: localCurrency,
+        net_salary: result.cost.netSalaryCents,
+        total_employer_cost: result.cost.totalCostCents,
+        eor_fee: result.cost.eorManagementFeeCents,
+        effective_date: effectiveDate,
+        change_type: changeType,
+        source: 'eor-payroll-integration',
+        auto_generated: true,
+      })
+    }
+
+    _store.addToast?.({
+      type: 'success',
+      title: 'EOR Payroll Synced',
+      description: `${employeeName} (${country}): total employer cost ${totalCostFormatted} ${localCurrency}/month (includes EOR fee).`,
+    })
+  })
+}
+
+// ── 23. Mentoring → Performance ────────────────────────────────────────────────
+
+function registerMentoringToPerformance(): void {
+  eventBus.on('mentoring:session_completed', async (payload) => {
+    if (!_store) return
+
+    const { menteeId, sessionId, sessionType, milestoneReached, milestoneName } = payload
+
+    console.info(
+      `[Integration] Mentoring session ${sessionId} completed (${sessionType})` +
+      (milestoneReached ? ` — milestone reached: "${milestoneName}"` : ''),
+    )
+
+    const results: string[] = []
+
+    // 1. Update soft-skill competencies
+    if (_store.competencyRatings) {
+      const competencyResult = calculateMentoringCompetencyBoost(
+        menteeId,
+        sessionId,
+        sessionType,
+        _store.competencyRatings as any,
+      )
+
+      if (competencyResult.updatedCompetencies.length > 0) {
+        const mpStore = _store as unknown as Parameters<typeof applyMentoringCompetencyUpdates>[1]
+        applyMentoringCompetencyUpdates(competencyResult, mpStore)
+
+        const names = competencyResult.updatedCompetencies
+          .map(c => `${c.competencyName} (+${c.boost})`)
+          .join(', ')
+        results.push(`Competencies updated: ${names}`)
+      }
+    }
+
+    // 2. Advance mentoring-related development goals
+    if (_store.goals) {
+      const goalUpdates = calculateMentoringGoalProgress(
+        menteeId,
+        sessionType,
+        _store.goals as any,
+      )
+
+      if (goalUpdates.length > 0) {
+        const mpStore = _store as unknown as Parameters<typeof applyMentoringGoalUpdates>[1]
+        applyMentoringGoalUpdates(goalUpdates, mpStore)
+
+        for (const update of goalUpdates) {
+          results.push(
+            `Goal "${update.goalTitle}" → ${update.newProgress}%` +
+            (update.completed ? ' COMPLETED' : ''),
+          )
+        }
+      }
+    }
+
+    if (results.length > 0) {
+      _store.addToast?.({
+        type: 'success',
+        title: 'Mentoring Impact Applied',
+        description: results.join('. ') + '.',
+      })
+
+      console.info(`[Integration] Mentoring→Performance for mentee ${menteeId}: ${results.join('; ')}`)
+    }
+  })
+}
+
+// ── 24. Device Store → IT Asset ───────────────────────────────────────────────
+
+function registerDeviceStoreToAsset(): void {
+  eventBus.on('device:provisioned', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, deviceId, deviceType, deviceName, serialNumber, costCents, currency, orderId } = payload
+
+    console.info(`[Integration] Device provisioned: "${deviceName}" (${deviceType}) for employee ${employeeId} — creating IT asset record`)
+
+    const result = generateITAssetFromProvision(
+      employeeId,
+      deviceId,
+      deviceType,
+      deviceName,
+      { serialNumber, costCents, currency, orderId },
+    )
+
+    const dsStore = _store as unknown as Parameters<typeof applyITAssetCreation>[1]
+    const created = applyITAssetCreation(result, dsStore)
+
+    if (created) {
+      const costStr = costCents ? ` ($${(costCents / 100).toFixed(2)})` : ''
+      console.info(
+        `[Integration] IT asset created: "${deviceName}"${costStr}, ` +
+        `warranty: ${result.warrantyMonths} months, assigned to ${employeeId}`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'IT Asset Created',
+        description: `${deviceName} assigned to employee. Warranty: ${result.warrantyMonths} months.`,
+      })
+    }
+  })
+}
+
+// ── 25. Life Events → Multiple ────────────────────────────────────────────────
+
+function registerLifeEventsMulti(): void {
+  eventBus.on('employee:life_event_reported', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, eventType, eventDate, description, affectsBenefits, affectsTax } = payload
+
+    const employee = _store.employees.find(e => e.id === employeeId)
+    const employeeName = employee?.profile?.full_name || employeeId
+
+    console.info(`[Integration] Life event reported by ${employeeName}: ${eventType} (${eventDate})`)
+
+    const result = processLifeEvent(
+      employeeId,
+      eventType as LifeEventType,
+      eventDate,
+      { description },
+    )
+
+    // Apply HR task
+    const leStore = _store as unknown as Parameters<typeof applyLifeEventActions>[1]
+    applyLifeEventActions(result, leStore)
+
+    const actions: string[] = []
+
+    // Log benefits window
+    if (affectsBenefits) {
+      actions.push(`Benefits enrollment window opened (${result.benefitsWindow.windowStartDate} to ${result.benefitsWindow.windowEndDate})`)
+      console.info(`[Integration] Benefits window opened for ${employeeName}: ${result.benefitsWindow.eligiblePlanTypes.join(', ')}`)
+    }
+
+    // Log tax suggestion
+    if (affectsTax) {
+      actions.push(`Tax withholding review: ${result.taxSuggestion.suggestedAction}`)
+      console.info(`[Integration] Tax suggestion for ${employeeName}: ${result.taxSuggestion.suggestedAction}`)
+    }
+
+    actions.push(`HR task created: ${result.hrTask.title}`)
+    console.info(`[Integration] HR task created for ${employeeName}: ${result.hrTask.requiredDocuments.length} document(s) required`)
+
+    _store.addToast?.({
+      type: 'success',
+      title: 'Life Event Processed',
+      description: actions.join('. ') + '.',
+    })
+  })
+}
+
+// ── 26. Strategy → Projects ───────────────────────────────────────────────────
+
+function registerStrategyToProjects(): void {
+  eventBus.on('strategy:initiative_updated', async (payload) => {
+    if (!_store) return
+
+    const { initiativeId, title, action, milestones, okrs, departmentId, ownerId } = payload
+
+    if (!milestones || milestones.length === 0) {
+      console.info(`[Integration] Strategy initiative "${title}" ${action} — no milestones to process`)
+      return
+    }
+
+    console.info(`[Integration] Strategy initiative "${title}" ${action} — generating ${milestones.length} project task(s)`)
+
+    const result = generateProjectTasksFromStrategy(
+      initiativeId,
+      title,
+      milestones,
+      okrs || [],
+      { departmentId, ownerId },
+    )
+
+    if (result.tasksGenerated.length > 0) {
+      const spStore = _store as unknown as Parameters<typeof applyStrategyProjectTasks>[1]
+      const created = applyStrategyProjectTasks(result, spStore)
+
+      console.info(
+        `[Integration] Strategy→Projects for "${title}": ${created} task(s) created, ${result.kpiLinkages.length} KPI linkage(s)`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Strategy Tasks Generated',
+        description: `${created} project task(s) created from "${title}" milestones. ${result.kpiLinkages.length} KPI(s) linked.`,
+      })
+    }
+  })
+}
+
+// ── 27. Compliance Training → Compliance ──────────────────────────────────────
+
+function registerComplianceTrainingToCompliance(): void {
+  eventBus.on('compliance:training_status_changed', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, trainingId, courseId, courseName, requirementId, status, completedAt, dueDate, regulationType } = payload
+
+    console.info(`[Integration] Compliance training status changed: "${courseName}" → ${status} for employee ${employeeId}`)
+
+    const result = processComplianceTrainingChange({
+      employeeId,
+      trainingId,
+      courseId,
+      courseName,
+      requirementId,
+      status,
+      completedAt,
+      dueDate,
+      regulationType,
+    })
+
+    if (result.reportEntries.length > 0 || result.riskFlags.length > 0) {
+      const ctStore = _store as unknown as Parameters<typeof applyComplianceTrainingAlerts>[1]
+      const created = applyComplianceTrainingAlerts(result, ctStore)
+
+      if (result.riskFlags.length > 0) {
+        console.warn(
+          `[Integration] Compliance risk: ${result.riskFlags.length} flag(s) for "${courseName}" — ` +
+          result.riskFlags.map(f => `${f.severity}: ${f.daysOverdue} days overdue`).join(', '),
+        )
+
+        _store.addToast?.({
+          type: 'error',
+          title: 'Compliance Training Overdue',
+          description: `"${courseName}" is overdue. ${created} compliance alert(s) created.`,
+        })
+      } else if (status === 'completed') {
+        console.info(`[Integration] Compliance training completed: "${courseName}" by employee ${employeeId}`)
+
+        _store.addToast?.({
+          type: 'success',
+          title: 'Compliance Training Complete',
+          description: `"${courseName}" completed. Compliance record updated.`,
+        })
+      }
+    }
+  })
+}
+
+// ── 28. Expense → Finance ─────────────────────────────────────────────────────
+
+function registerExpenseToFinance(): void {
+  eventBus.on('expense:report_approved', async (payload) => {
+    if (!_store) return
+
+    const { employeeId, reportId, totalAmountCents, currency } = payload
+
+    console.info(
+      `[Integration] Expense report ${reportId} approved — generating GL journal entry (${(totalAmountCents / 100).toFixed(2)} ${currency})`,
+    )
+
+    const efStore = _store as unknown as Parameters<typeof generateExpenseJournalEntry>[4]
+    const result = generateExpenseJournalEntry(
+      reportId,
+      employeeId,
+      totalAmountCents,
+      currency,
+      efStore,
+    )
+
+    const applyStore = _store as unknown as Parameters<typeof applyExpenseJournalEntry>[1]
+    const created = applyExpenseJournalEntry(result, applyStore)
+
+    if (created) {
+      const costCenters = result.costCenterBreakdown.map(c => c.costCenter).join(', ')
+      console.info(
+        `[Integration] Expense GL journal entry created: ${(totalAmountCents / 100).toFixed(2)} ${currency}, ` +
+        `${result.journalEntry.lines.length} line(s), cost center(s): ${costCenters}`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'GL Journal Entry Created',
+        description: `Expense report ${reportId}: ${(totalAmountCents / 100).toFixed(2)} ${currency} posted to general ledger.`,
+      })
+    }
+  })
+}
+
+// ── 29. Payroll → Finance ─────────────────────────────────────────────────────
+
+function registerPayrollToFinance(): void {
+  eventBus.on('payroll:run_completed', async (payload) => {
+    if (!_store) return
+
+    const { payrollRunId, periodStart, periodEnd, totalGrossCents, totalNetCents, totalDeductionsCents, totalTaxCents, currency, employeeCount, departmentBreakdown } = payload
+
+    console.info(
+      `[Integration] Payroll run ${payrollRunId} completed — generating GL journal entries ` +
+      `(${employeeCount} employees, ${(totalGrossCents / 100).toFixed(2)} ${currency} gross)`,
+    )
+
+    const result = generatePayrollJournalEntries(
+      payrollRunId,
+      periodStart,
+      periodEnd,
+      totalGrossCents,
+      totalNetCents,
+      totalDeductionsCents,
+      totalTaxCents,
+      currency,
+      departmentBreakdown,
+    )
+
+    const pfStore = _store as unknown as Parameters<typeof applyPayrollJournalEntry>[1]
+    const created = applyPayrollJournalEntry(result, pfStore)
+
+    if (created) {
+      console.info(
+        `[Integration] Payroll GL journal entry created: ` +
+        `gross ${(totalGrossCents / 100).toFixed(2)}, net ${(totalNetCents / 100).toFixed(2)}, ` +
+        `tax ${(totalTaxCents / 100).toFixed(2)}, deductions ${(totalDeductionsCents / 100).toFixed(2)} ${currency}` +
+        (result.departmentBreakdown.length > 0 ? ` across ${result.departmentBreakdown.length} department(s)` : ''),
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Payroll GL Entry Created',
+        description: `Payroll run ${payrollRunId}: ${(totalGrossCents / 100).toFixed(2)} ${currency} gross posted to general ledger (${employeeCount} employees).`,
+      })
+    }
+  })
+}
+
+// ── 30. Academy → Learning ────────────────────────────────────────────────────
+
+function registerAcademyToLearning(): void {
+  eventBus.on('academy:course_published', async (payload) => {
+    if (!_store) return
+
+    const { courseId, title, description, category, durationHours, format, level, targetDepartments, targetRoles, publishedBy } = payload
+
+    console.info(`[Integration] Academy course published: "${title}" (${category}) — creating learning catalog entry`)
+
+    const alStore = _store as unknown as Parameters<typeof processAcademyCoursePublication>[4]
+    const result = processAcademyCoursePublication(
+      courseId,
+      title,
+      description,
+      category,
+      alStore,
+      { durationHours, format, level, targetDepartments, targetRoles, publishedBy },
+    )
+
+    const applyStore = _store as unknown as Parameters<typeof applyAcademyCatalogEntry>[1]
+    const created = applyAcademyCatalogEntry(result, applyStore)
+
+    if (created) {
+      console.info(
+        `[Integration] Learning catalog entry created for "${title}". ` +
+        `${result.enrollmentSuggestions.length} department(s) suggested for enrollment ` +
+        `(${result.summary.totalEstimatedEnrollees} estimated enrollees)`,
+      )
+
+      _store.addToast?.({
+        type: 'success',
+        title: 'Learning Catalog Updated',
+        description: `"${title}" added to learning catalog. ${result.enrollmentSuggestions.length} department(s) recommended for enrollment.`,
+      })
+    }
+  })
+}
+
+// ── 31. Cross-Module Notifications ────────────────────────────────────────────
 
 function registerCrossModuleNotifications(): void {
   // Forward all events to notification system
