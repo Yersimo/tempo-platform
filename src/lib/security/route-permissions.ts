@@ -29,6 +29,8 @@ const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   // ── IT ──
   '/it/devices':          ['it:read'],
   '/it/apps':             ['it:read'],
+  '/devices':             ['it:read'],
+  '/apps':                ['it:read'],
   '/it-cloud':            ['it:read'],
   '/identity':            ['identity:read'],
   '/password-manager':    ['it:read'],
@@ -62,7 +64,9 @@ const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   '/mentoring':           [],
   '/benefits':            [],
   '/expense':             [],
+  '/expenses':            [],
   '/time-attendance':     [],
+  '/time':                [],
   '/payslips':            [],
   '/chat':                [],
   '/projects':            [],

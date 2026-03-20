@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: '/devices', destination: '/it/devices', permanent: true },
+      { source: '/apps', destination: '/it/apps', permanent: true },
+      { source: '/expenses', destination: '/expense', permanent: true },
+      { source: '/time', destination: '/time-attendance', permanent: true },
+    ]
+  },
 }
 
 const sentryConfig = {
