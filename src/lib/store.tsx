@@ -2131,6 +2131,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setIntegrationStore({
       employees, departments, reviews, reviewCycles,
       devices, softwareLicenses, appAssignments,
+      appCatalog, samlApps, idpConfigurations,
+      ssoApps: [] as any[], identityProviders: [] as any[],
       travelRequests, travelBookings, timeEntries,
       courses, enrollments, goals, competencyFramework, competencyRatings,
       learningAssignments,
@@ -3299,12 +3301,34 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'compliance_requirement', id, `Created requirement: ${data.name}`)
     addToast('Compliance requirement created')
     apiPost('complianceRequirements', 'create', data)
+    // Cross-module: emit compliance:requirement_changed for new requirements
+    eventBus.emit('compliance:requirement_changed', {
+      requirementId: id,
+      requirementTitle: data.name || data.title || '',
+      regulationType: data.regulation_type || data.type || 'general',
+      affectedDepartments: data.affected_departments || data.department_ids,
+      affectedLocations: data.affected_locations || data.country_codes,
+      deadlineDate: data.deadline || data.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      severity: data.severity || 'medium',
+    })
   }, [logAudit, addToast])
   const updateComplianceRequirement = useCallback((id: string, data: AnyRecord) => {
     setComplianceRequirements(prev => prev.map(r => r.id === id ? { ...r, ...data } : r) as typeof prev)
     logAudit('update', 'compliance_requirement', id, 'Updated compliance requirement')
     addToast('Compliance requirement updated')
     apiPost('complianceRequirements', 'update', data, id)
+    // Cross-module: emit compliance:requirement_changed for updated requirements
+    if (data.regulation_type || data.deadline || data.severity || data.status === 'active') {
+      eventBus.emit('compliance:requirement_changed', {
+        requirementId: id,
+        requirementTitle: data.name || data.title || '',
+        regulationType: data.regulation_type || data.type || 'general',
+        affectedDepartments: data.affected_departments || data.department_ids,
+        affectedLocations: data.affected_locations || data.country_codes,
+        deadlineDate: data.deadline || data.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        severity: data.severity || 'medium',
+      })
+    }
   }, [logAudit, addToast])
   const deleteComplianceRequirement = useCallback((id: string) => {
     setComplianceRequirements(prev => prev.filter(r => r.id !== id))
@@ -3774,6 +3798,17 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'survey', id, 'Updated survey')
     addToast('Survey updated')
     apiPost('surveys', 'update', data, id)
+    // Cross-module: emit engagement:survey_completed when survey status changes to completed
+    if (data.status === 'completed' || data.status === 'closed') {
+      eventBus.emit('engagement:survey_completed', {
+        surveyId: id,
+        surveyTitle: data.title || '',
+        departmentId: data.department_id,
+        responseCount: data.response_count || 0,
+        averageScore: data.average_score || data.avg_score || 0,
+        completedAt: new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
 
   // ---- CRUD: Action Plans ----
@@ -4151,6 +4186,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'application', id, `Updated application status to ${data.status || data.stage || 'updated'}`)
     addToast('Application updated')
     apiPost('applications', 'update', data, id)
+    // Cross-module: emit recruiting:offer_extended when application moves to offer stage
+    if (data.status === 'offer_extended' || data.stage === 'offer') {
+      eventBus.emit('recruiting:offer_extended', {
+        candidateName: data.candidate_name || '',
+        applicationId: id,
+        jobPostingId: data.job_id || '',
+        departmentId: data.department_id || '',
+        jobTitle: data.job_title || '',
+        level: data.level || undefined,
+        proposedSalaryCents: data.proposed_salary || data.salary_offer || 0,
+        currency: data.currency || 'USD',
+        extendedBy: data.extended_by || '',
+      })
+    }
     // Cross-module: emit recruiting:candidate_hired when application status changes to 'hired'
     if (data.status === 'hired') {
       eventBus.emit('recruiting:candidate_hired', {
@@ -4164,6 +4213,22 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         employeeId: data.employee_id || undefined,
         hiredBy: data.hired_by || '',
       })
+      // Cross-module: emit headcount:position_filled when candidate is hired
+      if (data.headcount_position_id) {
+        eventBus.emit('headcount:position_filled', {
+          positionId: data.headcount_position_id,
+          planId: data.headcount_plan_id || '',
+          departmentId: data.department_id || '',
+          jobTitle: data.job_title || '',
+          level: data.level || '',
+          candidateName: data.candidate_name || '',
+          applicationId: id,
+          hireDate: data.start_date || new Date().toISOString().split('T')[0],
+          actualSalaryCents: data.proposed_salary || data.salary_offer || 0,
+          budgetCents: data.budget_cents || 0,
+          currency: data.currency || 'USD',
+        })
+      }
     }
   }, [logAudit, addToast])
 
@@ -4402,6 +4467,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'task', id, 'Updated task')
     addToast('Task updated')
     apiPost('tasks', 'update', data, id)
+    // Cross-module: emit project:assignment_changed when assignee changes on a project task
+    if (data.assignee_id && data.project_id) {
+      eventBus.emit('project:assignment_changed', {
+        projectId: data.project_id,
+        projectName: data.project_name || '',
+        employeeId: data.assignee_id,
+        role: data.role || 'contributor',
+        allocationPercent: data.allocation_percent || 100,
+        action: 'assigned',
+        startDate: data.start_date,
+        endDate: data.end_date,
+      })
+    }
   }, [logAudit, addToast])
 
   const deleteTask = useCallback((id: string) => {
@@ -5065,7 +5143,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   }, [logAudit, addToast])
   const addGeofenceEvent = useCallback((data: AnyRecord) => {
     const id = genId('gfev')
-    setGeofenceEvents(prev => [...prev, { id, org_id: orgIdRef.current, timestamp: new Date().toISOString(), ...data }])
+    const timestamp = data.timestamp || new Date().toISOString()
+    setGeofenceEvents(prev => [...prev, { id, org_id: orgIdRef.current, timestamp, ...data }])
+    // Cross-module: emit geofencing:event_detected
+    if (data.employee_id && data.zone_id && data.event_type) {
+      eventBus.emit('geofencing:event_detected', {
+        employeeId: data.employee_id,
+        zoneId: data.zone_id,
+        zoneName: data.zone_name || '',
+        eventType: data.event_type,
+        timestamp,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      })
+    }
   }, [])
 
   // ---- Identity Provider ----
@@ -5328,12 +5419,34 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'eor_employee', id, `Added EOR employee: ${data.full_name}`)
     addToast('EOR employee added')
     apiPost('eorEmployees', 'create', data)
+    // Cross-module: emit eor:data_changed for new EOR employees
+    eventBus.emit('eor:data_changed', {
+      eorEntityId: data.eor_entity_id || '',
+      employeeId: data.employee_id || id,
+      country: data.country || '',
+      changeType: 'onboarded',
+      localSalaryCents: data.local_salary || data.salary || 0,
+      localCurrency: data.local_currency || data.currency || 'USD',
+      effectiveDate: data.start_date || new Date().toISOString().split('T')[0],
+    })
   }, [logAudit, addToast])
   const updateEorEmployee = useCallback((id: string, data: AnyRecord) => {
     setEorEmployees(prev => prev.map(e => e.id === id ? { ...e, ...data } : e))
     logAudit('update', 'eor_employee', id, 'Updated EOR employee')
     addToast('EOR employee updated')
     apiPost('eorEmployees', 'update', data, id)
+    // Cross-module: emit eor:data_changed for salary/status changes
+    if (data.local_salary || data.salary || data.status === 'terminated') {
+      eventBus.emit('eor:data_changed', {
+        eorEntityId: data.eor_entity_id || '',
+        employeeId: data.employee_id || id,
+        country: data.country || '',
+        changeType: data.status === 'terminated' ? 'terminated' : 'salary_changed',
+        localSalaryCents: data.local_salary || data.salary || 0,
+        localCurrency: data.local_currency || data.currency || 'USD',
+        effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
+      })
+    }
   }, [logAudit, addToast])
   const addEorContract = useCallback((data: AnyRecord) => {
     const id = genId('eorc')
@@ -5451,6 +5564,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'workers_comp_claim', id, `Filed workers comp claim for ${data.employee_name || 'Unknown'}`)
     addToast('Workers comp claim filed')
     apiPost('workersCompClaims', 'create', data)
+    // Cross-module: emit workers_comp:claim_filed
+    eventBus.emit('workers_comp:claim_filed', {
+      employeeId: data.employee_id || '',
+      claimId: id,
+      injuryType: data.injury_type || data.type || 'general',
+      injuryDate: data.injury_date || new Date().toISOString().split('T')[0],
+      restrictionType: data.restriction_type || 'light_duty',
+      maxHoursPerDay: data.max_hours_per_day,
+      expectedReturnDate: data.expected_return_date,
+    })
   }, [logAudit, addToast])
   const updateWorkersCompClaim = useCallback((id: string, data: AnyRecord) => {
     setWorkersCompClaims(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
@@ -5595,6 +5718,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'shadow_it_detection', id, `Detected shadow IT: ${data.app_name || ''}`)
     addToast('Shadow IT detection added')
     apiPost('shadowITDetections', 'create', data)
+    // Cross-module: emit shadow_it:app_detected
+    eventBus.emit('shadow_it:app_detected', {
+      detectionId: id,
+      appName: data.app_name || data.name || '',
+      appCategory: data.category || data.app_category || 'other',
+      detectedBy: data.detected_by || 'automated_scan',
+      employeeCount: data.employee_count || data.user_count || 1,
+      dataAccessLevel: data.data_access_level || data.access_level || 'read',
+      detectedAt: new Date().toISOString(),
+    })
   }, [logAudit, addToast])
   const updateShadowITDetection = useCallback((id: string, data: AnyRecord) => {
     setShadowITDetections(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
