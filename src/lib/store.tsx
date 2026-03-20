@@ -3679,6 +3679,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'course', id, `Created course: ${data.title}`)
     addToast('Course created')
     apiPost('courses', 'create', data)
+    // Cross-module: emit academy:course_published for learning catalog
+    if (data.status === 'published') {
+      eventBus.emit('academy:course_published', {
+        courseId: id,
+        orgId: orgIdRef.current,
+        title: data.title || '',
+        description: data.description || undefined,
+        category: data.category || 'general',
+        durationHours: data.duration_hours || undefined,
+        format: data.format || undefined,
+        level: data.level || undefined,
+        targetDepartments: data.target_departments || [],
+        targetRoles: data.target_roles || [],
+        publishedBy: data.published_by || undefined,
+        publishedAt: data.published_at || new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
 
   const updateCourse = useCallback((id: string, data: AnyRecord) => {
@@ -3768,7 +3785,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const updateStudyGroup = useCallback((id: string, data: AnyRecord) => { setStudyGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g) as typeof prev); logAudit('update', 'study_group', id, 'Updated study group'); addToast('Study group updated'); apiPost('studyGroups', 'update', data, id) }, [logAudit, addToast])
 
   // ---- CRUD: Compliance Training ----
-  const addComplianceTraining = useCallback((data: AnyRecord) => { const id = genId('ct'); setComplianceTraining(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev); logAudit('create', 'compliance_training', id, `Added compliance: ${data.title}`); addToast('Compliance training added'); apiPost('complianceTraining', 'create', data) }, [logAudit, addToast])
+  const addComplianceTraining = useCallback((data: AnyRecord) => {
+    const id = genId('ct')
+    setComplianceTraining(prev => [...prev, { id, org_id: orgIdRef.current, ...data }] as typeof prev)
+    logAudit('create', 'compliance_training', id, `Added compliance: ${data.title}`)
+    addToast('Compliance training added')
+    apiPost('complianceTraining', 'create', data)
+    // Cross-module: emit compliance:training_status_changed
+    if (data.status === 'completed' || data.status === 'overdue' || data.status === 'expiring_soon') {
+      eventBus.emit('compliance:training_status_changed', {
+        employeeId: data.employee_id || '',
+        trainingId: id,
+        courseId: data.course_id || '',
+        courseName: data.course_name || data.title || '',
+        requirementId: data.requirement_id || '',
+        status: data.status,
+        completedAt: data.completed_at || undefined,
+        dueDate: data.due_date || undefined,
+        regulationType: data.regulation_type || undefined,
+      })
+    }
+  }, [logAudit, addToast])
   const updateComplianceTraining = useCallback((id: string, data: AnyRecord) => { setComplianceTraining(prev => prev.map(c => c.id === id ? { ...c, ...data } : c) as typeof prev); logAudit('update', 'compliance_training', id, 'Updated compliance training'); apiPost('complianceTraining', 'update', data, id) }, [logAudit])
 
   // ---- CRUD: Auto-Enrollment Rules ----
@@ -3865,6 +3902,21 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'mentoring_session', id, 'Logged mentoring session')
     addToast('Mentoring session logged')
     apiPost('mentoringSessions', 'create', data)
+    // Cross-module: emit mentoring:session_completed
+    if (data.status === 'completed') {
+      eventBus.emit('mentoring:session_completed', {
+        employeeId: data.mentee_id || data.employee_id || '',
+        mentorId: data.mentor_id || '',
+        menteeId: data.mentee_id || data.employee_id || '',
+        sessionId: id,
+        relationshipId: data.relationship_id || '',
+        sessionType: data.session_type || 'regular',
+        topicsCovered: data.topics_covered || [],
+        milestoneReached: data.milestone_reached || false,
+        milestoneName: data.milestone_name || undefined,
+        completedAt: data.completed_at || new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
   const updateMentoringSession = useCallback((id: string, data: AnyRecord) => {
     setMentoringSessions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s) as typeof prev)
@@ -3893,6 +3945,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'payroll_run', id, `Created pay run: ${data.period}`)
     addToast('Payroll run created')
     apiPost('payrollRuns', 'create', data)
+    // Cross-module: emit payroll:run_completed for finance GL journal entries
+    if (data.status === 'completed') {
+      eventBus.emit('payroll:run_completed', {
+        payrollRunId: id,
+        orgId: orgIdRef.current,
+        periodStart: data.period_start || '',
+        periodEnd: data.period_end || '',
+        totalGrossCents: data.total_gross || 0,
+        totalNetCents: data.total_net || 0,
+        totalDeductionsCents: data.total_deductions || 0,
+        totalTaxCents: data.total_tax || 0,
+        currency: data.currency || 'GHS',
+        employeeCount: data.employee_count || 0,
+        departmentBreakdown: data.department_breakdown || [],
+        completedAt: data.completed_at || new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
 
   const updatePayrollRun = useCallback((id: string, data: AnyRecord) => {
@@ -3903,6 +3972,23 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     // Notify org when payroll is approved or paid
     if (data.status === 'approved') notifyEvent('payroll_approved', id, 'payroll_run')
     if (data.status === 'paid') notifyEvent('payroll_paid', id, 'payroll_run')
+    // Cross-module: emit payroll:run_completed for finance GL journal entries
+    if (data.status === 'completed') {
+      eventBus.emit('payroll:run_completed', {
+        payrollRunId: id,
+        orgId: orgIdRef.current,
+        periodStart: data.period_start || '',
+        periodEnd: data.period_end || '',
+        totalGrossCents: data.total_gross || 0,
+        totalNetCents: data.total_net || 0,
+        totalDeductionsCents: data.total_deductions || 0,
+        totalTaxCents: data.total_tax || 0,
+        currency: data.currency || 'GHS',
+        employeeCount: data.employee_count || 0,
+        departmentBreakdown: data.department_breakdown || [],
+        completedAt: data.completed_at || new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
 
   const addEmployeePayrollEntry = useCallback((data: AnyRecord) => {
@@ -4075,6 +4161,17 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'life_event', id, 'Recorded life event')
     addToast('Life event recorded')
     apiPost('lifeEvents', 'create', data)
+    // Cross-module: emit employee:life_event_reported for benefits/tax/HR tasks
+    eventBus.emit('employee:life_event_reported', {
+      employeeId: data.employee_id || '',
+      eventId: id,
+      eventType: data.event_type || 'other',
+      eventDate: data.event_date || new Date().toISOString().split('T')[0],
+      description: data.description || undefined,
+      affectsBenefits: data.affects_benefits ?? true,
+      affectsTax: data.affects_tax ?? false,
+      reportedAt: data.reported_at || new Date().toISOString(),
+    })
   }, [logAudit, addToast])
 
   const updateLifeEvent = useCallback((id: string, data: AnyRecord) => {
@@ -4569,6 +4666,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'initiative', id, `Created initiative: ${data.title}`)
     addToast('Initiative created')
     apiPost('initiatives', 'create', data)
+    // Cross-module: emit strategy:initiative_updated for project task generation
+    eventBus.emit('strategy:initiative_updated', {
+      initiativeId: id,
+      orgId: orgIdRef.current,
+      title: data.title || '',
+      status: data.status || 'draft',
+      action: 'created',
+      milestones: data.milestones || [],
+      okrs: data.okrs || [],
+      ownerId: data.owner_id || undefined,
+      departmentId: data.department_id || undefined,
+    })
   }, [logAudit, addToast])
 
   const updateInitiative = useCallback((id: string, data: AnyRecord) => {
@@ -5282,6 +5391,20 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('create', 'device_order', id, 'Device order placed')
     addToast('Device order placed')
     apiPost('deviceOrders', 'create', data)
+    // Cross-module: emit device:provisioned for IT asset creation
+    if (data.status === 'provisioned') {
+      eventBus.emit('device:provisioned', {
+        employeeId: data.employee_id || '',
+        deviceId: id,
+        deviceType: data.device_type || 'laptop',
+        deviceName: data.device_name || '',
+        serialNumber: data.serial_number || undefined,
+        orderId: id,
+        costCents: data.cost || 0,
+        currency: data.currency || 'GHS',
+        provisionedAt: data.provisioned_at || new Date().toISOString(),
+      })
+    }
   }, [logAudit, addToast])
   const updateDeviceOrder = useCallback((id: string, data: AnyRecord) => {
     setDeviceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o))
