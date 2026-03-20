@@ -146,7 +146,7 @@ export function generateProjectTasksFromStrategy(
 
   // Generate KPI linkages from OKRs
   for (const okr of okrs) {
-    for (const kr of okr.keyResults) {
+    for (const kr of (okr.keyResults || (okr as any).key_results || [])) {
       kpiLinkages.push({
         initiativeId,
         okrId: okr.id,
