@@ -2134,20 +2134,42 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       travelRequests, travelBookings, timeEntries,
       courses, enrollments, goals, competencyFramework, competencyRatings,
       learningAssignments,
+      // Recruiting & Onboarding
+      jobPostings, headcountPositions,
+      // Expenses & Payroll
+      expenseReports,
+      // Benefits & Payroll
+      benefitPlans, benefitEnrollments,
+      // Compensation & Payroll
+      salaryReviews,
+      // Offboarding Payroll
+      leaveBalances: [] as any[], leaveRequests,
+      // Offboarding
+      offboardingProcesses, offboardingTasks,
+      // Action functions
       addMeritRecommendation: addMeritRecommendation as any,
       addSalaryReview: addSalaryReview as any,
       updateDevice: updateDevice as any,
       updateSoftwareLicense: updateSoftwareLicense as any,
       addOffboardingTask: addOffboardingTask as any,
       updateOffboardingProcess: updateOffboardingProcess as any,
+      updateOffboardingTask: updateOffboardingTask as any,
       addExpenseReport: addExpenseReport as any,
+      updateExpenseReport: updateExpenseReport as any,
       updateGoal: updateGoal as any,
       addCompetencyRating: addCompetencyRating as any,
       updateCompetencyRating: updateCompetencyRating as any,
       updateEnrollment: updateEnrollment as any,
       updateLearningAssignment: updateLearningAssignment as any,
-      offboardingProcesses, offboardingTasks,
-      updateOffboardingTask: updateOffboardingTask as any,
+      addJobPosting: addJobPosting as any,
+      updateHeadcountPosition: updateHeadcountPosition as any,
+      addPreboardingTask: addPreboardingTask as any,
+      addEnrollment: addEnrollment as any,
+      addEmployeePayrollEntry: addEmployeePayrollEntry as any,
+      updateEmployee: updateEmployee as any,
+      updateSalaryReview: updateSalaryReview as any,
+      updateAppAssignment: updateAppAssignment as any,
+      addPayrollRun: addPayrollRun as any,
       getEmployeeName,
       addToast: (t: { type: string; title: string; description?: string }) => addToast(t.description || t.title),
     } as any)
