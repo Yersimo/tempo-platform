@@ -32,7 +32,7 @@ import { useTempo } from '@/lib/store'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ORG_ID = 'org-1'
+// ORG_ID is resolved from the org context at runtime (see component body)
 
 const CATEGORY_ICONS: Record<AppCategory, React.ReactNode> = {
   HRIS: <Package size={14} />,
@@ -96,7 +96,8 @@ function timeAgo(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function MarketplacePage() {
-  const { addToast } = useTempo()
+  const { addToast, org } = useTempo()
+  const ORG_ID = org?.id || 'org-1'
 
   // State
   const [activeTab, setActiveTab] = useState('browse')

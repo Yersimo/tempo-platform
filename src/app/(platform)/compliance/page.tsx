@@ -55,7 +55,7 @@ export default function CompliancePage() {
     dismissComplianceAlert,
     autoDetectionScans, addAutoDetectionScan, updateAutoDetectionScan,
     employees, getEmployeeName,
-    ensureModulesLoaded, addToast,
+    ensureModulesLoaded, addToast, org,
     courses, enrollments, signatureDocuments, payrollRuns,
   } = useTempo()
 
@@ -77,14 +77,16 @@ export default function CompliancePage() {
     // Section 1: Executive Summary
     sections.push('COMPLIANCE AUDIT REPORT')
     sections.push(`Generated: ${now}`)
-    sections.push(`Organization: Africa Bank Group`)
+    sections.push(`Organization: ${org?.name || 'Organization'}`)
     sections.push('')
     sections.push('=== EXECUTIVE SUMMARY ===')
     sections.push(`Total Requirements: ${complianceRequirements.length}`)
     sections.push(`Compliant: ${complianceRequirements.filter(r => r.status === 'compliant').length}`)
     sections.push(`At Risk: ${complianceRequirements.filter(r => r.status === 'at_risk').length}`)
     sections.push(`Non-Compliant: ${complianceRequirements.filter(r => r.status === 'non_compliant').length}`)
-    sections.push(`Compliance Score: ${totalReqs > 0 ? Math.round((compliantCount / totalReqs) * 100) : 0}%`)
+    const _totalReqs = complianceRequirements.length
+    const _compliantCount = complianceRequirements.filter(r => r.status === 'compliant').length
+    sections.push(`Compliance Score: ${_totalReqs > 0 ? Math.round((_compliantCount / _totalReqs) * 100) : 0}%`)
     sections.push(`Active Alerts: ${complianceAlerts.filter(a => !a.is_read).length}`)
     sections.push(`Critical Alerts: ${complianceAlerts.filter(a => a.severity === 'critical' && !a.is_read).length}`)
     sections.push('')
