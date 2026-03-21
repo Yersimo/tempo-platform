@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -434,9 +434,8 @@ export default function GeneralLedgerPage() {
                     </td>
                   </tr>
                 ) : filteredEntries.map(je => (
-                  <>
+                  <React.Fragment key={je.id}>
                     <tr
-                      key={je.id}
                       className="hover:bg-canvas/50 cursor-pointer"
                       onClick={() => setExpandedEntry(expandedEntry === je.id ? null : je.id)}
                     >
@@ -497,7 +496,7 @@ export default function GeneralLedgerPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
