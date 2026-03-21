@@ -221,6 +221,15 @@ const MODULE_CONFIG: Record<string, {
   'academy-certificates':           { table: schema.academyCertificates, hasOrgId: true, defaultLimit: 50 },
   'academy-communications':         { table: schema.academyCommunications, hasOrgId: true, defaultLimit: 50 },
   'academy-comm-triggers':          { table: schema.academyCommTriggers, hasOrgId: true, defaultLimit: 50 },
+  // Three-Way PO Matching
+  'goods-receipts':        { table: schema.goodsReceipts, hasOrgId: true, defaultLimit: 50 },
+  'goods-receipt-lines':   { table: schema.goodsReceiptLines, hasOrgId: false, defaultLimit: 100 },
+  'three-way-matches':     { table: schema.threeWayMatches, hasOrgId: true, defaultLimit: 50 },
+  // Revenue Recognition (ASC 606)
+  'revenue-contracts':     { table: schema.revenueContracts, hasOrgId: true, defaultLimit: 50 },
+  'performance-obligations': { table: schema.performanceObligations, hasOrgId: false, defaultLimit: 100 },
+  'revenue-schedule':      { table: schema.revenueScheduleEntries, hasOrgId: true, defaultLimit: 100 },
+  'deferred-revenue':      { table: schema.deferredRevenue, hasOrgId: true, defaultLimit: 100 },
   // Journal Entries (GL)
   'journal-entries':       { table: schema.journalEntries, hasOrgId: true, defaultLimit: 50 },
   'journal-entry-lines':   { table: schema.journalEntryLines, hasOrgId: false, defaultLimit: 100 },
@@ -251,6 +260,30 @@ const MODULE_CONFIG: Record<string, {
   'succession-candidates':   { table: schema.successionCandidates, hasOrgId: false, defaultLimit: 100 },
   'talent-reviews':          { table: schema.talentReviews, hasOrgId: true, defaultLimit: 20 },
   'talent-review-entries':   { table: schema.talentReviewEntries, hasOrgId: false, defaultLimit: 100 },
+  // Transfer Pricing
+  'transfer-pricing-policies':     { table: schema.transferPricingPolicies, hasOrgId: true, defaultLimit: 50 },
+  'transfer-pricing-transactions': { table: schema.transferPricingTransactions, hasOrgId: true, defaultLimit: 100 },
+  'transfer-pricing-reports':      { table: schema.transferPricingReports, hasOrgId: true, defaultLimit: 20 },
+  // Board Reporting
+  'board-reports':           { table: schema.boardReports, hasOrgId: true, defaultLimit: 20 },
+  // Org Design Scenarios
+  'org-scenarios':           { table: schema.orgScenarios, hasOrgId: true, defaultLimit: 20 },
+  'scenario-changes':        { table: schema.scenarioChanges, hasOrgId: false, defaultLimit: 100 },
+  'scenario-snapshots':      { table: schema.scenarioSnapshots, hasOrgId: false, defaultLimit: 50 },
+  // Talent Marketplace
+  'internal-gigs':           { table: schema.internalGigs, hasOrgId: true, defaultLimit: 50 },
+  'gig-applications':        { table: schema.gigApplications, hasOrgId: false, defaultLimit: 100 },
+  'career-paths':            { table: schema.careerPaths, hasOrgId: true, defaultLimit: 20 },
+  'career-interests':        { table: schema.careerInterests, hasOrgId: true, defaultLimit: 50 },
+  // Video Conferencing
+  'meeting-integrations':    { table: schema.meetingIntegrations, hasOrgId: true, defaultLimit: 20 },
+  'meetings':                { table: schema.meetings, hasOrgId: true, defaultLimit: 50 },
+  'meeting-participants':    { table: schema.meetingParticipants, hasOrgId: false, defaultLimit: 100 },
+  // Collaborative Documents
+  'collaborative-documents': { table: schema.collaborativeDocuments, hasOrgId: true, defaultLimit: 50 },
+  'document-versions':       { table: schema.documentVersions, hasOrgId: false, defaultLimit: 100 },
+  'document-collaborators':  { table: schema.documentCollaborators, hasOrgId: false, defaultLimit: 100 },
+  'document-comments':       { table: schema.documentComments, hasOrgId: false, defaultLimit: 100 },
 }
 
 export async function GET(

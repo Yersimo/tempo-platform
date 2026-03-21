@@ -214,6 +214,15 @@ export const MODULE_SLUGS: Record<string, string> = {
   academyCertificates: 'academy-certificates',
   academyCommunications: 'academy-communications',
   academyCommTriggers: 'academy-comm-triggers',
+  // Three-Way PO Matching
+  goodsReceipts: 'goods-receipts',
+  goodsReceiptLines: 'goods-receipt-lines',
+  threeWayMatches: 'three-way-matches',
+  // Revenue Recognition (ASC 606)
+  revenueContracts: 'revenue-contracts',
+  performanceObligations: 'performance-obligations',
+  revenueScheduleEntries: 'revenue-schedule',
+  deferredRevenue: 'deferred-revenue',
   // Journal Entries (GL)
   journalEntries: 'journal-entries',
   journalEntryLines: 'journal-entry-lines',
@@ -244,6 +253,30 @@ export const MODULE_SLUGS: Record<string, string> = {
   successionCandidates: 'succession-candidates',
   talentReviews: 'talent-reviews',
   talentReviewEntries: 'talent-review-entries',
+  // Transfer Pricing
+  transferPricingPolicies: 'transfer-pricing-policies',
+  transferPricingTransactions: 'transfer-pricing-transactions',
+  transferPricingReports: 'transfer-pricing-reports',
+  // Board Reporting
+  boardReports: 'board-reports',
+  // Org Design Scenarios
+  orgScenarios: 'org-scenarios',
+  scenarioChanges: 'scenario-changes',
+  scenarioSnapshots: 'scenario-snapshots',
+  // Talent Marketplace
+  internalGigs: 'internal-gigs',
+  gigApplications: 'gig-applications',
+  careerPaths: 'career-paths',
+  careerInterests: 'career-interests',
+  // Video Conferencing
+  meetingIntegrations: 'meeting-integrations',
+  meetings: 'meetings',
+  meetingParticipants: 'meeting-participants',
+  // Collaborative Documents
+  collaborativeDocuments: 'collaborative-documents',
+  documentVersions: 'document-versions',
+  documentCollaborators: 'document-collaborators',
+  documentComments: 'document-comments',
 }
 
 // ---------------------------------------------------------------------------

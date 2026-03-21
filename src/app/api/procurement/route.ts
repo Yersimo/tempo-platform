@@ -17,6 +17,14 @@ import {
   createFromTemplate,
   threeWayMatch,
 } from '@/lib/services/procurement'
+import {
+  createGoodsReceipt,
+  performThreeWayMatch,
+  getMatchingSuggestions,
+  getMatchDashboard,
+  approveMatchException,
+  rejectMatchException,
+} from '@/lib/services/po-matching'
 
 // ---------------------------------------------------------------------------
 // GET /api/procurement — query procurement data by action
@@ -74,6 +82,20 @@ export async function GET(request: NextRequest) {
       case 'generate-po-number': {
         const result = await generatePONumber(orgId)
         return NextResponse.json({ poNumber: result })
+      }
+
+      case 'match-dashboard': {
+        const result = await getMatchDashboard(orgId)
+        return NextResponse.json(result)
+      }
+
+      case 'match-suggestions': {
+        const invoiceId = url.searchParams.get('invoiceId')
+        if (!invoiceId) {
+          return NextResponse.json({ error: 'Missing required param: invoiceId' }, { status: 400 })
+        }
+        const result = await getMatchingSuggestions(orgId, invoiceId)
+        return NextResponse.json(result)
       }
 
       default:
@@ -216,6 +238,47 @@ export async function POST(request: NextRequest) {
           data.overrides,
         )
         return NextResponse.json(result, { status: 201 })
+      }
+
+      case 'create-goods-receipt': {
+        if (!data.poId || !data.receivedBy || !data.receivedDate || !data.lines) {
+          return NextResponse.json(
+            { error: 'Missing required fields: poId, receivedBy, receivedDate, lines' },
+            { status: 400 },
+          )
+        }
+        const result = await createGoodsReceipt({ orgId, ...data })
+        return NextResponse.json(result, { status: 201 })
+      }
+
+      case 'perform-three-way-match': {
+        if (!data.poId || !data.receiptId || !data.invoiceId) {
+          return NextResponse.json(
+            { error: 'Missing required fields: poId, receiptId, invoiceId' },
+            { status: 400 },
+          )
+        }
+        const result = await performThreeWayMatch({ orgId, ...data })
+        return NextResponse.json(result, { status: 201 })
+      }
+
+      case 'approve-match-exception': {
+        if (!data.matchId || !data.approvedBy) {
+          return NextResponse.json(
+            { error: 'Missing required fields: matchId, approvedBy' },
+            { status: 400 },
+          )
+        }
+        const result = await approveMatchException(data.matchId, orgId, data.approvedBy, data.notes)
+        return NextResponse.json(result)
+      }
+
+      case 'reject-match-exception': {
+        if (!data.matchId) {
+          return NextResponse.json({ error: 'Missing required field: matchId' }, { status: 400 })
+        }
+        const result = await rejectMatchException(data.matchId, orgId, data.notes)
+        return NextResponse.json(result)
       }
 
       default:

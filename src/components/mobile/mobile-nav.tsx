@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Users, CheckSquare, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, CheckSquare, Menu, X, User, Rocket } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils/cn'
 
@@ -16,8 +16,8 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
   const pathname = usePathname()
   const [showMore, setShowMore] = useState(false)
 
-  // Only show on mobile page
-  const isMobilePage = pathname === '/mobile'
+  // Show on all mobile pages
+  const isMobilePage = pathname?.startsWith('/mobile')
 
   useEffect(() => {
     setShowMore(false)
@@ -25,14 +25,28 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
 
   if (!isMobilePage) return null
 
-  const tabs = [
-    { id: 'home', label: 'Home', icon: LayoutDashboard },
-    { id: 'team', label: 'Team', icon: Users },
-    { id: 'approvals', label: 'Approvals', icon: CheckSquare, badge: approvalCount },
-    { id: 'more', label: 'More', icon: showMore ? X : Menu },
-  ]
+  // On sub-pages, show a back-to-home nav
+  const isSubPage = pathname !== '/mobile'
+
+  const tabs = isSubPage
+    ? [
+        { id: 'home', label: 'Home', icon: LayoutDashboard, href: '/mobile' },
+        { id: 'team', label: 'Team', icon: Users, href: '/mobile/team' },
+        { id: 'approvals', label: 'Approvals', icon: CheckSquare, badge: approvalCount, href: '/mobile/approvals' },
+        { id: 'profile', label: 'Profile', icon: User, href: '/mobile/profile' },
+      ]
+    : [
+        { id: 'home', label: 'Home', icon: LayoutDashboard },
+        { id: 'team', label: 'Team', icon: Users },
+        { id: 'approvals', label: 'Approvals', icon: CheckSquare, badge: approvalCount },
+        { id: 'more', label: 'More', icon: showMore ? X : Menu },
+      ]
 
   const moreLinks = [
+    { href: '/mobile/approvals', label: 'Approvals' },
+    { href: '/mobile/team', label: 'Team View' },
+    { href: '/mobile/profile', label: 'My Profile' },
+    { href: '/people/talent-marketplace', label: 'Talent Marketplace' },
     { href: '/dashboard', label: 'Full Dashboard' },
     { href: '/payroll', label: 'Payroll' },
     { href: '/time-attendance', label: 'Time & Attendance' },
@@ -42,6 +56,16 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
     { href: '/performance', label: 'Performance' },
     { href: '/settings', label: 'Settings' },
   ]
+
+  const getActiveId = () => {
+    if (pathname === '/mobile') return activeTab || 'home'
+    if (pathname === '/mobile/team') return 'team'
+    if (pathname === '/mobile/approvals') return 'approvals'
+    if (pathname === '/mobile/profile') return 'profile'
+    return 'home'
+  }
+
+  const currentActiveId = getActiveId()
 
   return (
     <>
@@ -84,9 +108,30 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0f1117]/95 backdrop-blur-xl border-t border-white/[0.06] z-50 lg:hidden pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around items-end pt-1.5 pb-1">
           {tabs.map((tab) => {
-            const isActive = tab.id === 'more' ? showMore : (activeTab === tab.id)
+            const isActive = tab.id === 'more' ? showMore : (currentActiveId === tab.id)
             const Icon = tab.icon
-            return (
+            const tabHref = (tab as any).href
+
+            return tabHref ? (
+              <Link
+                key={tab.id}
+                href={tabHref}
+                className={cn(
+                  'flex flex-col items-center gap-0.5 px-4 py-2 min-w-[64px] min-h-[44px] relative transition-colors',
+                  isActive ? 'text-orange-400' : 'text-white/30'
+                )}
+              >
+                <div className="relative">
+                  <Icon size={22} />
+                  {(tab as any).badge != null && (tab as any).badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                      {(tab as any).badge > 99 ? '99+' : (tab as any).badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-medium">{tab.label}</span>
+              </Link>
+            ) : (
               <button
                 key={tab.id}
                 onClick={() => {
@@ -104,9 +149,9 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
               >
                 <div className="relative">
                   <Icon size={22} />
-                  {tab.badge != null && tab.badge > 0 && (
+                  {(tab as any).badge != null && (tab as any).badge > 0 && (
                     <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                      {tab.badge > 99 ? '99+' : tab.badge}
+                      {(tab as any).badge > 99 ? '99+' : (tab as any).badge}
                     </span>
                   )}
                 </div>

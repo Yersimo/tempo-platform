@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import {
   CheckSquare, Users, Calendar, Receipt, Clock, MessageSquare,
   RefreshCw, Bell, BellOff, ChevronRight, Briefcase, Home, Plane,
-  MapPin, UserPlus, Award, TrendingUp,
+  MapPin, UserPlus, Award, TrendingUp, User, Rocket, AlertTriangle,
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 import { Avatar } from '@/components/ui/avatar'
@@ -324,8 +324,13 @@ export default function MobileManagerPage() {
               </button>
             )}
             {pushPermission === 'granted' && (
-              <div className="p-2.5 rounded-xl bg-orange-600/10 text-orange-400 min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <div className="relative p-2.5 rounded-xl bg-orange-600/10 text-orange-400 min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <Bell size={18} />
+                {pendingApprovals.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -340,10 +345,12 @@ export default function MobileManagerPage() {
             {/* Quick Actions Grid */}
             <div>
               <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Quick Actions</h2>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   { icon: CheckSquare, label: 'Approvals', color: 'text-orange-400', bg: 'bg-orange-500/10', badge: pendingApprovals.length, tab: 'approvals' as TabId },
                   { icon: Users, label: 'My Team', color: 'text-blue-400', bg: 'bg-blue-500/10', badge: directReports.length, tab: 'team' as TabId },
+                  { icon: User, label: 'Profile', color: 'text-indigo-400', bg: 'bg-indigo-500/10', href: '/mobile/profile' },
+                  { icon: Rocket, label: 'Gigs', color: 'text-red-400', bg: 'bg-red-500/10', href: '/people/talent-marketplace' },
                   { icon: Calendar, label: 'Leave', color: 'text-purple-400', bg: 'bg-purple-500/10', href: '/time-attendance' },
                   { icon: Receipt, label: 'Expenses', color: 'text-emerald-400', bg: 'bg-emerald-500/10', href: '/expense' },
                   { icon: Clock, label: 'Time', color: 'text-cyan-400', bg: 'bg-cyan-500/10', href: '/time-attendance' },
@@ -353,7 +360,7 @@ export default function MobileManagerPage() {
                   const content = (
                     <div
                       key={action.label}
-                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[#1a1d27] border border-white/[0.04] active:bg-white/[0.06] transition-colors min-h-[88px] relative"
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-[#1a1d27] border border-white/[0.04] active:bg-white/[0.06] transition-colors min-h-[76px] relative"
                     >
                       {action.badge != null && action.badge > 0 && (
                         <span className="absolute top-2 right-2 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
@@ -411,6 +418,68 @@ export default function MobileManagerPage() {
                 ))}
               </div>
             )}
+
+            {/* Manager Alerts */}
+            {(() => {
+              const alerts: Array<{ id: string; icon: React.ReactNode; text: string; color: string; bg: string }> = []
+
+              // Team members on leave tomorrow
+              const tomorrow = new Date()
+              tomorrow.setDate(tomorrow.getDate() + 1)
+              const tomorrowStr = tomorrow.toISOString().split('T')[0]
+              leaveRequests
+                .filter((lr: Record<string, unknown>) =>
+                  lr.status === 'approved' &&
+                  (lr.start_date as string) === tomorrowStr &&
+                  directReports.some((e: Record<string, unknown>) => e.id === lr.employee_id)
+                )
+                .forEach((lr: Record<string, unknown>) => {
+                  const emp = employees.find((e: Record<string, unknown>) => e.id === lr.employee_id)
+                  const name = emp?.profile
+                    ? ((emp as any).profile as any)?.full_name
+                    : (emp as any)?.full_name || 'Someone'
+                  alerts.push({
+                    id: `leave-tmrw-${lr.id}`,
+                    icon: <Calendar size={14} />,
+                    text: `${name} starts leave tomorrow`,
+                    color: 'text-amber-400',
+                    bg: 'bg-amber-500/[0.06]',
+                  })
+                })
+
+              // Approvals expiring (older than 3 days)
+              const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000
+              pendingApprovals
+                .filter((a) => new Date(a.submitted).getTime() < threeDaysAgo)
+                .slice(0, 2)
+                .forEach((a) => {
+                  alerts.push({
+                    id: `exp-${a.id}`,
+                    icon: <AlertTriangle size={14} />,
+                    text: `${a.requester.name}'s ${a.type} pending ${Math.floor((Date.now() - new Date(a.submitted).getTime()) / (1000 * 60 * 60 * 24))}+ days`,
+                    color: 'text-red-400',
+                    bg: 'bg-red-500/[0.06]',
+                  })
+                })
+
+              if (alerts.length === 0) return null
+              return (
+                <div>
+                  <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <AlertTriangle size={12} className="text-amber-400" />
+                    Manager Alerts
+                  </h2>
+                  <div className="space-y-2">
+                    {alerts.map((alert) => (
+                      <div key={alert.id} className={cn('flex items-center gap-3 p-3 rounded-xl border border-white/[0.04]', alert.bg)}>
+                        <span className={alert.color}>{alert.icon}</span>
+                        <p className="text-xs text-white/60 flex-1">{alert.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Team Status Preview */}
             {teamStatus.length > 0 && (

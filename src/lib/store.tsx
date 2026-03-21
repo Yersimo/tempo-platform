@@ -327,6 +327,11 @@ interface TempoState {
   successionCandidates: any[]
   talentReviews: any[]
   talentReviewEntries: any[]
+  // Talent Marketplace
+  internalGigs: any[]
+  gigApplications: any[]
+  careerPaths: any[]
+  careerInterests: any[]
 
   // Loading state
   isLoading: boolean
@@ -1014,6 +1019,27 @@ interface TempoState {
   addProcurementRequest: (data: AnyRecord) => void
   updateProcurementRequest: (id: string, data: AnyRecord) => void
 
+  // Three-Way PO Matching
+  goodsReceipts: AnyRecord[]
+  goodsReceiptLines: AnyRecord[]
+  threeWayMatches: AnyRecord[]
+  addGoodsReceipt: (data: AnyRecord) => void
+  updateGoodsReceipt: (id: string, data: AnyRecord) => void
+  addThreeWayMatch: (data: AnyRecord) => void
+  updateThreeWayMatch: (id: string, data: AnyRecord) => void
+
+  // Revenue Recognition (ASC 606)
+  revenueContracts: AnyRecord[]
+  performanceObligations: AnyRecord[]
+  revenueScheduleEntries: AnyRecord[]
+  deferredRevenue: AnyRecord[]
+  addRevenueContract: (data: AnyRecord) => void
+  updateRevenueContract: (id: string, data: AnyRecord) => void
+  addPerformanceObligation: (data: AnyRecord) => void
+  updatePerformanceObligation: (id: string, data: AnyRecord) => void
+  addRevenueScheduleEntry: (data: AnyRecord) => void
+  addDeferredRevenue: (data: AnyRecord) => void
+
   // Multi-currency
   currencyAccounts: AnyRecord[]
   fxTransactions: AnyRecord[]
@@ -1371,6 +1397,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [successionCandidates, setSuccessionCandidates] = useState<any[]>([])
   const [talentReviewsData, setTalentReviewsData] = useState<any[]>([])
   const [talentReviewEntries, setTalentReviewEntries] = useState<any[]>([])
+  // Talent Marketplace
+  const [internalGigs, setInternalGigs] = useState<any[]>([])
+  const [gigApplications, setGigApplications] = useState<any[]>([])
+  const [careerPathsData, setCareerPathsData] = useState<any[]>([])
+  const [careerInterestsData, setCareerInterestsData] = useState<any[]>([])
   const [surveys, setSurveys] = useState<any[]>([])
   const [engagementScores, setEngagementScores] = useState<any[]>([])
   const [actionPlans, setActionPlans] = useState<any[]>([])
@@ -1564,6 +1595,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<any[]>([])
   const [procurementRequests, setProcurementRequests] = useState<any[]>([])
+  const [goodsReceipts, setGoodsReceipts] = useState<any[]>([])
+  const [goodsReceiptLines, setGoodsReceiptLines] = useState<any[]>([])
+  const [threeWayMatches, setThreeWayMatches] = useState<any[]>([])
+  const [revenueContracts, setRevenueContracts] = useState<any[]>([])
+  const [performanceObligations, setPerformanceObligations] = useState<any[]>([])
+  const [revenueScheduleEntries, setRevenueScheduleEntries] = useState<any[]>([])
+  const [deferredRevenueData, setDeferredRevenueData] = useState<any[]>([])
   const [currencyAccounts, setCurrencyAccounts] = useState<any[]>([])
   const [fxTransactions, setFxTransactions] = useState<any[]>([])
   const [retirementPlans, setRetirementPlans] = useState<any[]>([])
@@ -1916,6 +1954,15 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       purchaseOrders: (d) => setPurchaseOrders(d),
       purchaseOrderItems: (d) => setPurchaseOrderItems(d),
       procurementRequests: (d) => setProcurementRequests(d),
+      // Three-Way PO Matching
+      goodsReceipts: (d) => setGoodsReceipts(d),
+      goodsReceiptLines: (d) => setGoodsReceiptLines(d),
+      threeWayMatches: (d) => setThreeWayMatches(d),
+      // Revenue Recognition
+      revenueContracts: (d) => setRevenueContracts(d),
+      performanceObligations: (d) => setPerformanceObligations(d),
+      revenueScheduleEntries: (d) => setRevenueScheduleEntries(d),
+      deferredRevenue: (d) => setDeferredRevenueData(d),
       // Bank Feed
       bankConnections: (d) => setBankConnections(d),
       bankAccounts: (d) => setBankAccountsList(d),
@@ -2088,6 +2135,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       successionCandidates: (d) => setSuccessionCandidates(d),
       talentReviews: (d) => setTalentReviewsData(d),
       talentReviewEntries: (d) => setTalentReviewEntries(d),
+      // Talent Marketplace
+      internalGigs: (d) => setInternalGigs(d),
+      gigApplications: (d) => setGigApplications(d),
+      careerPaths: (d) => setCareerPathsData(d),
+      careerInterests: (d) => setCareerInterestsData(d),
     }
   }
 
@@ -5255,6 +5307,72 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('procurementRequests', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- Three-Way PO Matching ----
+  const addGoodsReceipt = useCallback((data: AnyRecord) => {
+    const id = genId('gr')
+    setGoodsReceipts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'pending', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'goods_receipt', id, `Created goods receipt: ${data.receipt_number || id}`)
+    addToast('Goods receipt created')
+    apiPost('goodsReceipts', 'create', data)
+  }, [logAudit, addToast])
+  const updateGoodsReceipt = useCallback((id: string, data: AnyRecord) => {
+    setGoodsReceipts(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'goods_receipt', id, 'Updated goods receipt')
+    addToast('Goods receipt updated')
+    apiPost('goodsReceipts', 'update', data, id)
+  }, [logAudit, addToast])
+  const addThreeWayMatch = useCallback((data: AnyRecord) => {
+    const id = genId('twm')
+    setThreeWayMatches(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'three_way_match', id, `Created three-way match`)
+    addToast('Three-way match recorded')
+    apiPost('threeWayMatches', 'create', data)
+  }, [logAudit, addToast])
+  const updateThreeWayMatch = useCallback((id: string, data: AnyRecord) => {
+    setThreeWayMatches(prev => prev.map(m => m.id === id ? { ...m, ...data } : m))
+    logAudit('update', 'three_way_match', id, 'Updated three-way match')
+    addToast('Match updated')
+    apiPost('threeWayMatches', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- Revenue Recognition (ASC 606) ----
+  const addRevenueContract = useCallback((data: AnyRecord) => {
+    const id = genId('rc')
+    setRevenueContracts(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'revenue_contract', id, `Created revenue contract: ${data.contract_number || id}`)
+    addToast('Revenue contract created')
+    apiPost('revenueContracts', 'create', data)
+  }, [logAudit, addToast])
+  const updateRevenueContract = useCallback((id: string, data: AnyRecord) => {
+    setRevenueContracts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    logAudit('update', 'revenue_contract', id, 'Updated revenue contract')
+    addToast('Revenue contract updated')
+    apiPost('revenueContracts', 'update', data, id)
+  }, [logAudit, addToast])
+  const addPerformanceObligation = useCallback((data: AnyRecord) => {
+    const id = genId('po')
+    setPerformanceObligations(prev => [...prev, { id, percent_complete: 0, is_satisfied: false, ...data }])
+    logAudit('create', 'performance_obligation', id, `Added performance obligation: ${data.description || id}`)
+    addToast('Performance obligation added')
+    apiPost('performanceObligations', 'create', data)
+  }, [logAudit, addToast])
+  const updatePerformanceObligation = useCallback((id: string, data: AnyRecord) => {
+    setPerformanceObligations(prev => prev.map(o => o.id === id ? { ...o, ...data } : o))
+    logAudit('update', 'performance_obligation', id, 'Updated performance obligation')
+    addToast('Performance obligation updated')
+    apiPost('performanceObligations', 'update', data, id)
+  }, [logAudit, addToast])
+  const addRevenueScheduleEntry = useCallback((data: AnyRecord) => {
+    const id = genId('rse')
+    setRevenueScheduleEntries(prev => [...prev, { id, org_id: orgIdRef.current, is_recognized: false, ...data }])
+    apiPost('revenueScheduleEntries', 'create', data)
+  }, [])
+  const addDeferredRevenue = useCallback((data: AnyRecord) => {
+    const id = genId('dr')
+    setDeferredRevenueData(prev => [...prev, { id, org_id: orgIdRef.current, ...data }])
+    apiPost('deferredRevenue', 'create', data)
+  }, [])
+
   // ---- Multi-currency ----
   const addCurrencyAccount = useCallback((data: AnyRecord) => {
     const id = genId('fxacct')
@@ -6284,6 +6402,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy,
     purchaseOrders, purchaseOrderItems, procurementRequests,
     addPurchaseOrder, updatePurchaseOrder, addProcurementRequest, updateProcurementRequest,
+    goodsReceipts, goodsReceiptLines, threeWayMatches,
+    addGoodsReceipt, updateGoodsReceipt, addThreeWayMatch, updateThreeWayMatch,
+    revenueContracts, performanceObligations, revenueScheduleEntries, deferredRevenue: deferredRevenueData,
+    addRevenueContract, updateRevenueContract, addPerformanceObligation, updatePerformanceObligation,
+    addRevenueScheduleEntry, addDeferredRevenue,
     currencyAccounts, fxTransactions,
     addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, addFxTransaction,
     retirementPlans, retirementEnrollments, retirementContributions,
@@ -6326,6 +6449,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     developmentPlans: developmentPlansData, developmentPlanItems,
     successionPlans: successionPlansData, successionCandidates,
     talentReviews: talentReviewsData, talentReviewEntries,
+    internalGigs, gigApplications, careerPaths: careerPathsData, careerInterests: careerInterestsData,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }

@@ -4537,3 +4537,365 @@ export const supportTicketMessages = pgTable('support_ticket_messages', {
   message: text('message').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// THREE-WAY PO MATCHING
+// ============================================================
+
+export const goodsReceipts = pgTable('goods_receipts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  poId: uuid('po_id').notNull(),
+  receiptNumber: text('receipt_number').notNull(),
+  receivedBy: uuid('received_by').notNull(),
+  receivedDate: text('received_date').notNull(),
+  status: text('status').notNull().default('pending'), // pending, inspected, accepted, rejected
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const goodsReceiptLines = pgTable('goods_receipt_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  receiptId: uuid('receipt_id').notNull(),
+  poLineId: uuid('po_line_id').notNull(),
+  receivedQuantity: integer('received_quantity').notNull(),
+  acceptedQuantity: integer('accepted_quantity').notNull(),
+  rejectedQuantity: integer('rejected_quantity').notNull().default(0),
+  notes: text('notes'),
+})
+
+export const threeWayMatches = pgTable('three_way_matches', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  poId: uuid('po_id').notNull(),
+  receiptId: uuid('receipt_id').notNull(),
+  invoiceId: uuid('invoice_id').notNull(),
+  matchStatus: text('match_status').notNull(), // full_match, partial_match, mismatch, exception
+  priceVariance: integer('price_variance').default(0), // cents
+  quantityVariance: integer('quantity_variance').default(0),
+  variancePercentage: real('variance_percentage').default(0),
+  toleranceThreshold: real('tolerance_threshold').default(2), // 2% default
+  autoApproved: boolean('auto_approved').default(false),
+  approvedBy: uuid('approved_by'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// REVENUE RECOGNITION (ASC 606)
+// ============================================================
+
+export const revenueContracts = pgTable('revenue_contracts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractNumber: text('contract_number').notNull(),
+  customerName: text('customer_name').notNull(),
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date').notNull(),
+  totalValue: integer('total_value').notNull(), // cents
+  currency: text('currency').notNull().default('USD'),
+  status: text('status').notNull().default('active'), // draft, active, completed, terminated
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const performanceObligations = pgTable('performance_obligations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  contractId: uuid('contract_id').notNull(),
+  description: text('description').notNull(),
+  type: text('type').notNull(), // point_in_time, over_time
+  standaloneSellingPrice: integer('standalone_selling_price').notNull(), // cents
+  allocatedPrice: integer('allocated_price').notNull(), // cents (after relative SSP allocation)
+  recognitionMethod: text('recognition_method').notNull(), // straight_line, percentage_of_completion, output, input
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date').notNull(),
+  percentComplete: real('percent_complete').default(0),
+  isSatisfied: boolean('is_satisfied').default(false),
+  satisfiedDate: text('satisfied_date'),
+})
+
+export const revenueScheduleEntries = pgTable('revenue_schedule', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  obligationId: uuid('obligation_id').notNull(),
+  orgId: uuid('org_id').notNull(),
+  period: text('period').notNull(), // YYYY-MM
+  amount: integer('amount').notNull(), // cents
+  isRecognized: boolean('is_recognized').default(false),
+  recognizedDate: text('recognized_date'),
+  journalEntryId: uuid('journal_entry_id'),
+})
+
+export const deferredRevenue = pgTable('deferred_revenue', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  period: text('period').notNull(),
+  deferredAmount: integer('deferred_amount').notNull(),
+  recognizedAmount: integer('recognized_amount').notNull().default(0),
+  balance: integer('balance').notNull(),
+})
+
+// ============================================================
+// VIDEO CONFERENCING
+// ============================================================
+
+export const meetingIntegrations = pgTable('meeting_integrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  provider: text('provider').notNull(), // zoom, google_meet, microsoft_teams
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  expiresAt: timestamp('expires_at'),
+  settings: text('settings'), // JSON config
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const meetings = pgTable('meetings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  provider: text('provider').notNull(), // zoom, google_meet, microsoft_teams, internal
+  externalMeetingId: text('external_meeting_id'),
+  meetingUrl: text('meeting_url'),
+  hostId: uuid('host_id').notNull(),
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time').notNull(),
+  status: text('status').notNull().default('scheduled'), // scheduled, in_progress, completed, cancelled
+  meetingType: text('meeting_type').notNull().default('general'), // interview, one_on_one, team, all_hands, review
+  relatedEntityType: text('related_entity_type'), // application, review, project
+  relatedEntityId: uuid('related_entity_id'),
+  recordingUrl: text('recording_url'),
+  transcriptUrl: text('transcript_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const meetingParticipants = pgTable('meeting_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  meetingId: uuid('meeting_id').notNull(),
+  employeeId: uuid('employee_id'),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('attendee'), // host, co_host, attendee, interviewer
+  rsvpStatus: text('rsvp_status').notNull().default('pending'), // pending, accepted, declined, tentative
+  attendedAt: timestamp('attended_at'),
+  leftAt: timestamp('left_at'),
+})
+
+// ============================================================
+// COLLABORATIVE DOCUMENTS
+// ============================================================
+
+export const collaborativeDocuments = pgTable('collaborative_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  documentType: text('document_type').notNull().default('document'), // document, policy, meeting_notes, handbook
+  createdBy: uuid('created_by').notNull(),
+  lastEditedBy: uuid('last_edited_by'),
+  isPublished: boolean('is_published').default(false),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const documentVersions = pgTable('document_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').notNull(),
+  version: integer('version').notNull(),
+  content: text('content').notNull(),
+  editedBy: uuid('edited_by').notNull(),
+  changeSummary: text('change_summary'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const documentCollaborators = pgTable('document_collaborators', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  permission: text('permission').notNull().default('edit'), // view, comment, edit, admin
+  lastAccessedAt: timestamp('last_accessed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const documentComments = pgTable('document_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').notNull(),
+  authorId: uuid('author_id').notNull(),
+  content: text('content').notNull(),
+  selectionStart: integer('selection_start'),
+  selectionEnd: integer('selection_end'),
+  isResolved: boolean('is_resolved').default(false),
+  resolvedBy: uuid('resolved_by'),
+  parentId: uuid('parent_id'), // for threaded replies
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// TRANSFER PRICING DOCUMENTATION
+// ============================================================
+
+export const transferPricingPolicies = pgTable('transfer_pricing_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  pricingMethod: text('pricing_method').notNull(), // cup, resale_price, cost_plus, tnmm, profit_split
+  entityFrom: text('entity_from').notNull(),
+  entityTo: text('entity_to').notNull(),
+  transactionType: text('transaction_type').notNull(), // services, goods, ip_license, management_fees, loans
+  markup: real('markup'),
+  benchmarkRange: text('benchmark_range'), // JSON: { low, median, high }
+  effectiveDate: text('effective_date').notNull(),
+  expiryDate: text('expiry_date'),
+  status: text('status').notNull().default('active'), // draft, active, under_review, expired
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const transferPricingTransactions = pgTable('transfer_pricing_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  policyId: uuid('policy_id').notNull(),
+  period: text('period').notNull(), // YYYY-MM
+  amount: integer('amount').notNull(), // cents
+  currency: text('currency').notNull(),
+  markupApplied: real('markup_applied'),
+  armLengthCompliant: boolean('arm_length_compliant').default(true),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const transferPricingReports = pgTable('transfer_pricing_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  fiscalYear: text('fiscal_year').notNull(),
+  reportType: text('report_type').notNull(), // master_file, local_file, cbcr
+  status: text('status').notNull().default('draft'),
+  content: text('content'), // JSON structured report data
+  generatedAt: timestamp('generated_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// BOARD REPORTING TEMPLATES
+// ============================================================
+
+export const boardReports = pgTable('board_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  reportType: text('report_type').notNull(), // quarterly_board_pack, annual_review, kpi_dashboard, compensation_review, headcount_report
+  period: text('period').notNull(),
+  status: text('status').notNull().default('draft'), // draft, in_review, approved, presented
+  sections: text('sections').notNull(), // JSON array of section configs
+  generatedData: text('generated_data'), // JSON of computed data
+  presentedAt: text('presented_at'),
+  presentedBy: uuid('presented_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ORG DESIGN SCENARIO MODELING
+// ============================================================
+
+export const orgScenarios = pgTable('org_scenarios', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  baselineDate: text('baseline_date').notNull(),
+  status: text('status').notNull().default('draft'), // draft, modeling, proposed, approved, implemented
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const scenarioChanges = pgTable('scenario_changes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  scenarioId: uuid('scenario_id').notNull(),
+  changeType: text('change_type').notNull(), // add_role, remove_role, move_employee, create_department, merge_departments, change_reporting, change_comp, promote
+  targetType: text('target_type').notNull(), // employee, department, role
+  targetId: uuid('target_id'),
+  changeData: text('change_data').notNull(), // JSON with specifics
+  costImpact: integer('cost_impact').default(0), // cents
+  headcountImpact: integer('headcount_impact').default(0),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const scenarioSnapshots = pgTable('scenario_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  scenarioId: uuid('scenario_id').notNull(),
+  orgStructure: text('org_structure').notNull(), // JSON snapshot
+  totalHeadcount: integer('total_headcount').notNull(),
+  totalCost: integer('total_cost').notNull(),
+  departmentCount: integer('department_count').notNull(),
+  avgSpanOfControl: real('avg_span_of_control'),
+  maxDepth: integer('max_depth'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// TALENT MARKETPLACE (Internal Gig Board)
+// ============================================================
+
+export const internalGigs = pgTable('internal_gigs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  gigType: text('gig_type').notNull(), // stretch_assignment, project, mentoring, job_rotation, shadow, internal_transfer
+  departmentId: uuid('department_id'),
+  postedBy: uuid('posted_by').notNull(),
+  status: text('status').notNull().default('open'), // draft, open, in_progress, filled, completed, cancelled
+  commitment: text('commitment').notNull().default('part_time'), // full_time, part_time, hours_per_week
+  hoursPerWeek: integer('hours_per_week'),
+  duration: text('duration'), // e.g. "3 months", "6 weeks"
+  startDate: text('start_date'),
+  endDate: text('end_date'),
+  maxParticipants: integer('max_participants').default(1),
+  requiredSkills: text('required_skills'), // JSON array of skill IDs
+  preferredLevel: text('preferred_level'), // L1-L10
+  isRemote: boolean('is_remote').default(false),
+  compensationType: text('compensation_type').default('none'), // none, stipend, bonus
+  compensationAmount: integer('compensation_amount'), // cents
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const gigApplications = pgTable('gig_applications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  gigId: uuid('gig_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  status: text('status').notNull().default('applied'), // applied, shortlisted, selected, rejected, withdrawn
+  coverLetter: text('cover_letter'),
+  managerApproved: boolean('manager_approved'),
+  matchScore: integer('match_score'), // 0-100 skill match percentage
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const careerPaths = pgTable('career_paths', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(), // e.g. "Engineering IC Track", "Management Track"
+  description: text('description'),
+  steps: text('steps').notNull(), // JSON: [{ title, level, skills, typicalTenure }, ...]
+  departmentId: uuid('department_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const careerInterests = pgTable('career_interests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  employeeId: uuid('employee_id').notNull(),
+  orgId: uuid('org_id').notNull(),
+  targetRole: text('target_role'),
+  targetDepartment: uuid('target_department'),
+  careerPathId: uuid('career_path_id'),
+  interestedInMentoring: boolean('interested_in_mentoring').default(false),
+  interestedInGigs: boolean('interested_in_gigs').default(true),
+  openToTransfer: boolean('open_to_transfer').default(false),
+  skills: text('skills'), // JSON: skills they want to develop
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
