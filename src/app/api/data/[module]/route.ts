@@ -187,6 +187,7 @@ const MODULE_CONFIG: Record<string, {
   'automation-workflow-runs':   { table: schema.automationWorkflowRuns, hasOrgId: true, defaultLimit: 50 },
   'automation-workflow-run-steps': { table: schema.automationWorkflowRunSteps, hasOrgId: false, defaultLimit: 100 },
   // Learning (extended)
+  'course-content':          { table: schema.courseContent, hasOrgId: false, defaultLimit: 100 },
   'course-prerequisites':    { table: schema.coursePrerequisites, hasOrgId: true, defaultLimit: 50 },
   'scorm-packages':          { table: schema.scormPackages, hasOrgId: true, defaultLimit: 50 },
   'scorm-tracking':          { table: schema.scormTracking, hasOrgId: true, defaultLimit: 100 },

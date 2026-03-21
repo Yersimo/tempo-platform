@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { fetchModules as fetchModulesFromAPI, MODULE_SLUGS, clearModuleCache } from '@/lib/hooks/use-module-data'
 import { eventBus } from '@/lib/services/event-bus'
 import { registerAllIntegrations, setIntegrationStore } from '@/lib/integrations/cross-module-wiring'
+import { setAICurrency } from '@/lib/ai-engine'
 // Type-only imports: erased at compile time, no bundle impact
 import type { DemoRole } from './demo-data'
 // DemoData gives us the types of all demo exports without including the runtime data (~323KB)
@@ -2182,6 +2183,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Register event handlers once at mount; sync store ref every render
   // so handlers always see current state.
   useEffect(() => { registerAllIntegrations() }, [])
+  // Sync AI engine currency whenever org currency changes
+  useEffect(() => { setAICurrency(_orgCurrency) }, [_orgCurrency])
   useEffect(() => {
     setIntegrationStore({
       employees, departments, reviews, reviewCycles,

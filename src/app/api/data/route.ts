@@ -623,6 +623,9 @@ export async function GET(request: NextRequest) {
 // POST /api/data -- create / update / delete any entity
 // ---------------------------------------------------------------------------
 
+// Entities whose tables don't have an org_id column
+const NO_ORG_ID_ENTITIES = new Set(['expenseItems', 'courseBlocks', 'quizQuestions'])
+
 // Map entity name strings to Drizzle schema tables
 const tables: Record<string, any> = {
   // Core
@@ -893,12 +896,15 @@ function keysToCamel(obj: Record<string, any>): Record<string, any> {
  * and the literal key 'timestamp' (used by audit_log).
  */
 function coerceDates(obj: Record<string, any>): Record<string, any> {
-  const dateKeyPattern = /(?:At|Date)$|^timestamp$/
+  // Match common timestamp column name patterns (NOT date-only columns like 'date')
+  const dateKeyPattern = /(?:At|_at)$|^timestamp$|^clockIn$|^clockOut$/
+  // ISO 8601 datetime pattern (must have time component — date-only strings stay as strings)
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/
   const out: Record<string, any> = {}
   for (const [key, value] of Object.entries(obj)) {
     if (value == null) {
       out[key] = value // pass through null/undefined
-    } else if (dateKeyPattern.test(key)) {
+    } else if (dateKeyPattern.test(key) || (typeof value === 'string' && isoDatePattern.test(value) && !isNaN(Date.parse(value)))) {
       // For timestamp columns, ensure value is a valid Date or null
       if (value instanceof Date) {
         out[key] = value
@@ -1157,7 +1163,7 @@ export async function POST(request: NextRequest) {
             if (prepared.id && !UUID_FORMAT.test(prepared.id)) {
               delete prepared.id
             }
-            if (entity !== 'expenseItems' && !prepared.orgId) {
+            if (!NO_ORG_ID_ENTITIES.has(entity) && !prepared.orgId) {
               prepared.orgId = orgId
             }
             // Remove non-DB fields
@@ -1184,8 +1190,8 @@ export async function POST(request: NextRequest) {
       if (prepared.id && !UUID_FORMAT.test(prepared.id)) {
         delete prepared.id
       }
-      // Ensure orgId is set for tables that have it (everything except expenseItems)
-      if (entity !== 'expenseItems' && !prepared.orgId) {
+      // Ensure orgId is set for tables that have it
+      if (!NO_ORG_ID_ENTITIES.has(entity) && !prepared.orgId) {
         prepared.orgId = orgId
       }
 

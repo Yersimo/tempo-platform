@@ -5,6 +5,17 @@
  * All client-side. No API calls. Works on 3G.
  */
 
+import { formatCurrency } from '@/lib/utils/format-currency'
+
+// ---- Currency ----
+// Module-level currency used by all insight generators.
+// Set once when the org loads via setAICurrency().
+let _aiCurrency = 'USD'
+/** Set the currency code used by all AI insight text (e.g. 'GHS', 'NGN'). */
+export function setAICurrency(currency: string) { _aiCurrency = currency }
+/** Format an amount using the current org currency. */
+const fmtAmt = (n: number) => formatCurrency(n, _aiCurrency)
+
 // ---- Types ----
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low'
@@ -264,7 +275,7 @@ export function detectPayEquityGaps(employees: any[], compBands: any[]): AIInsig
         category: 'anomaly',
         severity: 'warning',
         title: `Pay Variance in ${level}`,
-        description: `Salary spread is ${(cv * 100).toFixed(0)}% within ${level} (${emps.length} employees). Range: $${Math.min(...salaries).toLocaleString()} - $${Math.max(...salaries).toLocaleString()}.`,
+        description: `Salary spread is ${(cv * 100).toFixed(0)}% within ${level} (${emps.length} employees). Range: ${fmtAmt(Math.min(...salaries))} - ${fmtAmt(Math.max(...salaries))}.`,
         confidence: 'medium',
         confidenceScore: 72,
         suggestedAction: 'Review compensation bands for this level',
@@ -283,7 +294,7 @@ export function detectPayEquityGaps(employees: any[], compBands: any[]): AIInsig
         category: 'alert',
         severity: 'critical',
         title: `${belowMin.length} Below Band Minimum`,
-        description: `${belowMin.length} employee(s) in ${band.role} ${band.level} are below the minimum of $${(band.min || 0).toLocaleString()}.`,
+        description: `${belowMin.length} employee(s) in ${band.role} ${band.level} are below the minimum of ${fmtAmt(band.min || 0)}.`,
         confidence: 'high',
         confidenceScore: 95,
         suggestedAction: 'Initiate salary adjustment proposals',
@@ -310,7 +321,7 @@ export function detectCompAnomalies(salaryReviews: any[], compBands: any[]): AIA
         expectedValue: sr.current_salary * 1.1,
         deviationPercent: increase,
         severity: increase > 30 ? 'critical' : 'warning',
-        explanation: `${increase.toFixed(1)}% increase proposed ($${sr.current_salary.toLocaleString()} to $${sr.proposed_salary.toLocaleString()}). Typical range is 5-15%.`,
+        explanation: `${increase.toFixed(1)}% increase proposed (${fmtAmt(sr.current_salary)} to ${fmtAmt(sr.proposed_salary)}). Typical range is 5-15%.`,
       })
     }
   })
@@ -702,7 +713,7 @@ export function detectPayrollAnomalies(payrollRuns: any[]): AIInsight[] {
         category: 'anomaly',
         severity: Math.abs(change) > 15 ? 'critical' : 'warning',
         title: `Payroll ${change > 0 ? 'Increased' : 'Decreased'} ${Math.abs(change).toFixed(1)}%`,
-        description: `Gross payroll changed from $${previous.gross_amount.toLocaleString()} to $${latest.gross_amount.toLocaleString()} (${change > 0 ? '+' : ''}${change.toFixed(1)}%).`,
+        description: `Gross payroll changed from ${fmtAmt(previous.gross_amount)} to ${fmtAmt(latest.gross_amount)} (${change > 0 ? '+' : ''}${change.toFixed(1)}%).`,
         confidence: 'high',
         confidenceScore: 88,
         suggestedAction: 'Review payroll detail for the change drivers',
@@ -732,7 +743,7 @@ export function checkPolicyCompliance(report: any): AIInsight[] {
       category: 'alert',
       severity: total > 10000 ? 'critical' : 'warning',
       title: 'High Value Report',
-      description: `Report total of $${total.toLocaleString()} exceeds the standard approval threshold of $5,000. Requires director-level approval.`,
+      description: `Report total of ${fmtAmt(total)} exceeds the standard approval threshold of ${fmtAmt(5000)}. Requires director-level approval.`,
       confidence: 'high',
       confidenceScore: 95,
       suggestedAction: 'Route to director for approval',
@@ -799,7 +810,7 @@ export function analyzeSpendingTrends(expenseReports: any[]): AIInsight[] {
       category: 'trend',
       severity: 'info',
       title: `${pending.length} Reports Awaiting Review`,
-      description: `$${pendingTotal.toLocaleString()} in pending expense reports. Average processing time impacts employee satisfaction.`,
+      description: `${fmtAmt(pendingTotal)} in pending expense reports. Average processing time impacts employee satisfaction.`,
       confidence: 'high',
       confidenceScore: 85,
       suggestedAction: 'Prioritize expense report reviews',
@@ -842,7 +853,7 @@ export function optimizeBenefitsCost(plans: any[], employees: any[]): AIInsight 
     category: 'trend',
     severity: 'info',
     title: 'Benefits Cost Summary',
-    description: `Total monthly employer cost: $${totalCost.toLocaleString()}. Annual projection: $${(totalCost * 12).toLocaleString()}.`,
+    description: `Total monthly employer cost: ${fmtAmt(totalCost)}. Annual projection: ${fmtAmt(totalCost * 12)}.`,
     confidence: 'high',
     confidenceScore: 90,
     module: 'benefits',
@@ -973,7 +984,7 @@ export function optimizeLicenses(licenses: any[]): AIRecommendation[] {
       recs.push({
         id: genAIId('license-opt'),
         title: `Reduce ${lic.name} Licenses`,
-        rationale: `Only ${used} of ${total} licenses used (${utilization}%). Save $${savings.toLocaleString()}/month by reducing to ${used + 1} licenses.`,
+        rationale: `Only ${used} of ${total} licenses used (${utilization}%). Save ${fmtAmt(savings)}/month by reducing to ${used + 1} licenses.`,
         impact: savings > 200 ? 'high' : 'medium',
         effort: 'low',
         category: 'it',
@@ -1008,7 +1019,7 @@ export function forecastCashFlow(invoices: any[], budgets: any[]): AIInsight {
     category: 'prediction',
     severity: overdue.length > 0 ? 'warning' : 'info',
     title: 'Cash Flow Outlook',
-    description: `$${totalOutstanding.toLocaleString()} outstanding across ${unpaid.length} invoices. ${overdue.length > 0 ? `${overdue.length} overdue requiring follow-up.` : 'All within payment terms.'}`,
+    description: `${fmtAmt(totalOutstanding)} outstanding across ${unpaid.length} invoices. ${overdue.length > 0 ? `${overdue.length} overdue requiring follow-up.` : 'All within payment terms.'}`,
     confidence: 'high',
     confidenceScore: 85,
     suggestedAction: overdue.length > 0 ? 'Follow up on overdue invoices' : undefined,
@@ -1033,7 +1044,7 @@ export function calculateBurnRate(budgets: any[]): AIInsight[] {
         category: 'alert',
         severity: utilization > 95 ? 'critical' : 'warning',
         title: `Budget ${utilization}% Consumed`,
-        description: `"${b.name}" has used $${spent.toLocaleString()} of $${total.toLocaleString()} ($${remaining.toLocaleString()} remaining).`,
+        description: `"${b.name}" has used ${fmtAmt(spent)} of ${fmtAmt(total)} (${fmtAmt(remaining)} remaining).`,
         confidence: 'high',
         confidenceScore: 92,
         suggestedAction: 'Review spending and consider reallocation',
@@ -1061,7 +1072,7 @@ export function detectInvoiceAnomalies(invoices: any[]): AIAnomaly[] {
         expectedValue: avg,
         deviationPercent: ((amount - avg) / avg) * 100,
         severity: Math.abs(amount - avg) > 3 * sd ? 'critical' : 'warning',
-        explanation: `Invoice ${inv.invoice_number || inv.id} ($${amount.toLocaleString()}) deviates significantly from average ($${avg.toLocaleString()}).`,
+        explanation: `Invoice ${inv.invoice_number || inv.id} (${fmtAmt(amount)}) deviates significantly from average (${fmtAmt(avg)}).`,
       })
     }
   })
@@ -1089,7 +1100,7 @@ export function assessVendorConcentration(invoices: any[], vendors: any[]): AIIn
         category: 'alert',
         severity: 'warning',
         title: 'Vendor Concentration Risk',
-        description: `${vendor?.name || 'One vendor'} accounts for ${share}% of total spend ($${amount.toLocaleString()} of $${total.toLocaleString()}). Consider diversifying.`,
+        description: `${vendor?.name || 'One vendor'} accounts for ${share}% of total spend (${fmtAmt(amount)} of ${fmtAmt(total)}). Consider diversifying.`,
         confidence: 'high',
         confidenceScore: 88,
         suggestedAction: 'Evaluate alternative vendors',
@@ -2089,7 +2100,7 @@ export function analyzePayrollTrends(
       category: 'prediction' as const,
       severity: monthOverMonth > 3 ? 'warning' as const : 'info' as const,
       title: 'Payroll Cost Projection',
-      description: `Based on ${payrollRuns.length} pay run(s), projected annual payroll cost is $${(projectedAnnual / 1000000).toFixed(2)}M. ${monthOverMonth > 0 ? `Costs increased ${monthOverMonth}% month-over-month.` : 'Costs are stable.'}`,
+      description: `Based on ${payrollRuns.length} pay run(s), projected annual payroll cost is ${fmtAmt(projectedAnnual)}. ${monthOverMonth > 0 ? `Costs increased ${monthOverMonth}% month-over-month.` : 'Costs are stable.'}`,
       confidence: payrollRuns.length >= 3 ? 'high' as const : 'medium' as const,
       confidenceScore: payrollRuns.length >= 3 ? 85 : 65,
       suggestedAction: monthOverMonth > 3 ? 'Review headcount additions and salary adjustments driving cost increase' : 'Continue monitoring payroll trends quarterly',
@@ -2104,7 +2115,7 @@ export function analyzePayrollTrends(
       category: 'trend' as const,
       severity: 'info' as const,
       title: 'Highest Cost Department',
-      description: `${topDept.department} has the highest payroll cost at $${(topDept.totalCost / 1000).toFixed(0)}K across ${topDept.headcount} employees (avg $${(topDept.avgSalary / 1000).toFixed(1)}K/month).`,
+      description: `${topDept.department} has the highest payroll cost at ${fmtAmt(topDept.totalCost)} across ${topDept.headcount} employees (avg ${fmtAmt(topDept.avgSalary)}/month).`,
       confidence: 'high' as const,
       confidenceScore: 90,
       module: 'payroll',
@@ -2182,7 +2193,7 @@ export function scoreContractorRisk(
   contractorPayments.forEach(cp => {
     if (cp.amount > 40000) {
       riskScore += 15
-      misclassificationFlags.push(`${cp.contractor_name}: High-value engagement ($${(cp.amount / 1000).toFixed(0)}K) — review employment classification`)
+      misclassificationFlags.push(`${cp.contractor_name}: High-value engagement (${fmtAmt(cp.amount)}) — review employment classification`)
     }
     if (cp.tax_form === 'invoice' && cp.amount > 25000) {
       riskScore += 10
@@ -2213,7 +2224,7 @@ export function scoreContractorRisk(
     recommendations.push({
       id: 'contractor-policy',
       title: 'Implement Contractor Spend Policy',
-      rationale: `Total contractor spend of $${(totalSpend / 1000).toFixed(0)}K warrants a formal procurement and contractor management policy.`,
+      rationale: `Total contractor spend of ${fmtAmt(totalSpend)} warrants a formal procurement and contractor management policy.`,
       impact: 'medium' as const,
       effort: 'low' as const,
       category: 'governance',
@@ -2852,7 +2863,7 @@ export function analyzeExpenseByCategory(
         category: 'trend',
         severity: 'info',
         title: `${top.category} Dominates Spending`,
-        description: `${top.category} accounts for ${share}% of all expenses ($${top.total.toLocaleString()}). Consider reviewing ${top.category} policies.`,
+        description: `${top.category} accounts for ${share}% of all expenses (${fmtAmt(top.total)}). Consider reviewing ${top.category} policies.`,
         confidence: 'high',
         confidenceScore: 85,
         suggestedAction: `Review ${top.category} spending policies`,
@@ -2872,7 +2883,7 @@ export function analyzeExpenseByCategory(
           category: 'alert',
           severity: 'warning',
           title: `Expenses Increased ${change}%`,
-          description: `Monthly expenses rose from $${prev.toLocaleString()} to $${last.toLocaleString()} (+${change}%). Investigate spending drivers.`,
+          description: `Monthly expenses rose from ${fmtAmt(prev)} to ${fmtAmt(last)} (+${change}%). Investigate spending drivers.`,
           confidence: 'medium',
           confidenceScore: 72,
           suggestedAction: 'Review recent expense reports for unusual spending',
@@ -2911,7 +2922,7 @@ export function detectPolicyViolations(
     if (reportAmount > generalLimit) {
       violations.push({
         reportId: report.id,
-        violation: `Total amount $${reportAmount.toLocaleString()} exceeds policy limit of $${generalLimit.toLocaleString()}`,
+        violation: `Total amount ${fmtAmt(reportAmount)} exceeds policy limit of ${fmtAmt(generalLimit)}`,
         severity: reportAmount > generalLimit * 2 ? 'critical' : 'warning',
         amount: reportAmount,
         policySection: policyMap['general']?.policy_section,
@@ -2925,15 +2936,15 @@ export function detectPolicyViolations(
 
       if ((cat.includes('meal') || cat.includes('food')) && amount > mealLimit) {
         const matched = policyMap['meals'] || policyMap['food']
-        violations.push({ reportId: report.id, violation: `Meal expense of $${amount} exceeds $${mealLimit} limit`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
+        violations.push({ reportId: report.id, violation: `Meal expense of ${fmtAmt(amount)} exceeds ${fmtAmt(mealLimit)} limit`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
       if (cat.includes('travel') && amount > travelLimit) {
         const matched = policyMap['travel']
-        violations.push({ reportId: report.id, violation: `Travel expense of $${amount.toLocaleString()} exceeds $${travelLimit.toLocaleString()} limit`, severity: amount > travelLimit * 1.5 ? 'critical' : 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
+        violations.push({ reportId: report.id, violation: `Travel expense of ${fmtAmt(amount)} exceeds ${fmtAmt(travelLimit)} limit`, severity: amount > travelLimit * 1.5 ? 'critical' : 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
       if ((cat.includes('hotel') || cat.includes('accommodation')) && amount > hotelLimit) {
         const matched = policyMap['hotel'] || policyMap['accommodation']
-        violations.push({ reportId: report.id, violation: `Hotel expense of $${amount} exceeds nightly limit of $${hotelLimit}`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
+        violations.push({ reportId: report.id, violation: `Hotel expense of ${fmtAmt(amount)} exceeds nightly limit of ${fmtAmt(hotelLimit)}`, severity: 'warning', amount, policySection: matched?.policy_section, policyCitation: matched?.policy_citation })
       }
     })
   })
@@ -2977,7 +2988,7 @@ export function forecastMonthlySpending(
         category: 'prediction',
         severity: trendPct > 20 ? 'warning' : 'info',
         title: `Spending ${trendPct > 0 ? 'Trending Up' : 'Trending Down'}`,
-        description: `Expenses are ${trendPct > 0 ? 'increasing' : 'decreasing'} by approximately ${Math.abs(trendPct)}%. Projected next month: $${projected.toLocaleString()}.`,
+        description: `Expenses are ${trendPct > 0 ? 'increasing' : 'decreasing'} by approximately ${Math.abs(trendPct)}%. Projected next month: ${fmtAmt(projected)}.`,
         confidence: toConfidence(confidence),
         confidenceScore: confidence,
         suggestedAction: trendPct > 20 ? 'Review expense policies and set tighter controls' : undefined,
@@ -2991,7 +3002,7 @@ export function forecastMonthlySpending(
     category: 'prediction',
     severity: 'info',
     title: 'Monthly Spending Forecast',
-    description: `Based on ${values.length} month(s) of data, projected spending is $${projected.toLocaleString()} next month. Annual projection: $${(projected * 12).toLocaleString()}.`,
+    description: `Based on ${values.length} month(s) of data, projected spending is ${fmtAmt(projected)} next month. Annual projection: ${fmtAmt(projected * 12)}.`,
     confidence: toConfidence(confidence),
     confidenceScore: confidence,
     module: 'expense',
@@ -3278,7 +3289,7 @@ export function modelCompScenario(
     category: 'prediction',
     severity: adjustmentPct > 10 ? 'warning' : 'info',
     title: `${adjustmentPct}% Adjustment Impact`,
-    description: `A ${adjustmentPct}% adjustment across ${affectedCount} employees increases annual payroll by $${totalImpact.toLocaleString()}. New average salary: $${newAvgSalary.toLocaleString()}.`,
+    description: `A ${adjustmentPct}% adjustment across ${affectedCount} employees increases annual payroll by ${fmtAmt(totalImpact)}. New average salary: ${fmtAmt(newAvgSalary)}.`,
     confidence: 'high',
     confidenceScore: 90,
     suggestedAction: adjustmentPct > 10 ? 'Consider phased rollout to manage budget impact' : 'Review budget allocation before approval',
@@ -3375,7 +3386,7 @@ export function analyzeEquityDistribution(
         category: 'alert',
         severity: 'warning',
         title: 'Equity Concentration Risk',
-        description: `A single employee holds ${maxShare}% of total equity value ($${Math.round(maxGrant).toLocaleString()} of $${Math.round(totalValue).toLocaleString()}). Consider broader distribution.`,
+        description: `A single employee holds ${maxShare}% of total equity value (${fmtAmt(Math.round(maxGrant))} of ${fmtAmt(Math.round(totalValue))}). Consider broader distribution.`,
         confidence: 'high',
         confidenceScore: 85,
         suggestedAction: 'Review equity distribution policy',
@@ -3620,7 +3631,7 @@ export function detectDuplicateSubscriptions(licenses: any[]): AIInsight[] {
         category: 'alert',
         severity: 'warning',
         title: `Potential Duplicate: ${cat}`,
-        description: `${lics.length} overlapping subscriptions detected in ${cat}: ${lics.map(l => l.name).join(', ')}. Combined monthly cost: $${totalCost.toLocaleString()}.`,
+        description: `${lics.length} overlapping subscriptions detected in ${cat}: ${lics.map(l => l.name).join(', ')}. Combined monthly cost: ${fmtAmt(totalCost)}.`,
         confidence: 'medium',
         confidenceScore: 72,
         suggestedAction: `Consolidate ${cat} tools to reduce spend`,
@@ -3751,7 +3762,7 @@ export function analyzeSavingsOpportunities(invoices: any[], licenses: any[]): A
       category: 'recommendation',
       severity: 'positive',
       title: 'License Optimization Savings',
-      description: `$${Math.round(totalSavings).toLocaleString()}/month in savings available by right-sizing ${licenses.length} software licenses to actual usage.`,
+      description: `${fmtAmt(Math.round(totalSavings))}/month in savings available by right-sizing ${licenses.length} software licenses to actual usage.`,
       confidence: 'high',
       confidenceScore: 88,
       suggestedAction: 'Right-size license counts at next renewal',
@@ -3770,7 +3781,7 @@ export function analyzeSavingsOpportunities(invoices: any[], licenses: any[]): A
       category: 'alert',
       severity: 'warning',
       title: 'Overdue Invoice Late Fee Risk',
-      description: `${overdueInvoices.length} overdue invoice(s) totaling $${overdueTotal.toLocaleString()} may incur ~$${estimatedLateFees.toLocaleString()} in late fees. Prioritize payment.`,
+      description: `${overdueInvoices.length} overdue invoice(s) totaling ${fmtAmt(overdueTotal)} may incur ~${fmtAmt(estimatedLateFees)} in late fees. Prioritize payment.`,
       confidence: 'medium',
       confidenceScore: 75,
       suggestedAction: 'Process overdue invoices immediately',
@@ -4358,7 +4369,7 @@ export function generateOfferPackage(
     suggestedEquity,
     suggestedBonus,
     competitiveness,
-    rationale: `Based on ${role} market data (P50: $${p50.toLocaleString()}, P75: $${p75.toLocaleString()}), this package targets the ${Math.round(compaRatio * 100)}th percentile. ${level}-level candidates in this market typically expect equity grants of ${suggestedEquity.toLocaleString()} shares.`,
+    rationale: `Based on ${role} market data (P50: ${fmtAmt(p50)}, P75: ${fmtAmt(p75)}), this package targets the ${Math.round(compaRatio * 100)}th percentile. ${level}-level candidates in this market typically expect equity grants of ${suggestedEquity.toLocaleString()} shares.`,
   }
 }
 
@@ -4694,7 +4705,7 @@ export function analyzeVarianceByDepartment(forecastData: any[]): AIInsight[] {
         category: variancePct > 10 ? 'alert' : 'trend',
         severity: variancePct > 10 ? 'warning' : 'info',
         title: `${data.department}: ${variancePct > 0 ? 'Over' : 'Under'} Budget`,
-        description: `${data.department} is ${Math.abs(variancePct).toFixed(1)}% ${variancePct > 0 ? 'over' : 'under'} budget. Actual: $${(totalActual / 1000).toFixed(0)}K vs Budget: $${(totalBudget / 1000).toFixed(0)}K.`,
+        description: `${data.department} is ${Math.abs(variancePct).toFixed(1)}% ${variancePct > 0 ? 'over' : 'under'} budget. Actual: ${fmtAmt(totalActual)} vs Budget: ${fmtAmt(totalBudget)}.`,
         confidence: 'high',
         confidenceScore: 85,
         suggestedAction: variancePct > 0 ? 'Review spending controls' : 'Consider budget reallocation',
@@ -5073,7 +5084,7 @@ export function calculateLearningROI(
       { metric: 'Performance Improvement', value: perfImprovement, unit: '%', explanation: `Learners average ${learnerAvg.toFixed(1)}/5 vs non-learners ${nonLearnerAvg.toFixed(1)}/5 in reviews.` },
       { metric: 'Retention Impact', value: retentionImpact, unit: '%', explanation: `${pct(totalLearners, totalEmployees)}% of employees have completed training, correlating with higher retention.` },
       { metric: 'Productivity Gain', value: productivityGain, unit: '%', explanation: `Course completion rate of ${completionRate}% with ${avgProgress.toFixed(0)}% average progress across all enrollments.` },
-      { metric: 'Cost per Learner', value: costPerLearner, unit: '$', explanation: `Estimated $${totalCost.toLocaleString()} total training cost across ${totalLearners} learner(s) (${totalHours} hours at $${costPerHour}/hr).` },
+      { metric: 'Cost per Learner', value: costPerLearner, unit: _aiCurrency, explanation: `Estimated ${fmtAmt(totalCost)} total training cost across ${totalLearners} learner(s) (${totalHours} hours at ${fmtAmt(costPerHour)}/hr).` },
     ],
   }
 }

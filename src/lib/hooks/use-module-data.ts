@@ -180,6 +180,7 @@ export const MODULE_SLUGS: Record<string, string> = {
   automationWorkflowRuns: 'automation-workflow-runs',
   automationWorkflowRunSteps: 'automation-workflow-run-steps',
   // Learning (extended)
+  courseBlocks: 'course-content',
   coursePrerequisites: 'course-prerequisites',
   scormPackages: 'scorm-packages',
   scormTracking: 'scorm-tracking',
