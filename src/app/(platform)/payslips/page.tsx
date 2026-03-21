@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { StatCard } from '@/components/ui/stat-card'
 import { FileText, Download, Eye, Wallet, DollarSign, Calendar, AlertTriangle, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
 import { isEvaluatorAccount, getEvaluatorConfig, evaluatorPayslips } from '@/lib/evaluator-demo-data'
 
 /** Format a cents integer (from DB) as a dollar string */
@@ -72,6 +72,8 @@ function fmtDollars(amount: number | null | undefined): string {
 
 export default function PayslipsPage() {
   const { currentUser, currentEmployeeId, addToast } = useTempo()
+
+  const defaultCurrency = useOrgCurrency()
 
   const [payslips, setPayslips] = useState<Payslip[]>([])
   const [loading, setLoading] = useState(true)
@@ -233,7 +235,7 @@ export default function PayslipsPage() {
 
   // Determine format function — evaluators use raw GHS, others use cents
   const hasRawAmounts = payslips.some(p => p._rawAmounts)
-  const payslipCurrency = payslips[0]?.currency || 'USD'
+  const payslipCurrency = payslips[0]?.currency || defaultCurrency
   const fmtAmount = hasRawAmounts
     ? (amount: number | null | undefined) => fmtCurrency(amount, payslipCurrency)
     : fmtCents
@@ -245,7 +247,7 @@ export default function PayslipsPage() {
   }, [payslips, searchQuery])
 
   // Stub formatting — currency-aware
-  const stubCurrency = selectedStub?.currency || 'USD'
+  const stubCurrency = selectedStub?.currency || defaultCurrency
   const fmtStubAmount = (amount: number | null | undefined) => {
     if (amount == null || amount === 0) return stubCurrency === 'GHS' ? 'GH₵0.00' : '$0.00'
     const prefix = stubCurrency === 'GHS' ? 'GH₵' : '$'
@@ -336,7 +338,7 @@ export default function PayslipsPage() {
                         <p className="text-xs text-t3">Paid {new Date(payslip.runDate).toLocaleDateString()}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-t2">{payslip.currency || 'USD'}</td>
+                    <td className="px-4 py-3 text-xs text-t2">{payslip.currency || defaultCurrency}</td>
                     <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{payslip._rawAmounts ? fmtCurrency(payslip.grossPay, payslip.currency) : fmtCents(payslip.grossPay)}</td>
                     <td className="px-4 py-3 text-xs text-error text-right">-{payslip._rawAmounts ? fmtCurrency(payslip.totalDeductions, payslip.currency) : fmtCents(payslip.totalDeductions)}</td>
                     <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{payslip._rawAmounts ? fmtCurrency(payslip.netPay, payslip.currency) : fmtCents(payslip.netPay)}</td>

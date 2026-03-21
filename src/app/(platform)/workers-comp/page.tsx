@@ -12,7 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
 import { ShieldCheck, FileText, DollarSign, Plus, AlertTriangle, CheckCircle, Clock, Calculator, Users, Briefcase, Search, ClipboardList, Edit3, Inbox } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const INJURY_TYPES = [
@@ -39,6 +40,7 @@ export default function WorkersCompPage() {
     ensureModulesLoaded,
     addToast,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -382,7 +384,7 @@ export default function WorkersCompPage() {
   }
 
   function formatCents(cents: number): string {
-    return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return formatCurrency(cents, defaultCurrency, { cents: true })
   }
 
   function getClaimStatusVariant(status: string): 'success' | 'error' | 'warning' | 'info' | 'default' {
@@ -677,7 +679,7 @@ export default function WorkersCompPage() {
                     <tr key={cc.code} className="hover:bg-canvas/50">
                       <td className="px-6 py-3 text-xs font-mono font-semibold text-t1">{cc.code}</td>
                       <td className="px-4 py-3 text-xs text-t1">{cc.description}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${cc.rate.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{formatCurrency(cc.rate, defaultCurrency)}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Users size={12} className="text-t3" />
@@ -778,8 +780,8 @@ export default function WorkersCompPage() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-t1">Formula Breakdown</h4>
                   <div className="p-3 bg-canvas rounded-lg font-mono text-xs space-y-1">
-                    <p className="text-t2">Annual Payroll: <span className="text-t1 font-semibold">${Number(calcPayroll).toLocaleString()}</span></p>
-                    <p className="text-t2">Class Code Rate: <span className="text-t1 font-semibold">${workersCompClassCodes.find(c => c.code === calcClassCode)?.rate.toFixed(2)} per $100</span></p>
+                    <p className="text-t2">Annual Payroll: <span className="text-t1 font-semibold">{formatCurrency(Number(calcPayroll), defaultCurrency)}</span></p>
+                    <p className="text-t2">Class Code Rate: <span className="text-t1 font-semibold">{formatCurrency(workersCompClassCodes.find(c => c.code === calcClassCode)?.rate || 0, defaultCurrency)} per {formatCurrency(100, defaultCurrency)}</span></p>
                     <div className="border-t border-divider my-2" />
                     <p className="text-t3">(Payroll / 100) x Rate = Premium</p>
                     <p className="text-t1">

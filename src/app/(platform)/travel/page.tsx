@@ -12,11 +12,13 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Plane, Hotel, MapPin, Calendar, DollarSign, Plus, CheckCircle, Clock, AlertTriangle, FileText, Car, Shield, ArrowRight, Receipt, Pencil, Loader2, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 
 export default function TravelManagementPage() {
   const tc = useTranslations('common')
   const { travelRequests, travelBookings, travelPolicies, employees, addTravelRequest, updateTravelRequest, addTravelBooking, updateTravelBooking, addTravelPolicy, updateTravelPolicy, ensureModulesLoaded, addToast } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -315,7 +317,7 @@ export default function TravelManagementPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Active Trips" value={activeTrips} icon={<Plane size={20} />} />
         <StatCard label="Pending Approval" value={pendingApproval} icon={<Clock size={20} />} change={pendingApproval > 0 ? 'Needs review' : undefined} changeType={pendingApproval > 0 ? 'negative' : undefined} />
-        <StatCard label="Total Spend" value={`$${(totalSpend / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} icon={<DollarSign size={20} />} />
+        <StatCard label="Total Spend" value={formatCurrency(totalSpend, defaultCurrency, { cents: true })} icon={<DollarSign size={20} />} />
         <StatCard label="Policy Violations" value={policyViolations} icon={<AlertTriangle size={20} />} change={policyViolations > 0 ? 'Requires attention' : 'All compliant'} changeType={policyViolations > 0 ? 'negative' : 'positive'} />
       </div>
 

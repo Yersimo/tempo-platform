@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Building2, Plus, FileText, Shield, DollarSign, AlertTriangle, CheckCircle, XCircle, Clock, Phone, Mail, Edit, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { demoVendorContracts } from '@/lib/demo-data'
 
 type TabKey = 'directory' | 'contracts' | 'compliance' | 'spend'
@@ -38,6 +39,7 @@ const PAYMENT_TERMS_OPTIONS = [
 export default function VendorsPage() {
   const tc = useTranslations('common')
   const { vendors, invoices, addVendor, updateVendor, addToast } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [activeTab, setActiveTab] = useState<TabKey>('directory')
   const [searchQuery, setSearchQuery] = useState('')
@@ -295,7 +297,7 @@ export default function VendorsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Vendors" value={vendors.length} icon={<Building2 size={20} />} />
         <StatCard label="Active Contracts" value={activeContracts} icon={<FileText size={20} />} />
-        <StatCard label="Total Spend" value={`$${totalSpend.toLocaleString()}`} icon={<DollarSign size={20} />} />
+        <StatCard label="Total Spend" value={formatCurrency(totalSpend, defaultCurrency)} icon={<DollarSign size={20} />} />
         <StatCard
           label="Compliance Rate"
           value={`${complianceRate}%`}
@@ -664,7 +666,7 @@ export default function VendorsPage() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-t1 font-medium truncate">{vendor.name}</span>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="font-semibold text-t1">${vendor.spend.toLocaleString()}</span>
+                          <span className="font-semibold text-t1">{formatCurrency(vendor.spend, defaultCurrency)}</span>
                           <span className="text-xs text-t3">({pct}%)</span>
                         </div>
                       </div>
@@ -695,7 +697,7 @@ export default function VendorsPage() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-t2">{cat.category}</span>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-t1">${cat.amount.toLocaleString()}</span>
+                          <span className="font-medium text-t1">{formatCurrency(cat.amount, defaultCurrency)}</span>
                           <span className="text-xs text-t3">({pct}%)</span>
                         </div>
                       </div>
@@ -724,7 +726,7 @@ export default function VendorsPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-t1 truncate">{vendor.name}</p>
                     <p className="text-xs text-t3">{vendor.category}</p>
-                    <p className="text-lg font-bold text-t1">${vendor.spend.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-t1">{formatCurrency(vendor.spend, defaultCurrency)}</p>
                     <Progress value={pct} color="orange" />
                     <div className="flex justify-between text-xs text-t3">
                       <span>{pct}% of total</span>

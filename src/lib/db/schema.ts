@@ -4125,3 +4125,37 @@ export const academyTranslations = pgTable('academy_translations', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// JOURNAL ENTRIES — persisted GL postings
+// ============================================================
+
+export const journalEntries = pgTable('journal_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // 'payroll' | 'expense' | 'manual'
+  reference: varchar('reference', { length: 100 }), // e.g., 'PAY-{runId}', 'EXP-{reportId}'
+  description: text('description'),
+  date: date('date').notNull(),
+  totalDebitCents: integer('total_debit_cents').notNull(),
+  totalCreditCents: integer('total_credit_cents').notNull(),
+  currency: varchar('currency', { length: 10 }).notNull().default('USD'),
+  status: varchar('status', { length: 20 }).notNull().default('posted'), // draft | posted | reversed
+  sourceEntityType: varchar('source_entity_type', { length: 50 }), // 'payroll_run' | 'expense_report'
+  sourceEntityId: uuid('source_entity_id'),
+  postedBy: uuid('posted_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const journalEntryLines = pgTable('journal_entry_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  journalEntryId: uuid('journal_entry_id').references(() => journalEntries.id, { onDelete: 'cascade' }).notNull(),
+  accountCode: varchar('account_code', { length: 20 }).notNull(),
+  accountName: varchar('account_name', { length: 100 }).notNull(),
+  costCenter: varchar('cost_center', { length: 50 }),
+  departmentId: uuid('department_id'),
+  debitCents: integer('debit_cents').notNull().default(0),
+  creditCents: integer('credit_cents').notNull().default(0),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})

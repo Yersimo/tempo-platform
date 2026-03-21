@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Globe, Users, Building2, MapPin, Shield, FileText, DollarSign, Plus, CheckCircle, AlertTriangle, Briefcase, Clock, Scale, Heart, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -28,8 +29,8 @@ function getFlag(country: string) {
   return countryFlags[country] || '🌍'
 }
 
-function centsToDisplay(cents: number) {
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function centsToDisplay(cents: number, currency: string = 'USD') {
+  return formatCurrency(cents, currency, { cents: true })
 }
 
 // Static compliance data for the Compliance tab
@@ -48,6 +49,7 @@ type Tab = 'eor' | 'contractors' | 'peo' | 'benefits' | 'compliance'
 
 export default function GlobalWorkforcePage() {
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const {
     org,
     eorEntities, eorEmployees, eorContracts,
@@ -114,10 +116,10 @@ export default function GlobalWorkforcePage() {
 
   // --- Add EOR Entity modal ---
   const [showEntityModal, setShowEntityModal] = useState(false)
-  const [entityForm, setEntityForm] = useState({ country: '', legal_name: '', currency: 'USD' })
+  const [entityForm, setEntityForm] = useState({ country: '', legal_name: '', currency: defaultCurrency })
 
   function openEntityModal() {
-    setEntityForm({ country: '', legal_name: '', currency: 'USD' })
+    setEntityForm({ country: '', legal_name: '', currency: defaultCurrency })
     setShowEntityModal(true)
   }
 
@@ -149,10 +151,10 @@ export default function GlobalWorkforcePage() {
 
   // --- Add Contractor modal ---
   const [showContractorModal, setShowContractorModal] = useState(false)
-  const [contractorForm, setContractorForm] = useState({ name: '', country: '', specialty: '', hourly_rate: '', currency: 'USD' })
+  const [contractorForm, setContractorForm] = useState({ name: '', country: '', specialty: '', hourly_rate: '', currency: defaultCurrency })
 
   function openContractorModal() {
-    setContractorForm({ name: '', country: '', specialty: '', hourly_rate: '', currency: 'USD' })
+    setContractorForm({ name: '', country: '', specialty: '', hourly_rate: '', currency: defaultCurrency })
     setShowContractorModal(true)
   }
 
@@ -339,7 +341,7 @@ export default function GlobalWorkforcePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-t2">{emp.job_title}</td>
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
-                        {centsToDisplay(emp.salary)} <span className="text-t3 font-normal">{emp.currency}</span>
+                        {centsToDisplay(emp.salary, defaultCurrency)} <span className="text-t3 font-normal">{emp.currency}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={emp.status === 'active' ? 'success' : emp.status === 'onboarding' ? 'info' : 'default'}>
@@ -393,14 +395,14 @@ export default function GlobalWorkforcePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-t2">{c.specialty}</td>
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
-                        {centsToDisplay(c.hourly_rate)}/hr <span className="text-t3 font-normal">{c.currency}</span>
+                        {centsToDisplay(c.hourly_rate, defaultCurrency)}/hr <span className="text-t3 font-normal">{c.currency}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={c.status === 'active' ? 'success' : c.status === 'paused' ? 'warning' : 'default'}>
                           {c.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{centsToDisplay(c.total_paid || 0)}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{centsToDisplay(c.total_paid || 0, defaultCurrency)}</td>
                     </tr>
                   ))}
                   {filteredContractors.length === 0 && (
@@ -442,7 +444,7 @@ export default function GlobalWorkforcePage() {
                         <td className="px-6 py-3 text-xs font-medium text-t1">{contract.project}</td>
                         <td className="px-4 py-3 text-xs text-t2">{contractor?.name || 'Unknown'}</td>
                         <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
-                          {centsToDisplay(contract.hourly_rate)} <span className="text-t3 font-normal">{contract.currency}</span>
+                          {centsToDisplay(contract.hourly_rate, defaultCurrency)} <span className="text-t3 font-normal">{contract.currency}</span>
                         </td>
                         <td className="px-4 py-3 text-xs text-t2 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -450,7 +452,7 @@ export default function GlobalWorkforcePage() {
                             {contract.hours_logged || 0}h
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{centsToDisplay(totalValue)}</td>
+                        <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{centsToDisplay(totalValue, defaultCurrency)}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={contract.status === 'active' ? 'success' : contract.status === 'completed' ? 'info' : 'default'}>
                             {contract.status}
@@ -485,7 +487,7 @@ export default function GlobalWorkforcePage() {
                         <p className="text-xs text-t3">{payment.period}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-t1">{centsToDisplay(payment.amount)}</span>
+                        <span className="text-xs font-semibold text-t1">{centsToDisplay(payment.amount, defaultCurrency)}</span>
                         <Badge variant={payment.status === 'paid' ? 'success' : 'warning'}>{payment.status}</Badge>
                       </div>
                     </div>
@@ -530,7 +532,7 @@ export default function GlobalWorkforcePage() {
                   <div>
                     <p className="text-xs text-t3">Monthly Fee</p>
                     <p className="text-sm font-semibold text-t1">
-                      {centsToDisplay(config.monthly_fee || 0)} <span className="text-t3 font-normal text-xs">{config.currency}</span>
+                      {centsToDisplay(config.monthly_fee || 0, defaultCurrency)} <span className="text-t3 font-normal text-xs">{config.currency}</span>
                     </p>
                   </div>
                 </div>
@@ -634,7 +636,7 @@ export default function GlobalWorkforcePage() {
                       </td>
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{benefit.enrolled_count || 0}</td>
                       <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">
-                        {centsToDisplay(benefit.cost_per_employee || 0)} <span className="text-t3 font-normal">{benefit.currency}</span>
+                        {centsToDisplay(benefit.cost_per_employee || 0, defaultCurrency)} <span className="text-t3 font-normal">{benefit.currency}</span>
                       </td>
                     </tr>
                   ))}

@@ -49,7 +49,7 @@ function fmtCents(cents: number | null | undefined, currency?: string): string {
   return symbol + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 /** Module-level active currency — set when pay run country changes */
-let _activeCurrency = 'USD'
+let _activeCurrency = 'USD' // overridden in component with org default
 
 // Country name → code resolver (client-side mirror of server resolveCountryCode)
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
@@ -125,7 +125,18 @@ export default function PayrollPage() {
     ensureModulesLoaded,
     setPayrollRuns, setEmployeePayrollEntries,
     leaveRequests,
+    org,
   } = useTempo()
+
+  // Derive default currency from organization country
+  const orgCountry = resolveCountryCode(org?.country || 'US')
+  const defaultCurrency = COUNTRY_CURRENCY_MAP[orgCountry] || 'USD'
+  const _cs = CURRENCY_SYMBOLS[defaultCurrency] || defaultCurrency + ' '
+
+  // Set module-level active currency to org default on mount / org change
+  useEffect(() => {
+    _activeCurrency = defaultCurrency
+  }, [defaultCurrency])
 
   // Department name lookup helper
   const deptName = useCallback((deptId: string | null | undefined) => {
@@ -253,9 +264,9 @@ export default function PayrollPage() {
   const [taxEditForm, setTaxEditForm] = useState({ rate: 0, employeeContribution: 0, employerContribution: 0, effectiveDate: '' })
 
   // ---- Forms ----
-  const [payRunForm, setPayRunForm] = useState({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '', frequency: 'monthly' as 'weekly' | 'fortnightly' | 'monthly' })
-  const [contractorForm, setContractorForm] = useState({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: 'USD', due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
-  const [scheduleForm, setScheduleForm] = useState({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: 'USD' })
+  const [payRunForm, setPayRunForm] = useState({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: defaultCurrency, employee_count: 30, run_date: '', frequency: 'monthly' as 'weekly' | 'fortnightly' | 'monthly' })
+  const [contractorForm, setContractorForm] = useState({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: defaultCurrency, due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
+  const [scheduleForm, setScheduleForm] = useState({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: defaultCurrency })
   const [adjustmentForm, setAdjustmentForm] = useState({ employee_id: '', type: 'bonus', amount: 0, reason: '' })
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -417,10 +428,10 @@ export default function PayrollPage() {
   // Fix 6: Auto-set currency when country changes
   const handleCountryChange = useCallback((country: string) => {
     const code = resolveCountryCode(country)
-    const currency = COUNTRY_CURRENCY_MAP[code] || 'USD'
+    const currency = COUNTRY_CURRENCY_MAP[code] || defaultCurrency
     _activeCurrency = currency
     setPayRunForm(prev => ({ ...prev, country, currency }))
-  }, [])
+  }, [defaultCurrency])
 
   // Fetch audit trail for a payroll run
   const loadAuditTrail = useCallback(async (runId: string) => {
@@ -461,10 +472,10 @@ export default function PayrollPage() {
   const forecastInsight = useMemo(() => ({
     id: 'ai-payroll-forecast', category: 'prediction' as const, severity: 'info' as const,
     title: t('annualPayrollForecast'),
-    description: `Projected annual payroll: $${(forecast.projected / 100_000_000).toFixed(2)}M based on ${payrollRuns.length} pay run(s). Confidence: ${forecast.confidence}.`,
+    description: `Projected annual payroll: ${CURRENCY_SYMBOLS[defaultCurrency] || defaultCurrency + ' '}${(forecast.projected / 100_000_000).toFixed(2)}M based on ${payrollRuns.length} pay run(s). Confidence: ${forecast.confidence}.`,
     confidence: forecast.confidence, confidenceScore: forecast.confidence === 'high' ? 88 : forecast.confidence === 'medium' ? 65 : 40,
     suggestedAction: 'Review budget allocation for upcoming quarters', module: 'payroll',
-  }), [forecast, payrollRuns.length, t])
+  }), [forecast, payrollRuns.length, t, defaultCurrency])
 
   // Changes Since Last Run diff
   const payrollDiff = useMemo(() => {
@@ -509,12 +520,12 @@ export default function PayrollPage() {
           id: `gen-${emp.id}`, employee_id: emp.id, employee_name: emp.profile?.full_name || '',
           department: '', country: emp.country, base_pay: base, gross_pay: base,
           federal_tax: fedTax, total_deductions: totalDed, net_pay: base - totalDed,
-          currency: COUNTRY_CURRENCY_MAP[resolveCountryCode(emp.country || '')] || 'USD', pay_date: '2026-01-28',
+          currency: COUNTRY_CURRENCY_MAP[resolveCountryCode(emp.country || '')] || defaultCurrency, pay_date: '2026-01-28',
         })
       }
     })
     return Array.from(entryMap.values())
-  }, [employeePayrollEntries, employees])
+  }, [employeePayrollEntries, employees, defaultCurrency])
 
   const filteredEntries = useMemo(() => {
     let entries = [...mergedEntries]
@@ -654,7 +665,7 @@ export default function PayrollPage() {
       setValidationResult(null)
       setPayRunStep('form')
       setPreviewData(null)
-      setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: 'USD', employee_count: 30, run_date: '', frequency: 'monthly' })
+      setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: defaultCurrency, employee_count: 30, run_date: '', frequency: 'monthly' })
       addToast(`Payroll processed: ${result.employeeCount} employees, ${fmtCents(result.totalNet)} net pay`)
     } catch (err: any) {
       setProcessError(err.message || 'Network error')
@@ -1060,7 +1071,7 @@ export default function PayrollPage() {
     try {
       addContractorPayment({ ...contractorForm, status: 'pending', paid_date: null })
       setShowContractorModal(false)
-      setContractorForm({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: 'USD', due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
+      setContractorForm({ contractor_name: '', company: '', service_type: '', invoice_number: '', amount: 0, currency: defaultCurrency, due_date: '', payment_method: 'bank_transfer', tax_form: 'invoice', country: '' })
     } finally {
       setSaving(false)
     }
@@ -1072,7 +1083,7 @@ export default function PayrollPage() {
     try {
       addPayrollSchedule({ ...scheduleForm, status: 'active', last_run_date: null })
       setShowScheduleModal(false)
-      setScheduleForm({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: 'USD' })
+      setScheduleForm({ name: '', frequency: 'monthly', next_run_date: '', employee_group: '', auto_approve: false, currency: defaultCurrency })
     } finally {
       setSaving(false)
     }
@@ -1280,10 +1291,10 @@ export default function PayrollPage() {
       {activeTab === 'pay-runs' && (
         <>
           <ExpandableStats>
-            <StatCard label={t('totalPayroll')} value={`$${(totalPayroll / 100_000_000).toFixed(1)}M`} change={t('allRuns')} changeType="neutral" icon={<Wallet size={20} />} />
-            <StatCard label={t('lastPayRun')} value={lastRun ? `$${(lastRun.total_gross / 100_000_000).toFixed(2)}M` : '-'} change={lastRun?.period || t('noRunsYet')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('totalPayroll')} value={`${_cs}${(totalPayroll / 100_000_000).toFixed(1)}M`} change={t('allRuns')} changeType="neutral" icon={<Wallet size={20} />} />
+            <StatCard label={t('lastPayRun')} value={lastRun ? `${_cs}${(lastRun.total_gross / 100_000_000).toFixed(2)}M` : '-'} change={lastRun?.period || t('noRunsYet')} changeType="neutral" icon={<DollarSign size={20} />} />
             <StatCard label={tc('employees')} value={lastRun?.employee_count || employees.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} href="/people" />
-            <StatCard label={t('deductions')} value={`$${(totalDeductions / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
+            <StatCard label={t('deductions')} value={`${_cs}${(totalDeductions / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<FileText size={20} />} />
           </ExpandableStats>
 
           <AIInsightsCard
@@ -1298,7 +1309,7 @@ export default function PayrollPage() {
           {payrollRuns.length > 0 && (() => {
             const currencyMap: Record<string, { count: number; totalNet: number }> = {}
             payrollRuns.forEach(run => {
-              const cur = (run as any).currency || 'USD'
+              const cur = (run as any).currency || defaultCurrency
               if (!currencyMap[cur]) currencyMap[cur] = { count: 0, totalNet: 0 }
               currencyMap[cur].count += 1
               currencyMap[cur].totalNet += run.total_net
@@ -1317,7 +1328,7 @@ export default function PayrollPage() {
                         <span className="text-xs font-semibold text-tempo-600">{currency}</span>
                         <Badge variant="default">{data.count} {data.count === 1 ? 'run' : 'runs'}</Badge>
                       </div>
-                      <p className="text-lg font-bold text-t1">{fmtCents(data.totalNet)}</p>
+                      <p className="text-lg font-bold text-t1">{fmtCents(data.totalNet, currency)}</p>
                       <p className="text-xs text-t3">Total net pay</p>
                     </Card>
                   ))}
@@ -1630,8 +1641,8 @@ export default function PayrollPage() {
       {activeTab === 'employee-payroll' && (
         <>
           <ExpandableStats>
-            <StatCard label={t('totalLaborCost')} value={`$${(mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('avgSalary')} value={`$${mergedEntries.length > 0 ? (mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / mergedEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label={t('totalLaborCost')} value={`${_cs}${(mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('avgSalary')} value={`${_cs}${mergedEntries.length > 0 ? (mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / mergedEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
             <StatCard label={t('taxBurden')} value={`${mergedEntries.length > 0 ? Math.round(mergedEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / Math.max(1, mergedEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0)) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
             <StatCard label={tc('employees')} value={mergedEntries.length} change={t('onPayroll')} changeType="neutral" icon={<Users size={20} />} />
           </ExpandableStats>
@@ -2130,8 +2141,8 @@ export default function PayrollPage() {
       {activeTab === 'analytics' && (
         <>
           <ExpandableStats>
-            <StatCard label={t('totalLaborCost')} value={`$${(totalPayroll / 100_000_000).toFixed(2)}M`} change={t('allRuns')} changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('avgSalary')} value={`$${employeePayrollEntries.length > 0 ? (employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / employeePayrollEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
+            <StatCard label={t('totalLaborCost')} value={`${_cs}${(totalPayroll / 100_000_000).toFixed(2)}M`} change={t('allRuns')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('avgSalary')} value={`${_cs}${employeePayrollEntries.length > 0 ? (employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0) / employeePayrollEntries.length / 100_000).toFixed(1) : '0'}K`} change={t('monthOverMonth')} changeType="neutral" icon={<Users size={20} />} />
             <StatCard label={t('taxBurden')} value={`${employeePayrollEntries.length > 0 ? Math.round(employeePayrollEntries.reduce((s, e) => s + ((e as any).total_deductions || 0), 0) / Math.max(1, employeePayrollEntries.reduce((s, e) => s + ((e as any).gross_pay || 0), 0)) * 100) : 0}%`} change={t('allDepartments')} changeType="neutral" icon={<FileText size={20} />} />
             <StatCard label={t('monthOverMonth')} value={`${trends.monthOverMonth > 0 ? '+' : ''}${trends.monthOverMonth}%`} change={payrollRuns.length >= 2 ? `${payrollRuns.length} ${t('payRuns').toLowerCase()}` : ''} changeType={trends.monthOverMonth > 3 ? 'negative' : trends.monthOverMonth < 0 ? 'positive' : 'neutral'} icon={<BarChart3 size={20} />} />
           </ExpandableStats>
@@ -2142,9 +2153,9 @@ export default function PayrollPage() {
               {trends.departmentTrends.length > 0 ? (
                 <TempoBarChart
                   data={trends.departmentTrends.slice(0, 6).map(d => ({ name: d.department, cost: Math.round(d.totalCost / 100_000) }))}
-                  bars={[{ dataKey: 'cost', name: 'Cost ($K)', color: CHART_COLORS.primary }]}
+                  bars={[{ dataKey: 'cost', name: `Cost (${defaultCurrency} K)`, color: CHART_COLORS.primary }]}
                   xKey="name" layout="horizontal" height={trends.departmentTrends.length * 36}
-                  formatter={(v) => `$${v}K`} showGrid={false}
+                  formatter={(v) => `${_cs}${v}K`} showGrid={false}
                 />
               ) : <p className="text-sm text-t3">{t('noEntries')}</p>}
             </Card>
@@ -2164,7 +2175,7 @@ export default function PayrollPage() {
                     <TempoDonutChart
                       data={items.map(([name, d]) => ({ name, value: Math.round(d.total / 100_000) }))}
                       colors={items.map((_, i) => CHART_SERIES[i % CHART_SERIES.length])}
-                      centerLabel={`$${Math.round(items.reduce((s, [, d]) => s + d.total, 0) / 100_000_000)}M`}
+                      centerLabel={`${_cs}${Math.round(items.reduce((s, [, d]) => s + d.total, 0) / 100_000_000)}M`}
                       centerSub="Total" height={180}
                     />
                     <div className="mt-3 space-y-1">
@@ -2187,10 +2198,10 @@ export default function PayrollPage() {
               <TempoAreaChart
                 data={payrollRuns.map(r => ({ name: r.period, gross: r.total_gross / 100_000, net: r.total_net / 100_000 }))}
                 areas={[
-                  { dataKey: 'gross', name: 'Gross ($K)', color: CHART_COLORS.primary },
-                  { dataKey: 'net', name: 'Net ($K)', color: CHART_COLORS.emerald },
+                  { dataKey: 'gross', name: `Gross (${defaultCurrency} K)`, color: CHART_COLORS.primary },
+                  { dataKey: 'net', name: `Net (${defaultCurrency} K)`, color: CHART_COLORS.emerald },
                 ]}
-                xKey="name" height={200} showLegend formatter={(v) => `$${v.toFixed(0)}K`}
+                xKey="name" height={200} showLegend formatter={(v) => `${_cs}${v.toFixed(0)}K`}
               />
             </Card>
           )}
@@ -2317,8 +2328,8 @@ export default function PayrollPage() {
         <>
           <ExpandableStats>
             <StatCard label={t('totalContractors')} value={contractorPayments.length} change={t('allCountries')} changeType="neutral" icon={<Briefcase size={20} />} />
-            <StatCard label={t('pendingPayments')} value={contractorPayments.filter(cp => (cp as any).status === 'pending' || (cp as any).status === 'approved').length} change={`$${(contractorPayments.filter(cp => (cp as any).status !== 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} changeType="neutral" icon={<Clock size={20} />} />
-            <StatCard label={t('totalPaidThisMonth')} value={`$${(contractorPayments.filter(cp => (cp as any).status === 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('pendingPayments')} value={contractorPayments.filter(cp => (cp as any).status === 'pending' || (cp as any).status === 'approved').length} change={`${_cs}${(contractorPayments.filter(cp => (cp as any).status !== 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} changeType="neutral" icon={<Clock size={20} />} />
+            <StatCard label={t('totalPaidThisMonth')} value={`${_cs}${(contractorPayments.filter(cp => (cp as any).status === 'paid').reduce((s, cp) => s + ((cp as any).amount || 0), 0) / 100_000).toFixed(0)}K`} change={t('lastRun')} changeType="neutral" icon={<DollarSign size={20} />} />
             <Card className="text-center py-3">
               <p className="text-xs text-t3 mb-1">{t('contractorRiskScore')}</p>
               <p className={`text-2xl font-bold ${contractorRisk.riskScore > 50 ? 'text-error' : contractorRisk.riskScore > 30 ? 'text-amber-500' : 'text-emerald-500'}`}>{contractorRisk.riskScore}/100</p>
@@ -2736,14 +2747,14 @@ export default function PayrollPage() {
               <div className="mt-4 bg-canvas rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-t1 mb-3">{t('simulationResult')} — {simCountry}</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: t('grossPay'), value: `$${simResult.grossSalary.toLocaleString()}`, color: 'text-t1' },
-                    { label: t('federalTax'), value: `-$${simResult.federalTax.toLocaleString()}`, color: 'text-error' },
-                    { label: t('socialSecurity'), value: `-$${simResult.socialSecurity.toLocaleString()}`, color: 'text-error' },
-                    { label: t('pension'), value: `-$${simResult.pension.toLocaleString()}`, color: 'text-error' },
-                    { label: t('totalDeductionsLabel'), value: `-$${simResult.totalTax.toLocaleString()}`, color: 'text-error font-semibold' },
-                    { label: t('netPay'), value: `$${simResult.netPay.toLocaleString()}`, color: 'text-t1 font-bold' },
-                  ].map(item => (
+                  {(() => { const _ss = CURRENCY_SYMBOLS[COUNTRY_CURRENCY_MAP[simCountry] || defaultCurrency] || _cs; return [
+                    { label: t('grossPay'), value: `${_ss}${simResult.grossSalary.toLocaleString()}`, color: 'text-t1' },
+                    { label: t('federalTax'), value: `-${_ss}${simResult.federalTax.toLocaleString()}`, color: 'text-error' },
+                    { label: t('socialSecurity'), value: `-${_ss}${simResult.socialSecurity.toLocaleString()}`, color: 'text-error' },
+                    { label: t('pension'), value: `-${_ss}${simResult.pension.toLocaleString()}`, color: 'text-error' },
+                    { label: t('totalDeductionsLabel'), value: `-${_ss}${simResult.totalTax.toLocaleString()}`, color: 'text-error font-semibold' },
+                    { label: t('netPay'), value: `${_ss}${simResult.netPay.toLocaleString()}`, color: 'text-t1 font-bold' },
+                  ] })().map(item => (
                     <div key={item.label} className="bg-white rounded-lg p-3 border border-border">
                       <p className="text-xs text-t3 mb-1">{item.label}</p>
                       <p className={`text-sm ${item.color}`}>{item.value}</p>
@@ -3246,7 +3257,7 @@ export default function PayrollPage() {
                 other_deductions: adjustmentForm.type === 'deduction' ? adjustmentForm.amount : 0,
                 total_deductions: adjustmentForm.type === 'deduction' ? adjustmentForm.amount : 0,
                 net_pay: adjustmentForm.type === 'deduction' ? -adjustmentForm.amount : adjustmentForm.amount,
-                currency: emp.country === 'Ghana' ? 'GHS' : emp.country === 'Nigeria' ? 'NGN' : emp.country === 'Kenya' ? 'KES' : emp.country === "Cote d'Ivoire" || emp.country === 'Senegal' ? 'XOF' : 'USD',
+                currency: COUNTRY_CURRENCY_MAP[resolveCountryCode(emp.country || '')] || defaultCurrency,
                 pay_date: new Date().toISOString().split('T')[0],
               })
               setShowAdjustmentModal(false)
@@ -3349,7 +3360,7 @@ export default function PayrollPage() {
               </div>
               <Select label="Employee *" value={finalPayForm.employeeId || ''} onChange={e => {
                 const emp = employees.find(emp2 => emp2.id === e.target.value)
-                if (emp) setFinalPayForm(prev => ({ ...prev, employeeId: emp.id, employeeName: emp.profile.full_name, country: resolveCountryCode(emp.country || 'GH'), currency: emp.country === 'Ghana' ? 'GHS' : emp.country === 'Nigeria' ? 'NGN' : emp.country === 'Kenya' ? 'KES' : 'USD', monthlySalary: (emp as any).salary || 500000 }))
+                if (emp) setFinalPayForm(prev => ({ ...prev, employeeId: emp.id, employeeName: emp.profile.full_name, country: resolveCountryCode(emp.country || orgCountry), currency: COUNTRY_CURRENCY_MAP[resolveCountryCode(emp.country || '')] || defaultCurrency, monthlySalary: (emp as any).salary || 500000 }))
               }} options={[{ value: '', label: 'Select employee...' }, ...employees.map(e => ({ value: e.id, label: e.profile.full_name }))]} />
               <div className="grid grid-cols-2 gap-3">
                 <DatePicker label="Last Working Date *" value={finalPayForm.lastWorkingDate || ''} onChange={d => { const v = d.toISOString().split('T')[0]; setFinalPayForm(prev => ({ ...prev, lastWorkingDate: v, terminationDate: v })) }} />

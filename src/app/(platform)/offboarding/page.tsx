@@ -20,7 +20,8 @@ import {
   CheckCircle2, Circle, SkipForward, GripVertical,
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 
 // ─── Category config ──────────────────────────────────────────
 const CATEGORIES = {
@@ -64,6 +65,7 @@ export default function OffboardingPage() {
     currentUser, currentEmployeeId,
     ensureModulesLoaded, updateEmployee,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -876,25 +878,25 @@ export default function OffboardingPage() {
                         <div className="space-y-3">
                           <div className="flex justify-between text-sm">
                             <span className="text-t2">Monthly salary</span>
-                            <span className="font-medium text-t1">${(fp.monthlySalary / 100).toLocaleString()}</span>
+                            <span className="font-medium text-t1">{formatCurrency(fp.monthlySalary, defaultCurrency, { cents: true })}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-t2">Pro-rated salary ({fp.daysWorked}/{fp.daysInMonth} days)</span>
-                            <span className="font-medium text-t1">${(fp.proRatedSalary / 100).toLocaleString()}</span>
+                            <span className="font-medium text-t1">{formatCurrency(fp.proRatedSalary, defaultCurrency, { cents: true })}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-t2">Leave payout ({fp.leaveBalance} days @ ${(fp.dailyRate / 100).toLocaleString()}/day)</span>
-                            <span className="font-medium text-t1">${(fp.leavePayout / 100).toLocaleString()}</span>
+                            <span className="text-t2">Leave payout ({fp.leaveBalance} days @ {formatCurrency(fp.dailyRate, defaultCurrency, { cents: true })}/day)</span>
+                            <span className="font-medium text-t1">{formatCurrency(fp.leavePayout, defaultCurrency, { cents: true })}</span>
                           </div>
                           {fp.severance > 0 && (
                             <div className="flex justify-between text-sm">
                               <span className="text-t2">Severance ({fp.yearsOfService} yr{fp.yearsOfService > 1 ? 's' : ''} of service)</span>
-                              <span className="font-medium text-t1">${(fp.severance / 100).toLocaleString()}</span>
+                              <span className="font-medium text-t1">{formatCurrency(fp.severance, defaultCurrency, { cents: true })}</span>
                             </div>
                           )}
                           <div className="border-t border-divider pt-3 flex justify-between">
                             <span className="text-sm font-semibold text-t1">Total Final Pay</span>
-                            <span className="text-sm font-bold text-tempo-600">${(fp.totalFinalPay / 100).toLocaleString()}</span>
+                            <span className="text-sm font-bold text-tempo-600">{formatCurrency(fp.totalFinalPay, defaultCurrency, { cents: true })}</span>
                           </div>
                         </div>
                         <p className="text-[0.6rem] text-t3 mt-3">* Estimated as of {fp.lastDate}. Actual amounts will be confirmed by payroll after processing deductions, taxes, and final adjustments.</p>

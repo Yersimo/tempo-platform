@@ -20,7 +20,8 @@ import {
   Stethoscope, Car, ParkingCircle, TrendingUp, CircleDollarSign,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { cn } from '@/lib/utils/cn'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
@@ -90,6 +91,7 @@ const lifeEventIcons: Record<string, React.ReactNode> = {
 export default function BenefitsPage() {
   const t = useTranslations('benefits')
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const {
     org,
     benefitPlans, employees, departments,
@@ -185,7 +187,7 @@ export default function BenefitsPage() {
   const [planForm, setPlanForm] = useState({
     name: '', type: 'medical' as string, provider: '',
     cost_employee: 0, cost_employer: 0, description: '',
-    is_active: true, currency: 'USD',
+    is_active: true, currency: defaultCurrency,
   })
   const [enrollForm, setEnrollForm] = useState({
     employee_id: '', plan_id: '', coverage_level: 'employee_only',
@@ -235,7 +237,7 @@ export default function BenefitsPage() {
 
   // ---- Currency Formatting (amounts are in cents) ----
   function fmtCents(cents: number) {
-    return `$${(cents / 100).toFixed(2)}`
+    return formatCurrency(cents, defaultCurrency, { cents: true })
   }
 
   // ---- Computed Data ----
@@ -320,7 +322,7 @@ export default function BenefitsPage() {
   // ---- Plan CRUD ----
   function openNewPlan() {
     setEditingPlan(null)
-    setPlanForm({ name: '', type: 'medical', provider: '', cost_employee: 0, cost_employer: 0, description: '', is_active: true, currency: 'USD' })
+    setPlanForm({ name: '', type: 'medical', provider: '', cost_employee: 0, cost_employer: 0, description: '', is_active: true, currency: defaultCurrency })
     setShowPlanModal(true)
   }
 
@@ -332,7 +334,7 @@ export default function BenefitsPage() {
       name: plan.name, type: plan.type, provider: plan.provider,
       cost_employee: plan.cost_employee, cost_employer: plan.cost_employer,
       description: plan.description || '', is_active: plan.is_active,
-      currency: plan.currency || 'USD',
+      currency: plan.currency || defaultCurrency,
     })
     setShowPlanModal(true)
   }
@@ -752,7 +754,7 @@ export default function BenefitsPage() {
                         { label: t('employeeCost'), a: `${fmtCents(planA.cost_employee)}/mo`, b: `${fmtCents(planB.cost_employee)}/mo` },
                         { label: t('employerCost'), a: `${fmtCents(planA.cost_employer)}/mo`, b: `${fmtCents(planB.cost_employer)}/mo` },
                         { label: t('totalCost'), a: `${fmtCents(planA.cost_employee + planA.cost_employer)}/mo`, b: `${fmtCents(planB.cost_employee + planB.cost_employer)}/mo` },
-                        { label: t('annualTotal'), a: `$${(((planA.cost_employee + planA.cost_employer) * 12) / 100).toFixed(2)}`, b: `$${(((planB.cost_employee + planB.cost_employer) * 12) / 100).toFixed(2)}` },
+                        { label: t('annualTotal'), a: formatCurrency((planA.cost_employee + planA.cost_employer) * 12, defaultCurrency, { cents: true }), b: formatCurrency((planB.cost_employee + planB.cost_employer) * 12, defaultCurrency, { cents: true }) },
                         { label: t('enrolled'), a: String(getPlanEnrollCount(planA.id)), b: String(getPlanEnrollCount(planB.id)) },
                         { label: tc('status'), a: planA.is_active ? tc('active') : tc('inactive'), b: planB.is_active ? tc('active') : tc('inactive') },
                       ].map(row => (

@@ -52,6 +52,10 @@ export const MODULE_SLUGS: Record<string, string> = {
   // Chat
   chatChannels: 'chat-channels',
   chatMessages: 'chat-messages',
+  // Procurement
+  purchaseOrders: 'purchase-orders',
+  purchaseOrderItems: 'purchase-order-items',
+  procurementRequests: 'procurement-requests',
   // Finance
   corporateCards: 'corporate-cards',
   cardTransactions: 'card-transactions',
@@ -113,6 +117,7 @@ export const MODULE_SLUGS: Record<string, string> = {
   shifts: 'shifts',
   // Engagement (extended)
   actionPlans: 'action-plans',
+  surveyResponses: 'survey-responses',
   surveyTemplates: 'survey-templates',
   surveySchedules: 'survey-schedules',
   surveyTriggers: 'survey-triggers',
@@ -173,6 +178,19 @@ export const MODULE_SLUGS: Record<string, string> = {
   automationWorkflows: 'automation-workflows',
   automationWorkflowSteps: 'automation-workflow-steps',
   automationWorkflowRuns: 'automation-workflow-runs',
+  automationWorkflowRunSteps: 'automation-workflow-run-steps',
+  // Learning (extended)
+  coursePrerequisites: 'course-prerequisites',
+  scormPackages: 'scorm-packages',
+  scormTracking: 'scorm-tracking',
+  contentLibrary: 'content-library',
+  learnerBadges: 'learner-badges',
+  learnerPoints: 'learner-points',
+  // Recruiting (extended)
+  backgroundChecks: 'background-checks',
+  referrals: 'referrals',
+  knockoutQuestions: 'knockout-questions',
+  candidateScheduling: 'candidate-scheduling',
   // App Studio
   customApps: 'custom-apps',
   appPages: 'app-pages',
@@ -195,6 +213,9 @@ export const MODULE_SLUGS: Record<string, string> = {
   academyCertificates: 'academy-certificates',
   academyCommunications: 'academy-communications',
   academyCommTriggers: 'academy-comm-triggers',
+  // Journal Entries (GL)
+  journalEntries: 'journal-entries',
+  journalEntryLines: 'journal-entry-lines',
 }
 
 // ---------------------------------------------------------------------------

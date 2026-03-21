@@ -432,6 +432,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ user })
     }
 
+    // ─── Get Organization Info ──────────────────────────────────────────────────
+    if (action === 'org') {
+      const sessionCookie = request.cookies.get(getSessionCookieName())
+      if (!sessionCookie?.value) {
+        return NextResponse.json({ org: null }, { status: 401 })
+      }
+      const session = await validateSession(sessionCookie.value)
+      if (!session) {
+        return NextResponse.json({ org: null }, { status: 401 })
+      }
+      try {
+        const [org] = await db.select().from(schema.organizations).where(eq(schema.organizations.id, session.orgId)).limit(1)
+        if (org) {
+          return NextResponse.json({ org: {
+            id: org.id, name: org.name, slug: org.slug, logo_url: org.logoUrl,
+            plan: org.plan, industry: org.industry, size: org.size,
+            country: org.country, created_at: org.createdAt, updated_at: org.updatedAt,
+          }})
+        }
+      } catch { /* ignore */ }
+      return NextResponse.json({ org: null })
+    }
+
     // ─── Switch User (restricted to owner/admin roles, same org only) ─────────
     if (action === 'switch_user') {
       const { employeeId } = body

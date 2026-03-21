@@ -21,7 +21,8 @@ import {
   HardDrive, Server, Cpu, Box, Zap, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 function timeAgo(dateStr: string | null) {
@@ -77,6 +78,7 @@ export default function ITCloudPage() {
     updateEncryptionPolicy,
     deleteEncryptionPolicy: storeDeleteEncryptionPolicy,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -515,7 +517,7 @@ export default function ITCloudPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard label="Total Devices" value={managedDevices.length} icon={<Monitor size={20} />} change={`${activeDevices.length} active`} changeType="neutral" />
               <StatCard label="Compliant" value={`${compliantPct}%`} icon={<ShieldCheck size={20} />} change={`${compliantDevices.length} of ${managedDevices.length}`} changeType={compliantPct >= 80 ? 'positive' : 'negative'} />
-              <StatCard label="Apps Managed" value={totalApps} icon={<AppWindow size={20} />} change={`$${totalMonthlyCost.toLocaleString()}/mo`} changeType="neutral" />
+              <StatCard label="Apps Managed" value={totalApps} icon={<AppWindow size={20} />} change={`${formatCurrency(totalMonthlyCost, defaultCurrency)}/mo`} changeType="neutral" />
               <StatCard label="Security Score" value={`${securityScore}/100`} icon={<Shield size={20} />} change={securityScore >= 80 ? 'Good' : securityScore >= 60 ? 'Needs attention' : 'Critical'} changeType={securityScore >= 80 ? 'positive' : 'negative'} />
             </div>
 
@@ -813,7 +815,7 @@ export default function ITCloudPage() {
             {/* App Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard label="Total Apps" value={totalApps} icon={<AppWindow size={20} />} change={`${appCatalog.filter(a => a.isRequired).length} required`} />
-              <StatCard label="Monthly License Cost" value={`$${totalMonthlyCost.toLocaleString()}`} icon={<Cpu size={20} />} change={`${appCatalog.reduce((a, app) => a + app.assignedCount, 0)} seats assigned`} />
+              <StatCard label="Monthly License Cost" value={formatCurrency(totalMonthlyCost, defaultCurrency)} icon={<Cpu size={20} />} change={`${appCatalog.reduce((a, app) => a + app.assignedCount, 0)} seats assigned`} />
               <StatCard label="License Utilization" value={`${Math.round((appCatalog.reduce((a, c) => a + c.assignedCount, 0) / Math.max(appCatalog.reduce((a, c) => a + c.licenseCount, 0), 1)) * 100)}%`} icon={<Users size={20} />} change="Overall utilization" />
             </div>
 
@@ -851,7 +853,7 @@ export default function ITCloudPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-t3">Monthly Cost</p>
-                        <p className="text-sm text-t1 font-medium">{app.licenseType === 'free' ? 'Free' : `$${monthlyCost.toLocaleString()}`}</p>
+                        <p className="text-sm text-t1 font-medium">{app.licenseType === 'free' ? 'Free' : formatCurrency(monthlyCost, defaultCurrency)}</p>
                       </div>
                       <div className="flex gap-1">
                         <Button variant="outline" size="sm" onClick={() => { setAssignAppId(app.id); setShowAssignAppModal(true) }}>
@@ -1006,7 +1008,7 @@ export default function ITCloudPage() {
               <StatCard label="In Warehouse" value={inventoryStats.inWarehouse} icon={<Warehouse size={20} />} change="Ready to deploy" />
               <StatCard label="Assigned" value={inventoryStats.assigned} icon={<Users size={20} />} change="In use" />
               <StatCard label="In Transit" value={inventoryStats.inTransit} icon={<Truck size={20} />} change="Shipping" />
-              <StatCard label="Total Asset Value" value={`$${inventoryStats.totalValue.toLocaleString()}`} icon={<Box size={20} />} change={`${deviceInventory.length} items`} />
+              <StatCard label="Total Asset Value" value={formatCurrency(inventoryStats.totalValue, defaultCurrency)} icon={<Box size={20} />} change={`${deviceInventory.length} items`} />
             </div>
 
             <Card className="bg-card border-border overflow-hidden">
@@ -1055,7 +1057,7 @@ export default function ITCloudPage() {
                           </td>
                           <td className="p-3 text-t2">{item.assignedTo ? getEmployeeName(item.assignedTo) : '—'}</td>
                           <td className="p-3 text-t2">{item.purchaseDate || '—'}</td>
-                          <td className="p-3 text-t2">{item.purchaseCost ? `$${item.purchaseCost.toLocaleString()}` : '—'}</td>
+                          <td className="p-3 text-t2">{item.purchaseCost ? formatCurrency(item.purchaseCost, defaultCurrency) : '—'}</td>
                           <td className="p-3">
                             {item.warrantyExpiry ? (
                               <span className={cn('text-xs', warrantyExpired ? 'text-red-400' : 'text-t2')}>

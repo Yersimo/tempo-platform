@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { CreditCard, Plus, DollarSign, TrendingUp, Snowflake, PlayCircle, Eye, ShieldCheck, AlertTriangle, Tag, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -66,6 +67,7 @@ const SPEND_POLICIES = [
 
 export default function CorporateCardsPage() {
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const {
     org,
     corporateCards,
@@ -105,7 +107,7 @@ export default function CorporateCardsPage() {
     employee_id: '',
     card_type: 'virtual' as 'virtual' | 'physical',
     spend_limit: '',
-    currency: 'USD',
+    currency: defaultCurrency,
     merchant_categories: [] as string[],
   })
 
@@ -166,7 +168,7 @@ export default function CorporateCardsPage() {
   }
 
   function formatAmount(cents: number): string {
-    return `$${(cents / 100).toLocaleString()}`
+    return formatCurrency(cents, defaultCurrency, { cents: true })
   }
 
   function formatDate(dateStr: string): string {
@@ -229,7 +231,7 @@ export default function CorporateCardsPage() {
       employee_id: employees[0]?.id || '',
       card_type: 'virtual',
       spend_limit: '',
-      currency: 'USD',
+      currency: defaultCurrency,
       merchant_categories: [],
     })
     setShowIssueModal(true)

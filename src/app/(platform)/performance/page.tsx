@@ -14,7 +14,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -33,6 +34,7 @@ function MeritAllocationSection({ employees, reviews, departments, getDepartment
   departments: any[]
   getDepartmentName: (id: string) => string
 }) {
+  const defaultCurrency = useOrgCurrency()
   const [meritRaises, setMeritRaises] = useState<Record<string, number>>({})
   const [meritDeptFilter, setMeritDeptFilter] = useState('')
   const MERIT_BUDGET = 50000
@@ -153,7 +155,7 @@ function MeritAllocationSection({ employees, reviews, departments, getDepartment
                       </div>
                     </td>
                     <td className="tempo-td px-4 py-3 text-right text-sm text-t2">
-                      {emp.salary > 0 ? `$${emp.salary.toLocaleString()}` : '\u2014'}
+                      {emp.salary > 0 ? formatCurrency(emp.salary, defaultCurrency) : '\u2014'}
                     </td>
                     <td className="tempo-td px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -177,10 +179,10 @@ function MeritAllocationSection({ employees, reviews, departments, getDepartment
                       </div>
                     </td>
                     <td className="tempo-td px-4 py-3 text-right text-sm text-t2">
-                      {emp.raiseAmount > 0 ? `$${emp.raiseAmount.toLocaleString()}` : '\u2014'}
+                      {emp.raiseAmount > 0 ? formatCurrency(emp.raiseAmount, defaultCurrency) : '\u2014'}
                     </td>
                     <td className="tempo-td px-4 py-3 text-right text-sm font-medium text-t1">
-                      {emp.newSalary > emp.salary ? `$${emp.newSalary.toLocaleString()}` : '\u2014'}
+                      {emp.newSalary > emp.salary ? formatCurrency(emp.newSalary, defaultCurrency) : '\u2014'}
                     </td>
                     <td className="tempo-td px-4 py-3 text-center">
                       {emp.raisePct > 0 ? (
@@ -218,6 +220,7 @@ export default function PerformancePage() {
     addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
     ensureModulesLoaded,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -340,7 +343,7 @@ export default function PerformancePage() {
   const [showMeritModal, setShowMeritModal] = useState(false)
   const [showMeritRecModal, setShowMeritRecModal] = useState(false)
   const [expandedMeritCycle, setExpandedMeritCycle] = useState<string | null>(null)
-  const [meritForm, setMeritForm] = useState({ name: '', type: 'annual_merit' as string, fiscal_year: '2026', total_budget: 0, currency: 'USD', start_date: '', end_date: '' })
+  const [meritForm, setMeritForm] = useState({ name: '', type: 'annual_merit' as string, fiscal_year: '2026', total_budget: 0, currency: defaultCurrency, start_date: '', end_date: '' })
   const [meritRecForm, setMeritRecForm] = useState({ cycle_id: '', employee_id: '', current_salary: 0, proposed_salary: 0, rating: 3, justification: '' })
 
   // Review Template state
@@ -739,7 +742,7 @@ export default function PerformancePage() {
             {activeTab === 'recognition' && <Button size="sm" onClick={() => setShowKudosModal(true)}><Heart size={14} /> {t('giveKudos')}</Button>}
             {activeTab === 'competencies' && <Button size="sm" onClick={() => setShowCompRatingModal(true)}><BarChart3 size={14} /> {t('rateCompetency')}</Button>}
             {activeTab === 'pips' && <Button size="sm" onClick={() => { setPipForm({ employee_id: '', reason: '', start_date: '', end_date: '', support_provided: '', check_in_frequency: 'weekly', objectives: [] }); setShowPIPModal(true) }}><AlertTriangle size={14} /> Create PIP</Button>}
-            {activeTab === 'merit-cycles' && <Button size="sm" onClick={() => { setMeritForm({ name: '', type: 'annual_merit', fiscal_year: '2026', total_budget: 0, currency: 'USD', start_date: '', end_date: '' }); setShowMeritModal(true) }}><DollarSign size={14} /> New Merit Cycle</Button>}
+            {activeTab === 'merit-cycles' && <Button size="sm" onClick={() => { setMeritForm({ name: '', type: 'annual_merit', fiscal_year: '2026', total_budget: 0, currency: defaultCurrency, start_date: '', end_date: '' }); setShowMeritModal(true) }}><DollarSign size={14} /> New Merit Cycle</Button>}
             {activeTab === 'review-templates' && <Button size="sm" onClick={() => { setEditingTemplate(null); setTemplateForm({ name: '', type: 'annual', is_default: false, sections: [] }); setShowTemplateModal(true) }}><FileText size={14} /> Create Template</Button>}
           </div>
         }

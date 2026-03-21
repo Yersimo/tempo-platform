@@ -19,7 +19,8 @@ import {
   Download, FileText, BarChart3, Activity, ArrowUpRight, Receipt,
   TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save
 } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { INTEGRATION_CATALOG, type ConfigField } from '@/lib/integrations'
 import { MFASettings } from '@/components/settings/mfa-settings'
@@ -108,6 +109,7 @@ export default function SettingsPage() {
   const tc = useTranslations('common')
   const searchParams = useSearchParams()
   const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded, invoices: storeInvoices } = useTempo()
+  const defaultCurrency = useOrgCurrency()
   const initialTab = searchParams.get('tab') || 'general'
   const [pageLoading, setPageLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -196,7 +198,7 @@ export default function SettingsPage() {
   const [editingBankAccount, setEditingBankAccount] = useState<string | null>(null)
   const [bankAccountForm, setBankAccountForm] = useState({
     account_name: '', bank_name: '', routing_number: '', bank_account_number: '',
-    iban: '', swift_code: '', currency: 'USD', is_default: false,
+    iban: '', swift_code: '', currency: defaultCurrency, is_default: false,
   })
   const [bankAccountsLoaded, setBankAccountsLoaded] = useState(false)
 
@@ -557,7 +559,7 @@ export default function SettingsPage() {
   // Bank account helpers
   function openAddBankAccount() {
     setEditingBankAccount(null)
-    setBankAccountForm({ account_name: '', bank_name: '', routing_number: '', bank_account_number: '', iban: '', swift_code: '', currency: 'USD', is_default: false })
+    setBankAccountForm({ account_name: '', bank_name: '', routing_number: '', bank_account_number: '', iban: '', swift_code: '', currency: defaultCurrency, is_default: false })
     setShowBankAccountModal(true)
   }
   function openEditBankAccount(account: any) {
@@ -1074,10 +1076,10 @@ export default function SettingsPage() {
                   ]).map((plan) => {
                     const isCurrentPlan = billingSubscription?.plan?.toLowerCase() === plan.name.toLowerCase()
                     const priceDisplay = plan.pricePerEmployee === 0
-                      ? '$0'
+                      ? formatCurrency(0, defaultCurrency)
                       : plan.tier === 'enterprise'
                         ? 'Custom'
-                        : `$${(plan.pricePerEmployee / 100).toFixed(0)}`
+                        : formatCurrency(plan.pricePerEmployee, defaultCurrency, { cents: true })
 
                     const tierIcons: Record<string, React.ReactNode> = {
                       free: <Zap size={20} />,

@@ -17,7 +17,7 @@ import {
   Calendar, Pencil, Trash2, ChevronRight, Clock, Users, Search,
   Zap, Play, Pause, CheckCircle2, XCircle, ArrowRight, Lightbulb
 } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { scoreProjectHealth, predictTimelineRisk, detectResourceBottlenecks, suggestAutomationRules } from '@/lib/ai-engine'
@@ -35,6 +35,7 @@ export default function ProjectsPage() {
     addToast, departments, getDepartmentName,
     ensureModulesLoaded,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -54,7 +55,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<string | null>(null)
   const [projectForm, setProjectForm] = useState({
     title: '', description: '', status: 'planning' as string, owner_id: '',
-    start_date: '', end_date: '', budget: 0, currency: 'USD',
+    start_date: '', end_date: '', budget: 0, currency: defaultCurrency,
   })
 
   // Task modal
@@ -203,7 +204,7 @@ export default function ProjectsPage() {
   // CRUD handlers
   function openNewProject() {
     setEditingProject(null)
-    setProjectForm({ title: '', description: '', status: 'planning', owner_id: employees[0]?.id || '', start_date: '', end_date: '', budget: 0, currency: 'USD' })
+    setProjectForm({ title: '', description: '', status: 'planning', owner_id: employees[0]?.id || '', start_date: '', end_date: '', budget: 0, currency: defaultCurrency })
     setShowProjectModal(true)
   }
 
@@ -214,7 +215,7 @@ export default function ProjectsPage() {
     setProjectForm({
       title: p.title, description: p.description || '', status: p.status,
       owner_id: p.owner_id, start_date: p.start_date, end_date: p.end_date,
-      budget: p.budget || 0, currency: p.currency || 'USD',
+      budget: p.budget || 0, currency: p.currency || defaultCurrency,
     })
     setShowProjectModal(true)
   }

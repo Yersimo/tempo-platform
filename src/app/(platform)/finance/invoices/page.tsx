@@ -12,7 +12,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { FileText, Plus, DollarSign, AlertTriangle, Send, CreditCard, Star, TrendingUp, TrendingDown, Minus, Building2, Brain, PieChart, Search, XCircle } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
 import { forecastCashFlow, assessVendorConcentration, detectDuplicateSubscriptions, analyzeSavingsOpportunities } from '@/lib/ai-engine'
@@ -21,6 +22,7 @@ import { demoVendorContracts, demoSpendByCategory } from '@/lib/demo-data'
 export default function InvoicesPage() {
   const t = useTranslations('invoices')
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const { invoices, vendors, softwareLicenses, addInvoice, updateInvoice, ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -78,7 +80,7 @@ export default function InvoicesPage() {
     description: '',
     due_date: '',
     issued_date: '',
-    currency: 'USD',
+    currency: defaultCurrency,
   })
 
   function openNewInvoice() {
@@ -89,7 +91,7 @@ export default function InvoicesPage() {
       description: '',
       due_date: '',
       issued_date: new Date().toISOString().split('T')[0],
-      currency: 'USD',
+      currency: defaultCurrency,
     })
     setShowInvoiceModal(true)
   }
@@ -163,9 +165,9 @@ export default function InvoicesPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalInvoices')} value={invoices.length} icon={<FileText size={20} />} />
-        <StatCard label={t('totalAmount')} value={`$${totalAmount.toLocaleString()}`} icon={<DollarSign size={20} />} />
-        <StatCard label={t('paidLabel')} value={`$${paidAmount.toLocaleString()}`} change={t('settled')} changeType="positive" />
-        <StatCard label={t('overdueLabel')} value={`$${overdueAmount.toLocaleString()}`} change={t('requiresAttention')} changeType="negative" icon={<AlertTriangle size={20} />} href="/finance/budgets" />
+        <StatCard label={t('totalAmount')} value={formatCurrency(totalAmount, defaultCurrency)} icon={<DollarSign size={20} />} />
+        <StatCard label={t('paidLabel')} value={formatCurrency(paidAmount, defaultCurrency)} change={t('settled')} changeType="positive" />
+        <StatCard label={t('overdueLabel')} value={formatCurrency(overdueAmount, defaultCurrency)} change={t('requiresAttention')} changeType="negative" icon={<AlertTriangle size={20} />} href="/finance/budgets" />
       </div>
 
       {/* AI Insights */}
@@ -317,7 +319,7 @@ export default function InvoicesPage() {
         </h2>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <StatCard label={t('totalVendorSpend')} value={`$${totalVendorSpend.toLocaleString()}`} icon={<DollarSign size={20} />} />
+          <StatCard label={t('totalVendorSpend')} value={formatCurrency(totalVendorSpend, defaultCurrency)} icon={<DollarSign size={20} />} />
           <StatCard label={t('activeContracts')} value={demoVendorContracts.filter(c => c.status === 'active').length} />
           <StatCard label={t('contractExpiring')} value={demoVendorContracts.filter(c => c.status === 'expiring_soon').length} change={t('requiresAttention')} changeType="negative" />
           <StatCard label={t('performanceRating')} value="4.1 / 5" />
@@ -422,7 +424,7 @@ export default function InvoicesPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-t2">{cat.category}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-t1">${(cat.amount / 1000).toFixed(0)}K</span>
+                        <span className="font-medium text-t1">{formatCurrency(cat.amount, defaultCurrency, { compact: true })}</span>
                         <span className="text-xs text-t3">({pctVal}%)</span>
                       </div>
                     </div>
@@ -444,7 +446,7 @@ export default function InvoicesPage() {
                   <div key={cat.category} className="flex items-center justify-between py-1.5 border-b border-divider last:border-0">
                     <span className="text-sm text-t2">{cat.category}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-t1">${(cat.amount / 1000).toFixed(0)}K</span>
+                      <span className="text-sm font-medium text-t1">{formatCurrency(cat.amount, defaultCurrency, { compact: true })}</span>
                       <div className={`flex items-center gap-0.5 text-xs ${cat.trend === 'up' ? 'text-error' : 'text-success'}`}>
                         {cat.trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {changePct > 0 ? '+' : ''}{changePct}%

@@ -59,6 +59,10 @@ const MODULE_CONFIG: Record<string, {
   // Chat
   'chat-channels':    { table: schema.chatChannels, hasOrgId: true, defaultLimit: 50 },
   'chat-messages':    { table: schema.chatMessages, hasOrgId: true, defaultLimit: 100 },
+  // Procurement
+  'purchase-orders':       { table: schema.purchaseOrders, hasOrgId: true, defaultLimit: 50 },
+  'purchase-order-items':  { table: schema.purchaseOrderItems, hasOrgId: false, defaultLimit: 100 },
+  'procurement-requests':  { table: schema.procurementRequests, hasOrgId: true, defaultLimit: 50 },
   // Finance
   'corporate-cards':  { table: schema.corporateCards, hasOrgId: true, defaultLimit: 50 },
   'card-transactions':{ table: schema.cardTransactions, hasOrgId: true, defaultLimit: 100 },
@@ -181,6 +185,19 @@ const MODULE_CONFIG: Record<string, {
   'automation-workflows':       { table: schema.automationWorkflows, hasOrgId: true, defaultLimit: 20 },
   'automation-workflow-steps':  { table: schema.automationWorkflowSteps, hasOrgId: false, defaultLimit: 100 },
   'automation-workflow-runs':   { table: schema.automationWorkflowRuns, hasOrgId: true, defaultLimit: 50 },
+  'automation-workflow-run-steps': { table: schema.automationWorkflowRunSteps, hasOrgId: false, defaultLimit: 100 },
+  // Learning (extended)
+  'course-prerequisites':    { table: schema.coursePrerequisites, hasOrgId: true, defaultLimit: 50 },
+  'scorm-packages':          { table: schema.scormPackages, hasOrgId: true, defaultLimit: 50 },
+  'scorm-tracking':          { table: schema.scormTracking, hasOrgId: true, defaultLimit: 100 },
+  'content-library':         { table: schema.contentLibrary, hasOrgId: true, defaultLimit: 50 },
+  'learner-badges':          { table: schema.learnerBadges, hasOrgId: true, defaultLimit: 100 },
+  'learner-points':          { table: schema.learnerPoints, hasOrgId: true, defaultLimit: 100 },
+  // Recruiting (extended)
+  'background-checks':       { table: schema.backgroundChecks, hasOrgId: true, defaultLimit: 50 },
+  'referrals':               { table: schema.referrals, hasOrgId: true, defaultLimit: 50 },
+  'knockout-questions':      { table: schema.knockoutQuestions, hasOrgId: true, defaultLimit: 50 },
+  'candidate-scheduling':    { table: schema.candidateScheduling, hasOrgId: true, defaultLimit: 50 },
   // App Studio
   'custom-apps':           { table: schema.customApps, hasOrgId: true, defaultLimit: 20 },
   'app-pages':             { table: schema.appPages, hasOrgId: false, defaultLimit: 50 },
@@ -203,6 +220,9 @@ const MODULE_CONFIG: Record<string, {
   'academy-certificates':           { table: schema.academyCertificates, hasOrgId: true, defaultLimit: 50 },
   'academy-communications':         { table: schema.academyCommunications, hasOrgId: true, defaultLimit: 50 },
   'academy-comm-triggers':          { table: schema.academyCommTriggers, hasOrgId: true, defaultLimit: 50 },
+  // Journal Entries (GL)
+  'journal-entries':       { table: schema.journalEntries, hasOrgId: true, defaultLimit: 50 },
+  'journal-entry-lines':   { table: schema.journalEntryLines, hasOrgId: false, defaultLimit: 100 },
 }
 
 export async function GET(

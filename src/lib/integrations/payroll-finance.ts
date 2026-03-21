@@ -4,10 +4,14 @@
  * When a payroll run is completed:
  * 1. Generate payroll journal entries for the finance module
  * 2. Break down by department cost centers
+ * 3. Persist journal entries to the database (journal_entries + journal_entry_lines)
  *
  * All amounts are in CENTS (e.g. 500000 = $5,000).
  * All integrations are event-driven via the cross-module event bus.
  */
+
+// DB imports are done dynamically inside persistPayrollJournalEntry() to avoid
+// bundling server-only code into the client bundle (this file is reachable from store.tsx).
 
 // ---------------------------------------------------------------------------
 // Types
@@ -218,18 +222,85 @@ export function generatePayrollJournalEntries(
 }
 
 /**
- * Apply payroll journal entry to the store.
+ * Persist a payroll journal entry and its lines to the database.
+ *
+ * This is a fire-and-forget persistence layer — errors are logged but do not
+ * block the in-memory store update so the UI stays responsive.
+ *
+ * @param result - Output from generatePayrollJournalEntries
+ * @param orgId  - The organization ID for RLS scoping
+ */
+export async function persistPayrollJournalEntry(
+  result: PayrollFinanceResult,
+  orgId: string,
+): Promise<void> {
+  try {
+    // Dynamic import to avoid bundling server-only DB code into client
+    const { db } = await import('@/lib/db')
+    const schema = await import('@/lib/db/schema')
+    const je = result.journalEntry
+
+    // Insert the header row and get back the generated id
+    const [inserted] = await db.insert(schema.journalEntries).values({
+      orgId,
+      type: je.type,
+      reference: je.reference,
+      description: je.description,
+      date: je.date,
+      totalDebitCents: je.totalDebitCents,
+      totalCreditCents: je.totalCreditCents,
+      currency: je.currency,
+      status: je.status,
+      sourceEntityType: 'payroll_run',
+      sourceEntityId: result.payrollRunId,
+    }).returning({ id: schema.journalEntries.id })
+
+    // Insert all line items
+    if (inserted && je.lines.length > 0) {
+      await db.insert(schema.journalEntryLines).values(
+        je.lines.map((line) => ({
+          journalEntryId: inserted.id,
+          accountCode: line.account_code,
+          accountName: line.account_name,
+          costCenter: line.cost_center ?? null,
+          departmentId: line.department_id ?? null,
+          debitCents: line.debit_cents,
+          creditCents: line.credit_cents,
+          description: line.description,
+        })),
+      )
+    }
+
+    console.info(
+      `[Integration] Payroll journal entry persisted to DB: ${inserted.id} ` +
+      `(${je.lines.length} lines, ref ${je.reference})`,
+    )
+  } catch (err) {
+    console.error('[Integration] Failed to persist payroll journal entry to DB:', err)
+  }
+}
+
+/**
+ * Apply payroll journal entry to the store and persist to DB.
  *
  * @param result - Output from generatePayrollJournalEntries
  * @param store  - Store actions for persisting
- * @returns Whether the journal entry was created
+ * @param orgId  - Optional org ID; when provided the entry is also written to the database
+ * @returns Whether the journal entry was created in the store
  */
 export function applyPayrollJournalEntry(
   result: PayrollFinanceResult,
   store: PayrollFinanceStoreSlice,
+  orgId?: string,
 ): boolean {
   if (store.addJournalEntry) {
     store.addJournalEntry(result.journalEntry as unknown as Record<string, unknown>)
+
+    // Fire-and-forget DB persistence when orgId is available
+    if (orgId) {
+      persistPayrollJournalEntry(result, orgId).catch(() => {})
+    }
+
     return true
   }
   return false

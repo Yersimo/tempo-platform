@@ -4,10 +4,14 @@
  * When expenses are approved:
  * 1. Create journal entries in the finance/GL module
  * 2. Categorize by cost center and GL account
+ * 3. Persist journal entries to the database (journal_entries + journal_entry_lines)
  *
  * All amounts are in CENTS (e.g. 500000 = $5,000).
  * All integrations are event-driven via the cross-module event bus.
  */
+
+// DB imports are done dynamically inside persistExpenseJournalEntry() to avoid
+// bundling server-only code into the client bundle (this file is reachable from store.tsx).
 
 // ---------------------------------------------------------------------------
 // Types
@@ -220,18 +224,85 @@ export function generateExpenseJournalEntry(
 }
 
 /**
- * Apply expense journal entry to the store.
+ * Persist an expense journal entry and its lines to the database.
+ *
+ * This is a fire-and-forget persistence layer — errors are logged but do not
+ * block the in-memory store update so the UI stays responsive.
+ *
+ * @param result - Output from generateExpenseJournalEntry
+ * @param orgId  - The organization ID for RLS scoping
+ */
+export async function persistExpenseJournalEntry(
+  result: ExpenseFinanceResult,
+  orgId: string,
+): Promise<void> {
+  try {
+    // Dynamic import to avoid bundling server-only DB code into client
+    const { db } = await import('@/lib/db')
+    const schema = await import('@/lib/db/schema')
+    const je = result.journalEntry
+
+    // Insert the header row and get back the generated id
+    const [inserted] = await db.insert(schema.journalEntries).values({
+      orgId,
+      type: 'expense',
+      reference: je.reference,
+      description: je.description,
+      date: je.date,
+      totalDebitCents: je.totalDebitCents,
+      totalCreditCents: je.totalCreditCents,
+      currency: je.currency,
+      status: je.status,
+      sourceEntityType: 'expense_report',
+      sourceEntityId: result.reportId,
+    }).returning({ id: schema.journalEntries.id })
+
+    // Insert all line items
+    if (inserted && je.lines.length > 0) {
+      await db.insert(schema.journalEntryLines).values(
+        je.lines.map((line) => ({
+          journalEntryId: inserted.id,
+          accountCode: line.account_code,
+          accountName: line.account_name,
+          costCenter: line.cost_center ?? null,
+          departmentId: line.department_id ?? null,
+          debitCents: line.debit_cents,
+          creditCents: line.credit_cents,
+          description: line.description,
+        })),
+      )
+    }
+
+    console.info(
+      `[Integration] Expense journal entry persisted to DB: ${inserted.id} ` +
+      `(${je.lines.length} lines, ref ${je.reference})`,
+    )
+  } catch (err) {
+    console.error('[Integration] Failed to persist expense journal entry to DB:', err)
+  }
+}
+
+/**
+ * Apply expense journal entry to the store and persist to DB.
  *
  * @param result - Output from generateExpenseJournalEntry
  * @param store  - Store actions for persisting
- * @returns Whether the journal entry was created
+ * @param orgId  - Optional org ID; when provided the entry is also written to the database
+ * @returns Whether the journal entry was created in the store
  */
 export function applyExpenseJournalEntry(
   result: ExpenseFinanceResult,
   store: ExpenseFinanceStoreSlice,
+  orgId?: string,
 ): boolean {
   if (store.addJournalEntry) {
     store.addJournalEntry(result.journalEntry as unknown as Record<string, unknown>)
+
+    // Fire-and-forget DB persistence when orgId is available
+    if (orgId) {
+      persistExpenseJournalEntry(result, orgId).catch(() => {})
+    }
+
     return true
   }
   return false

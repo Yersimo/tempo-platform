@@ -14,7 +14,8 @@ import { Tabs } from '@/components/ui/tabs'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AppWindow, Plus, Key, AlertTriangle, CheckCircle, BarChart3, ShieldAlert, Calendar, DollarSign, Search, Users, Building2, Globe, ShieldCheck, ShieldX } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { AIRecommendationList, AIInsightCard } from '@/components/ai'
 import { optimizeLicenses, detectShadowIT } from '@/lib/ai-engine'
 
@@ -27,6 +28,7 @@ export default function AppsPage() {
     ensureModulesLoaded,
     shadowITDetections, updateShadowITDetection: storeUpdateShadowIT,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,7 +64,7 @@ export default function AppsPage() {
     used_licenses: '',
     cost_per_license: '',
     renewal_date: '',
-    currency: 'USD',
+    currency: defaultCurrency,
   })
 
   // Add IT Request modal
@@ -178,7 +180,7 @@ export default function AppsPage() {
   }
 
   function openAddLicense() {
-    setLicenseForm({ name: '', vendor: '', total_licenses: '', used_licenses: '', cost_per_license: '', renewal_date: '', currency: 'USD' })
+    setLicenseForm({ name: '', vendor: '', total_licenses: '', used_licenses: '', cost_per_license: '', renewal_date: '', currency: defaultCurrency })
     setShowLicenseModal(true)
   }
 
@@ -299,7 +301,7 @@ export default function AppsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('totalLicenses')} value={totalLicenses} icon={<Key size={20} />} />
         <StatCard label={t('utilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} change={t('inUse', { count: usedLicenses })} changeType="neutral" />
-        <StatCard label={t('monthlyCost')} value={`$${Math.round(monthlyCost).toLocaleString()}`} icon={<AppWindow size={20} />} href="/finance/budgets" />
+        <StatCard label={t('monthlyCost')} value={formatCurrency(monthlyCost, defaultCurrency)} icon={<AppWindow size={20} />} href="/finance/budgets" />
         <StatCard label={t('openItRequests')} value={openRequests} icon={<AlertTriangle size={20} />} />
       </div>
 
@@ -331,7 +333,7 @@ export default function AppsPage() {
                 </div>
                 <div>
                   <p className="text-[0.6rem] text-t3 uppercase">{t('costPerLicense')}</p>
-                  <p className="text-sm font-semibold text-t1">${license.cost_per_license}/mo</p>
+                  <p className="text-sm font-semibold text-t1">{formatCurrency(license.cost_per_license, defaultCurrency)}/mo</p>
                 </div>
                 <div>
                   <p className="text-[0.6rem] text-t3 uppercase">{t('renewal')}</p>
@@ -404,8 +406,8 @@ export default function AppsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <StatCard label={t('licenseUtilization')} value={totalLicenses > 0 ? `${Math.round(usedLicenses / totalLicenses * 100)}%` : '0%'} icon={<Key size={20} />} />
           <StatCard label={t('totalUnused')} value={unusedLicenseCount} change={t('flaggedForReclamation')} changeType="negative" />
-          <StatCard label={t('costPerUser')} value={`$${avgCostPerUser.toFixed(2)}/mo`} icon={<DollarSign size={20} />} />
-          <StatCard label={t('potentialSavings')} value={`$${Math.round(potentialSavings).toLocaleString()}/mo`} change={`$${Math.round(potentialSavings * 12).toLocaleString()}/yr`} changeType="positive" />
+          <StatCard label={t('costPerUser')} value={`${formatCurrency(avgCostPerUser, defaultCurrency)}/mo`} icon={<DollarSign size={20} />} />
+          <StatCard label={t('potentialSavings')} value={`${formatCurrency(Math.round(potentialSavings), defaultCurrency)}/mo`} change={`${formatCurrency(Math.round(potentialSavings * 12), defaultCurrency)}/yr`} changeType="positive" />
         </div>
 
         {/* License utilization details */}
@@ -443,7 +445,7 @@ export default function AppsPage() {
                         <p className="text-xs text-t3">{t('unusedLicenses')}: {unused}</p>
                       </div>
                       {unused > 0 && (
-                        <Badge variant="warning">${wastedCost.toLocaleString()}/mo</Badge>
+                        <Badge variant="warning">{formatCurrency(wastedCost, defaultCurrency)}/mo</Badge>
                       )}
                       <Badge variant={renewalDays < 90 ? 'warning' : 'default'}>
                         {t('renewsIn', { days: renewalDays })}
@@ -877,16 +879,16 @@ export default function AppsPage() {
                     {bulkLicSelectedLicenses.map(l => (
                       <div key={l.id} className="flex justify-between text-xs">
                         <span className="text-t2">{l.name} x {bulkLicSelectedEmployees.length}</span>
-                        <span className="text-t1 font-medium">${(l.cost_per_license * bulkLicSelectedEmployees.length).toLocaleString()}/mo</span>
+                        <span className="text-t1 font-medium">{formatCurrency(l.cost_per_license * bulkLicSelectedEmployees.length, defaultCurrency)}/mo</span>
                       </div>
                     ))}
                     <div className="flex justify-between text-sm font-semibold pt-2 border-t border-divider mt-2">
                       <span className="text-t1">Total Monthly Cost</span>
-                      <span className="text-tempo-600">${bulkLicTotalMonthlyCost.toLocaleString()}/mo</span>
+                      <span className="text-tempo-600">{formatCurrency(bulkLicTotalMonthlyCost, defaultCurrency)}/mo</span>
                     </div>
                     <div className="flex justify-between text-xs text-t3">
                       <span>Annual Estimate</span>
-                      <span>${(bulkLicTotalMonthlyCost * 12).toLocaleString()}/yr</span>
+                      <span>{formatCurrency(bulkLicTotalMonthlyCost * 12, defaultCurrency)}/yr</span>
                     </div>
                   </div>
                 </div>

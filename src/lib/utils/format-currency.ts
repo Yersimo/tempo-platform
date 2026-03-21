@@ -8,7 +8,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   UGX: 'USh', RWF: 'RF', ETB: 'Br', EGP: 'E£', MAD: 'MAD',
   XOF: 'CFA', XAF: 'FCFA', USD: '$', EUR: '€', GBP: '£',
   MZN: 'MT', ZMW: 'ZK', BWP: 'P', MUR: '₨', NAD: 'N$',
-  CDF: 'FC', AOA: 'Kz', TND: 'DT', DZD: 'DA', LYD: 'LD',
+  CDF: 'FC', AOA: 'Kz', TND: 'DT', DZD: 'DA', LYD: 'LD', ZWL: 'Z$',
 }
 
 export function formatCurrency(
@@ -30,12 +30,18 @@ export function formatCurrency(
       return `${symbol}${formatter.format(value)}`
     }
 
-    return new Intl.NumberFormat('en', {
+    const formatted = new Intl.NumberFormat('en', {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(value)
+    // Intl may render ISO code (e.g. "GHS 0") instead of symbol — replace with our symbol map
+    const sym = CURRENCY_SYMBOLS[currency]
+    if (sym && formatted.startsWith(currency)) {
+      return `${sym}${formatted.slice(currency.length).trimStart()}`
+    }
+    return formatted
   } catch {
     // Fallback for unsupported currency codes
     const symbol = CURRENCY_SYMBOLS[currency] || currency

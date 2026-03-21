@@ -15,7 +15,7 @@ import {
   Plus, Compass, Target, TrendingUp, BarChart3,
   Pencil, Trash2, ChevronRight, ArrowUpRight, AlertTriangle, Loader2, Search
 } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { scoreOKRQuality, analyzeStrategyAlignment, forecastKPITrend } from '@/lib/ai-engine'
@@ -32,6 +32,7 @@ export default function StrategyPage() {
     getEmployeeName, currentEmployeeId, departments, getDepartmentName,
     ensureModulesLoaded, addToast,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -64,7 +65,7 @@ export default function StrategyPage() {
   const [editingInit, setEditingInit] = useState<string | null>(null)
   const [initForm, setInitForm] = useState({
     title: '', description: '', status: 'planned' as string, objective_id: '', owner_id: '',
-    start_date: '', end_date: '', progress: 0, budget: 0, currency: 'USD',
+    start_date: '', end_date: '', progress: 0, budget: 0, currency: defaultCurrency,
   })
 
   // KPI modal
@@ -222,7 +223,7 @@ export default function StrategyPage() {
 
   function openNewInitiative() {
     setEditingInit(null)
-    setInitForm({ title: '', description: '', status: 'planned', objective_id: '', owner_id: '', start_date: '', end_date: '', progress: 0, budget: 0, currency: 'USD' })
+    setInitForm({ title: '', description: '', status: 'planned', objective_id: '', owner_id: '', start_date: '', end_date: '', progress: 0, budget: 0, currency: defaultCurrency })
     setShowInitModal(true)
   }
 
@@ -234,7 +235,7 @@ export default function StrategyPage() {
       title: i.title, description: i.description || '', status: i.status,
       objective_id: i.objective_id || '', owner_id: i.owner_id,
       start_date: i.start_date || '', end_date: i.end_date || '',
-      progress: i.progress, budget: i.budget || 0, currency: i.currency || 'USD',
+      progress: i.progress, budget: i.budget || 0, currency: i.currency || defaultCurrency,
     })
     setShowInitModal(true)
   }

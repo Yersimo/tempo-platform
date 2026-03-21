@@ -13,7 +13,8 @@ import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, ChartLegend, CHART_COLORS } from '@/components/ui/charts'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { PieChart, Plus, DollarSign, Pencil, BarChart3, TrendingUp, TrendingDown, Minus, Users, Building2, ArrowRightLeft, Lightbulb, Calendar, Target, Layers, Search, AlertTriangle, Wallet } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { AIAlertBanner, AIScoreBadge, AIInsightCard } from '@/components/ai'
 import { calculateBurnRate, calculateForecastAccuracy, analyzeVarianceByDepartment } from '@/lib/ai-engine'
 import { demoBudgetForecast, demoRollingForecast, demoMultiYearPlan } from '@/lib/demo-data'
@@ -21,6 +22,7 @@ import { demoBudgetForecast, demoRollingForecast, demoMultiYearPlan } from '@/li
 export default function BudgetsPage() {
   const t = useTranslations('budgets')
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const { budgets, departments, addBudget, updateBudget, getDepartmentName, ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -87,7 +89,7 @@ export default function BudgetsPage() {
     total_amount: '',
     spent_amount: '',
     fiscal_year: '2026',
-    currency: 'USD',
+    currency: defaultCurrency,
   })
 
   function openNewBudget() {
@@ -98,7 +100,7 @@ export default function BudgetsPage() {
       total_amount: '',
       spent_amount: '',
       fiscal_year: '2026',
-      currency: 'USD',
+      currency: defaultCurrency,
     })
     setShowBudgetModal(true)
   }
@@ -113,7 +115,7 @@ export default function BudgetsPage() {
       total_amount: String(b.total_amount),
       spent_amount: String(b.spent_amount),
       fiscal_year: String(b.fiscal_year),
-      currency: b.currency || 'USD',
+      currency: b.currency || defaultCurrency,
     })
     setShowBudgetModal(true)
   }
@@ -196,9 +198,9 @@ export default function BudgetsPage() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label={t('totalBudget')} value={`$${(totalBudget / 1000000).toFixed(1)}M`} change={`FY 2026`} changeType="neutral" icon={<PieChart size={20} />} />
-        <StatCard label={t('spent')} value={`$${(totalSpent / 1000000).toFixed(1)}M`} change={t('utilized', { percent: utilization })} changeType="neutral" icon={<DollarSign size={20} />} href="/expense" />
-        <StatCard label={t('remaining')} value={`$${((totalBudget - totalSpent) / 1000000).toFixed(1)}M`} change={t('availableLabel')} changeType="positive" />
+        <StatCard label={t('totalBudget')} value={formatCurrency(totalBudget, defaultCurrency, { compact: true })} change={`FY 2026`} changeType="neutral" icon={<PieChart size={20} />} />
+        <StatCard label={t('spent')} value={formatCurrency(totalSpent, defaultCurrency, { compact: true })} change={t('utilized', { percent: utilization })} changeType="neutral" icon={<DollarSign size={20} />} href="/expense" />
+        <StatCard label={t('remaining')} value={formatCurrency(totalBudget - totalSpent, defaultCurrency, { compact: true })} change={t('availableLabel')} changeType="positive" />
         <StatCard label={t('activeBudgets')} value={activeBudgets} />
       </div>
 
@@ -252,15 +254,15 @@ export default function BudgetsPage() {
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div>
                   <p className="text-[0.6rem] text-t3 uppercase">{t('budget')}</p>
-                  <p className="text-sm font-semibold text-t1">${(budget.total_amount / 1000000).toFixed(1)}M</p>
+                  <p className="text-sm font-semibold text-t1">{formatCurrency(budget.total_amount, defaultCurrency, { compact: true })}</p>
                 </div>
                 <div>
                   <p className="text-[0.6rem] text-t3 uppercase">{t('spentLabel')}</p>
-                  <p className="text-sm font-semibold text-tempo-600">${(budget.spent_amount / 1000).toFixed(0)}K</p>
+                  <p className="text-sm font-semibold text-tempo-600">{formatCurrency(budget.spent_amount, defaultCurrency, { compact: true })}</p>
                 </div>
                 <div>
                   <p className="text-[0.6rem] text-t3 uppercase">{t('remainingLabel')}</p>
-                  <p className="text-sm font-semibold text-success">${((budget.total_amount - budget.spent_amount) / 1000000).toFixed(1)}M</p>
+                  <p className="text-sm font-semibold text-success">{formatCurrency(budget.total_amount - budget.spent_amount, defaultCurrency, { compact: true })}</p>
                 </div>
               </div>
               <Progress value={pct} showLabel color={pct > 80 ? 'error' : pct > 50 ? 'warning' : 'success'} />
@@ -309,11 +311,11 @@ export default function BudgetsPage() {
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs">
                           <span className="text-t3">{t('planned')}</span>
-                          <span className="text-t1 font-medium">${(month.planned / 1000).toFixed(0)}K</span>
+                          <span className="text-t1 font-medium">{formatCurrency(month.planned, defaultCurrency, { compact: true })}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-t3">{t('actual')}</span>
-                          <span className="text-t1 font-medium">${(month.actual / 1000).toFixed(0)}K</span>
+                          <span className="text-t1 font-medium">{formatCurrency(month.actual, defaultCurrency, { compact: true })}</span>
                         </div>
                         <div className="flex justify-between text-xs border-t border-divider pt-1">
                           <span className="text-t3">{t('variance')}</span>
@@ -331,13 +333,13 @@ export default function BudgetsPage() {
               {/* Summary bar */}
               <div className="flex items-center justify-between py-2 px-3 bg-canvas rounded-lg">
                 <div className="text-xs text-t3">
-                  {t('planned')}: <span className="font-medium text-t1">${(dept.totalPlanned / 1000).toFixed(0)}K</span>
+                  {t('planned')}: <span className="font-medium text-t1">{formatCurrency(dept.totalPlanned, defaultCurrency, { compact: true })}</span>
                 </div>
                 <div className="text-xs text-t3">
-                  {t('actual')}: <span className="font-medium text-t1">${(dept.totalActual / 1000).toFixed(0)}K</span>
+                  {t('actual')}: <span className="font-medium text-t1">{formatCurrency(dept.totalActual, defaultCurrency, { compact: true })}</span>
                 </div>
                 <div className={`text-xs font-medium flex items-center gap-0.5 ${dept.variance > 0 ? 'text-error' : 'text-success'}`}>
-                  {t('variance')}: {dept.variancePct > 0 ? '+' : ''}{dept.variancePct}% (${Math.abs(Math.round(dept.variance / 1000))}K)
+                  {t('variance')}: {dept.variancePct > 0 ? '+' : ''}{dept.variancePct}% ({formatCurrency(Math.abs(dept.variance), defaultCurrency, { compact: true })})
                 </div>
               </div>
             </Card>
@@ -472,7 +474,7 @@ export default function BudgetsPage() {
                   xKey="name"
                   height={140}
                   showLegend
-                  formatter={(v) => `$${(v / 1000).toFixed(0)}K`}
+                  formatter={(v) => formatCurrency(v, defaultCurrency, { compact: true })}
                   className="mb-3"
                 />
 
@@ -480,15 +482,15 @@ export default function BudgetsPage() {
                 <div className="grid grid-cols-3 gap-3 py-2 px-3 bg-canvas rounded-lg">
                   <div className="text-center">
                     <p className="text-[0.6rem] text-t3 uppercase">{t('budgetLine')}</p>
-                    <p className="text-sm font-semibold text-t1">${(totalBdg / 1000000).toFixed(2)}M</p>
+                    <p className="text-sm font-semibold text-t1">{formatCurrency(totalBdg, defaultCurrency, { compact: true })}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-[0.6rem] text-t3 uppercase">{t('actualLine')}</p>
-                    <p className="text-sm font-semibold text-green-600">${(totalAct / 1000000).toFixed(2)}M</p>
+                    <p className="text-sm font-semibold text-green-600">{formatCurrency(totalAct, defaultCurrency, { compact: true })}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-[0.6rem] text-t3 uppercase">{t('forecastLine')}</p>
-                    <p className="text-sm font-semibold text-tempo-600">${(totalForecast / 1000000).toFixed(2)}M</p>
+                    <p className="text-sm font-semibold text-tempo-600">{formatCurrency(totalForecast, defaultCurrency, { compact: true })}</p>
                   </div>
                 </div>
               </Card>
@@ -543,15 +545,15 @@ export default function BudgetsPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-xs">
                     <span className="text-t3">{t('revenue')}</span>
-                    <span className="font-semibold text-t1">${(adjRevenue / 1000000).toFixed(0)}M</span>
+                    <span className="font-semibold text-t1">{formatCurrency(adjRevenue, defaultCurrency, { compact: true })}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-t3">{t('opex')}</span>
-                    <span className="font-semibold text-t1">${(adjOpex / 1000000).toFixed(0)}M</span>
+                    <span className="font-semibold text-t1">{formatCurrency(adjOpex, defaultCurrency, { compact: true })}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-t3">{t('capex')}</span>
-                    <span className="font-semibold text-t1">${(adjCapex / 1000000).toFixed(0)}M</span>
+                    <span className="font-semibold text-t1">{formatCurrency(adjCapex, defaultCurrency, { compact: true })}</span>
                   </div>
                   <div className="flex justify-between text-xs border-t border-divider pt-2">
                     <span className="text-t3">{t('headcount')}</span>
@@ -621,8 +623,8 @@ export default function BudgetsPage() {
                       const adjHC = Math.round(yrDept.headcount * scenarioMultiplier.headcountMultiplier)
                       return (
                         <Fragment key={yr.year}>
-                          <td className="px-2 py-2.5 text-right text-t1">${(adjOpex / 1000000).toFixed(1)}M</td>
-                          <td className="px-2 py-2.5 text-right text-t2">${(yrDept.capex / 1000000).toFixed(1)}M</td>
+                          <td className="px-2 py-2.5 text-right text-t1">{formatCurrency(adjOpex, defaultCurrency, { compact: true })}</td>
+                          <td className="px-2 py-2.5 text-right text-t2">{formatCurrency(yrDept.capex, defaultCurrency, { compact: true })}</td>
                           <td className="px-2 py-2.5 text-right text-t2">{adjHC}</td>
                         </Fragment>
                       )
@@ -639,8 +641,8 @@ export default function BudgetsPage() {
                     const totalHC = Math.round(yr.departments.reduce((s, d) => s + d.headcount, 0) * scenarioMultiplier.headcountMultiplier)
                     return (
                       <Fragment key={yr.year}>
-                        <td className="px-2 py-2.5 text-right text-t1">${(totalOpex / 1000000).toFixed(1)}M</td>
-                        <td className="px-2 py-2.5 text-right text-t1">${(totalCapex / 1000000).toFixed(1)}M</td>
+                        <td className="px-2 py-2.5 text-right text-t1">{formatCurrency(totalOpex, defaultCurrency, { compact: true })}</td>
+                        <td className="px-2 py-2.5 text-right text-t1">{formatCurrency(totalCapex, defaultCurrency, { compact: true })}</td>
                         <td className="px-2 py-2.5 text-right text-t1">{totalHC}</td>
                       </Fragment>
                     )

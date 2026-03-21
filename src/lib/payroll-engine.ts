@@ -24,9 +24,44 @@ import {
   getOvertimeRules,
   getMandatoryBonuses,
   getMaternityPaternityRules,
+  getLaborLaw,
 } from '@/lib/payroll/labor-law-registry'
 import { logPayrollAudit } from '@/lib/payroll/audit'
 import { getTaxCalculatorOverrides } from '@/lib/payroll/tax-config-cache'
+
+// ============================================================
+// PAY FREQUENCY HELPERS
+// ============================================================
+
+export type PayFrequency = 'monthly' | 'semi-monthly' | 'bimonthly' | 'biweekly' | 'weekly'
+
+/**
+ * Convert a pay frequency string to the number of pay periods per year.
+ */
+export function getPayPeriodsPerYear(frequency: string | undefined | null): number {
+  switch (frequency) {
+    case 'weekly': return 52
+    case 'biweekly': return 26
+    case 'semi-monthly':
+    case 'bimonthly': return 24
+    case 'monthly': return 12
+    default: return 12
+  }
+}
+
+/**
+ * Resolve the effective pay frequency for an employee's country.
+ * Priority: explicit override > labor law registry > 'monthly' default.
+ */
+function resolvePayFrequency(
+  overrideFrequency: string | undefined,
+  countryCode: string,
+): string {
+  if (overrideFrequency) return overrideFrequency
+  const law = getLaborLaw(countryCode)
+  if (law?.payFrequency) return law.payFrequency
+  return 'monthly'
+}
 
 // ============================================================
 // TYPES & INTERFACES
@@ -55,6 +90,7 @@ export interface GarnishmentInput {
 
 export interface ProcessPayrollOptions {
   country?: string // ISO country code — filters to employees in this country only
+  payFrequency?: string // Override pay frequency ('monthly' | 'semi-monthly' | 'biweekly' | 'weekly')
   overtime?: Record<string, OvertimeInput> // employeeId → overtime data
   bonuses?: Record<string, BonusInput[]>  // employeeId → bonus array
   garnishments?: Record<string, GarnishmentInput[]> // employeeId → garnishment array
@@ -63,7 +99,7 @@ export interface ProcessPayrollOptions {
 // Country → default currency mapping (Fix 6)
 export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   GH: 'GHS', NG: 'NGN', KE: 'KES', ZA: 'ZAR', TZ: 'TZS', UG: 'UGX', RW: 'RWF',
-  ET: 'ETB', EG: 'EGP', MA: 'MAD', MZ: 'MZN', ZM: 'ZMW', ZW: 'USD', MW: 'MWK',
+  ET: 'ETB', EG: 'EGP', MA: 'MAD', MZ: 'MZN', ZM: 'ZMW', ZW: 'ZWL', MW: 'MWK',
   CI: 'XOF', SN: 'XOF', TG: 'XOF', BJ: 'XOF', BF: 'XOF', NE: 'XOF', ML: 'XOF',
   GW: 'XOF', CM: 'XAF', GA: 'XAF', CG: 'XAF', CD: 'CDF', TD: 'XAF', CF: 'XAF',
   GQ: 'XAF', GN: 'GNF', GM: 'GMD', SL: 'SLL', LR: 'LRD', CV: 'CVE', MR: 'MRU',
@@ -950,7 +986,7 @@ function resolveCountryCode(country: string | null): SupportedCountry {
  * Retrieve an employee's current annual salary from the most recent salary review.
  * Falls back to 0 if no salary review record exists.
  */
-async function getEmployeeSalary(employeeId: string, orgId: string): Promise<{ salary: number; currency: CurrencyCode }> {
+async function getEmployeeSalary(employeeId: string, orgId: string, country?: string | null): Promise<{ salary: number; currency: CurrencyCode }> {
   const latestReview = await db
     .select({
       currentSalary: schema.salaryReviews.currentSalary,
@@ -969,7 +1005,8 @@ async function getEmployeeSalary(employeeId: string, orgId: string): Promise<{ s
     .limit(1)
 
   if (latestReview.length === 0) {
-    return { salary: 0, currency: 'USD' }
+    const fallbackCurrency = country ? (COUNTRY_CURRENCY_MAP[resolveCountryCode(country)] || 'USD') : 'USD'
+    return { salary: 0, currency: fallbackCurrency as CurrencyCode }
   }
 
   const review = latestReview[0]
@@ -977,7 +1014,8 @@ async function getEmployeeSalary(employeeId: string, orgId: string): Promise<{ s
   // DB stores salary in cents (integer) — convert to dollars for calculation
   const salaryInCents = review.status === 'approved' ? review.proposedSalary : review.currentSalary
   const salary = salaryInCents / 100
-  const currency = (review.currency || 'USD') as CurrencyCode
+  const fallbackCurrency = country ? (COUNTRY_CURRENCY_MAP[resolveCountryCode(country)] || 'USD') : 'USD'
+  const currency = (review.currency || fallbackCurrency) as CurrencyCode
 
   return { salary, currency }
 }
@@ -1163,10 +1201,14 @@ export async function processPayroll(
 
   for (const employee of eligibleEmployees) {
     const countryCode = resolveCountryCode(employee.country)
-    const { salary: annualSalary, currency } = await getEmployeeSalary(employee.id, orgId)
+    const { salary: annualSalary, currency } = await getEmployeeSalary(employee.id, orgId, employee.country)
 
-    // Calculate monthly base pay with pro-rata adjustment
-    const monthlyFull = Math.round((annualSalary / 12) * 100) / 100
+    // Resolve pay frequency: explicit override > labor law registry > 'monthly'
+    const payFrequency = resolvePayFrequency(options.payFrequency, countryCode)
+    const periodsPerYear = getPayPeriodsPerYear(payFrequency)
+
+    // Calculate period base pay with pro-rata adjustment
+    const monthlyFull = Math.round((annualSalary / periodsPerYear) * 100) / 100
     const proRata = calculateProRata({
       hireDate: employee.hireDate,
       terminationDate: employee.terminationDate,
@@ -1264,20 +1306,20 @@ export async function processPayroll(
     // --- Gross pay = base + overtime + bonus ---
     const monthlyGross = Math.round((monthlyBase + overtimePay + bonusPay) * 100) / 100
 
-    // Calculate taxes on annualized total (base annualized + overtime*12 + bonus*12)
+    // Calculate taxes on annualized total (base annualized + overtime + bonus)
     // Uses DB-backed rate overrides when available (e.g., org-specific SSNIT rate)
-    const annualizedGross = monthlyGross * 12
+    const annualizedGross = monthlyGross * periodsPerYear
     const dbOverrides = await getOverridesForCountry(countryCode)
     const annualTax = calculateTax(countryCode, annualizedGross, dbOverrides ? {
       socialSecurityRateOverride: dbOverrides.socialSecurityRateOverride,
       medicareRateOverride: dbOverrides.medicareRateOverride,
     } : {})
-    const monthlyFederal = Math.round((annualTax.federalTax / 12) * 100) / 100
-    const monthlyState = Math.round((annualTax.stateOrProvincialTax / 12) * 100) / 100
-    const monthlySS = Math.round((annualTax.socialSecurity / 12) * 100) / 100
-    const monthlyMedicare = Math.round((annualTax.medicare / 12) * 100) / 100
-    const monthlyPension = Math.round((annualTax.pension / 12) * 100) / 100
-    const monthlyTaxDeductions = Math.round((annualTax.totalTax / 12) * 100) / 100
+    const monthlyFederal = Math.round((annualTax.federalTax / periodsPerYear) * 100) / 100
+    const monthlyState = Math.round((annualTax.stateOrProvincialTax / periodsPerYear) * 100) / 100
+    const monthlySS = Math.round((annualTax.socialSecurity / periodsPerYear) * 100) / 100
+    const monthlyMedicare = Math.round((annualTax.medicare / periodsPerYear) * 100) / 100
+    const monthlyPension = Math.round((annualTax.pension / periodsPerYear) * 100) / 100
+    const monthlyTaxDeductions = Math.round((annualTax.totalTax / periodsPerYear) * 100) / 100
 
     // --- Benefit deductions ---
     const benefitEnrollmentRows = await db
@@ -1291,7 +1333,7 @@ export async function processPayroll(
         )
       )
     const monthlyBenefitDeductions = benefitEnrollmentRows.reduce(
-      (sum, b) => sum + Math.round(((b.costEmployee || 0) / 12) * 100) / 100,
+      (sum, b) => sum + Math.round(((b.costEmployee || 0) / periodsPerYear) * 100) / 100,
       0
     )
 
@@ -1472,7 +1514,7 @@ export async function validatePayrollRun(
   const ineligible: Array<{ id: string; name: string; reason: string }> = []
 
   for (const emp of activeEmployees) {
-    const { salary, currency } = await getEmployeeSalary(emp.id, orgId)
+    const { salary, currency } = await getEmployeeSalary(emp.id, orgId, emp.country)
     if (salary === 0) {
       ineligible.push({ id: emp.id, name: emp.fullName, reason: 'No salary record found' })
     } else {
@@ -1992,8 +2034,10 @@ export async function generatePayStub(
 
   // Get salary and compute taxes
   const countryCode = resolveCountryCode(employee.country)
-  const { salary: annualSalary, currency } = await getEmployeeSalary(employeeId, orgId)
-  const monthlyGross = Math.round((annualSalary / 12) * 100) / 100
+  const { salary: annualSalary, currency } = await getEmployeeSalary(employeeId, orgId, employee.country)
+  const stubPayFrequency = resolvePayFrequency(undefined, countryCode)
+  const stubPeriodsPerYear = getPayPeriodsPerYear(stubPayFrequency)
+  const monthlyGross = Math.round((annualSalary / stubPeriodsPerYear) * 100) / 100
 
   // Use DB-backed rate overrides when available
   const stubDbOverrides = await getTaxCalculatorOverrides(orgId, countryCode)
@@ -2002,12 +2046,12 @@ export async function generatePayStub(
     medicareRateOverride: stubDbOverrides.medicareRateOverride,
   } : {})
 
-  const monthlyFederal = Math.round((annualTax.federalTax / 12) * 100) / 100
-  const monthlyState = Math.round((annualTax.stateOrProvincialTax / 12) * 100) / 100
-  const monthlySS = Math.round((annualTax.socialSecurity / 12) * 100) / 100
-  const monthlyMedicare = Math.round((annualTax.medicare / 12) * 100) / 100
-  const monthlyPension = Math.round((annualTax.pension / 12) * 100) / 100
-  const monthlyTotalDeductions = Math.round((annualTax.totalTax / 12) * 100) / 100
+  const monthlyFederal = Math.round((annualTax.federalTax / stubPeriodsPerYear) * 100) / 100
+  const monthlyState = Math.round((annualTax.stateOrProvincialTax / stubPeriodsPerYear) * 100) / 100
+  const monthlySS = Math.round((annualTax.socialSecurity / stubPeriodsPerYear) * 100) / 100
+  const monthlyMedicare = Math.round((annualTax.medicare / stubPeriodsPerYear) * 100) / 100
+  const monthlyPension = Math.round((annualTax.pension / stubPeriodsPerYear) * 100) / 100
+  const monthlyTotalDeductions = Math.round((annualTax.totalTax / stubPeriodsPerYear) * 100) / 100
   const monthlyNet = Math.round((monthlyGross - monthlyTotalDeductions) * 100) / 100
 
   // Estimate benefit deductions for this employee
@@ -2025,7 +2069,7 @@ export async function generatePayStub(
     )
 
   const monthlyHealthInsurance = benefitEnrollments.reduce(
-    (sum, b) => sum + Math.round(((b.costEmployee || 0) / 12) * 100) / 100,
+    (sum, b) => sum + Math.round(((b.costEmployee || 0) / stubPeriodsPerYear) * 100) / 100,
     0
   )
 
@@ -2391,7 +2435,7 @@ export async function getPayrollAnalytics(orgId: string): Promise<PayrollAnalyti
   }> = []
 
   for (const emp of activeEmployees) {
-    const { salary, currency } = await getEmployeeSalary(emp.id, orgId)
+    const { salary, currency } = await getEmployeeSalary(emp.id, orgId, emp.country)
     employeeSalaries.push({
       employeeId: emp.id,
       departmentId: emp.departmentId,
@@ -2576,7 +2620,7 @@ export async function validatePayrollCompliance(orgId: string): Promise<Complian
 
   for (const employee of activeEmployees) {
     const countryCode = resolveCountryCode(employee.country)
-    const { salary, currency } = await getEmployeeSalary(employee.id, orgId)
+    const { salary, currency } = await getEmployeeSalary(employee.id, orgId, employee.country)
 
     // --- Minimum Wage Check (uses labor law registry for all 36 countries + base 6) ---
     const minWage = resolveMinimumWage(countryCode)

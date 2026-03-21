@@ -10,7 +10,8 @@ import { Tabs } from '@/components/ui/tabs'
 import {
   Settings, LayoutGrid, RotateCcw, Eye, EyeOff, GripVertical
 } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
@@ -32,6 +33,7 @@ export default function DashboardPage() {
     reviews, salaryReviews, surveys, engagementScores,
     expenseReports, jobPostings, applications, payrollRuns, mentoringPairs,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const executiveSummary = useMemo(() => generateExecutiveSummary({
     employees: employees || [],
@@ -128,7 +130,7 @@ export default function DashboardPage() {
       {/* Evaluator Dashboard Banner - dynamic data from store */}
       {isEvaluator && evaluatorConfig && (() => {
         const latestPayroll = payrollRuns?.[payrollRuns.length - 1]
-        const payrollCost = latestPayroll ? `$${(latestPayroll.total_net / 100).toLocaleString()}` : '$0'
+        const payrollCost = latestPayroll ? formatCurrency(latestPayroll.total_net, defaultCurrency, { cents: true }) : formatCurrency(0, defaultCurrency)
         const payrollPeriod = latestPayroll?.period || 'No payroll runs'
         const employeeCount = employees?.length || 0
         const pendingLeaveCount = leaveRequests?.filter((l: { status: string }) => l.status === 'pending').length || 0

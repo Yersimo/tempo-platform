@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { CircleDollarSign, Plus, Calendar, Clock, CheckCircle, XCircle, Send, Repeat, Pause, Play, AlertTriangle, CreditCard, Ban, Search } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -19,6 +20,7 @@ type TabKey = 'payments' | 'scheduled' | 'recurring' | 'approval'
 
 export default function BillPayPage() {
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const { billPayments, billPaySchedules, vendors, addBillPayment, updateBillPayment, addBillPaySchedule, updateBillPaySchedule, ensureModulesLoaded, org, currentUser, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -38,7 +40,7 @@ export default function BillPayPage() {
   const [paymentForm, setPaymentForm] = useState({
     vendor_id: '',
     amount: '',
-    currency: 'USD',
+    currency: defaultCurrency,
     method: 'ach',
     scheduled_date: '',
     memo: '',
@@ -90,7 +92,7 @@ export default function BillPayPage() {
   }
 
   function formatAmount(cents: number) {
-    return (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return formatCurrency(cents, defaultCurrency, { cents: true })
   }
 
   function getMethodBadge(method: string) {
@@ -208,7 +210,7 @@ export default function BillPayPage() {
     setPaymentForm({
       vendor_id: vendors[0]?.id || '',
       amount: '',
-      currency: 'USD',
+      currency: defaultCurrency,
       method: 'ach',
       scheduled_date: '',
       memo: '',
@@ -286,14 +288,14 @@ export default function BillPayPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard
           label="Total Paid"
-          value={`$${formatAmount(totalPaid)}`}
+          value={formatAmount(totalPaid)}
           icon={<CheckCircle size={20} />}
           change="Settled"
           changeType="positive"
         />
         <StatCard
           label="Scheduled"
-          value={`$${formatAmount(totalScheduled)}`}
+          value={formatAmount(totalScheduled)}
           icon={<Calendar size={20} />}
         />
         <StatCard
@@ -388,7 +390,7 @@ export default function BillPayPage() {
                   <tr key={payment.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{payment.reference_number}</td>
                     <td className="px-4 py-3 text-xs text-t2">{getVendorName(payment.vendor_id)}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${formatAmount(payment.amount)}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{formatAmount(payment.amount)}</td>
                     <td className="px-4 py-3 text-center">{getMethodBadge(payment.method)}</td>
                     <td className="px-4 py-3 text-xs text-t2">{payment.paid_date || payment.scheduled_date}</td>
                     <td className="px-4 py-3 text-center">{getStatusBadge(payment.status)}</td>
@@ -459,7 +461,7 @@ export default function BillPayPage() {
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-t2">{payment.reference_number}</td>
                       <td className="px-4 py-3 text-xs text-t2">{getVendorName(payment.vendor_id)}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${formatAmount(payment.amount)}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{formatAmount(payment.amount)}</td>
                       <td className="px-4 py-3 text-center">{getMethodBadge(payment.method)}</td>
                       <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{payment.memo}</td>
                       <td className="px-4 py-3 text-center">
@@ -520,7 +522,7 @@ export default function BillPayPage() {
                         <p className="text-xs text-t3">{schedule.currency}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${formatAmount(schedule.amount)}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{formatAmount(schedule.amount)}</td>
                     <td className="px-4 py-3 text-center">{getMethodBadge(schedule.method)}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={
@@ -603,7 +605,7 @@ export default function BillPayPage() {
                   <tr key={payment.id} className="hover:bg-canvas/50">
                     <td className="px-6 py-3 text-xs font-mono font-medium text-t1">{payment.reference_number}</td>
                     <td className="px-4 py-3 text-xs text-t2">{getVendorName(payment.vendor_id)}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">${formatAmount(payment.amount)}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-t1 text-right">{formatAmount(payment.amount)}</td>
                     <td className="px-4 py-3 text-center">{getMethodBadge(payment.method)}</td>
                     <td className="px-4 py-3 text-xs text-t2">{payment.scheduled_date}</td>
                     <td className="px-4 py-3 text-xs text-t2 max-w-[200px] truncate">{payment.memo}</td>

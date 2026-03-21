@@ -18,7 +18,8 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { analyzeHeadcountTrends } from '@/lib/ai-engine'
@@ -55,12 +56,6 @@ const BUDGET_CATEGORY_LABELS: Record<string, string> = {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function fmt(n: number) {
-  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}K`
-  return `$${n.toLocaleString()}`
-}
-
 export default function HeadcountPage() {
   const t = useTranslations('headcount')
   const tc = useTranslations('common')
@@ -74,6 +69,9 @@ export default function HeadcountPage() {
     addToast,
     ensureModulesLoaded,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
+
+  const fmt = (n: number) => formatCurrency(n, defaultCurrency, { compact: true })
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -106,7 +104,7 @@ export default function HeadcountPage() {
     priority: 'medium' as string,
     salary_min: 0,
     salary_max: 0,
-    currency: 'USD',
+    currency: defaultCurrency,
     target_start_date: '',
     justification: '',
   })
@@ -135,7 +133,7 @@ export default function HeadcountPage() {
   const [budgetForm, setBudgetForm] = useState({
     category: 'base_salary' as string,
     amount: 0,
-    currency: 'USD',
+    currency: defaultCurrency,
     notes: '',
   })
 
@@ -340,7 +338,7 @@ export default function HeadcountPage() {
       priority: 'medium',
       salary_min: 0,
       salary_max: 0,
-      currency: 'USD',
+      currency: defaultCurrency,
       target_start_date: '',
       justification: '',
     })
@@ -359,7 +357,7 @@ export default function HeadcountPage() {
       priority: pos.priority,
       salary_min: pos.salary_min || 0,
       salary_max: pos.salary_max || 0,
-      currency: pos.currency || 'USD',
+      currency: pos.currency || defaultCurrency,
       target_start_date: pos.target_start_date || '',
       justification: pos.justification || '',
     })
@@ -428,7 +426,7 @@ export default function HeadcountPage() {
   // ---- Budget Item ----
   function openAddBudgetItem(posId: string) {
     setBudgetPositionId(posId)
-    setBudgetForm({ category: 'base_salary', amount: 0, currency: 'USD', notes: '' })
+    setBudgetForm({ category: 'base_salary', amount: 0, currency: defaultCurrency, notes: '' })
     setShowBudgetModal(true)
   }
 
@@ -465,7 +463,7 @@ export default function HeadcountPage() {
     setBudgetForm({
       category: bi.category,
       amount: bi.amount,
-      currency: bi.currency || 'USD',
+      currency: bi.currency || defaultCurrency,
       notes: bi.notes || '',
     })
     setShowBudgetModal(true)

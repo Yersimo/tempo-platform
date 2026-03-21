@@ -11,7 +11,8 @@ import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Briefcase, Users, Plus, Star, Pencil, ArrowRight, Globe, Send, Check, AlertCircle, ExternalLink, Calendar, UserCheck, ClipboardList, BarChart3, Clock, Tag, MessageSquare, FileCheck, DollarSign, CheckCircle2, XCircle, Eye, Search, Shield, Gift, HelpCircle, CalendarClock, Trash2, GripVertical, Link2, User, Award, TrendingUp, AlertTriangle } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { Avatar } from '@/components/ui/avatar'
 import { AIScoreBadge, AIAlertBanner } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -44,6 +45,7 @@ export default function RecruitingPage() {
     addEmployee,
     ensureModulesLoaded,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -65,7 +67,7 @@ export default function RecruitingPage() {
     requirements: '',
     salary_min: 0,
     salary_max: 0,
-    currency: 'USD',
+    currency: defaultCurrency,
   })
 
   // Application modal
@@ -292,7 +294,7 @@ export default function RecruitingPage() {
       requirements: '',
       salary_min: 0,
       salary_max: 0,
-      currency: 'USD',
+      currency: defaultCurrency,
     })
     setShowJobModal(true)
   }
@@ -310,7 +312,7 @@ export default function RecruitingPage() {
       requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : (job.requirements || ''),
       salary_min: job.salary_min,
       salary_max: job.salary_max,
-      currency: job.currency || 'USD',
+      currency: job.currency || defaultCurrency,
     })
     setShowJobModal(true)
   }
@@ -1356,7 +1358,7 @@ export default function RecruitingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Total Referrals" value={referrals.length} icon={<Gift size={20} />} />
             <StatCard label="Conversion Rate" value={`${referrals.length > 0 ? Math.round((referrals.filter(r => r.status === 'hired' || r.status === 'bonus_paid' || r.status === 'bonus_pending').length / referrals.length) * 100) : 0}%`} icon={<TrendingUp size={20} />} />
-            <StatCard label="Bonuses Paid" value={`$${referrals.filter(r => r.status === 'bonus_paid').reduce((sum, r) => sum + (r.bonus_amount || 0), 0).toLocaleString()}`} icon={<DollarSign size={20} />} />
+            <StatCard label="Bonuses Paid" value={formatCurrency(referrals.filter(r => r.status === 'bonus_paid').reduce((sum, r) => sum + (r.bonus_amount || 0), 0), defaultCurrency)} icon={<DollarSign size={20} />} />
             <StatCard label="Pending Bonuses" value={referrals.filter(r => r.status === 'hired' || r.status === 'bonus_pending').length} icon={<Clock size={20} />} />
           </div>
 
@@ -1876,7 +1878,7 @@ export default function RecruitingPage() {
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
                         <div className="bg-canvas rounded-lg p-2">
                           <p className="text-[0.6rem] text-t3">{t('offerSalary')}</p>
-                          <p className="text-sm font-semibold text-t1">${offer.salary?.toLocaleString()}</p>
+                          <p className="text-sm font-semibold text-t1">{formatCurrency(offer.salary, defaultCurrency)}</p>
                         </div>
                         <div className="bg-canvas rounded-lg p-2">
                           <p className="text-[0.6rem] text-t3">{t('offerEquity')}</p>
@@ -1884,7 +1886,7 @@ export default function RecruitingPage() {
                         </div>
                         <div className="bg-canvas rounded-lg p-2">
                           <p className="text-[0.6rem] text-t3">{t('offerSigningBonus')}</p>
-                          <p className="text-sm font-semibold text-t1">${(offer.signing_bonus || 0).toLocaleString()}</p>
+                          <p className="text-sm font-semibold text-t1">{formatCurrency(offer.signing_bonus || 0, defaultCurrency)}</p>
                         </div>
                         <div className="bg-canvas rounded-lg p-2">
                           <p className="text-[0.6rem] text-t3">{t('offerStartDate')}</p>

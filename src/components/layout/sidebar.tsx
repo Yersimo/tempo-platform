@@ -154,6 +154,7 @@ export function Sidebar() {
         { label: 'Corporate Cards', href: '/finance/cards', icon: <CreditCard size={18} />, requiredPermissions: ['finance:read'] },
         { label: 'Bill Pay', href: '/finance/bill-pay', icon: <CircleDollarSign size={18} />, requiredPermissions: ['finance:read'] },
         { label: 'Global Spend', href: '/finance/global-spend', icon: <Globe size={18} />, requiredPermissions: ['finance:read'] },
+        { label: 'General Ledger', href: '/finance/general-ledger', icon: <BookOpen size={18} />, requiredPermissions: ['finance:read'] },
       ],
     },
     {
@@ -674,6 +675,7 @@ export function getAllAppModules(): { label: string; href: string; icon: React.R
     { label: 'Corporate Cards', href: '/finance/cards', icon: <CreditCard size={24} /> },
     { label: 'Bill Pay', href: '/finance/bill-pay', icon: <CircleDollarSign size={24} /> },
     { label: 'Global Spend', href: '/finance/global-spend', icon: <Globe size={24} /> },
+    { label: 'General Ledger', href: '/finance/general-ledger', icon: <BookOpen size={24} /> },
     { label: 'Projects', href: '/projects', icon: <FolderKanban size={24} /> },
     { label: 'Strategy', href: '/strategy', icon: <Compass size={24} /> },
     { label: 'Headcount', href: '/headcount', icon: <UserPlus size={24} /> },

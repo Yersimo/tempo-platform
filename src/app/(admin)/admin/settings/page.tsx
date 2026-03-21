@@ -98,11 +98,51 @@ function GeneralSettings() {
 
       <SettingsCard title="Default Timezone" description="Default timezone for new organizations">
         <select className="px-3 py-2.5 rounded-lg border border-border bg-white text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
-          <option>Africa/Lagos (WAT)</option>
-          <option>Africa/Johannesburg (SAST)</option>
-          <option>Africa/Nairobi (EAT)</option>
-          <option>Europe/London (GMT)</option>
-          <option>America/New_York (EST)</option>
+          <optgroup label="West Africa">
+            <option>Africa/Lagos (WAT)</option>
+            <option>Africa/Accra (GMT)</option>
+            <option>Africa/Abidjan (GMT)</option>
+          </optgroup>
+          <optgroup label="Central Africa">
+            <option>Africa/Douala (WAT)</option>
+            <option>Africa/Kinshasa (WAT)</option>
+            <option>Africa/Libreville (WAT)</option>
+          </optgroup>
+          <optgroup label="East Africa">
+            <option>Africa/Nairobi (EAT)</option>
+            <option>Africa/Dar_es_Salaam (EAT)</option>
+            <option>Africa/Addis_Ababa (EAT)</option>
+            <option>Africa/Kampala (EAT)</option>
+            <option>Africa/Kigali (CAT)</option>
+          </optgroup>
+          <optgroup label="Southern Africa">
+            <option>Africa/Johannesburg (SAST)</option>
+            <option>Africa/Harare (CAT)</option>
+            <option>Africa/Lusaka (CAT)</option>
+            <option>Africa/Maputo (CAT)</option>
+          </optgroup>
+          <optgroup label="North Africa">
+            <option>Africa/Cairo (EET)</option>
+            <option>Africa/Casablanca (WET)</option>
+            <option>Africa/Tunis (CET)</option>
+          </optgroup>
+          <optgroup label="Europe">
+            <option>Europe/London (GMT/BST)</option>
+            <option>Europe/Paris (CET)</option>
+            <option>Europe/Berlin (CET)</option>
+          </optgroup>
+          <optgroup label="Americas">
+            <option>America/New_York (EST)</option>
+            <option>America/Chicago (CST)</option>
+            <option>America/Los_Angeles (PST)</option>
+            <option>America/Sao_Paulo (BRT)</option>
+          </optgroup>
+          <optgroup label="Asia / Middle East">
+            <option>Asia/Dubai (GST)</option>
+            <option>Asia/Kolkata (IST)</option>
+            <option>Asia/Singapore (SGT)</option>
+            <option>Asia/Tokyo (JST)</option>
+          </optgroup>
         </select>
       </SettingsCard>
 

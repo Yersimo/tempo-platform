@@ -11,6 +11,21 @@ type DemoData = typeof import('./demo-data')
 /** Lazy-load demo-data module. Returns the full module; bundler code-splits it into a separate chunk. */
 const loadDemoModule = () => import('./demo-data')
 
+// ---- Country → Currency Map (supports both ISO codes and full names) ----
+const COUNTRY_CURRENCY: Record<string, string> = {
+  GH: 'GHS', NG: 'NGN', KE: 'KES', ZA: 'ZAR', TZ: 'TZS', UG: 'UGX',
+  RW: 'RWF', ET: 'ETB', SN: 'XOF', CI: 'XOF', CM: 'XAF', GA: 'XAF',
+  US: 'USD', GB: 'GBP', DE: 'EUR', FR: 'EUR', CA: 'CAD', AU: 'AUD',
+  IN: 'INR', JP: 'JPY', CN: 'CNY', BR: 'BRL', MX: 'MXN', AE: 'AED',
+  SA: 'SAR', EG: 'EGP', MA: 'MAD',
+  // Full country names (DB may store these instead of ISO codes)
+  Ghana: 'GHS', Nigeria: 'NGN', Kenya: 'KES', 'South Africa': 'ZAR',
+  Tanzania: 'TZS', Uganda: 'UGX', Rwanda: 'RWF', Ethiopia: 'ETB',
+  'United States': 'USD', 'United Kingdom': 'GBP', Germany: 'EUR',
+  France: 'EUR', Canada: 'CAD', Australia: 'AUD', Egypt: 'EGP', Morocco: 'MAD',
+  Senegal: 'XOF', Cameroon: 'XAF',
+}
+
 // ---- Audit Log ----
 export interface AuditEntry {
   id: string
@@ -56,6 +71,7 @@ export interface CurrentUser {
 interface TempoState {
   // Organization
   org: DemoData['demoOrg']
+  orgCurrency: string
   user: DemoData['demoUser']
   currentUser: CurrentUser | null
   currentEmployeeId: string
@@ -1172,6 +1188,12 @@ export function useTempoSafe(): TempoState | null {
   return useContext(TempoContext)
 }
 
+/** Returns the organization's default currency code (e.g. 'GHS', 'USD'). */
+export function useOrgCurrency(): string {
+  const { orgCurrency } = useTempo()
+  return orgCurrency
+}
+
 // Helper to build CurrentUser from an employee record
 function buildCurrentUser(emp: DemoData['demoEmployees'][number]): CurrentUser {
   return {
@@ -1265,6 +1287,7 @@ function notifyEvent(
 export function TempoProvider({ children }: { children: React.ReactNode }) {
   // Initialize with demo data as fallback, but will be overwritten by DB data
   const [org, setOrg] = useState<any>({ id: '', name: '', slug: '', logo_url: null, plan: 'enterprise', industry: '', size: '', country: '', created_at: '', updated_at: '' })
+  const _orgCurrency = COUNTRY_CURRENCY[org?.country || ''] || 'USD'
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [employeeDirectory, setEmployeeDirectory] = useState<Map<string, string>>(new Map())
@@ -1853,6 +1876,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       // Chat
       chatChannels: (d) => setChatChannels(d),
       chatMessages: (d) => setChatMessages(d),
+      // Procurement
+      purchaseOrders: (d) => setPurchaseOrders(d),
+      purchaseOrderItems: (d) => setPurchaseOrderItems(d),
+      procurementRequests: (d) => setProcurementRequests(d),
       // Finance
       corporateCards: (d) => setCorporateCards(d),
       cardTransactions: (d) => setCardTransactions(d),
@@ -1914,6 +1941,18 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       deviceInventory: (d) => setDeviceInventory(d),
       deviceStoreCatalog: (d) => setDeviceStoreCatalog(d),
       deviceOrders: (d) => setDeviceOrders(d),
+      // Learning (extended)
+      coursePrerequisites: (d) => setCoursePrerequisites(d),
+      scormPackages: (d) => setScormPackages(d),
+      scormTracking: (d) => setScormTracking(d),
+      contentLibrary: (d) => setContentLibrary(d),
+      learnerBadges: (d) => setLearnerBadges(d),
+      learnerPoints: (d) => setLearnerPoints(d),
+      // Recruiting (extended)
+      backgroundChecks: (d) => setBackgroundChecks(d),
+      referrals: (d) => setReferrals(d),
+      knockoutQuestions: (d) => setKnockoutQuestions(d),
+      candidateScheduling: (d) => setCandidateScheduling(d),
       // KPI Measurements
       kpiMeasurements: (d) => setKPIMeasurements(d),
       // Onboarding
@@ -1973,6 +2012,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       automationWorkflows: (d) => setAutomationWorkflows(d),
       automationWorkflowSteps: (d) => setAutomationWorkflowSteps(d),
       automationWorkflowRuns: (d) => setAutomationWorkflowRuns(d),
+      automationWorkflowRunSteps: (d) => setAutomationWorkflowRunSteps(d),
+      automationRules: (d) => setAutomationRules(d),
+      automationLog: (d) => setAutomationLog(d),
       // App Studio
       customApps: (d) => setCustomApps(d),
       appPages: (d) => setAppPages(d),
@@ -2091,6 +2133,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
             if (coreData.departments?.data?.length) setDepartments(coreData.departments.data as any)
             loadedModulesRef.current.add('employees')
             loadedModulesRef.current.add('departments')
+
+            // Fetch org data so country/currency/name are available
+            try {
+              const orgRes = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'org' }),
+              })
+              if (orgRes.ok) {
+                const orgJson = await orgRes.json()
+                if (orgJson.org) setOrg(orgJson.org)
+              }
+            } catch { /* org fetch is non-critical */ }
           } catch (err) {
             console.warn('Failed to load core data from DB, using demo data:', err)
           }
@@ -3210,11 +3265,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         level: data.level || '',
         location: data.location || undefined,
         budgetCents: data.budget_amount || 0,
-        currency: data.currency || 'USD',
+        currency: data.currency || _orgCurrency,
         approvedBy: data.approved_by || undefined,
       })
     }
-  }, [logAudit, addToast])
+  }, [logAudit, addToast, _orgCurrency])
   const deleteHeadcountPosition = useCallback((id: string) => {
     setHeadcountPositions(prev => prev.filter(p => p.id !== id) as typeof prev)
     setHeadcountBudgetItems(prev => prev.filter(b => b.position_id !== id) as typeof prev)
@@ -3640,7 +3695,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         salaryReviewId: id,
         previousSalaryCents: data.current_salary || 0,
         newSalaryCents: data.proposed_salary || 0,
-        currency: data.currency || 'USD',
+        currency: data.currency || _orgCurrency,
         effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
         approvedBy: data.approved_by || undefined,
         reason: data.justification || undefined,
@@ -4206,7 +4261,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         employeeId: data.employee_id || '',
         reportId: id,
         totalAmountCents: data.total_amount || 0,
-        currency: data.currency || 'USD',
+        currency: data.currency || _orgCurrency,
         approvedBy: data.approved_by || undefined,
         approvedAt: new Date().toISOString(),
       })
@@ -4295,7 +4350,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         jobTitle: data.job_title || '',
         level: data.level || undefined,
         proposedSalaryCents: data.proposed_salary || data.salary_offer || 0,
-        currency: data.currency || 'USD',
+        currency: data.currency || _orgCurrency,
         extendedBy: data.extended_by || '',
       })
     }
@@ -4325,7 +4380,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           hireDate: data.start_date || new Date().toISOString().split('T')[0],
           actualSalaryCents: data.proposed_salary || data.salary_offer || 0,
           budgetCents: data.budget_cents || 0,
-          currency: data.currency || 'USD',
+          currency: data.currency || _orgCurrency,
         })
       }
     }
@@ -5551,7 +5606,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       country: data.country || '',
       changeType: 'onboarded',
       localSalaryCents: data.local_salary || data.salary || 0,
-      localCurrency: data.local_currency || data.currency || 'USD',
+      localCurrency: data.local_currency || data.currency || _orgCurrency,
       effectiveDate: data.start_date || new Date().toISOString().split('T')[0],
     })
   }, [logAudit, addToast])
@@ -5568,7 +5623,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         country: data.country || '',
         changeType: data.status === 'terminated' ? 'terminated' : 'salary_changed',
         localSalaryCents: data.local_salary || data.salary || 0,
-        localCurrency: data.local_currency || data.currency || 'USD',
+        localCurrency: data.local_currency || data.currency || _orgCurrency,
         effectiveDate: data.effective_date || new Date().toISOString().split('T')[0],
       })
     }
@@ -5978,7 +6033,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const isLoggedIn = currentUser !== null
 
   const value: TempoState = {
-    org, user: { full_name: currentUser?.full_name || 'User', email: currentUser?.email || '' } as any, currentUser, currentEmployeeId, departments, employees,
+    org, orgCurrency: _orgCurrency, user: { full_name: currentUser?.full_name || 'User', email: currentUser?.email || '' } as any, currentUser, currentEmployeeId, departments, employees,
     goals, reviewCycles, reviews, feedback,
     oneOnOnes, recognitions, competencyFramework, competencyRatings,
     compBands, salaryReviews, equityGrants, compPlanningCycles,

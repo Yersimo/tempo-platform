@@ -12,7 +12,8 @@ import { Tabs } from '@/components/ui/tabs'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
 import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -28,6 +29,7 @@ export default function AnalyticsPage() {
     jobPostings, leaveRequests, payrollRuns, salaryReviews,
     compBands, courses, getDepartmentName, ensureModulesLoaded, addToast,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -268,7 +270,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('headcount')} value={headcount} icon={<Users size={20} />} href="/people" />
         <StatCard label={t('reviewCompletion')} value={`${reviewCompletion}%`} icon={<TrendingUp size={20} />} href="/performance" />
-        <StatCard label={t('staffCost')} value={lastPayroll ? `$${(lastPayroll.total_gross / 1000).toFixed(0)}K/mo` : '-'} icon={<DollarSign size={20} />} href="/payroll" />
+        <StatCard label={t('staffCost')} value={lastPayroll ? `${formatCurrency(lastPayroll.total_gross, defaultCurrency, { compact: true })}/mo` : '-'} icon={<DollarSign size={20} />} href="/payroll" />
         <StatCard label={t('openPositions')} value={openPositions} icon={<BarChart3 size={20} />} href="/recruiting" />
       </div>
 
@@ -576,10 +578,10 @@ export default function AnalyticsPage() {
               <h3 className="text-sm font-semibold text-t1 mb-4">Compensation Summary</h3>
               <div className="space-y-4">
                 {[
-                  { label: 'Total Payroll Cost', value: `$${(totalComp / 1000000).toFixed(2)}M`, sub: 'Annual' },
-                  { label: 'Average Salary', value: `$${(avgSalary / 1000).toFixed(0)}K`, sub: 'Per employee' },
-                  { label: 'Median Salary', value: `$${(medianSalary / 1000).toFixed(0)}K`, sub: 'Mid-point' },
-                  { label: 'Salary Range', value: `$${(Math.min(...salaries.filter(s => s > 0)) / 1000).toFixed(0)}K — $${(Math.max(...salaries) / 1000).toFixed(0)}K`, sub: 'Min to max' },
+                  { label: 'Total Payroll Cost', value: formatCurrency(totalComp, defaultCurrency, { compact: true }), sub: 'Annual' },
+                  { label: 'Average Salary', value: formatCurrency(avgSalary, defaultCurrency, { compact: true }), sub: 'Per employee' },
+                  { label: 'Median Salary', value: formatCurrency(medianSalary, defaultCurrency, { compact: true }), sub: 'Mid-point' },
+                  { label: 'Salary Range', value: `${formatCurrency(Math.min(...salaries.filter(s => s > 0)), defaultCurrency, { compact: true })} — ${formatCurrency(Math.max(...salaries), defaultCurrency, { compact: true })}`, sub: 'Min to max' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3">
                     <div>
@@ -599,7 +601,7 @@ export default function AnalyticsPage() {
                 xKey="name"
                 layout="horizontal"
                 height={Math.max(200, compByDept.length * 36)}
-                formatter={(v) => `$${(v / 1000).toFixed(0)}K`}
+                formatter={(v) => formatCurrency(v, defaultCurrency, { compact: true })}
                 showGrid={false}
               />
             </Card>
@@ -612,7 +614,7 @@ export default function AnalyticsPage() {
                       <Badge variant="default">{l.level}</Badge>
                       <span className="text-xs text-t3">{l.count} employees</span>
                     </div>
-                    <span className="text-sm font-bold text-t1">${(l.avg / 1000).toFixed(0)}K</span>
+                    <span className="text-sm font-bold text-t1">{formatCurrency(l.avg, defaultCurrency, { compact: true })}</span>
                   </div>
                 ))}
               </div>
@@ -823,8 +825,8 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: 'Headcount', value: headcount.toString(), sub: `${departments.length} departments` },
-                  { label: 'Revenue/Employee', value: `$${(revenuePerEmployee / 1000).toFixed(0)}K`, sub: 'Annual' },
-                  { label: 'Total Payroll Cost', value: `$${(totalPayroll / 1000000).toFixed(1)}M`, sub: 'Year to date' },
+                  { label: 'Revenue/Employee', value: formatCurrency(revenuePerEmployee, defaultCurrency, { compact: true }), sub: 'Annual' },
+                  { label: 'Total Payroll Cost', value: formatCurrency(totalPayroll, defaultCurrency, { compact: true }), sub: 'Year to date' },
                   { label: 'Turnover Rate', value: '8.2%', sub: 'Annualized' },
                 ].map(m => (
                   <div key={m.label} className="bg-canvas rounded-lg px-4 py-3 text-center">
@@ -971,14 +973,14 @@ export default function AnalyticsPage() {
             const totalComp = salaries.reduce((a, s) => a + s, 0)
             const avgSal = salaries.length > 0 ? Math.round(totalComp / salaries.length) : 0
 
-            if (metric === 'total_cost') return { type: 'kpi', value: `$${(totalComp / 1000000).toFixed(2)}M`, label: 'Total Payroll Cost', sub: 'Annual' }
-            if (metric === 'avg_salary') return { type: 'kpi', value: `$${(avgSal / 1000).toFixed(0)}K`, label: 'Average Salary', sub: 'Per employee' }
+            if (metric === 'total_cost') return { type: 'kpi', value: formatCurrency(totalComp, defaultCurrency, { compact: true }), label: 'Total Payroll Cost', sub: 'Annual' }
+            if (metric === 'avg_salary') return { type: 'kpi', value: formatCurrency(avgSal, defaultCurrency, { compact: true }), label: 'Average Salary', sub: 'Per employee' }
             if (metric === 'cost_by_dept') {
-              return { type: 'distribution', data: departments.map(d => { const dEmps = employees.filter(e => e.department_id === d.id); const avg = dEmps.length > 0 ? Math.round(dEmps.map(e => getSalary(e)).reduce((a, s) => a + s, 0) / dEmps.length) : 0; return { name: d.name, value: avg } }).sort((a, b) => b.value - a.value), label: 'Avg Salary', total: `$${(avgSal / 1000).toFixed(0)}K`, totalLabel: 'Org Average' }
+              return { type: 'distribution', data: departments.map(d => { const dEmps = employees.filter(e => e.department_id === d.id); const avg = dEmps.length > 0 ? Math.round(dEmps.map(e => getSalary(e)).reduce((a, s) => a + s, 0) / dEmps.length) : 0; return { name: d.name, value: avg } }).sort((a, b) => b.value - a.value), label: 'Avg Salary', total: formatCurrency(avgSal, defaultCurrency, { compact: true }), totalLabel: 'Org Average' }
             }
             if (metric === 'cost_by_country') {
               const byCountry = Object.entries(employees.reduce((acc, e) => { const s = getSalary(e); acc[e.country] = acc[e.country] || { total: 0, count: 0 }; acc[e.country].total += s; acc[e.country].count++; return acc }, {} as Record<string, { total: number; count: number }>)).map(([name, v]) => ({ name, value: Math.round(v.total / v.count) })).sort((a, b) => b.value - a.value)
-              return { type: 'distribution', data: byCountry, label: 'Avg Salary', total: `$${(avgSal / 1000).toFixed(0)}K`, totalLabel: 'Org Average' }
+              return { type: 'distribution', data: byCountry, label: 'Avg Salary', total: formatCurrency(avgSal, defaultCurrency, { compact: true }), totalLabel: 'Org Average' }
             }
           }
 
@@ -1016,11 +1018,11 @@ export default function AnalyticsPage() {
 
           if (rbSource === 'expenses') {
             const totalSpend = expenseReports.reduce((a, e) => a + (e.total_amount || 0), 0)
-            if (metric === 'total_spend') return { type: 'kpi', value: `$${(totalSpend / 100).toLocaleString()}`, label: 'Total Spend', sub: `${expenseReports.length} reports` }
-            if (metric === 'avg_per_employee') return { type: 'kpi', value: employees.length > 0 ? `$${Math.round(totalSpend / 100 / employees.length).toLocaleString()}` : '$0', label: 'Avg per Employee', sub: 'All time' }
+            if (metric === 'total_spend') return { type: 'kpi', value: formatCurrency(totalSpend, defaultCurrency, { cents: true }), label: 'Total Spend', sub: `${expenseReports.length} reports` }
+            if (metric === 'avg_per_employee') return { type: 'kpi', value: employees.length > 0 ? formatCurrency(Math.round(totalSpend / employees.length), defaultCurrency, { cents: true }) : formatCurrency(0, defaultCurrency), label: 'Avg per Employee', sub: 'All time' }
             if (metric === 'by_category') {
               const cats = Object.entries(expenseReports.reduce((acc, e) => { const cat = (e as any).category || 'Other'; acc[cat] = (acc[cat] || 0) + (e.total_amount || 0); return acc }, {} as Record<string, number>)).map(([name, value]) => ({ name, value: Math.round(value / 100) })).sort((a, b) => b.value - a.value)
-              return { type: 'distribution', data: cats, label: 'Amount ($)', total: `$${(totalSpend / 100).toLocaleString()}`, totalLabel: 'Total Spend' }
+              return { type: 'distribution', data: cats, label: 'Amount', total: formatCurrency(totalSpend, defaultCurrency, { cents: true }), totalLabel: 'Total Spend' }
             }
           }
 

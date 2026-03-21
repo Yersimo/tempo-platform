@@ -13,7 +13,8 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { GraduationCap, BookOpen, Award, Plus, Clock, Sparkles, Radio, Route, Video, Zap, Users as UsersIcon, FileText, CheckCircle, MessageSquare, Trophy, Heart, Hash, Download, Play, HelpCircle, AlignLeft, ListChecks, PenTool, Search, Star, Shield, Lock, ArrowRight, Filter, Medal, Upload, BarChart3, Settings, Target, TrendingUp, AlertTriangle, Brain, Eye, UserCheck, Briefcase, ChevronRight, CalendarClock, ShieldCheck, Activity, Layers, Globe, Building2, X, Image, Code, Minus, Quote, ChevronDown, GripVertical, Copy, Trash2, Move, Type, LayoutGrid, Send, MousePointerClick } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useTranslations } from 'next-intl'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { AIInsightCard, AIScoreBadge, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { analyzeSkillGaps, predictCourseCompletion, generateCourseOutline, suggestLearningPathOrder, generateQuizQuestions, translateContent, calculateLearningROI } from '@/lib/ai-engine'
@@ -34,6 +35,7 @@ import { ExpandableStats } from '@/components/ui/expandable-stats'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -3360,8 +3362,8 @@ window.onload=function(){
             <StatCard label={t('roiMultiplier')} value={`${analyticsData.roiMultiplier}x`} icon={<TrendingUp size={20} />} change="vs 3.1x last quarter" changeType="positive" />
             <StatCard label={t('performanceImprovement')} value={`+${analyticsData.performanceImprovement}%`} icon={<Activity size={20} />} change={t('afterTraining')} changeType="positive" />
             <StatCard label={t('retentionImpact')} value={`+${analyticsData.retentionImpact}%`} icon={<UsersIcon size={20} />} change="Year over year" changeType="positive" />
-            <StatCard label={t('costPerLearner')} value={`$${analyticsData.costPerLearner}`} icon={<BarChart3 size={20} />} change={tc('perEmployee')} changeType="neutral" />
-            <StatCard label={t('totalInvestment')} value={`$${(analyticsData.totalInvestment / 1000).toFixed(0)}K`} icon={<Layers size={20} />} change="Annual budget" changeType="neutral" />
+            <StatCard label={t('costPerLearner')} value={formatCurrency(analyticsData.costPerLearner, defaultCurrency)} icon={<BarChart3 size={20} />} change={tc('perEmployee')} changeType="neutral" />
+            <StatCard label={t('totalInvestment')} value={formatCurrency(analyticsData.totalInvestment, defaultCurrency, { compact: true })} icon={<Layers size={20} />} change="Annual budget" changeType="neutral" />
           </div>
 
           {/* AI Insight */}

@@ -17,7 +17,8 @@ import { Tabs } from '@/components/ui/tabs'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { Receipt, Plus, DollarSign, Clock, Trash2, ChevronDown, ChevronUp, BarChart3, Shield, MapPin, Wallet, FileText, Upload, Image, Search, AlertTriangle, CheckCircle, CheckCircle2, Car, Globe, Calculator, Sparkles, Users, Copy, Eye, XCircle, ArrowRight, Banknote, RotateCcw, Navigation, Zap, Layers, MessageCircle, Send } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { useTempo } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
+import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -50,6 +51,7 @@ const demoReceipts = [
 export default function ExpensePage() {
   const t = useTranslations('expense')
   const tc = useTranslations('common')
+  const defaultCurrency = useOrgCurrency()
   const {
     expenseReports, employees, departments, budgets,
     addExpenseReport, updateExpenseReport, deleteExpenseReport,
@@ -124,7 +126,7 @@ export default function ExpensePage() {
 
   // ---- Forms ----
   const [reportForm, setReportForm] = useState({
-    employee_id: '', title: '', currency: 'USD',
+    employee_id: '', title: '', currency: defaultCurrency,
     items: [{ description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] as Array<{ description: string; category: string; amount: number; date: string }>,
   })
   const [policyForm, setPolicyForm] = useState({ category: '', daily_limit: 0, receipt_threshold: 0, auto_approve_limit: 0, status: 'active' })
@@ -218,7 +220,7 @@ export default function ExpensePage() {
   }
 
   function formatCondition(rule: typeof approvalRules[0]) {
-    if (rule.conditionType === 'amount') return `Amount ${rule.conditionOperator} $${Number(rule.conditionValue).toLocaleString()}`
+    if (rule.conditionType === 'amount') return `Amount ${rule.conditionOperator} ${formatCurrency(Number(rule.conditionValue), defaultCurrency)}`
     if (rule.conditionType === 'category') return `Category = ${String(rule.conditionValue).charAt(0).toUpperCase() + String(rule.conditionValue).slice(1)}`
     return `Department = ${rule.conditionValue}`
   }
@@ -381,15 +383,15 @@ export default function ExpensePage() {
       const policy = expensePolicies.find((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active') as any
       if (policy) {
         if (policy.daily_limit && item.amount > policy.daily_limit) {
-          warnings.push(`"${item.description || item.category}" ($${item.amount}) exceeds ${item.category} daily limit of $${policy.daily_limit}`)
+          warnings.push(`"${item.description || item.category}" (${formatCurrency(item.amount, defaultCurrency)}) exceeds ${item.category} daily limit of ${formatCurrency(policy.daily_limit, defaultCurrency)}`)
         }
         if (policy.receipt_threshold && item.amount > policy.receipt_threshold && receiptUploads.length === 0) {
-          warnings.push(`"${item.description || item.category}" ($${item.amount}) requires a receipt (threshold: $${policy.receipt_threshold})`)
+          warnings.push(`"${item.description || item.category}" (${formatCurrency(item.amount, defaultCurrency)}) requires a receipt (threshold: ${formatCurrency(policy.receipt_threshold, defaultCurrency)})`)
         }
       }
       // General high-amount warning
       if (item.amount > 500 && !warnings.some(w => w.includes(item.description || item.category))) {
-        warnings.push(`"${item.description || item.category}" ($${item.amount}) exceeds $500 and may require additional approval`)
+        warnings.push(`"${item.description || item.category}" (${formatCurrency(item.amount, defaultCurrency)}) exceeds ${formatCurrency(500, defaultCurrency)} and may require additional approval`)
       }
     })
     return warnings
@@ -599,7 +601,7 @@ export default function ExpensePage() {
         expense_report_id: r.id,
         employee_id: r.employee_id,
         amount: r.total_amount,
-        currency: r.currency || 'USD',
+        currency: r.currency || defaultCurrency,
         status: 'pending' as const,
         notes: r.title,
       }))
@@ -607,7 +609,7 @@ export default function ExpensePage() {
         status: 'pending',
         method: reimbursementMethod,
         total_amount: totalAmount,
-        currency: 'USD',
+        currency: defaultCurrency,
         employee_count: new Set(selectedReports.map((r: any) => r.employee_id)).size,
         processed_at: null,
         payroll_run_id: null,
@@ -650,7 +652,7 @@ export default function ExpensePage() {
 
   // ---- Report CRUD ----
   function openNewReport() {
-    setReportForm({ employee_id: currentEmployeeId || employees[0]?.id || '', title: '', currency: 'USD', items: [{ description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] })
+    setReportForm({ employee_id: currentEmployeeId || employees[0]?.id || '', title: '', currency: defaultCurrency, items: [{ description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] })
     setReceiptUploads([])
     setShowReportModal(true)
   }
@@ -924,8 +926,8 @@ export default function ExpensePage() {
       {/* Stats */}
       <ExpandableStats>
         <StatCard label={t('pendingReview')} value={pendingReports.length} icon={<Clock size={20} />} />
-        <StatCard label={t('pendingAmount')} value={`$${totalPending.toLocaleString()}`} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
-        <StatCard label={t('approvedReimbursed')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" />
+        <StatCard label={t('pendingAmount')} value={formatCurrency(totalPending, defaultCurrency)} change="Awaiting approval" changeType="neutral" icon={<DollarSign size={20} />} />
+        <StatCard label={t('approvedReimbursed')} value={formatCurrency(reimbursedTotal, defaultCurrency)} change={tc('thisQuarter')} changeType="positive" />
         <StatCard label={t('totalReports')} value={expenseReports.length} icon={<Receipt size={20} />} />
       </ExpandableStats>
 
@@ -995,7 +997,7 @@ export default function ExpensePage() {
                           {getEmployeeName(report.employee_id)} - {t('submittedDate', { date: new Date(report.submitted_at).toLocaleDateString() })}
                         </p>
                       </div>
-                      <p className="text-lg font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
+                      <p className="text-lg font-semibold text-t1">{formatCurrency(report.total_amount, defaultCurrency)}</p>
                       <AIScoreBadge score={calculateFraudRiskScore(report, expenseReports)} size="sm" />
                       <Badge variant={
                         report.status === 'approved' ? 'success' : report.status === 'reimbursed' ? 'info' :
@@ -1028,7 +1030,7 @@ export default function ExpensePage() {
                                   <p className="text-xs font-medium text-t1">{item.description}</p>
                                   <p className="text-[0.6rem] text-t3">{item.category}</p>
                                 </div>
-                                <p className="text-xs font-semibold text-t1">${item.amount}</p>
+                                <p className="text-xs font-semibold text-t1">{formatCurrency(item.amount, defaultCurrency)}</p>
                               </div>
                             ))}
                           </div>
@@ -1126,7 +1128,7 @@ export default function ExpensePage() {
                   <div className="flex items-center gap-3 text-xs text-t3">
                     <span>{duplicateStats.confirmed} confirmed</span>
                     <span>{duplicateStats.dismissed} dismissed</span>
-                    <span className="text-emerald-600 font-medium">${duplicateStats.amountSaved.toLocaleString()} saved</span>
+                    <span className="text-emerald-600 font-medium">{formatCurrency(duplicateStats.amountSaved, defaultCurrency)} saved</span>
                   </div>
                 </div>
               </CardHeader>
@@ -1152,7 +1154,7 @@ export default function ExpensePage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-xs text-t1">${dup.expense_amount} / ${dup.duplicate_amount}</p>
+                        <p className="text-xs text-t1">{formatCurrency(dup.expense_amount, defaultCurrency)} / {formatCurrency(dup.duplicate_amount, defaultCurrency)}</p>
                       </div>
                       <Badge variant={dup.status === 'flagged' ? 'warning' : dup.status === 'confirmed_duplicate' ? 'error' : 'default'}>
                         {dup.status.replace('_', ' ')}
@@ -1174,12 +1176,12 @@ export default function ExpensePage() {
                         <div className="bg-canvas rounded-lg p-3 border border-border">
                           <p className="text-[10px] uppercase text-t3 mb-1 font-medium">Original Expense</p>
                           <p className="text-xs font-medium text-t1">{dup.expense_description}</p>
-                          <p className="text-xs text-t2">${dup.expense_amount}</p>
+                          <p className="text-xs text-t2">{formatCurrency(dup.expense_amount, defaultCurrency)}</p>
                         </div>
                         <div className="bg-canvas rounded-lg p-3 border border-border">
                           <p className="text-[10px] uppercase text-t3 mb-1 font-medium">Potential Duplicate</p>
                           <p className="text-xs font-medium text-t1">{dup.duplicate_description}</p>
-                          <p className="text-xs text-t2">${dup.duplicate_amount}</p>
+                          <p className="text-xs text-t2">{formatCurrency(dup.duplicate_amount, defaultCurrency)}</p>
                         </div>
                       </div>
                     )}
@@ -1204,10 +1206,10 @@ export default function ExpensePage() {
       {activeTab === 'analytics' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label={t('totalSpend')} value={`$${totalSpend.toLocaleString()}`} change={t('allReports')} changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('avgReportValue')} value={`$${avgReportValue.toLocaleString()}`} change={`${expenseReports.length} ${t('reports').toLowerCase()}`} changeType="neutral" icon={<Receipt size={20} />} />
-            <StatCard label={t('reimbursedAmount')} value={`$${reimbursedTotal.toLocaleString()}`} change={tc('thisQuarter')} changeType="positive" icon={<CheckCircle2 size={20} />} />
-            <StatCard label={t('pendingReview')} value={pendingReports.length} change={`$${totalPending.toLocaleString()}`} changeType={pendingReports.length > 3 ? 'negative' : 'neutral'} icon={<Clock size={20} />} />
+            <StatCard label={t('totalSpend')} value={formatCurrency(totalSpend, defaultCurrency)} change={t('allReports')} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('avgReportValue')} value={formatCurrency(avgReportValue, defaultCurrency)} change={`${expenseReports.length} ${t('reports').toLowerCase()}`} changeType="neutral" icon={<Receipt size={20} />} />
+            <StatCard label={t('reimbursedAmount')} value={formatCurrency(reimbursedTotal, defaultCurrency)} change={tc('thisQuarter')} changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('pendingReview')} value={pendingReports.length} change={formatCurrency(totalPending, defaultCurrency)} changeType={pendingReports.length > 3 ? 'negative' : 'neutral'} icon={<Clock size={20} />} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -1221,7 +1223,7 @@ export default function ExpensePage() {
                     {categoryData.map(c => (
                       <div key={c.category} className="flex justify-between text-xs">
                         <span className="text-t2">{c.category}</span>
-                        <span className="text-t1 font-medium">${c.total.toLocaleString()} ({c.count} items, avg ${c.avgAmount})</span>
+                        <span className="text-t1 font-medium">{formatCurrency(c.total, defaultCurrency)} ({c.count} items, avg {formatCurrency(c.avgAmount, defaultCurrency)})</span>
                       </div>
                     ))}
                   </div>
@@ -1287,7 +1289,7 @@ export default function ExpensePage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${s.total.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(s.total, defaultCurrency)}</td>
                         <td className="px-4 py-3 text-right"><Progress value={Math.min(100, Math.round((s.total / Math.max(1, totalSpend)) * 100 * expenseReports.length))} size="sm" showLabel /></td>
                       </tr>
                     ))}
@@ -1391,8 +1393,8 @@ export default function ExpensePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label={t('policyRulesTitle')} value={expensePolicies.length} change={`${expensePolicies.filter(p => (p as any).status === 'active').length} ${t('active').toLowerCase()}`} changeType="neutral" icon={<Shield size={20} />} />
             <StatCard label={t('policyViolations')} value={policyViolations.length} change={policyViolations.filter(v => v.severity === 'critical').length > 0 ? `${policyViolations.filter(v => v.severity === 'critical').length} critical` : 'None critical'} changeType={policyViolations.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
-            <StatCard label={t('autoApproveLimit')} value={`$${Math.max(...expensePolicies.map(p => (p as any).auto_approve_limit || 0)).toLocaleString()}`} change="Max limit" changeType="neutral" icon={<CheckCircle2 size={20} />} />
-            <StatCard label={t('receiptThreshold')} value={`$${Math.min(...expensePolicies.filter(p => (p as any).receipt_threshold > 0).map(p => (p as any).receipt_threshold || 0)).toLocaleString()}`} change="Min threshold" changeType="neutral" icon={<Receipt size={20} />} />
+            <StatCard label={t('autoApproveLimit')} value={formatCurrency(Math.max(...expensePolicies.map(p => (p as any).auto_approve_limit || 0)), defaultCurrency)} change="Max limit" changeType="neutral" icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('receiptThreshold')} value={formatCurrency(Math.min(...expensePolicies.filter(p => (p as any).receipt_threshold > 0).map(p => (p as any).receipt_threshold || 0)), defaultCurrency)} change="Min threshold" changeType="neutral" icon={<Receipt size={20} />} />
           </div>
 
           <Card padding="none" className="mb-6">
@@ -1426,9 +1428,9 @@ export default function ExpensePage() {
                           <span className="text-xs font-medium text-t1">{p.category}</span>
                           {p.policy_section && <p className="text-[10px] text-t3 mt-0.5">{p.policy_section}</p>}
                         </td>
-                        <td className="px-4 py-3 text-xs text-t1 text-right">${p.daily_limit?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-xs text-t2 text-right">${p.receipt_threshold?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-xs text-t2 text-right">${p.auto_approve_limit?.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right">{formatCurrency(p.daily_limit, defaultCurrency)}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(p.receipt_threshold, defaultCurrency)}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(p.auto_approve_limit, defaultCurrency)}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={p.status === 'active' ? 'success' : 'default'}>{p.status === 'active' ? t('active') : t('inactive')}</Badge>
                         </td>
@@ -1463,7 +1465,7 @@ export default function ExpensePage() {
                       <span className="text-xs text-t1">{v.violation}</span>
                       {v.policySection && <span className="text-[10px] text-t3 ml-1">({v.policySection})</span>}
                     </div>
-                    <span className="text-xs font-medium text-t2 shrink-0">${v.amount.toLocaleString()}</span>
+                    <span className="text-xs font-medium text-t2 shrink-0">{formatCurrency(v.amount, defaultCurrency)}</span>
                   </div>
                 ))}
               </div>
@@ -1504,10 +1506,10 @@ export default function ExpensePage() {
                     <tr key={`${rate.country}-${rate.city}`} className="hover:bg-canvas/50">
                       <td className="px-6 py-3 text-xs font-medium text-t1">{rate.country}</td>
                       <td className="px-4 py-3 text-xs text-t2">{rate.city}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${rate.daily}</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.meals}</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.lodging}</td>
-                      <td className="px-4 py-3 text-xs text-t2 text-right">${rate.incidentals}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(rate.daily, defaultCurrency)}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(rate.meals, defaultCurrency)}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(rate.lodging, defaultCurrency)}</td>
+                      <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(rate.incidentals, defaultCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1539,9 +1541,9 @@ export default function ExpensePage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: t('nights', { count: perDiemResult.nights }), value: `${perDiemResult.nights}`, color: 'text-t1' },
-                    { label: t('mealsRate'), value: `$${perDiemResult.meals.toLocaleString()}`, color: 'text-t1' },
-                    { label: t('lodgingRate'), value: `$${perDiemResult.lodging.toLocaleString()}`, color: 'text-t1' },
-                    { label: tc('total'), value: `$${perDiemResult.total.toLocaleString()}`, color: 'text-tempo-700 font-bold' },
+                    { label: t('mealsRate'), value: formatCurrency(perDiemResult.meals, defaultCurrency), color: 'text-t1' },
+                    { label: t('lodgingRate'), value: formatCurrency(perDiemResult.lodging, defaultCurrency), color: 'text-t1' },
+                    { label: tc('total'), value: formatCurrency(perDiemResult.total, defaultCurrency), color: 'text-tempo-700 font-bold' },
                   ].map(item => (
                     <div key={item.label} className="bg-white rounded-lg p-3 border border-border">
                       <p className="text-xs text-t3 mb-1">{item.label}</p>
@@ -1588,8 +1590,8 @@ export default function ExpensePage() {
                         <td className="px-4 py-3 text-xs text-t2">{ml.origin}</td>
                         <td className="px-4 py-3 text-xs text-t2">{ml.destination}</td>
                         <td className="px-4 py-3 text-xs text-t1 text-right">{ml.distance_km} km</td>
-                        <td className="px-4 py-3 text-xs text-t2 text-right">${ml.rate_per_km}</td>
-                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${ml.amount?.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-xs text-t2 text-right">{formatCurrency(ml.rate_per_km, defaultCurrency)}</td>
+                        <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(ml.amount, defaultCurrency)}</td>
                         <td className="px-4 py-3 text-center">
                           <Badge variant={ml.status === 'approved' ? 'success' : 'warning'}>{ml.status}</Badge>
                         </td>
@@ -1615,9 +1617,9 @@ export default function ExpensePage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label={t('departmentBudgets')} value={expenseBudgets.length} change={`${expenseBudgets.filter(b => b.isOver).length} ${t('overBudget').toLowerCase()}`} changeType={expenseBudgets.filter(b => b.isOver).length > 0 ? 'negative' : 'positive'} icon={<Wallet size={20} />} />
-            <StatCard label={t('allocated')} value={`$${(expenseBudgets.reduce((s, b) => s + b.total_amount, 0) / 1000000).toFixed(1)}M`} change="Total budget" changeType="neutral" icon={<DollarSign size={20} />} />
-            <StatCard label={t('spent')} value={`$${(expenseBudgets.reduce((s, b) => s + b.spent_amount, 0) / 1000000).toFixed(1)}M`} change={tc('thisQuarter')} changeType="neutral" icon={<Receipt size={20} />} />
-            <StatCard label={t('remaining')} value={`$${(expenseBudgets.reduce((s, b) => s + b.remaining, 0) / 1000000).toFixed(1)}M`} change="Available" changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label={t('allocated')} value={formatCurrency(expenseBudgets.reduce((s, b) => s + b.total_amount, 0), defaultCurrency, { compact: true })} change="Total budget" changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label={t('spent')} value={formatCurrency(expenseBudgets.reduce((s, b) => s + b.spent_amount, 0), defaultCurrency, { compact: true })} change={tc('thisQuarter')} changeType="neutral" icon={<Receipt size={20} />} />
+            <StatCard label={t('remaining')} value={formatCurrency(expenseBudgets.reduce((s, b) => s + b.remaining, 0), defaultCurrency, { compact: true })} change="Available" changeType="positive" icon={<CheckCircle2 size={20} />} />
           </div>
 
           <Card padding="none" className="mb-6">
@@ -1633,7 +1635,7 @@ export default function ExpensePage() {
                       <p className="text-xs text-t3">{getDepartmentName(budget.department_id)} - FY{budget.fiscal_year}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-t1">${(budget.spent_amount / 1000).toFixed(0)}K / ${(budget.total_amount / 1000).toFixed(0)}K</p>
+                      <p className="text-sm font-semibold text-t1">{formatCurrency(budget.spent_amount, defaultCurrency, { compact: true })} / {formatCurrency(budget.total_amount, defaultCurrency, { compact: true })}</p>
                       <Badge variant={budget.isOver ? 'error' : budget.utilization > 75 ? 'warning' : 'success'}>
                         {budget.isOver ? t('overBudget') : t('onTrack')} - {budget.utilization}%
                       </Badge>
@@ -1641,8 +1643,8 @@ export default function ExpensePage() {
                   </div>
                   <Progress value={Math.min(100, budget.utilization)} size="sm" color={budget.isOver ? 'error' : budget.utilization > 75 ? 'warning' : 'orange'} />
                   <div className="flex justify-between mt-1 text-xs text-t3">
-                    <span>{t('spent')}: ${(budget.spent_amount / 1000).toFixed(0)}K</span>
-                    <span>{t('remaining')}: ${(budget.remaining / 1000).toFixed(0)}K</span>
+                    <span>{t('spent')}: {formatCurrency(budget.spent_amount, defaultCurrency, { compact: true })}</span>
+                    <span>{t('remaining')}: {formatCurrency(budget.remaining, defaultCurrency, { compact: true })}</span>
                   </div>
                 </div>
               ))}
@@ -1661,7 +1663,7 @@ export default function ExpensePage() {
                       <p className={`text-sm font-medium ${b.isOver ? 'text-red-800' : 'text-amber-800'}`}>{b.name}</p>
                     </div>
                     <p className={`text-xs mt-1 ${b.isOver ? 'text-red-700' : 'text-amber-700'}`}>
-                      {b.utilization}% utilized - ${(b.spent_amount / 1000).toFixed(0)}K of ${(b.total_amount / 1000).toFixed(0)}K budget
+                      {b.utilization}% utilized - {formatCurrency(b.spent_amount, defaultCurrency, { compact: true })} of {formatCurrency(b.total_amount, defaultCurrency, { compact: true })} budget
                     </p>
                   </div>
                 ))}
@@ -1749,7 +1751,7 @@ export default function ExpensePage() {
                       </div>
                       <div className="p-3">
                         <p className="text-xs font-medium text-t1 truncate">{receipt.filename}</p>
-                        <p className="text-xs text-t3">${receipt.amount} - {receipt.date}</p>
+                        <p className="text-xs text-t3">{formatCurrency(receipt.amount, defaultCurrency)} - {receipt.date}</p>
                         <div className="flex items-center justify-between mt-2">
                           <Badge variant={receipt.status === 'matched' ? 'success' : receipt.status === 'unmatched' ? 'error' : 'warning'}>
                             {receipt.status === 'matched' ? t('matched') : receipt.status === 'unmatched' ? t('unmatched') : t('pending')}
@@ -1807,7 +1809,7 @@ export default function ExpensePage() {
                       <p className="text-xs text-t3">{match.discrepancy_notes}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-semibold text-t1">${match.extracted_amount}</p>
+                      <p className="text-xs font-semibold text-t1">{formatCurrency(match.extracted_amount, defaultCurrency)}</p>
                       <p className="text-xs text-t3">{match.confidence ? `${Math.round(match.confidence * 100)}% confidence` : 'N/A'}</p>
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -1854,7 +1856,7 @@ export default function ExpensePage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-t2">{match.extracted_vendor || 'Unknown'}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${match.extracted_amount || 0}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(match.extracted_amount || 0, defaultCurrency)}</td>
                       <td className="px-4 py-3 text-xs text-t2 text-center">{match.extracted_date || 'N/A'}</td>
                       <td className="px-4 py-3 text-center">
                         {match.confidence != null ? (
@@ -1895,9 +1897,9 @@ export default function ExpensePage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label="Total Miles" value={`${mileageEntryStats.totalMiles.toFixed(1)} mi`} icon={<Navigation size={20} />} />
-            <StatCard label="Total Amount" value={`$${mileageEntryStats.totalAmount.toFixed(2)}`} change={`${mileageEntryStats.total} entries`} changeType="neutral" icon={<DollarSign size={20} />} />
+            <StatCard label="Total Amount" value={formatCurrency(mileageEntryStats.totalAmount, defaultCurrency)} change={`${mileageEntryStats.total} entries`} changeType="neutral" icon={<DollarSign size={20} />} />
             <StatCard label="Pending Approval" value={mileageEntryStats.pendingCount} change="Awaiting review" changeType={mileageEntryStats.pendingCount > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
-            <StatCard label="This Month" value={`${mileageEntryStats.monthlyMiles.toFixed(1)} mi`} change={`$${mileageEntryStats.monthlyAmount.toFixed(2)}`} changeType="neutral" icon={<Car size={20} />} />
+            <StatCard label="This Month" value={`${mileageEntryStats.monthlyMiles.toFixed(1)} mi`} change={formatCurrency(mileageEntryStats.monthlyAmount, defaultCurrency)} changeType="neutral" icon={<Car size={20} />} />
           </div>
 
           {/* Monthly Mileage Summary */}
@@ -1986,7 +1988,7 @@ export default function ExpensePage() {
                         {entry.purpose && <p className="text-[10px] text-t3 mt-0.5">{entry.purpose}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs text-t1 text-right font-medium">{entry.distance_miles} mi</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${entry.amount?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(entry.amount, defaultCurrency)}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant="default">{entry.vehicle_type}</Badge>
                       </td>
@@ -2027,8 +2029,8 @@ export default function ExpensePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label="Active Policies" value={advancedExpensePolicies.filter((p: any) => p.is_active).length} icon={<Zap size={20} />} />
             <StatCard label="Total Rules" value={advancedExpensePolicies.reduce((a: number, p: any) => a + (p.rules?.length || 0), 0)} change="Across all policies" changeType="neutral" icon={<Shield size={20} />} />
-            <StatCard label="Violations Caught" value={advancedPolicyViolationLog.length} change={`$${advancedPolicyViolationLog.reduce((a, v) => a + v.amount, 0).toLocaleString()} flagged`} changeType={advancedPolicyViolationLog.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
-            <StatCard label="Blocked Amount" value={`$${advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0).toLocaleString()}`} change="Prevented overspend" changeType="positive" icon={<XCircle size={20} />} />
+            <StatCard label="Violations Caught" value={advancedPolicyViolationLog.length} change={`${formatCurrency(advancedPolicyViolationLog.reduce((a, v) => a + v.amount, 0), defaultCurrency)} flagged`} changeType={advancedPolicyViolationLog.length > 0 ? 'negative' : 'positive'} icon={<AlertTriangle size={20} />} />
+            <StatCard label="Blocked Amount" value={formatCurrency(advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0), defaultCurrency)} change="Prevented overspend" changeType="positive" icon={<XCircle size={20} />} />
           </div>
 
           {/* Policy Rules Builder */}
@@ -2068,7 +2070,7 @@ export default function ExpensePage() {
                         <div key={i} className="flex items-center gap-2 text-xs text-t2 bg-canvas rounded px-3 py-1.5">
                           <span className="font-medium text-t1">{rule.field}</span>
                           <span className="text-t3">{rule.operator}</span>
-                          <span className="font-medium text-t1">{typeof rule.value === 'number' ? `$${rule.value}` : rule.value}</span>
+                          <span className="font-medium text-t1">{typeof rule.value === 'number' ? formatCurrency(rule.value, defaultCurrency) : rule.value}</span>
                           <ArrowRight size={10} className="text-t3" />
                           <Badge variant={rule.action === 'block' ? 'error' : rule.action === 'warn' ? 'warning' : 'info'}>
                             {rule.action.replace('_', ' ')}
@@ -2108,7 +2110,7 @@ export default function ExpensePage() {
                       <td className="px-4 py-3 text-xs text-t2">{v.expense}</td>
                       <td className="px-4 py-3 text-xs text-t1 font-medium">{v.policy}</td>
                       <td className="px-4 py-3 text-xs text-t3">{v.rule}</td>
-                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">${v.amount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs text-t1 text-right font-semibold">{formatCurrency(v.amount, defaultCurrency)}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={v.action === 'block' ? 'error' : v.action === 'warn' ? 'warning' : 'info'}>
                           {v.action.replace('_', ' ')}
@@ -2130,7 +2132,7 @@ export default function ExpensePage() {
                 <p className="text-xs text-t3 mt-1">Violations Caught</p>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-red-600">${advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(advancedPolicyViolationLog.filter(v => v.action === 'block').reduce((a, v) => a + v.amount, 0), defaultCurrency)}</p>
                 <p className="text-xs text-t3 mt-1">Blocked Amount</p>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
@@ -2269,7 +2271,7 @@ export default function ExpensePage() {
                 <div className="bg-white dark:bg-gray-800 rounded px-2.5 py-1.5 border border-border">
                   <p className="text-xs font-medium text-t1">
                     {newApprovalRule.conditionType === 'amount'
-                      ? `Amount ${newApprovalRule.conditionOperator} $${Number(newApprovalRule.conditionValue || 0).toLocaleString()}`
+                      ? `Amount ${newApprovalRule.conditionOperator} ${formatCurrency(Number(newApprovalRule.conditionValue || 0), defaultCurrency)}`
                       : newApprovalRule.conditionType === 'category'
                         ? `Category = ${String(newApprovalRule.conditionValue || '...').charAt(0).toUpperCase() + String(newApprovalRule.conditionValue || '...').slice(1)}`
                         : `Department = ${newApprovalRule.conditionValue || '...'}`
@@ -2321,8 +2323,8 @@ export default function ExpensePage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label="Total Batches" value={reimbursementStats.totalBatches} icon={<Layers size={20} />} />
-            <StatCard label="Completed" value={reimbursementStats.completedBatches} change={`$${reimbursementStats.totalReimbursed.toLocaleString()}`} changeType="positive" icon={<CheckCircle2 size={20} />} />
-            <StatCard label="Pending" value={reimbursementStats.pendingBatches} change={`$${reimbursementStats.pendingAmount.toLocaleString()}`} changeType={reimbursementStats.pendingBatches > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
+            <StatCard label="Completed" value={reimbursementStats.completedBatches} change={formatCurrency(reimbursementStats.totalReimbursed, defaultCurrency)} changeType="positive" icon={<CheckCircle2 size={20} />} />
+            <StatCard label="Pending" value={reimbursementStats.pendingBatches} change={formatCurrency(reimbursementStats.pendingAmount, defaultCurrency)} changeType={reimbursementStats.pendingBatches > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
             <StatCard label="Awaiting Batch" value={approvedForReimbursement.length} change="Approved expenses" changeType="neutral" icon={<Banknote size={20} />} />
           </div>
 
@@ -2345,7 +2347,7 @@ export default function ExpensePage() {
                       <p className="text-xs font-medium text-t1">{report.title}</p>
                       <p className="text-xs text-t3">{getEmployeeName(report.employee_id)} - Approved {report.approved_at ? new Date(report.approved_at).toLocaleDateString() : 'recently'}</p>
                     </div>
-                    <p className="text-sm font-semibold text-t1">${report.total_amount.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-t1">{formatCurrency(report.total_amount, defaultCurrency)}</p>
                     <Badge variant="success">Approved</Badge>
                   </div>
                 ))}
@@ -2366,7 +2368,7 @@ export default function ExpensePage() {
                       <Badge variant={batch.status === 'completed' ? 'success' : batch.status === 'processing' ? 'info' : batch.status === 'failed' ? 'error' : 'warning'}>
                         {batch.status}
                       </Badge>
-                      <span className="text-sm font-semibold text-t1">${batch.total_amount.toLocaleString()}</span>
+                      <span className="text-sm font-semibold text-t1">{formatCurrency(batch.total_amount, defaultCurrency)}</span>
                       <span className="text-xs text-t3">{batch.employee_count} employee{batch.employee_count !== 1 ? 's' : ''}</span>
                       <Badge variant="default">{batch.method?.replace('_', ' ')}</Badge>
                     </div>
@@ -2393,7 +2395,7 @@ export default function ExpensePage() {
                           <Avatar name={getEmployeeName(item.employee_id)} size="xs" />
                           <span className="text-xs text-t1 flex-1">{getEmployeeName(item.employee_id)}</span>
                           <span className="text-xs text-t3">{item.notes}</span>
-                          <span className="text-xs font-semibold text-t1">${item.amount.toLocaleString()}</span>
+                          <span className="text-xs font-semibold text-t1">{formatCurrency(item.amount, defaultCurrency)}</span>
                           <Badge variant={item.status === 'processed' ? 'success' : item.status === 'failed' ? 'error' : 'warning'} >{item.status}</Badge>
                         </div>
                       ))}
@@ -2432,11 +2434,11 @@ export default function ExpensePage() {
                 <p className="text-xs text-t3 mt-1">Total Batches</p>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-emerald-600">${reimbursementStats.totalReimbursed.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(reimbursementStats.totalReimbursed, defaultCurrency)}</p>
                 <p className="text-xs text-t3 mt-1">Total Reimbursed</p>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-amber-600">${reimbursementStats.pendingAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(reimbursementStats.pendingAmount, defaultCurrency)}</p>
                 <p className="text-xs text-t3 mt-1">Pending Amount</p>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
@@ -2528,7 +2530,7 @@ export default function ExpensePage() {
             </div>
             <div className="flex justify-end mt-2">
               <p className="text-sm font-semibold text-t1">
-                {tc('total')}: ${reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0).toLocaleString()}
+                {tc('total')}: {formatCurrency(reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0), defaultCurrency)}
               </p>
             </div>
           </div>
@@ -2586,15 +2588,15 @@ export default function ExpensePage() {
               <div className="grid grid-cols-3 gap-3 mb-2">
                 <div>
                   <p className="text-[10px] text-t3 uppercase tracking-wide">{t('dailyLimit')}</p>
-                  <p className="text-xs font-semibold text-t1">${rule.daily_limit.toLocaleString()}</p>
+                  <p className="text-xs font-semibold text-t1">{formatCurrency(rule.daily_limit, defaultCurrency)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-t3 uppercase tracking-wide">{t('receiptThreshold')}</p>
-                  <p className="text-xs font-semibold text-t1">${rule.receipt_threshold}</p>
+                  <p className="text-xs font-semibold text-t1">{formatCurrency(rule.receipt_threshold, defaultCurrency)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-t3 uppercase tracking-wide">{t('autoApproveLimit')}</p>
-                  <p className="text-xs font-semibold text-t1">${rule.auto_approve_limit.toLocaleString()}</p>
+                  <p className="text-xs font-semibold text-t1">{formatCurrency(rule.auto_approve_limit, defaultCurrency)}</p>
                 </div>
               </div>
               <p className="text-[11px] text-t3 italic bg-canvas rounded p-2">&ldquo;{rule.policy_citation}&rdquo;</p>
@@ -2629,7 +2631,7 @@ export default function ExpensePage() {
           </div>
           {mileageForm.distance_km > 0 && (
             <div className="bg-canvas rounded-lg p-3">
-              <p className="text-xs text-t3">{t('mileageAmount')}: <span className="font-semibold text-t1">${(mileageForm.distance_km * mileageForm.rate_per_km).toFixed(2)}</span></p>
+              <p className="text-xs text-t3">{t('mileageAmount')}: <span className="font-semibold text-t1">{formatCurrency(mileageForm.distance_km * mileageForm.rate_per_km, defaultCurrency)}</span></p>
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
@@ -2766,7 +2768,7 @@ export default function ExpensePage() {
                           {getEmployeeName(report.employee_id)} &middot; {new Date(report.submitted_at).toLocaleDateString()} &middot; {report.items?.length || 0} item{(report.items?.length || 0) !== 1 ? 's' : ''}
                         </p>
                       </div>
-                      <p className="text-sm font-semibold text-t1 shrink-0">${report.total_amount.toLocaleString()}</p>
+                      <p className="text-sm font-semibold text-t1 shrink-0">{formatCurrency(report.total_amount, defaultCurrency)}</p>
                       <Badge variant="warning">{report.status.replace(/_/g, ' ')}</Badge>
                     </div>
                   )
@@ -2816,7 +2818,7 @@ export default function ExpensePage() {
                 {bulkExpSelectedReports.length} report{bulkExpSelectedReports.length !== 1 ? 's' : ''} will be {bulkExpAction === 'approve' ? 'approved' : 'rejected'}
               </p>
               <p className={cn('text-xs mt-1', bulkExpAction === 'approve' ? 'text-emerald-700' : 'text-red-700')}>
-                Total amount: ${bulkExpTotalAmount.toLocaleString()}
+                Total amount: {formatCurrency(bulkExpTotalAmount, defaultCurrency)}
               </p>
             </div>
           )}
@@ -2858,7 +2860,7 @@ export default function ExpensePage() {
             <div>
               <label className="block text-xs font-medium text-t2 mb-1">Calculated Amount</label>
               <p className="px-3 py-2 text-sm font-semibold text-t1 bg-canvas rounded-lg border border-border">
-                ${(mileageEntryForm.distance_miles * mileageEntryForm.rate).toFixed(2)}
+                {formatCurrency(mileageEntryForm.distance_miles * mileageEntryForm.rate, defaultCurrency)}
               </p>
             </div>
           </div>
@@ -3045,7 +3047,7 @@ export default function ExpensePage() {
                       <p className="text-sm font-medium text-t1 truncate">{report.title}</p>
                       <p className="text-xs text-t3">{getEmployeeName(report.employee_id)}</p>
                     </div>
-                    <p className="text-sm font-semibold text-t1 shrink-0">${report.total_amount.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-t1 shrink-0">{formatCurrency(report.total_amount, defaultCurrency)}</p>
                   </div>
                 )
               })}
@@ -3058,7 +3060,7 @@ export default function ExpensePage() {
                 {selectedReimbursementIds.size} expense{selectedReimbursementIds.size !== 1 ? 's' : ''} selected for reimbursement
               </p>
               <p className="text-xs mt-1 text-emerald-700 dark:text-emerald-400">
-                Total: ${approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id)).reduce((a: number, r: any) => a + r.total_amount, 0).toLocaleString()} via {reimbursementMethod.replace('_', ' ')}
+                Total: {formatCurrency(approvedForReimbursement.filter((r: any) => selectedReimbursementIds.has(r.id)).reduce((a: number, r: any) => a + r.total_amount, 0), defaultCurrency)} via {reimbursementMethod.replace('_', ' ')}
               </p>
             </div>
           )}

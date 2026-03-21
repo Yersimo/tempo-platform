@@ -23,7 +23,8 @@ import {
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { analyzeAttendancePatterns, predictAbsenteeism } from '@/lib/ai-engine'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 
 // ---- Helpers ----
 function formatHours(h: number) { return h.toFixed(1) }
@@ -67,6 +68,7 @@ export default function TimeAttendancePage() {
     addToast,
     ensureModulesLoaded,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const role = currentUser?.role
   const canApproveLeave = role === 'manager' || role === 'hrbp' || role === 'admin' || role === 'owner'
@@ -1095,7 +1097,7 @@ export default function TimeAttendancePage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard label="Total OT This Week" value={`${formatHours(totalOTWeek)}h`} change="across all employees" changeType="neutral" icon={<Clock size={20} />} />
-            <StatCard label="OT Cost Estimate" value={`$${Math.round(totalOTWeek * 45).toLocaleString()}`} change="at 1.5x rate" changeType="neutral" icon={<TrendingUp size={20} />} />
+            <StatCard label="OT Cost Estimate" value={formatCurrency(Math.round(totalOTWeek * 45), defaultCurrency)} change="at 1.5x rate" changeType="neutral" icon={<TrendingUp size={20} />} />
             <StatCard label="Employees in OT" value={overtimeByDept.reduce((s, d) => s + d.employees, 0)} change="this week" changeType={overtimeByDept.reduce((s, d) => s + d.employees, 0) > 5 ? 'negative' : 'neutral'} icon={<Users size={20} />} />
             <StatCard label="Active Rules" value={overtimeRules.filter(r => r.is_active).length} change="configured" changeType="neutral" icon={<Settings size={20} />} />
           </div>
@@ -1478,7 +1480,7 @@ export default function TimeAttendancePage() {
             <StatCard label="Avg Hours/Week" value={analyticsData.weeklyAvgs.length > 0 ? `${formatHours(analyticsData.weeklyAvgs[analyticsData.weeklyAvgs.length - 1].avgHours)}h` : '-'} change="per employee" changeType="neutral" icon={<Clock size={20} />} />
             <StatCard label="Punctuality Rate" value={`${analyticsData.punctualityRate}%`} change="on time arrivals" changeType={analyticsData.punctualityRate >= 90 ? 'positive' : 'negative'} icon={<Timer size={20} />} />
             <StatCard label="PTO Utilization" value={`${analyticsData.ptoUtilization}%`} change="of allocated days" changeType="neutral" icon={<Briefcase size={20} />} />
-            <StatCard label="Weekly OT Total" value={`${formatHours(totalOTWeek)}h`} change={`$${Math.round(totalOTWeek * 45).toLocaleString()} cost`} changeType="neutral" icon={<TrendingUp size={20} />} />
+            <StatCard label="Weekly OT Total" value={`${formatHours(totalOTWeek)}h`} change={`${formatCurrency(Math.round(totalOTWeek * 45), defaultCurrency)} cost`} changeType="neutral" icon={<TrendingUp size={20} />} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
