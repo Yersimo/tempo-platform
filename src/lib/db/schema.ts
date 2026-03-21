@@ -4482,3 +4482,58 @@ export const talentReviewEntries = pgTable('talent_review_entries', {
   actionItems: text('action_items'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// PLATFORM: Tenant Usage Metrics, Alerts, Support Tickets
+// ============================================================
+
+export const tenantUsageMetrics = pgTable('tenant_usage_metrics', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  metricDate: text('metric_date').notNull(), // YYYY-MM-DD
+  activeUsers: integer('active_users').notNull().default(0),
+  apiCalls: integer('api_calls').notNull().default(0),
+  storageBytes: integer('storage_bytes').notNull().default(0),
+  payrollRunsProcessed: integer('payroll_runs_processed').notNull().default(0),
+  emailsSent: integer('emails_sent').notNull().default(0),
+  loginCount: integer('login_count').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const platformAlerts = pgTable('platform_alerts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id'),
+  alertType: text('alert_type').notNull(), // billing_overdue, usage_spike, error_rate_high, storage_limit, security_event
+  severity: text('severity').notNull().default('info'), // info, warning, critical
+  title: text('title').notNull(),
+  description: text('description'),
+  isResolved: boolean('is_resolved').default(false),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedBy: uuid('resolved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const supportTickets = pgTable('support_tickets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  submittedBy: uuid('submitted_by').notNull(),
+  subject: text('subject').notNull(),
+  description: text('description').notNull(),
+  category: text('category').notNull().default('general'), // general, billing, bug, feature_request, payroll, security
+  priority: text('priority').notNull().default('medium'), // low, medium, high, urgent
+  status: text('status').notNull().default('open'), // open, in_progress, waiting_on_customer, resolved, closed
+  assignedTo: uuid('assigned_to'),
+  resolution: text('resolution'),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const supportTicketMessages = pgTable('support_ticket_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id').notNull(),
+  senderType: text('sender_type').notNull(), // customer, support
+  senderId: uuid('sender_id').notNull(),
+  message: text('message').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})

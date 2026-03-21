@@ -13,6 +13,7 @@ import { HelpProvider } from '@/lib/help-context'
 import { HelpPanel } from '@/components/help/help-panel'
 import { HelpButton } from '@/components/help/help-button'
 import { OnboardingTour } from '@/components/help/onboarding-tour'
+import { SupportWidget } from '@/components/support/support-widget'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -98,6 +99,7 @@ export default function PlatformLayout({
           </div>
           <HelpPanel />
           <HelpButton />
+          <SupportWidget />
           <OnboardingTour />
           <ToastContainer />
         </HelpProvider>
