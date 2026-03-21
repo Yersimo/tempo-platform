@@ -15,7 +15,7 @@ import {
   CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
   KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
   ArrowLeftRight, X, Building2, BookOpen, Route, Sparkles, MoreHorizontal, Grid3X3,
-  Calendar, GitBranch, Rocket, Package, Scale,
+  Calendar, GitBranch, Rocket, Package, Scale, Layers, History,
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
 import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
@@ -113,6 +113,7 @@ export function Sidebar() {
         { label: 'Org Chart', href: '/people/org-chart', icon: <GitBranch size={18} /> },
         { label: 'Org Design', href: '/people/org-design', icon: <Building2 size={18} /> },
         { label: 'Team Calendar', href: '/people/team-calendar', icon: <Calendar size={18} /> },
+        { label: 'Positions', href: '/people', icon: <Layers size={18} /> },
         { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5, requiredPermissions: ['recruiting:read'] },
         { label: 'Chat', href: '/chat', icon: <MessageSquare size={18} /> },
       ],
@@ -126,6 +127,7 @@ export function Sidebar() {
         { label: 'Academies', href: '/academies', icon: <BookOpen size={18} />, requiredPermissions: ['learning:read'] },
         { label: t('engagement'), href: '/engagement', icon: <HeartPulse size={18} /> },
         { label: t('mentoring'), href: '/mentoring', icon: <UserCheck size={18} /> },
+        { label: 'Mentoring Hub', href: '/people/mentoring', icon: <Users size={18} /> },
         { label: 'Talent Marketplace', href: '/people/talent-marketplace', icon: <Rocket size={18} /> },
         { label: 'Journeys', href: '/journeys', icon: <Route size={18} /> },
         { label: 'Moments', href: '/moments', icon: <Sparkles size={18} /> },

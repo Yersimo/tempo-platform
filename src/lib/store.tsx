@@ -154,6 +154,9 @@ interface TempoState {
   mentoringPairs: WidenArray<DemoData['demoMentoringPairs']>
   mentoringSessions: WidenArray<DemoData['demoMentoringSessions']>
   mentoringGoals: WidenArray<DemoData['demoMentoringGoals']>
+  mentoringCheckIns: any[]
+  employeeHistoryData: any[]
+  positionsData: any[]
 
   // Payroll
   payrollRuns: WidenArray<DemoData['demoPayrollRuns']>
@@ -1182,6 +1185,17 @@ interface TempoState {
   updateWorkersCompClassCode: (id: string, data: AnyRecord) => void
   addWorkersCompAudit: (data: AnyRecord) => void
   updateWorkersCompAudit: (id: string, data: AnyRecord) => void
+
+  // Incident Reports (OSHA)
+  incidentReports: AnyRecord[]
+  addIncidentReport: (data: AnyRecord) => void
+  updateIncidentReport: (id: string, data: AnyRecord) => void
+
+  // Return-to-Work Plans
+  rtwPlans: AnyRecord[]
+  addRtwPlan: (data: AnyRecord) => void
+  updateRtwPlan: (id: string, data: AnyRecord) => void
+
   // Groups
   groups: AnyRecord[]
   addGroup: (data: AnyRecord) => void
@@ -1414,6 +1428,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [mentoringPairs, setMentoringPairs] = useState<any[]>([])
   const [mentoringSessions, setMentoringSessions] = useState<any[]>([])
   const [mentoringGoals, setMentoringGoals] = useState<any[]>([])
+  const [mentoringCheckIns, setMentoringCheckIns] = useState<any[]>([])
+  const [employeeHistoryData, setEmployeeHistoryData] = useState<any[]>([])
+  const [positionsData, setPositionsData] = useState<any[]>([])
   const [payrollRuns, setPayrollRuns] = useState<any[]>([])
   const [employeePayrollEntries, setEmployeePayrollEntries] = useState<any[]>([])
   const [contractorPayments, setContractorPayments] = useState<any[]>([])
@@ -1640,6 +1657,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [workersCompClaims, setWorkersCompClaims] = useState<any[]>([])
   const [workersCompClassCodes, setWorkersCompClassCodes] = useState<any[]>([])
   const [workersCompAudits, setWorkersCompAudits] = useState<any[]>([])
+  const [incidentReports, setIncidentReports] = useState<any[]>([])
+  const [rtwPlans, setRtwPlans] = useState<any[]>([])
   const [groups, setGroups] = useState<any[]>([])
   const [provisioningRules, setProvisioningRules] = useState<any[]>([])
   const [encryptionPolicies, setEncryptionPolicies] = useState<any[]>([])
@@ -1883,6 +1902,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).workersCompClaims) setWorkersCompClaims((data as any).workersCompClaims)
     if ((data as any).workersCompClassCodes) setWorkersCompClassCodes((data as any).workersCompClassCodes)
     if ((data as any).workersCompAudits) setWorkersCompAudits((data as any).workersCompAudits)
+    if ((data as any).incidentReports) setIncidentReports((data as any).incidentReports)
+    if ((data as any).rtwPlans) setRtwPlans((data as any).rtwPlans)
     if ((data as any).groups) setGroups((data as any).groups)
     if ((data as any).provisioningRules) setProvisioningRules((data as any).provisioningRules)
     if ((data as any).encryptionPolicies) setEncryptionPolicies((data as any).encryptionPolicies)
@@ -1985,6 +2006,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       workersCompClaims: (d) => setWorkersCompClaims(d),
       workersCompClassCodes: (d) => setWorkersCompClassCodes(d),
       workersCompAudits: (d) => setWorkersCompAudits(d),
+      // Incident Reports & RTW Plans
+      incidentReports: (d) => setIncidentReports(d),
+      rtwPlans: (d) => setRtwPlans(d),
       // Equity Grants
       equityGrants: (d) => setEquityGrants(d),
       // Payroll
@@ -2022,6 +2046,9 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       // Mentoring (extended)
       mentoringSessions: (d) => setMentoringSessions(d),
       mentoringGoals: (d) => setMentoringGoals(d),
+      mentoringCheckIns: (d) => setMentoringCheckIns(d),
+      employeeHistory: (d) => setEmployeeHistoryData(d),
+      positions: (d) => setPositionsData(d),
       // IT Devices (extended)
       deviceActions: (d) => setDeviceActions(d),
       appCatalog: (d) => setAppCatalog(d),
@@ -5959,6 +5986,36 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('workersCompAudits', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- Incident Reports (OSHA) ----
+  const addIncidentReport = useCallback((data: AnyRecord) => {
+    const id = genId('inc')
+    setIncidentReports(prev => [...prev, { id, org_id: orgIdRef.current, status: 'reported', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'incident_report', id, `Filed incident report`)
+    addToast('Incident report filed')
+    apiPost('incidentReports', 'create', data)
+  }, [logAudit, addToast])
+  const updateIncidentReport = useCallback((id: string, data: AnyRecord) => {
+    setIncidentReports(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    logAudit('update', 'incident_report', id, 'Updated incident report')
+    addToast('Incident report updated')
+    apiPost('incidentReports', 'update', data, id)
+  }, [logAudit, addToast])
+
+  // ---- Return-to-Work Plans ----
+  const addRtwPlan = useCallback((data: AnyRecord) => {
+    const id = genId('rtw')
+    setRtwPlans(prev => [...prev, { id, org_id: orgIdRef.current, status: 'active', created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'rtw_plan', id, `Created return-to-work plan`)
+    addToast('Return-to-work plan created')
+    apiPost('rtwPlans', 'create', data)
+  }, [logAudit, addToast])
+  const updateRtwPlan = useCallback((id: string, data: AnyRecord) => {
+    setRtwPlans(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    logAudit('update', 'rtw_plan', id, 'Updated return-to-work plan')
+    addToast('Return-to-work plan updated')
+    apiPost('rtwPlans', 'update', data, id)
+  }, [logAudit, addToast])
+
   // ---- Groups ----
   const addGroup = useCallback((data: AnyRecord) => {
     const id = genId('grp')
@@ -6210,7 +6267,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     compBands, salaryReviews, equityGrants, compPlanningCycles,
     courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments,
     surveys, engagementScores, actionPlans, surveyResponses,
-    mentoringPrograms, mentoringPairs, mentoringSessions, mentoringGoals,
+    mentoringPrograms, mentoringPairs, mentoringSessions, mentoringGoals, mentoringCheckIns,
+    employeeHistoryData, positionsData,
     payrollRuns, employeePayrollEntries, setPayrollRuns: (fn: (prev: any[]) => any[]) => setPayrollRuns(fn as any), setEmployeePayrollEntries: (fn: (prev: any[]) => any[]) => setEmployeePayrollEntries(fn as any), contractorPayments, payrollSchedules, taxConfigs, complianceIssues, taxFilings, payrollApprovals, payrollApprovalConfig,
     leaveRequests,
     benefitPlans, benefitEnrollments, benefitDependents, lifeEvents, expenseReports, expensePolicies, mileageLogs,
@@ -6436,6 +6494,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     workersCompPolicies, workersCompClaims, workersCompClassCodes, workersCompAudits,
     addWorkersCompPolicy, updateWorkersCompPolicy, addWorkersCompClaim, updateWorkersCompClaim,
     addWorkersCompClassCode, updateWorkersCompClassCode, addWorkersCompAudit, updateWorkersCompAudit,
+    incidentReports, addIncidentReport, updateIncidentReport,
+    rtwPlans, addRtwPlan, updateRtwPlan,
     groups, addGroup, updateGroup, deleteGroup,
     provisioningRules, addProvisioningRule, updateProvisioningRule, deleteProvisioningRule,
     encryptionPolicies, addEncryptionPolicy, updateEncryptionPolicy, deleteEncryptionPolicy,

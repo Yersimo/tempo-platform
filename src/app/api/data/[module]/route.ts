@@ -80,6 +80,9 @@ const MODULE_CONFIG: Record<string, {
   'workers-comp-claims':   { table: schema.workersCompClaims, hasOrgId: true, defaultLimit: 50 },
   'workers-comp-class-codes': { table: schema.workersCompClassCodes, hasOrgId: true, defaultLimit: 50 },
   'workers-comp-audits':   { table: schema.workersCompAudits, hasOrgId: true, defaultLimit: 20 },
+  // Incident Reports & RTW Plans
+  'incident-reports':      { table: schema.incidentReports, hasOrgId: true, defaultLimit: 50 },
+  'rtw-plans':             { table: schema.rtwPlans, hasOrgId: true, defaultLimit: 50 },
   // Equity Grants
   'equity-grants':         { table: schema.equityGrants, hasOrgId: true, defaultLimit: 50 },
   // Groups
@@ -284,6 +287,17 @@ const MODULE_CONFIG: Record<string, {
   'document-versions':       { table: schema.documentVersions, hasOrgId: false, defaultLimit: 100 },
   'document-collaborators':  { table: schema.documentCollaborators, hasOrgId: false, defaultLimit: 100 },
   'document-comments':       { table: schema.documentComments, hasOrgId: false, defaultLimit: 100 },
+  // Employee History
+  'employee-history':        { table: schema.employeeHistory, hasOrgId: true, defaultLimit: 100 },
+  // Mentoring Check-Ins
+  'mentoring-check-ins':     { table: schema.mentoringCheckIns, hasOrgId: false, defaultLimit: 50 },
+  // Position Management
+  'positions':               { table: schema.positions, hasOrgId: true, defaultLimit: 50 },
+  // Marketplace
+  'installed-integrations':  { table: schema.installedIntegrations, hasOrgId: true, defaultLimit: 50 },
+  'integration-sync-log':    { table: schema.integrationSyncLog, hasOrgId: false, defaultLimit: 100 },
+  'api-keys':                { table: schema.apiKeys, hasOrgId: true, defaultLimit: 50 },
+  'webhook-subscriptions':   { table: schema.webhookSubscriptions, hasOrgId: true, defaultLimit: 50 },
 }
 
 export async function GET(

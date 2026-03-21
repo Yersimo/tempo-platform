@@ -75,6 +75,9 @@ export const MODULE_SLUGS: Record<string, string> = {
   workersCompClaims: 'workers-comp-claims',
   workersCompClassCodes: 'workers-comp-class-codes',
   workersCompAudits: 'workers-comp-audits',
+  // Incident Reports & RTW Plans
+  incidentReports: 'incident-reports',
+  rtwPlans: 'rtw-plans',
   // Groups
   groups: 'dynamic-groups',
   // Password Manager
@@ -277,6 +280,17 @@ export const MODULE_SLUGS: Record<string, string> = {
   documentVersions: 'document-versions',
   documentCollaborators: 'document-collaborators',
   documentComments: 'document-comments',
+  // Employee History
+  employeeHistory: 'employee-history',
+  // Mentoring Check-Ins
+  mentoringCheckIns: 'mentoring-check-ins',
+  // Position Management
+  positions: 'positions',
+  // Marketplace
+  installedIntegrations: 'installed-integrations',
+  integrationSyncLog: 'integration-sync-log',
+  apiKeys: 'api-keys',
+  webhookSubscriptions: 'webhook-subscriptions',
 }
 
 // ---------------------------------------------------------------------------

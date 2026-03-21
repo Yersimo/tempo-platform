@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,11 +9,16 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import {
   AppWindow, Search, Star, Download, Trash2, RefreshCw,
   Filter, ExternalLink, Check, X, ChevronRight, Package,
   Code, CreditCard, Globe, Shield, MessageSquare, Zap,
   BarChart3, Headphones, Settings, AlertTriangle,
+  Key, Plus, Copy, Eye, EyeOff, Webhook, Activity,
+  ArrowLeftRight, ArrowDown, ArrowUp, Clock, Unplug,
+  Plug, CheckCircle, XCircle, RotateCw, FileCode,
+  Hash, Lock, Clipboard,
 } from 'lucide-react'
 import {
   getMarketplaceApps,
@@ -24,6 +29,7 @@ import {
   getInstalledApps,
   syncAppData,
   getMarketplaceStats,
+  getSyncHistory,
 } from '@/lib/marketplace'
 import type { AppCategory, AppPricing, MarketplaceApp, InstalledApp } from '@/lib/marketplace'
 import { useTempo } from '@/lib/store'
@@ -187,10 +193,139 @@ export default function MarketplacePage() {
     }
   }
 
+  // ── New tab state ──
+  const [configAppId, setConfigAppId] = useState<string | null>(null)
+  const [configSyncSchedule, setConfigSyncSchedule] = useState('daily')
+  const [configFieldMappings, setConfigFieldMappings] = useState<Array<{ source: string; destination: string }>>([
+    { source: 'email', destination: 'email' },
+    { source: 'name', destination: 'full_name' },
+    { source: 'department', destination: 'department_id' },
+  ])
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<Array<{
+    id: string; name: string; keyPrefix: string; scopes: string[];
+    lastUsedAt: string | null; expiresAt: string | null; isActive: boolean;
+    createdAt: string; rawKey?: string
+  }>>([
+    { id: 'key-1', name: 'Production API', keyPrefix: 'tempo_8f3a2b', scopes: ['employees:read', 'payroll:read', 'departments:read'], lastUsedAt: new Date(Date.now() - 3600000).toISOString(), expiresAt: null, isActive: true, createdAt: new Date(Date.now() - 86400000 * 30).toISOString() },
+    { id: 'key-2', name: 'Staging API', keyPrefix: 'tempo_c7d91e', scopes: ['employees:read'], lastUsedAt: new Date(Date.now() - 86400000 * 7).toISOString(), expiresAt: new Date(Date.now() + 86400000 * 60).toISOString(), isActive: true, createdAt: new Date(Date.now() - 86400000 * 15).toISOString() },
+  ])
+  const [showCreateKey, setShowCreateKey] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyScopes, setNewKeyScopes] = useState('employees:read')
+  const [createdKeyRaw, setCreatedKeyRaw] = useState<string | null>(null)
+
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState<Array<{
+    id: string; url: string; secret: string; events: string[];
+    isActive: boolean; lastDeliveryAt: string | null; failureCount: number; createdAt: string
+  }>>([
+    { id: 'wh-1', url: 'https://hooks.example.com/tempo', secret: 'whsec_abc123', events: ['employee.created', 'employee.updated', 'payroll.completed'], isActive: true, lastDeliveryAt: new Date(Date.now() - 1800000).toISOString(), failureCount: 0, createdAt: new Date(Date.now() - 86400000 * 20).toISOString() },
+  ])
+  const [showCreateWebhook, setShowCreateWebhook] = useState(false)
+  const [newWebhookUrl, setNewWebhookUrl] = useState('')
+  const [newWebhookEvents, setNewWebhookEvents] = useState('employee.created')
+
+  // Health state
+  const healthData = useMemo(() => {
+    return installedApps.map((inst) => {
+      const isHealthy = inst.status === 'active'
+      return {
+        appId: inst.appId,
+        app: inst.app,
+        status: isHealthy ? 'healthy' as const : inst.status === 'error' ? 'down' as const : 'degraded' as const,
+        lastCheck: new Date(Date.now() - Math.floor(Math.random() * 300000)).toISOString(),
+        errorCount: isHealthy ? 0 : Math.floor(Math.random() * 10) + 1,
+        successRate: isHealthy ? 99.5 + Math.random() * 0.5 : 75 + Math.random() * 20,
+        avgResponseTime: Math.floor(50 + Math.random() * 200),
+        recordsSynced: Math.floor(Math.random() * 10000) + 100,
+        recordsFailed: isHealthy ? 0 : Math.floor(Math.random() * 50),
+        recordsSkipped: Math.floor(Math.random() * 20),
+        retryQueueSize: isHealthy ? 0 : Math.floor(Math.random() * 5),
+        recentErrors: isHealthy ? [] : [
+          { timestamp: new Date(Date.now() - 60000).toISOString(), message: 'Connection timeout after 30s', code: 'TIMEOUT' },
+          { timestamp: new Date(Date.now() - 120000).toISOString(), message: 'Rate limit exceeded (429)', code: 'RATE_LIMIT' },
+        ],
+      }
+    })
+  }, [installedApps])
+
+  // API usage analytics demo
+  const apiUsage = useMemo(() => ({
+    totalCalls: 34521,
+    callsToday: 423,
+    callsThisWeek: 2847,
+    callsThisMonth: 11203,
+    rateLimit: { limit: 10000, remaining: 7634, resetAt: new Date(Date.now() + 3600000).toISOString() },
+    topEndpoints: [
+      { path: '/api/v1/employees', calls: 4821, avgLatency: 45 },
+      { path: '/api/v1/payroll', calls: 2340, avgLatency: 120 },
+      { path: '/api/v1/leave-requests', calls: 1823, avgLatency: 65 },
+      { path: '/api/v1/departments', calls: 892, avgLatency: 30 },
+    ],
+    errorRate: '1.2',
+  }), [])
+
+  function handleCreateApiKey() {
+    if (!newKeyName.trim()) { addToast('Key name is required', 'error'); return }
+    const rawKey = 'tempo_' + Math.random().toString(36).substring(2, 26) + Math.random().toString(36).substring(2, 10)
+    const newKey = {
+      id: 'key-' + Date.now(),
+      name: newKeyName,
+      keyPrefix: rawKey.substring(0, 12),
+      scopes: newKeyScopes.split(',').map(s => s.trim()),
+      lastUsedAt: null,
+      expiresAt: null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      rawKey,
+    }
+    setApiKeys(prev => [...prev, newKey])
+    setCreatedKeyRaw(rawKey)
+    setNewKeyName('')
+    addToast('API key created')
+  }
+
+  function handleRevokeApiKey(keyId: string) {
+    setApiKeys(prev => prev.map(k => k.id === keyId ? { ...k, isActive: false } : k))
+    addToast('API key revoked')
+  }
+
+  function handleCreateWebhook() {
+    if (!newWebhookUrl.trim()) { addToast('Webhook URL is required', 'error'); return }
+    const newHook = {
+      id: 'wh-' + Date.now(),
+      url: newWebhookUrl,
+      secret: 'whsec_' + Math.random().toString(36).substring(2, 18),
+      events: newWebhookEvents.split(',').map(s => s.trim()),
+      isActive: true,
+      lastDeliveryAt: null,
+      failureCount: 0,
+      createdAt: new Date().toISOString(),
+    }
+    setWebhooks(prev => [...prev, newHook])
+    setShowCreateWebhook(false)
+    setNewWebhookUrl('')
+    addToast('Webhook created')
+  }
+
+  function handleDeleteWebhook(whId: string) {
+    setWebhooks(prev => prev.filter(w => w.id !== whId))
+    addToast('Webhook deleted')
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text)
+    addToast('Copied to clipboard')
+  }
+
   // Tabs config
   const tabs = [
-    { id: 'browse', label: 'Browse Apps', count: stats.totalAppsAvailable },
-    { id: 'installed', label: 'Installed Apps', count: stats.totalInstalled },
+    { id: 'browse', label: 'Catalog', count: stats.totalAppsAvailable },
+    { id: 'installed', label: 'Installed', count: stats.totalInstalled },
+    { id: 'api', label: 'API' },
+    { id: 'health', label: 'Health' },
   ]
 
   return (
@@ -398,47 +533,68 @@ export default function MarketplacePage() {
                     inst.status === 'active' ? 'success' :
                     inst.status === 'error' ? 'error' :
                     inst.status === 'paused' ? 'warning' : 'default'
+                  // Determine sync direction for display
+                  const syncDirections = ['bidirectional', 'inbound', 'outbound'] as const
+                  const syncDir = syncDirections[Math.abs(app.name.charCodeAt(0)) % 3]
+                  const SyncIcon = syncDir === 'bidirectional' ? ArrowLeftRight : syncDir === 'inbound' ? ArrowDown : ArrowUp
                   return (
-                    <div key={inst.appId} className="px-6 py-4 flex items-center gap-4 hover:bg-canvas/50 transition-colors">
-                      <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-lg flex-shrink-0">
-                        {app.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-t1">{app.name}</p>
-                          <Badge variant={statusVariant}>{inst.status.replace('_', ' ')}</Badge>
+                    <div key={inst.appId} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-lg flex-shrink-0">
+                          {app.icon}
                         </div>
-                        <p className="text-xs text-t3">
-                          {app.category} &middot; {app.developer}
-                          {inst.lastSyncAt && <> &middot; Last sync: {timeAgo(inst.lastSyncAt)}</>}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedAppId(app.id)}
-                        >
-                          <ChevronRight size={12} /> Details
-                        </Button>
-                        {inst.status === 'active' && (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-t1">{app.name}</p>
+                            <Badge variant={statusVariant}>
+                              {inst.status === 'active' ? <><span className="w-1.5 h-1.5 rounded-full bg-white inline-block mr-1" />connected</> : inst.status.replace('_', ' ')}
+                            </Badge>
+                            <Badge variant="default">
+                              <SyncIcon size={10} className="mr-0.5" /> {syncDir}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-t3">
+                            {app.category} &middot; {app.developer}
+                            {inst.lastSyncAt && <> &middot; Last sync: {timeAgo(inst.lastSyncAt)}</>}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {inst.status === 'error' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={saving}
+                              onClick={() => { handleSync(app.id); addToast('Reconnecting...') }}
+                            >
+                              <Plug size={12} /> Reconnect
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="secondary"
-                            disabled={saving}
-                            onClick={() => handleSync(app.id)}
+                            variant="outline"
+                            onClick={() => setSelectedAppId(app.id)}
                           >
-                            <RefreshCw size={12} /> Sync
+                            <Settings size={12} /> Configure
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={saving}
-                          onClick={() => requestUninstall(app.id, app.name)}
-                        >
-                          <Trash2 size={12} />
-                        </Button>
+                          {inst.status === 'active' && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={saving}
+                              onClick={() => handleSync(app.id)}
+                            >
+                              <RefreshCw size={12} /> Sync Now
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={saving}
+                            onClick={() => requestUninstall(app.id, app.name)}
+                          >
+                            <Unplug size={12} className="text-error" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )
@@ -499,6 +655,370 @@ export default function MarketplacePage() {
           )}
         </>
       )}
+
+      {/* ============================================================= */}
+      {/* API TAB                                                         */}
+      {/* ============================================================= */}
+      {activeTab === 'api' && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Total API Calls" value={apiUsage.totalCalls.toLocaleString()} icon={<Activity size={20} />} />
+            <StatCard label="Calls Today" value={apiUsage.callsToday} change={`${apiUsage.errorRate}% error rate`} changeType="neutral" icon={<BarChart3 size={20} />} />
+            <StatCard label="Active Keys" value={apiKeys.filter(k => k.isActive).length} icon={<Key size={20} />} />
+            <StatCard label="Webhooks" value={webhooks.length} change={`${webhooks.filter(w => w.isActive).length} active`} changeType="positive" icon={<Webhook size={20} />} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* API Keys Management */}
+            <Card padding="none">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><Key size={16} /> API Keys</CardTitle>
+                  <Button size="sm" onClick={() => { setShowCreateKey(true); setCreatedKeyRaw(null) }}>
+                    <Plus size={12} /> Create Key
+                  </Button>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {apiKeys.map((key) => (
+                  <div key={key.id} className="px-6 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${key.isActive ? 'bg-success' : 'bg-gray-300'}`} />
+                      <div>
+                        <p className="text-xs font-medium text-t1">{key.name}</p>
+                        <p className="text-[0.65rem] text-t3 font-mono">{key.keyPrefix}...{key.isActive ? '' : ' (revoked)'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap gap-1">
+                        {key.scopes.slice(0, 2).map(s => (
+                          <span key={s} className="px-1.5 py-0.5 bg-canvas rounded text-[0.6rem] text-t3">{s}</span>
+                        ))}
+                        {key.scopes.length > 2 && <span className="text-[0.6rem] text-t3">+{key.scopes.length - 2}</span>}
+                      </div>
+                      {key.isActive && (
+                        <Button size="sm" variant="ghost" onClick={() => handleRevokeApiKey(key.id)}>
+                          <XCircle size={12} className="text-error" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {apiKeys.length === 0 && (
+                  <div className="px-6 py-8 text-center text-xs text-t3">No API keys created yet</div>
+                )}
+              </div>
+            </Card>
+
+            {/* Webhook Subscriptions */}
+            <Card padding="none">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><Webhook size={16} /> Webhooks</CardTitle>
+                  <Button size="sm" onClick={() => setShowCreateWebhook(true)}>
+                    <Plus size={12} /> Add Webhook
+                  </Button>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {webhooks.map((wh) => (
+                  <div key={wh.id} className="px-6 py-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${wh.isActive ? 'bg-success' : 'bg-gray-300'}`} />
+                        <p className="text-xs font-medium text-t1 truncate max-w-[220px]">{wh.url}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => copyToClipboard(wh.secret)}>
+                          <Copy size={10} />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteWebhook(wh.id)}>
+                          <Trash2 size={10} className="text-error" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {wh.events.map(ev => (
+                        <span key={ev} className="px-1.5 py-0.5 bg-canvas rounded text-[0.6rem] text-t3">{ev}</span>
+                      ))}
+                    </div>
+                    <p className="text-[0.6rem] text-t3">
+                      {wh.lastDeliveryAt ? `Last delivery: ${timeAgo(wh.lastDeliveryAt)}` : 'No deliveries yet'}
+                      {wh.failureCount > 0 && <span className="text-error ml-2">{wh.failureCount} failures</span>}
+                    </p>
+                  </div>
+                ))}
+                {webhooks.length === 0 && (
+                  <div className="px-6 py-8 text-center text-xs text-t3">No webhooks configured</div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Rate Limit & Usage */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
+                <BarChart3 size={16} /> Rate Limit Status
+              </h3>
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-t2">Usage</span>
+                  <span className="text-xs font-medium text-t1">
+                    {(apiUsage.rateLimit.limit - apiUsage.rateLimit.remaining).toLocaleString()} / {apiUsage.rateLimit.limit.toLocaleString()}
+                  </span>
+                </div>
+                <Progress value={((apiUsage.rateLimit.limit - apiUsage.rateLimit.remaining) / apiUsage.rateLimit.limit) * 100} color="orange" />
+              </div>
+              <p className="text-xs text-t3">
+                <Clock size={10} className="inline mr-1" />
+                Resets at {new Date(apiUsage.rateLimit.resetAt).toLocaleTimeString()}
+              </p>
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
+                <Activity size={16} /> Top Endpoints
+              </h3>
+              <div className="space-y-3">
+                {apiUsage.topEndpoints.map((ep) => (
+                  <div key={ep.path} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileCode size={12} className="text-t3" />
+                      <span className="text-xs font-mono text-t1">{ep.path}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-t3">{ep.calls.toLocaleString()} calls</span>
+                      <Badge variant="default">{ep.avgLatency}ms</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Available Events */}
+          <Card className="mt-6">
+            <h3 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
+              <FileCode size={16} /> Available Webhook Events
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                'employee.created', 'employee.updated', 'employee.terminated',
+                'payroll.completed', 'payroll.approved', 'leave.requested',
+                'leave.approved', 'leave.rejected', 'expense.submitted',
+                'expense.approved', 'review.completed', 'onboarding.started',
+                'offboarding.started', 'device.assigned', 'integration.synced',
+                'integration.error',
+              ].map(ev => (
+                <div key={ev} className="flex items-center gap-2 px-3 py-2 bg-canvas rounded-lg">
+                  <Hash size={10} className="text-t3 flex-shrink-0" />
+                  <span className="text-xs font-mono text-t2">{ev}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* ============================================================= */}
+      {/* HEALTH TAB                                                      */}
+      {/* ============================================================= */}
+      {activeTab === 'health' && (
+        <>
+          {healthData.length === 0 ? (
+            <div className="text-center py-16">
+              <Activity size={40} className="mx-auto text-t3 mb-3" />
+              <p className="text-sm text-t2">No integrations installed</p>
+              <p className="text-xs text-t3 mt-1">Install integrations to see their health status</p>
+              <Button size="sm" className="mt-4" onClick={() => setActiveTab('browse')}>Browse Apps</Button>
+            </div>
+          ) : (
+            <>
+              {/* Health summary cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                  label="Healthy"
+                  value={healthData.filter(h => h.status === 'healthy').length}
+                  icon={<CheckCircle size={20} className="text-success" />}
+                />
+                <StatCard
+                  label="Degraded"
+                  value={healthData.filter(h => h.status === 'degraded').length}
+                  change={healthData.filter(h => h.status === 'degraded').length > 0 ? 'needs attention' : 'none'}
+                  changeType={healthData.filter(h => h.status === 'degraded').length > 0 ? 'negative' : 'positive'}
+                  icon={<AlertTriangle size={20} className="text-warning" />}
+                />
+                <StatCard
+                  label="Down"
+                  value={healthData.filter(h => h.status === 'down').length}
+                  change={healthData.filter(h => h.status === 'down').length > 0 ? 'critical' : 'all up'}
+                  changeType={healthData.filter(h => h.status === 'down').length > 0 ? 'negative' : 'positive'}
+                  icon={<XCircle size={20} className="text-error" />}
+                />
+                <StatCard
+                  label="Total Records Synced"
+                  value={healthData.reduce((a, h) => a + h.recordsSynced, 0).toLocaleString()}
+                  icon={<RefreshCw size={20} />}
+                />
+              </div>
+
+              {/* Integration Health List */}
+              <Card padding="none">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity size={16} /> Integration Health Dashboard
+                  </CardTitle>
+                </CardHeader>
+                <div className="divide-y divide-divider">
+                  {healthData.map((h) => (
+                    <div key={h.appId} className="px-6 py-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center text-lg">
+                            {h.app.icon}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-t1">{h.app.name}</p>
+                              <Badge variant={h.status === 'healthy' ? 'success' : h.status === 'degraded' ? 'warning' : 'error'}>
+                                {h.status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-t3">Last checked: {timeAgo(h.lastCheck)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-xs font-medium text-t1">{h.successRate.toFixed(1)}%</p>
+                            <p className="text-[0.6rem] text-t3">success rate</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-medium text-t1">{h.avgResponseTime}ms</p>
+                            <p className="text-[0.6rem] text-t3">avg latency</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Data quality metrics */}
+                      <div className="grid grid-cols-4 gap-3 mb-2">
+                        <div className="bg-canvas rounded px-3 py-2 text-center">
+                          <p className="text-xs font-bold text-success">{h.recordsSynced.toLocaleString()}</p>
+                          <p className="text-[0.6rem] text-t3">synced</p>
+                        </div>
+                        <div className="bg-canvas rounded px-3 py-2 text-center">
+                          <p className="text-xs font-bold text-error">{h.recordsFailed}</p>
+                          <p className="text-[0.6rem] text-t3">failed</p>
+                        </div>
+                        <div className="bg-canvas rounded px-3 py-2 text-center">
+                          <p className="text-xs font-bold text-t2">{h.recordsSkipped}</p>
+                          <p className="text-[0.6rem] text-t3">skipped</p>
+                        </div>
+                        <div className="bg-canvas rounded px-3 py-2 text-center">
+                          <p className="text-xs font-bold text-warning">{h.retryQueueSize}</p>
+                          <p className="text-[0.6rem] text-t3">retry queue</p>
+                        </div>
+                      </div>
+
+                      {/* Error logs */}
+                      {h.recentErrors.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {h.recentErrors.map((err, i) => (
+                            <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded text-xs">
+                              <AlertTriangle size={10} className="text-error flex-shrink-0" />
+                              <span className="text-error font-mono text-[0.65rem]">[{err.code}]</span>
+                              <span className="text-t2">{err.message}</span>
+                              <span className="text-t3 ml-auto">{timeAgo(err.timestamp)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ============================================================= */}
+      {/* CREATE API KEY MODAL                                            */}
+      {/* ============================================================= */}
+      <Modal open={showCreateKey} onClose={() => { setShowCreateKey(false); setCreatedKeyRaw(null) }} title="Create API Key" size="sm">
+        {createdKeyRaw ? (
+          <div className="space-y-4">
+            <div className="bg-green-50 rounded-lg p-4">
+              <p className="text-xs font-medium text-success mb-2">API key created successfully!</p>
+              <p className="text-xs text-t2 mb-2">Copy this key now. You will not be able to see it again.</p>
+              <div className="flex items-center gap-2 bg-white rounded p-2 border border-divider">
+                <code className="text-xs font-mono text-t1 flex-1 break-all">{createdKeyRaw}</code>
+                <Button size="sm" variant="ghost" onClick={() => copyToClipboard(createdKeyRaw)}>
+                  <Copy size={12} />
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => { setShowCreateKey(false); setCreatedKeyRaw(null) }}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Input
+              label="Key Name"
+              placeholder="e.g. Production API Key"
+              value={newKeyName}
+              onChange={e => setNewKeyName(e.target.value)}
+            />
+            <Input
+              label="Scopes (comma-separated)"
+              placeholder="employees:read, payroll:read"
+              value={newKeyScopes}
+              onChange={e => setNewKeyScopes(e.target.value)}
+            />
+            <div className="bg-canvas rounded-lg p-3">
+              <p className="text-xs text-t2 flex items-center gap-1">
+                <Shield size={12} />
+                Available scopes: employees:read, employees:write, payroll:read, departments:read, leave:read, leave:write, expenses:read
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setShowCreateKey(false)}>Cancel</Button>
+              <Button onClick={handleCreateApiKey}><Key size={14} /> Create Key</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ============================================================= */}
+      {/* CREATE WEBHOOK MODAL                                            */}
+      {/* ============================================================= */}
+      <Modal open={showCreateWebhook} onClose={() => setShowCreateWebhook(false)} title="Add Webhook" size="sm">
+        <div className="space-y-4">
+          <Input
+            label="Endpoint URL"
+            placeholder="https://your-app.com/webhooks/tempo"
+            value={newWebhookUrl}
+            onChange={e => setNewWebhookUrl(e.target.value)}
+          />
+          <Input
+            label="Events (comma-separated)"
+            placeholder="employee.created, payroll.completed"
+            value={newWebhookEvents}
+            onChange={e => setNewWebhookEvents(e.target.value)}
+          />
+          <div className="bg-canvas rounded-lg p-3">
+            <p className="text-xs text-t2 flex items-center gap-1">
+              <Lock size={12} />
+              A signing secret will be generated automatically to verify webhook payloads.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCreateWebhook(false)}>Cancel</Button>
+            <Button onClick={handleCreateWebhook}><Webhook size={14} /> Create Webhook</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ============================================================= */}
       {/* APP DETAIL MODAL                                               */}

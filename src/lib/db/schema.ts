@@ -3702,6 +3702,46 @@ export const workersCompAudits = pgTable('workers_comp_audits', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// ── Incident Reports (OSHA)
+export const incidentReports = pgTable('incident_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  incidentDate: text('incident_date').notNull(),
+  incidentTime: text('incident_time'),
+  location: text('location').notNull(),
+  description: text('description').notNull(),
+  injuryType: text('injury_type').notNull(),
+  bodyPart: text('body_part').notNull(),
+  severity: text('severity').notNull(), // first_aid, medical, lost_time, restricted, fatality
+  witnesses: text('witnesses'),
+  isOshaRecordable: boolean('is_osha_recordable').default(false),
+  oshaClassification: text('osha_classification'), // death, days_away, job_transfer, other_recordable
+  daysAway: integer('days_away').default(0),
+  daysRestricted: integer('days_restricted').default(0),
+  status: text('status').notNull().default('reported'),
+  claimId: uuid('claim_id'),
+  reportedBy: uuid('reported_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ── Return-to-Work Plans
+export const rtwPlans = pgTable('rtw_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  claimId: uuid('claim_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  startDate: text('start_date').notNull(),
+  targetFullDutyDate: text('target_full_duty_date'),
+  currentPhase: text('current_phase').notNull().default('modified_duty'), // off_work, modified_duty, graduated, full_duty
+  restrictions: text('restrictions'),
+  phaseSchedule: text('phase_schedule'), // JSON
+  medicalClearance: boolean('medical_clearance').default(false),
+  clearanceDate: text('clearance_date'),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ============================================================
 // EQUITY GRANTS
 // ============================================================
@@ -4898,4 +4938,119 @@ export const careerInterests = pgTable('career_interests', {
   openToTransfer: boolean('open_to_transfer').default(false),
   skills: text('skills'), // JSON: skills they want to develop
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// EMPLOYEE HISTORY: Effective-Dated Audit Trail
+// ============================================================
+
+export const employeeHistory = pgTable('employee_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  fieldName: text('field_name').notNull(), // job_title, department_id, level, salary, manager_id, country, etc.
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  effectiveDate: text('effective_date').notNull(),
+  changedBy: uuid('changed_by'),
+  changeReason: text('change_reason'), // promotion, lateral_move, reorg, correction, annual_review
+  changeType: text('change_type').notNull(), // hire, promotion, transfer, compensation, termination, correction
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// MENTORING CHECK-INS (extends existing mentoring tables)
+// ============================================================
+
+export const mentoringCheckIns = pgTable('mentoring_check_ins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  pairId: uuid('pair_id').notNull(),
+  date: text('date').notNull(),
+  duration: integer('duration'), // minutes
+  topics: text('topics'),
+  actionItems: text('action_items'),
+  mentorNotes: text('mentor_notes'),
+  menteeNotes: text('mentee_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// POSITION MANAGEMENT: Positions distinct from Employees
+// ============================================================
+
+export const positions = pgTable('positions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  positionCode: text('position_code').notNull(),
+  title: text('title').notNull(),
+  departmentId: uuid('department_id'),
+  level: text('level'),
+  reportsTo: uuid('reports_to'), // another position ID
+  incumbentId: uuid('incumbent_id'), // employee filling it (null if vacant)
+  status: text('status').notNull().default('active'), // active, frozen, budgeted, eliminated
+  fte: real('fte').notNull().default(1.0), // 0.5 for part-time
+  costCenter: text('cost_center'),
+  location: text('location'),
+  isKeyPosition: boolean('is_key_position').default(false),
+  budgetedSalaryMin: integer('budgeted_salary_min'),
+  budgetedSalaryMax: integer('budgeted_salary_max'),
+  currency: text('currency').default('USD'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// MARKETPLACE: Integrations, API Keys, Webhooks
+// ============================================================
+
+export const installedIntegrations = pgTable('installed_integrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  integrationSlug: text('integration_slug').notNull(), // e.g. 'slack', 'quickbooks'
+  status: text('status').notNull().default('connected'), // connected, error, disconnected, configuring
+  config: text('config'), // JSON: { apiKey, syncSchedule, fieldMapping, etc. }
+  lastSyncAt: timestamp('last_sync_at'),
+  syncDirection: text('sync_direction').default('bidirectional'), // inbound, outbound, bidirectional
+  errorMessage: text('error_message'),
+  installedBy: uuid('installed_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const integrationSyncLog = pgTable('integration_sync_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  integrationId: uuid('integration_id').notNull(),
+  syncType: text('sync_type').notNull(), // manual, scheduled, webhook
+  status: text('status').notNull(), // success, partial, failed
+  recordsSynced: integer('records_synced').default(0),
+  recordsFailed: integer('records_failed').default(0),
+  recordsSkipped: integer('records_skipped').default(0),
+  errorDetails: text('error_details'),
+  startedAt: timestamp('started_at').notNull(),
+  completedAt: timestamp('completed_at'),
+})
+
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(), // hashed API key
+  keyPrefix: text('key_prefix').notNull(), // first 8 chars for identification
+  scopes: text('scopes'), // JSON: ['employees:read', 'payroll:read', etc.]
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').default(true),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const webhookSubscriptions = pgTable('webhook_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  url: text('url').notNull(),
+  secret: text('secret').notNull(),
+  events: text('events').notNull(), // JSON: ['employee.created', 'payroll.completed', etc.]
+  isActive: boolean('is_active').default(true),
+  lastDeliveryAt: timestamp('last_delivery_at'),
+  failureCount: integer('failure_count').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })

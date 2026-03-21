@@ -21,6 +21,7 @@ import {
   FileText, Clock, Layers, UserPlus, Award, ArrowRightLeft, DollarSign,
   GraduationCap, Filter, ChevronRight, AlertTriangle, Briefcase, FolderOpen,
   Hash, Pencil, Trash2, GripVertical, Eye, EyeOff, Settings, Globe, FileCheck,
+  History, CalendarClock, MapPin, Snowflake, CircleDot, ShieldCheck,
 } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -62,6 +63,8 @@ export default function PeoplePage() {
     { id: 'timeline', label: t('timeline') },
     { id: 'bulk-actions', label: t('bulkActions') },
     { id: 'custom-fields', label: 'Custom Fields', count: customFieldDefinitions.length },
+    { id: 'history', label: 'History' },
+    { id: 'positions', label: 'Positions' },
   ]
 
   // ---- Directory State ----
@@ -94,6 +97,26 @@ export default function PeoplePage() {
   const [bulkStatusDept, setBulkStatusDept] = useState('')
   const [bulkStatusRole, setBulkStatusRole] = useState('')
   const [docFileName, setDocFileName] = useState<string | null>(null)
+
+  // ---- History Tab State ----
+  const [historyData, setHistoryData] = useState<any[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyEmployee, setHistoryEmployee] = useState('')
+  const [historyFieldFilter, setHistoryFieldFilter] = useState('all')
+  const [asOfDate, setAsOfDate] = useState('')
+  const [asOfSnapshot, setAsOfSnapshot] = useState<Record<string, string | null> | null>(null)
+
+  // ---- Positions Tab State ----
+  const [positionsData, setPositionsData] = useState<any[]>([])
+  const [positionsLoading, setPositionsLoading] = useState(false)
+  const [positionSearch, setPositionSearch] = useState('')
+  const [positionStatusFilter, setPositionStatusFilter] = useState('all')
+  const [showPositionModal, setShowPositionModal] = useState(false)
+  const [positionForm, setPositionForm] = useState({
+    position_code: '', title: '', department_id: '', level: '', status: 'active',
+    fte: '1.0', cost_center: '', location: '', is_key_position: false,
+    budgeted_salary_min: '', budgeted_salary_max: '', currency: 'USD',
+  })
 
   // ---- Org Restructure State ----
   const [showRestructureModal, setShowRestructureModal] = useState(false)
@@ -509,6 +532,120 @@ export default function PeoplePage() {
       case 'pending_review': return <Badge variant="warning">{t('docPendingReview')}</Badge>
       default: return <Badge variant="default">{status}</Badge>
     }
+  }
+
+  // ---- Demo History Data ----
+  const CHANGE_TYPE_DISPLAY: Record<string, { label: string; color: string }> = {
+    hire: { label: 'Hired', color: 'emerald' },
+    promotion: { label: 'Promotion', color: 'blue' },
+    transfer: { label: 'Transfer', color: 'purple' },
+    compensation: { label: 'Compensation', color: 'amber' },
+    termination: { label: 'Termination', color: 'red' },
+    correction: { label: 'Correction', color: 'zinc' },
+  }
+  const FIELD_LABELS: Record<string, string> = {
+    job_title: 'Job Title', department_id: 'Department', level: 'Level',
+    salary: 'Salary', manager_id: 'Manager', country: 'Country', role: 'Role',
+  }
+  const demoHistoryData = useMemo(() => {
+    if (historyData.length > 0) return historyData
+    const sample = employees.slice(0, 8)
+    const entries: any[] = []
+    sample.forEach((emp, i) => {
+      entries.push({
+        id: `eh-hire-${i}`, employee_id: emp.id, field_name: 'job_title',
+        old_value: null, new_value: emp.job_title || 'Software Engineer',
+        effective_date: '2024-01-15', changed_by: null,
+        change_reason: 'New hire', change_type: 'hire',
+      })
+      if (i < 4) {
+        entries.push({
+          id: `eh-promo-${i}`, employee_id: emp.id, field_name: 'level',
+          old_value: 'Mid', new_value: emp.level || 'Senior',
+          effective_date: '2025-06-01', changed_by: employees[0]?.id,
+          change_reason: 'Annual review', change_type: 'promotion',
+        })
+        entries.push({
+          id: `eh-comp-${i}`, employee_id: emp.id, field_name: 'salary',
+          old_value: '8500000', new_value: '10200000',
+          effective_date: '2025-06-01', changed_by: employees[0]?.id,
+          change_reason: 'Promotion increase', change_type: 'compensation',
+        })
+      }
+      if (i >= 3 && i < 6) {
+        entries.push({
+          id: `eh-transfer-${i}`, employee_id: emp.id, field_name: 'department_id',
+          old_value: departments[0]?.id || 'dep-1', new_value: departments[1]?.id || 'dep-2',
+          effective_date: '2025-09-01', changed_by: employees[0]?.id,
+          change_reason: 'Org restructure', change_type: 'transfer',
+        })
+      }
+    })
+    return entries.sort((a, b) => b.effective_date.localeCompare(a.effective_date))
+  }, [historyData, employees, departments])
+
+  const filteredHistory = useMemo(() => {
+    let data = demoHistoryData
+    if (historyEmployee) data = data.filter(h => h.employee_id === historyEmployee)
+    if (historyFieldFilter !== 'all') data = data.filter(h => h.field_name === historyFieldFilter)
+    return data
+  }, [demoHistoryData, historyEmployee, historyFieldFilter])
+
+  // As-of snapshot computation
+  const computeAsOfSnapshot = (empId: string, date: string) => {
+    const changes = demoHistoryData
+      .filter(h => h.employee_id === empId && h.effective_date <= date)
+      .sort((a: any, b: any) => a.effective_date.localeCompare(b.effective_date))
+    const state: Record<string, string | null> = {}
+    changes.forEach((c: any) => { state[c.field_name] = c.new_value })
+    return state
+  }
+
+  // ---- Demo Positions Data ----
+  const demoPositions = useMemo(() => {
+    if (positionsData.length > 0) return positionsData
+    const depts = departments.length > 0 ? departments : [{ id: 'dep-1', name: 'Engineering' }, { id: 'dep-2', name: 'Product' }]
+    return [
+      { id: 'pos-1', position_code: 'ENG-001', title: 'Senior Software Engineer', department_id: depts[0]?.id, level: 'Senior', incumbent_id: employees[0]?.id || null, status: 'active', fte: 1.0, cost_center: 'CC-100', location: 'Lagos', is_key_position: false, budgeted_salary_min: 8000000, budgeted_salary_max: 12000000, currency: 'USD' },
+      { id: 'pos-2', position_code: 'ENG-002', title: 'Staff Engineer', department_id: depts[0]?.id, level: 'Staff', incumbent_id: employees[1]?.id || null, status: 'active', fte: 1.0, cost_center: 'CC-100', location: 'Lagos', is_key_position: true, budgeted_salary_min: 12000000, budgeted_salary_max: 18000000, currency: 'USD' },
+      { id: 'pos-3', position_code: 'ENG-003', title: 'Engineering Manager', department_id: depts[0]?.id, level: 'Manager', incumbent_id: null, status: 'active', fte: 1.0, cost_center: 'CC-100', location: 'Nairobi', is_key_position: true, budgeted_salary_min: 14000000, budgeted_salary_max: 20000000, currency: 'USD' },
+      { id: 'pos-4', position_code: 'PROD-001', title: 'Product Manager', department_id: depts[1]?.id || depts[0]?.id, level: 'Mid', incumbent_id: employees[2]?.id || null, status: 'active', fte: 1.0, cost_center: 'CC-200', location: 'Lagos', is_key_position: false, budgeted_salary_min: 7000000, budgeted_salary_max: 11000000, currency: 'USD' },
+      { id: 'pos-5', position_code: 'PROD-002', title: 'Senior Product Manager', department_id: depts[1]?.id || depts[0]?.id, level: 'Senior', incumbent_id: null, status: 'budgeted', fte: 1.0, cost_center: 'CC-200', location: 'Accra', is_key_position: true, budgeted_salary_min: 10000000, budgeted_salary_max: 16000000, currency: 'USD' },
+      { id: 'pos-6', position_code: 'ENG-004', title: 'Junior Developer', department_id: depts[0]?.id, level: 'Junior', incumbent_id: employees[3]?.id || null, status: 'active', fte: 1.0, cost_center: 'CC-100', location: 'Lagos', is_key_position: false, budgeted_salary_min: 4000000, budgeted_salary_max: 6000000, currency: 'USD' },
+      { id: 'pos-7', position_code: 'ENG-005', title: 'DevOps Engineer', department_id: depts[0]?.id, level: 'Mid', incumbent_id: null, status: 'frozen', fte: 1.0, cost_center: 'CC-100', location: 'Lagos', is_key_position: false, budgeted_salary_min: 7000000, budgeted_salary_max: 10000000, currency: 'USD' },
+      { id: 'pos-8', position_code: 'PROD-003', title: 'UX Researcher', department_id: depts[1]?.id || depts[0]?.id, level: 'Mid', incumbent_id: employees[4]?.id || null, status: 'active', fte: 0.5, cost_center: 'CC-200', location: 'Nairobi', is_key_position: false, budgeted_salary_min: 5000000, budgeted_salary_max: 8000000, currency: 'USD' },
+    ]
+  }, [positionsData, departments, employees])
+
+  const filteredPositions = useMemo(() => {
+    let data = demoPositions
+    if (positionSearch) {
+      const q = positionSearch.toLowerCase()
+      data = data.filter((p: any) => p.title.toLowerCase().includes(q) || p.position_code.toLowerCase().includes(q))
+    }
+    if (positionStatusFilter !== 'all') {
+      if (positionStatusFilter === 'vacant') data = data.filter((p: any) => !p.incumbent_id)
+      else if (positionStatusFilter === 'filled') data = data.filter((p: any) => !!p.incumbent_id)
+      else data = data.filter((p: any) => p.status === positionStatusFilter)
+    }
+    return data
+  }, [demoPositions, positionSearch, positionStatusFilter])
+
+  const positionStats = useMemo(() => {
+    const total = demoPositions.length
+    const filled = demoPositions.filter((p: any) => !!p.incumbent_id).length
+    const vacant = total - filled
+    const frozen = demoPositions.filter((p: any) => p.status === 'frozen').length
+    const keyPos = demoPositions.filter((p: any) => p.is_key_position).length
+    return { total, filled, vacant, frozen, keyPos }
+  }, [demoPositions])
+
+  const positionStatusBadge = (pos: any) => {
+    if (pos.status === 'frozen') return <Badge variant="default"><Snowflake size={10} className="mr-1" />Frozen</Badge>
+    if (pos.status === 'budgeted') return <Badge variant="warning">Budgeted</Badge>
+    if (pos.status === 'eliminated') return <Badge variant="error">Eliminated</Badge>
+    if (!pos.incumbent_id) return <Badge variant="error">VACANT</Badge>
+    return <Badge variant="success">Filled</Badge>
   }
 
   if (pageLoading) {
@@ -1206,8 +1343,332 @@ export default function PeoplePage() {
       )}
 
       {/* ============================================================ */}
+      {/* HISTORY TAB */}
+      {/* ============================================================ */}
+      {activeTab === 'history' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-t1">Employee Change History</h3>
+              <p className="text-xs text-t3 mt-1">Effective-dated audit trail of all employee field changes with as-of date reconstruction</p>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <Card>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Select
+                label="Employee"
+                value={historyEmployee}
+                onChange={(e) => { setHistoryEmployee(e.target.value); setAsOfSnapshot(null) }}
+                options={[{ value: '', label: 'All Employees' }, ...employees.slice(0, 50).map(emp => ({ value: emp.id, label: emp.profile?.full_name || emp.id }))]}
+              />
+              <Select
+                label="Field"
+                value={historyFieldFilter}
+                onChange={(e) => setHistoryFieldFilter(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Fields' },
+                  { value: 'job_title', label: 'Job Title' },
+                  { value: 'department_id', label: 'Department' },
+                  { value: 'level', label: 'Level' },
+                  { value: 'salary', label: 'Salary' },
+                  { value: 'manager_id', label: 'Manager' },
+                  { value: 'country', label: 'Country' },
+                ]}
+              />
+              <div>
+                <label className="block text-xs font-medium text-t3 mb-1">As-Of Date</label>
+                <input
+                  type="date"
+                  value={asOfDate}
+                  onChange={(e) => setAsOfDate(e.target.value)}
+                  className="w-full rounded-lg border border-divider bg-chrome px-3 py-2 text-sm text-t1 focus:border-tempo-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  size="sm"
+                  disabled={!historyEmployee || !asOfDate}
+                  onClick={() => {
+                    if (historyEmployee && asOfDate) {
+                      const snap = computeAsOfSnapshot(historyEmployee, asOfDate)
+                      setAsOfSnapshot(snap)
+                    }
+                  }}
+                >
+                  <CalendarClock size={14} /> Reconstruct State
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* As-Of Snapshot */}
+          {asOfSnapshot && historyEmployee && (
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarClock size={16} className="text-tempo-500" />
+                <h4 className="text-sm font-semibold text-t1">
+                  {getEmployeeName(historyEmployee)} as of {asOfDate}
+                </h4>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(asOfSnapshot).map(([field, value]) => (
+                  <div key={field} className="bg-canvas rounded-lg p-3">
+                    <p className="text-[0.65rem] text-t3 uppercase font-medium">{FIELD_LABELS[field] || field}</p>
+                    <p className="text-sm text-t1 font-medium mt-1">
+                      {field === 'department_id' ? getDepartmentName(value || '') :
+                       field === 'manager_id' ? getEmployeeName(value || '') :
+                       field === 'salary' ? `$${(Number(value) / 100).toLocaleString()}` :
+                       value || '-'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {Object.keys(asOfSnapshot).length === 0 && (
+                <p className="text-xs text-t3 text-center py-4">No recorded changes before this date</p>
+              )}
+            </Card>
+          )}
+
+          {/* Timeline */}
+          <Card padding="none">
+            <div className="px-4 py-3 border-b border-divider">
+              <h4 className="text-xs font-semibold text-t3 uppercase">Change Timeline ({filteredHistory.length} records)</h4>
+            </div>
+            <div className="divide-y divide-divider">
+              {filteredHistory.slice(0, 50).map((entry: any) => {
+                const ct = CHANGE_TYPE_DISPLAY[entry.change_type] || { label: entry.change_type, color: 'zinc' }
+                const empName = getEmployeeName(entry.employee_id) || 'Unknown'
+                const changerName = entry.changed_by ? getEmployeeName(entry.changed_by) : 'System'
+                return (
+                  <div key={entry.id} className="px-4 py-3 flex items-start gap-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="shrink-0 mt-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        ct.color === 'emerald' ? 'bg-emerald-400' :
+                        ct.color === 'blue' ? 'bg-blue-400' :
+                        ct.color === 'purple' ? 'bg-purple-400' :
+                        ct.color === 'amber' ? 'bg-amber-400' :
+                        ct.color === 'red' ? 'bg-red-400' : 'bg-zinc-400'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-t1">{empName}</span>
+                        <Badge variant={
+                          ct.color === 'emerald' ? 'success' :
+                          ct.color === 'blue' ? 'info' :
+                          ct.color === 'amber' ? 'warning' :
+                          ct.color === 'red' ? 'error' : 'default'
+                        }>{ct.label}</Badge>
+                        <span className="text-xs text-t3">{FIELD_LABELS[entry.field_name] || entry.field_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs">
+                        {entry.old_value && (
+                          <>
+                            <span className="text-t3 line-through">
+                              {entry.field_name === 'department_id' ? getDepartmentName(entry.old_value) :
+                               entry.field_name === 'manager_id' ? getEmployeeName(entry.old_value) :
+                               entry.field_name === 'salary' ? `$${(Number(entry.old_value) / 100).toLocaleString()}` :
+                               entry.old_value}
+                            </span>
+                            <ChevronRight size={12} className="text-t3" />
+                          </>
+                        )}
+                        <span className="text-t1 font-medium">
+                          {entry.field_name === 'department_id' ? getDepartmentName(entry.new_value) :
+                           entry.field_name === 'manager_id' ? getEmployeeName(entry.new_value) :
+                           entry.field_name === 'salary' ? `$${(Number(entry.new_value) / 100).toLocaleString()}` :
+                           entry.new_value}
+                        </span>
+                      </div>
+                      {entry.change_reason && (
+                        <p className="text-[0.65rem] text-t3 mt-1">Reason: {entry.change_reason}</p>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs text-t2">{entry.effective_date}</p>
+                      <p className="text-[0.65rem] text-t3">by {changerName}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {filteredHistory.length === 0 && (
+              <div className="px-6 py-8 text-center">
+                <History size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-xs text-t3">No change history found</p>
+                <p className="text-[0.65rem] text-t3 mt-1">Changes to employee records will appear here as an audit trail</p>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* POSITIONS TAB */}
+      {/* ============================================================ */}
+      {activeTab === 'positions' && (
+        <div className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="Total Positions" value={positionStats.total} icon={<Layers size={16} />} />
+            <StatCard label="Filled" value={positionStats.filled} icon={<Users size={16} />} change={`${Math.round(positionStats.filled / Math.max(positionStats.total, 1) * 100)}% fill rate`} changeType="positive" />
+            <StatCard label="Vacant" value={positionStats.vacant} icon={<CircleDot size={16} />} />
+            <StatCard label="Frozen" value={positionStats.frozen} icon={<Snowflake size={16} />} />
+            <StatCard label="Key Positions" value={positionStats.keyPos} icon={<ShieldCheck size={16} />} />
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+              <input
+                type="text"
+                placeholder="Search positions..."
+                value={positionSearch}
+                onChange={(e) => setPositionSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-chrome border border-divider rounded-lg text-t1 placeholder:text-t3 focus:border-tempo-500 focus:outline-none"
+              />
+            </div>
+            <Select
+              value={positionStatusFilter}
+              onChange={(e) => setPositionStatusFilter(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'filled', label: 'Filled' },
+                { value: 'vacant', label: 'Vacant' },
+                { value: 'frozen', label: 'Frozen' },
+                { value: 'budgeted', label: 'Budgeted' },
+              ]}
+            />
+            <Button size="sm" onClick={() => setShowPositionModal(true)}>
+              <Plus size={14} /> Create Position
+            </Button>
+          </div>
+
+          {/* Positions Table */}
+          <Card padding="none">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-divider text-t3 font-medium">
+                    <th className="text-left px-4 py-3">Code</th>
+                    <th className="text-left px-4 py-3">Title</th>
+                    <th className="text-left px-4 py-3">Department</th>
+                    <th className="text-left px-4 py-3">Level</th>
+                    <th className="text-left px-4 py-3">Incumbent</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">FTE</th>
+                    <th className="text-left px-4 py-3">Location</th>
+                    <th className="text-left px-4 py-3">Salary Range</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider">
+                  {filteredPositions.map((pos: any) => {
+                    const incumbentName = pos.incumbent_id ? getEmployeeName(pos.incumbent_id) : null
+                    return (
+                      <tr key={pos.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3 font-mono text-t2">{pos.position_code}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-t1 font-medium">{pos.title}</span>
+                            {pos.is_key_position && <span title="Key Position"><ShieldCheck size={12} className="text-amber-400" /></span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-t2">{getDepartmentName(pos.department_id)}</td>
+                        <td className="px-4 py-3"><Badge variant="default">{pos.level || '-'}</Badge></td>
+                        <td className="px-4 py-3">
+                          {incumbentName ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar name={incumbentName} size="xs" />
+                              <span className="text-t1">{incumbentName}</span>
+                            </div>
+                          ) : (
+                            <Badge variant="error">VACANT</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">{positionStatusBadge(pos)}</td>
+                        <td className="px-4 py-3 text-t2">{pos.fte}</td>
+                        <td className="px-4 py-3 text-t2">
+                          <div className="flex items-center gap-1">
+                            <MapPin size={10} className="text-t3" />
+                            {pos.location || '-'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-t2">
+                          {pos.budgeted_salary_min && pos.budgeted_salary_max ? (
+                            <span>${(pos.budgeted_salary_min / 100).toLocaleString()} - ${(pos.budgeted_salary_max / 100).toLocaleString()}</span>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredPositions.length === 0 && (
+              <div className="px-6 py-8 text-center">
+                <Layers size={32} className="mx-auto text-t3 mb-3" />
+                <p className="text-xs text-t3">No positions found</p>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================ */}
       {/* MODALS */}
       {/* ============================================================ */}
+
+      {/* Create Position Modal */}
+      <Modal open={showPositionModal} onClose={() => setShowPositionModal(false)} title="Create Position" size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Position Code" placeholder="ENG-006" value={positionForm.position_code} onChange={(e) => setPositionForm({ ...positionForm, position_code: e.target.value })} required />
+            <Input label="Title" placeholder="Software Engineer" value={positionForm.title} onChange={(e) => setPositionForm({ ...positionForm, title: e.target.value })} required />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Select label="Department" value={positionForm.department_id} onChange={(e) => setPositionForm({ ...positionForm, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
+            <Select label="Level" value={positionForm.level} onChange={(e) => setPositionForm({ ...positionForm, level: e.target.value })} options={[
+              { value: 'Junior', label: 'Junior' }, { value: 'Mid', label: 'Mid' },
+              { value: 'Senior', label: 'Senior' }, { value: 'Staff', label: 'Staff' },
+              { value: 'Manager', label: 'Manager' }, { value: 'Director', label: 'Director' },
+              { value: 'VP', label: 'VP' }, { value: 'C-Level', label: 'C-Level' },
+            ]} />
+            <Select label="Status" value={positionForm.status} onChange={(e) => setPositionForm({ ...positionForm, status: e.target.value })} options={[
+              { value: 'active', label: 'Active' }, { value: 'frozen', label: 'Frozen' },
+              { value: 'budgeted', label: 'Budgeted' }, { value: 'eliminated', label: 'Eliminated' },
+            ]} />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Input label="FTE" type="number" step="0.1" min="0" max="1" value={positionForm.fte} onChange={(e) => setPositionForm({ ...positionForm, fte: e.target.value })} />
+            <Input label="Cost Center" placeholder="CC-100" value={positionForm.cost_center} onChange={(e) => setPositionForm({ ...positionForm, cost_center: e.target.value })} />
+            <Input label="Location" placeholder="Lagos" value={positionForm.location} onChange={(e) => setPositionForm({ ...positionForm, location: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Input label="Min Salary (cents)" type="number" value={positionForm.budgeted_salary_min} onChange={(e) => setPositionForm({ ...positionForm, budgeted_salary_min: e.target.value })} />
+            <Input label="Max Salary (cents)" type="number" value={positionForm.budgeted_salary_max} onChange={(e) => setPositionForm({ ...positionForm, budgeted_salary_max: e.target.value })} />
+            <Select label="Currency" value={positionForm.currency} onChange={(e) => setPositionForm({ ...positionForm, currency: e.target.value })} options={[
+              { value: 'USD', label: 'USD' }, { value: 'NGN', label: 'NGN' },
+              { value: 'GHS', label: 'GHS' }, { value: 'KES', label: 'KES' },
+            ]} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={positionForm.is_key_position} onChange={(e) => setPositionForm({ ...positionForm, is_key_position: e.target.checked })} className="w-4 h-4 rounded border-white/10 bg-white/5 text-tempo-500" />
+            <span className="text-sm text-t2">Key Position (linked to succession planning)</span>
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPositionModal(false)}>{tc('cancel')}</Button>
+            <Button onClick={() => {
+              if (!positionForm.position_code || !positionForm.title) { addToast?.('Position code and title are required', 'error'); return }
+              addToast?.('Position created successfully')
+              setShowPositionModal(false)
+              setPositionForm({ position_code: '', title: '', department_id: '', level: '', status: 'active', fte: '1.0', cost_center: '', location: '', is_key_position: false, budgeted_salary_min: '', budgeted_salary_max: '', currency: 'USD' })
+            }}>Create Position</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Custom Field Definition Modal */}
       <Modal open={showCFModal} onClose={() => setShowCFModal(false)} title={editingCF ? 'Edit Custom Field' : 'Add Custom Field'} size="lg">

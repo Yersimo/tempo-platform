@@ -6,9 +6,13 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/ui/stat-card'
-import { Select } from '@/components/ui/input'
+import { Select, Textarea } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { BookOpen, DollarSign, Search, CheckCircle, AlertTriangle, ArrowUpDown, Hash } from 'lucide-react'
+import {
+  BookOpen, DollarSign, Search, CheckCircle, AlertTriangle, ArrowUpDown,
+  Hash, Lock, Unlock, Clock, ShieldCheck, ListChecks, RotateCcw,
+} from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { exportToCSV } from '@/lib/export-import'
@@ -39,6 +43,34 @@ interface JournalEntry {
   currency: string
   status: 'draft' | 'posted' | 'reversed'
   metadata?: Record<string, unknown>
+}
+
+interface PeriodState {
+  id: string
+  label: string
+  startDate: string
+  endDate: string
+  status: 'open' | 'closing' | 'closed' | 'locked'
+  closedBy: string | null
+  closedAt: string | null
+  checklist: {
+    accruals_posted: boolean
+    reconciliations_complete: boolean
+    ic_eliminations_done: boolean
+    trial_balance_balanced: boolean
+    no_unposted_batches: boolean
+    no_unapproved_jes: boolean
+  }
+}
+
+interface PeriodCloseHistory {
+  id: string
+  periodId: string
+  periodLabel: string
+  action: 'close' | 'lock' | 'reopen'
+  performedBy: string
+  performedAt: string
+  notes: string
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +218,37 @@ const DEMO_JOURNAL_ENTRIES: JournalEntry[] = [
   },
 ]
 
+const INITIAL_PERIODS: PeriodState[] = [
+  {
+    id: 'p-2026-03', label: 'March 2026', startDate: '2026-03-01', endDate: '2026-03-31',
+    status: 'open', closedBy: null, closedAt: null,
+    checklist: { accruals_posted: false, reconciliations_complete: false, ic_eliminations_done: false, trial_balance_balanced: false, no_unposted_batches: false, no_unapproved_jes: false },
+  },
+  {
+    id: 'p-2026-02', label: 'February 2026', startDate: '2026-02-01', endDate: '2026-02-28',
+    status: 'closed', closedBy: 'Sarah Kim (Finance)', closedAt: '2026-03-05T14:30:00Z',
+    checklist: { accruals_posted: true, reconciliations_complete: true, ic_eliminations_done: true, trial_balance_balanced: true, no_unposted_batches: true, no_unapproved_jes: true },
+  },
+  {
+    id: 'p-2026-01', label: 'January 2026', startDate: '2026-01-01', endDate: '2026-01-31',
+    status: 'locked', closedBy: 'Sarah Kim (Finance)', closedAt: '2026-02-04T10:15:00Z',
+    checklist: { accruals_posted: true, reconciliations_complete: true, ic_eliminations_done: true, trial_balance_balanced: true, no_unposted_batches: true, no_unapproved_jes: true },
+  },
+  {
+    id: 'p-2025-12', label: 'December 2025', startDate: '2025-12-01', endDate: '2025-12-31',
+    status: 'locked', closedBy: 'David Chen (CFO)', closedAt: '2026-01-08T16:00:00Z',
+    checklist: { accruals_posted: true, reconciliations_complete: true, ic_eliminations_done: true, trial_balance_balanced: true, no_unposted_batches: true, no_unapproved_jes: true },
+  },
+]
+
+const INITIAL_CLOSE_HISTORY: PeriodCloseHistory[] = [
+  { id: 'h-1', periodId: 'p-2026-02', periodLabel: 'February 2026', action: 'close', performedBy: 'Sarah Kim', performedAt: '2026-03-05T14:30:00Z', notes: 'All reconciliations complete. Trial balance balanced.' },
+  { id: 'h-2', periodId: 'p-2026-01', periodLabel: 'January 2026', action: 'close', performedBy: 'Sarah Kim', performedAt: '2026-02-04T10:15:00Z', notes: '' },
+  { id: 'h-3', periodId: 'p-2026-01', periodLabel: 'January 2026', action: 'lock', performedBy: 'David Chen', performedAt: '2026-02-15T09:00:00Z', notes: 'Locked after external audit review.' },
+  { id: 'h-4', periodId: 'p-2025-12', periodLabel: 'December 2025', action: 'close', performedBy: 'Sarah Kim', performedAt: '2026-01-06T11:00:00Z', notes: 'Year-end close.' },
+  { id: 'h-5', periodId: 'p-2025-12', periodLabel: 'December 2025', action: 'lock', performedBy: 'David Chen', performedAt: '2026-01-08T16:00:00Z', notes: 'Locked for FY2025 annual filing.' },
+]
+
 // ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
@@ -195,13 +258,20 @@ export default function GeneralLedgerPage() {
   const { ensureModulesLoaded, addToast } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'entries' | 'accounts' | 'trial-balance'>('entries')
+  const [activeTab, setActiveTab] = useState<'entries' | 'accounts' | 'trial-balance' | 'period-close'>('entries')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
+
+  // Period close state
+  const [periods, setPeriods] = useState<PeriodState[]>(INITIAL_PERIODS)
+  const [closeHistory, setCloseHistory] = useState<PeriodCloseHistory[]>(INITIAL_CLOSE_HISTORY)
+  const [showReopenModal, setShowReopenModal] = useState(false)
+  const [reopenTarget, setReopenTarget] = useState<string | null>(null)
+  const [reopenReason, setReopenReason] = useState('')
 
   // Use demo data as fallback (store doesn't have journalEntries yet)
   const journalEntries: JournalEntry[] = DEMO_JOURNAL_ENTRIES
@@ -257,6 +327,108 @@ export default function GeneralLedgerPage() {
   const trialBalanceTotalDebits = trialBalance.reduce((s, a) => s + a.totalDebitCents, 0)
   const trialBalanceTotalCredits = trialBalance.reduce((s, a) => s + a.totalCreditCents, 0)
 
+  // ── Period Close Helpers ──
+
+  function runPreCloseValidation(period: PeriodState): { passed: boolean; errors: string[] } {
+    const errors: string[] = []
+    const periodEntries = journalEntries.filter(je => je.date >= period.startDate && je.date <= period.endDate)
+    const draftCount = periodEntries.filter(je => je.status === 'draft').length
+    if (draftCount > 0) errors.push(`${draftCount} unposted journal entries in this period`)
+    const debits = periodEntries.reduce((s, je) => s + je.totalDebitCents, 0)
+    const credits = periodEntries.reduce((s, je) => s + je.totalCreditCents, 0)
+    if (debits !== credits) errors.push(`Debits (${formatCurrency(debits, defaultCurrency, { cents: true })}) do not equal credits (${formatCurrency(credits, defaultCurrency, { cents: true })})`)
+    if (!period.checklist.accruals_posted) errors.push('Accruals have not been posted')
+    if (!period.checklist.reconciliations_complete) errors.push('Reconciliations are incomplete')
+    if (!period.checklist.trial_balance_balanced) errors.push('Trial balance is not marked as balanced')
+    return { passed: errors.length === 0, errors }
+  }
+
+  function toggleChecklistItem(periodId: string, item: keyof PeriodState['checklist']) {
+    setPeriods(prev => prev.map(p => {
+      if (p.id !== periodId || p.status === 'locked') return p
+      return { ...p, checklist: { ...p.checklist, [item]: !p.checklist[item] } }
+    }))
+  }
+
+  function closePeriod(periodId: string) {
+    const period = periods.find(p => p.id === periodId)
+    if (!period) return
+    const validation = runPreCloseValidation(period)
+    if (!validation.passed) {
+      addToast(`Cannot close: ${validation.errors[0]}`, 'error')
+      return
+    }
+    const allChecked = Object.values(period.checklist).every(Boolean)
+    if (!allChecked) {
+      addToast('All checklist items must be completed before closing', 'error')
+      return
+    }
+    const now = new Date().toISOString()
+    setPeriods(prev => prev.map(p =>
+      p.id === periodId ? { ...p, status: 'closed', closedBy: 'Current User', closedAt: now } : p
+    ))
+    setCloseHistory(prev => [{
+      id: `h-${Date.now()}`,
+      periodId,
+      periodLabel: period.label,
+      action: 'close',
+      performedBy: 'Current User',
+      performedAt: now,
+      notes: 'Period closed after all validations passed.',
+    }, ...prev])
+    addToast(`${period.label} closed successfully`, 'success')
+  }
+
+  function lockPeriod(periodId: string) {
+    const period = periods.find(p => p.id === periodId)
+    if (!period || period.status !== 'closed') return
+    const now = new Date().toISOString()
+    setPeriods(prev => prev.map(p =>
+      p.id === periodId ? { ...p, status: 'locked' } : p
+    ))
+    setCloseHistory(prev => [{
+      id: `h-${Date.now()}`,
+      periodId,
+      periodLabel: period.label,
+      action: 'lock',
+      performedBy: 'Current User',
+      performedAt: now,
+      notes: 'Period locked to prevent modifications.',
+    }, ...prev])
+    addToast(`${period.label} locked`, 'success')
+  }
+
+  function openReopenModal(periodId: string) {
+    setReopenTarget(periodId)
+    setReopenReason('')
+    setShowReopenModal(true)
+  }
+
+  function confirmReopen() {
+    if (!reopenTarget) return
+    const period = periods.find(p => p.id === reopenTarget)
+    if (!period) return
+    if (!reopenReason.trim()) {
+      addToast('A reason is required to reopen a period', 'error')
+      return
+    }
+    const now = new Date().toISOString()
+    setPeriods(prev => prev.map(p =>
+      p.id === reopenTarget ? { ...p, status: 'open', closedBy: null, closedAt: null } : p
+    ))
+    setCloseHistory(prev => [{
+      id: `h-${Date.now()}`,
+      periodId: reopenTarget,
+      periodLabel: period.label,
+      action: 'reopen',
+      performedBy: 'Current User',
+      performedAt: now,
+      notes: reopenReason,
+    }, ...prev])
+    addToast(`${period.label} reopened`, 'info')
+    setShowReopenModal(false)
+  }
+
   function getTypeBadge(type: string) {
     switch (type) {
       case 'payroll': return <Badge variant="info">Payroll</Badge>
@@ -271,6 +443,16 @@ export default function GeneralLedgerPage() {
       case 'posted': return <Badge variant="success">Posted</Badge>
       case 'draft': return <Badge variant="default">Draft</Badge>
       case 'reversed': return <Badge variant="error">Reversed</Badge>
+      default: return <Badge variant="default">{status}</Badge>
+    }
+  }
+
+  function getPeriodStatusBadge(status: string) {
+    switch (status) {
+      case 'open': return <Badge variant="info">Open</Badge>
+      case 'closing': return <Badge variant="warning">Closing</Badge>
+      case 'closed': return <Badge variant="success">Closed</Badge>
+      case 'locked': return <Badge variant="error">Locked</Badge>
       default: return <Badge variant="default">{status}</Badge>
     }
   }
@@ -329,16 +511,17 @@ export default function GeneralLedgerPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-4 border-b border-divider">
+      <div className="flex items-center gap-1 mb-4 border-b border-divider overflow-x-auto">
         {[
           { key: 'entries' as const, label: 'Journal Entries' },
           { key: 'accounts' as const, label: 'Account Summary' },
           { key: 'trial-balance' as const, label: 'Trial Balance' },
+          { key: 'period-close' as const, label: 'Period Close' },
         ].map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? 'border-accent text-accent'
                 : 'border-transparent text-t3 hover:text-t1'
@@ -349,53 +532,55 @@ export default function GeneralLedgerPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+      {/* Filters (for entries/accounts/trial-balance) */}
+      {activeTab !== 'period-close' && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+            <input
+              type="text"
+              placeholder="Search by reference or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <Select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            options={[
+              { value: 'all', label: 'All Types' },
+              { value: 'payroll', label: 'Payroll' },
+              { value: 'expense_reimbursement', label: 'Expense' },
+              { value: 'manual', label: 'Manual' },
+            ]}
+          />
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'posted', label: 'Posted' },
+              { value: 'reversed', label: 'Reversed' },
+            ]}
+          />
           <input
-            type="text"
-            placeholder="Search by reference or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="From"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="To"
           />
         </div>
-        <Select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          options={[
-            { value: 'all', label: 'All Types' },
-            { value: 'payroll', label: 'Payroll' },
-            { value: 'expense_reimbursement', label: 'Expense' },
-            { value: 'manual', label: 'Manual' },
-          ]}
-        />
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          options={[
-            { value: 'all', label: 'All Statuses' },
-            { value: 'draft', label: 'Draft' },
-            { value: 'posted', label: 'Posted' },
-            { value: 'reversed', label: 'Reversed' },
-          ]}
-        />
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className="px-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="From"
-        />
-        <input
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className="px-3 py-2 text-sm rounded-lg border border-border bg-surface text-t1 focus:outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="To"
-        />
-      </div>
+      )}
 
       {/* ── Tab 1: Journal Entries ── */}
       {activeTab === 'entries' && (
@@ -638,6 +823,202 @@ export default function GeneralLedgerPage() {
           </div>
         </Card>
       )}
+
+      {/* ── Tab 4: Period Close ── */}
+      {activeTab === 'period-close' && (
+        <div className="space-y-6">
+          {/* Period overview stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Open Periods" value={periods.filter(p => p.status === 'open').length} icon={<Unlock size={20} />} />
+            <StatCard label="Closed Periods" value={periods.filter(p => p.status === 'closed').length} icon={<CheckCircle size={20} />} />
+            <StatCard label="Locked Periods" value={periods.filter(p => p.status === 'locked').length} icon={<Lock size={20} />} />
+            <StatCard label="Close Actions" value={closeHistory.length} icon={<Clock size={20} />} />
+          </div>
+
+          {/* Period cards */}
+          {periods.map(period => {
+            const checklistKeys: (keyof PeriodState['checklist'])[] = [
+              'accruals_posted', 'reconciliations_complete', 'ic_eliminations_done',
+              'trial_balance_balanced', 'no_unposted_batches', 'no_unapproved_jes',
+            ]
+            const checklistLabels: Record<string, string> = {
+              accruals_posted: 'Accruals posted',
+              reconciliations_complete: 'Reconciliations complete',
+              ic_eliminations_done: 'IC eliminations done',
+              trial_balance_balanced: 'Trial balance balanced',
+              no_unposted_batches: 'No unposted batches',
+              no_unapproved_jes: 'No unapproved journal entries',
+            }
+            const completedCount = checklistKeys.filter(k => period.checklist[k]).length
+            const allComplete = completedCount === checklistKeys.length
+            const validation = period.status === 'open' ? runPreCloseValidation(period) : null
+
+            return (
+              <Card key={period.id}>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-sm font-semibold text-t1">{period.label}</h3>
+                      {getPeriodStatusBadge(period.status)}
+                    </div>
+                    <p className="text-xs text-t3 mt-1">{period.startDate} to {period.endDate}</p>
+                    {period.closedBy && (
+                      <p className="text-xs text-t3 mt-0.5">
+                        Closed by {period.closedBy} on {new Date(period.closedAt!).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {period.status === 'open' && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => closePeriod(period.id)}
+                        disabled={!allComplete}
+                      >
+                        <Lock size={12} /> Close Period
+                      </Button>
+                    )}
+                    {period.status === 'closed' && (
+                      <>
+                        <Button size="sm" variant="secondary" onClick={() => lockPeriod(period.id)}>
+                          <Lock size={12} /> Lock
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openReopenModal(period.id)}>
+                          <Unlock size={12} /> Reopen
+                        </Button>
+                      </>
+                    )}
+                    {period.status === 'locked' && (
+                      <Button size="sm" variant="ghost" onClick={() => openReopenModal(period.id)}>
+                        <RotateCcw size={12} /> Reopen (Approval Required)
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Close Checklist */}
+                {(period.status === 'open' || period.status === 'closing') && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-t1 mb-2 flex items-center gap-1">
+                      <ListChecks size={14} /> Close Checklist ({completedCount}/{checklistKeys.length})
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {checklistKeys.map(key => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-canvas cursor-pointer hover:bg-canvas/80 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={period.checklist[key]}
+                            onChange={() => toggleChecklistItem(period.id, key)}
+                            className="rounded border-divider text-accent focus:ring-accent"
+                          />
+                          <span className={`text-xs ${period.checklist[key] ? 'text-success line-through' : 'text-t1'}`}>
+                            {checklistLabels[key]}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pre-close validation errors */}
+                {period.status === 'open' && validation && !validation.passed && (
+                  <div className="p-3 rounded-lg bg-error/10 border border-error/20">
+                    <p className="text-xs font-medium text-error mb-1 flex items-center gap-1">
+                      <AlertTriangle size={12} /> Pre-Close Validation Errors
+                    </p>
+                    <ul className="space-y-1">
+                      {validation.errors.map((err, i) => (
+                        <li key={i} className="text-xs text-t2 flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-error flex-shrink-0" />
+                          {err}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* All checks passed banner */}
+                {period.status === 'open' && validation && validation.passed && allComplete && (
+                  <div className="p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-2">
+                    <CheckCircle size={14} className="text-success flex-shrink-0" />
+                    <p className="text-xs text-t1">All pre-close validations passed. Ready to close.</p>
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+
+          {/* Close History */}
+          <Card>
+            <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+              <Clock size={16} /> Close History
+            </h3>
+            <div className="space-y-0 divide-y divide-divider">
+              {closeHistory.map(entry => (
+                <div key={entry.id} className="flex items-center gap-3 py-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    entry.action === 'close' ? 'bg-success/10' :
+                    entry.action === 'lock' ? 'bg-error/10' :
+                    'bg-info/10'
+                  }`}>
+                    {entry.action === 'close' ? <CheckCircle size={14} className="text-success" /> :
+                     entry.action === 'lock' ? <Lock size={14} className="text-error" /> :
+                     <Unlock size={14} className="text-accent" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-t1">
+                      {entry.periodLabel} — <span className="capitalize">{entry.action === 'close' ? 'Closed' : entry.action === 'lock' ? 'Locked' : 'Reopened'}</span>
+                    </p>
+                    <p className="text-xs text-t3">
+                      by {entry.performedBy} on {new Date(entry.performedAt).toLocaleString()}
+                    </p>
+                    {entry.notes && <p className="text-xs text-t2 mt-0.5 italic">{entry.notes}</p>}
+                  </div>
+                  <Badge variant={
+                    entry.action === 'close' ? 'success' :
+                    entry.action === 'lock' ? 'error' :
+                    'info'
+                  }>
+                    {entry.action}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Reopen Period Modal ── */}
+      <Modal open={showReopenModal} onClose={() => setShowReopenModal(false)} title="Reopen Period">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-t1">Reopen this period?</p>
+              <p className="text-xs text-t3 mt-1">
+                Reopening will allow new journal entries and modifications. This action will be logged in the audit trail.
+              </p>
+            </div>
+          </div>
+          <Textarea
+            label="Reason for reopening (required)"
+            placeholder="Explain why this period needs to be reopened..."
+            rows={3}
+            value={reopenReason}
+            onChange={(e) => setReopenReason(e.target.value)}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowReopenModal(false)}>Cancel</Button>
+            <Button variant="primary" onClick={confirmReopen}>Reopen Period</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }
