@@ -13,7 +13,8 @@ import { Input, Select } from '@/components/ui/input'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Laptop, Plus, Monitor, Smartphone, Wrench, UserCheck, UserX, Shield, CheckCircle, XCircle, Clock, FileCheck, ArrowRight, Users, Search, Building2, Globe, Store, Truck, RotateCcw, Trash2, Package, ShieldCheck, Leaf, FileWarning, AlertTriangle } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 import { exportToCSV } from '@/lib/export-import'
 import { AIInsightCard } from '@/components/ai'
 import { predictDeviceRefresh, scoreSecurityPosture } from '@/lib/ai-engine'
@@ -23,6 +24,7 @@ export default function DevicesPage() {
   const t = useTranslations('devices')
   const tc = useTranslations('common')
   const { devices, employees, departments, addDevice, updateDevice, getEmployeeName, getDepartmentName, addToast, deviceStoreCatalog, deviceOrders, buybackRequests, ensureModulesLoaded } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -656,8 +658,8 @@ export default function DevicesPage() {
                   <Badge>{item.category}</Badge>
                 </div>
                 <div className="text-2xl font-bold text-t1 mb-3">
-                  ${(item.price / 100).toFixed(2)}
-                  <span className="text-xs font-normal text-t3 ml-1">{item.currency}</span>
+                  {formatCurrency(item.price / 100, item.currency || defaultCurrency)}
+                  <span className="text-xs font-normal text-t3 ml-1">{item.currency || defaultCurrency}</span>
                 </div>
                 {item.specs && (
                   <div className="space-y-1.5 mb-4">
@@ -778,7 +780,7 @@ export default function DevicesPage() {
                         {req.condition}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-xs text-t1 font-medium text-right">${(req.estimated_value / 100).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-xs text-t1 font-medium text-right">{formatCurrency(req.estimated_value / 100, defaultCurrency)}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={
                         req.status === 'approved' ? 'success' :

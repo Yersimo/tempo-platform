@@ -15,6 +15,7 @@ import {
   CreditCard, Plane, MessageSquare, Lock, Globe, FileSignature,
   KeyRound, Blocks, FlaskConical, Network, CircleDollarSign,
   ArrowLeftRight, X, Building2, BookOpen, Route, Sparkles, MoreHorizontal, Grid3X3,
+  Calendar, GitBranch,
 } from 'lucide-react'
 import { allDemoCredentials } from '@/lib/demo-data'
 import { isEvaluatorAccount, EVALUATOR_SIDEBAR_ALLOWED } from '@/lib/evaluator-demo-data'
@@ -109,6 +110,8 @@ export function Sidebar() {
       items: [
         { label: t('dashboard'), href: '/dashboard', icon: <LayoutDashboard size={18} /> },
         { label: t('peopleLabel'), href: '/people', icon: <Users size={18} /> },
+        { label: 'Org Chart', href: '/people/org-chart', icon: <GitBranch size={18} /> },
+        { label: 'Team Calendar', href: '/people/team-calendar', icon: <Calendar size={18} /> },
         { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5, requiredPermissions: ['recruiting:read'] },
         { label: 'Chat', href: '/chat', icon: <MessageSquare size={18} /> },
       ],

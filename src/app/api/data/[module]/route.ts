@@ -241,6 +241,16 @@ const MODULE_CONFIG: Record<string, {
   'compliance-findings':     { table: schema.complianceFindings, hasOrgId: true, defaultLimit: 50 },
   // Import History
   'import-history':          { table: schema.importHistory, hasOrgId: true, defaultLimit: 50 },
+  // Skills & Succession Planning
+  'skills':                  { table: schema.skills, hasOrgId: true, defaultLimit: 50 },
+  'employee-skills':         { table: schema.employeeSkills, hasOrgId: true, defaultLimit: 100 },
+  'role-skill-requirements': { table: schema.roleSkillRequirements, hasOrgId: true, defaultLimit: 50 },
+  'development-plans':       { table: schema.developmentPlans, hasOrgId: true, defaultLimit: 50 },
+  'development-plan-items':  { table: schema.developmentPlanItems, hasOrgId: false, defaultLimit: 100 },
+  'succession-plans':        { table: schema.successionPlans, hasOrgId: true, defaultLimit: 50 },
+  'succession-candidates':   { table: schema.successionCandidates, hasOrgId: false, defaultLimit: 100 },
+  'talent-reviews':          { table: schema.talentReviews, hasOrgId: true, defaultLimit: 20 },
+  'talent-review-entries':   { table: schema.talentReviewEntries, hasOrgId: false, defaultLimit: 100 },
 }
 
 export async function GET(

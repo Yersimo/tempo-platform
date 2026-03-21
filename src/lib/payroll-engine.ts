@@ -28,6 +28,26 @@ import {
 } from '@/lib/payroll/labor-law-registry'
 import { logPayrollAudit } from '@/lib/payroll/audit'
 import { getTaxCalculatorOverrides } from '@/lib/payroll/tax-config-cache'
+import {
+  calculateIndiaPayroll,
+  calculatePF,
+  calculateESI,
+  getStateProfessionalTax,
+  calculateTDS,
+  type IndiaEmployee,
+  type IndiaSalaryStructure,
+  type IndiaPayrollResult,
+} from '@/lib/payroll/india-statutory'
+import {
+  calculateBrazilPayroll,
+  calculateINSS,
+  calculateFGTS,
+  calculateIRRF,
+  calculate13thSalary,
+  type BrazilEmployee,
+  type BrazilSalaryStructure,
+  type BrazilPayrollResult,
+} from '@/lib/payroll/brazil-statutory'
 
 // ============================================================
 // PAY FREQUENCY HELPERS
@@ -105,6 +125,7 @@ export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   GQ: 'XAF', GN: 'GNF', GM: 'GMD', SL: 'SLL', LR: 'LRD', CV: 'CVE', MR: 'MRU',
   ST: 'STN', BI: 'BIF', SS: 'SSP',
   US: 'USD', UK: 'GBP', DE: 'EUR', FR: 'EUR', CA: 'CAD', AU: 'AUD',
+  IN: 'INR', BR: 'BRL',
 }
 
 export interface EmployeePayrollEntry {
@@ -1314,12 +1335,88 @@ export async function processPayroll(
       socialSecurityRateOverride: dbOverrides.socialSecurityRateOverride,
       medicareRateOverride: dbOverrides.medicareRateOverride,
     } : {})
-    const monthlyFederal = Math.round((annualTax.federalTax / periodsPerYear) * 100) / 100
-    const monthlyState = Math.round((annualTax.stateOrProvincialTax / periodsPerYear) * 100) / 100
-    const monthlySS = Math.round((annualTax.socialSecurity / periodsPerYear) * 100) / 100
-    const monthlyMedicare = Math.round((annualTax.medicare / periodsPerYear) * 100) / 100
-    const monthlyPension = Math.round((annualTax.pension / periodsPerYear) * 100) / 100
-    const monthlyTaxDeductions = Math.round((annualTax.totalTax / periodsPerYear) * 100) / 100
+    let monthlyFederal = Math.round((annualTax.federalTax / periodsPerYear) * 100) / 100
+    let monthlyState = Math.round((annualTax.stateOrProvincialTax / periodsPerYear) * 100) / 100
+    let monthlySS = Math.round((annualTax.socialSecurity / periodsPerYear) * 100) / 100
+    let monthlyMedicare = Math.round((annualTax.medicare / periodsPerYear) * 100) / 100
+    let monthlyPension = Math.round((annualTax.pension / periodsPerYear) * 100) / 100
+    let statutoryAdditionalTaxes: Record<string, number> = { ...(annualTax.additionalTaxes || {}) }
+
+    // --- India deep statutory override ---
+    if (countryCode === 'IN') {
+      // Assume basic = 40% of monthly gross, DA = 10% for statutory calculation
+      const indiaBasic = Math.round(monthlyBase * 0.40)
+      const indiaDA = Math.round(monthlyBase * 0.10)
+      const indiaHRA = Math.round(monthlyBase * 0.20)
+      const indiaSpecial = monthlyBase - indiaBasic - indiaDA - indiaHRA
+
+      const pf = calculatePF(indiaBasic, indiaDA)
+      const esi = calculateESI(monthlyGross)
+      const pt = getStateProfessionalTax(
+        (employee as any).state || 'Maharashtra',
+        monthlyGross,
+      )
+
+      // Override generic social security with PF employee contribution (in whole currency units)
+      monthlySS = Math.round(pf.employeeEPF / 100 * 100) / 100 // convert paise→INR
+      monthlyPension = 0 // PF covers pension in India
+      monthlyMedicare = Math.round(esi.employeeESI / 100 * 100) / 100
+
+      // Recalculate TDS with India-specific logic
+      const indiaEmp: IndiaEmployee = {
+        id: employee.id,
+        fullName: employee.fullName,
+        dateOfJoining: employee.hireDate || new Date().toISOString(),
+        state: (employee as any).state || 'Maharashtra',
+        taxRegime: 'new',
+      }
+      const tds = calculateTDS(indiaEmp, annualizedGross, indiaBasic * 12, indiaDA * 12)
+      monthlyFederal = Math.round(tds.monthlyTDS / 100 * 100) / 100
+
+      // Professional tax goes to state tax
+      monthlyState = Math.round(pt / 100 * 100) / 100
+
+      // Add statutory detail to additionalTaxes
+      statutoryAdditionalTaxes = {
+        epf_employee: Math.round(pf.employeeEPF / 100 * 100) / 100,
+        epf_employer: Math.round(pf.totalEmployerPF / 100 * 100) / 100,
+        esi_employee: Math.round(esi.employeeESI / 100 * 100) / 100,
+        esi_employer: Math.round(esi.employerESI / 100 * 100) / 100,
+        professional_tax: Math.round(pt / 100 * 100) / 100,
+        tds_monthly: Math.round(tds.monthlyTDS / 100 * 100) / 100,
+        cess: Math.round(tds.cess / 12 / 100 * 100) / 100,
+      }
+    }
+
+    // --- Brazil deep statutory override ---
+    if (countryCode === 'BR') {
+      // INSS progressive calculation (amounts in centavos, convert to BRL)
+      const grossCentavos = Math.round(monthlyGross * 100)
+      const inssResult = calculateINSS(grossCentavos)
+      const fgts = calculateFGTS(grossCentavos)
+      const irrfBase = grossCentavos - inssResult.employee
+      const irrf = calculateIRRF(irrfBase, 0)
+
+      // Override generic values with Brazil-specific
+      monthlySS = Math.round(inssResult.employee) / 100
+      monthlyPension = 0 // INSS covers both
+      monthlyMedicare = 0
+      monthlyFederal = Math.round(irrf) / 100
+      monthlyState = 0
+
+      statutoryAdditionalTaxes = {
+        inss_employee: Math.round(inssResult.employee) / 100,
+        inss_employer: Math.round(inssResult.employer) / 100,
+        fgts: Math.round(fgts) / 100,
+        irrf: Math.round(irrf) / 100,
+        thirteenth_provision: Math.round(monthlyBase * 100 / 12) / 100,
+        vacation_provision: Math.round(monthlyBase * 100 / 12 * 4 / 3) / 100,
+      }
+    }
+
+    const monthlyTaxDeductions = Math.round(
+      (monthlyFederal + monthlyState + monthlySS + monthlyMedicare + monthlyPension) * 100
+    ) / 100
 
     // --- Benefit deductions ---
     const benefitEnrollmentRows = await db
@@ -1372,7 +1469,7 @@ export async function processPayroll(
       socialSecurity: monthlySS,
       medicare: monthlyMedicare,
       pension: monthlyPension,
-      additionalTaxes: annualTax.additionalTaxes || {},
+      additionalTaxes: statutoryAdditionalTaxes,
       garnishments,
       garnishmentTotal,
       benefitDeductions: monthlyBenefitDeductions,

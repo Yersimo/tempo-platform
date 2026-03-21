@@ -19,7 +19,8 @@ import {
   Megaphone, PartyPopper, Cake, Award, Zap, PlusCircle,
   Send, BarChart3, Heart, Pencil, Trash2, Pin
 } from 'lucide-react'
-import { useTempo } from '@/lib/store'
+import { useTempo, useOrgCurrency } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/format-currency'
 
 // ---- Company Updates CRUD (persisted in localStorage) ----
 interface CompanyUpdate {
@@ -118,6 +119,7 @@ export function OrgTab() {
     engagementScores, applications, currentUser, currentEmployeeId,
     addToast, workflows, workflowRuns,
   } = useTempo()
+  const defaultCurrency = useOrgCurrency()
 
   const router = useRouter()
   const t = useTranslations('dashboard')
@@ -202,7 +204,7 @@ export function OrgTab() {
         id: 'expenses',
         type: 'Expense',
         title: `${pendingExpenses} expense report${pendingExpenses > 1 ? 's' : ''} awaiting review`,
-        subtitle: `$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()} total`,
+        subtitle: `${formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} total`,
         href: '/expense',
         icon: <Receipt size={16} />,
         urgency: 'warning',
@@ -309,7 +311,7 @@ export function OrgTab() {
             id: 'sys-payroll',
             icon: <Banknote size={14} />,
             title: `${lastPayroll.period} Payroll Processed`,
-            content: `Payroll for ${lastPayroll.employee_count || employees.length} employees has been processed. Total net: $${(lastPayroll.total_net / 100).toLocaleString()}.`,
+            content: `Payroll for ${lastPayroll.employee_count || employees.length} employees has been processed. Total net: ${formatCurrency(lastPayroll.total_net, defaultCurrency, { cents: true })}.`,
             author: 'Payroll System',
             date: lastPayroll.run_date ? new Date(lastPayroll.run_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
             color: 'bg-gray-100 text-gray-500',
@@ -536,10 +538,10 @@ export function OrgTab() {
         <StatCard href="/performance" label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
         <StatCard href="/learning" label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
         <StatCard href="/recruiting" label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
-        <StatCard href="/expense" label={t('pendingExpenses')} value={pendingExpenses} change={`$${expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0).toLocaleString()}`} changeType="neutral" icon={<Receipt size={24} />} />
+        <StatCard href="/expense" label={t('pendingExpenses')} value={pendingExpenses} change={formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} changeType="neutral" icon={<Receipt size={24} />} />
         <StatCard href="/mentoring" label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
         <StatCard href="/time-attendance" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
-        <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? `$${(lastPayroll.total_net / 1000).toFixed(0)}K` : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
+        <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? formatCurrency(lastPayroll.total_net / 100, defaultCurrency, { compact: true }) : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
       </div>
 
       {/* AI Insights Section */}

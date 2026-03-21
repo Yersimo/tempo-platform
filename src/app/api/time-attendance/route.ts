@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema, withRetry } from '@/lib/db'
 import { eq, and, desc, sql, gte, lte, count, sum } from 'drizzle-orm'
+import {
+  forecastDemand,
+  generateOptimalSchedule,
+  detectScheduleConflicts,
+  suggestShiftSwaps,
+  getScheduleInsights,
+} from '@/lib/services/ai-scheduling'
 
 // ---------------------------------------------------------------------------
 // GET /api/time-attendance — query time entries, policies, shifts, overtime
@@ -316,6 +323,29 @@ export async function GET(request: NextRequest) {
         )
 
         return NextResponse.json({ policies })
+      }
+
+      // ── 8. forecast ──────────────────────────────────────────────────
+      case 'forecast': {
+        const startDate = url.searchParams.get('startDate')
+        const endDate = url.searchParams.get('endDate')
+        if (!startDate || !endDate) {
+          return NextResponse.json({ error: 'Missing required query params: startDate, endDate' }, { status: 400 })
+        }
+
+        const forecast = await forecastDemand(orgId, startDate, endDate)
+        return NextResponse.json({ forecast })
+      }
+
+      // ── 9. schedule-insights ─────────────────────────────────────────
+      case 'schedule-insights': {
+        const weekStart = url.searchParams.get('weekStart')
+        if (!weekStart) {
+          return NextResponse.json({ error: 'Missing required query param: weekStart' }, { status: 400 })
+        }
+
+        const insights = await getScheduleInsights(orgId, weekStart)
+        return NextResponse.json({ insights })
       }
 
       default:
@@ -784,6 +814,39 @@ export async function POST(request: NextRequest) {
         )
 
         return NextResponse.json({ balance: updated })
+      }
+
+      // ── 9. auto-schedule ─────────────────────────────────────────────
+      case 'auto-schedule': {
+        const { weekStart, constraints } = body
+        if (!weekStart) {
+          return NextResponse.json({ error: 'weekStart is required' }, { status: 400 })
+        }
+
+        const result = await generateOptimalSchedule(orgId, weekStart, constraints ?? {})
+        return NextResponse.json(result)
+      }
+
+      // ── 10. detect-conflicts ──────────────────────────────────────────
+      case 'detect-conflicts': {
+        const { shifts: proposedShifts } = body
+        if (!proposedShifts?.length) {
+          return NextResponse.json({ error: 'shifts array is required' }, { status: 400 })
+        }
+
+        const conflicts = await detectScheduleConflicts(orgId, proposedShifts)
+        return NextResponse.json({ conflicts })
+      }
+
+      // ── 11. suggest-swaps ─────────────────────────────────────────────
+      case 'suggest-swaps': {
+        const { shiftId } = body
+        if (!shiftId) {
+          return NextResponse.json({ error: 'shiftId is required' }, { status: 400 })
+        }
+
+        const result = await suggestShiftSwaps(orgId, shiftId)
+        return NextResponse.json(result)
       }
 
       default:

@@ -234,6 +234,16 @@ export const MODULE_SLUGS: Record<string, string> = {
   complianceFindings: 'compliance-findings',
   // Import History
   importHistory: 'import-history',
+  // Skills & Succession Planning
+  skills: 'skills',
+  employeeSkills: 'employee-skills',
+  roleSkillRequirements: 'role-skill-requirements',
+  developmentPlans: 'development-plans',
+  developmentPlanItems: 'development-plan-items',
+  successionPlans: 'succession-plans',
+  successionCandidates: 'succession-candidates',
+  talentReviews: 'talent-reviews',
+  talentReviewEntries: 'talent-review-entries',
 }
 
 // ---------------------------------------------------------------------------

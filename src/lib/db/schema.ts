@@ -4361,3 +4361,124 @@ export const complianceFindings = pgTable('compliance_findings', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// SKILLS FRAMEWORK & SUCCESSION PLANNING
+// ============================================================
+
+export const skills = pgTable('skills', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  category: text('category').notNull(), // technical, leadership, functional, behavioral
+  description: text('description'),
+  proficiencyLevels: text('proficiency_levels'), // JSON: [{level: 1, label: 'Beginner', description: '...'}, ...]
+  isCore: boolean('is_core').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const employeeSkills = pgTable('employee_skills', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  skillId: uuid('skill_id').notNull(),
+  currentLevel: integer('current_level').notNull().default(1),
+  targetLevel: integer('target_level'),
+  assessedBy: uuid('assessed_by'),
+  assessedAt: timestamp('assessed_at'),
+  endorsements: integer('endorsements').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const roleSkillRequirements = pgTable('role_skill_requirements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  jobTitle: text('job_title').notNull(),
+  level: text('level'),
+  skillId: uuid('skill_id').notNull(),
+  requiredLevel: integer('required_level').notNull(),
+  importance: text('importance').notNull().default('required'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const developmentPlans = pgTable('development_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  title: text('title').notNull(),
+  status: text('status').notNull().default('active'),
+  targetDate: text('target_date'),
+  managerNotes: text('manager_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const developmentPlanItems = pgTable('development_plan_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planId: uuid('plan_id').notNull(),
+  skillId: uuid('skill_id'),
+  type: text('type').notNull(), // course, mentoring, stretch_assignment, coaching, certification, project
+  title: text('title').notNull(),
+  description: text('description'),
+  targetDate: text('target_date'),
+  status: text('status').notNull().default('not_started'),
+  linkedCourseId: uuid('linked_course_id'),
+  linkedMentoringId: uuid('linked_mentoring_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const successionPlans = pgTable('succession_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  positionTitle: text('position_title').notNull(),
+  incumbentId: uuid('incumbent_id'),
+  departmentId: uuid('department_id'),
+  criticality: text('criticality').notNull().default('medium'),
+  riskOfVacancy: text('risk_of_vacancy').notNull().default('medium'),
+  status: text('status').notNull().default('active'),
+  notes: text('notes'),
+  lastReviewedAt: timestamp('last_reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const successionCandidates = pgTable('succession_candidates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planId: uuid('plan_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  readiness: text('readiness').notNull().default('developing'),
+  performanceRating: integer('performance_rating'),
+  potentialRating: integer('potential_rating'),
+  strengthNotes: text('strength_notes'),
+  gapNotes: text('gap_notes'),
+  developmentPlanId: uuid('development_plan_id'),
+  ranking: integer('ranking').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const talentReviews = pgTable('talent_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  reviewDate: text('review_date').notNull(),
+  status: text('status').notNull().default('draft'),
+  facilitatorId: uuid('facilitator_id'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const talentReviewEntries = pgTable('talent_review_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  reviewId: uuid('review_id').notNull(),
+  employeeId: uuid('employee_id').notNull(),
+  performanceScore: integer('performance_score').notNull(),
+  potentialScore: integer('potential_score').notNull(),
+  nineBoxPosition: text('nine_box_position'),
+  retentionRisk: text('retention_risk').default('low'),
+  keyStrengths: text('key_strengths'),
+  developmentAreas: text('development_areas'),
+  actionItems: text('action_items'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})

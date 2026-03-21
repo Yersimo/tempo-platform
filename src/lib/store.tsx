@@ -317,6 +317,17 @@ interface TempoState {
   // Toasts
   toasts: Toast[]
 
+  // Skills & Succession Planning
+  skills: any[]
+  employeeSkills: any[]
+  roleSkillRequirements: any[]
+  developmentPlans: any[]
+  developmentPlanItems: any[]
+  successionPlans: any[]
+  successionCandidates: any[]
+  talentReviews: any[]
+  talentReviewEntries: any[]
+
   // Loading state
   isLoading: boolean
   /** Lazily load modules from DB. No-op for already-loaded modules or demo users. */
@@ -1350,6 +1361,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [academyCertificates, setAcademyCertificates] = useState<any[]>([])
   const [academyCommunications, setAcademyCommunications] = useState<any[]>([])
   const [academyCommTriggers, setAcademyCommTriggers] = useState<any[]>([])
+  // Skills & Succession Planning
+  const [skillsData, setSkillsData] = useState<any[]>([])
+  const [employeeSkillsData, setEmployeeSkillsData] = useState<any[]>([])
+  const [roleSkillRequirements, setRoleSkillRequirements] = useState<any[]>([])
+  const [developmentPlansData, setDevelopmentPlansData] = useState<any[]>([])
+  const [developmentPlanItems, setDevelopmentPlanItems] = useState<any[]>([])
+  const [successionPlansData, setSuccessionPlansData] = useState<any[]>([])
+  const [successionCandidates, setSuccessionCandidates] = useState<any[]>([])
+  const [talentReviewsData, setTalentReviewsData] = useState<any[]>([])
+  const [talentReviewEntries, setTalentReviewEntries] = useState<any[]>([])
   const [surveys, setSurveys] = useState<any[]>([])
   const [engagementScores, setEngagementScores] = useState<any[]>([])
   const [actionPlans, setActionPlans] = useState<any[]>([])
@@ -2057,6 +2078,16 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       academyCertificates: (d) => setAcademyCertificates(d),
       academyCommunications: (d) => setAcademyCommunications(d),
       academyCommTriggers: (d) => setAcademyCommTriggers(d),
+      // Skills & Succession Planning
+      skills: (d) => setSkillsData(d),
+      employeeSkills: (d) => setEmployeeSkillsData(d),
+      roleSkillRequirements: (d) => setRoleSkillRequirements(d),
+      developmentPlans: (d) => setDevelopmentPlansData(d),
+      developmentPlanItems: (d) => setDevelopmentPlanItems(d),
+      successionPlans: (d) => setSuccessionPlansData(d),
+      successionCandidates: (d) => setSuccessionCandidates(d),
+      talentReviews: (d) => setTalentReviewsData(d),
+      talentReviewEntries: (d) => setTalentReviewEntries(d),
     }
   }
 
@@ -6291,6 +6322,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     academies, academyCohorts, academyParticipants, academyCourses, academyParticipantProgress,
     academySessions, academySessionRsvps, academyAssignments, academyAssignmentSubmissions,
     academyDiscussions, academyResources, academyCertificates, academyCommunications, academyCommTriggers,
+    skills: skillsData, employeeSkills: employeeSkillsData, roleSkillRequirements,
+    developmentPlans: developmentPlansData, developmentPlanItems,
+    successionPlans: successionPlansData, successionCandidates,
+    talentReviews: talentReviewsData, talentReviewEntries,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }
