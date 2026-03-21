@@ -224,6 +224,23 @@ const MODULE_CONFIG: Record<string, {
   // Journal Entries (GL)
   'journal-entries':       { table: schema.journalEntries, hasOrgId: true, defaultLimit: 50 },
   'journal-entry-lines':   { table: schema.journalEntryLines, hasOrgId: false, defaultLimit: 100 },
+  // Bank Feed / Plaid
+  'bank-connections':      { table: schema.bankConnections, hasOrgId: true, defaultLimit: 50 },
+  'bank-accounts':         { table: schema.bankAccounts, hasOrgId: true, defaultLimit: 50 },
+  'bank-transactions':     { table: schema.bankTransactions, hasOrgId: true, defaultLimit: 200 },
+  'reconciliation-rules':  { table: schema.reconciliationRules, hasOrgId: true, defaultLimit: 100 },
+  // Multi-Entity Consolidation
+  'entity-groups':           { table: schema.entityGroups, hasOrgId: false, defaultLimit: 20 },
+  'entity-group-members':    { table: schema.entityGroupMembers, hasOrgId: false, defaultLimit: 50 },
+  'intercompany-transactions': { table: schema.intercompanyTransactions, hasOrgId: false, defaultLimit: 50 },
+  'consolidation-reports':   { table: schema.consolidationReports, hasOrgId: false, defaultLimit: 20 },
+  'fx-rate-history':         { table: schema.fxRateHistory, hasOrgId: false, defaultLimit: 50 },
+  // SOC 2 Compliance
+  'audit-hash-chain':        { table: schema.auditHashChain, hasOrgId: true, defaultLimit: 100 },
+  'retention-policies':      { table: schema.retentionPolicies, hasOrgId: true, defaultLimit: 20 },
+  'compliance-findings':     { table: schema.complianceFindings, hasOrgId: true, defaultLimit: 50 },
+  // Import History
+  'import-history':          { table: schema.importHistory, hasOrgId: true, defaultLimit: 50 },
 }
 
 export async function GET(

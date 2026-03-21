@@ -217,6 +217,23 @@ export const MODULE_SLUGS: Record<string, string> = {
   // Journal Entries (GL)
   journalEntries: 'journal-entries',
   journalEntryLines: 'journal-entry-lines',
+  // Bank Feed / Plaid
+  bankConnections: 'bank-connections',
+  bankAccounts: 'bank-accounts',
+  bankTransactions: 'bank-transactions',
+  reconciliationRules: 'reconciliation-rules',
+  // Multi-Entity Consolidation
+  entityGroups: 'entity-groups',
+  entityGroupMembers: 'entity-group-members',
+  intercompanyTransactions: 'intercompany-transactions',
+  consolidationReports: 'consolidation-reports',
+  fxRateHistory: 'fx-rate-history',
+  // SOC 2 Compliance
+  auditHashChain: 'audit-hash-chain',
+  retentionPolicies: 'retention-policies',
+  complianceFindings: 'compliance-findings',
+  // Import History
+  importHistory: 'import-history',
 }
 
 // ---------------------------------------------------------------------------

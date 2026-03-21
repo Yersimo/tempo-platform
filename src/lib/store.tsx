@@ -969,6 +969,12 @@ interface TempoState {
   addCardTransaction: (data: AnyRecord) => void
   updateCardTransaction: (id: string, data: AnyRecord) => void
 
+  // Bank Feed
+  bankConnections: AnyRecord[]
+  bankAccounts: AnyRecord[]
+  bankTransactions: AnyRecord[]
+  reconciliationRules: AnyRecord[]
+
   // Bill Pay
   billPayments: AnyRecord[]
   billPaySchedules: AnyRecord[]
@@ -1525,6 +1531,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [videoScreenResponses, setVideoScreenResponses] = useState<any[]>([])
   const [corporateCards, setCorporateCards] = useState<any[]>([])
   const [cardTransactions, setCardTransactions] = useState<any[]>([])
+  const [bankConnections, setBankConnections] = useState<any[]>([])
+  const [bankAccountsList, setBankAccountsList] = useState<any[]>([])
+  const [bankTransactionsList, setBankTransactionsList] = useState<any[]>([])
+  const [reconciliationRulesList, setReconciliationRulesList] = useState<any[]>([])
   const [billPayments, setBillPayments] = useState<any[]>([])
   const [billPaySchedules, setBillPaySchedules] = useState<any[]>([])
   const [travelRequests, setTravelRequests] = useState<any[]>([])
@@ -1764,6 +1774,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     if ((data as any).videoScreenResponses) setVideoScreenResponses((data as any).videoScreenResponses)
     if ((data as any).corporateCards) setCorporateCards((data as any).corporateCards)
     if ((data as any).cardTransactions) setCardTransactions((data as any).cardTransactions)
+    if ((data as any).bankConnections) setBankConnections((data as any).bankConnections)
+    if ((data as any).bankAccounts) setBankAccountsList((data as any).bankAccounts)
+    if ((data as any).bankTransactions) setBankTransactionsList((data as any).bankTransactions)
+    if ((data as any).reconciliationRules) setReconciliationRulesList((data as any).reconciliationRules)
     if ((data as any).billPayments) setBillPayments((data as any).billPayments)
     if ((data as any).billPaySchedules) setBillPaySchedules((data as any).billPaySchedules)
     if ((data as any).travelRequests) setTravelRequests((data as any).travelRequests)
@@ -1881,6 +1895,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       purchaseOrders: (d) => setPurchaseOrders(d),
       purchaseOrderItems: (d) => setPurchaseOrderItems(d),
       procurementRequests: (d) => setProcurementRequests(d),
+      // Bank Feed
+      bankConnections: (d) => setBankConnections(d),
+      bankAccounts: (d) => setBankAccountsList(d),
+      bankTransactions: (d) => setBankTransactionsList(d),
+      reconciliationRules: (d) => setReconciliationRulesList(d),
       // Finance
       corporateCards: (d) => setCorporateCards(d),
       cardTransactions: (d) => setCardTransactions(d),
@@ -6227,6 +6246,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     addVideoScreenResponse, updateVideoScreenResponse,
     corporateCards, cardTransactions,
     addCorporateCard, updateCorporateCard, addCardTransaction, updateCardTransaction,
+    bankConnections, bankAccounts: bankAccountsList, bankTransactions: bankTransactionsList, reconciliationRules: reconciliationRulesList,
     billPayments, billPaySchedules,
     addBillPayment, updateBillPayment, addBillPaySchedule, updateBillPaySchedule,
     travelRequests, travelBookings, travelPolicies,

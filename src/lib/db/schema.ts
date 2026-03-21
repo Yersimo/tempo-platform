@@ -4159,3 +4159,205 @@ export const journalEntryLines = pgTable('journal_entry_lines', {
   description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// ============================================================
+// BANK FEED / PLAID INTEGRATION
+// ============================================================
+
+export const bankConnections = pgTable('bank_connections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  institutionId: text('institution_id').notNull(),
+  institutionName: text('institution_name').notNull(),
+  plaidItemId: text('plaid_item_id'),
+  plaidAccessToken: text('plaid_access_token'),
+  status: text('status').notNull().default('active'),
+  lastSyncAt: timestamp('last_sync_at'),
+  consentExpiresAt: timestamp('consent_expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const bankAccounts = pgTable('bank_accounts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  connectionId: uuid('connection_id').references(() => bankConnections.id, { onDelete: 'cascade' }).notNull(),
+  plaidAccountId: text('plaid_account_id'),
+  name: text('name').notNull(),
+  officialName: text('official_name'),
+  type: text('type').notNull(),
+  subtype: text('subtype'),
+  mask: text('mask'),
+  currency: text('currency').notNull().default('USD'),
+  currentBalance: integer('current_balance'),
+  availableBalance: integer('available_balance'),
+  lastSyncAt: timestamp('last_sync_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const bankTransactions = pgTable('bank_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  accountId: uuid('account_id').references(() => bankAccounts.id, { onDelete: 'cascade' }).notNull(),
+  plaidTransactionId: text('plaid_transaction_id'),
+  date: text('date').notNull(),
+  amount: integer('amount').notNull(),
+  currency: text('currency').notNull().default('USD'),
+  name: text('name').notNull(),
+  merchantName: text('merchant_name'),
+  category: text('category'),
+  subcategory: text('subcategory'),
+  pending: boolean('pending').default(false),
+  matchStatus: text('match_status').notNull().default('unmatched'),
+  matchedEntityType: text('matched_entity_type'),
+  matchedEntityId: uuid('matched_entity_id'),
+  matchConfidence: integer('match_confidence'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const reconciliationRules = pgTable('reconciliation_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  matchField: text('match_field').notNull(),
+  matchOperator: text('match_operator').notNull(),
+  matchValue: text('match_value').notNull(),
+  targetEntityType: text('target_entity_type').notNull(),
+  isActive: boolean('is_active').default(true),
+  priority: integer('priority').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// MULTI-ENTITY CONSOLIDATION
+// ============================================================
+
+export const entityGroups = pgTable('entity_groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  parentOrgId: uuid('parent_org_id').notNull(),
+  consolidationCurrency: text('consolidation_currency').notNull().default('USD'),
+  fiscalYearEnd: text('fiscal_year_end').default('12-31'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const entityGroupMembers = pgTable('entity_group_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull(),
+  orgId: uuid('org_id').notNull(),
+  entityName: text('entity_name').notNull(),
+  entityType: text('entity_type').notNull(),
+  country: text('country').notNull(),
+  localCurrency: text('local_currency').notNull(),
+  ownershipPercent: integer('ownership_percent').notNull().default(100),
+  consolidationMethod: text('consolidation_method').notNull().default('full'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const intercompanyTransactions = pgTable('intercompany_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull(),
+  fromOrgId: uuid('from_org_id').notNull(),
+  toOrgId: uuid('to_org_id').notNull(),
+  transactionType: text('transaction_type').notNull(),
+  description: text('description').notNull(),
+  amount: integer('amount').notNull(),
+  currency: text('currency').notNull(),
+  date: text('date').notNull(),
+  status: text('status').notNull().default('pending'),
+  referenceNumber: text('reference_number'),
+  fromEntityConfirmed: boolean('from_entity_confirmed').default(false),
+  toEntityConfirmed: boolean('to_entity_confirmed').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const consolidationReports = pgTable('consolidation_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull(),
+  reportType: text('report_type').notNull(),
+  periodStart: text('period_start').notNull(),
+  periodEnd: text('period_end').notNull(),
+  status: text('status').notNull().default('draft'),
+  reportData: text('report_data'),
+  eliminationEntries: text('elimination_entries'),
+  fxRates: text('fx_rates'),
+  generatedBy: uuid('generated_by'),
+  approvedBy: uuid('approved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const fxRateHistory = pgTable('fx_rate_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull(),
+  fromCurrency: text('from_currency').notNull(),
+  toCurrency: text('to_currency').notNull(),
+  rate: text('rate').notNull(),
+  rateType: text('rate_type').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  source: text('source').default('manual'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// SOC 2 COMPLIANCE: Audit Hash Chain, Retention Policies, Findings
+// ============================================================
+
+export const auditHashChain = pgTable('audit_hash_chain', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  auditEntryId: uuid('audit_entry_id').notNull(),
+  previousHash: text('previous_hash'),
+  currentHash: text('current_hash').notNull(),
+  sequenceNumber: integer('sequence_number').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const retentionPolicies = pgTable('retention_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  entityType: text('entity_type').notNull(),
+  retentionDays: integer('retention_days').notNull(),
+  archiveAfterDays: integer('archive_after_days'),
+  deleteAfterDays: integer('delete_after_days'),
+  isActive: boolean('is_active').default(true),
+  lastEnforcedAt: timestamp('last_enforced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const importHistory = pgTable('import_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  entityType: text('entity_type').notNull(),
+  source: text('source').notNull(),
+  fileName: text('file_name'),
+  totalRows: integer('total_rows').notNull(),
+  importedRows: integer('imported_rows').notNull(),
+  errorRows: integer('error_rows').notNull().default(0),
+  importedIds: text('imported_ids'), // JSON array of created record IDs
+  status: text('status').notNull().default('completed'),
+  errors: text('errors'), // JSON array of error objects
+  importedBy: uuid('imported_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const complianceFindings = pgTable('compliance_findings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  findingType: text('finding_type').notNull(),
+  trustCategory: text('trust_category').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  severity: text('severity').notNull(),
+  status: text('status').notNull().default('open'),
+  remediationPlan: text('remediation_plan'),
+  dueDate: text('due_date'),
+  assignedTo: uuid('assigned_to'),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})

@@ -9,6 +9,10 @@ import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { SessionTimeout } from '@/components/session-timeout'
 import { Skeleton } from '@/components/ui/skeleton'
+import { HelpProvider } from '@/lib/help-context'
+import { HelpPanel } from '@/components/help/help-panel'
+import { HelpButton } from '@/components/help/help-button'
+import { OnboardingTour } from '@/components/help/onboarding-tour'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -79,19 +83,24 @@ export default function PlatformLayout({
   return (
     <TempoProvider>
       <AuthGuard>
-        <ImpersonationBanner />
-        <SessionTimeout />
-        <div className="flex min-h-screen bg-canvas">
-          <Sidebar />
-          <main className="flex-1 min-w-0">
-            <div className="p-6 lg:p-8 pb-24 lg:pb-8 max-w-[1400px]">
-              <ErrorBoundary module="Platform">
-                {children}
-              </ErrorBoundary>
-            </div>
-          </main>
-        </div>
-        <ToastContainer />
+        <HelpProvider>
+          <ImpersonationBanner />
+          <SessionTimeout />
+          <div className="flex min-h-screen bg-canvas">
+            <Sidebar />
+            <main className="flex-1 min-w-0">
+              <div className="p-6 lg:p-8 pb-24 lg:pb-8 max-w-[1400px]">
+                <ErrorBoundary module="Platform">
+                  {children}
+                </ErrorBoundary>
+              </div>
+            </main>
+          </div>
+          <HelpPanel />
+          <HelpButton />
+          <OnboardingTour />
+          <ToastContainer />
+        </HelpProvider>
       </AuthGuard>
     </TempoProvider>
   )

@@ -64,6 +64,12 @@ import { teamsConnector } from './teams'
 import { xeroConnector } from './xero'
 import { quickBooksConnector } from './quickbooks'
 import { linkedInTalentConnector } from './linkedin'
+import { sapSuccessFactorsConnector } from './sap-successfactors'
+import { workdayConnector } from './workday'
+import { adpConnector } from './adp'
+import { gustoConnector } from './gusto'
+import { deelConnector } from './deel'
+import { ripplingConnector } from './rippling'
 
 registerConnector(activeDirectoryConnector)
 registerConnector(googleWorkspaceConnector)
@@ -74,9 +80,28 @@ registerConnector(teamsConnector)
 registerConnector(xeroConnector)
 registerConnector(quickBooksConnector)
 registerConnector(linkedInTalentConnector)
+registerConnector(sapSuccessFactorsConnector)
+registerConnector(workdayConnector)
+registerConnector(adpConnector)
+registerConnector(gustoConnector)
+registerConnector(deelConnector)
+registerConnector(ripplingConnector)
+
+export type IntegrationStatus = 'available' | 'coming_soon'
+export type IntegrationCategory = 'identity' | 'productivity' | 'payroll' | 'communication' | 'storage'
+
+export interface IntegrationCatalogItem {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: IntegrationCategory
+  capabilities: string[]
+  status: IntegrationStatus
+}
 
 // Available integrations catalog (for the UI to display)
-export const INTEGRATION_CATALOG = [
+export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
   {
     id: 'active-directory',
     name: 'Active Directory / Azure AD',
@@ -105,13 +130,31 @@ export const INTEGRATION_CATALOG = [
     status: 'available' as const,
   },
   {
-    id: 'sap-hr',
+    id: 'sap-successfactors',
     name: 'SAP SuccessFactors',
-    description: 'Bidirectional sync with SAP SuccessFactors HCM for enterprise HR data.',
+    description: 'Bidirectional sync with SAP SuccessFactors for employee data, payroll, org structure, benefits, time, and learning.',
     icon: 'Building2',
-    category: 'identity' as const,
-    capabilities: ['Employee sync', 'Org structure', 'Compensation data', 'Time tracking'],
-    status: 'coming_soon' as const,
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Payroll export', 'Org structure', 'Benefits sync', 'Time management', 'Learning sync', 'Performance sync', 'Recruiting sync'],
+    status: 'available' as const,
+  },
+  {
+    id: 'workday',
+    name: 'Workday',
+    description: 'Bidirectional sync with Workday HCM for employees, payroll, org structure, benefits, compensation, and absence management.',
+    icon: 'Layers',
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Payroll export', 'Org structure', 'Benefits sync', 'Compensation sync', 'Recruiting sync', 'Learning sync', 'Absence management'],
+    status: 'available' as const,
+  },
+  {
+    id: 'adp',
+    name: 'ADP',
+    description: 'Sync employees, payroll, tax filing, benefits, time tracking, garnishments, and new hire reporting with ADP.',
+    icon: 'DollarSign',
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Payroll export', 'Tax filing', 'Benefits sync', 'Time management', 'Garnishments', 'New hire reporting', 'Compensation sync'],
+    status: 'available' as const,
   },
   {
     id: 'slack',
@@ -167,8 +210,31 @@ export const INTEGRATION_CATALOG = [
     capabilities: ['Job posting', 'Candidate sync', 'Talent pipeline', 'Analytics'],
     status: 'available' as const,
   },
-] as const
-
-export type IntegrationCatalogItem = (typeof INTEGRATION_CATALOG)[number]
-export type IntegrationStatus = 'available' | 'coming_soon'
-export type IntegrationCategory = IntegrationCatalogItem['category']
+  {
+    id: 'gusto',
+    name: 'Gusto',
+    description: 'Sync employees, payroll runs, and departments from Gusto.',
+    icon: 'DollarSign',
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Payroll sync', 'Department sync', 'Onboarding data'],
+    status: 'available' as const,
+  },
+  {
+    id: 'deel',
+    name: 'Deel',
+    description: 'Sync employees, contractors, contracts, and invoices from Deel. Supports multi-currency.',
+    icon: 'Globe',
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Contractor sync', 'Contract management', 'Invoice sync', 'Multi-currency'],
+    status: 'available' as const,
+  },
+  {
+    id: 'rippling',
+    name: 'Rippling',
+    description: 'Sync employees, departments, and payroll data from Rippling.',
+    icon: 'Layers',
+    category: 'payroll' as const,
+    capabilities: ['Employee sync', 'Department sync', 'Payroll sync', 'Contractor sync'],
+    status: 'available' as const,
+  },
+]
