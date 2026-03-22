@@ -492,6 +492,40 @@ export default function CompliancePage() {
         <StatCard label="Non-Compliant" value={nonCompliantCount} icon={<XCircle size={STAT_ICON} />} />
       </ExpandableStats>
 
+      {/* Global Compliance Score */}
+      <Card className="mb-6 border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-blue-50/50">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white rounded-xl shadow-sm border border-emerald-100">
+            <Globe size={24} className="text-emerald-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-t1">Global Compliance Score</h3>
+            <p className="text-xs text-t3 mt-0.5">Aggregated across all operating countries</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-emerald-600">{complianceScore}%</p>
+              <p className="text-xs text-t3">Overall</p>
+            </div>
+            <div className="h-12 w-px bg-divider" />
+            {(() => {
+              const countries = [...new Set(complianceRequirements.map((r: any) => r.country || r.jurisdiction || 'Global').filter(Boolean))]
+              return countries.slice(0, 4).map((country: any) => {
+                const countryReqs = complianceRequirements.filter((r: any) => (r.country || r.jurisdiction || 'Global') === country)
+                const countryCompliant = countryReqs.filter((r: any) => r.status === 'compliant').length
+                const countryScore = countryReqs.length > 0 ? Math.round((countryCompliant / countryReqs.length) * 100) : 100
+                return (
+                  <div key={country} className="text-center min-w-[60px]">
+                    <p className={`text-lg font-bold ${countryScore >= 80 ? 'text-emerald-600' : countryScore >= 60 ? 'text-amber-600' : 'text-red-600'}`}>{countryScore}%</p>
+                    <p className="text-[10px] text-t3 truncate">{country}</p>
+                  </div>
+                )
+              })
+            })()}
+          </div>
+        </div>
+      </Card>
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Overview Tab */}

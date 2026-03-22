@@ -15,10 +15,11 @@ import {
   UserPlus, Users, DollarSign, TrendingUp, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, AlertTriangle, Search, Filter,
   BarChart3, Target, Calendar, Briefcase, ArrowRight, MessageSquare,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Globe,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo, useOrgCurrency } from '@/lib/store'
+import { useEventCascade } from '@/lib/event-cascade-context'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -68,7 +69,10 @@ export default function HeadcountPage() {
     getEmployeeName, getDepartmentName,
     addToast,
     ensureModulesLoaded,
+    // Cross-module: country expansion triggers
+    addBenefitPlan, addJourneyTemplate,
   } = useTempo()
+  const { triggerCascade } = useEventCascade()
   const defaultCurrency = useOrgCurrency()
 
   const fmt = (n: number) => formatCurrency(n, defaultCurrency, { compact: true })
@@ -85,6 +89,11 @@ export default function HeadcountPage() {
 
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedPlanId, setSelectedPlanId] = useState(headcountPlans.find(p => p.status === 'active')?.id || headcountPlans[0]?.id || '')
+
+  // ── Country Expansion Wizard state ──
+  const [showExpansionModal, setShowExpansionModal] = useState(false)
+  const [expansionCountry, setExpansionCountry] = useState('KE')
+  const [expansionType, setExpansionType] = useState('eor')
 
   // Filters for positions tab
   const [filterDept, setFilterDept] = useState('')
@@ -538,6 +547,10 @@ export default function HeadcountPage() {
             <Button size="sm" onClick={openNewPosition}>
               <Plus size={14} />
               {t('addPosition')}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setShowExpansionModal(true)}>
+              <Globe size={14} />
+              Expand to New Country
             </Button>
           </div>
         }
@@ -1493,6 +1506,108 @@ export default function HeadcountPage() {
               {saving ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Country Expansion Wizard */}
+      <Modal open={showExpansionModal} onClose={() => setShowExpansionModal(false)} title="Expand to New Country">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-t2 block mb-1">Target Country</label>
+            <Select
+              value={expansionCountry}
+              onChange={e => setExpansionCountry(e.target.value)}
+              options={[
+                { value: 'TZ', label: 'Tanzania' },
+                { value: 'KE', label: 'Kenya' },
+                { value: 'NG', label: 'Nigeria' },
+                { value: 'ZA', label: 'South Africa' },
+                { value: 'IN', label: 'India' },
+                { value: 'BR', label: 'Brazil' },
+                { value: 'SG', label: 'Singapore' },
+                { value: 'AE', label: 'UAE' },
+              ]}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-t2 block mb-1">Employment Model</label>
+            <Select
+              value={expansionType}
+              onChange={e => setExpansionType(e.target.value)}
+              options={[
+                { value: 'eor', label: 'Employer of Record (EOR) — Fastest, no entity needed' },
+                { value: 'entity', label: 'Local Entity — Full control, requires setup' },
+              ]}
+            />
+          </div>
+          <div className="bg-canvas rounded-lg p-3 text-xs text-t2 space-y-1">
+            <p className="font-medium text-t1">What happens next:</p>
+            <p>1. A new position will be created in the selected country</p>
+            <p>2. {expansionType === 'eor' ? 'EOR partner onboarding will begin (est. 2-4 weeks)' : 'Entity registration process will start (est. 3-6 months)'}</p>
+            <p>3. Compliance requirements for the country will be auto-populated</p>
+            <p>4. Statutory benefits will be auto-configured</p>
+            <p>5. Localized onboarding template will be created</p>
+          </div>
+          <Button onClick={() => {
+            const countryNames: Record<string, string> = { TZ: 'Tanzania', KE: 'Kenya', NG: 'Nigeria', ZA: 'South Africa', IN: 'India', BR: 'Brazil', SG: 'Singapore', AE: 'UAE' }
+            const countryName = countryNames[expansionCountry] || expansionCountry
+            const countryCurrencies: Record<string, string> = { TZ: 'TZS', KE: 'KES', NG: 'NGN', ZA: 'ZAR', IN: 'INR', BR: 'BRL', SG: 'SGD', AE: 'AED' }
+
+            // Create the position
+            addHeadcountPosition?.({
+              plan_id: selectedPlanId || headcountPlans[0]?.id,
+              department_id: departments?.[0]?.id || '',
+              job_title: 'Operations Associate',
+              level: 'L3',
+              type: 'new',
+              priority: 'high',
+              status: 'planned',
+              country: expansionCountry,
+              salary_min: 0,
+              salary_max: 0,
+              currency: countryCurrencies[expansionCountry] || 'USD',
+              justification: `Country expansion via ${expansionType.toUpperCase()} model`,
+            } as any)
+
+            // Step 5: Auto-configure statutory benefits for new country
+            if (addBenefitPlan) {
+              addBenefitPlan({
+                name: `${countryName} Statutory Benefits`,
+                type: 'statutory',
+                country: expansionCountry,
+                status: 'active',
+                description: `Auto-configured statutory benefits for ${countryName} expansion`,
+                coverage_items: ['Health insurance', 'Social security', 'Workers compensation', 'Pension contributions'],
+                effective_date: new Date().toISOString().split('T')[0],
+              })
+            }
+
+            // Step 6: Auto-create localized onboarding template
+            if (addJourneyTemplate) {
+              addJourneyTemplate({
+                name: `${countryName} Onboarding`,
+                category: 'onboarding',
+                country: expansionCountry,
+                description: `Localized onboarding template for ${countryName} employees`,
+                steps: [
+                  { title: `${countryName} visa/work permit verification`, type: 'task', status: 'not_started', order: 1 },
+                  { title: 'Local tax registration (TIN)', type: 'task', status: 'not_started', order: 2 },
+                  { title: `${countryName} labor law compliance training`, type: 'task', status: 'not_started', order: 3 },
+                  { title: 'Local bank account setup', type: 'task', status: 'not_started', order: 4 },
+                  { title: 'Statutory benefits enrollment', type: 'task', status: 'not_started', order: 5 },
+                  { title: `${countryName}-specific IT/security onboarding`, type: 'task', status: 'not_started', order: 6 },
+                ],
+              })
+            }
+
+            // Trigger the cascade
+            triggerCascade('COUNTRY_EXPANSION', { employeeName: countryName })
+
+            setShowExpansionModal(false)
+            addToast?.(`Country expansion initiated for ${countryName} via ${expansionType.toUpperCase()} — statutory benefits and onboarding template auto-configured`)
+          }}>
+            <Globe size={14} /> Launch Expansion
+          </Button>
         </div>
       </Modal>
     </>
