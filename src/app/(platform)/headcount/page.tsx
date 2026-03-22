@@ -520,7 +520,7 @@ export default function HeadcountPage() {
         <Header
           title={t('title')}
           subtitle={t('subtitle')}
-          actions={<Button size="sm" disabled><Plus size={14} /> {t('newPosition')}</Button>}
+          actions={<Button size="sm" disabled><Plus size={14} /> {t('addPosition')}</Button>}
         />
         <div className="p-6"><PageSkeleton /></div>
       </>

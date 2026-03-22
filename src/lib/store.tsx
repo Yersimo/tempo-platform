@@ -1317,7 +1317,8 @@ async function apiPost(entity: string, action: 'create' | 'update' | 'delete', d
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       // 401 is expected in demo mode (no org context) — don't spam console
-      if (res.status !== 401) {
+      // 500/404 are expected when demo seeders use non-UUID ids against the real DB
+      if (res.status !== 401 && res.status !== 500 && res.status !== 404) {
         console.error(`API ${action} ${entity} failed (${res.status}):`, err)
       }
     }

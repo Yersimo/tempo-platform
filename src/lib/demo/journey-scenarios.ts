@@ -5,6 +5,22 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TempoStore = Record<string, any>
 
+// Safely call a store method, catching errors from API persistence failures.
+// In demo mode the store add/update methods try to POST to /api/data which
+// fails because demo UUIDs aren't real DB records. We only need local state.
+function safeCall(fn: ((...args: any[]) => any) | undefined, ...args: any[]): void {
+  if (!fn) return // method doesn't exist on store — skip silently
+  try {
+    const result = fn(...args)
+    // If the method returns a promise, swallow its rejection too
+    if (result && typeof result.catch === 'function') {
+      result.catch(() => {/* demo mode — API failure expected */})
+    }
+  } catch {
+    // demo mode — API failure expected, local state was still updated
+  }
+}
+
 const ORG_ID = 'org-1'
 const TODAY = new Date().toISOString().split('T')[0]
 const NOW = new Date().toISOString()
@@ -96,7 +112,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   const deptId = 'dept-8' // Marketing/Design — closest existing dept
 
   // 1. Headcount position
-  store.addHeadcountPosition({
+  safeCall(store.addHeadcountPosition, {
     id: J1.posId, plan_id: 'hcp-1', org_id: ORG_ID, department_id: deptId,
     job_title: 'Product Designer', level: 'L3', type: 'new',
     status: 'approved', priority: 'high',
@@ -107,7 +123,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 2. Job posting
-  store.addJobPosting({
+  safeCall(store.addJobPosting, {
     id: J1.jobId, org_id: ORG_ID, title: 'Product Designer',
     department_id: deptId, location: 'Accra, Ghana', type: 'full_time',
     description: 'Join our Design team to craft beautiful mobile banking experiences for millions of users across Africa.',
@@ -117,21 +133,21 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 3. Applications (Akosua at offer, 2 rejected)
-  store.addApplication({
+  safeCall(store.addApplication, {
     id: J1.appAkosua, org_id: ORG_ID, job_id: J1.jobId,
     candidate_name: 'Akosua Mensah', candidate_email: 'akosua.mensah@gmail.com',
     status: 'offer', stage: 'Offer Accepted', rating: 4.5,
     notes: 'Outstanding portfolio, strong UX research skills. Former lead at MTN Ghana digital team.',
     applied_at: pastISO(18),
   })
-  store.addApplication({
+  safeCall(store.addApplication, {
     id: J1.appReject1, org_id: ORG_ID, job_id: J1.jobId,
     candidate_name: 'Kwadwo Asare', candidate_email: 'k.asare@mail.com',
     status: 'rejected', stage: 'Rejected', rating: 2.5,
     notes: 'Limited portfolio; did not demonstrate required Figma proficiency.',
     applied_at: pastISO(17),
   })
-  store.addApplication({
+  safeCall(store.addApplication, {
     id: J1.appReject2, org_id: ORG_ID, job_id: J1.jobId,
     candidate_name: 'Esi Boateng', candidate_email: 'esi.b@outlook.com',
     status: 'rejected', stage: 'Rejected after Interview', rating: 3.0,
@@ -140,14 +156,14 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 4. Interviews
-  store.addInterview({
+  safeCall(store.addInterview, {
     id: J1.interview1, org_id: ORG_ID, application_id: J1.appAkosua,
     interviewer_id: 'emp-27', type: 'technical', status: 'completed',
     scheduled_at: pastISO(10), duration_minutes: 60,
     feedback: 'Excellent design thinking. Solved our take-home exercise with creative solutions.',
     rating: 5, created_at: pastISO(12),
   })
-  store.addInterview({
+  safeCall(store.addInterview, {
     id: J1.interview2, org_id: ORG_ID, application_id: J1.appAkosua,
     interviewer_id: 'emp-29', type: 'behavioral', status: 'completed',
     scheduled_at: pastISO(7), duration_minutes: 45,
@@ -156,7 +172,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 5. Scorecards
-  store.addScoreCard({
+  safeCall(store.addScoreCard, {
     id: J1.scorecard1, org_id: ORG_ID, application_id: J1.appAkosua,
     interviewer_id: 'emp-27', overall_rating: 5, status: 'submitted',
     criteria: [
@@ -166,7 +182,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
     ],
     recommendation: 'strong_yes', submitted_at: pastISO(9), created_at: pastISO(10),
   })
-  store.addScoreCard({
+  safeCall(store.addScoreCard, {
     id: J1.scorecard2, org_id: ORG_ID, application_id: J1.appAkosua,
     interviewer_id: 'emp-29', overall_rating: 4, status: 'submitted',
     criteria: [
@@ -178,7 +194,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 6. Comp band
-  store.addCompBand({
+  safeCall(store.addCompBand, {
     id: J1.bandId, org_id: ORG_ID, role_title: 'Product Designer', level: 'L3',
     country: 'Ghana', min_salary: 600000, mid_salary: 750000, max_salary: 900000,
     currency: 'GHS', p25: 650000, p50: 750000, p75: 850000,
@@ -186,7 +202,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 7. Employee record for Akosua
-  store.addEmployee({
+  safeCall(store.addEmployee, {
     id: J1.empId, org_id: ORG_ID, department_id: deptId,
     job_title: 'Product Designer', level: 'L3', country: 'Ghana',
     role: 'employee', manager_id: 'emp-27', hire_date: TODAY, status: 'active',
@@ -197,7 +213,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 8. Onboarding Journey (8 steps, 4 completed, 4 pending)
-  store.addJourney({
+  safeCall(store.addJourney, {
     id: J1.journeyId, type: 'onboarding', title: 'New Hire Onboarding',
     description: 'Complete onboarding journey for Akosua Mensah, Product Designer',
     employee_id: J1.empId, assigned_by: 'emp-17',
@@ -217,7 +233,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 9. Identity/SSO provisioned
-  store.addIdpConfiguration?.({
+  safeCall(store.addIdpConfiguration, {
     id: `idp-j1-akosua`, org_id: ORG_ID,
     employee_id: J1.empId, provider: 'google_workspace',
     status: 'provisioned', sso_email: 'a.mensah@ecobank.com',
@@ -225,38 +241,38 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 10. Learning enrollments
-  store.addEnrollment({
+  safeCall(store.addEnrollment, {
     id: J1.enrollDesign, org_id: ORG_ID, employee_id: J1.empId,
     course_id: J1.courseDesign, status: 'in_progress', progress: 35,
     enrolled_at: NOW, completed_at: null,
   })
-  store.addEnrollment({
+  safeCall(store.addEnrollment, {
     id: J1.enrollCulture, org_id: ORG_ID, employee_id: J1.empId,
     course_id: J1.courseCulture, status: 'in_progress', progress: 60,
     enrolled_at: NOW, completed_at: null,
   })
-  store.addEnrollment({
+  safeCall(store.addEnrollment, {
     id: J1.enrollSecurity, org_id: ORG_ID, employee_id: J1.empId,
     course_id: J1.courseSecurity, status: 'not_started', progress: 0,
     enrolled_at: NOW, completed_at: null,
   })
 
   // Add the courses themselves
-  store.addCourse({
+  safeCall(store.addCourse, {
     id: J1.courseDesign, org_id: ORG_ID, title: 'Ecobank Design Systems',
     description: 'Learn the Ecobank design language, component library, and brand guidelines',
     category: 'design', duration_hours: 8, status: 'published',
     instructor: 'Tunde Bakare', rating: 4.6, enrollment_count: 12,
     created_at: pastISO(90),
   })
-  store.addCourse({
+  safeCall(store.addCourse, {
     id: J1.courseCulture, org_id: ORG_ID, title: 'Company Culture & Values',
     description: 'Understand Ecobank values, mission, and how we work together across Africa',
     category: 'onboarding', duration_hours: 3, status: 'published',
     instructor: 'Amara Kone', rating: 4.8, enrollment_count: 156,
     created_at: pastISO(180),
   })
-  store.addCourse({
+  safeCall(store.addCourse, {
     id: J1.courseSecurity, org_id: ORG_ID, title: 'Security Awareness Training',
     description: 'Annual cybersecurity awareness — phishing, data handling, access policies',
     category: 'compliance', duration_hours: 2, status: 'published',
@@ -265,7 +281,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 11. Moment That Matter
-  store.addMoment({
+  safeCall(store.addMoment, {
     id: J1.momentId, org_id: ORG_ID, employee_id: J1.empId,
     type: 'new_hire', title: 'Welcome Akosua Mensah!',
     description: 'Akosua joins the Design team as Product Designer. Please give her a warm welcome!',
@@ -275,21 +291,21 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 12. Performance: 90-day review template assigned + 2 goals
-  store.addReview({
+  safeCall(store.addReview, {
     id: J1.reviewId, org_id: ORG_ID, cycle_id: 'cycle-1',
     employee_id: J1.empId, reviewer_id: 'emp-27',
     type: 'probation', status: 'pending',
     overall_rating: null, ratings: null, comments: null,
     submitted_at: null, created_at: NOW, due_date: futureDate(90),
   })
-  store.addGoal({
+  safeCall(store.addGoal, {
     id: 'goal-j1-1', org_id: ORG_ID, employee_id: J1.empId,
     title: 'Complete onboarding curriculum within 30 days',
     description: 'Finish all 3 assigned courses and onboarding journey steps',
     category: 'development', status: 'on_track', progress: 30,
     start_date: TODAY, due_date: futureDate(30), created_at: NOW,
   })
-  store.addGoal({
+  safeCall(store.addGoal, {
     id: 'goal-j1-2', org_id: ORG_ID, employee_id: J1.empId,
     title: 'Deliver first design sprint for mobile dashboard',
     description: 'Lead a design sprint producing wireframes and prototypes for the mobile banking dashboard redesign',
@@ -321,7 +337,7 @@ export function seedJourney1_HireToPerform(store: TempoStore): void {
   })
 
   // 14. 30-day pulse survey scheduled
-  store.addSurvey({
+  safeCall(store.addSurvey, {
     id: J1.surveyId, org_id: ORG_ID, title: '30-Day New Hire Pulse',
     description: 'Quick check-in on onboarding experience for Akosua Mensah',
     type: 'pulse', status: 'scheduled',
@@ -343,7 +359,7 @@ export function seedJourney2_EmployeeExit(store: TempoStore): void {
   const deptId = 'dept-4' // Technology
 
   // 1. Employee record (Kofi Boateng, Senior Engineer, resigning)
-  store.addEmployee({
+  safeCall(store.addEmployee, {
     id: J2.empId, org_id: ORG_ID, department_id: deptId,
     job_title: 'Senior Software Engineer', level: 'Senior', country: 'Ghana',
     role: 'employee', manager_id: 'emp-13',
@@ -356,7 +372,7 @@ export function seedJourney2_EmployeeExit(store: TempoStore): void {
   })
 
   // 2. Offboarding process (12 tasks: 6 completed, 6 pending)
-  store.addOffboardingProcess({
+  safeCall(store.addOffboardingProcess, {
     id: J2.offboardProcessId, org_id: ORG_ID, employee_id: J2.empId,
     status: 'in_progress', initiated_by: 'emp-13',
     last_day: futureDate(14), created_at: NOW,
@@ -377,7 +393,7 @@ export function seedJourney2_EmployeeExit(store: TempoStore): void {
     { title: 'Archive employee data per retention policy', status: 'pending', category: 'compliance' },
   ]
   offboardingTasks.forEach((t, i) => {
-    store.addOffboardingTask({
+    safeCall(store.addOffboardingTask, {
       id: `otask-j2-${i}`, org_id: ORG_ID,
       process_id: J2.offboardProcessId, employee_id: J2.empId,
       title: t.title, status: t.status, category: t.category,
@@ -389,7 +405,7 @@ export function seedJourney2_EmployeeExit(store: TempoStore): void {
   })
 
   // 3. Exit survey
-  store.addExitSurvey({
+  safeCall(store.addExitSurvey, {
     id: J2.exitSurveyId, org_id: ORG_ID, employee_id: J2.empId,
     status: 'submitted', submitted_at: NOW,
     responses: {
@@ -450,7 +466,7 @@ export function seedJourney3_PredictAndRetain(store: TempoStore): void {
   const deptId = 'dept-3' // Operations — Sarah is Senior PM
 
   // 1. Employee: Sarah Owusu
-  store.addEmployee({
+  safeCall(store.addEmployee, {
     id: J3.empId, org_id: ORG_ID, department_id: deptId,
     job_title: 'Senior Product Manager', level: 'Senior Manager', country: 'Ghana',
     role: 'employee', manager_id: 'emp-9',
@@ -467,7 +483,7 @@ export function seedJourney3_PredictAndRetain(store: TempoStore): void {
   const quarterlyDates = [pastDate(180), pastDate(90), pastDate(7)]
   const enpsScores = [42, 35, 28]
   quarterlyDates.forEach((d, i) => {
-    store.addSurveyResponse({
+    safeCall(store.addSurveyResponse, {
       id: `sr-j3-${i}`, org_id: ORG_ID, survey_id: `survey-quarterly-${i}`,
       employee_id: J3.empId, submitted_at: d,
       responses: {
@@ -480,7 +496,7 @@ export function seedJourney3_PredictAndRetain(store: TempoStore): void {
   })
 
   // 3. Compensation: comp ratio 0.87
-  store.addSalaryReview({
+  safeCall(store.addSalaryReview, {
     id: 'sr-j3-comp', org_id: ORG_ID, employee_id: J3.empId,
     current_salary: 870000, proposed_salary: 870000,
     comp_ratio: 0.87, currency: 'GHS',
@@ -525,13 +541,13 @@ export function seedJourney3_PredictAndRetain(store: TempoStore): void {
   }
 
   // 6. Mentoring: VP mentor matched
-  store.addMentoringProgram({
+  safeCall(store.addMentoringProgram, {
     id: J3.mentorProgramId, org_id: ORG_ID, name: 'Executive Retention Mentoring',
     description: 'Cross-functional VP mentoring for high-potential senior leaders',
     status: 'active', type: 'cross_functional',
     created_at: pastISO(30),
   })
-  store.addMentoringPair({
+  safeCall(store.addMentoringPair, {
     id: J3.mentorPairId, org_id: ORG_ID, program_id: J3.mentorProgramId,
     mentor_id: 'emp-24', mentee_id: J3.empId,
     status: 'active', matched_at: pastISO(14),
@@ -539,7 +555,7 @@ export function seedJourney3_PredictAndRetain(store: TempoStore): void {
   })
 
   // 7. Performance: 1:1 retention discussion
-  store.addOneOnOne({
+  safeCall(store.addOneOnOne, {
     id: 'oo-j3-retention', org_id: ORG_ID,
     manager_id: 'emp-9', employee_id: J3.empId,
     scheduled_date: futureDate(3) + 'T10:00:00Z',
@@ -604,7 +620,7 @@ export function seedJourney4_CloseTheBooks(store: TempoStore): void {
   }
 
   // 2. Payroll: March 2026 run
-  store.addPayrollRun({
+  safeCall(store.addPayrollRun, {
     id: J4.payrollRunId, org_id: ORG_ID,
     period: 'March 2026', status: 'completed',
     run_date: pastDate(2), pay_date: pastDate(1),
@@ -622,7 +638,7 @@ export function seedJourney4_CloseTheBooks(store: TempoStore): void {
     { id: 'exp-j4-4', employee_id: 'emp-11', title: 'Software License (personal card)', amount: 15000, status: 'rejected', category: 'software', policy_violation: 'Exceeds per-item limit without pre-approval' },
   ]
   expReports.forEach(r => {
-    store.addExpenseReport({
+    safeCall(store.addExpenseReport, {
       ...r, org_id: ORG_ID, currency: 'GHS',
       submitted_at: pastISO(5), reviewed_by: r.status !== 'pending_approval' ? 'emp-24' : null,
       created_at: pastISO(7),
@@ -655,7 +671,7 @@ export function seedJourney4_CloseTheBooks(store: TempoStore): void {
   invStatuses.forEach(({ status, count, days_old }) => {
     for (let i = 0; i < count; i++) {
       invIdx++
-      store.addInvoice({
+      safeCall(store.addInvoice, {
         id: `inv-j4-${invIdx}`, org_id: ORG_ID,
         vendor_id: `vendor-${invIdx}`,
         invoice_number: `INV-2026-${String(invIdx).padStart(3, '0')}`,
@@ -681,7 +697,7 @@ export function seedJourney4_CloseTheBooks(store: TempoStore): void {
     { title: 'Final trial balance review', done: false },
   ]
   glChecklist.forEach((item, i) => {
-    store.addTask?.({
+    safeCall(store.addTask, {
       id: `task-j4-gl-${i}`, org_id: ORG_ID,
       project_id: 'proj-month-end',
       title: item.title, status: item.done ? 'done' : 'todo',
@@ -710,7 +726,7 @@ export function seedJourney4_CloseTheBooks(store: TempoStore): void {
   }
 
   // 8. Board report: Q1 2026 draft
-  store.addTask?.({
+  safeCall(store.addTask, {
     id: 'task-j4-board', org_id: ORG_ID,
     project_id: 'proj-board-reporting',
     title: 'Q1 2026 Board Pack - DRAFT', status: 'in_progress',
@@ -727,7 +743,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   const deptId = 'dept-4' // Technology
 
   // 1. Employee: James Quartey, Engineering Manager
-  store.addEmployee({
+  safeCall(store.addEmployee, {
     id: J5.empId, org_id: ORG_ID, department_id: deptId,
     job_title: 'Engineering Manager', level: 'Manager', country: 'Ghana',
     role: 'manager', manager_id: 'emp-13',
@@ -795,13 +811,13 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   }
 
   // 5. Mentoring: VP mentor
-  store.addMentoringProgram({
+  safeCall(store.addMentoringProgram, {
     id: J5.mentorProgramId, org_id: ORG_ID, name: 'Leadership Acceleration Program',
     description: 'Senior leadership mentoring for VP-track candidates',
     status: 'active', type: 'cross_functional',
     created_at: pastISO(90),
   })
-  store.addMentoringPair({
+  safeCall(store.addMentoringPair, {
     id: J5.mentorPairId, org_id: ORG_ID, program_id: J5.mentorProgramId,
     mentor_id: 'emp-24', mentee_id: J5.empId,
     status: 'active', matched_at: pastISO(60),
@@ -809,7 +825,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   })
   // 4 check-ins completed
   for (let i = 0; i < 4; i++) {
-    store.addMentoringSession({
+    safeCall(store.addMentoringSession, {
       id: `msess-j5-${i}`, org_id: ORG_ID, pair_id: J5.mentorPairId,
       scheduled_date: pastDate(60 - i * 14) + 'T14:00:00Z',
       status: 'completed', notes: [
@@ -823,7 +839,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   }
 
   // 6. Learning: Leadership path (3/5 complete)
-  store.addLearningPath({
+  safeCall(store.addLearningPath, {
     id: J5.learningPathId, org_id: ORG_ID,
     title: 'Leadership Development Track',
     description: 'Comprehensive leadership program for VP-track engineers',
@@ -839,14 +855,14 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
     { id: 'course-j5-5', title: 'Executive Coaching Practicum', status: 'not_started' },
   ]
   ldCourses.forEach(c => {
-    store.addCourse({
+    safeCall(store.addCourse, {
       id: c.id, org_id: ORG_ID, title: c.title,
       description: `Leadership development course: ${c.title}`,
       category: 'leadership', duration_hours: 8, status: 'published',
       instructor: 'External Faculty', rating: 4.7, enrollment_count: 8,
       created_at: pastISO(90),
     })
-    store.addEnrollment({
+    safeCall(store.addEnrollment, {
       id: `enroll-j5-${c.id}`, org_id: ORG_ID, employee_id: J5.empId,
       course_id: c.id, status: c.status === 'completed' ? 'completed' : c.status === 'in_progress' ? 'in_progress' : 'enrolled',
       progress: c.status === 'completed' ? 100 : c.status === 'in_progress' ? 45 : 0,
@@ -874,21 +890,21 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   }
 
   // 8. Performance: elevated OKRs
-  store.addGoal({
+  safeCall(store.addGoal, {
     id: 'goal-j5-1', org_id: ORG_ID, employee_id: J5.empId,
     title: 'Define 3-year technology roadmap',
     description: 'Collaborate with CTO to produce comprehensive technology strategy document',
     category: 'project', status: 'on_track', progress: 55,
     start_date: pastDate(60), due_date: futureDate(30), created_at: pastISO(60),
   })
-  store.addGoal({
+  safeCall(store.addGoal, {
     id: 'goal-j5-2', org_id: ORG_ID, employee_id: J5.empId,
     title: 'Achieve 90% team engagement score',
     description: 'Drive team engagement through regular 1:1s, growth plans, and recognition',
     category: 'business', status: 'on_track', progress: 82,
     start_date: pastDate(90), due_date: futureDate(90), created_at: pastISO(90),
   })
-  store.addGoal({
+  safeCall(store.addGoal, {
     id: 'goal-j5-3', org_id: ORG_ID, employee_id: J5.empId,
     title: 'Present at executive leadership forum',
     description: 'Deliver a strategic presentation to the executive team on cloud migration benefits',
@@ -897,7 +913,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   })
 
   // 9. Compensation: promotion package modeled
-  store.addSalaryReview({
+  safeCall(store.addSalaryReview, {
     id: 'sr-j5-promo', org_id: ORG_ID, employee_id: J5.empId,
     current_salary: 1200000, proposed_salary: 1560000,
     comp_ratio: 1.05, currency: 'GHS',
@@ -905,7 +921,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
     notes: 'Promotion to VP Engineering package. 30% base increase + GHS 200,000 equity grant.',
     reviewer_id: 'emp-13', created_at: NOW,
   })
-  store.addEquityGrant({
+  safeCall(store.addEquityGrant, {
     id: 'eq-j5-promo', org_id: ORG_ID, employee_id: J5.empId,
     grant_type: 'rsu', shares: 500, grant_date: futureDate(30),
     vesting_schedule: '4-year quarterly', cliff_months: 12,
@@ -914,7 +930,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
   })
 
   // 10. Moment: promotion announcement ready
-  store.addMoment({
+  safeCall(store.addMoment, {
     id: J5.momentId, org_id: ORG_ID, employee_id: J5.empId,
     type: 'promotion', title: 'James Quartey promoted to VP Engineering!',
     description: 'Congratulations to James on his well-deserved promotion to VP Engineering after an outstanding development journey.',
@@ -929,7 +945,7 @@ export function seedJourney5_DevelopAndPromote(store: TempoStore): void {
 // ────────────────────────────────────────────────────────
 export function seedJourney6_GlobalExpand(store: TempoStore): void {
   // 1. Headcount position in Tanzania
-  store.addHeadcountPosition({
+  safeCall(store.addHeadcountPosition, {
     id: J6.posId, plan_id: 'hcp-1', org_id: ORG_ID, department_id: 'dept-3',
     job_title: 'Operations Associate', level: 'Mid', type: 'new',
     status: 'approved', priority: 'high',
@@ -963,7 +979,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
     { title: 'Skills and Development Levy (SDL) enrollment', status: 'pending', category: 'tax' },
   ]
   tzCompliance.forEach((c, i) => {
-    store.addComplianceRequirement({
+    safeCall(store.addComplianceRequirement, {
       id: `comp-j6-${i}`, org_id: ORG_ID,
       title: c.title, status: c.status, category: c.category,
       country: 'Tanzania', entity: 'Ecobank Tanzania',
@@ -974,7 +990,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
   })
 
   // 4. Payroll: Tanzania tax config
-  store.addTaxConfig({
+  safeCall(store.addTaxConfig, {
     id: 'tax-j6-tz', org_id: ORG_ID, country: 'Tanzania',
     config_name: 'Tanzania PAYE & NSSF',
     tax_brackets: [
@@ -991,7 +1007,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
   })
 
   // 5. Benefits: local schemes
-  store.addBenefitPlan({
+  safeCall(store.addBenefitPlan, {
     id: 'bp-j6-health', org_id: ORG_ID,
     name: 'Tanzania National Health Insurance (NHIF)',
     type: 'health', status: 'active', country: 'Tanzania',
@@ -1000,7 +1016,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
     description: 'National Health Insurance Fund - mandatory employer and employee contributions',
     created_at: NOW,
   })
-  store.addBenefitPlan({
+  safeCall(store.addBenefitPlan, {
     id: 'bp-j6-pension', org_id: ORG_ID,
     name: 'Tanzania NSSF Pension',
     type: 'retirement', status: 'active', country: 'Tanzania',
@@ -1011,7 +1027,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
   })
 
   // 6. Journeys: Tanzania-localized onboarding template
-  store.addJourneyTemplate({
+  safeCall(store.addJourneyTemplate, {
     id: J6.journeyTemplateId, org_id: ORG_ID,
     type: 'onboarding', title: 'Tanzania New Hire Onboarding',
     description: 'Localized onboarding for Tanzania-based employees, including country-specific compliance steps',
@@ -1034,7 +1050,7 @@ export function seedJourney6_GlobalExpand(store: TempoStore): void {
   // 7. Org Design scenario
   if (store.departments !== undefined) {
     // We do NOT add a department since it would be an EOR, but we can add a task for org design
-    store.addTask?.({
+    safeCall(store.addTask, {
       id: 'task-j6-orgdesign', org_id: ORG_ID,
       project_id: 'proj-global-expansion',
       title: 'Tanzania Org Design: Define reporting line',
