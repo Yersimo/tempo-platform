@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { TempoMark } from '@/components/brand/tempo-mark'
 import { useAdmin } from '@/lib/admin-store'
-import { demoAdminCredentials } from '@/lib/demo-data'
-import { Shield, LogIn, Zap, KeyRound } from 'lucide-react'
+import { Shield, LogIn, KeyRound } from 'lucide-react'
 
 type LoginStep = 'credentials' | 'mfa'
 
@@ -103,23 +102,6 @@ export default function AdminLoginPage() {
       }
     } catch {
       setError('SSO authentication failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDemoLogin = async (cred: typeof demoAdminCredentials[0]) => {
-    setLoading(true)
-    setError('')
-    try {
-      const result = await loginAdmin(cred.email, cred.password)
-      if (result.ok) {
-        router.push('/admin')
-      } else {
-        setError(result.error || 'Login failed')
-      }
-    } catch {
-      setError('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -287,43 +269,7 @@ export default function AdminLoginPage() {
             </>
           )}
 
-          {/* Demo Quick Access */}
-          {loginStep === 'credentials' && (
-            <div className="mt-8">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-canvas text-t3">Demo Access</span>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {demoAdminCredentials.map((cred) => (
-                  <button
-                    key={cred.email}
-                    onClick={() => handleDemoLogin(cred)}
-                    disabled={loading}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 transition-colors text-left"
-                  >
-                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center">
-                      <Zap size={16} className="text-amber-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-amber-900">{cred.name}</span>
-                        <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-700 uppercase">
-                          {cred.role.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <p className="text-xs text-amber-700/70 mt-0.5">{cred.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Demo access cards removed for security */}
 
           <p className="text-xs text-t3 text-center mt-6">
             Not an admin? <a href="/login" className="text-tempo-600 hover:underline">Employee login</a>
