@@ -4889,4 +4889,47 @@ export const demoAdminCredentials: DemoAdminCredential[] = [
     role: 'super_admin',
     description: 'Full platform access — manage orgs, impersonate users',
   },
+  {
+    email: 'admin@theworktempo.com',
+    password: 'T3mp0$uper@Adm!n#2026',
+    name: 'Tempo Platform Admin',
+    role: 'super_admin',
+    description: 'Platform super admin — full access, billing, org management',
+  },
+  {
+    email: 'security@theworktempo.com',
+    password: 'S3cur!ty#Temp0@2026$',
+    name: 'Security Administrator',
+    role: 'super_admin',
+    description: 'Security admin — audit logs, compliance, SSO configuration',
+  },
+  {
+    email: 'support@theworktempo.com',
+    password: 'Supp0rt#T3mp0!2026@',
+    name: 'Support Administrator',
+    role: 'support',
+    description: 'Support admin — user assistance, impersonation, ticket management',
+  },
+]
+
+// Platform Admin Credentials (exported separately for reference)
+export const PLATFORM_ADMIN_ACCOUNTS = [
+  {
+    email: 'admin@theworktempo.com',
+    password: 'T3mp0$uper@Adm!n#2026',
+    fullName: 'Tempo Platform Admin',
+    role: 'super_admin' as const,
+  },
+  {
+    email: 'security@theworktempo.com',
+    password: 'S3cur!ty#Temp0@2026$',
+    fullName: 'Security Administrator',
+    role: 'super_admin' as const,
+  },
+  {
+    email: 'support@theworktempo.com',
+    password: 'Supp0rt#T3mp0!2026@',
+    fullName: 'Support Administrator',
+    role: 'support' as const,
+  },
 ]

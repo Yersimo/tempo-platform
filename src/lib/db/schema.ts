@@ -1249,6 +1249,8 @@ export const platformAdmins = pgTable('platform_admins', {
   passwordHash: text('password_hash'),
   role: platformAdminRoleEnum('role').default('viewer').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  mfaEnabled: boolean('mfa_enabled').default(false).notNull(),
+  mfaSecret: text('mfa_secret'), // encrypted TOTP secret
   lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
@@ -5052,6 +5054,46 @@ export const passwordHistory = pgTable('password_history', {
   employeeId: uuid('employee_id').notNull(),
   passwordHash: text('password_hash').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// DATA RESIDENCY
+// ============================================================
+
+export const dataResidencyConfigs = pgTable('data_residency_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().unique(),
+  region: text('region').notNull(), // 'us-east', 'eu-west', 'af-south', 'ap-southeast'
+  country: text('country'), // specific country if required
+  regulatoryFramework: text('regulatory_framework'), // 'GDPR', 'NDPR', 'POPIA', 'PDPA'
+  dataClassification: text('data_classification').notNull().default('standard'), // standard, sensitive, restricted
+  encryptionRequired: boolean('encryption_required').default(true),
+  crossBorderTransferAllowed: boolean('cross_border_transfer_allowed').default(false),
+  retentionPeriodDays: integer('retention_period_days').default(2555), // 7 years default
+  configuredBy: uuid('configured_by'),
+  configuredAt: timestamp('configured_at').defaultNow().notNull(),
+  lastAuditedAt: timestamp('last_audited_at'),
+})
+
+// ============================================================
+// ORG SECURITY POLICIES
+// ============================================================
+
+export const orgSecurityPolicies = pgTable('org_security_policies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().unique(),
+  mfaRequired: boolean('mfa_required').default(false),
+  mfaMethod: text('mfa_method').default('totp'), // totp, sms, email
+  mfaGracePeriodDays: integer('mfa_grace_period_days').default(7),
+  passwordMinLength: integer('password_min_length').default(12),
+  passwordRequireSpecial: boolean('password_require_special').default(true),
+  sessionTimeoutMinutes: integer('session_timeout_minutes').default(480), // 8 hours
+  maxFailedAttempts: integer('max_failed_attempts').default(5),
+  lockoutDurationMinutes: integer('lockout_duration_minutes').default(30),
+  ipRestrictionEnabled: boolean('ip_restriction_enabled').default(false),
+  allowedIPs: text('allowed_ips'), // comma-separated
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const webhookSubscriptions = pgTable('webhook_subscriptions', {

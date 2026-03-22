@@ -95,6 +95,36 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
+// ─── IP Allowlisting for Admin Access ────────────────────────────────────
+const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').filter(Boolean)
+
+function checkAdminIPAllowlist(request: NextRequest): boolean {
+  if (ADMIN_IP_ALLOWLIST.length === 0) return true // No allowlist = allow all (dev mode)
+
+  const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || '127.0.0.1'
+
+  // Always allow localhost for local development
+  if (clientIP === '127.0.0.1' || clientIP === '::1') return true
+
+  // Check exact match or CIDR range
+  return ADMIN_IP_ALLOWLIST.some(allowed => {
+    if (allowed.includes('/')) {
+      return isIPInCIDR(clientIP, allowed)
+    }
+    return clientIP === allowed.trim()
+  })
+}
+
+function isIPInCIDR(ip: string, cidr: string): boolean {
+  const [range, bits] = cidr.split('/')
+  const mask = ~(2 ** (32 - parseInt(bits)) - 1)
+  const ipNum = ip.split('.').reduce((acc, oct) => (acc << 8) + parseInt(oct), 0)
+  const rangeNum = range.split('.').reduce((acc, oct) => (acc << 8) + parseInt(oct), 0)
+  return (ipNum & mask) === (rangeNum & mask)
+}
+
 export async function middleware(request: NextRequest) {
   const response = await _middlewareInner(request)
   applySecurityHeaders(response)
@@ -153,6 +183,19 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
   }
 
   // ─── Admin Routes ─────────────────────────────────────────────────────
+  // IP Allowlist check for all admin routes (API + pages, including login)
+  if (pathname.startsWith('/api/admin/') || pathname.startsWith('/admin')) {
+    if (!checkAdminIPAllowlist(request)) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Access denied: IP not in allowlist' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new NextResponse('Access denied: IP not in allowlist', { status: 403 })
+    }
+  }
+
   // Admin login page is public
   if (pathname === '/admin/login') {
     // If admin already authenticated, redirect to admin dashboard
