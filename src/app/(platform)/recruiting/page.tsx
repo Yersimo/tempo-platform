@@ -19,6 +19,7 @@ import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards, generateInterviewQuestions, analyzeDiversityPipeline, scoreInterviewPanel, generateOfferPackage } from '@/lib/ai-engine'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { useEventCascade } from '@/lib/event-cascade-context'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
 
@@ -44,8 +45,10 @@ export default function RecruitingPage() {
     addToast,
     addEmployee,
     ensureModulesLoaded,
+    addPlatformEvent,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
+  const { triggerCascade } = useEventCascade()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -405,6 +408,12 @@ export default function RecruitingPage() {
         status: stageForm.stage,
         notes: stageForm.notes || undefined,
       })
+      // Cross-module notification: employee hired
+      if (stageForm.stage === 'hired') {
+        const app = applications.find(a => a.id === stageForm.app_id)
+        const job = jobPostings.find(j => j.id === app?.job_id)
+        addPlatformEvent?.({ type: 'employee.hired', title: `New Employee: ${app?.candidate_name || 'New Hire'}`, data: { name: app?.candidate_name, title: job?.title || 'Employee', department: job?.department_id ? getDepartmentName(job.department_id) : 'the organization' } })
+      }
       setShowStageModal(false)
     } finally { setSaving(false) }
   }
@@ -3024,6 +3033,7 @@ export default function RecruitingPage() {
                   })
                   updateApplication(convertApp.id, { stage: 'hired', notes: (convertApp.notes || '') + '\n[Converted to employee on ' + new Date().toISOString().split('T')[0] + ']' })
                   addToast(`${convertApp.candidate_name} has been added as an employee`)
+                  triggerCascade('EMPLOYEE_HIRED', { employeeName: convertApp.candidate_name })
                   setShowConvertModal(false)
                 }} disabled={!convertForm.start_date || !convertForm.department_id}>Create Employee Record</Button>
               </div>

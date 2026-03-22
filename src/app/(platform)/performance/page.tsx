@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { useEventCascade } from '@/lib/event-cascade-context'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
@@ -221,6 +222,7 @@ export default function PerformancePage() {
     ensureModulesLoaded,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
+  const { triggerCascade } = useEventCascade()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -596,6 +598,10 @@ export default function PerformancePage() {
         comments: reviewForm.comments || null,
         submitted_at: reviewForm.overall_rating ? new Date().toISOString() : null,
       })
+      if (reviewForm.overall_rating) {
+        const empName = employees.find(e => e.id === reviewForm.employee_id)?.profile?.full_name || 'Employee'
+        triggerCascade('PERFORMANCE_REVIEW_COMPLETED', { employeeName: empName })
+      }
       setShowReviewModal(false)
       setReviewForm({ employee_id: '', cycle_id: '', overall_rating: 0, comments: '' })
     } finally { setSaving(false) }
@@ -945,7 +951,7 @@ export default function PerformancePage() {
                       </td>
                       <td className="px-4 py-3">
                         {review.status !== 'submitted' && (isHRBPOrAbove || isManager || review.reviewer_id === currentEmployeeId) && (
-                          <Button size="sm" variant="secondary" disabled={saving} onClick={async () => { setSaving(true); try { updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') }) } finally { setSaving(false) } }}>
+                          <Button size="sm" variant="secondary" disabled={saving} onClick={async () => { setSaving(true); try { updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') }); triggerCascade('PERFORMANCE_REVIEW_COMPLETED', { employeeName: employees.find(e => e.id === review.employee_id)?.profile?.full_name || 'Employee' }) } finally { setSaving(false) } }}>
                             {saving ? 'Saving...' : t('completeReview')}
                           </Button>
                         )}

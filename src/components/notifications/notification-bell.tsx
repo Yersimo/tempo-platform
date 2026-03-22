@@ -50,7 +50,7 @@ function getRelativeTime(dateStr: string): string {
 export function NotificationBell() {
   const router = useRouter()
   const t = useTranslations('notifications')
-  const { notifications: storeNotifications, unreadNotificationCount, markNotificationRead, markAllNotificationsRead } = useTempo()
+  const { notifications: storeNotifications, unreadNotificationCount, markNotificationRead, markAllNotificationsRead, platformEvents } = useTempo() as any
   const [isOpen, setIsOpen] = useState(false)
   const [apiNotifications, setApiNotifications] = useState<DemoNotification[]>([])
   const [apiUnreadCount, setApiUnreadCount] = useState<number | null>(null)
@@ -79,9 +79,23 @@ export function NotificationBell() {
     return () => clearInterval(interval)
   }, [fetchFromApi])
 
+  // Convert platform events into notification format
+  const platformNotifications: DemoNotification[] = (platformEvents || []).map((ev: any) => ({
+    id: `pe-${ev.id}`,
+    type: ev.type?.includes('alert') || ev.type?.includes('violation') ? 'warning' : ev.type?.includes('security') ? 'action_required' : 'info',
+    title: `\u26A1 ${ev.title || ev.type}`,
+    message: ev.data ? Object.values(ev.data).filter(Boolean).slice(0, 2).join(' - ') : '',
+    link: null,
+    is_read: false,
+    created_at: ev.timestamp || new Date().toISOString(),
+  }))
+
   // Decide which data source to use
-  const notifications: DemoNotification[] = apiNotifications.length > 0 ? apiNotifications : storeNotifications
-  const unreadCount = apiUnreadCount !== null ? apiUnreadCount : unreadNotificationCount
+  const baseNotifications: DemoNotification[] = apiNotifications.length > 0 ? apiNotifications : storeNotifications
+  const notifications: DemoNotification[] = [...platformNotifications, ...baseNotifications]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 50)
+  const unreadCount = (apiUnreadCount !== null ? apiUnreadCount : unreadNotificationCount) + platformNotifications.length
 
   // Close panel when clicking outside
   useEffect(() => {

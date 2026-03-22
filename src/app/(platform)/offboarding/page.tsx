@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { useTempo, useOrgCurrency } from '@/lib/store'
+import { useEventCascade } from '@/lib/event-cascade-context'
 import { formatCurrency } from '@/lib/utils/format-currency'
 
 // ─── Category config ──────────────────────────────────────────
@@ -64,8 +65,10 @@ export default function OffboardingPage() {
     addExitSurvey, addToast, org,
     currentUser, currentEmployeeId,
     ensureModulesLoaded, updateEmployee,
+    addPlatformEvent,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
+  const { triggerCascade } = useEventCascade()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -392,11 +395,18 @@ export default function OffboardingPage() {
         notes: `${probationNotes}${orphanWarning}${processForm.notes || ''}`.trim(),
       })
 
+      const empName = employees.find(e => e.id === processForm.employee_id)?.profile?.full_name || 'Employee'
+      triggerCascade('EMPLOYEE_TERMINATED', { employeeName: empName })
+
       if (orphanedReports.length > 0) {
         addToast(`Offboarding submitted — ${orphanedReports.length} direct report(s) need reassignment`, 'info')
       } else {
         addToast('Offboarding submitted for approval')
       }
+
+      // Cross-module notification: offboarding initiated
+      const emp = employees.find((e: any) => e.id === processForm.employee_id)
+      addPlatformEvent?.({ type: 'offboarding.initiated', title: 'Offboarding Initiated', data: { name: emp?.profile?.full_name || getEmployeeName(processForm.employee_id), lastDate: processForm.last_working_date, reason: processForm.reason } })
 
       setShowNewProcessModal(false)
       setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })

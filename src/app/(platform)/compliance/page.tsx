@@ -57,6 +57,7 @@ export default function CompliancePage() {
     employees, getEmployeeName,
     ensureModulesLoaded, addToast, org,
     courses, enrollments, signatureDocuments, payrollRuns,
+    addPlatformEvent,
   } = useTempo()
 
   const [pageLoading, setPageLoading] = useState(true)
@@ -223,14 +224,24 @@ export default function CompliancePage() {
     const names = ['Adaeze Okonkwo', 'Kwame Mensah', 'Fatou Diallo', 'Emeka Nwosu', 'Amina Bello', 'Kofi Asante', 'Chinelo Eze', 'Yaw Boateng']
     const severities: Array<'critical' | 'high' | 'medium' | 'low'> = ['critical', 'high', 'medium', 'low']
     const statuses: Array<'auto_resolved' | 'pending_review'> = ['auto_resolved', 'pending_review']
+    const scanModule = modules[Math.floor(Math.random() * modules.length)]
+    const scanRule = rules[Math.floor(Math.random() * rules.length)]
+    const scanSeverity = severities[Math.floor(Math.random() * severities.length)]
+    const scanEmployee = names[Math.floor(Math.random() * names.length)]
+    const scanStatus = statuses[Math.floor(Math.random() * statuses.length)]
     addAutoDetectionScan({
       scan_date: new Date().toISOString().split('T')[0],
-      module: modules[Math.floor(Math.random() * modules.length)],
-      rule_violated: rules[Math.floor(Math.random() * rules.length)],
-      severity: severities[Math.floor(Math.random() * severities.length)],
-      employee: names[Math.floor(Math.random() * names.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
+      module: scanModule,
+      rule_violated: scanRule,
+      severity: scanSeverity,
+      employee: scanEmployee,
+      status: scanStatus,
     })
+
+    // Cross-module notification: compliance alert
+    if (scanStatus === 'pending_review') {
+      addPlatformEvent?.({ type: 'compliance.alert', title: 'Compliance Alert', data: { count: 1, summary: `${scanRule} (${scanEmployee})`, deadline: '14' } })
+    }
     setScanPage(1)
   }
 

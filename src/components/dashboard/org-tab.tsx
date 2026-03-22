@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
+import { ActivityFeed } from '@/components/platform/activity-feed'
 
 // ---- Company Updates CRUD (persisted in localStorage) ----
 interface CompanyUpdate {
@@ -673,10 +674,14 @@ export function OrgTab() {
           </div>
         </Card>
 
-        {/* Activity Feed (with automation entries) */}
+        {/* Activity Feed (with automation entries + platform events) */}
         <Card padding="none">
           <CardHeader><CardTitle>{t('recentActivity')}</CardTitle></CardHeader>
           <div className="divide-y divide-divider">
+            {/* Platform Events (cross-module notifications) */}
+            <div className="px-4 py-1">
+              <ActivityFeed maxItems={5} compact />
+            </div>
             {/* Automation entries - latest 3 workflow runs */}
             {workflowRuns
               .slice()

@@ -126,6 +126,7 @@ export default function PayrollPage() {
     setPayrollRuns, setEmployeePayrollEntries,
     leaveRequests,
     org,
+    addPlatformEvent,
   } = useTempo()
 
   // Derive default currency from organization country
@@ -667,6 +668,13 @@ export default function PayrollPage() {
       setPreviewData(null)
       setPayRunForm({ period: '', country: '', total_gross: 0, total_net: 0, total_deductions: 0, currency: defaultCurrency, employee_count: 30, run_date: '', frequency: 'monthly' })
       addToast(`Payroll processed: ${result.employeeCount} employees, ${fmtCents(result.totalNet)} net pay`)
+
+      // Cross-module notification: payroll completed
+      addPlatformEvent?.({
+        type: 'payroll.completed',
+        title: 'Payroll Run Completed',
+        data: { period: result.period, employeeCount: result.employeeCount, totalGross: result.totalGross, totalNet: result.totalNet, currency: result.currency },
+      })
     } catch (err: any) {
       setProcessError(err.message || 'Network error')
     } finally {
@@ -784,6 +792,11 @@ export default function PayrollPage() {
       // Update local state with the new status from DB
       updatePayrollRun(runId, { status: result.status })
       addToast('Payroll run updated')
+      // Cross-module notification: payroll approved
+      if (action === 'approve-hr' || action === 'approve-finance') {
+        const run = payrollRuns.find(r => r.id === runId)
+        addPlatformEvent?.({ type: 'payroll.approved', title: 'Payroll Approved', data: { period: run?.period, approverName: currentUser?.full_name || 'Management', currency: run?.currency } })
+      }
       if (action === 'mark-paid') {
         addToast(`Payslips are now available! Employees can view and download them from My Payslips.`, 'success')
       }

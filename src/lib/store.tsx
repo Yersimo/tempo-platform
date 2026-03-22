@@ -5,6 +5,7 @@ import { fetchModules as fetchModulesFromAPI, MODULE_SLUGS, clearModuleCache } f
 import { eventBus } from '@/lib/services/event-bus'
 import { registerAllIntegrations, setIntegrationStore } from '@/lib/integrations/cross-module-wiring'
 import { setAICurrency } from '@/lib/ai-engine'
+import { formatBotMessages } from '@/lib/services/platform-bot'
 // Type-only imports: erased at compile time, no bundle impact
 import type { DemoRole } from './demo-data'
 // DemoData gives us the types of all demo exports without including the runtime data (~323KB)
@@ -963,6 +964,10 @@ interface TempoState {
   updateChatMessage: (id: string, data: AnyRecord) => void
   deleteChatMessage: (id: string) => void
 
+  // Platform Events (cross-module notifications)
+  platformEvents: AnyRecord[]
+  addPlatformEvent: (event: AnyRecord) => void
+
   // AI Interview Recording
   interviewRecordings: AnyRecord[]
   interviewTranscriptions: AnyRecord[]
@@ -1593,6 +1598,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [chatChannels, setChatChannels] = useState<any[]>([])
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [chatParticipants, setChatParticipants] = useState<any[]>([])
+  const [platformEvents, setPlatformEvents] = useState<any[]>([])
   const [interviewRecordings, setInterviewRecordings] = useState<any[]>([])
   const [interviewTranscriptions, setInterviewTranscriptions] = useState<any[]>([])
   const [videoScreenTemplates, setVideoScreenTemplates] = useState<any[]>([])
@@ -5134,6 +5140,41 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     setChatMessages(prev => prev.filter(m => m.id !== id))
   }, [])
 
+  // ---- Platform Events (Cross-Module Notifications) ----
+  const addPlatformEvent = useCallback((event: AnyRecord) => {
+    const id = event.id || genId('pe')
+    const timestamp = event.timestamp || new Date().toISOString()
+    setPlatformEvents(prev => [...prev, { id, timestamp, ...event }])
+
+    // Also post as a bot message to chat
+    try {
+      const msgs = formatBotMessages({ id, timestamp, ...event } as any)
+      if (Array.isArray(msgs)) {
+        for (const msg of msgs) {
+          const msgId = genId('bot')
+          setChatMessages(prev => [...prev, {
+            id: msgId,
+            channel_name: msg.channel_name,
+            sender_id: 'platform-bot',
+            sender_name: 'Tempo Bot',
+            is_bot: true,
+            content: msg.content,
+            type: 'system',
+            event_type: msg.event_type,
+            title: msg.title,
+            icon: msg.icon,
+            link: msg.link,
+            priority: msg.priority,
+            sent_at: timestamp,
+            metadata: msg.metadata,
+          }])
+        }
+      }
+    } catch {
+      // platform-bot not available, just store the event
+    }
+  }, [])
+
   // ---- AI Interview Recording ----
   const addInterviewRecording = useCallback((data: AnyRecord) => {
     const id = genId('rec')
@@ -6445,6 +6486,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     sandboxEnvironments, addSandboxEnvironment, updateSandboxEnvironment, deleteSandboxEnvironment,
     chatChannels, chatMessages, chatParticipants,
     addChatChannel, updateChatChannel, addChatMessage, updateChatMessage, deleteChatMessage,
+    platformEvents, addPlatformEvent,
     interviewRecordings, interviewTranscriptions,
     addInterviewRecording, updateInterviewRecording,
     videoScreenTemplates, videoScreenInvites, videoScreenResponses,

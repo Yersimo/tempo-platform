@@ -67,6 +67,7 @@ export default function ExpensePage() {
     payrollRuns,
     addToast,
     ensureModulesLoaded,
+    addPlatformEvent,
   } = useTempo()
 
   const role = currentUser?.role
@@ -959,6 +960,11 @@ export default function ExpensePage() {
         items: validItems.map((item) => ({ id: crypto.randomUUID(), description: item.description, category: item.category, amount: Number(item.amount), date: item.date || new Date().toISOString().split('T')[0] })),
         receipt_count: receiptUploads.filter(r => r.status === 'done').length,
       })
+
+      // Cross-module notification: expense submitted
+      const empName = getEmployeeName(reportForm.employee_id)
+      addPlatformEvent?.({ type: 'expense.submitted', title: 'Expense Report Submitted', data: { employeeName: empName, title: reportForm.title, amount: totalAmount, currency: reportForm.currency, itemCount: validItems.length } })
+
       setShowReportModal(false)
       setDuplicateConfirmed(false)
       setReceiptUploads([])

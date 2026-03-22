@@ -14,6 +14,9 @@ import { HelpPanel } from '@/components/help/help-panel'
 import { HelpButton } from '@/components/help/help-button'
 import { OnboardingTour } from '@/components/help/onboarding-tour'
 import { SupportWidget } from '@/components/support/support-widget'
+import { EventCascadeProvider } from '@/lib/event-cascade-context'
+import { EventCascadeDisplay } from '@/components/platform/event-cascade'
+import { DemoScenarioGate } from '@/components/demo/scenario-gate'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -84,6 +87,7 @@ export default function PlatformLayout({
   return (
     <TempoProvider>
       <AuthGuard>
+        <EventCascadeProvider>
         <HelpProvider>
           <ImpersonationBanner />
           <SessionTimeout />
@@ -102,7 +106,10 @@ export default function PlatformLayout({
           <SupportWidget />
           <OnboardingTour />
           <ToastContainer />
+          <EventCascadeDisplay />
+          <DemoScenarioGate />
         </HelpProvider>
+        </EventCascadeProvider>
       </AuthGuard>
     </TempoProvider>
   )
