@@ -17,6 +17,7 @@ import { SupportWidget } from '@/components/support/support-widget'
 import { EventCascadeProvider } from '@/lib/event-cascade-context'
 import { EventCascadeDisplay } from '@/components/platform/event-cascade'
 import { DemoScenarioGate } from '@/components/demo/scenario-gate'
+import { TempoAI } from '@/components/ai/assistant'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useTempo()
@@ -108,6 +109,7 @@ export default function PlatformLayout({
           <ToastContainer />
           <EventCascadeDisplay />
           <DemoScenarioGate />
+          <TempoAI />
         </HelpProvider>
         </EventCascadeProvider>
       </AuthGuard>
