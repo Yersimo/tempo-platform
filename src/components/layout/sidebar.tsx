@@ -113,7 +113,7 @@ export function Sidebar() {
         { label: 'Org Chart', href: '/people/org-chart', icon: <GitBranch size={18} /> },
         { label: 'Org Design', href: '/people/org-design', icon: <Building2 size={18} /> },
         { label: 'Team Calendar', href: '/people/team-calendar', icon: <Calendar size={18} /> },
-        { label: 'Positions', href: '/people', icon: <Layers size={18} /> },
+        { label: 'Positions', href: '/people?tab=positions', icon: <Layers size={18} /> },
         { label: t('recruiting'), href: '/recruiting', icon: <Briefcase size={18} />, badge: 5, requiredPermissions: ['recruiting:read'] },
         { label: 'Chat', href: '/chat', icon: <MessageSquare size={18} /> },
       ],

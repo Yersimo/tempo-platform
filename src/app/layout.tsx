@@ -76,12 +76,15 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                .then(function(reg) {
-                  // Check for updates every 60 minutes
-                  setInterval(function() { reg.update(); }, 60 * 60 * 1000);
-                })
-                .catch(function() {});
+              fetch('/sw.js', { method: 'HEAD' }).then(function(res) {
+                if (res.ok && !res.redirected) {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                      setInterval(function() { reg.update(); }, 60 * 60 * 1000);
+                    })
+                    .catch(function() {});
+                }
+              }).catch(function() {});
             });
           }
         `}} />
