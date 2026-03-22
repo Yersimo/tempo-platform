@@ -5043,6 +5043,17 @@ export const apiKeys = pgTable('api_keys', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// ============================================================
+// PASSWORD HISTORY (for reuse prevention)
+// ============================================================
+
+export const passwordHistory = pgTable('password_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  employeeId: uuid('employee_id').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const webhookSubscriptions = pgTable('webhook_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').notNull(),

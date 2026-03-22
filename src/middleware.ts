@@ -39,6 +39,9 @@ const resetRateLimiter = redis
 const apiRateLimiter = redis
   ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(100, '1 m'), prefix: 'rl:api' })
   : null
+const userRateLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(200, '1 m'), prefix: 'rl:user' })
+  : null
 
 // In-memory fallback rate limiter (development / when Redis is not configured)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
@@ -94,11 +97,55 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 
 export async function middleware(request: NextRequest) {
   const response = await _middlewareInner(request)
-  return applySecurityHeaders(response)
+  applySecurityHeaders(response)
+
+  // Apply CORS headers to all API responses
+  const { pathname } = request.nextUrl
+  if (pathname.startsWith('/api/')) {
+    applyCorsHeaders(response, request.headers.get('origin'))
+  }
+
+  return response
+}
+
+// ─── CORS Configuration ──────────────────────────────────────────────────
+const CORS_ALLOWED_ORIGINS = [
+  process.env.NEXT_PUBLIC_APP_URL || 'https://theworktempo.com',
+  'https://app.theworktempo.com',
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3002'] : []),
+]
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = !origin || CORS_ALLOWED_ORIGINS.includes(origin)
+  const allowedOrigin = isAllowed ? (origin || CORS_ALLOWED_ORIGINS[0]) : ''
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-org-id, x-employee-id',
+    'Access-Control-Max-Age': '86400',
+  }
+}
+
+function applyCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
+  const headers = getCorsHeaders(origin)
+  for (const [key, value] of Object.entries(headers)) {
+    if (value) response.headers.set(key, value)
+  }
+  return response
 }
 
 async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
+  const origin = request.headers.get('origin')
+
+  // ─── CORS Preflight (OPTIONS) for API routes ───────────────────────
+  if (pathname.startsWith('/api/') && request.method === 'OPTIONS') {
+    const corsHeaders = getCorsHeaders(origin)
+    return new NextResponse(null, {
+      status: 204,
+      headers: corsHeaders,
+    })
+  }
 
   // Allow marketing landing page
   if (pathname === '/') {
@@ -319,6 +366,30 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set('x-employee-role', payload.role as string)
     requestHeaders.set('x-org-id', payload.orgId as string)
     requestHeaders.set('x-session-id', payload.sessionId as string)
+
+    // ─── Per-User Rate Limiting ──────────────────────────────────────────
+    if (pathname.startsWith('/api/') && payload.employeeId) {
+      const userKey = `user:${payload.employeeId}`
+      const { limited: userLimited } = await checkRateLimit(userKey, 200, 60_000, userRateLimiter)
+      if (userLimited) {
+        const entry = rateLimitStore.get(userKey)
+        const retryAfter = entry ? Math.ceil((entry.resetAt - Date.now()) / 1000) : 60
+        const remaining = entry ? Math.max(0, 200 - entry.count) : 0
+        const resetAt = entry ? Math.ceil(entry.resetAt / 1000) : Math.ceil((Date.now() + 60_000) / 1000)
+        return NextResponse.json(
+          { error: 'User rate limit exceeded' },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+              'X-RateLimit-Limit': '200',
+              'X-RateLimit-Remaining': String(remaining),
+              'X-RateLimit-Reset': String(resetAt),
+            },
+          }
+        )
+      }
+    }
 
     // ─── RBAC Authorization ──────────────────────────────────────────────
     const employeeRole = (payload.role as string) || 'employee'

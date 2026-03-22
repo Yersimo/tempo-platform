@@ -14,7 +14,9 @@ import {
   getEmployeeFromSession,
   createMFAToken,
   verifyMFAToken,
+  validatePasswordPolicy,
 } from '@/lib/auth'
+import { checkPasswordBreach } from '@/lib/security/breach-detection'
 import { verifyTOTP } from '@/lib/totp'
 import { allDemoCredentials, getDemoDataForOrg } from '@/lib/demo-data'
 import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
@@ -625,11 +627,35 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      if (password.length < 8) {
+      // Validate password policy
+      const policyResult = validatePasswordPolicy(password)
+      if (!policyResult.valid) {
         return NextResponse.json(
-          { error: 'Password must be at least 8 characters' },
+          { error: policyResult.errors.join('. '), passwordErrors: policyResult.errors, strength: policyResult.strength },
           { status: 400 }
         )
+      }
+
+      // Check HIBP breach database (non-blocking — warn but allow override)
+      let breachWarning: string | null = null
+      try {
+        const breachResult = await checkPasswordBreach(password)
+        if (breachResult.breached) {
+          // If caller explicitly acknowledged the breach warning, allow it
+          if (!body.acknowledgeBreachWarning) {
+            return NextResponse.json(
+              {
+                error: `This password has appeared in ${breachResult.count.toLocaleString()} data breaches. Please choose a different password or set acknowledgeBreachWarning to proceed.`,
+                breached: true,
+                breachCount: breachResult.count,
+              },
+              { status: 400 }
+            )
+          }
+          breachWarning = `Password found in ${breachResult.count.toLocaleString()} breaches (user acknowledged)`
+        }
+      } catch {
+        // Fail open — don't block signup if HIBP is unreachable
       }
 
       // Check if email already exists

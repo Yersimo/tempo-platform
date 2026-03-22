@@ -198,6 +198,124 @@ export const SENSITIVE_FIELDS: Record<string, string[]> = {
   ],
 };
 
+// --- Per-Tenant Key Management (Gap 5) ---
+
+const keyRegistry = new Map<string, CryptoKey>()
+
+export async function getOrgEncryptionKey(orgId: string): Promise<CryptoKey> {
+  // Check cache
+  if (keyRegistry.has(orgId)) return keyRegistry.get(orgId)!
+
+  // Try org-specific env var first
+  const orgKeyEnv = process.env[`ENCRYPTION_KEY_${orgId.replace(/-/g, '_').toUpperCase()}`]
+  if (orgKeyEnv) {
+    const key = await importKey(orgKeyEnv)
+    keyRegistry.set(orgId, key)
+    return key
+  }
+
+  // Fall back to default key
+  const defaultKey = process.env.ENCRYPTION_KEY || process.env.FIELD_ENCRYPTION_KEY
+  if (defaultKey) {
+    const key = await importKey(defaultKey)
+    keyRegistry.set(orgId, key)
+    return key
+  }
+
+  // Generate a new key for this org (dev mode)
+  const key = await generateKey()
+  keyRegistry.set(orgId, key)
+  return key
+}
+
+async function generateKey(): Promise<CryptoKey> {
+  return crypto.subtle.generateKey(
+    { name: ALGORITHM, length: KEY_LENGTH },
+    true,
+    ['encrypt', 'decrypt']
+  )
+}
+
+// Versioned encryption — prepend version: v1:iv:ciphertext
+export interface EncryptedValue {
+  version: number // key version for rotation
+  iv: string
+  ciphertext: string
+}
+
+export async function encryptFieldWithVersion(
+  value: string,
+  key: CryptoKey,
+  version: number = 1
+): Promise<string> {
+  const encrypted = await encryptField(value, key)
+  return `v${version}:${encrypted}`
+}
+
+export async function decryptFieldWithVersion(
+  encrypted: string,
+  getKeyForVersion: (version: number) => Promise<CryptoKey | undefined>
+): Promise<string> {
+  const versionMatch = encrypted.match(/^v(\d+):(.+)$/)
+  if (!versionMatch) {
+    // No version prefix — legacy format, caller must provide key directly
+    throw new Error('No version prefix found. Use decryptField for legacy data.')
+  }
+
+  const version = parseInt(versionMatch[1], 10)
+  const ciphertext = versionMatch[2]
+  const key = await getKeyForVersion(version)
+  if (!key) {
+    throw new Error(`No key found for version ${version}`)
+  }
+
+  return decryptField(ciphertext, key)
+}
+
+// --- Key Rotation (Gap 6) ---
+
+export interface KeyRotationConfig {
+  currentVersion: number
+  keys: Map<number, CryptoKey> // version -> key
+  rotationDate?: string
+}
+
+const rotationConfigs = new Map<string, KeyRotationConfig>()
+
+export function getRotationConfig(orgId: string): KeyRotationConfig | undefined {
+  return rotationConfigs.get(orgId)
+}
+
+export async function rotateOrgKey(orgId: string): Promise<{ newVersion: number }> {
+  const config: KeyRotationConfig = rotationConfigs.get(orgId) || { currentVersion: 1, keys: new Map() }
+  const newVersion = config.currentVersion + 1
+  const newKey = await generateKey()
+
+  config.keys.set(newVersion, newKey)
+  config.currentVersion = newVersion
+  config.rotationDate = new Date().toISOString()
+  rotationConfigs.set(orgId, config)
+
+  // Update the key registry with the new current key
+  keyRegistry.set(orgId, newKey)
+
+  return { newVersion }
+}
+
+export async function reEncryptWithNewKey(
+  encryptedValue: string,
+  oldKey: CryptoKey,
+  newKey: CryptoKey,
+  newVersion: number
+): Promise<string> {
+  // Strip version prefix if present
+  const stripped = encryptedValue.replace(/^v\d+:/, '')
+  // Decrypt with old key
+  const plaintext = await decryptField(stripped, oldKey)
+  // Re-encrypt with new key
+  return encryptFieldWithVersion(plaintext, newKey, newVersion)
+}
+
 // --- Buffer Utilities ---
 
 function bufferToBase64(buffer: ArrayBuffer): string {

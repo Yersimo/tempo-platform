@@ -10,6 +10,40 @@ const JWT_SECRET = new TextEncoder().encode(
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const COOKIE_NAME = 'tempo_session'
 
+// ─── Password Policy Validation ──────────────────────────────────────────
+
+export interface PasswordPolicyResult {
+  valid: boolean
+  errors: string[]
+  strength: 'weak' | 'fair' | 'strong' | 'very_strong'
+}
+
+export function validatePasswordPolicy(password: string, _previousHashes?: string[]): PasswordPolicyResult {
+  const errors: string[] = []
+
+  if (password.length < 12) errors.push('Password must be at least 12 characters')
+  if (!/[A-Z]/.test(password)) errors.push('Must contain at least one uppercase letter')
+  if (!/[a-z]/.test(password)) errors.push('Must contain at least one lowercase letter')
+  if (!/[0-9]/.test(password)) errors.push('Must contain at least one number')
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('Must contain at least one special character')
+  if (/(.)\1{2,}/.test(password)) errors.push('Must not contain 3+ consecutive identical characters')
+  if (/^(password|123456|qwerty|admin|letmein)/i.test(password)) errors.push('Password is too common')
+
+  // Check password history (prevent reuse of last 5)
+  // previousHashes would be checked against stored history
+
+  let score = 0
+  if (password.length >= 12) score++
+  if (password.length >= 16) score++
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++
+  if (/[0-9]/.test(password)) score++
+  if (/[!@#$%^&*]/.test(password)) score++
+
+  const strength = score >= 5 ? 'very_strong' : score >= 4 ? 'strong' : score >= 3 ? 'fair' : 'weak'
+
+  return { valid: errors.length === 0, errors, strength }
+}
+
 // ─── Password Hashing (Web Crypto - works in Edge Runtime) ────────────────
 // PBKDF2 with SHA-256, 100k iterations, 32-byte salt
 

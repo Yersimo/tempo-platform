@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { sendPasswordResetEmail, verifyPasswordResetToken } from '@/lib/email'
+import { validatePasswordPolicy } from '@/lib/auth'
+import { checkPasswordBreach } from '@/lib/security/breach-detection'
 
 // POST /api/auth/reset-password
 // Actions: request (send reset email), reset (change password with token)
@@ -37,8 +39,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Token and newPassword are required' }, { status: 400 })
       }
 
-      if (newPassword.length < 8) {
-        return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+      // Validate password policy
+      const policyResult = validatePasswordPolicy(newPassword)
+      if (!policyResult.valid) {
+        return NextResponse.json(
+          { error: policyResult.errors.join('. '), passwordErrors: policyResult.errors, strength: policyResult.strength },
+          { status: 400 }
+        )
+      }
+
+      // Check HIBP breach database
+      try {
+        const breachResult = await checkPasswordBreach(newPassword)
+        if (breachResult.breached && !body.acknowledgeBreachWarning) {
+          return NextResponse.json(
+            {
+              error: `This password has appeared in ${breachResult.count.toLocaleString()} data breaches. Please choose a different password or set acknowledgeBreachWarning to proceed.`,
+              breached: true,
+              breachCount: breachResult.count,
+            },
+            { status: 400 }
+          )
+        }
+      } catch {
+        // Fail open
       }
 
       const employeeId = await verifyPasswordResetToken(token)
