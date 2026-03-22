@@ -406,7 +406,16 @@ export default function OffboardingPage() {
 
       // Cross-module notification: offboarding initiated
       const emp = employees.find((e: any) => e.id === processForm.employee_id)
+      const departmentName = getDepartmentName(emp?.department_id || '')
       addPlatformEvent?.({ type: 'offboarding.initiated', title: 'Offboarding Initiated', data: { name: emp?.profile?.full_name || getEmployeeName(processForm.employee_id), lastDate: processForm.last_working_date, reason: processForm.reason } })
+
+      // TC-7.6: Fire platform event for GL/cost centre update on termination
+      addPlatformEvent?.({
+        type: 'employee.terminated',
+        title: 'Cost Centre Updated',
+        summary: `Headcount -1, salary cost removed from ${departmentName} effective ${processForm.last_working_date}`,
+        link: '/finance/budgets',
+      })
 
       setShowNewProcessModal(false)
       setProcessForm({ employee_id: '', reason: 'resignation', last_working_date: '', checklist_id: '', notes: '' })
@@ -910,6 +919,52 @@ export default function OffboardingPage() {
                           </div>
                         </div>
                         <p className="text-[0.6rem] text-t3 mt-3">* Estimated as of {fp.lastDate}. Actual amounts will be confirmed by payroll after processing deductions, taxes, and final adjustments.</p>
+                      </div>
+                    </Card>
+                  )
+                })()}
+
+                {/* Finance Impact Card - TC-7.6 */}
+                {(() => {
+                  const emp = employees.find(e => e.id === selectedProcess.employee_id)
+                  const annualSalary = ((emp as any)?.salary || 0) / 100
+                  const terminationDate = new Date(selectedProcess.last_working_date)
+                  const endOfYear = new Date(terminationDate.getFullYear(), 11, 31)
+                  const remainingDays = Math.max(0, Math.ceil((endOfYear.getTime() - terminationDate.getTime()) / 86400000))
+                  const proRatedSavings = Math.round(annualSalary * (remainingDays / 365))
+                  const deptName = getDepartmentName(emp?.department_id || '')
+                  return (
+                    <Card className="mt-4 border-amber-200 bg-amber-50/50">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <DollarSign size={16} className="text-amber-600" /> Finance Impact
+                          </CardTitle>
+                          <Badge variant="warning">GL Update Required</Badge>
+                        </div>
+                      </CardHeader>
+                      <div className="px-5 pb-5 space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-t2">Annual Salary Savings</span>
+                          <span className="font-medium text-t1">{formatCurrency(annualSalary * 100, defaultCurrency, { cents: true })}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-t2">Pro-rated Savings ({remainingDays} days remaining)</span>
+                          <span className="font-medium text-green-600">{formatCurrency(proRatedSavings * 100, defaultCurrency, { cents: true })}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-t2">Cost Centre</span>
+                          <span className="font-medium text-t1">{deptName || 'Unassigned'}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-t2">Final Pay Estimate</span>
+                          <span className="font-medium text-t1">{(() => { const fp = computeFinalPay(selectedProcess); return fp ? formatCurrency(fp.totalFinalPay, defaultCurrency, { cents: true }) : 'Calculating...' })()}</span>
+                        </div>
+                        <div className="border-t border-amber-200 pt-3">
+                          <a href="/finance/budgets" className="text-xs text-tempo-600 hover:underline flex items-center gap-1">
+                            <BarChart3 size={12} /> View GL / Budget Impact &rarr;
+                          </a>
+                        </div>
                       </div>
                     </Card>
                   )

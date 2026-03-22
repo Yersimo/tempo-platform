@@ -484,14 +484,35 @@ export default function StrategyPage() {
                     <span className="text-xs text-t3">{obj.period}</span>
                   </div>
                   <Progress value={obj.progress} showLabel className="mb-2" />
-                  {objKRs.map(kr => (
-                    <div key={kr.id} className="ml-6 mt-2 flex items-center gap-3">
-                      <Target size={12} className="text-tempo-600 shrink-0" />
-                      <span className="text-xs text-t1 flex-1">{kr.title}</span>
-                      <span className="text-xs text-t3">{kr.current_value}/{kr.target_value} {kr.unit}</span>
-                      <Progress value={kr.target_value > 0 ? (kr.current_value / kr.target_value) * 100 : 0} className="w-20" />
-                    </div>
-                  ))}
+                  {objKRs.map(kr => {
+                    const contributingGoals = goals?.filter((g: any) =>
+                      g.objective_id === obj.id || g.key_result_id === kr.id ||
+                      g.title?.toLowerCase().includes(obj.title?.toLowerCase().split(' ')[0] || '')
+                    ) || []
+                    return (
+                      <div key={kr.id}>
+                        <div className="ml-6 mt-2 flex items-center gap-3">
+                          <Target size={12} className="text-tempo-600 shrink-0" />
+                          <span className="text-xs text-t1 flex-1">{kr.title}</span>
+                          <span className="text-xs text-t3">{kr.current_value}/{kr.target_value} {kr.unit}</span>
+                          <Progress value={kr.target_value > 0 ? (kr.current_value / kr.target_value) * 100 : 0} className="w-20" />
+                        </div>
+                        {contributingGoals.length > 0 && (
+                          <div className="ml-12 mt-1 mb-1 pl-3 border-l-2 border-tempo-200">
+                            <p className="text-[0.6rem] font-semibold text-t3 uppercase tracking-wide mb-1">Contributing Goals</p>
+                            {contributingGoals.slice(0, 5).map((goal: any) => (
+                              <div key={goal.id} className="flex items-center gap-2 py-0.5">
+                                <ArrowUpRight size={10} className="text-tempo-400 shrink-0" />
+                                <span className="text-[0.65rem] text-t2 flex-1 truncate">{goal.title}</span>
+                                <span className="text-[0.6rem] text-t3">{getEmployeeName(goal.employee_id)}</span>
+                                <Progress value={goal.progress || 0} className="w-12" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}

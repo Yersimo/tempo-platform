@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
-import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical } from 'lucide-react'
+import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical, Zap, Lock, Layers, UserCheck, Network, BookOpen } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -219,7 +219,9 @@ export default function PerformancePage() {
     addPIP, updatePIP, deletePIP, addPIPCheckIn,
     addMeritCycle, updateMeritCycle, addMeritRecommendation, updateMeritRecommendation,
     addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
+    strategicObjectives,
     ensureModulesLoaded,
+    enrollments, courses,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
   const { triggerCascade } = useEventCascade()
@@ -228,7 +230,7 @@ export default function PerformancePage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
+    ensureModulesLoaded?.(['goals', 'reviewCycles', 'reviews', 'feedback', 'employees', 'departments', 'strategicObjectives'])?.then?.(() => setPageLoading(false))?.catch?.(() => setPageLoading(false))
     const _t = setTimeout(() => setPageLoading(false), 2000)
     return () => clearTimeout(_t)
   }, [])
@@ -265,7 +267,7 @@ export default function PerformancePage() {
   // Goal modal
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<string | null>(null)
-  const [goalForm, setGoalForm] = useState({ title: '', description: '', category: 'business' as string, employee_id: '', due_date: '', start_date: '', progress: 0 })
+  const [goalForm, setGoalForm] = useState({ title: '', description: '', category: 'business' as string, employee_id: '', due_date: '', start_date: '', progress: 0, aligned_objective_id: '' })
 
   // Feedback modal
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
@@ -355,6 +357,141 @@ export default function PerformancePage() {
   const [templateForm, setTemplateForm] = useState({ name: '', type: 'annual' as string, is_default: false, sections: [] as { title: string; description: string; questions: { text: string; type: string; required: boolean; options?: string[]; scale?: { min: number; max: number; labels: string[] } }[] }[] })
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionDesc, setNewSectionDesc] = useState('')
+
+  // TC-5.1: Goal Templates state
+  const [showGoalTemplates, setShowGoalTemplates] = useState(false)
+  const [selectedTemplateRole, setSelectedTemplateRole] = useState('')
+  const [templateTargetEmployee, setTemplateTargetEmployee] = useState('')
+
+  const goalTemplatesByRole: Record<string, { title: string; category: string; targetMetric: string; timeframe: string }[]> = {
+    'Junior Analyst': [
+      { title: 'Complete data analysis certification', category: 'development', targetMetric: '1 certification earned', timeframe: '6 months' },
+      { title: 'Deliver 3 analytical reports per quarter', category: 'business', targetMetric: '3 reports/quarter', timeframe: '1 quarter' },
+      { title: 'Achieve 95% accuracy on data entries', category: 'compliance', targetMetric: '95% accuracy rate', timeframe: 'Ongoing' },
+    ],
+    'Senior Engineer': [
+      { title: 'Lead architecture review for 2 major features', category: 'business', targetMetric: '2 architecture reviews', timeframe: '6 months' },
+      { title: 'Mentor 2 junior engineers through onboarding', category: 'development', targetMetric: '2 mentees onboarded', timeframe: '1 quarter' },
+      { title: 'Reduce P1 incidents by 30% in owned services', category: 'business', targetMetric: '30% reduction in P1s', timeframe: '1 year' },
+      { title: 'Contribute to internal engineering blog', category: 'development', targetMetric: '2 blog posts', timeframe: '6 months' },
+    ],
+    'Manager': [
+      { title: 'Achieve 90%+ team engagement score', category: 'business', targetMetric: '90% engagement', timeframe: '1 year' },
+      { title: 'Complete all direct report reviews on time', category: 'compliance', targetMetric: '100% on-time reviews', timeframe: '1 cycle' },
+      { title: 'Develop succession plan for 2 key roles', category: 'business', targetMetric: '2 succession plans', timeframe: '6 months' },
+      { title: 'Reduce team turnover below 10%', category: 'business', targetMetric: '<10% turnover', timeframe: '1 year' },
+    ],
+    'Director': [
+      { title: 'Deliver department OKRs with 80%+ achievement', category: 'business', targetMetric: '80% OKR achievement', timeframe: '1 quarter' },
+      { title: 'Implement cross-functional initiative', category: 'business', targetMetric: '1 initiative launched', timeframe: '6 months' },
+      { title: 'Develop 3 high-potential leaders', category: 'development', targetMetric: '3 leaders developed', timeframe: '1 year' },
+    ],
+    'Individual Contributor': [
+      { title: 'Complete assigned project milestones on time', category: 'business', targetMetric: '100% on-time delivery', timeframe: '1 quarter' },
+      { title: 'Attend 2 professional development sessions', category: 'development', targetMetric: '2 sessions attended', timeframe: '6 months' },
+      { title: 'Achieve satisfactory peer review scores', category: 'development', targetMetric: '3.5+ avg peer score', timeframe: '1 cycle' },
+    ],
+  }
+
+  function applyGoalTemplate(role: string, employeeId: string) {
+    const templates = goalTemplatesByRole[role]
+    if (!templates || !employeeId) return
+    const year = new Date().getFullYear()
+    templates.forEach(tmpl => {
+      addGoal({
+        title: tmpl.title,
+        description: `Target: ${tmpl.targetMetric} | Timeframe: ${tmpl.timeframe}`,
+        category: tmpl.category,
+        employee_id: employeeId,
+        due_date: `${year}-12-31`,
+        start_date: new Date().toISOString().split('T')[0],
+        progress: 0,
+        status: 'behind',
+        source: 'role_template',
+        template_role: role,
+      })
+    })
+    addToast(`Applied ${templates.length} goals from "${role}" template`)
+    setShowGoalTemplates(false)
+    setSelectedTemplateRole('')
+    setTemplateTargetEmployee('')
+  }
+
+  // TC-5.2: OKR Alignment state
+  const [showCascadeView, setShowCascadeView] = useState(false)
+
+  // TC-5.3: Review cycle scheduler state
+  const [showLaunchCycleModal, setShowLaunchCycleModal] = useState(false)
+  const [launchCycleDeptId, setLaunchCycleDeptId] = useState('')
+  const [launchCycleCycleId, setLaunchCycleCycleId] = useState('')
+
+  const reviewCycleSchedule = [
+    { name: 'Mid-Year Review', period: 'July', type: 'mid_year', status: new Date().getMonth() >= 6 && new Date().getMonth() < 8 ? 'active' : new Date().getMonth() >= 8 ? 'completed' : 'upcoming' },
+    { name: 'Year-End Review', period: 'December', type: 'annual', status: new Date().getMonth() === 11 ? 'active' : new Date().getMonth() < 11 ? 'upcoming' : 'completed' },
+    { name: 'Quarterly Check-in Q1', period: 'March', type: 'quarterly', status: new Date().getMonth() >= 2 && new Date().getMonth() < 4 ? 'active' : new Date().getMonth() >= 4 ? 'completed' : 'upcoming' },
+    { name: 'Quarterly Check-in Q3', period: 'September', type: 'quarterly', status: new Date().getMonth() >= 8 && new Date().getMonth() < 10 ? 'active' : new Date().getMonth() >= 10 ? 'completed' : 'upcoming' },
+  ]
+
+  function launchReviewCycle() {
+    if (!launchCycleCycleId) { addToast('Select a review cycle', 'error'); return }
+    const targetEmps = launchCycleDeptId
+      ? employees.filter(e => e.department_id === launchCycleDeptId)
+      : employees
+    const existingRevEmpIds = new Set(reviews.filter(r => r.cycle_id === launchCycleCycleId).map(r => r.employee_id))
+    let created = 0
+    targetEmps.forEach(emp => {
+      if (!existingRevEmpIds.has(emp.id)) {
+        addReview({
+          employee_id: emp.id,
+          cycle_id: launchCycleCycleId,
+          reviewer_id: currentEmployeeId,
+          type: 'manager',
+          status: 'pending',
+          overall_rating: null,
+          comments: null,
+        })
+        created++
+      }
+    })
+    addToast(`Review cycle launched: ${created} reviews created for ${launchCycleDeptId ? getDepartmentName(launchCycleDeptId) : 'all departments'}`)
+    setShowLaunchCycleModal(false)
+  }
+
+  // TC-5.4: 360 Feedback state
+  const [show360Modal, setShow360Modal] = useState(false)
+  const [threeSixtyReviewId, setThreeSixtyReviewId] = useState<string | null>(null)
+  const [threeSixtyReviewers, setThreeSixtyReviewers] = useState<{ id: string; role: string }[]>([])
+  const [threeSixtyNewReviewer, setThreeSixtyNewReviewer] = useState('')
+  const [threeSixtyNewRole, setThreeSixtyNewRole] = useState('peer')
+
+  function request360Feedback() {
+    if (!threeSixtyReviewId || threeSixtyReviewers.length === 0) { addToast('Select at least one reviewer', 'error'); return }
+    const sourceReview = reviews.find(r => r.id === threeSixtyReviewId)
+    if (!sourceReview) return
+    threeSixtyReviewers.forEach(reviewer => {
+      addReview({
+        employee_id: sourceReview.employee_id,
+        cycle_id: sourceReview.cycle_id,
+        reviewer_id: reviewer.id,
+        type: reviewer.role,
+        status: 'pending',
+        overall_rating: null,
+        comments: null,
+      })
+    })
+    addToast(`360 feedback requested from ${threeSixtyReviewers.length} reviewer(s)`)
+    setShow360Modal(false)
+    setThreeSixtyReviewers([])
+    setThreeSixtyReviewId(null)
+  }
+
+  // TC-5.5: Calibration session state
+  const [calibrationDeptFilter, setCalibrationDeptFilter] = useState('')
+  const [calibrationRatings, setCalibrationRatings] = useState<Record<string, { rating: number; rationale: string }>>({})
+  const [calibrationLocked, setCalibrationLocked] = useState(false)
+  const [showCalibrationSession, setShowCalibrationSession] = useState(false)
+  const [calibrationSessionName, setCalibrationSessionName] = useState('')
+  const [calibrationSessions, setCalibrationSessions] = useState<{ id: string; name: string; date: string; status: 'open' | 'locked'; department: string; ratings: Record<string, { rating: number; rationale: string }> }[]>([])
 
   const tabs = [
     { id: 'goals', label: t('tabGoals'), count: goals.length },
@@ -467,18 +604,18 @@ export default function PerformancePage() {
   // ---- Goal CRUD ----
   function openNewGoal() {
     setEditingGoal(null)
-    setGoalForm({ title: '', description: '', category: 'business', employee_id: employees[0]?.id || '', due_date: '', start_date: '', progress: 0 })
+    setGoalForm({ title: '', description: '', category: 'business', employee_id: employees[0]?.id || '', due_date: '', start_date: '', progress: 0, aligned_objective_id: '' })
     setShowGoalModal(true)
   }
 
   function openEditGoal(id: string) {
-    const g = goals.find(x => x.id === id)
+    const g: any = goals.find(x => x.id === id)
     if (!g) return
     setEditingGoal(id)
     setGoalForm({
       title: g.title, description: g.description || '', category: g.category,
       employee_id: g.employee_id, due_date: g.due_date, start_date: g.start_date,
-      progress: g.progress,
+      progress: g.progress, aligned_objective_id: g.aligned_objective_id || '',
     })
     setShowGoalModal(true)
   }
@@ -487,7 +624,7 @@ export default function PerformancePage() {
     if (!goalForm.title || !goalForm.employee_id) { addToast('Title and employee are required', 'error'); return }
     setSaving(true)
     try {
-      const data = {
+      const data: any = {
         title: goalForm.title,
         description: goalForm.description || null,
         category: goalForm.category,
@@ -496,6 +633,7 @@ export default function PerformancePage() {
         start_date: goalForm.start_date || new Date().toISOString().split('T')[0],
         progress: Number(goalForm.progress) || 0,
         status: Number(goalForm.progress) >= 75 ? 'on_track' : Number(goalForm.progress) >= 40 ? 'at_risk' : 'behind',
+        aligned_objective_id: goalForm.aligned_objective_id || null,
       }
       if (editingGoal) {
         updateGoal(editingGoal, data)
@@ -787,46 +925,170 @@ export default function PerformancePage() {
 
       {/* Goals Tab */}
       {activeTab === 'goals' && (
-        <Card padding="none">
-          <div className="divide-y divide-divider">
-            {goals.length === 0 && (
-              <div className="px-6 py-12 text-center text-sm text-t3">{t('noGoalsEmpty')}</div>
-            )}
-            {goals.map((goal) => (
-              <div key={goal.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
-                <div className="flex items-start gap-4">
-                  <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-medium text-t1">{goal.title}</p>
-                      <Badge variant={goal.category === 'business' ? 'info' : goal.category === 'compliance' ? 'warning' : 'orange'}>{goal.category}</Badge>
-                    </div>
-                    <p className="text-xs text-t3 mb-1">{getEmployeeName(goal.employee_id)}</p>
-                    {goal.description && <p className="text-xs text-t2 mb-2">{goal.description}</p>}
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 max-w-xs">
-                        <Progress value={goal.progress} showLabel />
-                      </div>
-                      <span className="text-xs text-t3">{t('due', { date: goal.due_date })}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AIScoreBadge score={scoreGoalQuality(goal)} />
-                    <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
-                      {goal.status.replace(/_/g, ' ')}
-                    </Badge>
-                    <button onClick={() => openEditGoal(goal.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors"><Pencil size={14} /></button>
-                    <button onClick={() => setDeleteConfirm(goal.id)} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <div className="space-y-6">
+          {/* TC-5.2: OKR Cascade View Toggle + TC-5.1: Goal Templates Toggle */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant={showGoalTemplates ? 'primary' : 'secondary'} onClick={() => setShowGoalTemplates(!showGoalTemplates)}>
+              <Zap size={14} /> Goal Templates
+            </Button>
+            <Button size="sm" variant={showCascadeView ? 'primary' : 'secondary'} onClick={() => setShowCascadeView(!showCascadeView)}>
+              <Network size={14} /> OKR Cascade View
+            </Button>
           </div>
-        </Card>
+
+          {/* TC-5.1: Goal Templates Section */}
+          {showGoalTemplates && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Zap size={18} className="text-yellow-500" /> Goal Templates by Role</CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-6 space-y-4">
+                <p className="text-sm text-t3">Select a role template to auto-assign goals to an employee.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Select label="Role Template" value={selectedTemplateRole} onChange={(e: any) => setSelectedTemplateRole(e.target.value)} options={[{ value: '', label: 'Select a role...' }, ...Object.keys(goalTemplatesByRole).map(r => ({ value: r, label: r }))]} />
+                  <Select label="Assign To" value={templateTargetEmployee} onChange={(e: any) => setTemplateTargetEmployee(e.target.value)} options={[{ value: '', label: 'Select employee...' }, ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))]} />
+                </div>
+                {selectedTemplateRole && goalTemplatesByRole[selectedTemplateRole] && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-t2">Goals in this template:</p>
+                    {goalTemplatesByRole[selectedTemplateRole].map((tmpl, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-surface-secondary border border-divider">
+                        <Target size={14} className="text-tempo-500 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-t1">{tmpl.title}</p>
+                          <p className="text-xs text-t3">Target: {tmpl.targetMetric} | {tmpl.timeframe}</p>
+                        </div>
+                        <Badge variant={tmpl.category === 'business' ? 'info' : tmpl.category === 'compliance' ? 'warning' : 'orange'}>{tmpl.category}</Badge>
+                      </div>
+                    ))}
+                    <div className="pt-2">
+                      <Button size="sm" onClick={() => applyGoalTemplate(selectedTemplateRole, templateTargetEmployee)} disabled={!templateTargetEmployee}>
+                        <Zap size={14} /> Apply Template ({goalTemplatesByRole[selectedTemplateRole].length} goals)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* TC-5.2: OKR Cascade View */}
+          {showCascadeView && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Layers size={18} className="text-tempo-500" /> OKR Cascade: Company → Department → Individual</CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-6 space-y-4">
+                {strategicObjectives.length === 0 && (
+                  <p className="text-sm text-t3">No strategic objectives found. Create OKRs in the Strategy module to see alignment.</p>
+                )}
+                {strategicObjectives.map((obj: any) => {
+                  const alignedGoals = goals.filter((g: any) => g.aligned_objective_id === obj.id)
+                  return (
+                    <div key={obj.id} className="border border-divider rounded-lg overflow-hidden">
+                      <div className="p-3 bg-tempo-50 border-b border-divider">
+                        <div className="flex items-center gap-2">
+                          <Building2 size={14} className="text-tempo-600" />
+                          <span className="text-sm font-semibold text-tempo-700">Company OKR: {obj.title}</span>
+                          <Badge variant="info">{obj.status || 'active'}</Badge>
+                        </div>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {alignedGoals.length === 0 && (
+                          <p className="text-xs text-t3 italic">No individual goals aligned to this objective yet.</p>
+                        )}
+                        {alignedGoals.map((g: any) => (
+                          <div key={g.id} className="flex items-center gap-3 p-2 rounded bg-surface-secondary">
+                            <div className="w-6 h-0.5 bg-tempo-300" />
+                            <Avatar name={getEmployeeName(g.employee_id)} size="sm" />
+                            <div className="flex-1">
+                              <p className="text-sm text-t1">{g.title}</p>
+                              <p className="text-xs text-t3">{getEmployeeName(g.employee_id)}</p>
+                            </div>
+                            <Progress value={g.progress} className="w-20" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* Show unaligned goals */}
+                {goals.filter((g: any) => !g.aligned_objective_id).length > 0 && (
+                  <div className="border border-divider rounded-lg overflow-hidden">
+                    <div className="p-3 bg-gray-50 border-b border-divider">
+                      <span className="text-sm font-semibold text-t2">Unaligned Goals ({goals.filter((g: any) => !g.aligned_objective_id).length})</span>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {goals.filter((g: any) => !g.aligned_objective_id).slice(0, 5).map((g: any) => (
+                        <div key={g.id} className="flex items-center gap-3 p-2 rounded bg-surface-secondary">
+                          <AlertTriangle size={14} className="text-yellow-500" />
+                          <div className="flex-1">
+                            <p className="text-sm text-t1">{g.title}</p>
+                            <p className="text-xs text-t3">{getEmployeeName(g.employee_id)}</p>
+                          </div>
+                          <Badge variant="warning">Not aligned</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Goals List */}
+          <Card padding="none">
+            <div className="divide-y divide-divider">
+              {goals.length === 0 && (
+                <div className="px-6 py-12 text-center text-sm text-t3">{t('noGoalsEmpty')}</div>
+              )}
+              {goals.map((goal: any) => {
+                const alignedObj = strategicObjectives.find((o: any) => o.id === goal.aligned_objective_id)
+                return (
+                  <div key={goal.id} className="px-6 py-4 hover:bg-canvas/50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-sm font-medium text-t1">{goal.title}</p>
+                          <Badge variant={goal.category === 'business' ? 'info' : goal.category === 'compliance' ? 'warning' : 'orange'}>{goal.category}</Badge>
+                          {/* TC-5.1: Auto-assigned badge */}
+                          {goal.source === 'role_template' && (
+                            <Badge variant="ai"><Zap size={10} className="inline mr-0.5" />Auto-assigned from role template</Badge>
+                          )}
+                          {/* TC-5.2: OKR Alignment badge */}
+                          {alignedObj && (
+                            <Badge variant="info"><Layers size={10} className="inline mr-0.5" />Aligned to: {alignedObj.title}</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-t3 mb-1">{getEmployeeName(goal.employee_id)}</p>
+                        {goal.description && <p className="text-xs text-t2 mb-2">{goal.description}</p>}
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 max-w-xs">
+                            <Progress value={goal.progress} showLabel />
+                          </div>
+                          <span className="text-xs text-t3">{t('due', { date: goal.due_date })}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <AIScoreBadge score={scoreGoalQuality(goal)} />
+                        <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
+                          {goal.status.replace(/_/g, ' ')}
+                        </Badge>
+                        <button onClick={() => openEditGoal(goal.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setDeleteConfirm(goal.id)} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* My Reviews Tab */}
-      {activeTab === 'my-reviews' && (
+      {activeTab === 'my-reviews' && (<>
         <Card padding="none">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -899,11 +1161,91 @@ export default function PerformancePage() {
             </table>
           </div>
         </Card>
-      )}
+
+        {/* Development Evidence - TC-6.6: Auto-populated from Learning Module */}
+        {activeTab === 'my-reviews' && (() => {
+          const completedEnrollments = enrollments?.filter((e: any) => e.employee_id === currentEmployeeId && e.status === 'completed') || []
+          if (completedEnrollments.length === 0) return null
+          return (
+            <Card className="mt-4 border-blue-200 bg-blue-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <BookOpen size={16} className="text-blue-600" />
+                  Development Evidence
+                  <Badge variant="info">Auto-populated from Learning Module</Badge>
+                </CardTitle>
+              </CardHeader>
+              <div className="px-6 pb-6">
+                <div className="divide-y divide-blue-100">
+                  {completedEnrollments.map((enrollment: any) => {
+                    const course = courses?.find((c: any) => c.id === enrollment.course_id)
+                    return (
+                      <div key={enrollment.id} className="py-3 flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Award size={14} className="text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1">{course?.title || 'Unknown Course'}</p>
+                          <p className="text-xs text-t3">
+                            Completed {enrollment.completed_at ? new Date(enrollment.completed_at).toLocaleDateString() : 'Recently'}
+                            {course?.category ? ` · ${course.category}` : ''}
+                            {course?.duration_hours ? ` · ${course.duration_hours}h` : ''}
+                          </p>
+                        </div>
+                        <Badge variant="success">Completed</Badge>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-[0.6rem] text-t3 mt-3 italic">This section is read-only and auto-populated from the Learning module.</p>
+              </div>
+            </Card>
+          )
+        })()}
+      </>)}
 
       {/* Reviews Tab */}
       {activeTab === 'reviews' && (
         <div className="space-y-4">
+          {/* TC-5.3: Review Cycle Scheduler */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2"><Calendar size={18} /> Review Cycle Schedule</CardTitle>
+                <Button size="sm" onClick={() => { setLaunchCycleDeptId(''); setLaunchCycleCycleId(reviewCycles[0]?.id || ''); setShowLaunchCycleModal(true) }}>
+                  <Zap size={14} /> Launch Review Cycle
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="px-6 pb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {reviewCycleSchedule.map((sched, i) => (
+                  <div key={i} className={`p-3 rounded-lg border ${sched.status === 'active' ? 'border-tempo-300 bg-tempo-50' : sched.status === 'completed' ? 'border-green-200 bg-green-50' : 'border-divider bg-surface-secondary'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-t1">{sched.name}</span>
+                      <Badge variant={sched.status === 'active' ? 'success' : sched.status === 'completed' ? 'default' : 'info'}>{sched.status}</Badge>
+                    </div>
+                    <p className="text-xs text-t3">Period: {sched.period}</p>
+                    {sched.status === 'active' && <p className="text-xs text-tempo-600 font-medium mt-1">Active Cycle</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center gap-1 justify-center flex-wrap">
+                {['Draft', 'Open', 'In Progress', 'Calibration', 'Closed'].map((stage, i) => {
+                  const activeCycle = reviewCycles.find(c => c.status === 'active')
+                  const stageMap: Record<string, number> = { draft: 0, active: 2, closed: 4, completed: 4 }
+                  const currentStage = activeCycle ? (stageMap[activeCycle.status] ?? 1) : -1
+                  return (
+                    <div key={stage} className="flex items-center gap-1">
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${i <= currentStage ? 'bg-tempo-100 text-tempo-700' : 'bg-gray-100 text-t3'}`}>{stage}</div>
+                      {i < 4 && <ArrowRight size={12} className="text-t3" />}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {reviewCycles.map(cycle => (
               <Card key={cycle.id}>
@@ -917,7 +1259,17 @@ export default function PerformancePage() {
             ))}
           </div>
           <Card padding="none">
-            <CardHeader><CardTitle>{t('individualReviews')}</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t('individualReviews')}</CardTitle>
+                <div className="flex items-center gap-2 text-xs text-t3 flex-wrap">
+                  <span>Roles:</span>
+                  {['manager', 'self', 'peer', 'direct_report'].map(rl => (
+                    <Badge key={rl} variant={rl === 'manager' ? 'info' : rl === 'self' ? 'default' : rl === 'peer' ? 'success' : 'warning'}>{rl.replace(/_/g, ' ')}</Badge>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -931,37 +1283,104 @@ export default function PerformancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {visibleReviews.map(review => (
-                    <tr key={review.id} className="hover:bg-canvas/50">
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={getEmployeeName(review.employee_id)} size="sm" />
-                          <span className="text-sm text-t1">{getEmployeeName(review.employee_id)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(review.reviewer_id)}</td>
-                      <td className="px-4 py-3"><Badge>{review.type}</Badge></td>
-                      <td className="px-4 py-3 text-center">
-                        {review.overall_rating ? <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span> : <span className="text-xs text-t3">-</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={review.status === 'submitted' ? 'success' : review.status === 'in_progress' ? 'warning' : 'default'}>
-                          {review.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        {review.status !== 'submitted' && (isHRBPOrAbove || isManager || review.reviewer_id === currentEmployeeId) && (
-                          <Button size="sm" variant="secondary" disabled={saving} onClick={async () => { setSaving(true); try { updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') }); triggerCascade('PERFORMANCE_REVIEW_COMPLETED', { employeeName: employees.find(e => e.id === review.employee_id)?.profile?.full_name || 'Employee' }) } finally { setSaving(false) } }}>
-                            {saving ? 'Saving...' : t('completeReview')}
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {visibleReviews.map(review => {
+                    const empRevs360 = reviews.filter(r => r.employee_id === review.employee_id && r.cycle_id === review.cycle_id && r.overall_rating)
+                    const has360 = empRevs360.length > 1
+                    const wm360: Record<string, number> = { manager: 0.5, self: 0.2, peer: 0.15, direct_report: 0.1, functional_manager: 0.05 }
+                    let ws360 = 0, wt360 = 0
+                    empRevs360.forEach(r => { const w = wm360[r.type] || 0.1; ws360 += (r.overall_rating || 0) * w; wt360 += w })
+                    const agg360 = wt360 > 0 ? (ws360 / wt360).toFixed(1) : null
+                    return (
+                      <tr key={review.id} className="hover:bg-canvas/50">
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={getEmployeeName(review.employee_id)} size="sm" />
+                            <span className="text-sm text-t1">{getEmployeeName(review.employee_id)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(review.reviewer_id)}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant={review.type === 'manager' ? 'info' : review.type === 'self' ? 'default' : review.type === 'peer' ? 'success' : review.type === 'direct_report' ? 'warning' : 'orange'}>{review.type.replace(/_/g, ' ')}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex flex-col items-center">
+                            {review.overall_rating ? <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span> : <span className="text-xs text-t3">-</span>}
+                            {has360 && agg360 && <span className="text-[10px] text-t3">360 avg: {agg360}</span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={review.status === 'submitted' ? 'success' : review.status === 'in_progress' ? 'warning' : 'default'}>
+                            {review.status.replace(/_/g, ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {review.status !== 'submitted' && (isHRBPOrAbove || isManager || review.reviewer_id === currentEmployeeId) && (
+                              <Button size="sm" variant="secondary" disabled={saving} onClick={async () => { setSaving(true); try { updateReview(review.id, { status: 'submitted', overall_rating: 4, submitted_at: new Date().toISOString(), ratings: { leadership: 4, execution: 4, collaboration: 4, innovation: 4 }, comments: t('defaultReviewComment') }); triggerCascade('PERFORMANCE_REVIEW_COMPLETED', { employeeName: employees.find(e => e.id === review.employee_id)?.profile?.full_name || 'Employee' }) } finally { setSaving(false) } }}>
+                                {saving ? 'Saving...' : t('completeReview')}
+                              </Button>
+                            )}
+                            {(isHRBPOrAbove || isManager) && (
+                              <Button size="sm" variant="ghost" onClick={() => { setThreeSixtyReviewId(review.id); setThreeSixtyReviewers([]); setShow360Modal(true) }} title="Request 360 Feedback">
+                                <UserCheck size={12} /> 360
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </Card>
+
+          {/* TC-5.4: 360 Feedback Summary */}
+          {(() => {
+            const empsWith360 = new Map<string, any[]>()
+            visibleReviews.forEach(r => {
+              const cycleRevs = reviews.filter(cr => cr.employee_id === r.employee_id && cr.cycle_id === r.cycle_id && cr.overall_rating)
+              if (cycleRevs.length > 1) {
+                const key = `${r.employee_id}-${r.cycle_id}`
+                if (!empsWith360.has(key)) empsWith360.set(key, cycleRevs)
+              }
+            })
+            if (empsWith360.size === 0) return null
+            return (
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><UserCheck size={18} /> 360 Feedback Summary</CardTitle></CardHeader>
+                <div className="px-6 pb-6 space-y-4">
+                  <p className="text-xs text-t3">Weighted average: Manager 50%, Self 20%, Peers 30%</p>
+                  {Array.from(empsWith360.entries()).slice(0, 5).map(([key, revs]) => {
+                    const empId = revs[0].employee_id
+                    const wm: Record<string, number> = { manager: 50, self: 20, peer: 15, direct_report: 10, functional_manager: 5 }
+                    let wsx = 0, wtx = 0
+                    revs.forEach((rv: any) => { const w = wm[rv.type] || 10; wsx += (rv.overall_rating || 0) * w; wtx += w })
+                    const weighted = wtx > 0 ? (wsx / wtx).toFixed(1) : '-'
+                    return (
+                      <div key={key} className="p-3 rounded-lg border border-divider">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Avatar name={getEmployeeName(empId)} size="sm" />
+                          <span className="text-sm font-medium text-t1">{getEmployeeName(empId)}</span>
+                          <Badge variant="ai">Weighted Avg: {weighted}/5</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          {revs.map((rv: any) => (
+                            <div key={rv.id} className="p-2 rounded bg-surface-secondary text-center">
+                              <Badge variant={rv.type === 'manager' ? 'info' : rv.type === 'self' ? 'default' : 'success'} className="mb-1">{rv.type.replace(/_/g, ' ')}</Badge>
+                              <p className="text-lg font-bold text-t1">{rv.overall_rating || '-'}</p>
+                              <p className="text-[10px] text-t3">{getEmployeeName(rv.reviewer_id)}</p>
+                              <p className="text-[10px] text-t3">Weight: {wm[rv.type] || 10}%</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )
+          })()}
         </div>
       )}
 
@@ -1074,6 +1493,209 @@ export default function PerformancePage() {
 
             {/* Merit Allocation */}
             <MeritAllocationSection employees={employees} reviews={reviews} departments={departments} getDepartmentName={getDepartmentName} />
+
+            {/* TC-5.5: Enhanced Calibration Module */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><BarChart3 size={18} /> Calibration Sessions</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Select value={calibrationDeptFilter} onChange={(e: any) => setCalibrationDeptFilter(e.target.value)} options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+                    {!calibrationLocked && (
+                      <Button size="sm" variant="secondary" onClick={() => setShowCalibrationSession(true)}>
+                        <Plus size={14} /> New Session
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <div className="px-6 pb-6 space-y-4">
+                {/* Rating Distribution Chart */}
+                <div className="p-4 rounded-lg bg-surface-secondary border border-divider">
+                  <h4 className="text-sm font-semibold text-t1 mb-3">Rating Distribution</h4>
+                  <div className="flex items-end gap-2 h-32">
+                    {[1, 2, 3, 4, 5].map(rating => {
+                      const filteredEmps = calibrationDeptFilter ? employees.filter(e => e.department_id === calibrationDeptFilter) : employees
+                      const count = filteredEmps.filter(emp => {
+                        const overridden = calibrationRatings[emp.id]
+                        if (overridden) return overridden.rating === rating
+                        const empRevs = reviews.filter(r => r.employee_id === emp.id && r.overall_rating)
+                        const avg = empRevs.length > 0 ? Math.round(empRevs.reduce((a, r) => a + (r.overall_rating || 0), 0) / empRevs.length) : 3
+                        return avg === rating
+                      }).length
+                      const maxCount = Math.max(...[1, 2, 3, 4, 5].map(r => filteredEmps.filter(emp => {
+                        const ov = calibrationRatings[emp.id]
+                        if (ov) return ov.rating === r
+                        const er = reviews.filter(rv => rv.employee_id === emp.id && rv.overall_rating)
+                        const a = er.length > 0 ? Math.round(er.reduce((s, rv) => s + (rv.overall_rating || 0), 0) / er.length) : 3
+                        return a === r
+                      }).length), 1)
+                      const pct = (count / maxCount) * 100
+                      const bellTarget = rating === 3 ? 40 : rating === 2 || rating === 4 ? 25 : 10
+                      const actualPct = filteredEmps.length > 0 ? Math.round((count / filteredEmps.length) * 100) : 0
+                      const ratingLabels = ['', 'Unsatisfactory', 'Needs Improvement', 'Meets Expectations', 'Exceeds', 'Exceptional']
+                      return (
+                        <div key={rating} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-xs font-bold text-t1">{count}</span>
+                          <div className="w-full relative">
+                            <div className="w-full bg-gray-200 rounded-t" style={{ height: '100px' }}>
+                              <div className={`w-full rounded-t absolute bottom-0 ${rating >= 4 ? 'bg-green-400' : rating === 3 ? 'bg-blue-400' : 'bg-red-400'}`} style={{ height: `${pct}%` }} />
+                            </div>
+                            {/* Bell curve target line */}
+                            <div className="absolute w-full border-t-2 border-dashed border-yellow-500" style={{ bottom: `${(bellTarget / 100) * 100}%` }} title={`Bell curve target: ${bellTarget}%`} />
+                          </div>
+                          <span className="text-xs text-t3">{rating}</span>
+                          <span className="text-[10px] text-t3">{ratingLabels[rating]}</span>
+                          <span className="text-[10px] text-t3">{actualPct}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-t3 justify-center">
+                    <span className="flex items-center gap-1"><div className="w-3 h-1 bg-yellow-500 border-t-2 border-dashed border-yellow-500" /> Bell Curve Target</span>
+                    <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-green-400" /> High (4-5)</span>
+                    <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-blue-400" /> Mid (3)</span>
+                    <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-400" /> Low (1-2)</span>
+                  </div>
+                </div>
+
+                {/* Calibration Grid */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-divider bg-canvas">
+                        <th className="tempo-th text-left px-4 py-2">Employee</th>
+                        <th className="tempo-th text-left px-4 py-2">Department</th>
+                        <th className="tempo-th text-center px-4 py-2">Original Rating</th>
+                        <th className="tempo-th text-center px-4 py-2">Calibrated Rating</th>
+                        <th className="tempo-th text-left px-4 py-2">Rationale</th>
+                        <th className="tempo-th text-center px-4 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {(calibrationDeptFilter ? employees.filter(e => e.department_id === calibrationDeptFilter) : employees).slice(0, 20).map(emp => {
+                        const empRevs = reviews.filter(r => r.employee_id === emp.id && r.overall_rating)
+                        const origRating = empRevs.length > 0 ? Math.round(empRevs.reduce((a, r) => a + (r.overall_rating || 0), 0) / empRevs.length * 10) / 10 : 0
+                        const calibrated = calibrationRatings[emp.id]
+                        const isAdjusted = calibrated && calibrated.rating !== Math.round(origRating)
+                        return (
+                          <tr key={emp.id} className="hover:bg-canvas/50">
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar name={emp.profile?.full_name || ''} size="sm" />
+                                <span className="text-sm text-t1">{emp.profile?.full_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2 text-xs text-t2">{getDepartmentName(emp.department_id)}</td>
+                            <td className="px-4 py-2 text-center">
+                              <span className="text-sm font-medium text-t1">{origRating > 0 ? origRating.toFixed(1) : '-'}</span>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {calibrationLocked ? (
+                                <span className={`text-sm font-bold ${isAdjusted ? 'text-yellow-600' : 'text-t1'}`}>{calibrated?.rating || Math.round(origRating) || '-'}</span>
+                              ) : (
+                                <select
+                                  value={calibrated?.rating || Math.round(origRating) || 3}
+                                  onChange={(e) => {
+                                    const newRating = Number(e.target.value)
+                                    setCalibrationRatings(prev => ({ ...prev, [emp.id]: { rating: newRating, rationale: prev[emp.id]?.rationale || '' } }))
+                                  }}
+                                  className="w-16 text-center text-sm border border-divider rounded px-1 py-0.5 bg-surface focus:outline-none focus:ring-1 focus:ring-tempo-500"
+                                >
+                                  {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                                </select>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {calibrationLocked ? (
+                                <span className="text-xs text-t2">{calibrated?.rationale || '-'}</span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  placeholder={isAdjusted ? 'Rationale required...' : 'Optional rationale'}
+                                  value={calibrated?.rationale || ''}
+                                  onChange={(e) => {
+                                    setCalibrationRatings(prev => ({ ...prev, [emp.id]: { rating: prev[emp.id]?.rating || Math.round(origRating) || 3, rationale: e.target.value } }))
+                                  }}
+                                  className={`w-full text-xs border rounded px-2 py-1 bg-surface focus:outline-none focus:ring-1 focus:ring-tempo-500 ${isAdjusted && !calibrated?.rationale ? 'border-red-300' : 'border-divider'}`}
+                                />
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {isAdjusted ? <Badge variant="warning">Adjusted</Badge> : <Badge variant="default">Original</Badge>}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Lock Ratings */}
+                <div className="flex items-center justify-between pt-4 border-t border-divider">
+                  <div className="flex items-center gap-2 text-sm text-t2">
+                    {calibrationLocked ? (
+                      <>
+                        <Lock size={14} className="text-green-600" />
+                        <span className="text-green-600 font-medium">Ratings are locked</span>
+                      </>
+                    ) : (
+                      <span>{Object.keys(calibrationRatings).length} rating(s) adjusted</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {calibrationLocked ? (
+                      <Button size="sm" variant="secondary" onClick={() => setCalibrationLocked(false)}>
+                        <Lock size={14} /> Unlock Ratings
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={() => {
+                        const adjusted = Object.entries(calibrationRatings).filter(([id, val]) => {
+                          const empRevs = reviews.filter(r => r.employee_id === id && r.overall_rating)
+                          const orig = empRevs.length > 0 ? Math.round(empRevs.reduce((a, r) => a + (r.overall_rating || 0), 0) / empRevs.length) : 3
+                          return val.rating !== orig
+                        })
+                        const missingRationale = adjusted.filter(([, val]) => !val.rationale.trim())
+                        if (missingRationale.length > 0) {
+                          addToast(`${missingRationale.length} adjusted rating(s) are missing a rationale`, 'error')
+                          return
+                        }
+                        setCalibrationLocked(true)
+                        setCalibrationSessions(prev => [...prev, {
+                          id: `cal-${Date.now()}`,
+                          name: calibrationSessionName || `Calibration ${new Date().toLocaleDateString()}`,
+                          date: new Date().toISOString(),
+                          status: 'locked',
+                          department: calibrationDeptFilter || 'All',
+                          ratings: { ...calibrationRatings },
+                        }])
+                        addToast('Calibration session locked successfully')
+                      }}>
+                        <Lock size={14} /> Lock Ratings
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Past Calibration Sessions */}
+                {calibrationSessions.length > 0 && (
+                  <div className="pt-4 border-t border-divider">
+                    <h4 className="text-sm font-semibold text-t1 mb-2">Calibration Sessions</h4>
+                    <div className="space-y-2">
+                      {calibrationSessions.map(session => (
+                        <div key={session.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider">
+                          <div>
+                            <p className="text-sm font-medium text-t1">{session.name}</p>
+                            <p className="text-xs text-t3">{new Date(session.date).toLocaleDateString()} | Dept: {session.department === 'All' ? 'All Departments' : getDepartmentName(session.department)} | {Object.keys(session.ratings).length} ratings</p>
+                          </div>
+                          <Badge variant={session.status === 'locked' ? 'success' : 'warning'}>{session.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         )
       })()}
@@ -2595,6 +3217,8 @@ export default function PerformancePage() {
             ]} />
             <Select label={t('assignTo')} value={goalForm.employee_id} onChange={(e) => setGoalForm({ ...goalForm, employee_id: e.target.value })} options={employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))} />
           </div>
+          {/* TC-5.2: OKR Alignment */}
+          <Select label="Align to Strategic Objective (OKR)" value={goalForm.aligned_objective_id} onChange={(e) => setGoalForm({ ...goalForm, aligned_objective_id: e.target.value })} options={[{ value: '', label: 'None (unaligned)' }, ...strategicObjectives.map((o: any) => ({ value: o.id, label: o.title }))]} />
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('startDate')} type="date" value={goalForm.start_date} onChange={(e) => setGoalForm({ ...goalForm, start_date: e.target.value })} />
             <Input label={t('dueDate')} type="date" value={goalForm.due_date} onChange={(e) => setGoalForm({ ...goalForm, due_date: e.target.value })} />
@@ -3168,6 +3792,106 @@ export default function PerformancePage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* TC-5.3: Launch Review Cycle Modal */}
+      <Modal open={showLaunchCycleModal} onClose={() => setShowLaunchCycleModal(false)} title="Launch Review Cycle">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">Bulk-create review records for all active employees in a department or the entire organization.</p>
+          <Select label="Review Cycle" value={launchCycleCycleId} onChange={(e: any) => setLaunchCycleCycleId(e.target.value)} options={reviewCycles.map(c => ({ value: c.id, label: c.title }))} />
+          <Select label="Department (optional)" value={launchCycleDeptId} onChange={(e: any) => setLaunchCycleDeptId(e.target.value)} options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+          <div className="p-3 rounded-lg bg-surface-secondary border border-divider">
+            <p className="text-sm text-t1 font-medium">
+              {launchCycleDeptId ? `${employees.filter(e => e.department_id === launchCycleDeptId).length} employees in ${getDepartmentName(launchCycleDeptId)}` : `${employees.length} employees (entire organization)`}
+            </p>
+            <p className="text-xs text-t3 mt-1">Reviews will be created for employees who don&apos;t already have one in this cycle.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowLaunchCycleModal(false)}>Cancel</Button>
+            <Button onClick={launchReviewCycle} disabled={!launchCycleCycleId}>
+              <Zap size={14} /> Launch Cycle
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* TC-5.4: Request 360 Feedback Modal */}
+      <Modal open={show360Modal} onClose={() => { setShow360Modal(false); setThreeSixtyReviewId(null); setThreeSixtyReviewers([]) }} title="Request 360 Feedback">
+        <div className="space-y-4">
+          {threeSixtyReviewId && (() => {
+            const srcReview = reviews.find(r => r.id === threeSixtyReviewId)
+            if (!srcReview) return null
+            return (
+              <div className="p-3 rounded-lg bg-surface-secondary border border-divider">
+                <p className="text-sm text-t1 font-medium">Employee: {getEmployeeName(srcReview.employee_id)}</p>
+                <p className="text-xs text-t3">Cycle: {reviewCycles.find(c => c.id === srcReview.cycle_id)?.title || 'Unknown'}</p>
+              </div>
+            )
+          })()}
+          <p className="text-sm text-t2">Select additional reviewers for 360-degree feedback.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Reviewer" value={threeSixtyNewReviewer} onChange={(e: any) => setThreeSixtyNewReviewer(e.target.value)} options={[{ value: '', label: 'Select reviewer...' }, ...employees.map(e => ({ value: e.id, label: e.profile?.full_name || '' }))]} />
+            <Select label="Role" value={threeSixtyNewRole} onChange={(e: any) => setThreeSixtyNewRole(e.target.value)} options={[
+              { value: 'self', label: 'Self' },
+              { value: 'manager', label: 'Manager' },
+              { value: 'peer', label: 'Peer' },
+              { value: 'direct_report', label: 'Direct Report' },
+              { value: 'functional_manager', label: 'Functional Manager' },
+            ]} />
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => {
+            if (threeSixtyNewReviewer && !threeSixtyReviewers.find(r => r.id === threeSixtyNewReviewer)) {
+              setThreeSixtyReviewers([...threeSixtyReviewers, { id: threeSixtyNewReviewer, role: threeSixtyNewRole }])
+              setThreeSixtyNewReviewer('')
+            }
+          }} disabled={!threeSixtyNewReviewer}>
+            <Plus size={14} /> Add Reviewer
+          </Button>
+          {threeSixtyReviewers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-t2">Selected Reviewers:</p>
+              {threeSixtyReviewers.map((rev, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-surface-secondary border border-divider">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={getEmployeeName(rev.id)} size="sm" />
+                    <span className="text-sm text-t1">{getEmployeeName(rev.id)}</span>
+                    <Badge variant={rev.role === 'manager' ? 'info' : rev.role === 'self' ? 'default' : rev.role === 'peer' ? 'success' : 'warning'}>{rev.role.replace(/_/g, ' ')}</Badge>
+                  </div>
+                  <button onClick={() => setThreeSixtyReviewers(threeSixtyReviewers.filter((_, j) => j !== i))} className="text-t3 hover:text-error"><X size={14} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => { setShow360Modal(false); setThreeSixtyReviewId(null); setThreeSixtyReviewers([]) }}>Cancel</Button>
+            <Button onClick={request360Feedback} disabled={threeSixtyReviewers.length === 0}>
+              <UserCheck size={14} /> Request Feedback ({threeSixtyReviewers.length})
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* TC-5.5: Calibration Session Modal */}
+      <Modal open={showCalibrationSession} onClose={() => setShowCalibrationSession(false)} title="Create Calibration Session">
+        <div className="space-y-4">
+          <Input label="Session Name" placeholder="e.g., Q1 2026 Department Calibration" value={calibrationSessionName} onChange={(e: any) => setCalibrationSessionName(e.target.value)} />
+          <Select label="Department Scope" value={calibrationDeptFilter} onChange={(e: any) => setCalibrationDeptFilter(e.target.value)} options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+          <div className="p-3 rounded-lg bg-surface-secondary border border-divider">
+            <p className="text-sm text-t1">This will create a new calibration session for {calibrationDeptFilter ? getDepartmentName(calibrationDeptFilter) : 'all departments'}.</p>
+            <p className="text-xs text-t3 mt-1">Adjust ratings in the calibration grid, then lock when finalized.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCalibrationSession(false)}>Cancel</Button>
+            <Button onClick={() => {
+              setCalibrationLocked(false)
+              setCalibrationRatings({})
+              setShowCalibrationSession(false)
+              addToast('Calibration session started. Adjust ratings in the grid below.')
+            }}>
+              Start Session
+            </Button>
+          </div>
+        </div>
       </Modal>
     </>
   )

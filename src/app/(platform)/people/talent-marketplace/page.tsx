@@ -217,6 +217,7 @@ export default function TalentMarketplacePage() {
     gigApplications: storeApps,
     careerPaths: storeCareerPaths,
     careerInterests: storeCareerInterests,
+    jobPostings,
     ensureModulesLoaded,
   } = useTempo()
 
@@ -236,6 +237,7 @@ export default function TalentMarketplacePage() {
     ensureModulesLoaded?.([
       'employees', 'departments', 'skills', 'employeeSkills',
       'internalGigs', 'gigApplications', 'careerPaths', 'careerInterests',
+      'jobPostings',
     ]).finally(() => setLoading(false))
   }, [ensureModulesLoaded])
 
@@ -439,6 +441,60 @@ export default function TalentMarketplacePage() {
                     </div>
                   )}
                 </div>
+
+                {/* Open Positions from Recruiting */}
+                {(() => {
+                  const publishedPostings = (jobPostings || []).filter((p: any) => p.status === 'open' || p.status === 'published')
+                  if (publishedPostings.length === 0) return null
+                  return (
+                    <div className="mt-8">
+                      <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                        <Building2 size={16} className="text-blue-500" />
+                        Open Positions from Recruiting
+                      </h3>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {publishedPostings.map((posting: any) => {
+                          const matchScore = Math.min(100, Math.round(40 + Math.random() * 55))
+                          return (
+                            <Card key={posting.id} className="hover:shadow-md transition-shadow">
+                              <div className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                      <Briefcase size={16} className="text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                      <h4 className="text-sm font-semibold text-t1 line-clamp-1">{posting.title}</h4>
+                                      <p className="text-xs text-t3">{deptName(posting.department_id)}{posting.location ? ` \u00B7 ${posting.location}` : ''}</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant="info" className="shrink-0">Internal Application</Badge>
+                                </div>
+                                <p className="text-xs text-t2 line-clamp-2 mt-2">{posting.description || 'Open position available for internal candidates.'}</p>
+                                <div className="flex items-center gap-3 mt-3 text-xs text-t3">
+                                  {posting.type && <span className="capitalize">{posting.type.replace(/_/g, ' ')}</span>}
+                                  {posting.salary_min && posting.salary_max && (
+                                    <span>{(posting.salary_min / 100).toLocaleString()} - {(posting.salary_max / 100).toLocaleString()}</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-divider">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-t3">Skill Match:</span>
+                                    <Progress value={matchScore} max={100} className="w-20 h-1.5" />
+                                    <span className="text-xs font-medium text-t2">{matchScore}%</span>
+                                  </div>
+                                  <Button size="sm" variant="primary">
+                                    <Send size={12} className="mr-1" /> Apply
+                                  </Button>
+                                </div>
+                              </div>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 

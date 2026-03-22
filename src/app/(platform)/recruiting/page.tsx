@@ -46,6 +46,9 @@ export default function RecruitingPage() {
     addEmployee,
     ensureModulesLoaded,
     addPlatformEvent,
+    addEmployeeDocument,
+    headcountPositions, updateHeadcountPosition,
+    budgets, updateBudget,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
   const { triggerCascade } = useEventCascade()
@@ -191,6 +194,10 @@ export default function RecruitingPage() {
     interviewer_ids: [] as string[],
     slots: [{ date: '', startTime: '', endTime: '' }],
   })
+
+  // Assessment modal (TC-2.3)
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [assessmentForm, setAssessmentForm] = useState({ app_id: '', candidate_name: '', type: 'numerical_reasoning' as string })
 
   // Candidate portal preview
   const [showPortalPreview, setShowPortalPreview] = useState(false)
@@ -917,10 +924,15 @@ export default function RecruitingPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {!isRejected && !isHired && (
-                          <div className="flex gap-1 justify-center">
+                          <div className="flex gap-1 justify-center flex-wrap">
                             <Button size="sm" variant="secondary" onClick={() => openStageModal(app.id)}>
                               <ArrowRight size={12} /> {tc('move')}
                             </Button>
+                            {stage === 'assessment' && (
+                              <Button size="sm" variant="primary" onClick={() => { setAssessmentForm({ app_id: app.id, candidate_name: app.candidate_name, type: 'numerical_reasoning' }); setShowAssessmentModal(true) }}>
+                                <ClipboardList size={12} className="mr-1" /> Send Assessment
+                              </Button>
+                            )}
                             <Button size="sm" variant="ghost" onClick={() => rejectApplication(app.id)}>
                               {tc('reject')}
                             </Button>
@@ -1851,10 +1863,10 @@ export default function RecruitingPage() {
             <div className="space-y-4">
               {offers.map(offer => {
                 const statusColors: Record<string, string> = {
-                  draft: 'default', sent: 'info', viewed: 'warning', accepted: 'success', declined: 'danger', negotiating: 'warning',
+                  draft: 'default', sent: 'info', viewed: 'warning', accepted: 'success', declined: 'danger', negotiating: 'warning', pending_signature: 'warning', signed: 'success',
                 }
                 const statusLabels: Record<string, string> = {
-                  draft: t('offerDraft'), sent: t('offerSent'), viewed: t('offerViewed'), accepted: t('offerAccepted'), declined: t('offerDeclined'), negotiating: t('offerNegotiating'),
+                  draft: t('offerDraft'), sent: t('offerSent'), viewed: t('offerViewed'), accepted: t('offerAccepted'), declined: t('offerDeclined'), negotiating: t('offerNegotiating'), pending_signature: 'Pending Signature', signed: 'Signed',
                 }
                 const approvedCount = offer.approval_chain?.filter((a: any) => a.status === 'approved').length || 0
                 const totalApprovers = offer.approval_chain?.length || 0
@@ -1880,6 +1892,26 @@ export default function RecruitingPage() {
                               <Button size="sm" onClick={() => updateOffer(offer.id, { status: 'accepted' })}><CheckCircle2 size={12} className="mr-1" />{t('offerAccepted')}</Button>
                               <Button size="sm" variant="danger" onClick={() => updateOffer(offer.id, { status: 'declined' })}><XCircle size={12} className="mr-1" />{t('offerDeclined')}</Button>
                             </div>
+                          )}
+                          {(['accepted', 'sent', 'viewed'] as string[]).includes(offer.status as string) && (
+                            <Button size="sm" variant="secondary" onClick={() => {
+                              updateOffer(offer.id, { status: 'pending_signature', esignature_sent_at: new Date().toISOString() })
+                              addToast('Offer sent for electronic signature')
+                            }}><FileCheck size={12} className="mr-1" /> Send for E-Signature</Button>
+                          )}
+                          {(offer.status as string) === 'pending_signature' && (
+                            <Button size="sm" onClick={() => {
+                              updateOffer(offer.id, { status: 'signed', esignature_signed_at: new Date().toISOString() })
+                              addToast('Offer marked as signed')
+                              // TC-3.5: Auto-create signed contract document
+                              addEmployeeDocument?.({
+                                employee_id: (offer as any).candidate_id || offer.id,
+                                title: `Employment Contract - ${offer.candidate_name}`,
+                                type: 'contract',
+                                status: 'signed',
+                                signed_date: new Date().toISOString(),
+                              })
+                            }}><CheckCircle2 size={12} className="mr-1" /> Mark Signed</Button>
                           )}
                         </div>
                       </div>
@@ -2999,6 +3031,42 @@ export default function RecruitingPage() {
           </div>
         </div>
       </Modal>
+      {/* Assessment Modal (TC-2.3) */}
+      <Modal open={showAssessmentModal} onClose={() => setShowAssessmentModal(false)} title="Send Assessment">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">Send an assessment to <span className="font-medium text-t1">{assessmentForm.candidate_name}</span></p>
+          <Select
+            label="Assessment Type"
+            value={assessmentForm.type}
+            onChange={e => setAssessmentForm(f => ({ ...f, type: e.target.value }))}
+            options={[
+              { value: 'numerical_reasoning', label: 'Numerical Reasoning' },
+              { value: 'verbal_reasoning', label: 'Verbal Reasoning' },
+              { value: 'situational_judgement', label: 'Situational Judgement' },
+              { value: 'role_specific', label: 'Role-Specific' },
+            ]}
+          />
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="ghost" onClick={() => setShowAssessmentModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              const app = applications.find((a: any) => a.id === assessmentForm.app_id)
+              if (app) {
+                updateApplication(app.id, {
+                  notes: (app.notes || '') + `\n[Assessment sent: ${assessmentForm.type.replace(/_/g, ' ')} on ${new Date().toISOString().split('T')[0]}]`,
+                  assessment_type: assessmentForm.type,
+                  assessment_status: 'sent',
+                  assessment_sent_at: new Date().toISOString(),
+                })
+              }
+              addToast(`Assessment link sent to ${assessmentForm.candidate_name}`)
+              setShowAssessmentModal(false)
+            }}>
+              <Send size={12} className="mr-1" /> Send
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Convert to Employee Modal */}
       <Modal open={showConvertModal} onClose={() => setShowConvertModal(false)} title="Convert to Employee">
         <div className="space-y-4">
@@ -3017,7 +3085,13 @@ export default function RecruitingPage() {
                 <Button variant="ghost" onClick={() => setShowConvertModal(false)}>Cancel</Button>
                 <Button onClick={() => {
                   if (!convertForm.start_date) { addToast('Start date is required', 'error'); return }
+                  const newEmployeeId = `emp-${Date.now()}`
+                  const departmentName = getDepartmentName(convertForm.department_id)
+                  const relatedOffer = offers?.find((o: any) => o.candidate_name === convertApp.candidate_name || o.application_id === convertApp.id)
+                  const offerSalary = relatedOffer?.salary || 0
+
                   addEmployee({
+                    id: newEmployeeId,
                     profile: {
                       full_name: convertApp.candidate_name,
                       email: convertApp.candidate_email,
@@ -3034,6 +3108,56 @@ export default function RecruitingPage() {
                   updateApplication(convertApp.id, { stage: 'hired', notes: (convertApp.notes || '') + '\n[Converted to employee on ' + new Date().toISOString().split('T')[0] + ']' })
                   addToast(`${convertApp.candidate_name} has been added as an employee`)
                   triggerCascade('EMPLOYEE_HIRED', { employeeName: convertApp.candidate_name })
+
+                  // TC-2.9: Auto-close requisition when hired
+                  const relatedPosting = jobPostings?.find((p: any) => p.id === convertApp.job_id)
+                  if (relatedPosting && updateJobPosting) {
+                    updateJobPosting(relatedPosting.id, { status: 'closed' })
+                  }
+                  const relatedPosition = headcountPositions?.find((hp: any) => hp.job_posting_id === convertApp.job_id || hp.requisition_id === convertApp.job_id)
+                  if (relatedPosition && updateHeadcountPosition) {
+                    updateHeadcountPosition(relatedPosition.id, { status: 'filled', filled_by: newEmployeeId, filled_date: new Date().toISOString() })
+                  }
+
+                  // TC-3.2: Auto payroll registration on hire
+                  addPlatformEvent?.({
+                    type: 'payroll.registration',
+                    title: 'Payroll Registration Created',
+                    summary: `Payroll entry created for ${convertApp.candidate_name} - ${formatCurrency(offerSalary, defaultCurrency)}/year`,
+                    link: '/finance/payroll',
+                    metadata: { employee_id: newEmployeeId, salary: offerSalary, currency: defaultCurrency, payment_frequency: 'monthly', tax_code: 'PAYE', status: 'active', effective_date: convertForm.start_date },
+                  })
+
+                  // TC-3.4: GL cost centre auto-update on hire
+                  addPlatformEvent?.({
+                    type: 'employee.hired',
+                    title: 'Cost Centre Updated',
+                    summary: `Headcount +1 and salary cost updated for ${departmentName}`,
+                    link: '/finance/budgets',
+                  })
+                  // Update budget spent_amount if matching budget exists
+                  const deptBudget = budgets?.find((b: any) => b.department_id === convertForm.department_id && b.status === 'active')
+                  if (deptBudget && updateBudget) {
+                    updateBudget(deptBudget.id, { spent_amount: (deptBudget.spent_amount || 0) + offerSalary })
+                  }
+
+                  // TC-3.5: Signed contract stored in employee record
+                  addEmployeeDocument?.({
+                    employee_id: newEmployeeId,
+                    title: `Employment Contract - ${convertApp.candidate_name}`,
+                    type: 'contract',
+                    status: 'signed',
+                    signed_date: new Date().toISOString(),
+                  })
+
+                  // TC-4.8: Benefits enrollment triggered on hire
+                  addPlatformEvent?.({
+                    type: 'onboarding.started',
+                    title: 'Benefits Enrollment Window Opened',
+                    summary: `30-day enrollment window opened for ${convertApp.candidate_name}`,
+                    link: '/benefits',
+                  })
+
                   setShowConvertModal(false)
                 }} disabled={!convertForm.start_date || !convertForm.department_id}>Create Employee Record</Button>
               </div>

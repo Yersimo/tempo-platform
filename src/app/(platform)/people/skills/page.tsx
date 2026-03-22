@@ -121,7 +121,7 @@ const ITEM_TYPE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }
 
 export default function SkillsDevelopmentPage() {
   const store = useTempo()
-  const { employees, departments, ensureModulesLoaded, isLoading } = store
+  const { employees, departments, ensureModulesLoaded, isLoading, courses, addEnrollment, addToast } = store
 
   const [activeTab, setActiveTab] = useState('library')
   const [searchQuery, setSearchQuery] = useState('')
@@ -414,6 +414,41 @@ export default function SkillsDevelopmentPage() {
         {/* Gap Analysis Tab */}
         {activeTab === 'gaps' && (
           <div className="space-y-4">
+            {/* Generate Learning Plan Button */}
+            <div className="flex justify-end">
+              <Button onClick={() => {
+                const gaps = employeeSkills.filter((es: any) => {
+                  const req = roleRequirements.find((r: any) => r.skill_id === es.skill_id)
+                  return req && es.current_level < req.required_level
+                })
+                if (!gaps || gaps.length === 0) {
+                  addToast?.('No skill gaps detected to generate a learning plan', 'info')
+                  return
+                }
+                let courseCount = 0
+                const processedSkills = new Set<string>()
+                gaps.forEach((gap: any) => {
+                  if (processedSkills.has(gap.skill_id)) return
+                  processedSkills.add(gap.skill_id)
+                  const skill = skills.find((s: any) => s.id === gap.skill_id)
+                  const matchingCourse = courses?.find((c: any) =>
+                    c.category?.toLowerCase().includes(skill?.category?.toLowerCase() || '')
+                  )
+                  if (matchingCourse && addEnrollment) {
+                    addEnrollment({
+                      employee_id: gap.employee_id,
+                      course_id: matchingCourse.id,
+                      status: 'not_started',
+                      progress: 0,
+                    })
+                    courseCount++
+                  }
+                })
+                addToast?.(`Learning plan generated with ${courseCount} courses for ${processedSkills.size} skill gaps`)
+              }}>
+                <GraduationCap size={16} className="mr-1" /> Generate Learning Plan
+              </Button>
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Target size={16} /> Organization-Wide Skill Gaps</CardTitle>

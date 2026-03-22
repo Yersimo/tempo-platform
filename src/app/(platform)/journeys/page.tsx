@@ -19,7 +19,7 @@ import {
   Layers, FileText, ArrowRight,
   Shield, Heart, TrendingUp, UserPlus, UserMinus,
   Trash2, Edit3, Eye, ListChecks, X, ChevronDown, ChevronUp,
-  Calendar, Target, Zap, Award, Send, Sparkles,
+  Calendar, Target, Zap, Award, Send, Sparkles, AlertTriangle, Bell,
 } from 'lucide-react'
 import type { JourneyStep } from '@/lib/demo-data'
 
@@ -89,6 +89,7 @@ export default function JourneysPage() {
     journeys, addJourney, deleteJourney, updateJourneyStep,
     journeyTemplates, addJourneyTemplate, updateJourneyTemplate, deleteJourneyTemplate,
     employees, getEmployeeName, currentEmployeeId, addToast,
+    addPlatformEvent,
   } = useTempo()
 
   const [activeTab, setActiveTab] = useState('active')
@@ -255,6 +256,32 @@ export default function JourneysPage() {
     { id: 'analytics', label: 'Analytics' },
   ]
 
+  // Compute overdue tasks across active journeys
+  const overdueItems = useMemo(() => {
+    const now = new Date()
+    const items: { journeyId: string; journeyTitle: string; employeeId: string; stepTitle: string; dueDate: string; daysOverdue: number }[] = []
+    allJourneys.forEach(j => {
+      if (j.status === 'completed') return
+      if (!j.due_date) return
+      j.steps.forEach((s: any) => {
+        if (s.status === 'completed' || s.status === 'skipped') return
+        const dueDate = new Date(j.due_date as string)
+        if (dueDate < now) {
+          const daysOverdue = Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+          items.push({
+            journeyId: j.id,
+            journeyTitle: j.title,
+            employeeId: j.employee_id,
+            stepTitle: s.title,
+            dueDate: j.due_date as string,
+            daysOverdue,
+          })
+        }
+      })
+    })
+    return items.sort((a, b) => b.daysOverdue - a.daysOverdue)
+  }, [allJourneys])
+
   const displayJourneys = activeTab === 'completed'
     ? allJourneys.filter(j => j.status === 'completed')
     : activeTab === 'active'
@@ -415,6 +442,57 @@ export default function JourneysPage() {
             <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} options={STATUS_FILTER_OPTIONS} />
             <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} options={CATEGORY_FILTER_OPTIONS} />
           </div>
+
+          {/* Overdue Alerts */}
+          {activeTab === 'active' && overdueItems.length > 0 && (
+            <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/10 mb-4">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
+                  <h3 className="text-sm font-semibold text-red-700 dark:text-red-300">Overdue Alerts</h3>
+                  <Badge variant="error">{overdueItems.length} overdue task{overdueItems.length !== 1 ? 's' : ''}</Badge>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {overdueItems.slice(0, 10).map((item, idx) => (
+                    <div key={`${item.journeyId}-${idx}`} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white dark:bg-gray-900/50 border border-red-100 dark:border-red-900/30">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar name={getEmployeeName(item.employeeId)} size="xs" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-t1 truncate">{getEmployeeName(item.employeeId)}</p>
+                          <p className="text-xs text-t3 truncate">{item.stepTitle} &middot; {item.journeyTitle}</p>
+                        </div>
+                      </div>
+                      <Badge variant="error" className="shrink-0">{item.daysOverdue}d overdue</Badge>
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => {
+                          addToast(`Reminder sent to ${getEmployeeName(item.employeeId)}`)
+                          addPlatformEvent?.({
+                            type: 'journey.reminder',
+                            title: 'Overdue Task Reminder',
+                            summary: `Reminder sent for "${item.stepTitle}" to ${getEmployeeName(item.employeeId)}`,
+                            link: '/journeys',
+                          })
+                        }}>
+                          <Send size={12} /> Send Reminder
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-orange-600 dark:text-orange-400" onClick={() => {
+                          addToast(`Task escalated to manager for ${getEmployeeName(item.employeeId)}`)
+                          addPlatformEvent?.({
+                            type: 'journey.escalation',
+                            title: 'Overdue Task Escalated',
+                            summary: `"${item.stepTitle}" escalated to manager for ${getEmployeeName(item.employeeId)} (${item.daysOverdue} days overdue)`,
+                            link: '/journeys',
+                          })
+                        }}>
+                          <Bell size={12} /> Escalate to Manager
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
 
           <div className="space-y-4">
             {displayJourneys.length === 0 ? (

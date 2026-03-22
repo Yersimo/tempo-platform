@@ -31,6 +31,7 @@ interface OrgEmployee {
   departmentId: string | null
   managerId: string | null
   isActive: boolean
+  terminationDate: string | null
 }
 
 interface OrgDepartment {
@@ -205,9 +206,12 @@ function OrgNode({
   const deptName = emp.departmentId ? deptMap.get(emp.departmentId)?.name || '' : ''
   const isSelected = selectedId === emp.id
   const isHighlighted = highlightedIds.size === 0 || highlightedIds.has(emp.id)
-  const deptBg = viewMode === 'span-of-control'
-    ? getSpanColor(node.directReportCount)
-    : DEPT_BG[deptName] || DEFAULT_BG
+  const isTerminated = emp.terminationDate && new Date(emp.terminationDate) <= new Date()
+  const deptBg = isTerminated
+    ? 'bg-gray-100 border-gray-300 border-dashed'
+    : viewMode === 'span-of-control'
+      ? getSpanColor(node.directReportCount)
+      : DEPT_BG[deptName] || DEFAULT_BG
 
   // Virtualization: don't render beyond maxDepth
   if (depth > maxDepth) return null
@@ -222,14 +226,31 @@ function OrgNode({
           ${deptBg}
           ${isSelected ? 'ring-2 ring-tempo-500 shadow-lg scale-105' : 'hover:shadow-md hover:scale-[1.02]'}
           ${!isHighlighted ? 'opacity-30' : ''}
+          ${isTerminated ? 'opacity-60' : ''}
         `}
         onClick={() => onNodeClick(emp)}
       >
-        <Avatar src={emp.avatarUrl} name={emp.fullName} size="sm" />
+        {isTerminated ? (
+          <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center">
+            <Users size={14} className="text-gray-400" />
+          </div>
+        ) : (
+          <Avatar src={emp.avatarUrl} name={emp.fullName} size="sm" />
+        )}
         <div className="text-center">
-          <p className="text-xs font-semibold text-t1 truncate max-w-[170px]">{emp.fullName}</p>
-          <p className="text-[0.6rem] text-t3 truncate max-w-[170px]">{emp.jobTitle || 'No title'}</p>
-          {deptName && (
+          {isTerminated ? (
+            <>
+              <p className="text-xs font-semibold text-red-500 truncate max-w-[170px]">(Vacant)</p>
+              <p className="text-[0.6rem] text-t3 truncate max-w-[170px]">{emp.jobTitle || 'No title'}</p>
+              <a href="/headcount" className="text-[0.55rem] text-tempo-600 hover:underline mt-0.5 block">Open position</a>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-t1 truncate max-w-[170px]">{emp.fullName}</p>
+              <p className="text-[0.6rem] text-t3 truncate max-w-[170px]">{emp.jobTitle || 'No title'}</p>
+            </>
+          )}
+          {deptName && !isTerminated && (
             <p className="text-[0.55rem] font-medium mt-0.5 truncate max-w-[170px]" style={{ color: DEPT_COLORS[deptName] || '#6b7280' }}>
               {deptName}
             </p>
@@ -458,6 +479,7 @@ export default function OrgChartPage() {
       departmentId: e.department_id || e.departmentId || null,
       managerId: e.manager_id || e.managerId || null,
       isActive: e.is_active !== false && e.isActive !== false,
+      terminationDate: e.termination_date || e.terminationDate || null,
     }))
   , [storeEmployees])
 

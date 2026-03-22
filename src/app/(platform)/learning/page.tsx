@@ -416,7 +416,8 @@ export default function LearningPage() {
     { id: 'home', label: t('tabHome') },
     { id: 'catalog', label: t('tabCourseCatalog'), count: courses.length },
     { id: 'enrollments', label: t('tabEnrollments'), count: enrollments.filter(e => e.status !== 'completed').length },
-    { id: 'compliance', label: t('tabCompliance'), count: complianceTraining.length },
+    { id: 'compliance', label: t('tabCompliance'), count: complianceTraining.length + enrollments.filter(e => e.status !== 'completed' && (e as any).due_date && new Date((e as any).due_date) < new Date()).length },
+    { id: 'team-learning', label: 'Team Learning' },
     { id: 'assessments', label: t('tabAssessments'), count: assessmentAttempts.length },
     { id: 'skills', label: t('tabSkillsMatrix') },
     { id: 'builder', label: t('aiBuilder'), count: aiBuilderTemplates.length },
@@ -2750,6 +2751,61 @@ window.onload=function(){
             </div>
           </div>
 
+          {/* TC-6.5: Overdue Courses Alert Section */}
+          {(() => {
+            const overdueEnrollments = enrollments.filter((e: any) => {
+              if (e.status === 'completed') return false
+              const dueDate = e.due_date || e.dueDate
+              return dueDate && new Date(dueDate) < new Date()
+            })
+            if (overdueEnrollments.length === 0) return null
+            return (
+              <Card className="border-red-200 bg-red-50/50">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-red-700">
+                      <AlertTriangle size={16} /> Overdue Courses
+                      <Badge variant="error">{overdueEnrollments.length}</Badge>
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <div className="px-6 pb-4 divide-y divide-red-100">
+                  {overdueEnrollments.slice(0, 10).map((enrollment: any) => {
+                    const course = courses.find((c: any) => c.id === enrollment.course_id)
+                    const dueDate = enrollment.due_date || enrollment.dueDate
+                    const daysOverdue = Math.ceil((Date.now() - new Date(dueDate).getTime()) / 86400000)
+                    const empName = getEmployeeName(enrollment.employee_id)
+                    return (
+                      <div key={enrollment.id} className="py-3 flex items-center gap-4">
+                        <Avatar name={empName} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-t1">{empName}</p>
+                          <p className="text-xs text-t3">{course?.title || 'Unknown Course'}</p>
+                        </div>
+                        <Badge variant={daysOverdue > 7 ? 'error' : 'warning'}>
+                          {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => {
+                            sendComplianceReminder(enrollment.employee_id)
+                            addToast(`Reminder sent to ${empName}`)
+                          }}>
+                            <Send size={12} className="mr-1" /> Remind
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-amber-600" onClick={() => {
+                            addToast(`Escalation sent to manager for ${empName}`, 'info')
+                          }}>
+                            <AlertTriangle size={12} className="mr-1" /> Escalate
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )
+          })()}
+
           {/* Compliance Stats */}
           <ExpandableStats>
             <StatCard label={t('complianceRate')} value={`${complianceStats.complianceRate}%`} icon={<ShieldCheck size={20} />} />
@@ -2829,6 +2885,78 @@ window.onload=function(){
                     {!isCompliant && (
                       <Button size="sm" variant="outline" onClick={() => sendComplianceReminder(emp.id)}>{t('sendReminder')}</Button>
                     )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TC-6.4: Team Learning Tab - Manager visibility */}
+      {activeTab === 'team-learning' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2"><UsersIcon size={16} /> Team Learning Progress</CardTitle>
+                <Badge variant="info">{employees.length} team members</Badge>
+              </div>
+            </CardHeader>
+            <div className="px-6 pb-2 mb-4">
+              {(() => {
+                const totalEnrollments = enrollments.length
+                const completedTotal = enrollments.filter((e: any) => e.status === 'completed').length
+                const teamPct = totalEnrollments > 0 ? Math.round((completedTotal / totalEnrollments) * 100) : 0
+                return (
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="flex-1">
+                      <Progress value={teamPct} showLabel color={teamPct >= 80 ? 'success' : teamPct >= 50 ? 'orange' : 'error'} />
+                    </div>
+                    <span className="text-xs text-t3">{completedTotal}/{totalEnrollments} completed</span>
+                  </div>
+                )
+              })()}
+            </div>
+            <div className="divide-y divide-divider">
+              {employees.slice(0, 15).map(emp => {
+                const empEnrollments = enrollments.filter((e: any) => e.employee_id === emp.id)
+                const assigned = empEnrollments.length
+                const completed = empEnrollments.filter((e: any) => e.status === 'completed').length
+                const overdue = empEnrollments.filter((e: any) => {
+                  if (e.status === 'completed') return false
+                  const dd = e.due_date || e.dueDate
+                  return dd && new Date(dd) < new Date()
+                }).length
+                const mandatoryCourseIds = courses.filter((c: any) => c.is_mandatory).map((c: any) => c.id)
+                const mandatoryCompleted = empEnrollments.filter((e: any) => e.status === 'completed' && mandatoryCourseIds.includes(e.course_id)).length
+                const mandatoryTotal = mandatoryCourseIds.length
+                const complianceStatus = mandatoryTotal === 0 ? 'green' : mandatoryCompleted >= mandatoryTotal ? 'green' : mandatoryCompleted >= mandatoryTotal * 0.5 ? 'amber' : 'red'
+                return (
+                  <div key={emp.id} className="px-6 py-3 flex items-center gap-4">
+                    <Avatar name={emp.profile?.full_name || 'Unknown'} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{emp.profile?.full_name || 'Unknown'}</p>
+                      <p className="text-xs text-t3">{emp.job_title}</p>
+                    </div>
+                    <div className="text-center px-2">
+                      <p className="text-xs font-medium text-t1">{assigned}</p>
+                      <p className="text-[0.6rem] text-t3">Assigned</p>
+                    </div>
+                    <div className="text-center px-2">
+                      <p className="text-xs font-medium text-green-600">{completed}</p>
+                      <p className="text-[0.6rem] text-t3">Done</p>
+                    </div>
+                    <div className="text-center px-2">
+                      <p className={`text-xs font-medium ${overdue > 0 ? 'text-red-600' : 'text-t3'}`}>{overdue}</p>
+                      <p className="text-[0.6rem] text-t3">Overdue</p>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${complianceStatus === 'green' ? 'bg-green-500' : complianceStatus === 'amber' ? 'bg-amber-500' : 'bg-red-500'}`} title={`Compliance: ${complianceStatus}`} />
+                    <Button size="sm" variant="ghost" onClick={() => {
+                      addToast(`Nudge sent to ${emp.profile?.full_name || 'employee'}`)
+                    }}>
+                      <Send size={12} className="mr-1" /> Nudge
+                    </Button>
                   </div>
                 )
               })}
