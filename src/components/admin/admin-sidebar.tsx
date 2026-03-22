@@ -8,7 +8,7 @@ import { TempoLockup } from '@/components/brand/tempo-lockup'
 import { useAdmin } from '@/lib/admin-store'
 import {
   LayoutDashboard, Building2, ChevronLeft, Menu, LogOut, Shield,
-  Users, Package, Settings, UserPlus, Server,
+  Users, Package, Settings, UserPlus, Server, Activity,
 } from 'lucide-react'
 
 interface NavGroup {
@@ -41,6 +41,7 @@ export function AdminSidebar() {
       title: 'System',
       items: [
         { label: 'Platform Ops', href: '/admin/platform-ops', icon: <Server size={18} /> },
+        { label: 'Monitoring', href: '/admin/monitoring', icon: <Activity size={18} /> },
         { label: 'Settings', href: '/admin/settings', icon: <Settings size={18} /> },
       ],
     },

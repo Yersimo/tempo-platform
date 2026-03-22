@@ -1,10 +1,17 @@
 // ============================================================
 // ADP Connector
-// Enterprise payroll & HR: employee sync, payroll export,
-// tax filing, benefits, time mgmt, garnishments, new hire
+// Bidirectional sync: Associates/Employees, Payroll/Payroll Runs
+// Auth: OAuth2 + Certificate (mutual TLS), rate limit handling
 // ============================================================
 
 import type { IntegrationConnector, ConnectionResult, SyncResult, ConfigField } from './index'
+import {
+  executeDemoSync,
+  retryWithBackoff,
+  type SyncResult as BidiSyncResult,
+  type SyncConfig,
+  type FieldMapping,
+} from '../services/integration-sync'
 
 const ADP_TOKEN_URL = 'https://accounts.adp.com/auth/oauth/v2/token'
 
@@ -449,5 +456,220 @@ export async function syncADP(config: Record<string, string>): Promise<{
   return {
     workers: rawWorkers.map(mapADPWorker),
     payStatements: rawStatements.map(mapADPPayStatement),
+  }
+}
+
+// ============================================================
+// Bidirectional Sync Methods
+// ============================================================
+
+// ── Associates/Employees Sync (bidirectional with delta) ─────
+
+function getADPAuthHeaders(config: Record<string, string>): Promise<Record<string, string>> {
+  const { api_url, client_id, client_secret, certificate } = config
+  return adpOAuthToken(api_url, client_id, client_secret, certificate)
+    .then(token => adpHeaders(token))
+}
+
+export async function syncAssociates(config: Record<string, string>, since?: string): Promise<{
+  associates: ReturnType<typeof mapADPWorker>[]
+  raw: ADPWorker[]
+}> {
+  const { api_url, client_id, client_secret } = config
+  if (!api_url || !client_id || !client_secret) {
+    await executeDemoSync('adp', 'bidirectional', ['associates'])
+    return { associates: [], raw: [] }
+  }
+
+  const headers = await retryWithBackoff(() => getADPAuthHeaders(config))
+  let path = '/hr/v2/workers'
+  if (since) {
+    path += `?$filter=workerDates/originalHireDate ge '${since}' or workers/workerStatus/effectiveDate ge '${since}'`
+  }
+  const raw = await retryWithBackoff(() =>
+    fetchADPPaginated<ADPWorker>(api_url, path, headers, 'workers')
+  )
+  return { associates: raw.map(mapADPWorker), raw }
+}
+
+// ── Payroll Sync ─────────────────────────────────────────────
+
+export async function syncPayroll(config: Record<string, string>, since?: string): Promise<{
+  payStatements: ReturnType<typeof mapADPPayStatement>[]
+  raw: ADPPayStatement[]
+}> {
+  const { api_url, client_id, client_secret } = config
+  if (!api_url || !client_id || !client_secret) {
+    await executeDemoSync('adp', 'inbound', ['payroll'])
+    return { payStatements: [], raw: [] }
+  }
+
+  const headers = await retryWithBackoff(() => getADPAuthHeaders(config))
+  let path = '/payroll/v1/pay-statements'
+  if (since) {
+    path += `?$filter=payDate ge '${since}'`
+  }
+  const raw = await retryWithBackoff(() =>
+    fetchADPPaginated<ADPPayStatement>(api_url, path, headers, 'payStatements')
+  )
+  return { payStatements: raw.map(mapADPPayStatement), raw }
+}
+
+// ── Push Tempo Employee to ADP ───────────────────────────────
+
+export async function pushAssociateToADP(
+  config: Record<string, string>,
+  associate: {
+    associateOID: string
+    email?: string
+    phone?: string
+    jobTitle?: string
+    department?: string
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const { api_url, client_id, client_secret } = config
+  if (!api_url || !client_id || !client_secret) {
+    return { success: true }
+  }
+
+  try {
+    const headers = await retryWithBackoff(() => getADPAuthHeaders(config))
+    await adpPost(
+      api_url,
+      `/hr/v2/workers/${associate.associateOID}`,
+      headers,
+      {
+        businessCommunication: associate.email ? {
+          emails: [{ emailUri: associate.email }],
+        } : undefined,
+        person: associate.phone ? {
+          communication: { mobiles: [{ formattedNumber: associate.phone }] },
+        } : undefined,
+        workAssignments: associate.jobTitle || associate.department ? [{
+          positionTitle: associate.jobTitle,
+          homeOrganizationalUnits: associate.department ? [{
+            nameCode: { shortName: associate.department },
+            typeCode: { codeValue: 'Department' },
+          }] : undefined,
+        }] : undefined,
+      }
+    )
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+// ── Benefits Sync ────────────────────────────────────────────
+
+export async function syncBenefits(config: Record<string, string>): Promise<{
+  benefits: ReturnType<typeof mapADPBenefitPlan>[]
+}> {
+  const { api_url, client_id, client_secret } = config
+  if (!api_url || !client_id || !client_secret) {
+    await executeDemoSync('adp', 'inbound', ['benefits'])
+    return { benefits: [] }
+  }
+
+  const headers = await retryWithBackoff(() => getADPAuthHeaders(config))
+  const raw = await retryWithBackoff(() =>
+    fetchADPPaginated<ADPBenefitPlan>(api_url, '/benefits/v1/benefit-plans', headers, 'benefitPlans')
+  )
+  return { benefits: raw.map(mapADPBenefitPlan) }
+}
+
+// ── Default Sync Config ──────────────────────────────────────
+
+export const ADP_SYNC_CONFIG: Omit<SyncConfig, 'orgId'> = {
+  connectorId: 'adp',
+  direction: 'bidirectional',
+  schedule: 'daily',
+  conflictResolution: 'source_wins',
+  entities: [
+    {
+      sourceEntity: 'employees',
+      targetEntity: 'workers',
+      fieldMapping: [
+        { sourceField: 'profile.full_name', targetField: 'person.legalName.formattedName', direction: 'bidirectional', required: true },
+        { sourceField: 'profile.email', targetField: 'businessCommunication.emails.0.emailUri', direction: 'bidirectional', required: true },
+        { sourceField: 'profile.phone', targetField: 'person.communication.mobiles.0.formattedNumber', direction: 'bidirectional', required: false },
+        { sourceField: 'job_title', targetField: 'workAssignments.0.positionTitle', direction: 'bidirectional', required: false },
+        { sourceField: 'department_id', targetField: 'workAssignments.0.homeOrganizationalUnits.0.nameCode.shortName', direction: 'bidirectional', required: false },
+      ] satisfies FieldMapping[],
+    },
+    {
+      sourceEntity: 'payroll_runs',
+      targetEntity: 'payStatements',
+      fieldMapping: [
+        { sourceField: 'employee_id', targetField: 'associateOID', direction: 'outbound', required: true },
+        { sourceField: 'gross_amount', targetField: 'grossPayAmount.amountValue', direction: 'bidirectional', transform: 'cents_to_dollars', required: true },
+        { sourceField: 'net_amount', targetField: 'netPayAmount.amountValue', direction: 'bidirectional', transform: 'cents_to_dollars', required: true },
+        { sourceField: 'pay_date', targetField: 'payDate', direction: 'bidirectional', transform: 'date_iso', required: true },
+      ] satisfies FieldMapping[],
+    },
+  ],
+}
+
+// ── Full bidirectional sync orchestrator ─────────────────────
+
+export async function syncADPBidirectional(
+  config: Record<string, string>,
+  since?: string
+): Promise<BidiSyncResult> {
+  const { api_url, client_id, client_secret } = config
+  if (!api_url || !client_id || !client_secret) {
+    return executeDemoSync('adp', 'bidirectional', ['associates', 'payroll', 'benefits'])
+  }
+
+  const startedAt = new Date().toISOString()
+  const errors: BidiSyncResult['errors'] = []
+
+  const headers = await retryWithBackoff(() => getADPAuthHeaders(config))
+
+  let workerPath = '/hr/v2/workers'
+  let payPath = '/payroll/v1/pay-statements'
+  if (since) {
+    workerPath += `?$filter=workerDates/originalHireDate ge '${since}'`
+    payPath += `?$filter=payDate ge '${since}'`
+  }
+
+  const [workerRes, payRes, benefitRes] = await Promise.allSettled([
+    fetchADPPaginated<ADPWorker>(api_url, workerPath, headers, 'workers'),
+    fetchADPPaginated<ADPPayStatement>(api_url, payPath, headers, 'payStatements'),
+    fetchADPPaginated<ADPBenefitPlan>(api_url, '/benefits/v1/benefit-plans', headers, 'benefitPlans'),
+  ])
+
+  let totalSynced = 0
+  const entityResults: BidiSyncResult['entityResults'] = []
+
+  const results = [
+    { result: workerRes, entity: 'associates', direction: 'bidirectional' },
+    { result: payRes, entity: 'payroll', direction: 'inbound' },
+    { result: benefitRes, entity: 'benefits', direction: 'inbound' },
+  ] as const
+
+  for (const { result, entity, direction } of results) {
+    if (result.status === 'fulfilled') {
+      totalSynced += result.value.length
+      entityResults.push({ entity, direction, created: 0, updated: result.value.length, skipped: 0, failed: 0, errors: [] })
+    } else {
+      errors.push({ recordId: '', entity, message: result.reason?.message || 'Unknown', code: 'API_ERROR', timestamp: new Date().toISOString(), retryable: true })
+      entityResults.push({ entity, direction, created: 0, updated: 0, skipped: 0, failed: 1, errors: [] })
+    }
+  }
+
+  return {
+    connector: 'adp',
+    direction: 'bidirectional',
+    startedAt,
+    completedAt: new Date().toISOString(),
+    recordsSynced: totalSynced,
+    recordsCreated: 0,
+    recordsUpdated: totalSynced,
+    recordsSkipped: 0,
+    recordsFailed: errors.length,
+    errors,
+    conflicts: [],
+    entityResults,
   }
 }

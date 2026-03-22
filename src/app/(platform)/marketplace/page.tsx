@@ -18,7 +18,8 @@ import {
   Key, Plus, Copy, Eye, EyeOff, Webhook, Activity,
   ArrowLeftRight, ArrowDown, ArrowUp, Clock, Unplug,
   Plug, CheckCircle, XCircle, RotateCw, FileCode,
-  Hash, Lock, Clipboard,
+  Hash, Lock, Clipboard, GripVertical, ArrowRight,
+  Play, TestTube2, History, Map,
 } from 'lucide-react'
 import {
   getMarketplaceApps,
@@ -95,6 +96,63 @@ function timeAgo(iso: string): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   return `${days}d ago`
+}
+
+// ---------------------------------------------------------------------------
+// Connector Field Mapping Presets (used in Field Mapping Configuration UI)
+// ---------------------------------------------------------------------------
+
+interface ConnectorFieldPreset {
+  source: string
+  destination: string
+  direction: 'inbound' | 'outbound' | 'bidirectional'
+  required?: boolean
+}
+
+const CONNECTOR_FIELD_PRESETS: Record<string, ConnectorFieldPreset[]> = {
+  'quickbooks-online': [
+    { source: 'invoice_number', destination: 'DocNumber', direction: 'bidirectional', required: true },
+    { source: 'total_amount', destination: 'TotalAmt', direction: 'bidirectional', required: true },
+    { source: 'due_date', destination: 'DueDate', direction: 'bidirectional', required: true },
+    { source: 'vendor.name', destination: 'DisplayName', direction: 'bidirectional', required: true },
+    { source: 'vendor.email', destination: 'PrimaryEmailAddr.Address', direction: 'bidirectional' },
+    { source: 'bill.amount', destination: 'TotalAmt', direction: 'inbound' },
+    { source: 'gl_account.name', destination: 'Name', direction: 'inbound' },
+    { source: 'gl_account.type', destination: 'AccountType', direction: 'inbound' },
+  ],
+  'xero-accounting': [
+    { source: 'invoice_number', destination: 'InvoiceNumber', direction: 'bidirectional', required: true },
+    { source: 'contact.name', destination: 'Name', direction: 'bidirectional', required: true },
+    { source: 'contact.email', destination: 'EmailAddress', direction: 'bidirectional' },
+    { source: 'total_amount', destination: 'Total', direction: 'inbound', required: true },
+    { source: 'bank_txn.amount', destination: 'Total', direction: 'inbound' },
+    { source: 'bank_txn.date', destination: 'DateString', direction: 'inbound' },
+  ],
+  'slack-workspace': [
+    { source: 'department.name', destination: 'channel.name', direction: 'inbound', required: true },
+    { source: 'department.member_count', destination: 'channel.num_members', direction: 'inbound' },
+    { source: 'leave.type', destination: 'user.status_text', direction: 'outbound', required: true },
+    { source: 'leave.end_date', destination: 'user.status_expiration', direction: 'outbound' },
+    { source: 'notification.text', destination: 'message.text', direction: 'outbound', required: true },
+  ],
+  'bamboo-hr': [
+    { source: 'profile.full_name', destination: 'displayName', direction: 'bidirectional', required: true },
+    { source: 'profile.email', destination: 'workEmail', direction: 'bidirectional', required: true },
+    { source: 'job_title', destination: 'jobTitle', direction: 'bidirectional' },
+    { source: 'department_id', destination: 'department', direction: 'bidirectional' },
+    { source: 'country', destination: 'location', direction: 'bidirectional' },
+    { source: 'leave.type', destination: 'timeOff.type', direction: 'bidirectional', required: true },
+    { source: 'leave.start_date', destination: 'timeOff.start', direction: 'bidirectional' },
+    { source: 'leave.end_date', destination: 'timeOff.end', direction: 'bidirectional' },
+  ],
+  'default': [
+    { source: 'profile.email', destination: 'email', direction: 'bidirectional', required: true },
+    { source: 'profile.full_name', destination: 'full_name', direction: 'bidirectional', required: true },
+    { source: 'department_id', destination: 'department', direction: 'bidirectional' },
+    { source: 'job_title', destination: 'title', direction: 'bidirectional' },
+    { source: 'country', destination: 'location', direction: 'bidirectional' },
+    { source: 'profile.phone', destination: 'phone', direction: 'bidirectional' },
+  ],
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +705,179 @@ export default function MarketplacePage() {
                         <span className="text-xs text-t3">{sync.recordsSynced} records</span>
                         <Badge variant={syncVariant}>{sync.status}</Badge>
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* ── Field Mapping & Sync Configuration ── */}
+          {installedApps.length > 0 && (
+            <Card className="mt-6" padding="none">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Map size={16} /> Field Mapping Configuration
+                  </CardTitle>
+                  <Badge variant="info">{installedApps.length} connectors</Badge>
+                </div>
+              </CardHeader>
+              <div className="divide-y divide-divider">
+                {installedApps.map((inst) => {
+                  const app = inst.app
+                  const isExpanded = configAppId === inst.appId
+                  const connectorMappings = CONNECTOR_FIELD_PRESETS[inst.appId] || CONNECTOR_FIELD_PRESETS['default']
+                  const syncHistoryData = getSyncHistory(ORG_ID, inst.appId)
+                  const syncHistoryRecords = syncHistoryData.records
+
+                  return (
+                    <div key={`mapping-${inst.appId}`} className="px-6 py-4">
+                      {/* Connector row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-canvas flex items-center justify-center text-base flex-shrink-0">
+                            {app.icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-t1">{app.name}</p>
+                            <p className="text-[0.6rem] text-t3">
+                              {connectorMappings.length} field mappings &middot;
+                              Schedule: {configSyncSchedule}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              addToast(`Running dry-run sync for ${app.name}...`)
+                              setTimeout(() => {
+                                addToast(`Dry run complete: 0 errors, ${Math.floor(Math.random() * 50) + 10} records would be synced`)
+                              }, 1200)
+                            }}
+                          >
+                            <TestTube2 size={12} /> Test Sync
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={isExpanded ? 'primary' : 'outline'}
+                            onClick={() => setConfigAppId(isExpanded ? null : inst.appId)}
+                          >
+                            <Settings size={12} /> {isExpanded ? 'Close' : 'Configure'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Expanded field mapping panel */}
+                      {isExpanded && (
+                        <div className="mt-4 space-y-4">
+                          {/* Sync schedule */}
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <Clock size={12} className="text-t3" />
+                              <span className="text-xs text-t2">Sync Schedule:</span>
+                            </div>
+                            <Select
+                              value={configSyncSchedule}
+                              onChange={(e) => setConfigSyncSchedule(e.target.value)}
+                              options={[
+                                { value: 'realtime', label: 'Real-time (webhook)' },
+                                { value: '5min', label: 'Every 5 minutes' },
+                                { value: '15min', label: 'Every 15 minutes' },
+                                { value: 'hourly', label: 'Hourly' },
+                                { value: 'daily', label: 'Daily' },
+                              ]}
+                              className="w-48"
+                            />
+                          </div>
+
+                          {/* Field mapping table */}
+                          <div className="border border-divider rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-[1fr_40px_1fr_80px] gap-0 bg-canvas px-4 py-2 text-[0.65rem] font-semibold text-t3 uppercase tracking-wider">
+                              <span>Tempo Field</span>
+                              <span></span>
+                              <span>{app.name} Field</span>
+                              <span className="text-center">Direction</span>
+                            </div>
+                            {connectorMappings.map((mapping, idx) => (
+                              <div
+                                key={`${inst.appId}-map-${idx}`}
+                                className="grid grid-cols-[1fr_40px_1fr_80px] gap-0 items-center px-4 py-2.5 border-t border-divider hover:bg-canvas/50 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <GripVertical size={12} className="text-t3 cursor-grab" />
+                                  <span className="text-xs font-mono text-t1">{mapping.source}</span>
+                                  {mapping.required && <span className="text-[0.55rem] text-error">*</span>}
+                                </div>
+                                <div className="flex justify-center">
+                                  {mapping.direction === 'bidirectional'
+                                    ? <ArrowLeftRight size={14} className="text-tempo-600" />
+                                    : mapping.direction === 'inbound'
+                                    ? <ArrowDown size={14} className="text-blue-500" />
+                                    : <ArrowUp size={14} className="text-green-500" />
+                                  }
+                                </div>
+                                <span className="text-xs font-mono text-t1">{mapping.destination}</span>
+                                <div className="flex justify-center">
+                                  <Badge variant={
+                                    mapping.direction === 'bidirectional' ? 'info' :
+                                    mapping.direction === 'inbound' ? 'default' : 'success'
+                                  }>
+                                    {mapping.direction === 'bidirectional' ? 'both' : mapping.direction}
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Add mapping row */}
+                          <div className="flex items-center gap-3">
+                            <Button size="sm" variant="outline" onClick={() => {
+                              setConfigFieldMappings(prev => [
+                                ...prev,
+                                { source: '', destination: '' },
+                              ])
+                              addToast('Add field mapping above and save')
+                            }}>
+                              <Plus size={12} /> Add Field Mapping
+                            </Button>
+                            <Button size="sm" variant="primary" onClick={() => {
+                              addToast(`Field mappings saved for ${app.name}`)
+                            }}>
+                              <Check size={12} /> Save Mappings
+                            </Button>
+                          </div>
+
+                          {/* Sync History */}
+                          {syncHistoryRecords.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-t1 mb-2 flex items-center gap-1.5">
+                                <History size={12} /> Sync History
+                              </h4>
+                              <div className="space-y-1.5">
+                                {syncHistoryRecords.slice(0, 5).map((sh) => (
+                                  <div key={sh.id} className="flex items-center justify-between bg-canvas rounded px-3 py-2">
+                                    <div className="flex items-center gap-3">
+                                      <Badge variant={sh.status === 'success' ? 'success' : sh.status === 'partial' ? 'warning' : 'error'}>
+                                        {sh.status}
+                                      </Badge>
+                                      <span className="text-[0.65rem] text-t3">{timeAgo(sh.startedAt)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-[0.65rem]">
+                                      <span className="text-success">{sh.recordsSynced} synced</span>
+                                      {sh.errors.length > 0 && (
+                                        <span className="text-error">{sh.errors.length} errors</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

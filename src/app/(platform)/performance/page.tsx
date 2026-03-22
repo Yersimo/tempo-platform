@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
-import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, ChevronDown, ChevronRight, X, GripVertical, Zap, Lock, Layers, UserCheck, Network, BookOpen } from 'lucide-react'
+import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, EyeOff, Download, ChevronDown, ChevronRight, X, GripVertical, Zap, Lock, Layers, UserCheck, Network, BookOpen } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -493,6 +493,18 @@ export default function PerformancePage() {
   const [calibrationSessionName, setCalibrationSessionName] = useState('')
   const [calibrationSessions, setCalibrationSessions] = useState<{ id: string; name: string; date: string; status: 'open' | 'locked'; department: string; ratings: Record<string, { rating: number; rationale: string }> }[]>([])
 
+  // Review Visibility Settings
+  const [showVisibilitySettings, setShowVisibilitySettings] = useState(false)
+  const [visibilityConfig, setVisibilityConfig] = useState({
+    peerReviewAnonymous: true,
+    directReportAnonymous: true,
+    managerReviewVisible: true,
+    selfReviewVisible: true,
+    minPeerReviewsForDisplay: 3,
+    showAggregateOnly: false,
+    showReviewerNames: false,
+  })
+
   const tabs = [
     { id: 'goals', label: t('tabGoals'), count: goals.length },
     { id: 'my-reviews', label: 'My Reviews', count: myReviews.length },
@@ -847,6 +859,58 @@ export default function PerformancePage() {
       addToast(`${bulkRevNewAssignees.length} reviews assigned successfully`)
       resetBulkReview()
     } finally { setSaving(false) }
+  }
+
+  // Calibration Excel (CSV) export
+  const exportCalibrationToExcel = () => {
+    const headers = [
+      'Employee Name',
+      'Department',
+      'Job Title',
+      'Level',
+      'Original Rating',
+      'Calibrated Rating',
+      'Rating Change',
+      'Calibration Rationale',
+      'Calibration Session',
+      'Calibrated By',
+      'Calibration Date',
+    ]
+
+    const filteredEmps = calibrationDeptFilter ? employees.filter(e => e.department_id === calibrationDeptFilter) : employees
+    const latestSession = calibrationSessions.length > 0 ? calibrationSessions[calibrationSessions.length - 1] : null
+
+    const rows = filteredEmps.map(emp => {
+      const dept = departments.find((d: any) => d.id === emp.department_id)
+      const empRevs = reviews.filter(r => r.employee_id === emp.id && r.overall_rating)
+      const origRating = empRevs.length > 0 ? Math.round(empRevs.reduce((a: number, r: any) => a + (r.overall_rating || 0), 0) / empRevs.length * 10) / 10 : 0
+      const calibrated = calibrationRatings[emp.id]
+      const calibratedRating = calibrated?.rating || Math.round(origRating) || 0
+      const ratingChange = origRating > 0 && calibratedRating ? calibratedRating - origRating : 0
+      return [
+        emp.profile?.full_name || '',
+        dept?.name || '',
+        emp.job_title || '',
+        emp.level || '',
+        origRating > 0 ? origRating.toFixed(1) : '',
+        calibratedRating || '',
+        ratingChange !== 0 ? (ratingChange > 0 ? '+' : '') + ratingChange.toFixed(1) : '',
+        calibrated?.rationale || '',
+        latestSession?.name || calibrationSessionName || '',
+        currentUser?.full_name || '',
+        latestSession?.date ? new Date(latestSession.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`)
+    })
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `calibration-export-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    addToast('Calibration data downloaded as CSV')
   }
 
   const valueColors: Record<string, string> = {
@@ -1267,6 +1331,11 @@ export default function PerformancePage() {
                   {['manager', 'self', 'peer', 'direct_report'].map(rl => (
                     <Badge key={rl} variant={rl === 'manager' ? 'info' : rl === 'self' ? 'default' : rl === 'peer' ? 'success' : 'warning'}>{rl.replace(/_/g, ' ')}</Badge>
                   ))}
+                  {isHRBPOrAbove && (
+                    <Button size="sm" variant="ghost" onClick={() => setShowVisibilitySettings(true)} title="Review Visibility Settings">
+                      <EyeOff size={14} /> <Settings size={14} />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -1283,13 +1352,28 @@ export default function PerformancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {visibleReviews.map(review => {
+                  {visibleReviews.map((review) => {
                     const empRevs360 = reviews.filter(r => r.employee_id === review.employee_id && r.cycle_id === review.cycle_id && r.overall_rating)
                     const has360 = empRevs360.length > 1
                     const wm360: Record<string, number> = { manager: 0.5, self: 0.2, peer: 0.15, direct_report: 0.1, functional_manager: 0.05 }
                     let ws360 = 0, wt360 = 0
                     empRevs360.forEach(r => { const w = wm360[r.type] || 0.1; ws360 += (r.overall_rating || 0) * w; wt360 += w })
                     const agg360 = wt360 > 0 ? (ws360 / wt360).toFixed(1) : null
+
+                    // Anonymization logic
+                    const isAnonymized = (visibilityConfig.peerReviewAnonymous && review.type === 'peer') || (visibilityConfig.directReportAnonymous && review.type === 'direct_report')
+                    const peerRevsForEmployee = visibleReviews.filter(r => r.employee_id === review.employee_id && r.type === 'peer')
+                    const peerIndex = peerRevsForEmployee.findIndex(r => r.id === review.id)
+                    const directReportRevsForEmployee = visibleReviews.filter(r => r.employee_id === review.employee_id && r.type === 'direct_report')
+                    const drIndex = directReportRevsForEmployee.findIndex(r => r.id === review.id)
+                    const anonymizedName = review.type === 'peer' ? `Anonymous Peer Reviewer #${peerIndex + 1}`
+                      : review.type === 'direct_report' ? `Anonymous Direct Report #${drIndex + 1}`
+                      : getEmployeeName(review.reviewer_id)
+                    const displayReviewerName = isAnonymized && !(isHRBPOrAbove && visibilityConfig.showReviewerNames) ? anonymizedName : getEmployeeName(review.reviewer_id)
+
+                    // Check min peer reviews threshold
+                    const belowMinPeerThreshold = review.type === 'peer' && visibilityConfig.peerReviewAnonymous && peerRevsForEmployee.length < visibilityConfig.minPeerReviewsForDisplay
+
                     return (
                       <tr key={review.id} className="hover:bg-canvas/50">
                         <td className="px-6 py-3">
@@ -1298,13 +1382,30 @@ export default function PerformancePage() {
                             <span className="text-sm text-t1">{getEmployeeName(review.employee_id)}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-t2">{getEmployeeName(review.reviewer_id)}</td>
+                        <td className="px-4 py-3 text-xs text-t2">
+                          <span className="flex items-center gap-1">
+                            {displayReviewerName}
+                            {isAnonymized && (
+                              <Badge variant="default" className="ml-1">
+                                <EyeOff className="w-3 h-3 mr-1" /> Anonymous
+                              </Badge>
+                            )}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           <Badge variant={review.type === 'manager' ? 'info' : review.type === 'self' ? 'default' : review.type === 'peer' ? 'success' : review.type === 'direct_report' ? 'warning' : 'orange'}>{review.type.replace(/_/g, ' ')}</Badge>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex flex-col items-center">
-                            {review.overall_rating ? <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span> : <span className="text-xs text-t3">-</span>}
+                            {belowMinPeerThreshold ? (
+                              <span className="text-[10px] text-yellow-600">Peer feedback will be visible once {visibilityConfig.minPeerReviewsForDisplay} or more peers have submitted their reviews (currently {peerRevsForEmployee.length} of {visibilityConfig.minPeerReviewsForDisplay} minimum)</span>
+                            ) : visibilityConfig.showAggregateOnly && (review.type === 'peer' || review.type === 'direct_report') ? (
+                              <span className="text-[10px] text-t3 italic">See aggregate</span>
+                            ) : review.overall_rating ? (
+                              <span className="tempo-stat text-lg text-tempo-600">{review.overall_rating}</span>
+                            ) : (
+                              <span className="text-xs text-t3">-</span>
+                            )}
                             {has360 && agg360 && <span className="text-[10px] text-t3">360 avg: {agg360}</span>}
                           </div>
                         </td>
@@ -1501,6 +1602,10 @@ export default function PerformancePage() {
                   <CardTitle className="flex items-center gap-2"><BarChart3 size={18} /> Calibration Sessions</CardTitle>
                   <div className="flex items-center gap-2">
                     <Select value={calibrationDeptFilter} onChange={(e: any) => setCalibrationDeptFilter(e.target.value)} options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]} />
+                    <Button size="sm" variant="outline" onClick={exportCalibrationToExcel}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export to Excel
+                    </Button>
                     {!calibrationLocked && (
                       <Button size="sm" variant="secondary" onClick={() => setShowCalibrationSession(true)}>
                         <Plus size={14} /> New Session
@@ -3867,6 +3972,58 @@ export default function PerformancePage() {
             <Button onClick={request360Feedback} disabled={threeSixtyReviewers.length === 0}>
               <UserCheck size={14} /> Request Feedback ({threeSixtyReviewers.length})
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Review Visibility Settings Modal */}
+      <Modal open={showVisibilitySettings} onClose={() => setShowVisibilitySettings(false)} title="Review Visibility Settings">
+        <div className="space-y-4">
+          <p className="text-sm text-t2">Configure how reviews are displayed to employees and managers.</p>
+
+          <label className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-t1">Anonymize peer feedback to employee</p>
+              <p className="text-xs text-t3">Peer reviewer names will be hidden and replaced with anonymous labels</p>
+            </div>
+            <input type="checkbox" checked={visibilityConfig.peerReviewAnonymous} onChange={(e) => setVisibilityConfig({ ...visibilityConfig, peerReviewAnonymous: e.target.checked })} className="rounded border-divider h-4 w-4" />
+          </label>
+
+          <label className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-t1">Anonymize upward feedback to employee</p>
+              <p className="text-xs text-t3">Direct report reviewer names will be hidden from the reviewed employee</p>
+            </div>
+            <input type="checkbox" checked={visibilityConfig.directReportAnonymous} onChange={(e) => setVisibilityConfig({ ...visibilityConfig, directReportAnonymous: e.target.checked })} className="rounded border-divider h-4 w-4" />
+          </label>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider">
+            <div>
+              <p className="text-sm font-medium text-t1">Minimum reviews before displaying</p>
+              <p className="text-xs text-t3">Prevents identification by requiring a minimum number of peer reviews</p>
+            </div>
+            <input type="number" min={1} max={10} value={visibilityConfig.minPeerReviewsForDisplay} onChange={(e) => setVisibilityConfig({ ...visibilityConfig, minPeerReviewsForDisplay: Number(e.target.value) || 1 })} className="w-16 text-center text-sm border border-divider rounded px-2 py-1 bg-surface focus:outline-none focus:ring-1 focus:ring-tempo-500" />
+          </div>
+
+          <label className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-t1">Show aggregate scores only</p>
+              <p className="text-xs text-t3">Hide individual review ratings and show only weighted averages</p>
+            </div>
+            <input type="checkbox" checked={visibilityConfig.showAggregateOnly} onChange={(e) => setVisibilityConfig({ ...visibilityConfig, showAggregateOnly: e.target.checked })} className="rounded border-divider h-4 w-4" />
+          </label>
+
+          <label className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary border border-divider cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-t1">HR/Admin can see reviewer names</p>
+              <p className="text-xs text-t3">Allow HR and Admin roles to view the real names behind anonymous reviews</p>
+            </div>
+            <input type="checkbox" checked={visibilityConfig.showReviewerNames} onChange={(e) => setVisibilityConfig({ ...visibilityConfig, showReviewerNames: e.target.checked })} className="rounded border-divider h-4 w-4" />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-divider">
+            <Button variant="secondary" onClick={() => setShowVisibilitySettings(false)}>Cancel</Button>
+            <Button onClick={() => { setShowVisibilitySettings(false); addToast('Visibility settings saved') }}>Save Settings</Button>
           </div>
         </div>
       </Modal>

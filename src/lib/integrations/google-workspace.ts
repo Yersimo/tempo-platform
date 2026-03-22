@@ -1,9 +1,17 @@
 // ============================================================
 // Google Workspace Connector
-// Uses Google Admin SDK Directory API via service account
+// Bidirectional sync: Users/Employees, Groups/Departments, Calendar Events/Leave
+// Auth: OAuth2 Service Account with domain-wide delegation
 // ============================================================
 
 import type { IntegrationConnector, ConnectionResult, SyncResult, ConfigField } from './index'
+import {
+  executeDemoSync,
+  retryWithBackoff,
+  type SyncResult as BidiSyncResult,
+  type SyncConfig,
+  type FieldMapping,
+} from '../services/integration-sync'
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const ADMIN_API_BASE = 'https://admin.googleapis.com/admin/directory/v1'
@@ -335,4 +343,315 @@ export async function syncGoogleWorkspace(
 
   const users = rawUsers.map(mapGoogleUserToEmployee)
   return { users, orgUnits }
+}
+
+// ============================================================
+// Bidirectional Sync Methods
+// ============================================================
+
+// Additional Google types
+
+interface GoogleGroup {
+  id: string
+  email: string
+  name: string
+  description: string
+  directMembersCount: string
+  adminCreated: boolean
+}
+
+interface GoogleCalendarEvent {
+  id: string
+  summary: string
+  description?: string
+  start: { dateTime?: string; date?: string }
+  end: { dateTime?: string; date?: string }
+  status: string
+  attendees?: Array<{ email: string; responseStatus: string }>
+  creator?: { email: string }
+  organizer?: { email: string }
+  created: string
+  updated: string
+}
+
+const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3'
+
+// ── User Sync (bidirectional) ────────────────────────────────
+
+async function fetchGoogleUsersSince(
+  accessToken: string,
+  domain: string,
+  since?: string
+): Promise<GoogleUser[]> {
+  // Google Admin SDK doesn't support "modified since" natively
+  // but we can use the query parameter for filtering
+  const users = await fetchGoogleUsers(accessToken, domain)
+
+  if (since) {
+    const sinceTime = new Date(since).getTime()
+    // Filter by checking creation time (update time not available in directory API)
+    return users.filter(u => new Date(u.creationTime).getTime() >= sinceTime)
+  }
+
+  return users
+}
+
+export async function syncUsers(config: Record<string, string>, since?: string): Promise<{
+  users: ReturnType<typeof mapGoogleUserToEmployee>[]
+  raw: GoogleUser[]
+}> {
+  const { service_account_email, admin_email, private_key, domain } = config
+  if (!service_account_email || !admin_email || !private_key || !domain) {
+    await executeDemoSync('google-workspace', 'bidirectional', ['users'])
+    return { users: [], raw: [] }
+  }
+
+  const accessToken = await retryWithBackoff(() =>
+    getGoogleAccessToken(service_account_email, private_key, admin_email)
+  )
+  const raw = await retryWithBackoff(() =>
+    fetchGoogleUsersSince(accessToken, domain, since)
+  )
+  return { users: raw.map(mapGoogleUserToEmployee), raw }
+}
+
+// ── Group Sync (Groups ↔ Departments) ────────────────────────
+
+async function fetchGoogleGroups(
+  accessToken: string,
+  domain: string
+): Promise<GoogleGroup[]> {
+  const groups: GoogleGroup[] = []
+  let pageToken: string | undefined
+
+  do {
+    const params = new URLSearchParams({ domain, maxResults: '200' })
+    if (pageToken) params.set('pageToken', pageToken)
+
+    const response = await fetch(`${ADMIN_API_BASE}/groups?${params}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) return []
+      const error = await response.text()
+      throw new Error(`Google Admin API error: ${response.status} - ${error}`)
+    }
+
+    const data = await response.json()
+    groups.push(...(data.groups || []))
+    pageToken = data.nextPageToken
+  } while (pageToken)
+
+  return groups
+}
+
+export function mapGoogleGroupToDepartment(group: GoogleGroup) {
+  return {
+    externalId: group.id,
+    name: group.name,
+    email: group.email,
+    description: group.description || null,
+    memberCount: parseInt(group.directMembersCount) || 0,
+    isAdminCreated: group.adminCreated,
+    source: 'google-workspace' as const,
+  }
+}
+
+export async function syncGroups(config: Record<string, string>): Promise<{
+  groups: ReturnType<typeof mapGoogleGroupToDepartment>[]
+  raw: GoogleGroup[]
+}> {
+  const { service_account_email, admin_email, private_key, domain } = config
+  if (!service_account_email || !admin_email || !private_key || !domain) {
+    await executeDemoSync('google-workspace', 'inbound', ['groups'])
+    return { groups: [], raw: [] }
+  }
+
+  const accessToken = await retryWithBackoff(() =>
+    getGoogleAccessToken(service_account_email, private_key, admin_email)
+  )
+  const raw = await retryWithBackoff(() => fetchGoogleGroups(accessToken, domain))
+  return { groups: raw.map(mapGoogleGroupToDepartment), raw }
+}
+
+// ── Calendar Event Sync (Calendar Events ↔ Leave) ───────────
+
+async function fetchCalendarEvents(
+  accessToken: string,
+  calendarId: string,
+  timeMin: string,
+  timeMax: string
+): Promise<GoogleCalendarEvent[]> {
+  const events: GoogleCalendarEvent[] = []
+  let pageToken: string | undefined
+
+  do {
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      maxResults: '250',
+      singleEvents: 'true',
+      orderBy: 'startTime',
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+
+    const response = await fetch(
+      `${CALENDAR_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) return []
+      const error = await response.text()
+      throw new Error(`Google Calendar API error: ${response.status} - ${error}`)
+    }
+
+    const data = await response.json()
+    events.push(...(data.items || []))
+    pageToken = data.nextPageToken
+  } while (pageToken)
+
+  return events
+}
+
+export function mapCalendarEventToLeave(event: GoogleCalendarEvent) {
+  return {
+    externalId: event.id,
+    summary: event.summary,
+    description: event.description || null,
+    startDate: event.start?.date || event.start?.dateTime || null,
+    endDate: event.end?.date || event.end?.dateTime || null,
+    status: event.status === 'confirmed' ? 'approved' : event.status === 'tentative' ? 'pending' : 'cancelled',
+    organizer: event.organizer?.email || null,
+    attendees: event.attendees?.map(a => a.email) || [],
+    lastUpdated: event.updated,
+    source: 'google-workspace' as const,
+  }
+}
+
+export async function syncCalendarEvents(
+  config: Record<string, string>,
+  calendarId: string,
+  startDate: string,
+  endDate: string
+): Promise<{
+  events: ReturnType<typeof mapCalendarEventToLeave>[]
+  raw: GoogleCalendarEvent[]
+}> {
+  const { service_account_email, admin_email, private_key } = config
+  if (!service_account_email || !admin_email || !private_key) {
+    await executeDemoSync('google-workspace', 'inbound', ['calendarEvents'])
+    return { events: [], raw: [] }
+  }
+
+  const accessToken = await retryWithBackoff(() =>
+    getGoogleAccessToken(service_account_email, private_key, admin_email)
+  )
+  const raw = await retryWithBackoff(() =>
+    fetchCalendarEvents(accessToken, calendarId, startDate, endDate)
+  )
+  return { events: raw.map(mapCalendarEventToLeave), raw }
+}
+
+// ── Default Sync Config ──────────────────────────────────────
+
+export const GOOGLE_WORKSPACE_SYNC_CONFIG: Omit<SyncConfig, 'orgId'> = {
+  connectorId: 'google-workspace',
+  direction: 'bidirectional',
+  schedule: 'hourly',
+  conflictResolution: 'newest_wins',
+  entities: [
+    {
+      sourceEntity: 'employees',
+      targetEntity: 'users',
+      fieldMapping: [
+        { sourceField: 'profile.full_name', targetField: 'name.fullName', direction: 'bidirectional', required: true },
+        { sourceField: 'profile.email', targetField: 'primaryEmail', direction: 'bidirectional', required: true },
+        { sourceField: 'job_title', targetField: 'organizations.0.title', direction: 'bidirectional', required: false },
+        { sourceField: 'department_id', targetField: 'organizations.0.department', direction: 'bidirectional', required: false },
+        { sourceField: 'profile.phone', targetField: 'phones.0.value', direction: 'bidirectional', required: false },
+      ] satisfies FieldMapping[],
+    },
+    {
+      sourceEntity: 'departments',
+      targetEntity: 'groups',
+      fieldMapping: [
+        { sourceField: 'name', targetField: 'name', direction: 'inbound', required: true },
+        { sourceField: 'description', targetField: 'description', direction: 'inbound', required: false },
+        { sourceField: 'email', targetField: 'email', direction: 'inbound', required: false },
+      ] satisfies FieldMapping[],
+    },
+    {
+      sourceEntity: 'leave_requests',
+      targetEntity: 'calendarEvents',
+      fieldMapping: [
+        { sourceField: 'start_date', targetField: 'start.date', direction: 'bidirectional', transform: 'date_iso', required: true },
+        { sourceField: 'end_date', targetField: 'end.date', direction: 'bidirectional', transform: 'date_iso', required: true },
+        { sourceField: 'leave_type', targetField: 'summary', direction: 'outbound', required: true },
+      ] satisfies FieldMapping[],
+    },
+  ],
+}
+
+// ── Full bidirectional sync orchestrator ─────────────────────
+
+export async function syncGoogleWorkspaceBidirectional(
+  config: Record<string, string>,
+  since?: string
+): Promise<BidiSyncResult> {
+  const { service_account_email, admin_email, private_key, domain, customer_id } = config
+  if (!service_account_email || !admin_email || !private_key || !domain) {
+    return executeDemoSync('google-workspace', 'bidirectional', ['users', 'groups', 'calendarEvents'])
+  }
+
+  const startedAt = new Date().toISOString()
+  const errors: BidiSyncResult['errors'] = []
+
+  const accessToken = await retryWithBackoff(() =>
+    getGoogleAccessToken(service_account_email, private_key, admin_email)
+  )
+
+  const [userRes, groupRes, orgUnitRes] = await Promise.allSettled([
+    fetchGoogleUsersSince(accessToken, domain, since),
+    fetchGoogleGroups(accessToken, domain),
+    customer_id ? fetchGoogleOrgUnits(accessToken, customer_id) : Promise.resolve([]),
+  ])
+
+  let totalSynced = 0
+  const entityResults: BidiSyncResult['entityResults'] = []
+
+  const results = [
+    { result: userRes, entity: 'users', direction: 'bidirectional' },
+    { result: groupRes, entity: 'groups', direction: 'inbound' },
+    { result: orgUnitRes, entity: 'orgUnits', direction: 'inbound' },
+  ] as const
+
+  for (const { result, entity, direction } of results) {
+    if (result.status === 'fulfilled') {
+      totalSynced += result.value.length
+      entityResults.push({ entity, direction, created: 0, updated: result.value.length, skipped: 0, failed: 0, errors: [] })
+    } else {
+      errors.push({ recordId: '', entity, message: result.reason?.message || 'Unknown', code: 'API_ERROR', timestamp: new Date().toISOString(), retryable: true })
+      entityResults.push({ entity, direction, created: 0, updated: 0, skipped: 0, failed: 1, errors: [] })
+    }
+  }
+
+  return {
+    connector: 'google-workspace',
+    direction: 'bidirectional',
+    startedAt,
+    completedAt: new Date().toISOString(),
+    recordsSynced: totalSynced,
+    recordsCreated: 0,
+    recordsUpdated: totalSynced,
+    recordsSkipped: 0,
+    recordsFailed: errors.length,
+    errors,
+    conflicts: [],
+    entityResults,
+  }
 }

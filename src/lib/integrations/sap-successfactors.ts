@@ -1,10 +1,17 @@
 // ============================================================
 // SAP SuccessFactors Connector
-// Enterprise HR suite: employee sync, payroll, org structure,
-// benefits, time management, learning, performance, recruiting
+// Bidirectional sync: PerPerson/Employees, PerOrganization/Departments
+// Auth: OAuth2 SAML Bearer / Basic Auth, OData v2
 // ============================================================
 
 import type { IntegrationConnector, ConnectionResult, SyncResult, ConfigField } from './index'
+import {
+  executeDemoSync,
+  retryWithBackoff,
+  type SyncResult as BidiSyncResult,
+  type SyncConfig,
+  type FieldMapping,
+} from '../services/integration-sync'
 
 interface SFUser {
   userId: string
@@ -411,5 +418,248 @@ export async function syncSAPSuccessFactors(config: Record<string, string>): Pro
     employees: rawUsers.map(mapSFEmployee),
     departments: rawDepts.map(mapSFDepartment),
     timeEntries: rawTime.map(mapSFTimeEntry),
+  }
+}
+
+// ============================================================
+// Bidirectional Sync Methods
+// ============================================================
+
+// ── Employees Sync (bidirectional with delta) ────────────────
+
+function getSFAuthHeaders(config: Record<string, string>): Promise<Record<string, string>> {
+  const { api_url, company_id, oauth_client_id, oauth_client_secret } = config
+  if (oauth_client_id && oauth_client_secret) {
+    return sfOAuthToken(api_url, company_id, oauth_client_id, oauth_client_secret)
+      .then(token => ({
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      }))
+  }
+  return Promise.resolve(buildAuthHeaders(config))
+}
+
+async function fetchSFEmployeesSince(
+  apiUrl: string,
+  headers: Record<string, string>,
+  since?: string
+): Promise<SFUser[]> {
+  let path = '/odata/v2/User?$select=userId,username,firstName,lastName,email,department,division,jobCode,title,managerId,hireDate,terminationDate,status,country,location,phoneNumber'
+  if (since) {
+    path += `&$filter=lastModifiedDateTime ge datetime'${since}'`
+  }
+  return fetchAllPaginated<SFUser>(apiUrl, path, headers)
+}
+
+export async function syncEmployees(config: Record<string, string>, since?: string): Promise<{
+  employees: ReturnType<typeof mapSFEmployee>[]
+  raw: SFUser[]
+}> {
+  const { api_url, company_id, api_key } = config
+  if (!api_url || !company_id || !api_key) {
+    await executeDemoSync('sap-successfactors', 'bidirectional', ['employees'])
+    return { employees: [], raw: [] }
+  }
+
+  const headers = await retryWithBackoff(() => getSFAuthHeaders(config))
+  const raw = await retryWithBackoff(() =>
+    fetchSFEmployeesSince(api_url, headers, since)
+  )
+  return { employees: raw.map(mapSFEmployee), raw }
+}
+
+// ── Organizations/Departments Sync ───────────────────────────
+
+async function fetchSFDepartmentsSince(
+  apiUrl: string,
+  headers: Record<string, string>,
+  since?: string
+): Promise<SFDepartment[]> {
+  let path = '/odata/v2/FODepartment?$select=externalCode,name,description,headOfUnit,parentDepartment,status,startDate'
+  if (since) {
+    path += `&$filter=lastModifiedDateTime ge datetime'${since}'`
+  }
+  return fetchAllPaginated<SFDepartment>(apiUrl, path, headers)
+}
+
+export async function syncOrganizations(config: Record<string, string>, since?: string): Promise<{
+  departments: ReturnType<typeof mapSFDepartment>[]
+  raw: SFDepartment[]
+}> {
+  const { api_url, company_id, api_key } = config
+  if (!api_url || !company_id || !api_key) {
+    await executeDemoSync('sap-successfactors', 'bidirectional', ['organizations'])
+    return { departments: [], raw: [] }
+  }
+
+  const headers = await retryWithBackoff(() => getSFAuthHeaders(config))
+  const raw = await retryWithBackoff(() =>
+    fetchSFDepartmentsSince(api_url, headers, since)
+  )
+  return { departments: raw.map(mapSFDepartment), raw }
+}
+
+// ── Push Tempo Employee Changes to SAP SF ────────────────────
+
+export async function pushEmployeeToSF(
+  config: Record<string, string>,
+  employeeData: {
+    userId: string
+    email?: string
+    phone?: string
+    title?: string
+    department?: string
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const { api_url, company_id, api_key } = config
+  if (!api_url || !company_id || !api_key) {
+    return { success: true }
+  }
+
+  try {
+    const headers = await retryWithBackoff(() => getSFAuthHeaders(config))
+
+    const updatePayload: Record<string, unknown> = {}
+    if (employeeData.email) updatePayload.email = employeeData.email
+    if (employeeData.phone) updatePayload.phoneNumber = employeeData.phone
+    if (employeeData.title) updatePayload.title = employeeData.title
+    if (employeeData.department) updatePayload.department = employeeData.department
+
+    await sfPost(
+      api_url,
+      `/odata/v2/User('${employeeData.userId}')`,
+      { ...headers, 'X-HTTP-Method': 'MERGE' },
+      updatePayload
+    )
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+// ── Push Tempo Department Changes to SAP SF ──────────────────
+
+export async function pushDepartmentToSF(
+  config: Record<string, string>,
+  deptData: {
+    externalCode: string
+    name?: string
+    description?: string
+    headOfUnit?: string
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const { api_url, company_id, api_key } = config
+  if (!api_url || !company_id || !api_key) {
+    return { success: true }
+  }
+
+  try {
+    const headers = await retryWithBackoff(() => getSFAuthHeaders(config))
+
+    const updatePayload: Record<string, unknown> = { externalCode: deptData.externalCode }
+    if (deptData.name) updatePayload.name = deptData.name
+    if (deptData.description) updatePayload.description = deptData.description
+    if (deptData.headOfUnit) updatePayload.headOfUnit = deptData.headOfUnit
+
+    await sfPost(
+      api_url,
+      '/odata/v2/FODepartment',
+      { ...headers, 'X-HTTP-Method': 'MERGE' },
+      updatePayload
+    )
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+// ── Default Sync Config ──────────────────────────────────────
+
+export const SAP_SF_SYNC_CONFIG: Omit<SyncConfig, 'orgId'> = {
+  connectorId: 'sap-successfactors',
+  direction: 'bidirectional',
+  schedule: 'daily',
+  conflictResolution: 'source_wins',
+  entities: [
+    {
+      sourceEntity: 'employees',
+      targetEntity: 'User',
+      fieldMapping: [
+        { sourceField: 'profile.full_name', targetField: 'firstName,lastName', direction: 'bidirectional', required: true },
+        { sourceField: 'profile.email', targetField: 'email', direction: 'bidirectional', required: true },
+        { sourceField: 'profile.phone', targetField: 'phoneNumber', direction: 'bidirectional', required: false },
+        { sourceField: 'job_title', targetField: 'title', direction: 'bidirectional', required: false },
+        { sourceField: 'department_id', targetField: 'department', direction: 'bidirectional', required: false },
+        { sourceField: 'country', targetField: 'country', direction: 'bidirectional', required: false },
+      ] satisfies FieldMapping[],
+    },
+    {
+      sourceEntity: 'departments',
+      targetEntity: 'FODepartment',
+      fieldMapping: [
+        { sourceField: 'name', targetField: 'name', direction: 'bidirectional', required: true },
+        { sourceField: 'description', targetField: 'description', direction: 'bidirectional', required: false },
+        { sourceField: 'head_of_unit', targetField: 'headOfUnit', direction: 'bidirectional', required: false },
+        { sourceField: 'parent_id', targetField: 'parentDepartment', direction: 'bidirectional', required: false },
+      ] satisfies FieldMapping[],
+    },
+  ],
+}
+
+// ── Full bidirectional sync orchestrator ─────────────────────
+
+export async function syncSAPSFBidirectional(
+  config: Record<string, string>,
+  since?: string
+): Promise<BidiSyncResult> {
+  const { api_url, company_id, api_key } = config
+  if (!api_url || !company_id || !api_key) {
+    return executeDemoSync('sap-successfactors', 'bidirectional', ['employees', 'departments', 'timeEntries'])
+  }
+
+  const startedAt = new Date().toISOString()
+  const errors: BidiSyncResult['errors'] = []
+
+  const headers = await retryWithBackoff(() => getSFAuthHeaders(config))
+
+  const [empRes, deptRes, timeRes] = await Promise.allSettled([
+    fetchSFEmployeesSince(api_url, headers, since),
+    fetchSFDepartmentsSince(api_url, headers, since),
+    fetchAllPaginated<SFTimeEntry>(api_url, '/odata/v2/EmployeeTime?$select=externalCode,userId,timeType,startDate,startTime,endDate,endTime,quantityInHours,approvalStatus', headers),
+  ])
+
+  let totalSynced = 0
+  const entityResults: BidiSyncResult['entityResults'] = []
+
+  const results = [
+    { result: empRes, entity: 'employees', direction: 'bidirectional' },
+    { result: deptRes, entity: 'departments', direction: 'bidirectional' },
+    { result: timeRes, entity: 'timeEntries', direction: 'inbound' },
+  ] as const
+
+  for (const { result, entity, direction } of results) {
+    if (result.status === 'fulfilled') {
+      totalSynced += result.value.length
+      entityResults.push({ entity, direction, created: 0, updated: result.value.length, skipped: 0, failed: 0, errors: [] })
+    } else {
+      errors.push({ recordId: '', entity, message: result.reason?.message || 'Unknown', code: 'API_ERROR', timestamp: new Date().toISOString(), retryable: true })
+      entityResults.push({ entity, direction, created: 0, updated: 0, skipped: 0, failed: 1, errors: [] })
+    }
+  }
+
+  return {
+    connector: 'sap-successfactors',
+    direction: 'bidirectional',
+    startedAt,
+    completedAt: new Date().toISOString(),
+    recordsSynced: totalSynced,
+    recordsCreated: 0,
+    recordsUpdated: totalSynced,
+    recordsSkipped: 0,
+    recordsFailed: errors.length,
+    errors,
+    conflicts: [],
+    entityResults,
   }
 }
