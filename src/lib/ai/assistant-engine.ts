@@ -701,6 +701,405 @@ const NAV_SHORTCUTS: Record<string, string> = {
   workflows: '/workflow-studio',
 }
 
+// ---- Keyword-Based Fuzzy Matching Handlers ----
+
+interface KeywordHandler {
+  keywords: string[]
+  excludeKeywords?: string[]
+  handler: (store: any, query: string) => AssistantResponse
+}
+
+const KEYWORD_HANDLERS: KeywordHandler[] = [
+  // LEAVE / TIME OFF — catch all variations
+  {
+    keywords: ['leave', 'time off', 'pto', 'vacation', 'day off', 'days off', 'absence', 'absent', 'away', 'out of office', 'ooo'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const approved = store.leaveRequests?.filter((l: any) => l.status === 'approved') || []
+      const pending = store.leaveRequests?.filter((l: any) => l.status === 'pending') || []
+      const today = new Date().toISOString().split('T')[0]
+      const onLeaveToday = approved.filter((l: any) => l.start_date <= today && l.end_date >= today)
+
+      // "how many leave days" / "leave balance" / "remaining leave"
+      if (lwr.match(/balance|remaining|left|days|how many.*leave|leave.*how many|my leave/)) {
+        const balances = store.timeOffBalances || []
+        if (balances.length > 0) {
+          const summary = balances.slice(0, 5).map((b: any) => `  ${b.policy_name || b.type || 'Leave'}: ${b.balance || b.remaining || 0} days`).join('\n')
+          return { type: 'answer', text: `Leave balances:\n${summary}`, confidence: 0.85, actions: [{ label: 'View Leave', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' }] }
+        }
+        return { type: 'answer', text: `${approved.length} approved leave requests on record. ${pending.length} pending. Check Time & Attendance for individual balances.`, confidence: 0.7, actions: [{ label: 'View Leave', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' }] }
+      }
+
+      // "who is on leave" / "who's away" / "who's out"
+      if (lwr.match(/who|list|show|people|employees/)) {
+        const names = onLeaveToday.map((l: any) => {
+          const emp = store.employees?.find((e: any) => e.id === l.employee_id)
+          return employeeName(emp)
+        })
+        return { type: 'answer', text: onLeaveToday.length > 0 ? `${onLeaveToday.length} on leave today:\n${names.map((n: string) => `  ${n}`).join('\n')}` : 'No one is on leave today.', confidence: 0.9, actions: [{ label: 'Team Calendar', type: 'navigate', payload: '/people/team-calendar', icon: 'Calendar' }] }
+      }
+
+      // "request leave" / "apply for leave" / "book time off"
+      if (lwr.match(/request|apply|book|submit|create|new/)) {
+        return { type: 'action', text: "I'll help you request time off.", confidence: 0.85, actions: [{ label: 'Request Leave', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' }] }
+      }
+
+      // "approve leave" / "pending leave"
+      if (lwr.match(/approve|pending|review/)) {
+        return { type: 'answer', text: `${pending.length} pending leave request${pending.length !== 1 ? 's' : ''} awaiting approval.`, confidence: 0.85, actions: [{ label: 'Review Leave', type: 'navigate', payload: '/time-attendance', icon: 'CheckCircle' }] }
+      }
+
+      // Default leave response
+      return { type: 'answer', text: `Leave summary: ${approved.length} approved, ${pending.length} pending, ${onLeaveToday.length} on leave today.`, confidence: 0.7, actions: [{ label: 'View Leave', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' }] }
+    },
+  },
+
+  // PAYROLL — all variations
+  {
+    keywords: ['payroll', 'salary', 'salaries', 'wage', 'wages', 'compensation', 'payslip', 'pay slip', 'net pay', 'gross pay', 'deductions'],
+    excludeKeywords: ['posting', 'job posting'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const runs = store.payrollRuns || []
+      const latestRun = runs.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))[0]
+      const currency = store.orgCurrency || store._orgCurrency || 'USD'
+
+      if (lwr.match(/run|process|start|execute|initiate/)) {
+        return { type: 'action', text: "I'll take you to run payroll.", confidence: 0.85, actions: [{ label: 'Run Payroll', type: 'navigate', payload: '/payroll', icon: 'DollarSign' }] }
+      }
+
+      if (lwr.match(/cost|total|spend|how much|amount/)) {
+        const total = latestRun?.total_gross || latestRun?.totalGross || 0
+        const net = latestRun?.total_net || latestRun?.totalNet || 0
+        return { type: 'answer', text: `Latest payroll: ${formatAmount(total, currency)} gross, ${formatAmount(net, currency)} net. ${runs.length} payroll run(s) on record.`, confidence: 0.85, actions: [{ label: 'View Payroll', type: 'navigate', payload: '/payroll', icon: 'DollarSign' }] }
+      }
+
+      if (lwr.match(/slip|stub|mine|my/)) {
+        return { type: 'navigation', text: 'Opening your payslips...', confidence: 0.85, actions: [{ label: 'View Payslips', type: 'navigate', payload: '/payslips', icon: 'FileText' }] }
+      }
+
+      if (lwr.match(/deduction|tax|ssnit|paye|statutory/)) {
+        return { type: 'answer', text: 'Statutory deductions are configured per country. Ghana: PAYE + SSNIT (5.5% employee, 13% employer). India: PF + ESI + PT. Brazil: INSS + FGTS + IRRF.', confidence: 0.8, actions: [{ label: 'View Statutory', type: 'navigate', payload: '/payroll/statutory', icon: 'Calculator' }] }
+      }
+
+      return { type: 'answer', text: `${runs.length} payroll run(s) on record. Latest: ${latestRun ? `${formatAmount(latestRun.total_gross || latestRun.totalGross || 0, currency)} gross` : 'None yet'}.`, confidence: 0.7, actions: [{ label: 'View Payroll', type: 'navigate', payload: '/payroll', icon: 'DollarSign' }] }
+    },
+  },
+
+  // EMPLOYEE / PEOPLE — catch all
+  {
+    keywords: ['employee', 'employees', 'people', 'staff', 'team', 'workforce', 'headcount', 'workers', 'colleagues'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const active = activeEmployees(store)
+
+      if (lwr.match(/how many|count|total|number/)) {
+        const depts = new Set(active.map((e: any) => e.department_id).filter(Boolean))
+        const countries = new Set(active.map((e: any) => e.country).filter(Boolean))
+        return { type: 'answer', text: `${active.length} active employees across ${depts.size} departments and ${countries.size} countries.`, confidence: 0.95 }
+      }
+
+      if (lwr.match(/department|dept|by department|breakdown/)) {
+        const byDept: Record<string, number> = {}
+        active.forEach((e: any) => {
+          const dept = store.departments?.find((d: any) => d.id === e.department_id)
+          const name = dept?.name || 'Unassigned'
+          byDept[name] = (byDept[name] || 0) + 1
+        })
+        const rows = Object.entries(byDept).sort((a, b) => b[1] - a[1])
+        return { type: 'answer', text: `Headcount by department:\n${rows.map(([d, c]) => `  ${d}: ${c}`).join('\n')}`, confidence: 0.9 }
+      }
+
+      if (lwr.match(/country|location|where|by country|region/)) {
+        const byCountry: Record<string, number> = {}
+        active.forEach((e: any) => { const c = e.country || 'Unknown'; byCountry[c] = (byCountry[c] || 0) + 1 })
+        const rows = Object.entries(byCountry).sort((a, b) => b[1] - a[1])
+        return { type: 'answer', text: `Employees by country:\n${rows.map(([c, n]) => `  ${c}: ${n}`).join('\n')}`, confidence: 0.9 }
+      }
+
+      if (lwr.match(/new|hired|joined|recent|latest/)) {
+        const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const newHires = active.filter((e: any) => e.hire_date && new Date(e.hire_date) >= thirtyDaysAgo)
+        return { type: 'answer', text: `${newHires.length} new hire(s) in the last 30 days.${newHires.length > 0 ? '\n' + newHires.map((e: any) => `  ${employeeName(e)} — ${e.job_title || 'Role TBD'}`).join('\n') : ''}`, confidence: 0.85 }
+      }
+
+      // Find specific employee
+      const nameMatch = lwr.match(/find\s+(\w+)|where.*is\s+(\w+)|search.*for\s+(\w+)|(\w+)'s?\s+(profile|info|details|record)/)
+      if (nameMatch) {
+        const searchName = (nameMatch[1] || nameMatch[2] || nameMatch[3] || nameMatch[4] || '').toLowerCase()
+        const found = store.employees?.filter((e: any) => employeeName(e).toLowerCase().includes(searchName))
+        if (found?.length > 0) {
+          return { type: 'answer', text: `Found ${found.length} match(es):\n${found.slice(0, 5).map((e: any) => `  ${employeeName(e)} — ${e.job_title || ''} (${e.department_id ? store.departments?.find((d: any) => d.id === e.department_id)?.name || '' : ''})`).join('\n')}`, confidence: 0.9, actions: [{ label: 'View People', type: 'navigate', payload: '/people', icon: 'Users' }] }
+        }
+      }
+
+      return { type: 'answer', text: `${active.length} active employees. Ask me about headcount by department, by country, new hires, or search for someone by name.`, confidence: 0.6 }
+    },
+  },
+
+  // EXPENSE — all variations
+  {
+    keywords: ['expense', 'expenses', 'receipt', 'receipts', 'reimbursement', 'reimbursements', 'claim', 'claims', 'mileage'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const reports = store.expenseReports || []
+      const pendingR = reports.filter((r: any) => r.status === 'pending' || r.status === 'submitted')
+      const approvedR = reports.filter((r: any) => r.status === 'approved')
+
+      if (lwr.match(/pending|awaiting|waiting|review|approve/)) {
+        return { type: 'answer', text: `${pendingR.length} pending expense report(s) awaiting approval.`, confidence: 0.9, actions: [{ label: 'Review Expenses', type: 'navigate', payload: '/expense', icon: 'Receipt' }] }
+      }
+      if (lwr.match(/submit|create|new|file|add/)) {
+        return { type: 'action', text: "I'll take you to submit an expense report.", confidence: 0.85, actions: [{ label: 'Submit Expense', type: 'navigate', payload: '/expense', icon: 'Receipt' }] }
+      }
+      if (lwr.match(/total|how much|amount|spent|spending/)) {
+        const total = reports.reduce((sum: number, r: any) => sum + (r.total_amount || r.totalAmount || 0), 0)
+        const currency = store.orgCurrency || store._orgCurrency || 'USD'
+        return { type: 'answer', text: `Total expenses: ${formatAmount(total, currency)} across ${reports.length} reports. ${pendingR.length} pending, ${approvedR.length} approved.`, confidence: 0.85 }
+      }
+      return { type: 'answer', text: `${reports.length} expense reports: ${pendingR.length} pending, ${approvedR.length} approved.`, confidence: 0.7, actions: [{ label: 'View Expenses', type: 'navigate', payload: '/expense', icon: 'Receipt' }] }
+    },
+  },
+
+  // PERFORMANCE / REVIEW / GOALS
+  {
+    keywords: ['performance', 'review', 'reviews', 'goal', 'goals', 'okr', 'okrs', 'objective', 'feedback', 'rating', 'evaluation', '1:1', 'one on one', 'calibration'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const reviews = store.reviews || []
+      const goals = store.goals || []
+
+      if (lwr.match(/goal|okr|objective/)) {
+        const active = goals.filter((g: any) => g.status === 'active' || g.status === 'in_progress')
+        return { type: 'answer', text: `${active.length} active goals. ${goals.length} total goals on record.`, confidence: 0.8, actions: [{ label: 'View Goals', type: 'navigate', payload: '/performance', icon: 'Target' }] }
+      }
+      if (lwr.match(/review|cycle|evaluation|appraisal/)) {
+        const pendingR = reviews.filter((r: any) => r.status === 'pending' || r.status === 'in_progress' || r.status === 'scheduled')
+        return { type: 'answer', text: `${reviews.length} performance reviews on record. ${pendingR.length} in progress or scheduled.`, confidence: 0.8, actions: [{ label: 'View Reviews', type: 'navigate', payload: '/performance', icon: 'Star' }] }
+      }
+      if (lwr.match(/feedback|recognition|kudos|shoutout/)) {
+        return { type: 'navigation', text: 'Opening feedback & recognition...', confidence: 0.8, actions: [{ label: 'Give Feedback', type: 'navigate', payload: '/performance', icon: 'MessageSquare' }] }
+      }
+      return { type: 'answer', text: `${reviews.length} reviews, ${goals.length} goals on record.`, confidence: 0.6, actions: [{ label: 'View Performance', type: 'navigate', payload: '/performance', icon: 'Star' }] }
+    },
+  },
+
+  // RECRUITING / HIRING / JOBS
+  {
+    keywords: ['recruit', 'recruiting', 'hiring', 'hire', 'job', 'jobs', 'vacancy', 'vacancies', 'position', 'positions', 'candidate', 'candidates', 'application', 'applications', 'interview', 'offer'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const postings = store.jobPostings || []
+      const apps = store.applications || []
+      const open = postings.filter((j: any) => j.status === 'published' || j.status === 'open' || j.status === 'active')
+
+      if (lwr.match(/open|active|current|how many/)) {
+        return { type: 'answer', text: `${open.length} open position(s):\n${open.slice(0, 8).map((j: any) => `  ${j.title}`).join('\n') || 'None'}`, confidence: 0.9, actions: [{ label: 'View Recruiting', type: 'navigate', payload: '/recruiting', icon: 'Briefcase' }] }
+      }
+      if (lwr.match(/candidate|applicant|pipeline|application/)) {
+        return { type: 'answer', text: `${apps.length} total applications across ${postings.length} postings.`, confidence: 0.8, actions: [{ label: 'View Pipeline', type: 'navigate', payload: '/recruiting', icon: 'Users' }] }
+      }
+      if (lwr.match(/create|post|new|add/)) {
+        return { type: 'action', text: "I'll help you create a new job posting.", confidence: 0.85, actions: [{ label: 'Create Job', type: 'navigate', payload: '/recruiting', icon: 'Plus' }] }
+      }
+      return { type: 'answer', text: `${open.length} open positions, ${apps.length} applications in pipeline.`, confidence: 0.7, actions: [{ label: 'View Recruiting', type: 'navigate', payload: '/recruiting', icon: 'Briefcase' }] }
+    },
+  },
+
+  // LEARNING / TRAINING / COURSES
+  {
+    keywords: ['learning', 'training', 'course', 'courses', 'certification', 'certificate', 'lms', 'education', 'skill', 'skills', 'develop', 'development'],
+    excludeKeywords: ['software development'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      const courses = store.courses || []
+      const enrollments = store.enrollments || []
+      const completed = enrollments.filter((e: any) => e.status === 'completed')
+      const overdue = enrollments.filter((e: any) => e.status === 'overdue' || (e.due_date && new Date(e.due_date) < new Date() && e.status !== 'completed'))
+
+      if (lwr.match(/overdue|expired|late|missing/)) {
+        return { type: 'answer', text: `${overdue.length} overdue training enrollment(s). These need immediate attention.`, confidence: 0.9, actions: [{ label: 'View Overdue', type: 'navigate', payload: '/learning', icon: 'AlertTriangle' }] }
+      }
+      if (lwr.match(/my|assigned|enrolled/)) {
+        return { type: 'navigation', text: 'Opening your learning dashboard...', confidence: 0.85, actions: [{ label: 'My Learning', type: 'navigate', payload: '/learning', icon: 'BookOpen' }] }
+      }
+      if (lwr.match(/how many|total|count/)) {
+        return { type: 'answer', text: `${courses.length} courses available. ${enrollments.length} enrollments (${completed.length} completed, ${overdue.length} overdue).`, confidence: 0.85 }
+      }
+      return { type: 'answer', text: `${courses.length} courses, ${enrollments.length} enrollments, ${completed.length} completed.`, confidence: 0.6, actions: [{ label: 'View Learning', type: 'navigate', payload: '/learning', icon: 'BookOpen' }] }
+    },
+  },
+
+  // COMPLIANCE / AUDIT / POLICY
+  {
+    keywords: ['compliance', 'compliant', 'audit', 'policy', 'policies', 'regulation', 'regulatory', 'soc2', 'gdpr', 'risk'],
+    handler: (store) => {
+      const reqs = store.complianceRequirements || []
+      const compliant = reqs.filter((r: any) => r.status === 'compliant')
+      const score = reqs.length > 0 ? Math.round((compliant.length / reqs.length) * 100) : 85
+      return { type: 'answer', text: `Compliance score: ${score}%. ${compliant.length} of ${reqs.length} requirements met.`, confidence: 0.85, actions: [{ label: 'View Compliance', type: 'navigate', payload: '/compliance', icon: 'Shield' }] }
+    },
+  },
+
+  // BENEFITS / INSURANCE / HEALTH
+  {
+    keywords: ['benefit', 'benefits', 'insurance', 'health plan', 'medical', 'dental', 'vision', 'pension', 'retirement', '401k', 'hsa', 'fsa'],
+    handler: (store) => {
+      const plans = store.benefitPlans || []
+      const enrollments = store.benefitEnrollments || []
+      return { type: 'answer', text: `${plans.length} benefit plan(s) available. ${enrollments.length} active enrollment(s).`, confidence: 0.8, actions: [{ label: 'View Benefits', type: 'navigate', payload: '/benefits', icon: 'Heart' }] }
+    },
+  },
+
+  // DEVICES / EQUIPMENT / IT
+  {
+    keywords: ['device', 'devices', 'laptop', 'computer', 'equipment', 'hardware', 'it asset', 'phone'],
+    handler: (store) => {
+      const devices = store.devices || []
+      const assigned = devices.filter((d: any) => d.status === 'assigned')
+      return { type: 'answer', text: `${devices.length} devices tracked. ${assigned.length} assigned to employees.`, confidence: 0.8, actions: [{ label: 'View Devices', type: 'navigate', payload: '/it/devices', icon: 'Laptop' }] }
+    },
+  },
+
+  // BUDGET / FINANCE / MONEY
+  {
+    keywords: ['budget', 'budgets', 'financial', 'cost', 'costs', 'spend', 'spending', 'money', 'revenue', 'profit'],
+    excludeKeywords: ['payroll', 'salary', 'expense'],
+    handler: (store) => {
+      const budgets = store.budgets || []
+      return { type: 'answer', text: `${budgets.length} budget(s) tracked. Navigate to Finance for details.`, confidence: 0.7, actions: [{ label: 'View Finance', type: 'navigate', payload: '/finance', icon: 'DollarSign' }] }
+    },
+  },
+
+  // INVOICE / BILLING / AR
+  {
+    keywords: ['invoice', 'invoices', 'billing', 'bill', 'bills', 'receivable', 'payment', 'payments', 'vendor'],
+    excludeKeywords: ['pay slip', 'payslip', 'payroll'],
+    handler: (store) => {
+      const invoices = store.invoices || []
+      const overdue = invoices.filter((i: any) => i.status === 'overdue')
+      const pendingI = invoices.filter((i: any) => i.status === 'sent' || i.status === 'pending')
+      return { type: 'answer', text: `${invoices.length} invoices: ${overdue.length} overdue, ${pendingI.length} pending payment.`, confidence: 0.8, actions: [{ label: 'View Invoices', type: 'navigate', payload: '/finance/invoices', icon: 'FileText' }] }
+    },
+  },
+
+  // ONBOARDING / NEW HIRE SETUP
+  {
+    keywords: ['onboarding', 'onboard', 'new hire', 'new joiner', 'induction', 'orientation', 'first day'],
+    handler: (store) => {
+      const journeys = store.journeys?.filter((j: any) => j.category === 'onboarding') || []
+      const active = journeys.filter((j: any) => j.status === 'in_progress')
+      return { type: 'answer', text: `${active.length} active onboarding journey(s). ${journeys.length} total.`, confidence: 0.8, actions: [{ label: 'View Onboarding', type: 'navigate', payload: '/journeys', icon: 'Rocket' }] }
+    },
+  },
+
+  // OFFBOARDING / EXIT / RESIGNATION
+  {
+    keywords: ['offboarding', 'offboard', 'exit', 'resign', 'resignation', 'termination', 'terminate', 'leaving', 'departure', 'fired', 'let go'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening offboarding...', confidence: 0.8, actions: [{ label: 'View Offboarding', type: 'navigate', payload: '/offboarding', icon: 'UserMinus' }] }
+    },
+  },
+
+  // ORG CHART / STRUCTURE / HIERARCHY
+  {
+    keywords: ['org chart', 'organization chart', 'hierarchy', 'reporting line', 'who reports to', 'manager'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening org chart...', confidence: 0.9, actions: [{ label: 'View Org Chart', type: 'navigate', payload: '/people/org-chart', icon: 'GitBranch' }] }
+    },
+  },
+
+  // CALENDAR / SCHEDULE / ATTENDANCE
+  {
+    keywords: ['calendar', 'schedule', 'attendance', 'clock in', 'clock out', 'timesheet', 'shift', 'shifts', 'working hours'],
+    handler: (store, query) => {
+      const lwr = query.toLowerCase()
+      if (lwr.match(/team|who|available/)) {
+        return { type: 'navigation', text: 'Opening team calendar...', confidence: 0.9, actions: [{ label: 'Team Calendar', type: 'navigate', payload: '/people/team-calendar', icon: 'Calendar' }] }
+      }
+      return { type: 'navigation', text: 'Opening time & attendance...', confidence: 0.8, actions: [{ label: 'Time & Attendance', type: 'navigate', payload: '/time-attendance', icon: 'Clock' }] }
+    },
+  },
+
+  // SUCCESSION / TALENT / 9-BOX
+  {
+    keywords: ['succession', 'successor', 'talent review', '9 box', 'nine box', 'bench strength', 'high potential', 'flight risk', 'retention'],
+    handler: (store) => {
+      const plans = store.successionPlans || []
+      return { type: 'answer', text: `${plans.length} succession plan(s) on record.`, confidence: 0.8, actions: [{ label: 'View Succession', type: 'navigate', payload: '/people/succession', icon: 'TrendingUp' }] }
+    },
+  },
+
+  // ANALYTICS / REPORTS / DASHBOARD / METRICS
+  {
+    keywords: ['analytics', 'report', 'reports', 'metrics', 'kpi', 'statistics', 'stats', 'insights', 'trends', 'forecast'],
+    handler: (_store, query) => {
+      const lwr = query.toLowerCase()
+      if (lwr.match(/board|quarterly|annual/)) {
+        return { type: 'navigation', text: 'Opening board reports...', confidence: 0.9, actions: [{ label: 'Board Reports', type: 'navigate', payload: '/analytics/board-reports', icon: 'FileText' }] }
+      }
+      if (lwr.match(/predict|forecast|ai|ml/)) {
+        return { type: 'navigation', text: 'Opening predictive analytics...', confidence: 0.9, actions: [{ label: 'Predictions', type: 'navigate', payload: '/analytics/predictions', icon: 'Sparkles' }] }
+      }
+      return { type: 'navigation', text: 'Opening analytics...', confidence: 0.7, actions: [{ label: 'View Analytics', type: 'navigate', payload: '/analytics/predictions', icon: 'BarChart' }] }
+    },
+  },
+
+  // TRAVEL / TRIP / BOOKING
+  {
+    keywords: ['travel', 'trip', 'flight', 'hotel', 'booking', 'business travel'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening travel management...', confidence: 0.8, actions: [{ label: 'View Travel', type: 'navigate', payload: '/travel', icon: 'Plane' }] }
+    },
+  },
+
+  // CHAT / MESSAGE / COMMUNICATION
+  {
+    keywords: ['message', 'messages', 'conversation', 'channel', 'channels', 'communicate', 'direct message'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening chat...', confidence: 0.9, actions: [{ label: 'Open Chat', type: 'navigate', payload: '/chat', icon: 'MessageSquare' }] }
+    },
+  },
+
+  // DOCUMENT / FILE / CONTRACT
+  {
+    keywords: ['document', 'documents', 'contract', 'contracts', 'policy document', 'handbook', 'template'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening documents...', confidence: 0.8, actions: [{ label: 'View Documents', type: 'navigate', payload: '/documents/editor', icon: 'File' }] }
+    },
+  },
+
+  // SETTINGS / CONFIG / SETUP
+  {
+    keywords: ['setting', 'settings', 'config', 'configuration', 'setup', 'customize', 'preferences', 'account settings'],
+    handler: () => {
+      return { type: 'navigation', text: 'Opening settings...', confidence: 0.9, actions: [{ label: 'View Settings', type: 'navigate', payload: '/settings', icon: 'Settings' }] }
+    },
+  },
+
+  // APPROVAL / PENDING / ACTION REQUIRED
+  {
+    keywords: ['approval', 'approvals', 'approve', 'reject', 'awaiting', 'needs my attention', 'action required', 'todo', 'to do', 'tasks'],
+    handler: (store) => {
+      const pendingLeave = store.leaveRequests?.filter((l: any) => l.status === 'pending')?.length || 0
+      const pendingExpense = store.expenseReports?.filter((e: any) => e.status === 'pending' || e.status === 'submitted')?.length || 0
+      const total = pendingLeave + pendingExpense
+      return { type: 'answer', text: `${total} item(s) pending your approval:\n  ${pendingLeave} leave request(s)\n  ${pendingExpense} expense report(s)`, confidence: 0.9, actions: [
+        { label: 'View Leave', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' },
+        { label: 'View Expenses', type: 'navigate', payload: '/expense', icon: 'Receipt' },
+      ] }
+    },
+  },
+
+  // GREETINGS / THANKS
+  {
+    keywords: ['thank', 'thanks', 'thank you', 'cheers', 'awesome', 'perfect', 'bye', 'goodbye'],
+    handler: () => {
+      return { type: 'answer', text: "You're welcome! Let me know if you need anything else.", confidence: 1.0 }
+    },
+  },
+]
+
 // ---- Proactive Insights ----
 
 export function getProactiveInsights(store: any): AssistantResponse[] {
@@ -851,10 +1250,34 @@ export function processAssistantQuery(query: string, store: any): AssistantRespo
     }
   }
 
+  // ---- Keyword-based fuzzy matching (catches what regex misses) ----
+  for (const kh of KEYWORD_HANDLERS) {
+    const hasKeyword = kh.keywords.some(k => lower.includes(k))
+    const hasExclude = kh.excludeKeywords?.some(k => lower.includes(k))
+    if (hasKeyword && !hasExclude) {
+      return kh.handler(store, trimmed)
+    }
+  }
+
+  // ---- Smart fallback: try to match any employee name ----
+  const allNames = (store.employees || []).map((e: any) => employeeName(e).toLowerCase())
+  const matchedName = allNames.find((name: string) => name.split(' ').some((part: string) => lower.includes(part) && part.length > 2))
+  if (matchedName) {
+    const emp = store.employees.find((e: any) => employeeName(e).toLowerCase() === matchedName)
+    if (emp) {
+      return {
+        type: 'answer',
+        text: `${employeeName(emp)} — ${emp?.job_title || 'Employee'}${emp?.department_id ? ` in ${store.departments?.find((d: any) => d.id === emp.department_id)?.name || ''}` : ''}. ${emp?.country || ''}.`,
+        confidence: 0.7,
+        actions: [{ label: 'View Profile', type: 'navigate', payload: '/people', icon: 'User' }],
+      }
+    }
+  }
+
   // Fallback
   return {
     type: 'answer',
-    text: `I'm not sure how to answer that. Try asking:\n  "How many employees do we have?"\n  "Who's on leave today?"\n  "What's our turnover rate?"\n  "Show pending approvals"\n  "Create a job posting for Senior Analyst"\n  "Headcount by department"`,
+    text: `I'm not sure how to answer that. Try asking:\n  "How many employees do we have?"\n  "Who's on leave today?"\n  "What's our payroll cost?"\n  "Show pending approvals"\n  "Create a job posting for Senior Analyst"\n  "Headcount by department"\n  "My leave balance"\n  "Open positions"`,
     confidence: 0.3,
   }
 }
