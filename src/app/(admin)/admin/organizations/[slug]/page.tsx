@@ -7,7 +7,7 @@ import { useAdmin } from '@/lib/admin-store'
 import type { AdminOrgEmployee } from '@/lib/admin-store'
 import {
   ArrowLeft, Building2, Users, Globe, Briefcase, LogIn, Search,
-  Shield, UserCheck, User as UserIcon,
+  Shield, UserCheck, User as UserIcon, Mail, RotateCw,
 } from 'lucide-react'
 
 const roleIcons: Record<string, React.ReactNode> = {
@@ -34,6 +34,39 @@ export default function OrgDetailPage() {
   const [employees, setEmployees] = useState<AdminOrgEmployee[]>([])
   const [search, setSearch] = useState('')
   const [impersonating, setImpersonating] = useState<string | null>(null)
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+  const [resendResult, setResendResult] = useState<{ empId: string; ok: boolean; message: string } | null>(null)
+
+  const handleResendWelcomeEmail = async (emp: AdminOrgEmployee) => {
+    if (!org) return
+    setResendingEmail(emp.id)
+    setResendResult(null)
+    try {
+      const res = await fetch('/api/admin/organizations/resend-welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: emp.id,
+          orgId: org.id,
+          orgName: org.name,
+          email: emp.profile.email,
+          fullName: emp.profile.full_name,
+        }),
+      })
+      const data = await res.json()
+      setResendResult({
+        empId: emp.id,
+        ok: res.ok && data.ok,
+        message: res.ok && data.ok ? 'Welcome email resent' : (data.error || 'Failed to send'),
+      })
+    } catch {
+      setResendResult({ empId: emp.id, ok: false, message: 'Network error' })
+    } finally {
+      setResendingEmail(null)
+      // Auto-clear result after 4 seconds
+      setTimeout(() => setResendResult(null), 4000)
+    }
+  }
 
   useEffect(() => {
     if (organizations.length === 0) {
@@ -157,7 +190,7 @@ export default function OrgDetailPage() {
               <th className="text-left px-6 py-3 text-xs font-semibold text-t3 uppercase tracking-wider">Title</th>
               <th className="text-left px-6 py-3 text-xs font-semibold text-t3 uppercase tracking-wider">Country</th>
               <th className="text-center px-6 py-3 text-xs font-semibold text-t3 uppercase tracking-wider">Role</th>
-              <th className="text-right px-6 py-3 text-xs font-semibold text-t3 uppercase tracking-wider">Impersonate</th>
+              <th className="text-center px-6 py-3 text-xs font-semibold text-t3 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -191,15 +224,31 @@ export default function OrgDetailPage() {
                         {emp.role}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-right">
-                      <button
-                        onClick={() => handleImpersonate(emp)}
-                        disabled={impersonating === emp.id}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-700 disabled:text-amber-300 transition-colors"
-                      >
-                        <LogIn size={14} />
-                        {impersonating === emp.id ? 'Logging in...' : 'Login as'}
-                      </button>
+                    <td className="px-6 py-3 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleResendWelcomeEmail(emp)}
+                          disabled={resendingEmail === emp.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-blue-300 transition-colors"
+                          title="Resend welcome email with new temporary password"
+                        >
+                          {resendingEmail === emp.id ? <RotateCw size={13} className="animate-spin" /> : <Mail size={13} />}
+                          <span className="hidden sm:inline">{resendingEmail === emp.id ? 'Sending...' : 'Resend'}</span>
+                        </button>
+                        {resendResult?.empId === emp.id && (
+                          <span className={`text-xs ${resendResult.ok ? 'text-green-600' : 'text-red-500'}`}>
+                            {resendResult.message}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleImpersonate(emp)}
+                          disabled={impersonating === emp.id}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 disabled:text-amber-300 transition-colors"
+                        >
+                          <LogIn size={14} />
+                          <span className="hidden sm:inline">{impersonating === emp.id ? 'Logging in...' : 'Login as'}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

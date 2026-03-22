@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Building2, Plus, Trash2, Globe, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Building2, Plus, Trash2, Globe, ChevronDown, CheckCircle2, UserPlus, Mail } from 'lucide-react'
 
 const INDUSTRIES = [
   'Banking & Financial Services', 'Consulting & Professional Services', 'Technology',
@@ -115,6 +115,27 @@ export default function CreateOrganizationPage() {
   const [structureType, setStructureType] = useState<'single' | 'multi_entity'>('single')
   const [entities, setEntities] = useState<EntityEntry[]>([createEmptyEntity()])
 
+  // Company administrator
+  const [adminUser, setAdminUser] = useState({
+    fullName: '',
+    email: '',
+    jobTitle: 'Administrator',
+    sendWelcomeEmail: true,
+    requirePasswordChange: true,
+    autoOnboarding: true,
+  })
+
+  // Post-creation success state
+  const [creationResult, setCreationResult] = useState<{
+    success: boolean
+    orgName: string
+    orgId: string
+    orgSlug: string
+    adminEmail: string
+    plan: string
+    welcomeEmailSent: boolean
+  } | null>(null)
+
   // Access control
   const [crossEntityAnalytics, setCrossEntityAnalytics] = useState(true)
   const [crossEntityUserAssignment, setCrossEntityUserAssignment] = useState(true)
@@ -176,6 +197,18 @@ export default function CreateOrganizationPage() {
         }
       }
 
+      // Include admin user if email is provided
+      if (adminUser.email.trim()) {
+        payload.adminUser = {
+          fullName: adminUser.fullName,
+          email: adminUser.email,
+          jobTitle: adminUser.jobTitle || 'Administrator',
+          sendWelcomeEmail: adminUser.sendWelcomeEmail,
+          requirePasswordChange: adminUser.requirePasswordChange,
+          autoOnboarding: adminUser.autoOnboarding,
+        }
+      }
+
       const res = await fetch('/api/admin/organizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,12 +219,142 @@ export default function CreateOrganizationPage() {
         setError(data.error || 'Failed to create organization')
         return
       }
-      router.push('/admin/organizations')
+
+      // Show success view instead of redirecting
+      setCreationResult({
+        success: true,
+        orgName: name,
+        orgId: data.organization?.id || '',
+        orgSlug: slug,
+        adminEmail: adminUser.email.trim() || '',
+        plan,
+        welcomeEmailSent: data.welcomeEmailSent ?? false,
+      })
     } catch {
       setError('Network error -- please try again')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Success view after creation
+  if (creationResult) {
+    return (
+      <div className="max-w-2xl space-y-6">
+        <div className="bg-white rounded-xl border border-border p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={32} className="text-green-600" />
+          </div>
+          <h1 className="text-2xl font-semibold text-t1 mb-2">Organization Created Successfully!</h1>
+          <p className="text-sm text-t3">Everything is set up and ready to go.</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-t1 mb-3">Summary</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-t3">Company</p>
+              <p className="font-medium text-t1">{creationResult.orgName}</p>
+            </div>
+            <div>
+              <p className="text-t3">Plan</p>
+              <p className="font-medium text-t1 capitalize">{creationResult.plan}</p>
+            </div>
+            {creationResult.adminEmail && (
+              <div className="col-span-2">
+                <p className="text-t3">Admin</p>
+                <p className="font-medium text-t1">{creationResult.adminEmail}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <h3 className="text-sm font-semibold text-t1 mb-3">What happens next</h3>
+            <ol className="space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-t2">Organization created in the platform</span>
+              </li>
+              {creationResult.adminEmail && (
+                <>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                    <span className="text-t2">Admin account created for {creationResult.adminEmail}</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    {creationResult.welcomeEmailSent ? (
+                      <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                    ) : (
+                      <Mail size={16} className="text-amber-500 flex-shrink-0" />
+                    )}
+                    <span className="text-t2">
+                      {creationResult.welcomeEmailSent
+                        ? 'Welcome email sent with login credentials'
+                        : 'Welcome email skipped (no email provider configured)'}
+                    </span>
+                  </li>
+                </>
+              )}
+              <li className="flex items-center gap-2 text-t3">
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-xs font-bold">&#8594;</span>
+                <span>Admin logs in and completes the onboarding wizard</span>
+              </li>
+              <li className="flex items-center gap-2 text-t3">
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-xs font-bold">&#8594;</span>
+                <span>Admin invites their team and imports employees</span>
+              </li>
+              <li className="flex items-center gap-2 text-t3">
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-xs font-bold">&#8594;</span>
+                <span>Company is live on Tempo</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {creationResult.orgSlug && (
+            <Link
+              href={`/admin/organizations/${creationResult.orgSlug}`}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              <Building2 size={16} />
+              View Organization
+            </Link>
+          )}
+          <button
+            onClick={() => {
+              setCreationResult(null)
+              setName('')
+              setSlug('')
+              setIndustry('')
+              setCountry('')
+              setPlan('starter')
+              setSize('')
+              setStructureType('single')
+              setEntities([createEmptyEntity()])
+              setAdminUser({
+                fullName: '',
+                email: '',
+                jobTitle: 'Administrator',
+                sendWelcomeEmail: true,
+                requirePasswordChange: true,
+                autoOnboarding: true,
+              })
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 border border-border hover:bg-surface rounded-lg text-sm font-medium text-t2 transition-colors"
+          >
+            <Plus size={16} />
+            Create Another
+          </button>
+          <Link
+            href="/admin/organizations"
+            className="px-4 py-2.5 text-sm text-t3 hover:text-t1 transition-colors"
+          >
+            Back to Organizations
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -497,6 +660,94 @@ export default function CreateOrganizationPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Company Administrator */}
+        <div className="bg-white rounded-xl border border-border p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <UserPlus size={18} className="text-t2" />
+            <h2 className="text-sm font-semibold text-t1">Company Administrator</h2>
+          </div>
+          <p className="text-xs text-t3 -mt-2">
+            Set up the first admin user for this organization.
+            They will receive a welcome email with login instructions.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Full Name *</label>
+              <input
+                type="text"
+                value={adminUser.fullName}
+                onChange={(e) => setAdminUser(prev => ({ ...prev, fullName: e.target.value }))}
+                placeholder="Kwame Asante"
+                required={!!adminUser.email}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Email *</label>
+              <input
+                type="email"
+                value={adminUser.email}
+                onChange={(e) => setAdminUser(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="kwame@acme.com"
+                required={!!adminUser.fullName}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Job Title</label>
+            <input
+              type="text"
+              value={adminUser.jobTitle}
+              onChange={(e) => setAdminUser(prev => ({ ...prev, jobTitle: e.target.value }))}
+              placeholder="Administrator"
+              className={`${inputClass} max-w-xs`}
+            />
+            <p className="text-xs text-t3 mt-1">Defaults to &quot;Administrator&quot; if left empty</p>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={adminUser.sendWelcomeEmail}
+                onChange={(e) => setAdminUser(prev => ({ ...prev, sendWelcomeEmail: e.target.checked }))}
+                className="mt-0.5 accent-amber-500 w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium text-t1 group-hover:text-amber-700 transition-colors">Send welcome email with temporary password</p>
+                <p className="text-xs text-t3 mt-0.5">The admin will receive an email with their login credentials</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={adminUser.requirePasswordChange}
+                onChange={(e) => setAdminUser(prev => ({ ...prev, requirePasswordChange: e.target.checked }))}
+                className="mt-0.5 accent-amber-500 w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium text-t1 group-hover:text-amber-700 transition-colors">Require password change on first login</p>
+                <p className="text-xs text-t3 mt-0.5">The temporary password must be changed before accessing the platform</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={adminUser.autoOnboarding}
+                onChange={(e) => setAdminUser(prev => ({ ...prev, autoOnboarding: e.target.checked }))}
+                className="mt-0.5 accent-amber-500 w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium text-t1 group-hover:text-amber-700 transition-colors">Auto-redirect to onboarding wizard on first login</p>
+                <p className="text-xs text-t3 mt-0.5">Guides the admin through initial organization setup</p>
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* Submit */}
