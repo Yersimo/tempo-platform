@@ -17,7 +17,8 @@ import {
   CheckCircle, XCircle, RefreshCw, Loader2, AlertCircle, Wifi, WifiOff,
   CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle,
   Download, FileText, BarChart3, Activity, ArrowUpRight, Receipt,
-  TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save
+  TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save,
+  Upload, RotateCcw, Eye
 } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -123,6 +124,104 @@ export default function SettingsPage() {
   const [deptForm, setDeptForm] = useState({ name: '', parent_id: null as string | null, head_id: '' })
   const [auditSearch, setAuditSearch] = useState('')
   const [notifPrefs, setNotifPrefs] = useState<Record<string, string>>({})
+
+  // Branding state
+  const [branding, setBranding] = useState({
+    logoUrl: '',
+    faviconUrl: '',
+    primaryColor: '#ea580c',
+    secondaryColor: '#1a1a2e',
+    sidebarTheme: 'dark' as 'dark' | 'light' | 'brand',
+    loginWelcomeMessage: '',
+    loginBackground: 'gradient' as 'gradient' | 'solid' | 'custom',
+    loginBackgroundUrl: '',
+    showLoginLogo: true,
+    showPoweredBy: true,
+    emailHeaderColor: '#ea580c',
+    emailFooterText: '',
+    includeLogoInEmails: true,
+  })
+
+  // Load saved branding on mount
+  useEffect(() => {
+    if (org.id) {
+      try {
+        const saved = localStorage.getItem(`tempo_branding_${org.id}`)
+        if (saved) setBranding(JSON.parse(saved))
+      } catch { /* ignore */ }
+    }
+  }, [org.id])
+
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('File too large. Max 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setBranding(prev => ({ ...prev, logoUrl: ev.target?.result as string }))
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }, [addToast])
+
+  const handleFaviconUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('File too large. Max 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setBranding(prev => ({ ...prev, faviconUrl: ev.target?.result as string }))
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }, [addToast])
+
+  const handleLoginBgUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('File too large. Max 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setBranding(prev => ({ ...prev, loginBackgroundUrl: ev.target?.result as string }))
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }, [addToast])
+
+  const saveBranding = useCallback(() => {
+    localStorage.setItem(`tempo_branding_${org.id}`, JSON.stringify(branding))
+    addToast('Branding saved — your branding changes have been applied.')
+  }, [org.id, branding, addToast])
+
+  const resetBranding = useCallback(() => {
+    const defaults = {
+      logoUrl: '',
+      faviconUrl: '',
+      primaryColor: '#ea580c',
+      secondaryColor: '#1a1a2e',
+      sidebarTheme: 'dark' as const,
+      loginWelcomeMessage: '',
+      loginBackground: 'gradient' as const,
+      loginBackgroundUrl: '',
+      showLoginLogo: true,
+      showPoweredBy: true,
+      emailHeaderColor: '#ea580c',
+      emailFooterText: '',
+      includeLogoInEmails: true,
+    }
+    setBranding(defaults)
+    localStorage.removeItem(`tempo_branding_${org.id}`)
+    addToast('Branding reset to defaults.')
+  }, [org.id, addToast])
 
   // Integration state
   const [connectedIntegrations, setConnectedIntegrations] = useState<ConnectedIntegration[]>([])
@@ -712,17 +811,300 @@ export default function SettingsPage() {
           </Card>
 
           <Card>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-tempo-50 flex items-center justify-center text-tempo-600"><Palette size={20} /></div>
-              <div><h3 className="text-sm font-semibold text-t1">{t('branding')}</h3><p className="text-xs text-t3">{t('customizeAppearance')}</p></div>
+              <div><h3 className="text-sm font-semibold text-t1">Company Branding</h3><p className="text-xs text-t3">Customize your organization&apos;s visual identity</p></div>
             </div>
-            <div className="flex justify-end mb-2">
-              <Button variant="outline" size="sm" onClick={() => addToast('Branding editor will open in settings')}>Edit</Button>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center"><span className="text-xs text-t2">{t('primaryColor')}</span><div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-tempo-600" /><span className="text-xs text-t1 font-mono">#ea580c</span></div></div>
-              <div className="flex justify-between items-center"><span className="text-xs text-t2">{t('logo')}</span><span className="text-xs text-t1">{t('logoValue')}</span></div>
-              <div className="flex justify-between items-center"><span className="text-xs text-t2">{t('theme')}</span><Badge>{t('themeLight')}</Badge></div>
+
+            <div className="space-y-8">
+              {/* Logo Upload */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Logo</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-48 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-canvas overflow-hidden">
+                    {branding.logoUrl ? (
+                      <img src={branding.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <span className="text-t3 text-sm">No logo uploaded</span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-tempo-500 text-white text-sm font-medium hover:bg-tempo-600 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      Upload Logo
+                      <input type="file" accept="image/png,image/svg+xml,image/jpeg" className="hidden" onChange={handleLogoUpload} />
+                    </label>
+                    {branding.logoUrl && (
+                      <button onClick={() => setBranding(prev => ({ ...prev, logoUrl: '' }))} className="ml-2 text-sm text-red-500 hover:underline">
+                        Remove
+                      </button>
+                    )}
+                    <p className="text-xs text-t3 mt-1">PNG, SVG, or JPG. Max 2MB. Recommended: 200x60px</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Favicon Upload */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Favicon</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-canvas overflow-hidden">
+                    {branding.faviconUrl ? (
+                      <img src={branding.faviconUrl} alt="Favicon" className="w-8 h-8 object-contain" />
+                    ) : (
+                      <span className="text-t3 text-[10px]">32px</span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-canvas transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload
+                      <input type="file" accept="image/png" className="hidden" onChange={handleFaviconUpload} />
+                    </label>
+                    {branding.faviconUrl && (
+                      <button onClick={() => setBranding(prev => ({ ...prev, faviconUrl: '' }))} className="ml-2 text-sm text-red-500 hover:underline">
+                        Remove
+                      </button>
+                    )}
+                    <p className="text-xs text-t3 mt-1">32x32px PNG</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Brand Color */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Primary Brand Color</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={branding.primaryColor}
+                    onChange={(e) => setBranding(prev => ({ ...prev, primaryColor: e.target.value }))}
+                    className="w-10 h-10 rounded-lg cursor-pointer border border-border bg-transparent p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={branding.primaryColor}
+                    onChange={(e) => setBranding(prev => ({ ...prev, primaryColor: e.target.value }))}
+                    className="font-mono text-sm px-3 py-2 rounded-lg border border-border bg-card w-28"
+                  />
+                  <span className="text-xs text-t3">Used for buttons, links, accents</span>
+                </div>
+              </div>
+
+              {/* Secondary Color */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Secondary Color</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={branding.secondaryColor}
+                    onChange={(e) => setBranding(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                    className="w-10 h-10 rounded-lg cursor-pointer border border-border bg-transparent p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={branding.secondaryColor}
+                    onChange={(e) => setBranding(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                    className="font-mono text-sm px-3 py-2 rounded-lg border border-border bg-card w-28"
+                  />
+                  <span className="text-xs text-t3">Used for headers, sidebar</span>
+                </div>
+              </div>
+
+              {/* Sidebar Theme */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Sidebar Theme</label>
+                <div className="flex gap-4">
+                  {(['dark', 'light', 'brand'] as const).map(theme => (
+                    <label key={theme} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sidebarTheme"
+                        checked={branding.sidebarTheme === theme}
+                        onChange={() => setBranding(prev => ({ ...prev, sidebarTheme: theme }))}
+                        className="accent-tempo-500"
+                      />
+                      <span className="text-sm text-t1 capitalize">{theme === 'brand' ? 'Match brand color' : theme}{theme === 'dark' ? ' (default)' : ''}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Login Page Customization */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Login Page Customization</label>
+                <div className="rounded-xl border border-border p-4 space-y-4 bg-canvas/50">
+                  <div>
+                    <label className="text-xs text-t2 mb-1.5 block">Welcome Message</label>
+                    <input
+                      type="text"
+                      value={branding.loginWelcomeMessage}
+                      onChange={(e) => setBranding(prev => ({ ...prev, loginWelcomeMessage: e.target.value }))}
+                      placeholder={`Welcome to ${org.name}`}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-t2 mb-1.5 block">Login Background</label>
+                    <div className="flex flex-col gap-2">
+                      {(['gradient', 'solid', 'custom'] as const).map(bg => (
+                        <label key={bg} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="loginBackground"
+                            checked={branding.loginBackground === bg}
+                            onChange={() => setBranding(prev => ({ ...prev, loginBackground: bg }))}
+                            className="accent-tempo-500"
+                          />
+                          <span className="text-sm text-t1">
+                            {bg === 'gradient' ? 'Default gradient' : bg === 'solid' ? 'Solid brand color' : 'Custom image'}
+                          </span>
+                          {bg === 'custom' && branding.loginBackground === 'custom' && (
+                            <label className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-xs hover:bg-canvas transition-colors ml-2">
+                              <Upload className="w-3 h-3" />
+                              Upload
+                              <input type="file" accept="image/*" className="hidden" onChange={handleLoginBgUpload} />
+                            </label>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={branding.showLoginLogo}
+                        onChange={(e) => setBranding(prev => ({ ...prev, showLoginLogo: e.target.checked }))}
+                        className="accent-tempo-500 rounded"
+                      />
+                      <span className="text-sm text-t1">Show company logo on login</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={branding.showPoweredBy}
+                        onChange={(e) => setBranding(prev => ({ ...prev, showPoweredBy: e.target.checked }))}
+                        className="accent-tempo-500 rounded"
+                      />
+                      <span className="text-sm text-t1">Show &quot;Powered by Tempo&quot;</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Template Branding */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 block">Email Template Branding</label>
+                <div className="rounded-xl border border-border p-4 space-y-4 bg-canvas/50">
+                  <div>
+                    <label className="text-xs text-t2 mb-1.5 block">Email Header Color</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={branding.emailHeaderColor}
+                        onChange={(e) => setBranding(prev => ({ ...prev, emailHeaderColor: e.target.value }))}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-border bg-transparent p-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={branding.emailHeaderColor}
+                        onChange={(e) => setBranding(prev => ({ ...prev, emailHeaderColor: e.target.value }))}
+                        className="font-mono text-sm px-3 py-2 rounded-lg border border-border bg-card w-28"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-t2 mb-1.5 block">Email Footer Text</label>
+                    <textarea
+                      value={branding.emailFooterText}
+                      onChange={(e) => setBranding(prev => ({ ...prev, emailFooterText: e.target.value }))}
+                      placeholder={`\u00a9 2026 ${org.name}. All rights reserved.`}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm resize-none"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={branding.includeLogoInEmails}
+                      onChange={(e) => setBranding(prev => ({ ...prev, includeLogoInEmails: e.target.checked }))}
+                      className="accent-tempo-500 rounded"
+                    />
+                    <span className="text-sm text-t1">Include company logo in emails</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Live Preview */}
+              <div>
+                <label className="text-xs font-semibold text-t1 mb-3 flex items-center gap-2">
+                  <Eye className="w-3.5 h-3.5" />
+                  Preview
+                </label>
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="text-xs font-medium text-t3 px-3 py-1.5 bg-canvas border-b border-border">Live Preview</div>
+                  <div className="flex h-40">
+                    {/* Sidebar preview */}
+                    <div
+                      className="w-16 transition-colors"
+                      style={{
+                        backgroundColor:
+                          branding.sidebarTheme === 'dark' ? branding.secondaryColor :
+                          branding.sidebarTheme === 'brand' ? branding.primaryColor :
+                          '#ffffff',
+                      }}
+                    >
+                      <div className="p-2 flex flex-col items-center gap-2 pt-3">
+                        {branding.logoUrl ? (
+                          <img src={branding.logoUrl} alt="" className="w-8 h-8 rounded object-contain" />
+                        ) : (
+                          <div className="w-8 h-8 rounded" style={{ backgroundColor: branding.primaryColor }} />
+                        )}
+                        {[1,2,3,4].map(i => (
+                          <div
+                            key={i}
+                            className="w-8 h-2 rounded opacity-30"
+                            style={{ backgroundColor: branding.sidebarTheme === 'light' ? '#000000' : '#ffffff' }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {/* Content preview */}
+                    <div className="flex-1 bg-canvas p-3">
+                      <div className="h-3 w-24 rounded mb-3" style={{ backgroundColor: branding.secondaryColor }} />
+                      <div className="flex gap-2 mb-3">
+                        <div
+                          className="h-8 w-20 rounded text-white text-[8px] flex items-center justify-center font-medium"
+                          style={{ backgroundColor: branding.primaryColor }}
+                        >
+                          Button
+                        </div>
+                        <div className="h-8 w-20 rounded border border-border text-[8px] flex items-center justify-center">
+                          Outline
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        {[1,2,3].map(i => (
+                          <div key={i} className="h-2 rounded bg-border" style={{ width: `${100 - i * 20}%` }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2 border-t border-border">
+                <Button onClick={saveBranding}>
+                  <Save className="w-4 h-4 mr-1.5" />
+                  Save Branding
+                </Button>
+                <Button variant="outline" onClick={resetBranding}>
+                  <RotateCcw className="w-4 h-4 mr-1.5" />
+                  Reset to Default
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
