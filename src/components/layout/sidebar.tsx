@@ -23,6 +23,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandPalette } from '@/components/search'
+import { EntitySwitcher } from '@/components/platform/entity-switcher'
 
 const SIDEBAR_COLLAPSED_KEY = 'tempo_sidebar_collapsed'
 
@@ -315,6 +316,9 @@ export function Sidebar() {
             <CommandPalette />
           </div>
         )}
+
+        {/* Entity Switcher (multi-entity orgs) */}
+        <EntitySwitcher collapsed={collapsed} />
 
         {/* Navigation */}
         <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-2 pb-4">

@@ -61,6 +61,15 @@ export const organizations = pgTable('organizations', {
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   enabledModules: jsonb('enabled_modules'), // string[] of module ids
+  // Multi-entity support
+  parentOrgId: uuid('parent_org_id'), // null = top-level org, set = subsidiary/branch
+  entityType: varchar('entity_type', { length: 50 }), // subsidiary, branch, joint_venture, rep_office, eor
+  registrationNumber: varchar('registration_number', { length: 100 }),
+  currency: varchar('currency', { length: 10 }),
+  crossEntityAnalytics: boolean('cross_entity_analytics').default(false),
+  crossEntityUserAssignment: boolean('cross_entity_user_assignment').default(false),
+  financialConsolidation: boolean('financial_consolidation').default(false),
+  sharedEmployeeDirectory: boolean('shared_employee_directory').default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -4297,6 +4306,16 @@ export const entityGroupMembers = pgTable('entity_group_members', {
   ownershipPercent: integer('ownership_percent').notNull().default(100),
   consolidationMethod: text('consolidation_method').notNull().default('full'),
   isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const userEntityAssignments = pgTable('user_entity_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull(), // references employees.id
+  orgId: uuid('org_id').notNull(), // the entity org they're assigned to
+  role: varchar('role', { length: 100 }).notNull(), // role within this entity
+  accessLevel: varchar('access_level', { length: 50 }).notNull().default('full'), // full, read_only, limited
+  isPrimary: boolean('is_primary').default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

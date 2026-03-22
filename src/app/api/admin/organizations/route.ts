@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
       country: schema.organizations.country,
       isActive: schema.organizations.isActive,
       createdAt: schema.organizations.createdAt,
+      parentOrgId: schema.organizations.parentOrgId,
+      entityType: schema.organizations.entityType,
     }).from(schema.organizations)
 
     // Get employee counts per org
@@ -87,7 +89,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/admin/organizations — create a new organization
+function slugifyName(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+// POST /api/admin/organizations — create a new organization (single or multi-entity)
 export async function POST(request: NextRequest) {
   const adminRole = request.headers.get('x-admin-role')
   if (adminRole !== 'super_admin') {
@@ -96,22 +105,106 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { name, slug, industry, country, plan, size } = body
+    const { name, slug, industry, country, plan, size, structureType, entities, accessControl } = body
 
     if (!name || !slug) {
       return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 })
     }
 
-    const [org] = await db.insert(schema.organizations).values({
-      name,
-      slug,
-      industry: industry || null,
-      country: country || null,
-      plan: plan || 'free',
-      size: size || null,
-    }).returning()
+    if (structureType === 'multi_entity') {
+      // --- Multi-Entity Creation ---
+      // 1. Create parent organization
+      const [parentOrg] = await db.insert(schema.organizations).values({
+        name,
+        slug,
+        industry: industry || null,
+        country: country || null,
+        plan: plan || 'free',
+        size: size || null,
+        crossEntityAnalytics: accessControl?.crossEntityAnalytics ?? false,
+        crossEntityUserAssignment: accessControl?.crossEntityUserAssignment ?? false,
+        financialConsolidation: accessControl?.financialConsolidation ?? false,
+        sharedEmployeeDirectory: accessControl?.sharedEmployeeDirectory ?? false,
+      }).returning()
 
-    return NextResponse.json({ ok: true, organization: org })
+      // 2. Create entity group for consolidation
+      const consolidationCurrency = country
+        ? getCurrencyForCountry(country) || 'USD'
+        : 'USD'
+
+      const [entityGroup] = await db.insert(schema.entityGroups).values({
+        name: `${name} Group`,
+        description: `Multi-entity group for ${name}`,
+        parentOrgId: parentOrg.id,
+        consolidationCurrency,
+      }).returning()
+
+      // 3. Add parent as first member of entity group
+      await db.insert(schema.entityGroupMembers).values({
+        groupId: entityGroup.id,
+        orgId: parentOrg.id,
+        entityName: name,
+        entityType: 'parent',
+        country: country || 'Unknown',
+        localCurrency: consolidationCurrency,
+        ownershipPercent: 100,
+        consolidationMethod: 'full',
+      })
+
+      // 4. Create each subsidiary as a linked entity
+      const childOrgs: Array<{ id: string; name: string; country: string }> = []
+      if (Array.isArray(entities)) {
+        for (const entity of entities) {
+          if (!entity.name || !entity.country) continue
+
+          const childSlug = slugifyName(entity.name)
+          const [childOrg] = await db.insert(schema.organizations).values({
+            name: entity.name,
+            slug: `${slug}-${childSlug}`,
+            country: entity.country,
+            currency: entity.currency || null,
+            parentOrgId: parentOrg.id,
+            entityType: entity.type || 'subsidiary',
+            registrationNumber: entity.registrationNumber || null,
+            plan: plan || 'free', // inherit parent plan
+            industry: industry || null,
+          }).returning()
+
+          childOrgs.push({ id: childOrg.id, name: entity.name, country: entity.country })
+
+          // Link in entity group for consolidation
+          await db.insert(schema.entityGroupMembers).values({
+            groupId: entityGroup.id,
+            orgId: childOrg.id,
+            entityName: entity.name,
+            entityType: entity.type || 'subsidiary',
+            country: entity.country,
+            localCurrency: entity.currency || 'USD',
+            ownershipPercent: 100,
+            consolidationMethod: entity.type === 'joint_venture' ? 'proportional' : 'full',
+          })
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        organization: parentOrg,
+        entityGroup,
+        childOrganizations: childOrgs,
+      })
+    } else {
+      // --- Single Entity Creation (original behavior) ---
+      const [org] = await db.insert(schema.organizations).values({
+        name,
+        slug,
+        industry: industry || null,
+        country: country || null,
+        plan: plan || 'free',
+        size: size || null,
+      }).returning()
+
+      return NextResponse.json({ ok: true, organization: org })
+    }
   } catch (error) {
     console.error('Create org error:', error)
     return NextResponse.json({ error: 'Failed to create organization' }, { status: 500 })
@@ -158,4 +251,19 @@ export async function PATCH(request: NextRequest) {
     console.error('Update org error:', error)
     return NextResponse.json({ error: 'Failed to update organization' }, { status: 500 })
   }
+}
+
+// Simple country-to-currency mapping for the API side
+const COUNTRY_CURRENCIES: Record<string, string> = {
+  'Ghana': 'GHS', 'Nigeria': 'NGN', 'Kenya': 'KES', 'South Africa': 'ZAR',
+  'Tanzania': 'TZS', 'Rwanda': 'RWF', 'Morocco': 'MAD', 'Egypt': 'EGP',
+  'United States': 'USD', 'Canada': 'CAD', 'Mexico': 'MXN', 'Brazil': 'BRL',
+  'United Kingdom': 'GBP', 'Germany': 'EUR', 'France': 'EUR', 'Netherlands': 'EUR',
+  'Spain': 'EUR', 'Italy': 'EUR', 'Ireland': 'EUR', 'Switzerland': 'CHF',
+  'India': 'INR', 'Singapore': 'SGD', 'UAE': 'AED', 'Saudi Arabia': 'SAR',
+  'Japan': 'JPY', 'China': 'CNY', 'Australia': 'AUD', 'New Zealand': 'NZD',
+}
+
+function getCurrencyForCountry(country: string): string | null {
+  return COUNTRY_CURRENCIES[country] || null
 }

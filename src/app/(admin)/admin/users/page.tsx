@@ -5,7 +5,7 @@ import { useAdmin } from '@/lib/admin-store'
 import type { AdminOrgEmployee, AdminOrg } from '@/lib/admin-store'
 import {
   Users, Search, Upload, Download, Shield, Briefcase, UserCheck, User as UserIcon,
-  Building2, LogIn, Filter,
+  Building2, LogIn, Filter, Layers, Plus, X, Globe,
 } from 'lucide-react'
 
 const roleIcons: Record<string, React.ReactNode> = {
@@ -24,6 +24,34 @@ const roleColors: Record<string, string> = {
   employee: 'bg-gray-100 text-gray-600',
 }
 
+interface EntityAssignment {
+  id: string
+  entityId: string
+  entityName: string
+  role: string
+  accessLevel: 'full' | 'read_only' | 'limited'
+}
+
+interface EntityOption {
+  id: string
+  name: string
+  country: string | null
+  entityType: string | null
+  isParent: boolean
+}
+
+const ACCESS_LEVELS = [
+  { value: 'full', label: 'Full Access' },
+  { value: 'read_only', label: 'Read Only' },
+  { value: 'limited', label: 'Limited' },
+]
+
+const ENTITY_ROLES = [
+  'CEO', 'CFO', 'COO', 'CTO', 'VP', 'Director', 'Manager', 'HRBP',
+  'Group CFO', 'Board Observer', 'Country Manager', 'Regional Director',
+  'Employee', 'Contractor', 'Consultant',
+]
+
 export default function UsersPage() {
   const { organizations, fetchOrganizations, getOrgEmployees, impersonateUser } = useAdmin()
   const [search, setSearch] = useState('')
@@ -31,6 +59,10 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState<string>('all')
   const [impersonating, setImpersonating] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [entityAssignUser, setEntityAssignUser] = useState<(AdminOrgEmployee & { orgName: string; orgId: string }) | null>(null)
+  const [entityAssignments, setEntityAssignments] = useState<EntityAssignment[]>([])
+  const [availableEntities, setAvailableEntities] = useState<EntityOption[]>([])
+  const [savingAssignments, setSavingAssignments] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
@@ -71,6 +103,90 @@ export default function UsersPage() {
     } else {
       setImpersonating(null)
       alert(result.error || 'Impersonation failed')
+    }
+  }
+
+  const openEntityAssignment = async (emp: AdminOrgEmployee & { orgName: string; orgId: string }) => {
+    setEntityAssignUser(emp)
+    // Fetch available entities for this org's parent group
+    try {
+      const res = await fetch(`/api/admin/organizations/entities?parentId=${emp.orgId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.entities && data.entities.length > 0) {
+          setAvailableEntities(data.entities)
+          // Set default assignment to current entity
+          setEntityAssignments([{
+            id: crypto.randomUUID(),
+            entityId: emp.orgId,
+            entityName: emp.orgName,
+            role: emp.role || 'Employee',
+            accessLevel: 'full',
+          }])
+          return
+        }
+      }
+    } catch {
+      // fallback
+    }
+    // Not a multi-entity org
+    setAvailableEntities([])
+    setEntityAssignments([{
+      id: crypto.randomUUID(),
+      entityId: emp.orgId,
+      entityName: emp.orgName,
+      role: emp.role || 'Employee',
+      accessLevel: 'full',
+    }])
+  }
+
+  const addEntityAssignment = () => {
+    setEntityAssignments(prev => [...prev, {
+      id: crypto.randomUUID(),
+      entityId: '',
+      entityName: '',
+      role: 'Employee',
+      accessLevel: 'full',
+    }])
+  }
+
+  const updateEntityAssignment = (id: string, field: keyof EntityAssignment, value: string) => {
+    setEntityAssignments(prev => prev.map(a => {
+      if (a.id !== id) return a
+      const updated = { ...a, [field]: value }
+      if (field === 'entityId') {
+        const entity = availableEntities.find(e => e.id === value)
+        if (entity) updated.entityName = entity.name
+      }
+      return updated
+    }))
+  }
+
+  const removeEntityAssignment = (id: string) => {
+    setEntityAssignments(prev => prev.length > 1 ? prev.filter(a => a.id !== id) : prev)
+  }
+
+  const saveEntityAssignments = async () => {
+    if (!entityAssignUser) return
+    setSavingAssignments(true)
+    try {
+      await fetch('/api/admin/organizations/user-entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: entityAssignUser.id,
+          assignments: entityAssignments.filter(a => a.entityId).map(a => ({
+            orgId: a.entityId,
+            role: a.role,
+            accessLevel: a.accessLevel,
+          })),
+        }),
+      })
+      setEntityAssignUser(null)
+    } catch {
+      // silently fail
+    } finally {
+      setSavingAssignments(false)
     }
   }
 
@@ -197,14 +313,24 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-3 text-sm text-t2">{emp.country}</td>
                     <td className="px-6 py-3 text-right">
-                      <button
-                        onClick={() => handleImpersonate(emp)}
-                        disabled={impersonating === emp.id}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-700 disabled:text-amber-300 transition-colors"
-                      >
-                        <LogIn size={14} />
-                        {impersonating === emp.id ? 'Logging in...' : 'Login as'}
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => openEntityAssignment(emp)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                          title="Manage entity assignments"
+                        >
+                          <Layers size={14} />
+                          Entities
+                        </button>
+                        <button
+                          onClick={() => handleImpersonate(emp)}
+                          disabled={impersonating === emp.id}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-700 disabled:text-amber-300 transition-colors"
+                        >
+                          <LogIn size={14} />
+                          {impersonating === emp.id ? 'Logging in...' : 'Login as'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -218,6 +344,142 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Entity Assignment Modal */}
+      {entityAssignUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl border border-border p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-t1">Entity Assignments</h2>
+                <p className="text-sm text-t3 mt-0.5">{entityAssignUser.profile.full_name}</p>
+              </div>
+              <button onClick={() => setEntityAssignUser(null)} className="text-t3 hover:text-t1 transition-colors p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            {availableEntities.length === 0 ? (
+              <div className="text-center py-8 text-sm text-t3">
+                <Globe size={24} className="mx-auto mb-2 text-t3/50" />
+                <p>This user&apos;s organization is not part of a multi-entity group.</p>
+                <p className="text-xs mt-1">Create entities via the organization settings first.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-t3">
+                  Assign {entityAssignUser.profile.full_name} to one or more entities with specific roles.
+                </p>
+
+                {entityAssignments.map((assignment, idx) => (
+                  <div key={assignment.id} className="rounded-lg border border-border p-3 space-y-2 bg-gray-50/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-t3 uppercase tracking-wide">
+                        Assignment {idx + 1}
+                        {idx === 0 && ' (Primary)'}
+                      </span>
+                      {entityAssignments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeEntityAssignment(assignment.id)}
+                          className="text-red-400 hover:text-red-600 transition-colors p-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-t2 mb-1">Entity</label>
+                      <select
+                        value={assignment.entityId}
+                        onChange={(e) => updateEntityAssignment(assignment.id, 'entityId', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                      >
+                        <option value="">Select entity</option>
+                        {availableEntities.map(entity => (
+                          <option key={entity.id} value={entity.id}>
+                            {entity.name}{entity.isParent ? ' (Group)' : ''} - {entity.country || 'No country'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-t2 mb-1">Role</label>
+                        <select
+                          value={assignment.role}
+                          onChange={(e) => updateEntityAssignment(assignment.id, 'role', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                        >
+                          {ENTITY_ROLES.map(r => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-t2 mb-1">Access Level</label>
+                        <select
+                          value={assignment.accessLevel}
+                          onChange={(e) => updateEntityAssignment(assignment.id, 'accessLevel', e.target.value as EntityAssignment['accessLevel'])}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-t1 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                        >
+                          {ACCESS_LEVELS.map(l => (
+                            <option key={l.value} value={l.value}>{l.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addEntityAssignment}
+                  className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                >
+                  <Plus size={14} />
+                  Add Another Entity Assignment
+                </button>
+
+                {/* Preview */}
+                {entityAssignments.filter(a => a.entityId).length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-xs font-semibold text-blue-800 mb-2">Assignment Summary</p>
+                    <div className="space-y-1">
+                      {entityAssignments.filter(a => a.entityId).map(a => (
+                        <div key={a.id} className="flex items-center gap-2 text-xs text-blue-700">
+                          <span className="text-blue-400">{'\u251C\u2500'}</span>
+                          <span className="font-medium">{a.entityName || 'Unknown'}</span>
+                          <span className="text-blue-500">{a.role}</span>
+                          <span className="text-blue-400">({a.accessLevel.replace('_', ' ')})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={saveEntityAssignments}
+                    disabled={savingAssignments || entityAssignments.every(a => !a.entityId)}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    {savingAssignments ? 'Saving...' : 'Save Assignments'}
+                  </button>
+                  <button
+                    onClick={() => setEntityAssignUser(null)}
+                    className="px-4 py-2 text-sm text-t3 hover:text-t1 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
