@@ -5115,6 +5115,26 @@ export const orgSecurityPolicies = pgTable('org_security_policies', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// ============================================================
+// KNOWLEDGE BASE
+// ============================================================
+
+export const knowledgeBaseArticles = pgTable('knowledge_base_articles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  category: text('category').notNull().default('general'),
+  tags: text('tags'),
+  source: text('source'),
+  fileName: text('file_name'),
+  isPublished: boolean('is_published').default(true),
+  viewCount: integer('view_count').default(0),
+  lastUpdatedBy: uuid('last_updated_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export const webhookSubscriptions = pgTable('webhook_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').notNull(),

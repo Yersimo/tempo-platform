@@ -18,7 +18,7 @@ import {
   CreditCard, ExternalLink, Check, Sparkles, Crown, Zap, AlertTriangle,
   Download, FileText, BarChart3, Activity, ArrowUpRight, Receipt,
   TrendingUp, CalendarDays, CircleDot, Minus, Landmark, Plus, Pencil, Trash2, Save,
-  Upload, RotateCcw, Eye
+  Upload, RotateCcw, Eye, BookOpen, Tag, FileUp
 } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -109,7 +109,7 @@ export default function SettingsPage() {
   const ti = useTranslations('integrations')
   const tc = useTranslations('common')
   const searchParams = useSearchParams()
-  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded, invoices: storeInvoices } = useTempo()
+  const { org, employees, departments, auditLog, updateOrg, addDepartment, addToast, getEmployeeName, getDepartmentName, currencyAccounts, addCurrencyAccount, updateCurrencyAccount, deleteCurrencyAccount, taxConfigs, addTaxConfig, updateTaxConfig, countryBenefitConfigs, addCountryBenefitConfig, ensureModulesLoaded, invoices: storeInvoices, knowledgeBaseArticles, addKnowledgeBaseArticle, updateKnowledgeBaseArticle, deleteKnowledgeBaseArticle } = useTempo()
   const defaultCurrency = useOrgCurrency()
   const initialTab = searchParams.get('tab') || 'general'
   const [pageLoading, setPageLoading] = useState(true)
@@ -124,6 +124,14 @@ export default function SettingsPage() {
   const [deptForm, setDeptForm] = useState({ name: '', parent_id: null as string | null, head_id: '' })
   const [auditSearch, setAuditSearch] = useState('')
   const [notifPrefs, setNotifPrefs] = useState<Record<string, string>>({})
+
+  // Knowledge Base state
+  const [kbSearch, setKbSearch] = useState('')
+  const [kbCategoryFilter, setKbCategoryFilter] = useState('all')
+  const [showKBModal, setShowKBModal] = useState(false)
+  const [editingArticle, setEditingArticle] = useState<any>(null)
+  const [kbForm, setKbForm] = useState({ title: '', category: 'general', content: '', tags: '', source: 'manual' as string, fileName: '' })
+  const [showTemplates, setShowTemplates] = useState(false)
 
   // Branding state
   const [branding, setBranding] = useState({
@@ -415,6 +423,13 @@ export default function SettingsPage() {
     }
   }, [initialTab, bankAccountsLoaded, ensureModulesLoaded])
 
+  // Load KB articles on mount if tab is knowledge-base
+  useEffect(() => {
+    if (initialTab === 'knowledge-base') {
+      ensureModulesLoaded?.(['knowledgeBaseArticles'])
+    }
+  }, [initialTab, ensureModulesLoaded])
+
   // Load integrations when tab is activated
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab)
@@ -426,6 +441,9 @@ export default function SettingsPage() {
     }
     if (tab === 'bank-accounts' && !bankAccountsLoaded) {
       ensureModulesLoaded?.(['currencyAccounts']).then(() => setBankAccountsLoaded(true))
+    }
+    if (tab === 'knowledge-base') {
+      ensureModulesLoaded?.(['knowledgeBaseArticles'])
     }
   }, [integrationsLoaded, loadIntegrations, billingLoaded, billingLoading, loadBilling, bankAccountsLoaded, ensureModulesLoaded])
 
@@ -595,6 +613,7 @@ export default function SettingsPage() {
     { id: 'audit', label: t('tabAuditLog'), count: auditLog.length },
     { id: 'security', label: t('tabSecurity') },
     { id: 'country-wizard', label: 'Add Country' },
+    { id: 'knowledge-base', label: 'Knowledge Base' },
   ]
 
   const admins = employees.filter(e => e.role === 'admin' || e.role === 'owner')
@@ -2163,6 +2182,350 @@ export default function SettingsPage() {
           )}
         </div>
       )}
+
+      {/* Knowledge Base Tab */}
+      {activeTab === 'knowledge-base' && (() => {
+        const KB_CATEGORIES = [
+          { value: 'general', label: 'General' },
+          { value: 'policy', label: 'Policy' },
+          { value: 'procedure', label: 'Procedure' },
+          { value: 'handbook', label: 'Handbook' },
+          { value: 'faq', label: 'FAQ' },
+          { value: 'benefit', label: 'Benefits' },
+          { value: 'leave', label: 'Leave' },
+          { value: 'payroll', label: 'Payroll' },
+          { value: 'compliance', label: 'Compliance' },
+          { value: 'it', label: 'IT' },
+          { value: 'security', label: 'Security' },
+          { value: 'onboarding', label: 'Onboarding' },
+          { value: 'custom', label: 'Custom' },
+        ]
+
+        const POLICY_TEMPLATES = [
+          {
+            title: 'Annual Leave Policy',
+            category: 'leave',
+            tags: 'leave, annual, vacation, pto, time off, holiday',
+            content: `Annual Leave Policy\n\n1. Entitlement\nAll full-time employees are entitled to [20] working days of paid annual leave per calendar year.\n\n2. Accrual\nLeave accrues at [1.67] days per month from the date of joining.\n\n3. Carry Forward\nA maximum of [5] unused leave days may be carried forward to the following year. Carried-forward leave must be used by [March 31].\n\n4. Application Process\nLeave requests must be submitted through Tempo at least [5] working days in advance.\nManager approval is required for all leave requests.\n\n5. Public Holidays\nPublic holidays are separate from annual leave and follow the national calendar.\n\n6. Probation Period\nDuring the probation period, employees accrue leave but may only take it with prior manager approval.`
+          },
+          {
+            title: 'Work From Home Policy',
+            category: 'policy',
+            tags: 'wfh, remote, work from home, flexible, hybrid',
+            content: `Work From Home Policy\n\n1. Eligibility\nEmployees who have completed their probation period may request to work from home up to [2] days per week.\n\n2. Core Hours\nAll remote workers must be available between [9:00 AM and 3:00 PM] local time.\n\n3. Equipment\nThe company will provide a laptop for remote work. Employees are responsible for ensuring adequate internet connectivity.\n\n4. Approval\nWFH arrangements must be approved by the employee's direct manager.\n\n5. Communication\nEmployees must be reachable via Tempo Chat and email during core hours.\n\n6. Revocation\nWFH privileges may be revoked if performance issues arise.`
+          },
+          {
+            title: 'Expense Reimbursement Policy',
+            category: 'procedure',
+            tags: 'expense, reimbursement, claim, receipt, travel, meals',
+            content: `Expense Reimbursement Policy\n\n1. Eligible Expenses\n- Business travel (flights, hotels, transport)\n- Client entertainment (pre-approved)\n- Office supplies (pre-approved)\n- Professional development (pre-approved)\n\n2. Limits\n- Domestic flights: Economy class only\n- Hotels: Up to [GHS 500] per night\n- Meals: Up to [GHS 100] per day\n- Client entertainment: Up to [GHS 300] per event (requires VP approval)\n\n3. Receipts\nOriginal receipts are required for all claims over [GHS 50].\nReceipts must be uploaded via Tempo Expense within [30] days.\n\n4. Approval Process\nExpenses under [GHS 500]: Manager approval\nExpenses [GHS 500-2,000]: Director approval\nExpenses over [GHS 2,000]: VP/CFO approval\n\n5. Reimbursement Timeline\nApproved expenses are reimbursed within [14] business days via payroll.`
+          },
+          {
+            title: 'Code of Conduct',
+            category: 'policy',
+            tags: 'conduct, ethics, behavior, integrity, values, misconduct',
+            content: `Code of Conduct\n\n1. Purpose\nThis code establishes the standards of behavior expected of all employees.\n\n2. Core Values\n- Integrity: Act honestly and ethically in all business dealings\n- Respect: Treat all colleagues, clients, and partners with dignity\n- Excellence: Strive for the highest standards of work quality\n- Accountability: Take responsibility for your actions\n\n3. Prohibited Conduct\n- Harassment or discrimination of any kind\n- Fraud, theft, or misuse of company assets\n- Conflicts of interest without disclosure\n- Breach of confidentiality\n- Substance abuse in the workplace\n\n4. Reporting\nViolations should be reported to HR or through the whistleblower channel.\nAll reports are treated confidentially.\n\n5. Consequences\nViolations may result in disciplinary action up to and including termination.`
+          },
+          {
+            title: 'Disciplinary Procedure',
+            category: 'procedure',
+            tags: 'disciplinary, misconduct, warning, suspension, termination, appeal',
+            content: `Disciplinary Procedure\n\n1. Stages\nStage 1: Verbal Warning (documented)\nStage 2: Written Warning (valid for 6 months)\nStage 3: Final Written Warning (valid for 12 months)\nStage 4: Dismissal\n\n2. Gross Misconduct\nThe following may result in immediate dismissal without prior warnings:\n- Theft or fraud\n- Violence or threats\n- Serious breach of safety rules\n- Being under the influence of drugs/alcohol at work\n\n3. Investigation\nAll allegations will be investigated fairly before any action is taken.\n\n4. Right to Representation\nEmployees may be accompanied by a colleague or union representative at disciplinary hearings.\n\n5. Appeal\nEmployees may appeal any disciplinary decision within [5] working days by writing to the HR Director.`
+          },
+          {
+            title: 'Maternity & Paternity Leave',
+            category: 'leave',
+            tags: 'maternity, paternity, parental, pregnancy, childbirth, adoption, baby',
+            content: `Maternity & Paternity Leave Policy\n\n1. Maternity Leave\n- Duration: [12] weeks (as per Ghana Labour Act)\n- Pay: Full pay for the first [12] weeks\n- Notice: Notify HR at least [8] weeks before expected delivery\n- Return: Guaranteed return to same or equivalent position\n\n2. Paternity Leave\n- Duration: [5] working days\n- Pay: Full pay\n- Notice: Notify HR at least [2] weeks in advance\n\n3. Adoption Leave\n- Same entitlements as maternity/paternity leave\n- Commences from the date of formal adoption\n\n4. Antenatal Appointments\nReasonable time off for antenatal appointments is granted with manager approval.\n\n5. Return to Work\nFlexible return arrangements (part-time, WFH) may be discussed with your manager.`
+          },
+          {
+            title: 'IT Acceptable Use Policy',
+            category: 'it',
+            tags: 'it, computer, internet, email, password, security, device, software',
+            content: `IT Acceptable Use Policy\n\n1. Company Equipment\nCompany-provided equipment (laptops, phones) is for business use.\nLimited personal use is permitted outside working hours.\n\n2. Passwords\n- Minimum 12 characters with mixed case, numbers, and symbols\n- Never share passwords or write them down\n- Change passwords every 90 days\n- Use the company password manager\n\n3. Email\n- Do not open suspicious attachments or links\n- Do not send confidential information to personal email accounts\n- Company email is monitored for security purposes\n\n4. Internet\n- Streaming, gambling, and adult content sites are blocked\n- Social media use should be limited during working hours\n\n5. Software\n- Only approved software may be installed on company devices\n- Report any unauthorized software to IT immediately\n\n6. Data Protection\n- Client and company data must not be stored on personal devices\n- Use company-approved cloud storage only\n- Report data breaches to IT immediately`
+          },
+          {
+            title: 'Anti-Harassment Policy',
+            category: 'compliance',
+            tags: 'harassment, bullying, discrimination, sexual harassment, reporting, complaint',
+            content: `Anti-Harassment & Anti-Discrimination Policy\n\n1. Zero Tolerance\nThe company has a zero-tolerance policy towards harassment and discrimination of any form.\n\n2. Scope\nThis policy applies to all employees, contractors, and visitors in any work-related context.\n\n3. Definition\nHarassment includes but is not limited to:\n- Unwanted physical contact\n- Verbal abuse or intimidation\n- Sexual comments or advances\n- Discrimination based on gender, race, religion, disability, age, or sexual orientation\n- Cyber-bullying or online harassment\n\n4. Reporting\n- Report to your line manager, HR, or the confidential whistleblower channel\n- All reports will be investigated promptly and confidentially\n- Retaliation against reporters is strictly prohibited\n\n5. Consequences\nSubstantiated complaints may result in disciplinary action up to and including immediate dismissal.\n\n6. Support\nCounseling services are available through the Employee Assistance Program (EAP).`
+          },
+        ]
+
+        const filteredArticles = knowledgeBaseArticles.filter((a: any) => {
+          const matchesSearch = !kbSearch || a.title?.toLowerCase().includes(kbSearch.toLowerCase()) || a.tags?.toLowerCase().includes(kbSearch.toLowerCase()) || a.content?.toLowerCase().includes(kbSearch.toLowerCase())
+          const matchesCategory = kbCategoryFilter === 'all' || a.category === kbCategoryFilter
+          return matchesSearch && matchesCategory
+        })
+
+        const categories = [...new Set(knowledgeBaseArticles.map((a: any) => a.category).filter(Boolean))]
+
+        const openArticleModal = (article?: any) => {
+          if (article) {
+            setEditingArticle(article)
+            setKbForm({ title: article.title || '', category: article.category || 'general', content: article.content || '', tags: article.tags || '', source: article.source || 'manual', fileName: article.file_name || article.fileName || '' })
+          } else {
+            setEditingArticle(null)
+            setKbForm({ title: '', category: 'general', content: '', tags: '', source: 'manual', fileName: '' })
+          }
+          setShowKBModal(true)
+        }
+
+        const saveArticle = () => {
+          if (!kbForm.title.trim() || !kbForm.content.trim()) {
+            addToast('Title and content are required', 'error')
+            return
+          }
+          if (editingArticle) {
+            updateKnowledgeBaseArticle(editingArticle.id, kbForm)
+            addToast('Article updated')
+          } else {
+            addKnowledgeBaseArticle(kbForm)
+          }
+          setShowKBModal(false)
+          setEditingArticle(null)
+        }
+
+        const useTemplate = (template: typeof POLICY_TEMPLATES[0]) => {
+          setKbForm({ title: template.title, category: template.category, content: template.content, tags: template.tags, source: 'template', fileName: '' })
+          setShowTemplates(false)
+          setShowKBModal(true)
+          setEditingArticle(null)
+        }
+
+        const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          if (!file.name.endsWith('.txt')) {
+            addToast('Only .txt files are supported', 'error')
+            return
+          }
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            const text = ev.target?.result as string
+            setKbForm(prev => ({ ...prev, content: text, fileName: file.name, source: 'upload' }))
+            addToast('File content loaded')
+          }
+          reader.readAsText(file)
+        }
+
+        return (
+          <div className="space-y-6">
+            {/* Stats Row */}
+            <div className="grid grid-cols-4 gap-4">
+              <Card>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t1">{knowledgeBaseArticles.length}</p>
+                  <p className="text-xs text-t3">Total Articles</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t1">{categories.length}</p>
+                  <p className="text-xs text-t3">Categories</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t1">{knowledgeBaseArticles.filter((a: any) => a.is_published !== false && a.isPublished !== false).length}</p>
+                  <p className="text-xs text-t3">Published</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-t1">{knowledgeBaseArticles.reduce((s: number, a: any) => s + (a.view_count || a.viewCount || 0), 0)}</p>
+                  <p className="text-xs text-t3">Total Views</p>
+                </div>
+              </Card>
+            </div>
+
+            {/* Actions Bar */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">Company Knowledge Base</h3>
+                    <p className="text-xs text-t3">Policies, procedures, and FAQs searchable by Tempo AI</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
+                    <FileText size={14} className="mr-1.5" />
+                    Templates
+                  </Button>
+                  <Button size="sm" onClick={() => openArticleModal()}>
+                    <Plus size={14} className="mr-1.5" />
+                    Add Article
+                  </Button>
+                </div>
+              </div>
+
+              {/* Search & Filter */}
+              <div className="flex gap-3 mb-4">
+                <div className="flex-1 relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-t3" />
+                  <input
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-canvas border border-border rounded-lg outline-none focus:border-blue-500 text-t1 placeholder:text-t3"
+                    placeholder="Search articles..."
+                    value={kbSearch}
+                    onChange={(e) => setKbSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="px-3 py-2 text-sm bg-canvas border border-border rounded-lg outline-none text-t1"
+                  value={kbCategoryFilter}
+                  onChange={(e) => setKbCategoryFilter(e.target.value)}
+                >
+                  <option value="all">All Categories</option>
+                  {KB_CATEGORIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Article List */}
+              {filteredArticles.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen size={40} className="mx-auto text-t3 mb-3" />
+                  <p className="text-sm text-t2 mb-1">No articles yet</p>
+                  <p className="text-xs text-t3 mb-4">Add company policies and procedures so Tempo AI can answer employee questions.</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
+                      <FileText size={14} className="mr-1.5" />
+                      Start from Template
+                    </Button>
+                    <Button size="sm" onClick={() => openArticleModal()}>
+                      <Plus size={14} className="mr-1.5" />
+                      Create Article
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredArticles.map((article: any) => (
+                    <div
+                      key={article.id}
+                      className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3 hover:bg-hover transition-colors cursor-pointer"
+                      onClick={() => openArticleModal(article)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-t1 truncate">{article.title}</span>
+                          {(article.is_published === false || article.isPublished === false) && (
+                            <Badge variant="warning">Draft</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-t3">
+                          <span className="flex items-center gap-1">
+                            <Tag size={10} />
+                            {article.category}
+                          </span>
+                          {article.tags && <span className="truncate max-w-[200px]">{article.tags}</span>}
+                          <span>{article.view_count || article.viewCount || 0} views</span>
+                          <span>{new Date(article.updated_at || article.updatedAt || article.created_at || article.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 ml-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openArticleModal(article) }}
+                          className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-t3 hover:text-blue-600 transition-colors"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteKnowledgeBaseArticle(article.id) }}
+                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-t3 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Add/Edit Article Modal */}
+            <Modal open={showKBModal} onClose={() => { setShowKBModal(false); setEditingArticle(null) }} title={editingArticle ? 'Edit Article' : 'Add Article'} size="lg">
+              <div className="space-y-4">
+                <Input label="Title *" placeholder="e.g. Annual Leave Policy" value={kbForm.title} onChange={(e) => setKbForm({ ...kbForm, title: e.target.value })} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-t2 mb-1">Category *</label>
+                    <select
+                      className="w-full px-3 py-2 text-sm bg-canvas border border-border rounded-lg outline-none text-t1"
+                      value={kbForm.category}
+                      onChange={(e) => setKbForm({ ...kbForm, category: e.target.value })}
+                    >
+                      {KB_CATEGORIES.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input label="Tags (comma-separated)" placeholder="e.g. leave, vacation, pto" value={kbForm.tags} onChange={(e) => setKbForm({ ...kbForm, tags: e.target.value })} />
+                </div>
+
+                {/* Upload Document */}
+                <div>
+                  <label className="block text-xs font-medium text-t2 mb-1">Upload Document</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-blue-400 cursor-pointer transition-colors">
+                      <FileUp size={14} className="text-t3" />
+                      <span className="text-xs text-t2">Upload .txt file</span>
+                      <input type="file" accept=".txt" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                    {kbForm.fileName && <span className="text-xs text-t3">{kbForm.fileName}</span>}
+                  </div>
+                  <p className="text-[10px] text-t3 mt-1">Upload a text file with your policy content. PDF/DOCX support coming soon.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-t2 mb-1">Content *</label>
+                  <textarea
+                    className="w-full px-3 py-2 text-sm bg-canvas border border-border rounded-lg outline-none focus:border-blue-500 text-t1 placeholder:text-t3 min-h-[250px]"
+                    rows={12}
+                    placeholder="Enter your policy or procedure content here..."
+                    value={kbForm.content}
+                    onChange={(e) => setKbForm({ ...kbForm, content: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="secondary" onClick={() => { setShowKBModal(false); setEditingArticle(null) }}>Cancel</Button>
+                  <Button onClick={saveArticle}>
+                    <Save size={14} className="mr-1.5" />
+                    {editingArticle ? 'Update Article' : 'Save Article'}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
+
+            {/* Templates Modal */}
+            <Modal open={showTemplates} onClose={() => setShowTemplates(false)} title="Policy Templates" size="lg">
+              <p className="text-xs text-t3 mb-4">Start with a pre-built template and customize the bracketed values for your company.</p>
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {POLICY_TEMPLATES.map((template, i) => (
+                  <div key={i} className="flex items-center justify-between bg-canvas rounded-lg px-4 py-3 hover:bg-hover transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-t1">{template.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="default">{template.category}</Badge>
+                        <span className="text-xs text-t3 truncate">{template.tags}</span>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => useTemplate(template)}>
+                      Use Template
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </Modal>
+          </div>
+        )
+      })()}
 
       {/* Edit Org Modal */}
       <Modal open={showOrgModal} onClose={() => setShowOrgModal(false)} title="Edit Organization">

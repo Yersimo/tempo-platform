@@ -291,6 +291,8 @@ export const MODULE_SLUGS: Record<string, string> = {
   integrationSyncLog: 'integration-sync-log',
   apiKeys: 'api-keys',
   webhookSubscriptions: 'webhook-subscriptions',
+  // Knowledge Base
+  knowledgeBaseArticles: 'knowledge-base-articles',
 }
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,8 @@
  * No external AI API calls — everything runs client-side.
  */
 
+import { searchKnowledgeBase, isKnowledgeBaseQuestion } from './knowledge-search'
+
 // ---- Types ----
 
 export interface AssistantQuery {
@@ -2914,6 +2916,32 @@ export function processAssistantQuery(query: string, store: any): AssistantRespo
     conversationHistory.push({ query: trimmed, response: result, entities: { topic, entity, country } })
     if (conversationHistory.length > 20) conversationHistory.shift()
     return result
+  }
+
+  // ---- 0. Knowledge Base search — highest priority for policy questions ----
+  if (isKnowledgeBaseQuestion(trimmed) || /policy|procedure|handbook|guideline|rule/i.test(lower)) {
+    const kbArticles = store.knowledgeBaseArticles || []
+    const results = searchKnowledgeBase(trimmed, kbArticles)
+
+    if (results.length > 0) {
+      const top = results[0]
+      const otherResults = results.slice(1, 3)
+
+      let text = `\u{1F4CB} **${top.title}** (${top.category})\n\n${top.snippet}`
+      if (otherResults.length > 0) {
+        text += `\n\n**Related articles:**\n${otherResults.map(r => `\u2022 ${r.title}`).join('\n')}`
+      }
+
+      return trackAndReturn({
+        type: 'answer',
+        text,
+        confidence: top.relevanceScore / 100,
+        actions: [
+          { label: 'View Full Article', type: 'navigate', payload: '/settings?tab=knowledge-base', icon: 'BookOpen' },
+          ...(otherResults.length > 0 ? [{ label: `${results.length - 1} more results`, type: 'navigate' as const, payload: '/settings?tab=knowledge-base', icon: 'Search' }] : []),
+        ],
+      }, 'knowledge_base')
+    }
   }
 
   // ---- 1. Self-service patterns ("my ...") — highest priority ----

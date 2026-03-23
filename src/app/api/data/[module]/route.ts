@@ -298,6 +298,8 @@ const MODULE_CONFIG: Record<string, {
   'integration-sync-log':    { table: schema.integrationSyncLog, hasOrgId: false, defaultLimit: 100 },
   'api-keys':                { table: schema.apiKeys, hasOrgId: true, defaultLimit: 50 },
   'webhook-subscriptions':   { table: schema.webhookSubscriptions, hasOrgId: true, defaultLimit: 50 },
+  // Knowledge Base
+  'knowledge-base-articles': { table: schema.knowledgeBaseArticles, hasOrgId: true, defaultLimit: 200 },
 }
 
 export async function GET(

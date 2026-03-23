@@ -337,6 +337,12 @@ interface TempoState {
   careerPaths: any[]
   careerInterests: any[]
 
+  // Knowledge Base
+  knowledgeBaseArticles: any[]
+  addKnowledgeBaseArticle: (article: any) => void
+  updateKnowledgeBaseArticle: (id: string, updates: any) => void
+  deleteKnowledgeBaseArticle: (id: string) => void
+
   // Loading state
   isLoading: boolean
   /** Lazily load modules from DB. No-op for already-loaded modules or demo users. */
@@ -1584,6 +1590,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [momentsThatMatter, setMomentsThatMatter] = useState<any[]>([])
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [knowledgeBaseArticles, setKnowledgeBaseArticles] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // ============================================================
@@ -2174,6 +2181,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       gigApplications: (d) => setGigApplications(d),
       careerPaths: (d) => setCareerPathsData(d),
       careerInterests: (d) => setCareerInterestsData(d),
+      // Knowledge Base
+      knowledgeBaseArticles: (d) => setKnowledgeBaseArticles(d),
     }
   }
 
@@ -3574,6 +3583,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'compliance_alert', id, 'Dismissed compliance alert')
     addToast('Alert dismissed')
     apiPost('complianceAlerts', 'update', { is_read: true }, id)
+  }, [logAudit, addToast])
+
+  // ---- Knowledge Base ----
+  const addKnowledgeBaseArticle = useCallback((data: AnyRecord) => {
+    const id = genId('kba')
+    const article = { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), view_count: 0, is_published: true, ...data }
+    setKnowledgeBaseArticles(prev => [...prev, article] as typeof prev)
+    logAudit('create', 'knowledge_base_article', id, `Created KB article: ${data.title || 'Article'}`)
+    addToast('Knowledge base article created')
+    apiPost('knowledgeBaseArticles', 'create', data)
+  }, [logAudit, addToast])
+  const updateKnowledgeBaseArticle = useCallback((id: string, data: AnyRecord) => {
+    setKnowledgeBaseArticles(prev => prev.map(a => a.id === id ? { ...a, ...data, updated_at: new Date().toISOString() } : a) as typeof prev)
+    logAudit('update', 'knowledge_base_article', id, 'Updated KB article')
+    apiPost('knowledgeBaseArticles', 'update', data, id)
+  }, [logAudit])
+  const deleteKnowledgeBaseArticle = useCallback((id: string) => {
+    setKnowledgeBaseArticles(prev => prev.filter(a => a.id !== id))
+    logAudit('delete', 'knowledge_base_article', id, 'Deleted KB article')
+    addToast('Knowledge base article deleted')
+    apiPost('knowledgeBaseArticles', 'delete', {}, id)
   }, [logAudit, addToast])
 
   // ---- Journeys ----
@@ -6553,6 +6583,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     successionPlans: successionPlansData, successionCandidates,
     talentReviews: talentReviewsData, talentReviewEntries,
     internalGigs, gigApplications, careerPaths: careerPathsData, careerInterests: careerInterestsData,
+    knowledgeBaseArticles, addKnowledgeBaseArticle, updateKnowledgeBaseArticle, deleteKnowledgeBaseArticle,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }

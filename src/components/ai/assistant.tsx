@@ -17,6 +17,7 @@ import {
   Search,
   ChevronRight,
   Check,
+  BookOpen,
 } from 'lucide-react'
 
 // ---- Inline Visualization Component ----
@@ -338,6 +339,7 @@ function CommandBar({
                 "What's our payroll cost?",
                 'Headcount by department',
                 'Create a leave request for next Monday',
+                'What is our leave policy?',
                 'Approve all pending leave requests',
               ].map((q) => (
                 <button
@@ -518,6 +520,14 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                   </p>
                 )}
 
+                {/* Knowledge Base indicator */}
+                {msg.role === 'assistant' && msg.response?.actions?.some((a: any) => a.icon === 'BookOpen') && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-blue-500">
+                    <BookOpen className="w-3 h-3" />
+                    <span>From Company Knowledge Base</span>
+                  </div>
+                )}
+
                 {/* Inline Visualization */}
                 {msg.response?.visualization && (
                   <ChatVisualization viz={msg.response.visualization} />
@@ -601,6 +611,7 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                   'Create a leave request for next Monday',
                   'Approve all pending leave requests',
                   'Update Kwame\'s title to Senior Engineer',
+                  'Ask about our policies',
                   'Company snapshot',
                 ].map((q) => (
                   <button
