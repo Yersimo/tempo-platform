@@ -3,6 +3,12 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { fetchModules as fetchModulesFromAPI, MODULE_SLUGS, clearModuleCache } from '@/lib/hooks/use-module-data'
 import { eventBus } from '@/lib/services/event-bus'
+import {
+  generatePayrollJournalEntry,
+  generateInvoicePaymentJE,
+  generateExpenseJE,
+  generateBillPaymentJE,
+} from '@/lib/services/accounting-engine'
 import { registerAllIntegrations, setIntegrationStore } from '@/lib/integrations/cross-module-wiring'
 import { setAICurrency } from '@/lib/ai-engine'
 import { formatBotMessages } from '@/lib/services/platform-bot'
@@ -231,6 +237,13 @@ interface TempoState {
   budgets: WidenArray<DemoData['demoBudgets']>
   vendors: DemoData['demoVendors']
 
+  // General Ledger / Double-Entry Accounting
+  glJournalEntries: any[]
+  glChartOfAccounts: any[]
+  addGLJournalEntry: (data: AnyRecord) => void
+  setGLJournalEntries: (fn: (prev: any[]) => any[]) => void
+  setGLChartOfAccounts: (fn: (prev: any[]) => any[]) => void
+
   // Project Management
   projects: WidenArray<DemoData['demoProjects']>
   milestones: WidenArray<DemoData['demoMilestones']>
@@ -342,6 +355,17 @@ interface TempoState {
   addKnowledgeBaseArticle: (article: any) => void
   updateKnowledgeBaseArticle: (id: string, updates: any) => void
   deleteKnowledgeBaseArticle: (id: string) => void
+
+  // Analytics & Workforce Planning
+  analyticsSnapshots: any[]
+  planningScenarios: any[]
+  forecastEntries: any[]
+
+  // Report Builder
+  savedReports: any[]
+  addSavedReport: (data: any) => void
+  updateSavedReport: (id: string, updates: any) => void
+  deleteSavedReport: (id: string) => void
 
   // Loading state
   isLoading: boolean
@@ -1591,6 +1615,10 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [knowledgeBaseArticles, setKnowledgeBaseArticles] = useState<any[]>([])
+  const [analyticsSnapshots, setAnalyticsSnapshots] = useState<any[]>([])
+  const [planningScenarios, setPlanningScenarios] = useState<any[]>([])
+  const [forecastEntries, setForecastEntries] = useState<any[]>([])
+  const [savedReports, setSavedReports] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // ============================================================
@@ -1620,6 +1648,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
   const [reconciliationRulesList, setReconciliationRulesList] = useState<any[]>([])
   const [billPayments, setBillPayments] = useState<any[]>([])
   const [billPaySchedules, setBillPaySchedules] = useState<any[]>([])
+  const [glJournalEntries, setGLJournalEntries] = useState<any[]>([])
+  const [glChartOfAccounts, setGLChartOfAccounts] = useState<any[]>([])
   const [travelRequests, setTravelRequests] = useState<any[]>([])
   const [travelBookings, setTravelBookings] = useState<any[]>([])
   const [travelPolicies, setTravelPolicies] = useState<any[]>([])
@@ -2183,6 +2213,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       careerInterests: (d) => setCareerInterestsData(d),
       // Knowledge Base
       knowledgeBaseArticles: (d) => setKnowledgeBaseArticles(d),
+      // Analytics & Workforce Planning
+      analyticsSnapshots: (d) => setAnalyticsSnapshots(d),
+      planningScenarios: (d) => setPlanningScenarios(d),
+      forecastEntries: (d) => setForecastEntries(d),
+      savedReports: (d) => setSavedReports(d),
     }
   }
 
@@ -3606,6 +3641,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('knowledgeBaseArticles', 'delete', {}, id)
   }, [logAudit, addToast])
 
+  // ---- Saved Reports ----
+  const addSavedReport = useCallback((data: AnyRecord) => {
+    const id = genId('rpt')
+    const report = { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), is_public: false, ...data }
+    setSavedReports(prev => [...prev, report] as typeof prev)
+    logAudit('create', 'saved_report', id, `Created report: ${data.name || 'Report'}`)
+    addToast('Report saved')
+    apiPost('savedReports', 'create', data)
+  }, [logAudit, addToast])
+  const updateSavedReport = useCallback((id: string, data: AnyRecord) => {
+    setSavedReports(prev => prev.map(r => r.id === id ? { ...r, ...data, updated_at: new Date().toISOString() } : r) as typeof prev)
+    logAudit('update', 'saved_report', id, 'Updated report')
+    apiPost('savedReports', 'update', data, id)
+  }, [logAudit])
+  const deleteSavedReport = useCallback((id: string) => {
+    setSavedReports(prev => prev.filter(r => r.id !== id))
+    logAudit('delete', 'saved_report', id, 'Deleted report')
+    addToast('Report deleted')
+    apiPost('savedReports', 'delete', {}, id)
+  }, [logAudit, addToast])
+
   // ---- Journeys ----
   const updateJourneyStep = useCallback((journeyId: string, stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'skipped') => {
     setJourneys(prev => prev.map(j => {
@@ -4164,6 +4220,19 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     apiPost('mentoringGoals', 'update', data, id)
   }, [logAudit, addToast])
 
+  // ---- GL Journal Entries (Double-Entry Accounting) ----
+  // Defined early so payroll/expense/invoice/bill handlers can reference it.
+  const addGLJournalEntry = useCallback((data: AnyRecord) => {
+    const id = data.id || genId('je')
+    setGLJournalEntries(prev => [...prev, { id, org_id: orgIdRef.current, created_at: new Date().toISOString(), ...data }])
+    logAudit('create', 'journal_entry', id, `Journal entry ${data.entryNumber || id}: ${data.description || ''}`)
+    if (data.sourceModule && data.sourceModule !== 'manual') {
+      addToast(`Auto-JE created: ${data.entryNumber || id}`)
+    } else {
+      addToast('Journal entry created')
+    }
+  }, [logAudit, addToast])
+
   // ---- CRUD: Payroll ----
   const addPayrollRun = useCallback((data: AnyRecord) => {
     const id = genId('pr')
@@ -4214,8 +4283,11 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         departmentBreakdown: data.department_breakdown || [],
         completedAt: data.completed_at || new Date().toISOString(),
       })
+      // Auto-generate GL journal entry for completed payroll
+      const je = generatePayrollJournalEntry({ id, org_id: orgIdRef.current, ...data })
+      addGLJournalEntry(je)
     }
-  }, [logAudit, addToast])
+  }, [logAudit, addToast, addGLJournalEntry])
 
   const addEmployeePayrollEntry = useCallback((data: AnyRecord) => {
     const id = genId('epe')
@@ -4434,9 +4506,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         approvedBy: data.approved_by || undefined,
         approvedAt: new Date().toISOString(),
       })
+      // Auto-generate GL journal entry for approved expense
+      const je = generateExpenseJE({ id, org_id: orgIdRef.current, ...data, currency: data.currency || _orgCurrency })
+      addGLJournalEntry(je)
     }
     if (data.status === 'rejected') notifyEvent('expense_rejected', id, 'expense_report', { reason: data.rejection_reason || data.reason || '' })
-  }, [logAudit, addToast])
+  }, [logAudit, addToast, addGLJournalEntry])
 
   const deleteExpenseReport = useCallback((id: string) => {
     setExpenseReports(prev => prev.filter(e => e.id !== id))
@@ -4687,7 +4762,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'invoice', id, 'Updated invoice')
     addToast('Invoice updated')
     apiPost('invoices', 'update', data, id)
-  }, [logAudit, addToast])
+    // Auto-generate GL journal entry when invoice is marked paid
+    if (data.status === 'paid') {
+      const je = generateInvoicePaymentJE({ id, org_id: orgIdRef.current, ...data })
+      addGLJournalEntry(je)
+    }
+  }, [logAudit, addToast, addGLJournalEntry])
 
   const addBudget = useCallback((data: AnyRecord) => {
     const id = genId('bud')
@@ -5303,7 +5383,12 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     logAudit('update', 'bill_payment', id, 'Updated bill payment')
     addToast('Bill payment updated')
     apiPost('billPayments', 'update', data, id)
-  }, [logAudit, addToast])
+    // Auto-generate GL journal entry when bill is paid
+    if (data.status === 'paid' || data.status === 'completed') {
+      const je = generateBillPaymentJE({ id, org_id: orgIdRef.current, ...data })
+      addGLJournalEntry(je)
+    }
+  }, [logAudit, addToast, addGLJournalEntry])
   const addBillPaySchedule = useCallback((data: AnyRecord) => {
     const id = genId('bps')
     setBillPaySchedules(prev => [...prev, { id, org_id: orgIdRef.current, is_active: true, ...data }])
@@ -6527,6 +6612,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     corporateCards, cardTransactions,
     addCorporateCard, updateCorporateCard, addCardTransaction, updateCardTransaction,
     bankConnections, bankAccounts: bankAccountsList, bankTransactions: bankTransactionsList, reconciliationRules: reconciliationRulesList,
+    glJournalEntries, glChartOfAccounts, addGLJournalEntry, setGLJournalEntries, setGLChartOfAccounts,
     billPayments, billPaySchedules,
     addBillPayment, updateBillPayment, addBillPaySchedule, updateBillPaySchedule,
     travelRequests, travelBookings, travelPolicies,
@@ -6584,6 +6670,8 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     talentReviews: talentReviewsData, talentReviewEntries,
     internalGigs, gigApplications, careerPaths: careerPathsData, careerInterests: careerInterestsData,
     knowledgeBaseArticles, addKnowledgeBaseArticle, updateKnowledgeBaseArticle, deleteKnowledgeBaseArticle,
+    analyticsSnapshots, planningScenarios, forecastEntries,
+    savedReports, addSavedReport, updateSavedReport, deleteSavedReport,
     login, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }

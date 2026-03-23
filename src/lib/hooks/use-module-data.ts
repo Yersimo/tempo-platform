@@ -293,6 +293,12 @@ export const MODULE_SLUGS: Record<string, string> = {
   webhookSubscriptions: 'webhook-subscriptions',
   // Knowledge Base
   knowledgeBaseArticles: 'knowledge-base-articles',
+  // Analytics & Workforce Planning
+  analyticsSnapshots: 'analytics-snapshots',
+  planningScenarios: 'planning-scenarios',
+  forecastEntries: 'forecast-entries',
+  // Report Builder
+  savedReports: 'saved-reports',
 }
 
 // ---------------------------------------------------------------------------

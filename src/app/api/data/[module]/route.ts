@@ -300,6 +300,12 @@ const MODULE_CONFIG: Record<string, {
   'webhook-subscriptions':   { table: schema.webhookSubscriptions, hasOrgId: true, defaultLimit: 50 },
   // Knowledge Base
   'knowledge-base-articles': { table: schema.knowledgeBaseArticles, hasOrgId: true, defaultLimit: 200 },
+  // Analytics & Workforce Planning
+  'analytics-snapshots':     { table: schema.analyticsSnapshots, hasOrgId: true, defaultLimit: 100 },
+  'planning-scenarios':      { table: schema.planningScenarios, hasOrgId: true, defaultLimit: 50 },
+  'forecast-entries':        { table: schema.forecastEntries, hasOrgId: true, defaultLimit: 200 },
+  // Report Builder
+  'saved-reports':           { table: schema.savedReports, hasOrgId: true, defaultLimit: 50 },
 }
 
 export async function GET(

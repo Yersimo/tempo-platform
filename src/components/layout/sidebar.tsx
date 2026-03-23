@@ -180,6 +180,8 @@ export function Sidebar() {
         { label: t('analytics'), href: '/analytics', icon: <BarChart3 size={18} />, requiredPermissions: ['analytics:read'] },
         { label: 'Predictive Analytics', href: '/analytics/predictions', icon: <Sparkles size={18} />, requiredPermissions: ['analytics:read'] },
         { label: 'Board Reports', href: '/analytics/board-reports', icon: <BookOpen size={18} />, requiredPermissions: ['analytics:read'] },
+        { label: 'Workforce Planning', href: '/analytics/workforce-planning', icon: <TrendingUp size={18} />, requiredPermissions: ['analytics:read'] },
+        { label: 'Report Builder', href: '/analytics/reports', icon: <PieChart size={18} />, requiredPermissions: ['analytics:read'] },
         { label: 'Documents', href: '/documents', icon: <FileSignature size={18} /> },
         { label: 'App Studio', href: '/app-studio', icon: <Blocks size={18} />, requiredPermissions: ['admin:full'] },
         { label: 'Sandbox', href: '/sandbox', icon: <FlaskConical size={18} />, requiredPermissions: ['admin:full'] },

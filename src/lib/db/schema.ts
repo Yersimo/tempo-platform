@@ -5135,6 +5135,75 @@ export const knowledgeBaseArticles = pgTable('knowledge_base_articles', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// ============================================================
+// ANALYTICS AGGREGATION
+// ============================================================
+
+// Pre-computed analytics snapshots — populated by nightly/hourly aggregation
+export const analyticsSnapshots = pgTable('analytics_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  snapshotDate: text('snapshot_date').notNull(), // YYYY-MM-DD
+  granularity: text('granularity').notNull(), // daily, weekly, monthly
+  metrics: text('metrics').notNull(), // JSON blob with all computed metrics
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Workforce planning scenarios
+export const planningScenarios = pgTable('planning_scenarios', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  baselineDate: text('baseline_date').notNull(),
+  status: text('status').notNull().default('draft'), // draft, active, approved, archived
+  assumptions: text('assumptions'), // JSON: growth rates, attrition, salary increases, etc.
+  projections: text('projections'), // JSON: monthly projected values
+  comparedWith: text('compared_with'), // another scenario ID for comparison
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Rolling forecast entries
+export const forecastEntries = pgTable('forecast_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  scenarioId: uuid('scenario_id'),
+  period: text('period').notNull(), // YYYY-MM
+  category: text('category').notNull(), // headcount, payroll, benefits, equipment, revenue, etc.
+  subcategory: text('subcategory'), // by department, by country, etc.
+  forecastAmount: integer('forecast_amount').notNull(), // in cents
+  actualAmount: integer('actual_amount'), // filled when actuals are available
+  variance: integer('variance'), // actual - forecast
+  variancePercent: integer('variance_percent'), // (variance / forecast) * 100
+  assumptions: text('assumptions'), // what drove this number
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ============================================================
+// ANALYTICS: Saved Reports
+// ============================================================
+
+export const savedReports = pgTable('saved_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  dataSource: text('data_source').notNull(),
+  columns: text('columns').notNull(), // JSON array of selected columns
+  filters: text('filters'), // JSON array of filter conditions
+  groupBy: text('group_by'), // JSON array of grouping fields
+  sortBy: text('sort_by'), // field + direction
+  chartType: text('chart_type'), // table, bar, line, pie, none
+  isPublic: boolean('is_public').default(false),
+  scheduleEmail: text('schedule_email'), // cron expression for scheduled delivery
+  recipientEmails: text('recipient_emails'), // comma-separated
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export const webhookSubscriptions = pgTable('webhook_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id').notNull(),
