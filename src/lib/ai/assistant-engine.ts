@@ -17,12 +17,23 @@ export interface AssistantQuery {
   }
 }
 
+// ---- Visualization Types ----
+
+// Exported for use in the chat UI
+export interface VisualizationData {
+  type: 'bar' | 'pie' | 'list' | 'table' | 'metric' | 'progress'
+  title?: string
+  data: any[]
+}
+
 export interface AssistantResponse {
-  type: 'answer' | 'action' | 'insight' | 'navigation' | 'creation'
+  type: 'answer' | 'action' | 'insight' | 'navigation' | 'creation' | 'execution' | 'visualization'
   text: string
   data?: any
   actions?: AssistantAction[]
   confidence: number
+  executeAction?: (store: any) => { success: boolean; message: string }
+  visualization?: VisualizationData
 }
 
 export interface AssistantAction {
@@ -183,6 +194,40 @@ function parseRelativeDate(text: string): { start: string; end: string } | null 
   return null
 }
 
+// ---- Date Helpers for Execution Actions ----
+
+function getNextWeekday(dayOfWeek: number): string {
+  const now = new Date()
+  const current = now.getDay()
+  let daysUntil = dayOfWeek - current
+  if (daysUntil <= 0) daysUntil += 7
+  const target = new Date(now)
+  target.setDate(target.getDate() + daysUntil)
+  return target.toISOString().split('T')[0]
+}
+
+function getDateInNWeeks(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + n * 7)
+  return d.toISOString().split('T')[0]
+}
+
+function genActionId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function findEmployeeByName(store: any, name: string): any | null {
+  return store.employees?.find((e: any) =>
+    (e.profile?.full_name || e.full_name || '').toLowerCase().includes(name.toLowerCase())
+  ) || null
+}
+
+function findDepartmentByName(store: any, name: string): any | null {
+  return store.departments?.find((d: any) =>
+    (d.name || '').toLowerCase().includes(name.toLowerCase())
+  ) || null
+}
+
 // ---- Self-Service Patterns ("my" queries) ----
 
 const SELF_SERVICE_PATTERNS: QueryPattern[] = [
@@ -247,6 +292,11 @@ const SELF_SERVICE_PATTERNS: QueryPattern[] = [
         text: `Your goals:\n${lines.join('\n')}`,
         confidence: 0.9,
         actions: [{ label: 'View All Goals', type: 'navigate', payload: '/performance', icon: 'Target' }],
+        visualization: {
+          type: 'progress',
+          title: 'Your Goals',
+          data: myGoals.slice(0, 6).map((g: any) => ({ label: g.title || 'Goal', value: g.progress || 0 })),
+        },
       }
     },
   },
@@ -947,6 +997,15 @@ const EXTENDED_ACTION_PATTERNS: QueryPattern[] = [
           { label: 'Approvals', type: 'navigate', payload: '/time-attendance', icon: 'CheckSquare' },
           { label: 'Recruiting', type: 'navigate', payload: '/recruiting', icon: 'Briefcase' },
         ],
+        visualization: {
+          type: 'metric',
+          data: [
+            { label: 'Active Employees', value: employees },
+            { label: 'On Leave Today', value: onLeave },
+            { label: 'Pending Approvals', value: pendingLeave + pendingExpense },
+            { label: 'Open Positions', value: openPositions },
+          ],
+        },
       }
     },
   },
@@ -1005,11 +1064,21 @@ const QUERY_PATTERNS: QueryPattern[] = [
       const total = store.employees?.length || 1
       const terminated = store.employees?.filter((e: any) => e.termination_date)?.length || 0
       const rate = Math.round((terminated / total) * 100)
+      const active = total - terminated
       return {
         type: 'answer',
         text: `Current turnover rate is ${rate}% (${terminated} departures out of ${total} total employees).`,
         data: { rate, terminated, total },
         confidence: 0.9,
+        visualization: {
+          type: 'metric',
+          data: [
+            { label: 'Turnover Rate', value: `${rate}%` },
+            { label: 'Departed', value: terminated },
+            { label: 'Active', value: active },
+            { label: 'Total', value: total },
+          ],
+        },
       }
     },
   },
@@ -1029,6 +1098,11 @@ const QUERY_PATTERNS: QueryPattern[] = [
         text: `Headcount by department:\n${rows.map(([d, c]) => `  ${d}: ${c}`).join('\n')}`,
         data: { departments: rows },
         confidence: 0.95,
+        visualization: {
+          type: 'bar',
+          title: 'Headcount by Department',
+          data: rows.map(([dept, count]) => ({ label: dept, value: count })),
+        },
       }
     },
   },
@@ -1131,12 +1205,22 @@ const QUERY_PATTERNS: QueryPattern[] = [
       const latestRun = store.payrollRuns
         ?.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))?.[0]
       const total = latestRun?.total_gross || latestRun?.totalGross || 0
+      const net = latestRun?.total_net || latestRun?.totalNet || 0
       return {
         type: 'answer',
         text: `Latest payroll run: ${formatAmount(total, currency)} gross. ${store.payrollRuns?.length || 0} payroll runs on record.`,
         data: { latestRun, total },
         confidence: 0.9,
         actions: [{ label: 'View Payroll', type: 'navigate', payload: '/payroll', icon: 'DollarSign' }],
+        visualization: {
+          type: 'metric',
+          data: [
+            { label: 'Gross Payroll', value: formatAmount(total, currency) },
+            { label: 'Net Payroll', value: formatAmount(net, currency) },
+            { label: 'Payroll Runs', value: store.payrollRuns?.length || 0 },
+            { label: 'Employees', value: activeEmployees(store).length },
+          ],
+        },
       }
     },
   },
@@ -1250,6 +1334,13 @@ const QUERY_PATTERNS: QueryPattern[] = [
           { label: 'View Leave Requests', type: 'navigate', payload: '/time-attendance', icon: 'Calendar' },
           { label: 'View Expenses', type: 'navigate', payload: '/expense', icon: 'Receipt' },
         ],
+        visualization: {
+          type: 'metric',
+          data: [
+            { label: 'Leave Requests', value: pendingLeave },
+            { label: 'Expense Reports', value: pendingExpense },
+          ],
+        },
       }
     },
   },
@@ -1270,6 +1361,11 @@ const QUERY_PATTERNS: QueryPattern[] = [
         data: { openPositions: open },
         confidence: 0.9,
         actions: [{ label: 'View Recruiting', type: 'navigate', payload: '/recruiting', icon: 'Briefcase' }],
+        visualization: open.length > 0 ? {
+          type: 'list',
+          title: 'Open Positions',
+          data: open.slice(0, 10).map((j: any) => ({ label: j.title || 'Untitled', value: j.department || j.location || 'General', color: 'bg-blue-500' })),
+        } : undefined,
       }
     },
   },
@@ -1286,6 +1382,11 @@ const QUERY_PATTERNS: QueryPattern[] = [
         text: `Global compliance score: ${score}%. ${compliant} of ${total} requirements are compliant.`,
         confidence: 0.9,
         actions: [{ label: 'View Compliance', type: 'navigate', payload: '/compliance', icon: 'Shield' }],
+        visualization: {
+          type: 'progress',
+          title: 'Compliance Score',
+          data: [{ label: 'Overall Compliance', value: score }],
+        },
       }
     },
   },
@@ -1364,12 +1465,23 @@ const QUERY_PATTERNS: QueryPattern[] = [
     handler: (store) => {
       const total = store.enrollments?.length || 0
       const completed = store.enrollments?.filter((e: any) => e.status === 'completed')?.length || 0
+      const inProgress = store.enrollments?.filter((e: any) => e.status === 'in_progress')?.length || 0
+      const overdue = store.enrollments?.filter((e: any) => e.status === 'overdue')?.length || 0
       const rate = total > 0 ? Math.round((completed / total) * 100) : 0
       return {
         type: 'answer',
         text: `Learning completion rate: ${rate}% (${completed} of ${total} enrollments completed).`,
         confidence: 0.85,
         actions: [{ label: 'View Learning', type: 'navigate', payload: '/learning', icon: 'BookOpen' }],
+        visualization: {
+          type: 'progress',
+          title: 'Learning Progress',
+          data: [
+            { label: 'Completed', value: rate },
+            { label: 'In Progress', value: total > 0 ? Math.round((inProgress / total) * 100) : 0 },
+            { label: 'Overdue', value: total > 0 ? Math.round((overdue / total) * 100) : 0 },
+          ],
+        },
       }
     },
   },
@@ -1393,6 +1505,14 @@ const QUERY_PATTERNS: QueryPattern[] = [
             : 'No performance review data available.',
         confidence: 0.8,
         actions: [{ label: 'View Performance', type: 'navigate', payload: '/performance', icon: 'Award' }],
+        visualization: sorted.length > 0 ? {
+          type: 'table',
+          title: 'Top Performers',
+          data: sorted.map((r: any) => {
+            const empR = store.employees?.find((e: any) => e.id === r.employee_id)
+            return { Name: employeeName(empR), Rating: r.overall_rating || r.rating || 'N/A', Status: r.status || 'Completed' }
+          }),
+        } : undefined,
       }
     },
   },
@@ -1704,7 +1824,7 @@ const KEYWORD_HANDLERS: KeywordHandler[] = [
           byDept[name] = (byDept[name] || 0) + 1
         })
         const rows = Object.entries(byDept).sort((a, b) => b[1] - a[1])
-        return { type: 'answer', text: `Headcount by department:\n${rows.map(([d, c]) => `  ${d}: ${c}`).join('\n')}`, confidence: 0.9 }
+        return { type: 'answer', text: `Headcount by department:\n${rows.map(([d, c]) => `  ${d}: ${c}`).join('\n')}`, confidence: 0.9, visualization: { type: 'bar' as const, title: 'Headcount by Department', data: rows.map(([dept, count]) => ({ label: dept, value: count })) } }
       }
 
       if (lwr.match(/country|location|where|by country|region/)) {
@@ -1997,6 +2117,700 @@ const KEYWORD_HANDLERS: KeywordHandler[] = [
   },
 ]
 
+// ---- Direct Execution Patterns (Execute in chat, don't just navigate) ----
+
+const EXECUTION_PATTERNS: QueryPattern[] = [
+  // a) Create a leave request for next Monday / tomorrow / next week
+  {
+    pattern: /create\s+(a\s+)?leave\s+request\s+(for\s+)?(next\s+monday|next\s+tuesday|next\s+wednesday|next\s+thursday|next\s+friday|tomorrow|today|next\s+week)/i,
+    handler: (store, match) => {
+      const dateText = match[3].toLowerCase()
+      let targetDate: string
+      const dayMap: Record<string, number> = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5 }
+      if (dateText.startsWith('next ') && dayMap[dateText.replace('next ', '')]) {
+        targetDate = getNextWeekday(dayMap[dateText.replace('next ', '')])
+      } else if (dateText === 'tomorrow') {
+        const d = new Date(); d.setDate(d.getDate() + 1); targetDate = d.toISOString().split('T')[0]
+      } else if (dateText === 'today') {
+        targetDate = new Date().toISOString().split('T')[0]
+      } else if (dateText === 'next week') {
+        targetDate = getNextWeekday(1)
+      } else {
+        targetDate = getNextWeekday(1)
+      }
+      return {
+        type: 'execution' as const,
+        text: `Create a leave request for ${targetDate}?`,
+        confidence: 0.9,
+        actions: [
+          { label: 'Confirm Leave Request', type: 'create' as const, payload: { action: 'createLeave' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addLeaveRequest?.({
+            id: genActionId(),
+            employee_id: s.currentEmployee?.id || s.currentEmployeeId,
+            start_date: targetDate,
+            end_date: targetDate,
+            leave_type: 'annual',
+            status: 'pending',
+            reason: 'Requested via Tempo AI',
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Leave request created for ${targetDate}. Status: Pending approval.` }
+        },
+      }
+    },
+  },
+  // b) Create a job posting for [title] in [location] with salary [min]-[max]
+  {
+    pattern: /create\s+(a\s+)?job\s+posting\s+for\s+(.+?)(?:\s+in\s+(\w+))?(?:\s+with\s+salary\s+(\d[\d,]*)\s*[-\u2013to]+\s*(\d[\d,]*))?$/i,
+    handler: (store, match) => {
+      const title = match[2]?.trim() || 'New Role'
+      const location = match[3] || 'TBD'
+      const salaryMin = match[4] ? parseInt(match[4].replace(/,/g, '')) * 100 : 0
+      const salaryMax = match[5] ? parseInt(match[5].replace(/,/g, '')) * 100 : 0
+      const currency = store.orgCurrency || 'GHS'
+      return {
+        type: 'execution' as const,
+        text: `Create job posting:\n  Title: ${title}\n  Location: ${location}${salaryMin ? `\n  Salary: ${currency} ${(salaryMin / 100).toLocaleString()} - ${(salaryMax / 100).toLocaleString()}` : ''}\n\nConfirm?`,
+        confidence: 0.9,
+        actions: [
+          { label: 'Create Job Posting', type: 'create' as const, payload: { action: 'createJob' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addJobPosting?.({
+            id: genActionId(),
+            title,
+            location,
+            salary_min: salaryMin,
+            salary_max: salaryMax,
+            status: 'draft',
+            description: `${title} position in ${location}. Created via Tempo AI.`,
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Job posting created: ${title} (${location}).${salaryMin ? ` Salary: ${currency} ${(salaryMin / 100).toLocaleString()}-${(salaryMax / 100).toLocaleString()}.` : ''} Status: Draft.` }
+        },
+      }
+    },
+  },
+  // c) Approve all pending leave requests
+  {
+    pattern: /approve\s+(all|every)\s+pending\s+leave\s+(requests?)?/i,
+    handler: (store) => {
+      const pending = store.leaveRequests?.filter((l: any) => l.status === 'pending') || []
+      return {
+        type: 'execution' as const,
+        text: `Approve ${pending.length} pending leave request(s)? This action cannot be undone.`,
+        confidence: 0.9,
+        actions: [
+          { label: `Approve ${pending.length} Requests`, type: 'approve' as const, payload: { action: 'approveAllLeave' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          const toApprove = s.leaveRequests?.filter((l: any) => l.status === 'pending') || []
+          let approved = 0
+          toApprove.forEach((l: any) => {
+            s.updateLeaveRequest?.(l.id, { status: 'approved', approved_at: new Date().toISOString() })
+            approved++
+          })
+          return { success: true, message: `${approved} leave request(s) approved.` }
+        },
+      }
+    },
+  },
+  // d) Update [name]'s [field] to [value]
+  {
+    pattern: /update\s+(.+?)(?:'s|s')\s+(job title|title|role|department|level|country|email|phone)\s+to\s+(.+)/i,
+    handler: (store, match) => {
+      const name = match[1].trim()
+      const field = match[2].trim().toLowerCase()
+      const value = match[3].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+
+      const fieldMap: Record<string, string> = {
+        'job title': 'job_title', title: 'job_title', role: 'role',
+        department: 'department_id', level: 'level', country: 'country',
+        email: 'email', phone: 'phone',
+      }
+      const dbField = fieldMap[field] || field
+      const empName = emp.profile?.full_name || emp.full_name
+      // For department, try to find department by name and use its id
+      let actualValue: string = value
+      if (dbField === 'department_id') {
+        const dept = findDepartmentByName(store, value)
+        if (dept) actualValue = dept.id
+      }
+      return {
+        type: 'execution' as const,
+        text: `Update ${empName}'s ${field} to "${value}"?`,
+        confidence: 0.9,
+        actions: [
+          { label: 'Confirm Update', type: 'create' as const, payload: { action: 'updateEmployee', id: emp.id, field: dbField, value: actualValue }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.updateEmployee?.(emp.id, { [dbField]: actualValue })
+          return { success: true, message: `Updated ${empName}'s ${field} to "${value}".` }
+        },
+      }
+    },
+  },
+  // e) Add [name] to the [department] department
+  {
+    pattern: /add\s+(.+?)\s+to\s+(?:the\s+)?(.+?)\s+department/i,
+    handler: (store, match) => {
+      const name = match[1].trim()
+      const deptName = match[2].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const dept = findDepartmentByName(store, deptName)
+      const empName = emp.profile?.full_name || emp.full_name
+      if (!dept) return { type: 'answer' as const, text: `Department "${deptName}" not found.`, confidence: 0.5 }
+      return {
+        type: 'execution' as const,
+        text: `Move ${empName} to the ${dept.name} department?`,
+        confidence: 0.9,
+        actions: [
+          { label: 'Confirm', type: 'create' as const, payload: { action: 'moveDept' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.updateEmployee?.(emp.id, { department_id: dept.id })
+          return { success: true, message: `Moved ${empName} to the ${dept.name} department.` }
+        },
+      }
+    },
+  },
+  // f) Submit an expense report for [amount] — [description]
+  {
+    pattern: /submit\s+(an?\s+)?expense\s+report\s+for\s+(?:GHS|USD|\$|EUR|GBP)?\s*(\d[\d,]*(?:\.\d{2})?)\s*(?:[-\u2014\u2013]|for)?\s*(.*)?/i,
+    handler: (store, match) => {
+      const amount = parseFloat(match[2].replace(/,/g, ''))
+      const desc = match[3]?.trim() || 'Expense via Tempo AI'
+      const currency = store.orgCurrency || 'GHS'
+      return {
+        type: 'execution' as const,
+        text: `Submit expense report:\n  Amount: ${currency} ${amount.toLocaleString()}\n  Description: ${desc}\n\nConfirm?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Submit Expense', type: 'create' as const, payload: { action: 'submitExpense' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addExpenseReport?.({
+            id: genActionId(),
+            employee_id: s.currentEmployee?.id || s.currentEmployeeId,
+            total_amount: Math.round(amount * 100),
+            description: desc,
+            status: 'pending',
+            submitted_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Expense report submitted: ${currency} ${amount.toLocaleString()} -- ${desc}. Status: Pending.` }
+        },
+      }
+    },
+  },
+  // g) Schedule a performance review for [name] in [N] weeks
+  {
+    pattern: /schedule\s+(a\s+)?performance\s+review\s+for\s+(.+?)\s+in\s+(\d+)\s+weeks?/i,
+    handler: (store, match) => {
+      const name = match[2].trim()
+      const weeks = parseInt(match[3])
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const reviewDate = getDateInNWeeks(weeks)
+      return {
+        type: 'execution' as const,
+        text: `Schedule a performance review for ${empName} on ${reviewDate} (${weeks} week(s) from now)?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Schedule Review', type: 'create' as const, payload: { action: 'scheduleReview' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addReview?.({
+            id: genActionId(),
+            employee_id: emp.id,
+            reviewer_id: s.currentEmployee?.id || s.currentEmployeeId,
+            type: 'performance',
+            status: 'scheduled',
+            scheduled_date: reviewDate,
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Performance review scheduled for ${empName} on ${reviewDate}.` }
+        },
+      }
+    },
+  },
+  // h) Enroll all new hires in [training/course]
+  {
+    pattern: /enroll\s+(?:all\s+)?new\s+hires?\s+in\s+(.+?)(?:\s+training|\s+course)?$/i,
+    handler: (store, match) => {
+      const courseName = match[1].trim()
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const newHires = store.employees?.filter((e: any) => {
+        const hd = e.hire_date || e.start_date
+        return hd && new Date(hd) >= thirtyDaysAgo && !e.termination_date
+      }) || []
+      const course = store.courses?.find((c: any) => (c.title || c.name || '').toLowerCase().includes(courseName.toLowerCase()))
+      return {
+        type: 'execution' as const,
+        text: `Enroll ${newHires.length} new hire(s) in "${courseName}"${course ? '' : ' (new course will be referenced)'}?`,
+        confidence: 0.85,
+        actions: [
+          { label: `Enroll ${newHires.length} People`, type: 'create' as const, payload: { action: 'enrollNewHires' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          const recentHires = s.employees?.filter((e: any) => {
+            const hd = e.hire_date || e.start_date
+            return hd && new Date(hd) >= thirtyDaysAgo && !e.termination_date
+          }) || []
+          let enrolled = 0
+          recentHires.forEach((e: any) => {
+            s.addEnrollment?.({
+              id: genActionId(),
+              employee_id: e.id,
+              course_id: course?.id || genActionId(),
+              course_title: courseName,
+              status: 'not_started',
+              enrolled_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            })
+            enrolled++
+          })
+          return { success: true, message: `${enrolled} new hire(s) enrolled in "${courseName}".` }
+        },
+      }
+    },
+  },
+  // i) Set [name]'s leave balance to [N] days
+  {
+    pattern: /set\s+(.+?)(?:'s|s')\s+leave\s+balance\s+to\s+(\d+)\s+days?/i,
+    handler: (store, match) => {
+      const name = match[1].trim()
+      const days = parseInt(match[2])
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      return {
+        type: 'execution' as const,
+        text: `Set ${empName}'s leave balance to ${days} days?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Confirm', type: 'create' as const, payload: { action: 'setLeaveBalance' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          const existing = s.timeOffBalances?.find((b: any) => b.employee_id === emp.id)
+          if (existing) {
+            s.updateTimeOffBalance?.(existing.id, { balance: days, remaining: days })
+          } else {
+            s.addTimeOffBalance?.({
+              id: genActionId(),
+              employee_id: emp.id,
+              policy_name: 'Annual Leave',
+              leave_type: 'annual',
+              balance: days,
+              remaining: days,
+              created_at: new Date().toISOString(),
+            })
+          }
+          return { success: true, message: `${empName}'s leave balance set to ${days} days.` }
+        },
+      }
+    },
+  },
+  // j) Create a feedback note for [name] — [message]
+  {
+    pattern: /(?:create|give|add|write)\s+(a\s+)?feedback\s+(?:note\s+)?for\s+(.+?)\s*[-\u2014\u2013]\s*(.+)/i,
+    handler: (store, match) => {
+      const name = match[2].trim()
+      const feedback = match[3].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      return {
+        type: 'execution' as const,
+        text: `Add feedback for ${empName}:\n"${feedback}"\n\nConfirm?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Submit Feedback', type: 'create' as const, payload: { action: 'addFeedback' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addFeedback?.({
+            id: genActionId(),
+            employee_id: emp.id,
+            from_id: s.currentEmployee?.id || s.currentEmployeeId,
+            type: 'positive',
+            content: feedback,
+            visibility: 'manager',
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Feedback submitted for ${empName}: "${feedback}"` }
+        },
+      }
+    },
+  },
+  // k) Approve all pending expense reports
+  {
+    pattern: /approve\s+(all|every)\s+pending\s+expense\s+(reports?)?/i,
+    handler: (store) => {
+      const pending = store.expenseReports?.filter((e: any) => e.status === 'pending' || e.status === 'submitted') || []
+      return {
+        type: 'execution' as const,
+        text: `Approve ${pending.length} pending expense report(s)? This action cannot be undone.`,
+        confidence: 0.9,
+        actions: [
+          { label: `Approve ${pending.length} Reports`, type: 'approve' as const, payload: { action: 'approveAllExpenses' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          const toApprove = s.expenseReports?.filter((e: any) => e.status === 'pending' || e.status === 'submitted') || []
+          let approved = 0
+          toApprove.forEach((e: any) => {
+            s.updateExpenseReport?.(e.id, { status: 'approved', approved_at: new Date().toISOString() })
+            approved++
+          })
+          return { success: true, message: `${approved} expense report(s) approved.` }
+        },
+      }
+    },
+  },
+  // l) Create a recognition for [name] — [message]
+  {
+    pattern: /(?:create|give|add|send)\s+(a\s+)?recognition\s+(?:for|to)\s+(.+?)\s*[-\u2014\u2013]\s*(.+)/i,
+    handler: (store, match) => {
+      const name = match[2].trim()
+      const message = match[3].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      return {
+        type: 'execution' as const,
+        text: `Send recognition to ${empName}:\n"${message}"\n\nConfirm?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Send Recognition', type: 'create' as const, payload: { action: 'addRecognition' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addRecognition?.({
+            id: genActionId(),
+            employee_id: emp.id,
+            given_by: s.currentEmployee?.id || s.currentEmployeeId,
+            message,
+            badge: 'star',
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Recognition sent to ${empName}!` }
+        },
+      }
+    },
+  },
+  // m) Create a goal for [name]: [goal title]
+  {
+    pattern: /(?:create|add|set)\s+(a\s+)?goal\s+for\s+(.+?):\s*(.+)/i,
+    handler: (store, match) => {
+      const name = match[2].trim()
+      const goalTitle = match[3].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      return {
+        type: 'execution' as const,
+        text: `Create goal for ${empName}:\n"${goalTitle}"\n\nConfirm?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Create Goal', type: 'create' as const, payload: { action: 'addGoal' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addGoal?.({
+            id: genActionId(),
+            employee_id: emp.id,
+            title: goalTitle,
+            status: 'active',
+            progress: 0,
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `Goal created for ${empName}: "${goalTitle}"` }
+        },
+      }
+    },
+  },
+  // n) Schedule a 1:1 with [name] for next [day]
+  {
+    pattern: /schedule\s+(a\s+)?(?:1:1|one[- ]on[- ]one|check[- ]?in)\s+with\s+(.+?)(?:\s+for\s+next\s+(monday|tuesday|wednesday|thursday|friday))?$/i,
+    handler: (store, match) => {
+      const name = match[2].trim()
+      const day = match[3]?.toLowerCase()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const dayMap: Record<string, number> = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5 }
+      const meetingDate = day && dayMap[day] ? getNextWeekday(dayMap[day]) : getNextWeekday(1)
+      return {
+        type: 'execution' as const,
+        text: `Schedule a 1:1 with ${empName} on ${meetingDate}?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Schedule 1:1', type: 'create' as const, payload: { action: 'scheduleOneOnOne' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.addOneOnOne?.({
+            id: genActionId(),
+            employee_id: emp.id,
+            manager_id: s.currentEmployee?.id || s.currentEmployeeId,
+            scheduled_date: meetingDate,
+            status: 'scheduled',
+            created_at: new Date().toISOString(),
+          })
+          return { success: true, message: `1:1 with ${empName} scheduled for ${meetingDate}.` }
+        },
+      }
+    },
+  },
+  // o) Reject leave request for [name]
+  {
+    pattern: /reject\s+leave\s+(?:request\s+)?(?:for\s+)?(.+)/i,
+    handler: (store, match) => {
+      const name = match[1].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const pendingLeave = store.leaveRequests?.find((l: any) => l.employee_id === emp.id && l.status === 'pending')
+      if (!pendingLeave) return { type: 'answer' as const, text: `No pending leave request found for ${empName}.`, confidence: 0.7 }
+      return {
+        type: 'execution' as const,
+        text: `Reject ${empName}'s pending leave request (${pendingLeave.start_date} to ${pendingLeave.end_date})?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Reject', type: 'create' as const, payload: { action: 'rejectLeave' }, icon: 'X' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.updateLeaveRequest?.(pendingLeave.id, { status: 'rejected', rejected_at: new Date().toISOString() })
+          return { success: true, message: `Leave request for ${empName} has been rejected.` }
+        },
+      }
+    },
+  },
+  // p) Approve leave request for [name]
+  {
+    pattern: /approve\s+leave\s+(?:request\s+)?(?:for\s+)?(.+)/i,
+    handler: (store, match) => {
+      const name = match[1].trim()
+      const emp = findEmployeeByName(store, name)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${name}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const pendingLeave = store.leaveRequests?.find((l: any) => l.employee_id === emp.id && l.status === 'pending')
+      if (!pendingLeave) return { type: 'answer' as const, text: `No pending leave request found for ${empName}.`, confidence: 0.7 }
+      return {
+        type: 'execution' as const,
+        text: `Approve ${empName}'s leave request (${pendingLeave.start_date} to ${pendingLeave.end_date})?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Approve', type: 'create' as const, payload: { action: 'approveLeave' }, icon: 'Check' },
+          { label: 'Cancel', type: 'navigate' as const, payload: '', icon: 'X' },
+        ],
+        executeAction: (s: any) => {
+          s.updateLeaveRequest?.(pendingLeave.id, { status: 'approved', approved_at: new Date().toISOString() })
+          return { success: true, message: `Leave request for ${empName} approved.` }
+        },
+      }
+    },
+  },
+]
+
+// ---- Workflow Creation Patterns ----
+
+const WORKFLOW_PATTERNS: QueryPattern[] = [
+  // "Set up a workflow when someone requests leave more than N days"
+  {
+    pattern: /set\s+up\s+(?:a\s+)?(?:workflow|automation|rule)\s*(?:.*?)(?:when|if|every|whenever)\s+(.+)/i,
+    handler: (_store, match) => {
+      const trigger = match[1].trim()
+      let workflowConfig = { trigger: '', actions: [] as string[], name: '' }
+
+      if (/someone requests.*leave.*more than (\d+) days/i.test(trigger)) {
+        workflowConfig = {
+          name: 'Extended Leave Approval',
+          trigger: 'leave_request_submitted (days > threshold)',
+          actions: ['Check if days exceed threshold', 'Notify skip-level manager', 'Add to HR review queue', 'Send confirmation to employee'],
+        }
+      } else if (/new hire|someone is hired|employee joins|new employee/i.test(trigger)) {
+        workflowConfig = {
+          name: 'New Hire Onboarding',
+          trigger: 'employee_hired',
+          actions: ['Assign onboarding journey', 'Provision SSO account', 'Order laptop from IT', 'Enroll in mandatory training', 'Create welcome moment in #general', 'Schedule 1:1 with manager'],
+        }
+      } else if (/expense.*over|expense.*exceed|expense.*more than/i.test(trigger)) {
+        const amountMatch = trigger.match(/(\d[\d,]*)/)?.[1] || '1000'
+        workflowConfig = {
+          name: 'High-Value Expense Approval',
+          trigger: `expense_submitted (amount > ${amountMatch})`,
+          actions: [`Check if amount exceeds ${amountMatch}`, 'Flag for finance review', 'Notify department head', 'Require VP approval'],
+        }
+      } else if (/certification expires|cert.*expire/i.test(trigger)) {
+        workflowConfig = {
+          name: 'Certification Expiry Alert',
+          trigger: 'certification_expiring (30 days before)',
+          actions: ['Send reminder to employee', 'Notify their manager', 'Alert HR compliance team', 'Block non-compliant task assignments'],
+        }
+      } else if (/starts|first day|new.*starts/i.test(trigger)) {
+        workflowConfig = {
+          name: 'Welcome New Starter',
+          trigger: 'employee_start_date',
+          actions: ['Send welcome message to team channel', 'Assign buddy/mentor', 'Schedule orientation session', 'Set up workspace'],
+        }
+      } else {
+        workflowConfig = {
+          name: 'Custom Workflow',
+          trigger,
+          actions: ['Evaluate trigger condition', 'Execute primary action', 'Send notification', 'Log to audit trail'],
+        }
+      }
+
+      return {
+        type: 'creation' as const,
+        text: `I'll set up this workflow:\n\nWorkflow: ${workflowConfig.name}\nTrigger: ${workflowConfig.trigger}\nActions:\n${workflowConfig.actions.map((a, i) => `  ${i + 1}. ${a}`).join('\n')}\n\nCreate this workflow?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Create Workflow', type: 'navigate' as const, payload: '/workflow-studio', icon: 'Zap' },
+          { label: 'Customize First', type: 'navigate' as const, payload: '/workflow-studio', icon: 'Settings' },
+        ],
+      }
+    },
+  },
+  // "Every month on the 25th, remind managers to submit timesheets"
+  {
+    pattern: /every\s+(month|week|day|monday|tuesday|wednesday|thursday|friday).*(remind|notify|alert|send)\s+(.+)/i,
+    handler: (_store, match) => {
+      const frequency = match[1].trim()
+      const action = match[3].trim()
+      return {
+        type: 'creation' as const,
+        text: `I'll set up this recurring automation:\n\nSchedule: Every ${frequency}\nAction: ${action}\n\nCreate this?`,
+        confidence: 0.8,
+        actions: [
+          { label: 'Create Automation', type: 'navigate' as const, payload: '/workflow-studio', icon: 'Zap' },
+          { label: 'Customize', type: 'navigate' as const, payload: '/workflow-studio', icon: 'Settings' },
+        ],
+      }
+    },
+  },
+]
+
+// ---- Document Generation Patterns ----
+
+const DOCUMENT_PATTERNS: QueryPattern[] = [
+  // "Generate an offer letter for [name]"
+  {
+    pattern: /generate\s+(an?\s+)?(offer letter|employment contract|reference letter|policy document|employment letter)\s+for\s+(.+)/i,
+    handler: (store, match) => {
+      const docType = match[2]
+      const target = match[3].trim()
+      const emp = findEmployeeByName(store, target)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${target}" in the directory. Please check the name and try again.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const dept = store.departments?.find((d: any) => d.id === emp.department_id)
+      return {
+        type: 'creation' as const,
+        text: `I'll generate a ${docType} for ${empName}:\n\n  Name: ${empName}\n  Role: ${emp.job_title || 'N/A'}\n  Department: ${dept?.name || 'N/A'}\n  Start Date: ${emp.hire_date || emp.start_date || emp.created_at || 'N/A'}\n\nReady to generate?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Generate Document', type: 'navigate' as const, payload: '/documents/editor', icon: 'FileText' },
+        ],
+      }
+    },
+  },
+  // "Create a performance summary for [name]"
+  {
+    pattern: /(?:create|generate|write|draft)\s+(a\s+)?performance\s+summary\s+for\s+(.+)/i,
+    handler: (store, match) => {
+      const target = match[2].trim()
+      const emp = findEmployeeByName(store, target)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${target}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const reviews = store.reviews?.filter((r: any) => r.employee_id === emp.id) || []
+      const goals = store.goals?.filter((g: any) => g.employee_id === emp.id) || []
+      const avgRating = reviews.length > 0
+        ? (reviews.reduce((s: number, r: any) => s + (r.overall_rating || r.rating || 0), 0) / reviews.length).toFixed(1)
+        : 'N/A'
+      return {
+        type: 'creation' as const,
+        text: `Performance summary for ${empName}:\n\n  Role: ${emp.job_title || 'N/A'}\n  Reviews on file: ${reviews.length}\n  Average rating: ${avgRating}\n  Active goals: ${goals.filter((g: any) => g.status === 'active').length}\n  Completed goals: ${goals.filter((g: any) => g.status === 'completed').length}\n\nGenerate full document?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Generate Summary', type: 'navigate' as const, payload: '/documents/editor', icon: 'FileText' },
+        ],
+      }
+    },
+  },
+  // "Draft a promotion announcement for [name]"
+  {
+    pattern: /(?:draft|write|create|generate)\s+(a\s+)?promotion\s+announcement\s+for\s+(.+)/i,
+    handler: (store, match) => {
+      const target = match[2].trim()
+      const emp = findEmployeeByName(store, target)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${target}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      return {
+        type: 'creation' as const,
+        text: `Draft promotion announcement for ${empName}:\n\n  Current Role: ${emp.job_title || 'N/A'}\n  Department: ${store.departments?.find((d: any) => d.id === emp.department_id)?.name || 'N/A'}\n\nGenerate announcement?`,
+        confidence: 0.8,
+        actions: [
+          { label: 'Generate Announcement', type: 'navigate' as const, payload: '/documents/editor', icon: 'FileText' },
+        ],
+      }
+    },
+  },
+  // "Write an exit summary for [name]"
+  {
+    pattern: /(?:write|create|generate|draft)\s+(an?\s+)?exit\s+summary\s+for\s+(.+)/i,
+    handler: (store, match) => {
+      const target = match[2].trim()
+      const emp = findEmployeeByName(store, target)
+      if (!emp) return { type: 'answer' as const, text: `I couldn't find "${target}" in the directory.`, confidence: 0.5 }
+      const empName = emp.profile?.full_name || emp.full_name
+      const dept = store.departments?.find((d: any) => d.id === emp.department_id)
+      return {
+        type: 'creation' as const,
+        text: `Exit summary for ${empName}:\n\n  Role: ${emp.job_title || 'N/A'}\n  Department: ${dept?.name || 'N/A'}\n  Termination date: ${emp.termination_date || 'Not set'}\n\nGenerate document?`,
+        confidence: 0.8,
+        actions: [
+          { label: 'Generate Exit Summary', type: 'navigate' as const, payload: '/documents/editor', icon: 'FileText' },
+        ],
+      }
+    },
+  },
+  // "Generate a board report for Q1 / quarterly"
+  {
+    pattern: /generate\s+(a\s+)?(?:board|quarterly|q[1-4])\s+report/i,
+    handler: (store) => {
+      const active = activeEmployees(store).length
+      const openRoles = store.jobPostings?.filter((j: any) => j.status === 'published' || j.status === 'open')?.length || 0
+      const pendingLeave = store.leaveRequests?.filter((l: any) => l.status === 'pending')?.length || 0
+      return {
+        type: 'creation' as const,
+        text: `Board report overview:\n\n  Active employees: ${active}\n  Open positions: ${openRoles}\n  Pending approvals: ${pendingLeave}\n\nGenerate full board pack?`,
+        confidence: 0.85,
+        actions: [
+          { label: 'Generate Board Pack', type: 'navigate' as const, payload: '/analytics/board-reports', icon: 'FileText' },
+        ],
+      }
+    },
+  },
+]
+
 // ---- Proactive Insights ----
 
 export function getProactiveInsights(store: any): AssistantResponse[] {
@@ -2114,10 +2928,28 @@ export function processAssistantQuery(query: string, store: any): AssistantRespo
     if (match) return trackAndReturn(handler(store, match), 'action')
   }
 
-  // ---- 2b. Extended action patterns (multi-step, alerts, exports, summary) ----
+  // ---- 2b. Direct execution patterns ("create leave request", "approve all", "update...") ----
+  for (const { pattern, handler } of EXECUTION_PATTERNS) {
+    const match = trimmed.match(pattern)
+    if (match) return trackAndReturn(handler(store, match), 'execution')
+  }
+
+  // ---- 2c. Extended action patterns (multi-step, alerts, exports, summary) ----
   for (const { pattern, handler } of EXTENDED_ACTION_PATTERNS) {
     const match = trimmed.match(pattern)
     if (match) return trackAndReturn(handler(store, match), 'action')
+  }
+
+  // ---- 2d. Workflow creation patterns ----
+  for (const { pattern, handler } of WORKFLOW_PATTERNS) {
+    const match = trimmed.match(pattern)
+    if (match) return trackAndReturn(handler(store, match), 'workflow')
+  }
+
+  // ---- 2e. Document generation patterns ----
+  for (const { pattern, handler } of DOCUMENT_PATTERNS) {
+    const match = trimmed.match(pattern)
+    if (match) return trackAndReturn(handler(store, match), 'document')
   }
 
   // ---- 3. Comparison patterns ("compare X vs Y") ----
@@ -2209,8 +3041,11 @@ export function processAssistantQuery(query: string, store: any): AssistantRespo
       // Try all pattern groups with the augmented query
       const allPatternGroups = [
         SELF_SERVICE_PATTERNS,
+        EXECUTION_PATTERNS,
         ACTION_PATTERNS,
         EXTENDED_ACTION_PATTERNS,
+        WORKFLOW_PATTERNS,
+        DOCUMENT_PATTERNS,
         COMPARISON_PATTERNS,
         WHATIF_PATTERNS,
         CALCULATION_PATTERNS,

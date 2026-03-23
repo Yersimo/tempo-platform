@@ -7,7 +7,7 @@ import {
   processAssistantQuery,
   getProactiveInsights,
 } from '@/lib/ai/assistant-engine'
-import type { AssistantResponse, AssistantAction, ChatMessage } from '@/lib/ai/assistant-engine'
+import type { AssistantResponse, AssistantAction, ChatMessage, VisualizationData } from '@/lib/ai/assistant-engine'
 import {
   Sparkles,
   X,
@@ -16,7 +16,142 @@ import {
   MessageSquare,
   Search,
   ChevronRight,
+  Check,
 } from 'lucide-react'
+
+// ---- Inline Visualization Component ----
+
+function ChatVisualization({ viz }: { viz: VisualizationData }) {
+  if (viz.type === 'bar') {
+    const maxVal = Math.max(...viz.data.map((d: any) => d.value), 1)
+    return (
+      <div className="mt-3 space-y-2">
+        {viz.title && <p className="text-xs font-medium text-t3 uppercase">{viz.title}</p>}
+        {viz.data.map((d: any, i: number) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-xs text-t2 w-24 truncate">{d.label}</span>
+            <div className="flex-1 h-5 bg-canvas rounded-full overflow-hidden">
+              <div
+                className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                style={{ width: `${(d.value / maxVal) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-t1 w-12 text-right">{d.value}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (viz.type === 'metric') {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {viz.data.map((d: any, i: number) => (
+          <div key={i} className="bg-canvas rounded-lg p-3 text-center">
+            <p className="text-xl font-bold text-t1">{d.value}</p>
+            <p className="text-xs text-t3">{d.label}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (viz.type === 'table') {
+    return (
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              {viz.data[0] &&
+                Object.keys(viz.data[0]).map((key) => (
+                  <th key={key} className="text-left py-1 px-2 text-t3 font-medium">
+                    {key}
+                  </th>
+                ))}
+            </tr>
+          </thead>
+          <tbody>
+            {viz.data.map((row: any, i: number) => (
+              <tr key={i} className="border-b border-border/50">
+                {Object.values(row).map((val, j) => (
+                  <td key={j} className="py-1 px-2 text-t2">
+                    {String(val)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  if (viz.type === 'progress') {
+    return (
+      <div className="mt-3 space-y-2">
+        {viz.title && <p className="text-xs font-medium text-t3 uppercase">{viz.title}</p>}
+        {viz.data.map((d: any, i: number) => (
+          <div key={i}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-t2">{d.label}</span>
+              <span className="text-t1 font-medium">{d.value}%</span>
+            </div>
+            <div className="h-2 bg-canvas rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  d.value >= 80 ? 'bg-green-500' : d.value >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${Math.min(d.value, 100)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (viz.type === 'list') {
+    return (
+      <div className="mt-3 space-y-1">
+        {viz.title && <p className="text-xs font-medium text-t3 uppercase mb-1">{viz.title}</p>}
+        {viz.data.map((d: any, i: number) => (
+          <div key={i} className="flex items-center gap-2 py-1">
+            <div className={`w-2 h-2 rounded-full ${d.color || 'bg-purple-500'}`} />
+            <span className="text-sm text-t2 flex-1">{d.label}</span>
+            {d.value && <span className="text-sm font-medium text-t1">{d.value}</span>}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (viz.type === 'pie') {
+    // Simple text-based pie representation
+    const total = viz.data.reduce((s: number, d: any) => s + (d.value || 0), 0) || 1
+    return (
+      <div className="mt-3 space-y-1">
+        {viz.title && <p className="text-xs font-medium text-t3 uppercase mb-1">{viz.title}</p>}
+        {viz.data.map((d: any, i: number) => {
+          const pct = Math.round((d.value / total) * 100)
+          return (
+            <div key={i} className="flex items-center gap-2 py-0.5">
+              <div className="flex-1 h-3 bg-canvas rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-purple-500 rounded-full"
+                  style={{ width: `${pct}%`, opacity: 1 - i * 0.15 }}
+                />
+              </div>
+              <span className="text-xs text-t2 w-20 truncate">{d.label}</span>
+              <span className="text-xs font-medium text-t1 w-10 text-right">{pct}%</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return null
+}
 
 // ---- Command Bar ----
 
@@ -31,6 +166,7 @@ function CommandBar({
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AssistantResponse | null>(null)
+  const [executionResult, setExecutionResult] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const store = useTempo()
   const router = useRouter()
@@ -39,6 +175,7 @@ function CommandBar({
     if (isOpen) {
       setQuery('')
       setResults(null)
+      setExecutionResult(null)
       // Small delay to let the modal mount before focusing
       const t = setTimeout(() => inputRef.current?.focus(), 50)
       return () => clearTimeout(t)
@@ -47,6 +184,7 @@ function CommandBar({
 
   const handleSubmit = useCallback(() => {
     if (!query.trim()) return
+    setExecutionResult(null)
     const response = processAssistantQuery(query, store)
     setResults(response)
 
@@ -62,7 +200,7 @@ function CommandBar({
 
   const handleAction = useCallback(
     (action: AssistantAction) => {
-      if (action.type === 'navigate') {
+      if (action.type === 'navigate' && action.payload) {
         router.push(action.payload)
         onClose()
       }
@@ -70,9 +208,16 @@ function CommandBar({
     [router, onClose]
   )
 
+  const handleExecute = useCallback(() => {
+    if (!results?.executeAction) return
+    const result = results.executeAction(store)
+    setExecutionResult(result.message)
+  }, [results, store])
+
   const handleSuggestionClick = useCallback(
     (q: string) => {
       setQuery(q)
+      setExecutionResult(null)
       const r = processAssistantQuery(q, store)
       setResults(r)
     },
@@ -99,13 +244,16 @@ function CommandBar({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
-              if (!e.target.value.trim()) setResults(null)
+              if (!e.target.value.trim()) {
+                setResults(null)
+                setExecutionResult(null)
+              }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSubmit()
               if (e.key === 'Escape') onClose()
             }}
-            placeholder="Ask anything... 'Who's on leave?', 'Create a job posting', 'Payroll cost'"
+            placeholder="Ask anything... 'Approve all leave', 'Create job posting', 'Headcount by dept'"
             className="flex-1 bg-transparent text-t1 text-base sm:text-lg outline-none placeholder:text-t3"
           />
           <kbd className="hidden sm:inline text-xs text-t3 bg-canvas px-2 py-1 rounded border border-border">
@@ -117,7 +265,39 @@ function CommandBar({
         {results && (
           <div className="p-5 max-h-[400px] overflow-y-auto">
             <p className="text-sm text-t1 whitespace-pre-line leading-relaxed">{results.text}</p>
-            {results.actions && results.actions.length > 0 && (
+
+            {/* Inline visualization */}
+            {results.visualization && <ChatVisualization viz={results.visualization} />}
+
+            {/* Execution result message */}
+            {executionResult && (
+              <div className="mt-3 px-3 py-2 bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg text-sm flex items-start gap-2">
+                <Check className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{executionResult}</span>
+              </div>
+            )}
+
+            {/* Execute button for execution-type responses */}
+            {results.executeAction && !executionResult && (
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={handleExecute}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Execute Action
+                </button>
+                <button
+                  onClick={() => { setResults(null); setQuery('') }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-canvas text-t2 text-sm border border-border hover:bg-hover transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {/* Regular action buttons (shown when no execution or after execution completes) */}
+            {results.actions && results.actions.length > 0 && !results.executeAction && (
               <div className="flex flex-wrap gap-2 mt-4">
                 {results.actions.map((action, i) => (
                   <button
@@ -156,9 +336,9 @@ function CommandBar({
                 "Who's on leave today?",
                 'Show pending approvals',
                 "What's our payroll cost?",
-                'Open positions',
                 'Headcount by department',
-                'Create a job posting for Senior Analyst',
+                'Create a leave request for next Monday',
+                'Approve all pending leave requests',
               ].map((q) => (
                 <button
                   key={q}
@@ -208,7 +388,7 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           {
             role: 'assistant',
             content:
-              "Hi! I'm Tempo AI. Ask me anything about your people, payroll, compliance, or finances. I can also create things and take actions for you.",
+              "Hi! I'm Tempo AI. Ask me anything about your people, payroll, compliance, or finances. I can also create records, approve requests, generate documents, and set up workflows.",
             timestamp: new Date(),
           },
         ])
@@ -248,13 +428,40 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
 
   const handleAction = useCallback(
     (action: AssistantAction) => {
-      if (action.type === 'navigate') {
+      if (action.type === 'navigate' && action.payload) {
         router.push(action.payload)
         onClose()
       }
     },
     [router, onClose]
   )
+
+  // Execute an action from a message and add the result as a new message
+  const handleExecuteAction = useCallback(
+    (response: AssistantResponse) => {
+      if (!response.executeAction) return
+      const result = response.executeAction(store)
+      const resultMsg: ChatMessage = {
+        role: 'assistant',
+        content: result.message,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, resultMsg])
+    },
+    [store]
+  )
+
+  // Cancel an execution (just add a cancel message)
+  const handleCancelAction = useCallback(() => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: 'Action cancelled.',
+        timestamp: new Date(),
+      },
+    ])
+  }, [])
 
   return (
     <>
@@ -280,7 +487,7 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
             </div>
             <div>
               <h2 className="text-sm font-semibold text-t1">Tempo AI</h2>
-              <p className="text-xs text-t3">Ask anything about your org</p>
+              <p className="text-xs text-t3">Ask, act, or automate</p>
             </div>
           </div>
           <button
@@ -311,8 +518,43 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                   </p>
                 )}
 
-                {/* Action Buttons */}
-                {msg.response?.actions && msg.response.actions.length > 0 && (
+                {/* Inline Visualization */}
+                {msg.response?.visualization && (
+                  <ChatVisualization viz={msg.response.visualization} />
+                )}
+
+                {/* Execution confirmation buttons (for 'execution' type responses) */}
+                {msg.response?.executeAction && msg.response?.type === 'execution' && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => handleExecuteAction(msg.response!)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors"
+                    >
+                      <Check className="w-3 h-3" />
+                      Confirm
+                    </button>
+                    <button
+                      onClick={handleCancelAction}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-canvas text-t2 text-xs border border-border hover:bg-hover transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Execute button for non-execution types that still have executeAction */}
+                {msg.response?.executeAction && msg.response?.type !== 'execution' && (
+                  <button
+                    onClick={() => handleExecuteAction(msg.response!)}
+                    className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors"
+                  >
+                    <Check className="w-3 h-3" />
+                    Execute Action
+                  </button>
+                )}
+
+                {/* Action Buttons (navigation, etc. -- only if no executeAction) */}
+                {msg.response?.actions && msg.response.actions.length > 0 && !msg.response?.executeAction && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {msg.response.actions.map((action, j) => (
                       <button
@@ -355,9 +597,11 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                 {[
                   'How many employees do we have?',
                   "What's our turnover rate?",
-                  'Show pending approvals',
                   'Headcount by department',
-                  'Open positions',
+                  'Create a leave request for next Monday',
+                  'Approve all pending leave requests',
+                  'Update Kwame\'s title to Senior Engineer',
+                  'Company snapshot',
                 ].map((q) => (
                   <button
                     key={q}
@@ -456,7 +700,7 @@ export function TempoAI() {
     setCommandBarOpen(false)
   }, [pathname])
 
-  // Keyboard shortcut: Cmd+J / Ctrl+J for AI (⌘J reserved for search)
+  // Keyboard shortcut: Cmd+J / Ctrl+J for AI
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
