@@ -795,6 +795,13 @@ button, a, input, select, textarea {
 @keyframes l-fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes l-typeCursor { 0%, 100% { border-color: rgba(255,255,255,.4); } 50% { border-color: transparent; } }
 @keyframes l-dotPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .6; } }
+@keyframes floatUp { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Floating notification cards - hide on mobile */
+@media (max-width: 768px) {
+  .l-float-card { display: none !important; }
+}
 .l-fade-up { animation: l-fadeUp .7s cubic-bezier(.16,1,.3,1) both; }
 .l-d1 { animation-delay: .1s; }
 .l-d2 { animation-delay: .2s; }

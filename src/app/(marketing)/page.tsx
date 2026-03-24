@@ -245,7 +245,38 @@ export default function LandingPage() {
         </div>
 
         {/* Product Screenshot */}
-        <div className="l-hero-product l-fade-up l-d4">
+        <div className="l-hero-product l-fade-up l-d4" style={{ position: 'relative' }}>
+          {/* Floating notification cards */}
+          <div className="l-float-card" style={{ position: 'absolute', top: '10%', right: '-5%', animation: 'floatUp 3s ease-in-out infinite', zIndex: 10 }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '12px 18px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, flexShrink: 0 }}>&#10003;</span>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1a1a2e' }}>Payroll Processed</div>
+                <div style={{ color: '#888', fontSize: 11 }}>12 employees &bull; GH&#x20B5;29,486.80</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="l-float-card" style={{ position: 'absolute', bottom: '15%', left: '-3%', animation: 'floatUp 3.5s ease-in-out infinite 0.5s', zIndex: 10 }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '12px 18px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, flexShrink: 0 }}>&#9889;</span>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1a1a2e' }}>New Hire Onboarded</div>
+                <div style={{ color: '#888', fontSize: 11 }}>Akosua M. &bull; 9 systems updated</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="l-float-card" style={{ position: 'absolute', top: '40%', right: '-8%', animation: 'floatUp 4s ease-in-out infinite 1s', zIndex: 10 }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '12px 18px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, flexShrink: 0 }}>&#127891;</span>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1a1a2e' }}>Certificate Issued</div>
+                <div style={{ color: '#888', fontSize: 11 }}>Kwame B. &bull; AML Compliance</div>
+              </div>
+            </div>
+          </div>
+
           <div className="l-hero-product-frame">
             <div className="l-topbar">
               <div className="l-topbar-dot" /><div className="l-topbar-dot" /><div className="l-topbar-dot" />
@@ -541,6 +572,62 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION: REAL RESULTS (warm background)                       */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 50%, #fff7ed 100%)', padding: '80px 0' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <p style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 2, color: '#ea580c', fontWeight: 600, marginBottom: 0 }}>Real Results</p>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#1a1a2e', marginTop: 8 }}>Built for teams that move fast.</h2>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32 }}>
+            {/* Card 1 */}
+            <div className="l-reveal" style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ height: 200, background: 'linear-gradient(135deg, #1a1a2e, #2d2b55)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <div style={{ color: 'white', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, fontWeight: 700 }}>12&rarr;1</div>
+                  <div style={{ fontSize: 14, opacity: 0.8 }}>tools consolidated</div>
+                </div>
+              </div>
+              <div style={{ padding: 24 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a2e' }}>Replace your entire HR stack</h3>
+                <p style={{ fontSize: 14, color: '#666', marginTop: 8, lineHeight: 1.6 }}>One platform replaces BambooHR + Gusto + Lattice + Cornerstone + Expensify + Slack. One login. One invoice.</p>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="l-reveal" style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', transitionDelay: '.1s' }}>
+              <div style={{ height: 200, background: 'linear-gradient(135deg, #ea580c, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ color: 'white', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, fontWeight: 700 }}>30s</div>
+                  <div style={{ fontSize: 14, opacity: 0.9 }}>board pack generation</div>
+                </div>
+              </div>
+              <div style={{ padding: 24 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a2e' }}>Board reports in seconds, not weeks</h3>
+                <p style={{ fontSize: 14, color: '#666', marginTop: 8, lineHeight: 1.6 }}>Auto-generated quarterly packs with live data from every module. No more copy-pasting from 8 spreadsheets.</p>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="l-reveal" style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', transitionDelay: '.2s' }}>
+              <div style={{ height: 200, background: 'linear-gradient(135deg, #16a34a, #22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ color: 'white', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, fontWeight: 700 }}>9</div>
+                  <div style={{ fontSize: 14, opacity: 0.9 }}>auto-actions per hire</div>
+                </div>
+              </div>
+              <div style={{ padding: 24 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a2e' }}>Hire once, update everywhere</h3>
+                <p style={{ fontSize: 14, color: '#666', marginTop: 8, lineHeight: 1.6 }}>HRIS, onboarding, SSO, devices, training, mentoring, moment, review, surveys &mdash; all from one click.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* SECTION 4: MODULE SHOWCASE (3 pillars)                        */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <section className="l-section l-section-alt" id="modules">
@@ -567,6 +654,22 @@ export default function LandingPage() {
                 </a>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION: TESTIMONIAL QUOTE                                    */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #2d2b55 100%)', padding: '80px 0', color: 'white' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 48, color: '#ea580c', marginBottom: 24, lineHeight: 1 }}>&ldquo;</div>
+          <p className="l-reveal" style={{ fontSize: 'clamp(18px, 3vw, 24px)', lineHeight: 1.6, fontWeight: 300, fontStyle: 'italic', color: 'rgba(255,255,255,.8)' }}>
+            The moment I saw one hire trigger 9 systems automatically, I knew we were looking at something different. This isn&apos;t an HR tool with integrations bolted on &mdash; it&apos;s a unified platform from the ground up.
+          </p>
+          <div style={{ marginTop: 32 }}>
+            <p style={{ fontWeight: 600, fontSize: 16 }}>What our early adopters tell us</p>
+            <p style={{ color: '#aaa', fontSize: 14, marginTop: 4 }}>HR Director, Pan-African Financial Services</p>
           </div>
         </div>
       </section>
@@ -757,24 +860,46 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 10: CTA                                               */}
+      {/* SECTION: HOW IT WORKS                                         */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <section className="l-cta-section" id="cta">
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div className="mx-auto" style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.4)' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span>
+      <section style={{ background: '#fafafa', padding: '80px 0' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 2, color: '#ea580c', fontWeight: 600, marginBottom: 0 }}>Get Started</p>
+          <h2 className="l-reveal" style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#1a1a2e', marginTop: 8 }}>Live in days, not months.</h2>
+          <p className="l-reveal" style={{ color: '#666', fontSize: 18, marginTop: 12, maxWidth: 600, margin: '12px auto 0' }}>No 6-month implementation project. No army of consultants.</p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 48, marginTop: 64 }}>
+            <div className="l-reveal" style={{ transitionDelay: '0s' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ea580c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, margin: '0 auto' }}>1</div>
+              <h3 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e', marginTop: 20 }}>Book a Demo</h3>
+              <p style={{ color: '#666', fontSize: 15, marginTop: 8, lineHeight: 1.6 }}>30 minutes. We&apos;ll show you the platform with your specific use case &mdash; payroll, HR, finance, or all three.</p>
+            </div>
+            <div className="l-reveal" style={{ transitionDelay: '.1s' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ea580c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, margin: '0 auto' }}>2</div>
+              <h3 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e', marginTop: 20 }}>Configure &amp; Import</h3>
+              <p style={{ color: '#666', fontSize: 15, marginTop: 8, lineHeight: 1.6 }}>Upload your employees, set up departments, configure payroll. Our onboarding wizard guides every step.</p>
+            </div>
+            <div className="l-reveal" style={{ transitionDelay: '.2s' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ea580c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, margin: '0 auto' }}>3</div>
+              <h3 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e', marginTop: 20 }}>Go Live</h3>
+              <p style={{ color: '#666', fontSize: 15, marginTop: 8, lineHeight: 1.6 }}>Run your first payroll, assign onboarding journeys, and watch the event cascade fire. You&apos;re live.</p>
+            </div>
           </div>
-          <div style={{ marginTop: 20, fontSize: 'clamp(28px,4vw,48px)', fontWeight: 300, color: '#fff', letterSpacing: '-.025em', marginBottom: 12 }}>
-            Ready to see Tempo?
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 10: CTA (enhanced warm version)                       */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)', padding: '100px 0', textAlign: 'center' }} id="cta">
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px' }}>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#1a1a2e', lineHeight: 1.2 }}>Ready to see what <span style={{ color: '#ea580c' }}>one platform</span> can do?</h2>
+          <p style={{ color: '#555', fontSize: 18, marginTop: 16, lineHeight: 1.6 }}>Book a 30-minute demo and we&apos;ll show you exactly how Tempo works for your company &mdash; with your data, your modules, your compliance requirements.</p>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
+            <a href="/demo-request" style={{ background: '#ea580c', color: 'white', padding: '16px 36px', borderRadius: 10, fontSize: 16, fontWeight: 600, textDecoration: 'none' }}>Request a Demo</a>
+            <a href="/signup" style={{ background: '#1a1a2e', color: 'white', padding: '16px 36px', borderRadius: 10, fontSize: 16, fontWeight: 600, textDecoration: 'none' }}>Start Free Trial</a>
           </div>
-          <div style={{ fontSize: 16, color: 'rgba(255,255,255,.3)', fontWeight: 300, marginBottom: 32, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
-            Request a personalized demo for your organization, or start a 14-day free trial.
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/demo-request" className="l-btn-primary" style={{ fontSize: 16, padding: '14px 36px' }}>Request a Demo</a>
-            <a href="/signup" className="l-btn-secondary" style={{ fontSize: 16, padding: '14px 36px' }}>Start Free Trial &rarr;</a>
-          </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.15)', marginTop: 14 }}>Or email hello@theworktempo.com</div>
+          <p style={{ color: '#888', fontSize: 13, marginTop: 16 }}>Or email us directly: <a href="mailto:hello@theworktempo.com" style={{ color: '#ea580c', textDecoration: 'none' }}>hello@theworktempo.com</a></p>
         </div>
       </section>
 
