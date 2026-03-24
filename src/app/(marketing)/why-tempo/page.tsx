@@ -225,6 +225,9 @@ export default function WhyTempoPage() {
               </tbody>
             </table>
           </div>
+          <p style={{ marginTop: 24, fontSize: 12, color: '#888', textAlign: 'center', maxWidth: 600, marginLeft: 'auto', marginRight: 'auto' }}>
+            Feature comparisons based on publicly available information as of March 2026. Competitor features may have changed. Contact us for the most current comparison.
+          </p>
         </div>
       </section>
 
