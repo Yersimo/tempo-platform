@@ -142,14 +142,14 @@ export default function LandingPage() {
             </div>
             <blockquote className="testi-q">
               &ldquo;Tempo replaced five tools we were stitching together with Zapier.
-              Now our <span className="hl">14,000 employees across 33 countries</span> run
+              Now our <span className="hl">7,000 employees across 23 countries</span> run
               on one data layer. The visibility alone changed how we make decisions.&rdquo;
             </blockquote>
             <div className="testi-author">
               <div className="tav">HR</div>
               <div>
-                <div className="tan">HR Director, Pan-African Financial Services</div>
-                <div className="tar">14,000+ employees &middot; 33 countries</div>
+                <div className="tan">HR Director, EMEA Financial Services</div>
+                <div className="tar">7,000+ employees &middot; 23 countries</div>
               </div>
             </div>
           </div>
