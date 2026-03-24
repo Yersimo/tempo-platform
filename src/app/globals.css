@@ -532,13 +532,13 @@ button, a, input, select, textarea {
   border-radius: 100px; margin-bottom: 24px; display: inline-block; position: relative;
 }
 .l-hero h1 {
-  font-size: clamp(36px, 5.5vw, 72px); font-weight: 400; color: #1a1a2e;
+  font-size: clamp(36px, 5.5vw, 72px); font-weight: 700; color: #1a1a2e;
   letter-spacing: -0.035em; line-height: 1.08; max-width: 800px;
   margin-bottom: 20px; position: relative;
 }
 .l-hero h1 em { font-style: normal; color: var(--ol); }
 .l-hero-sub {
-  font-size: 18px; font-weight: 400; color: #555;
+  font-size: 18px; font-weight: 400; color: #444;
   line-height: 1.65; max-width: 540px; margin-bottom: 36px; position: relative;
 }
 .l-hero-ctas { display: flex; gap: 12px; position: relative; }
