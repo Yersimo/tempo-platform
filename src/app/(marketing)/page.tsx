@@ -262,7 +262,7 @@ export default function LandingPage() {
               <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, flexShrink: 0 }}>&#9889;</span>
               <div>
                 <div style={{ fontWeight: 600, color: '#1a1a2e' }}>New Hire Onboarded</div>
-                <div style={{ color: '#888', fontSize: 11 }}>Akosua M. &bull; 9 systems updated</div>
+                <div style={{ color: '#888', fontSize: 11 }}>Priya S. &bull; 9 systems updated</div>
               </div>
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function LandingPage() {
               <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, flexShrink: 0 }}>&#127891;</span>
               <div>
                 <div style={{ fontWeight: 600, color: '#1a1a2e' }}>Certificate Issued</div>
-                <div style={{ color: '#888', fontSize: 11 }}>Kwame B. &bull; AML Compliance</div>
+                <div style={{ color: '#888', fontSize: 11 }}>Jan v.d. Berg &bull; AML Compliance</div>
               </div>
             </div>
           </div>
@@ -331,10 +331,10 @@ export default function LandingPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead><tr><th>Employee</th><th>Role</th><th>Region</th><th>Rating</th><th>Comp Ratio</th><th>Status</th></tr></thead>
                       <tbody>
-                        <tr><td>Sarah Chen</td><td>VP Finance</td><td>Singapore</td><td>4.2</td><td>1.04</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
-                        <tr><td>Marcus Weber</td><td>Dir. Engineering</td><td>Germany</td><td>3.8</td><td>0.91</td><td><span className="l-tag l-tag-amber">In Review</span></td></tr>
-                        <tr><td>Fatou Diallo</td><td>HRBP</td><td>Senegal</td><td>4.5</td><td>0.97</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
-                        <tr><td>Carlos Mendez</td><td>Country Head</td><td>Mexico</td><td>&mdash;</td><td>1.12</td><td><span className="l-tag l-tag-blue">Pending</span></td></tr>
+                        <tr><td>Naledi Nkosi</td><td>VP Finance</td><td>Singapore</td><td>4.2</td><td>1.04</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                        <tr><td>Pieter van der Berg</td><td>Dir. Engineering</td><td>Germany</td><td>3.8</td><td>0.91</td><td><span className="l-tag l-tag-amber">In Review</span></td></tr>
+                        <tr><td>Wanjiku Kamau</td><td>HRBP</td><td>Senegal</td><td>4.5</td><td>0.97</td><td><span className="l-tag l-tag-green">Complete</span></td></tr>
+                        <tr><td>Lucas Ferreira</td><td>Country Head</td><td>Mexico</td><td>&mdash;</td><td>1.12</td><td><span className="l-tag l-tag-blue">Pending</span></td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -385,10 +385,10 @@ export default function LandingPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead><tr><th>Employee</th><th>Level</th><th>Current</th><th>Proposed</th><th>Comp Ratio</th><th>Status</th></tr></thead>
                       <tbody>
-                        <tr><td>Fatou Diallo</td><td>P4</td><td>$62,000</td><td>$68,200</td><td><span style={{ color: 'var(--o)' }}>0.89</span></td><td><span className="l-tag l-tag-amber">Pending HR</span></td></tr>
-                        <tr><td>Sarah Chen</td><td>P6</td><td>$148,000</td><td>$155,400</td><td>1.04</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
-                        <tr><td>Marcus Weber</td><td>P5</td><td>$112,000</td><td>$121,000</td><td><span style={{ color: 'var(--o)' }}>0.91</span></td><td><span className="l-tag l-tag-amber">Manager Review</span></td></tr>
-                        <tr><td>Kwame Asante</td><td>P3</td><td>$44,500</td><td>$48,200</td><td>0.97</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
+                        <tr><td>Wanjiku Kamau</td><td>P4</td><td>$62,000</td><td>$68,200</td><td><span style={{ color: 'var(--o)' }}>0.89</span></td><td><span className="l-tag l-tag-amber">Pending HR</span></td></tr>
+                        <tr><td>Naledi Nkosi</td><td>P6</td><td>$148,000</td><td>$155,400</td><td>1.04</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
+                        <tr><td>Pieter van der Berg</td><td>P5</td><td>$112,000</td><td>$121,000</td><td><span style={{ color: 'var(--o)' }}>0.91</span></td><td><span className="l-tag l-tag-amber">Manager Review</span></td></tr>
+                        <tr><td>Chinedu Okafor</td><td>P3</td><td>$44,500</td><td>$48,200</td><td>0.97</td><td><span className="l-tag l-tag-green">Approved</span></td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -502,6 +502,43 @@ export default function LandingPage() {
               <div style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,.7)', letterSpacing: '-.02em' }}>99.9%</div>
               <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: 'rgba(255,255,255,.15)', marginTop: 2 }}>Uptime</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* SECTION 1.5: PERSONA CARDS (Workday-inspired)                 */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #0f172a 100%)', padding: '80px 24px 100px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <p style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 3, color: '#ea580c', fontWeight: 600, marginBottom: 12 }}>Built for every role</p>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: 'white', marginBottom: 16, lineHeight: 1.15 }}>Empower your entire organization.</h2>
+          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.5)', maxWidth: 600, margin: '0 auto 56px', lineHeight: 1.6 }}>One platform that speaks the language of every department — from the CHRO to the newest hire.</p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+            {[
+              { role: 'HR', color: '#ea580c', desc: 'Automate the full employee lifecycle. From recruiting to offboarding, every step connected.', links: ['People Management →', 'Recruiting →', 'Performance →'] },
+              { role: 'Finance', color: '#2563eb', desc: 'Double-entry GL, bank reconciliation, multi-entity consolidation. CFO-grade tools built in.', links: ['General Ledger →', 'Payroll →', 'Budgets →'] },
+              { role: 'IT', color: '#7c3aed', desc: 'Device management, SSO/SCIM provisioning, password vaults. Secure from Day 1.', links: ['Identity →', 'Devices →', 'Apps →'] },
+              { role: 'Operations', color: '#16a34a', desc: 'Time tracking, shift scheduling, expense management, travel. Operations on autopilot.', links: ['Time & Attendance →', 'Expenses →', 'Travel →'] },
+              { role: 'Employees', color: '#d97706', desc: 'Self-service leave, payslips, goals, learning, and Tempo AI — answers in seconds.', links: ['My Dashboard →', 'Tempo AI →', 'My Learning →'] },
+            ].map((persona) => (
+              <div key={persona.role} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 28, textAlign: 'left', transition: 'all 0.3s ease', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLDivElement).style.borderColor = persona.color; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)' }}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: `${persona.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: persona.color }}>{persona.role.charAt(0)}</span>
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 10 }}>{persona.role}</h3>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 20 }}>{persona.desc}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {persona.links.map(link => (
+                    <span key={link} style={{ fontSize: 13, fontWeight: 500, color: persona.color, cursor: 'pointer' }}>{link}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -711,7 +748,7 @@ export default function LandingPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                       {[
-                        { name: 'Kwame Asante', type: 'Annual leave', days: '3 days' },
+                        { name: 'Chinedu Okafor', type: 'Annual leave', days: '3 days' },
                         { name: 'Ama Darko', type: 'Sick leave', days: '2 days' },
                         { name: 'Nana Okafor', type: 'Personal leave', days: '1 day' },
                       ].map((row) => (
