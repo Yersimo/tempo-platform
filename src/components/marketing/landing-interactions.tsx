@@ -85,22 +85,22 @@ export function LandingNav() {
       <div className={`mega-drop${openMenu === 'products' ? ' open' : ''}`} id="drop-products">
         <div className="mega-inner">
           <div className="mega-main">
-            {['AI', 'HR', 'Finance', 'Operations', 'IT', 'Platform'].map(name => (
-              <a key={name} href="#" className="mega-item">
-                <span className="mega-item-name">{name}</span>
-                <MegaChevron />
-              </a>
-            ))}
+            <a href="/products/ai" className="mega-item"><span className="mega-item-name">AI</span><MegaChevron /></a>
+            <a href="/products/hr" className="mega-item"><span className="mega-item-name">HR</span><MegaChevron /></a>
+            <a href="/products/finance" className="mega-item"><span className="mega-item-name">Finance</span><MegaChevron /></a>
+            <a href="/products/operations" className="mega-item"><span className="mega-item-name">Operations</span><MegaChevron /></a>
+            <a href="/products/it" className="mega-item"><span className="mega-item-name">IT</span><MegaChevron /></a>
+            <a href="/products/platform" className="mega-item"><span className="mega-item-name">Platform</span><MegaChevron /></a>
           </div>
           <div className="mega-secondary">
             <div className="mega-sec-title">More from Tempo</div>
-            <a href="#" className="mega-sec-link">Tempo Build</a>
+            <a href="/products/platform" className="mega-sec-link">Tempo Build</a>
             <a href="/why-tempo" className="mega-sec-link">Why Tempo</a>
-            <a href="#" className="mega-sec-link">Solutions for Mid-Size Business</a>
-            <a href="#" className="mega-sec-link">Tempo ERP</a>
+            <a href="/solutions" className="mega-sec-link">Solutions for Mid-Size Business</a>
+            <a href="/products/finance" className="mega-sec-link">Tempo ERP</a>
             <div className="mega-sec-title" style={{ marginTop: 20 }}>Ecosystem</div>
-            <a href="#" className="mega-sec-link">Partners</a>
-            <a href="#" className="mega-sec-link">Marketplace <span className="mega-ext">{'\u2197'}</span></a>
+            <a href="/contact" className="mega-sec-link">Partners</a>
+            <a href="/contact" className="mega-sec-link">Marketplace <span className="mega-ext">{'\u2197'}</span></a>
           </div>
         </div>
       </div>
@@ -112,11 +112,11 @@ export function LandingNav() {
             'Banking & Capital Markets', 'Financial Services', 'Hospitality',
             'Insurance', 'Investment Management', 'Manufacturing',
             'Professional & Business Services', 'Public Services',
-            'Retail', 'Technology', 'Technology Scaleups',
+            'Retail', 'Technology', 'Small Businesses',
           ].map(name => (
-            <a key={name} href="#" className="mega-item mega-item-lg">{name}</a>
+            <a key={name} href="/solutions" className="mega-item mega-item-lg">{name}</a>
           ))}
-          <a href="#" className="mega-item mega-item-lg" style={{ color: 'var(--orange)' }}>All Industries</a>
+          <a href="/solutions" className="mega-item mega-item-lg" style={{ color: 'var(--orange)' }}>All Industries</a>
         </div>
       </div>
 
@@ -125,13 +125,13 @@ export function LandingNav() {
         <div className="mega-inner mega-inner-customers">
           <div className="mega-main mega-main-split">
             <a href="/customer-journeys" className="mega-item"><span className="mega-item-name">Customer Stories</span></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Services</span><MegaChevron /></a>
-            <a href="#" className="mega-item mega-item-active"><span className="mega-item-name">Support</span><MegaChevron /></a>
+            <a href="/contact" className="mega-item"><span className="mega-item-name">Services</span><MegaChevron /></a>
+            <a href="/contact" className="mega-item mega-item-active"><span className="mega-item-name">Support</span><MegaChevron /></a>
           </div>
           <div className="mega-secondary mega-secondary-divider">
-            <a href="#" className="mega-sec-link">Overview</a>
-            <a href="#" className="mega-sec-link">Community</a>
-            <a href="#" className="mega-sec-link">Login Help</a>
+            <a href="/contact" className="mega-sec-link">Overview</a>
+            <a href="/contact" className="mega-sec-link">Community</a>
+            <a href="/contact" className="mega-sec-link">Login Help</a>
           </div>
         </div>
       </div>
@@ -140,16 +140,22 @@ export function LandingNav() {
       <div className={`mega-drop${openMenu === 'learn' ? ' open' : ''}`} id="drop-learn">
         <div className="mega-inner">
           <div className="mega-main">
-            {['Blog & Insights', 'Webinars & Events', 'Tempo Academy', 'Certifications', 'Documentation'].map(name => (
-              <a key={name} href="#" className="mega-item"><span className="mega-item-name">{name}</span><MegaChevron /></a>
+            {[
+              { name: 'Blog & Insights', href: '/newsroom' },
+              { name: 'Webinars & Events', href: '/newsroom' },
+              { name: 'Tempo Academy', href: '/academy' },
+              { name: 'Certifications', href: '/academy' },
+              { name: 'Documentation', href: '/api/docs' },
+            ].map(item => (
+              <a key={item.name} href={item.href} className="mega-item"><span className="mega-item-name">{item.name}</span><MegaChevron /></a>
             ))}
           </div>
           <div className="mega-secondary">
             <div className="mega-sec-title">Popular</div>
-            <a href="#" className="mega-sec-link">Getting Started Guide</a>
-            <a href="#" className="mega-sec-link">API Reference <span className="mega-ext">{'\u2197'}</span></a>
-            <a href="#" className="mega-sec-link">Release Notes</a>
-            <a href="#" className="mega-sec-link">Status Page <span className="mega-ext">{'\u2197'}</span></a>
+            <a href="/academy" className="mega-sec-link">Getting Started Guide</a>
+            <a href="/api/docs" className="mega-sec-link">API Reference <span className="mega-ext">{'\u2197'}</span></a>
+            <a href="/newsroom" className="mega-sec-link">Release Notes</a>
+            <a href="/contact" className="mega-sec-link">Status Page <span className="mega-ext">{'\u2197'}</span></a>
           </div>
         </div>
       </div>
@@ -158,16 +164,21 @@ export function LandingNav() {
       <div className={`mega-drop${openMenu === 'resources' ? ' open' : ''}`} id="drop-resources">
         <div className="mega-inner">
           <div className="mega-main">
-            {['Help Center', 'Reports & Research', 'Templates', 'HR Benchmarking Tool'].map(name => (
-              <a key={name} href="#" className="mega-item"><span className="mega-item-name">{name}</span><MegaChevron /></a>
+            {[
+              { name: 'Help Center', href: '/contact' },
+              { name: 'Reports & Research', href: '/newsroom' },
+              { name: 'Templates', href: '/contact' },
+              { name: 'HR Benchmarking Tool', href: '/contact' },
+            ].map(item => (
+              <a key={item.name} href={item.href} className="mega-item"><span className="mega-item-name">{item.name}</span><MegaChevron /></a>
             ))}
           </div>
           <div className="mega-secondary">
             <div className="mega-sec-title">Useful links</div>
             <a href="/security" className="mega-sec-link">Security & Compliance</a>
             <a href="/gdpr" className="mega-sec-link">GDPR Centre</a>
-            <a href="#" className="mega-sec-link">Data Processing Agreement</a>
-            <a href="#" className="mega-sec-link">Trust Portal <span className="mega-ext">{'\u2197'}</span></a>
+            <a href="/privacy" className="mega-sec-link">Data Processing Agreement</a>
+            <a href="/security" className="mega-sec-link">Trust Portal <span className="mega-ext">{'\u2197'}</span></a>
           </div>
         </div>
       </div>
@@ -176,12 +187,10 @@ export function LandingNav() {
       <div className={`mega-drop${openMenu === 'company' ? ' open' : ''}`} id="drop-company">
         <div className="mega-inner mega-inner-company">
           <div className="mega-main">
-            <a href="#" className="mega-item"><span className="mega-item-name">About Tempo</span><MegaChevron /></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Careers</span><MegaChevron /></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Corporate Responsibility</span><MegaChevron /></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Trust</span></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Investor Relations</span><span className="mega-ext" style={{ fontSize: 15, marginLeft: 6 }}>{'\u2197'}</span></a>
-            <a href="#" className="mega-item"><span className="mega-item-name">Newsroom</span><span className="mega-ext" style={{ fontSize: 15, marginLeft: 6 }}>{'\u2197'}</span></a>
+            <a href="/about" className="mega-item"><span className="mega-item-name">About Tempo</span><MegaChevron /></a>
+            <a href="/careers" className="mega-item"><span className="mega-item-name">Careers</span><MegaChevron /></a>
+            <a href="/social-impact" className="mega-item"><span className="mega-item-name">Social Impact</span><MegaChevron /></a>
+            <a href="/newsroom" className="mega-item"><span className="mega-item-name">Newsroom</span><span className="mega-ext" style={{ fontSize: 15, marginLeft: 6 }}>{'\u2197'}</span></a>
           </div>
           <div className="mega-company-panel">
             <div className="mega-company-img">
@@ -193,7 +202,7 @@ export function LandingNav() {
               />
             </div>
             <div className="mega-company-tagline">&ldquo;Building the platform that makes work better for everyone.&rdquo;</div>
-            <a href="#" className="mega-company-link">Meet the team &rarr;</a>
+            <a href="/about" className="mega-company-link">Meet the team &rarr;</a>
           </div>
         </div>
       </div>
@@ -332,7 +341,7 @@ export function HeroCarousel() {
               <div className="slide-caption-inner">
                 <h3 className="slide-caption-title">Better work days start here.</h3>
                 <p className="slide-caption-sub">Tempo AI is the intelligence layer that lets you harness the knowledge of your entire workforce &mdash; instantly.</p>
-                <a href="#" className="slide-arrow-btn">
+                <a href="/products/ai" className="slide-arrow-btn">
                   <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12M10.5 5L16 10l-5.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </a>
               </div>
@@ -381,7 +390,7 @@ export function HeroCarousel() {
               <div className="slide-caption-inner">
                 <h3 className="slide-caption-title">Performance that moves the business forward.</h3>
                 <p className="slide-caption-sub">Continuous feedback, calibration, and goal-setting &mdash; connected across every team in every country.</p>
-                <a href="#" className="slide-arrow-btn">
+                <a href="/products/ai" className="slide-arrow-btn">
                   <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12M10.5 5L16 10l-5.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </a>
               </div>
@@ -480,8 +489,8 @@ const accordionData: AccordionCard[] = [
     cssClass: 'acard-hr',
     links: [
       { text: 'People Management', href: '/products/hr' },
-      { text: 'Talent Management', href: '#' },
-      { text: 'Performance', href: '#' },
+      { text: 'Talent Management', href: '/products/hr' },
+      { text: 'Performance', href: '/products/hr' },
       { text: 'All HR', href: '/products/hr' },
     ],
   },
@@ -496,7 +505,7 @@ const accordionData: AccordionCard[] = [
     links: [
       { text: 'General Ledger', href: '/products/finance' },
       { text: 'Payroll', href: '/products/payroll' },
-      { text: 'Budgets', href: '#' },
+      { text: 'Budgets', href: '/products/finance' },
       { text: 'All Finance', href: '/products/finance' },
     ],
   },
@@ -509,10 +518,10 @@ const accordionData: AccordionCard[] = [
     imgAlt: 'IT professional',
     cssClass: 'acard-it',
     links: [
-      { text: 'Identity & Access', href: '#' },
-      { text: 'Devices', href: '#' },
-      { text: 'Apps', href: '#' },
-      { text: 'All IT', href: '#' },
+      { text: 'Identity & Access', href: '/products/it' },
+      { text: 'Devices', href: '/products/it' },
+      { text: 'Apps', href: '/products/it' },
+      { text: 'All IT', href: '/products/it' },
     ],
   },
   {
@@ -524,10 +533,10 @@ const accordionData: AccordionCard[] = [
     imgAlt: 'Operations professional',
     cssClass: 'acard-ops',
     links: [
-      { text: 'Time & Attendance', href: '#' },
-      { text: 'Expenses', href: '#' },
-      { text: 'Travel', href: '#' },
-      { text: 'All Operations', href: '#' },
+      { text: 'Time & Attendance', href: '/products/operations' },
+      { text: 'Expenses', href: '/products/operations' },
+      { text: 'Travel', href: '/products/operations' },
+      { text: 'All Operations', href: '/products/operations' },
     ],
   },
   {
@@ -539,10 +548,10 @@ const accordionData: AccordionCard[] = [
     imgAlt: 'Employee self-service',
     cssClass: 'acard-emp',
     links: [
-      { text: 'My Dashboard', href: '#' },
-      { text: 'Tempo AI', href: '#' },
+      { text: 'My Dashboard', href: '/products/hr' },
+      { text: 'Tempo AI', href: '/products/ai' },
       { text: 'Learning', href: '/academy' },
-      { text: 'All Employee Tools', href: '#' },
+      { text: 'All Employee Tools', href: '/products/platform' },
     ],
   },
 ]

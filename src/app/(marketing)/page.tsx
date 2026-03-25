@@ -191,25 +191,25 @@ export default function LandingPage() {
               <li><a href="/products/hr">HR</a></li>
               <li><a href="/products/payroll">Payroll</a></li>
               <li><a href="/products/finance">Finance</a></li>
-              <li><a href="#">IT</a></li>
-              <li><a href="#">Tempo AI</a></li>
+              <li><a href="/products/it">IT</a></li>
+              <li><a href="/products/ai">Tempo AI</a></li>
             </ul>
           </div>
           <div>
             <div className="fch">Company</div>
             <ul className="fl">
-              <li><a href="#">About</a></li>
-              <li><a href="#">Careers</a></li>
-              <li><a href="#">Press</a></li>
+              <li><a href="/about">About</a></li>
+              <li><a href="/careers">Careers</a></li>
+              <li><a href="/newsroom">Press</a></li>
               <li><a href="/contact">Contact</a></li>
             </ul>
           </div>
           <div>
             <div className="fch">Resources</div>
             <ul className="fl">
-              <li><a href="#">Help Center</a></li>
-              <li><a href="#">API Docs</a></li>
-              <li><a href="#">Status</a></li>
+              <li><a href="/contact">Help Center</a></li>
+              <li><a href="/api/docs">API Docs</a></li>
+              <li><a href="/contact">Status</a></li>
               <li><a href="/academy">Academy</a></li>
             </ul>
           </div>
@@ -219,7 +219,7 @@ export default function LandingPage() {
               <li><a href="/privacy">Privacy</a></li>
               <li><a href="/terms">Terms</a></li>
               <li><a href="/security">Security</a></li>
-              <li><a href="#">DPA</a></li>
+              <li><a href="/privacy">DPA</a></li>
             </ul>
           </div>
         </div>
