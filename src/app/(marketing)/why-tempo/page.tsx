@@ -1,18 +1,16 @@
-'use client'
+import '../landing.css'
+import { LandingNav } from '@/components/marketing/landing-interactions'
 
-import { useEffect, useRef, useCallback } from 'react'
-import Link from 'next/link'
-
-type CellValue = string | { text: string; color?: string }
+type CellValue = string | { text: string; color: string }
 
 const comparisonHeaders = ['Feature', 'Tempo', 'Rippling', 'Workday', 'BambooHR', 'Deel', 'SAP SF']
 
 const comparisonRows: { feature: string; values: CellValue[] }[] = [
   { feature: 'Modules', values: ['50+', '30+', '40+', '12', '5', '25+'] },
   { feature: 'AI Assistant', values: [
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
-    { text: '\u2705 (Sana)', color: '#16a34a' },
+    { text: 'Yes (Sana)', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
@@ -34,7 +32,7 @@ const comparisonRows: { feature: string; values: CellValue[] }[] = [
     { text: 'Full', color: '#16a34a' },
   ]},
   { feature: 'Bank Reconciliation', values: [
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
@@ -42,15 +40,15 @@ const comparisonRows: { feature: string; values: CellValue[] }[] = [
     { text: 'Partial', color: '#d97706' },
   ]},
   { feature: 'Multi-Entity Consolidation', values: [
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
   ]},
   { feature: 'Event Cascade (visible)', values: [
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
@@ -58,9 +56,9 @@ const comparisonRows: { feature: string; values: CellValue[] }[] = [
     { text: '\u2014', color: '#a0a0ad' },
   ]},
   { feature: 'Knowledge Base AI', values: [
-    { text: '\u2705', color: '#16a34a' },
+    { text: 'Yes', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
-    { text: '\u2705 (Sana)', color: '#16a34a' },
+    { text: 'Yes (Sana)', color: '#16a34a' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
     { text: '\u2014', color: '#a0a0ad' },
@@ -99,213 +97,163 @@ const reasons = [
   },
 ]
 
+function getCellText(val: CellValue): string {
+  return typeof val === 'string' ? val : val.text
+}
+function getCellColor(val: CellValue): string | undefined {
+  return typeof val === 'string' ? undefined : val.color
+}
+
 export default function WhyTempoPage() {
-  const navRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const onScroll = () => {
-      navRef.current?.classList.toggle('scrolled', window.scrollY > 50)
-    }
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('visible')
-            obs.unobserve(e.target)
-          }
-        })
-      },
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
-    )
-    document.querySelectorAll('.l-reveal,.l-reveal-left,.l-reveal-right,.l-reveal-scale,.l-stagger-children').forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
-  const scrollToDemo = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
-  function getCellText(val: CellValue): string {
-    return typeof val === 'string' ? val : val.text
-  }
-  function getCellColor(val: CellValue): string | undefined {
-    return typeof val === 'string' ? undefined : val.color
-  }
-
   return (
-    <div className="landing">
-      {/* NAV */}
-      <nav className="l-nav" ref={navRef}>
-        <div className="l-nav-left">
-          <Link href="/" className="l-nav-logo">
-            <span className="l-nav-wordmark" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span>
-          </Link>
-          <div className="l-nav-links">
-            <Link href="/products/hr">HR</Link>
-            <Link href="/products/payroll">Payroll</Link>
-            <Link href="/products/finance">Finance</Link>
-            <Link href="/why-tempo">Why Tempo</Link>
-            <Link href="/customer-journeys">Journeys</Link>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/login" className="l-nav-signin" style={{ fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>Sign In</Link>
-          <a href="#demo" className="l-nav-cta" onClick={scrollToDemo}>Request a Demo</a>
-        </div>
-      </nav>
+    <>
+      <LandingNav />
 
       {/* HERO */}
-      <section className="l-hero" style={{ paddingBottom: 80 }}>
-        <div className="l-hero-glow" />
-        <div className="l-hero-badge l-fade-up">Why Tempo</div>
-        <h1 className="l-fade-up l-d1" style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 300, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, marginBottom: 20 }}>
-          Why companies choose Tempo<br />over the <em style={{ fontStyle: 'normal', color: '#fb923c' }}>alternatives.</em>
-        </h1>
-        <div className="l-hero-ctas l-fade-up l-d3">
-          <a href="#demo" className="l-btn-primary" onClick={scrollToDemo}>Request a Demo</a>
+      <section className="hero" style={{ minHeight: 'auto', paddingTop: 140, paddingBottom: 80 }}>
+        <div className="hero-content" style={{ maxWidth: 700 }}>
+          <div className="eyebrow"><span className="eyebrow-line" />WHY TEMPO</div>
+          <h1 className="hero-h1" style={{ fontSize: 'clamp(36px, 5vw, 64px)' }}>
+            Why companies choose Tempo<br />over the <em>alternatives.</em>
+          </h1>
+          <div className="hero-btns">
+            <a href="/demo-request" className="btn btn-orange">Request a Demo</a>
+            <a href="/contact" className="btn btn-ghost">Contact Sales</a>
+          </div>
         </div>
       </section>
 
       {/* COMPARISON TABLE */}
-      <section className="l-section l-section-light">
-        <div className="l-section-inner">
-          <div className="l-section-tag l-reveal">Comparison</div>
-          <div className="l-section-title l-reveal" style={{ transitionDelay: '.05s' }}>
-            Feature-by-feature. No spin.
-          </div>
-          <div className="l-reveal" style={{ overflowX: 'auto', marginTop: 48 }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: 14,
-              minWidth: 800,
-            }}>
-              <thead>
-                <tr>
-                  {comparisonHeaders.map((h, i) => (
-                    <th key={h} style={{
-                      textAlign: 'left',
-                      padding: '14px 16px',
-                      borderBottom: '2px solid rgba(0,0,0,0.08)',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: i === 1 ? '#ea580c' : '#111118',
-                      background: i === 1 ? '#fff7ed' : 'transparent',
+      <section className="sec sec-alt">
+        <div className="ey">Comparison</div>
+        <h2 className="sh">Feature-by-feature. <span className="a">No spin.</span></h2>
+        <div style={{ overflowX: 'auto', marginTop: 40 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 800 }}>
+            <thead>
+              <tr>
+                {comparisonHeaders.map((h, i) => (
+                  <th key={h} style={{
+                    textAlign: 'left',
+                    padding: '14px 16px',
+                    borderBottom: '2px solid var(--border)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: i === 1 ? 'var(--orange)' : 'var(--black)',
+                    background: i === 1 ? '#fff7ed' : 'transparent',
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {comparisonRows.map(row => (
+                <tr key={row.feature}>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 500, color: 'var(--black)' }}>
+                    {row.feature}
+                  </td>
+                  {row.values.map((val, i) => (
+                    <td key={i} style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid var(--border)',
+                      color: getCellColor(val) || 'var(--ink2)',
+                      fontWeight: i === 0 ? 600 : 400,
+                      background: i === 0 ? '#fff7ed' : 'transparent',
                     }}>
-                      {h}
-                    </th>
+                      {getCellText(val)}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {comparisonRows.map((row) => (
-                  <tr key={row.feature}>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500, color: '#111118' }}>
-                      {row.feature}
-                    </td>
-                    {row.values.map((val, i) => (
-                      <td key={i} style={{
-                        padding: '12px 16px',
-                        borderBottom: '1px solid rgba(0,0,0,0.04)',
-                        color: getCellColor(val) || '#6b6b78',
-                        fontWeight: i === 0 ? 600 : 400,
-                        background: i === 0 ? '#fff7ed' : 'transparent',
-                      }}>
-                        {getCellText(val)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p style={{ marginTop: 24, fontSize: 12, color: '#888', textAlign: 'center', maxWidth: 600, marginLeft: 'auto', marginRight: 'auto' }}>
-            Feature comparisons based on publicly available information as of March 2026. Competitor features may have changed. Contact us for the most current comparison.
-          </p>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <p style={{ marginTop: 24, fontSize: 12, color: 'var(--ink2)', textAlign: 'center', maxWidth: 600, marginLeft: 'auto', marginRight: 'auto' }}>
+          Feature comparisons based on publicly available information as of March 2026. Competitor features may have changed. Contact us for the most current comparison.
+        </p>
       </section>
 
       {/* 5 REASONS */}
-      <section className="l-section" style={{ background: 'var(--dk)', color: '#fff' }}>
-        <div className="l-section-inner">
-          <div className="l-section-tag l-reveal">5 Reasons</div>
-          <div className="l-section-title l-reveal" style={{ color: '#fff', transitionDelay: '.05s' }}>
-            Why Tempo wins.
-          </div>
-          <div style={{ display: 'grid', gap: 32, marginTop: 48 }} className="l-stagger-children l-reveal">
-            {reasons.map((r, i) => (
-              <div key={r.title} style={{
-                display: 'grid',
-                gridTemplateColumns: '48px 1fr',
-                gap: 20,
-                alignItems: 'start',
-              }}>
-                <div style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  background: 'rgba(234,88,12,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: '#fb923c',
-                  flexShrink: 0,
-                }}>
-                  {i + 1}
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    &ldquo;{r.title}&rdquo;
-                  </h3>
-                  <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
-                    {r.desc}
-                  </p>
-                </div>
+      <section className="sec sec-dark">
+        <div className="ey" style={{ justifyContent: 'center' }}>5 Reasons</div>
+        <h2 className="sh" style={{ textAlign: 'center', margin: '0 auto 48px' }}>
+          Why Tempo <span className="a">wins.</span>
+        </h2>
+        <div style={{ display: 'grid', gap: 32, maxWidth: 700, margin: '0 auto' }}>
+          {reasons.map((r, i) => (
+            <div key={r.title} style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: 20, alignItems: 'start' }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: 'rgba(234,88,12,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 700, color: '#fb923c', flexShrink: 0,
+              }}>{i + 1}</div>
+              <div>
+                <h3 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  &ldquo;{r.title}&rdquo;
+                </h3>
+                <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+                  {r.desc}
+                </p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="l-cta-section" id="demo">
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <div><span style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.4)' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span></div>
-          <div style={{ marginTop: 20, fontSize: 'clamp(28px,4vw,48px)', fontWeight: 300, color: '#fff', letterSpacing: '-.025em', marginBottom: 12 }}>
-            See why teams switch to Tempo.
-          </div>
-          <div style={{ fontSize: 16, color: 'rgba(255,255,255,.3)', fontWeight: 300, marginBottom: 32, maxWidth: 400, margin: '0 auto 32px', lineHeight: 1.6 }}>
-            Request a personalized demo. We&apos;ll show you side-by-side how Tempo compares.
-          </div>
-          <a href="mailto:hello@tempo.work" className="l-btn-primary" style={{ fontSize: 16, padding: '14px 36px' }}>Request a Demo</a>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.15)', marginTop: 14 }}>Or email hello@tempo.work</div>
+      <section className="cta-sec">
+        <div className="cta-ey">Get started</div>
+        <h2 className="cta-h">See why teams switch <span className="a">to Tempo.</span></h2>
+        <p className="cta-p">Request a personalized demo. We&apos;ll show you side-by-side how Tempo compares.</p>
+        <div className="cta-btns">
+          <a href="/demo-request" className="btn btn-orange">Request a Demo</a>
+          <a href="/contact" className="btn btn-ghost">Contact Sales</a>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="l-footer">
-        <div className="l-footer-inner">
+      <footer>
+        <div className="fg">
           <div>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.3)' }}>tempo<span style={{ color: 'rgba(234,88,12,.5)' }}>.</span></span>
+            <div className="fb">tempo<span>.</span></div>
+            <p className="ft">The unified workforce platform. HR, payroll, finance, IT, and AI in one data layer.</p>
           </div>
-          <div className="l-footer-links">
-            <Link href="/products/hr">HR</Link>
-            <Link href="/products/payroll">Payroll</Link>
-            <Link href="/products/finance">Finance</Link>
-            <Link href="/why-tempo">Why Tempo</Link>
-            <Link href="/customer-journeys">Journeys</Link>
+          <div>
+            <div className="fch">Products</div>
+            <ul className="fl">
+              <li><a href="/products/hr">HR</a></li>
+              <li><a href="/products/payroll">Payroll</a></li>
+              <li><a href="/products/finance">Finance</a></li>
+              <li><a href="/products/it">IT</a></li>
+              <li><a href="/products/ai">Tempo AI</a></li>
+            </ul>
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.1)' }}>&copy; {new Date().getFullYear()} Tempo</div>
+          <div>
+            <div className="fch">Company</div>
+            <ul className="fl">
+              <li><a href="/about">About</a></li>
+              <li><a href="/careers">Careers</a></li>
+              <li><a href="/newsroom">Press</a></li>
+              <li><a href="/contact">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="fch">Legal</div>
+            <ul className="fl">
+              <li><a href="/privacy">Privacy</a></li>
+              <li><a href="/terms">Terms</a></li>
+              <li><a href="/security">Security</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="fbot">
+          <span className="fcopy">&copy; 2026 Tempo. All rights reserved.</span>
+          <div className="flegal">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/cookies">Cookie Settings</a>
+          </div>
         </div>
       </footer>
-    </div>
+    </>
   )
 }

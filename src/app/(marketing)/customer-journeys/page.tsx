@@ -1,16 +1,7 @@
-'use client'
+import '../landing.css'
+import { LandingNav } from '@/components/marketing/landing-interactions'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
-import Link from 'next/link'
-
-interface Journey {
-  title: string
-  badge?: string
-  summary: string
-  steps: string[]
-}
-
-const journeys: Journey[] = [
+const journeys = [
   {
     title: 'Hire-to-Perform',
     badge: 'Most Popular',
@@ -111,237 +102,135 @@ const journeys: Journey[] = [
 ]
 
 export default function JourneysPage() {
-  const navRef = useRef<HTMLElement>(null)
-  const [expanded, setExpanded] = useState<number | null>(0)
-
-  useEffect(() => {
-    const onScroll = () => {
-      navRef.current?.classList.toggle('scrolled', window.scrollY > 50)
-    }
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('visible')
-            obs.unobserve(e.target)
-          }
-        })
-      },
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
-    )
-    document.querySelectorAll('.l-reveal,.l-reveal-left,.l-reveal-right,.l-reveal-scale,.l-stagger-children').forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
-  const scrollToDemo = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
   return (
-    <div className="landing">
-      {/* NAV */}
-      <nav className="l-nav" ref={navRef}>
-        <div className="l-nav-left">
-          <Link href="/" className="l-nav-logo">
-            <span className="l-nav-wordmark" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span>
-          </Link>
-          <div className="l-nav-links">
-            <Link href="/products/hr">HR</Link>
-            <Link href="/products/payroll">Payroll</Link>
-            <Link href="/products/finance">Finance</Link>
-            <Link href="/why-tempo">Why Tempo</Link>
-            <Link href="/customer-journeys">Journeys</Link>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/login" className="l-nav-signin" style={{ fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>Sign In</Link>
-          <a href="#demo" className="l-nav-cta" onClick={scrollToDemo}>Request a Demo</a>
-        </div>
-      </nav>
+    <>
+      <LandingNav />
 
       {/* HERO */}
-      <section className="l-hero" style={{ paddingBottom: 80 }}>
-        <div className="l-hero-glow" />
-        <div className="l-hero-badge l-fade-up">Customer Journeys</div>
-        <h1 className="l-fade-up l-d1" style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 300, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, marginBottom: 20 }}>
-          6 journeys that prove<br /><em style={{ fontStyle: 'normal', color: '#fb923c' }}>integration.</em>
-        </h1>
-        <p className="l-hero-sub l-fade-up l-d2">
-          Each journey traces one business event through every module it touches &mdash;<br />
-          automatically, without manual intervention.
-        </p>
-        <div className="l-hero-ctas l-fade-up l-d3">
-          <a href="#demo" className="l-btn-primary" onClick={scrollToDemo}>Request a Demo</a>
+      <section className="hero" style={{ minHeight: 'auto', paddingTop: 140, paddingBottom: 80 }}>
+        <div className="hero-content" style={{ maxWidth: 700 }}>
+          <div className="eyebrow"><span className="eyebrow-line" />CUSTOMER JOURNEYS</div>
+          <h1 className="hero-h1" style={{ fontSize: 'clamp(36px, 5vw, 64px)' }}>
+            6 journeys that prove<br /><em>integration.</em>
+          </h1>
+          <p className="hero-p">
+            Each journey traces one business event through every module it touches &mdash; automatically, without manual intervention.
+          </p>
+          <div className="hero-btns">
+            <a href="/demo-request" className="btn btn-orange">Request a Demo</a>
+            <a href="/contact" className="btn btn-ghost">Contact Sales</a>
+          </div>
         </div>
       </section>
 
       {/* JOURNEY CARDS */}
-      <section className="l-section l-section-light">
-        <div className="l-section-inner">
-          <div className="l-section-tag l-reveal">End-to-End Journeys</div>
-          <div className="l-section-title l-reveal" style={{ transitionDelay: '.05s' }}>
-            One event. Many modules.<br />Zero manual steps.
-          </div>
-          <div style={{ display: 'grid', gap: 20, marginTop: 48 }} className="l-stagger-children l-reveal">
-            {journeys.map((j, idx) => (
-              <div key={j.title} style={{
-                background: '#fff',
-                border: '1px solid rgba(0,0,0,0.06)',
-                borderRadius: 14,
-                overflow: 'hidden',
-                transition: 'all .2s',
-              }}>
-                <button
-                  onClick={() => setExpanded(expanded === idx ? null : idx)}
-                  style={{
-                    width: '100%',
-                    padding: '24px 28px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      background: expanded === idx ? '#ea580c' : '#fff7ed',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: expanded === idx ? '#fff' : '#ea580c',
-                      transition: 'all .2s',
-                      flexShrink: 0,
-                    }}>
-                      {idx + 1}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111118' }}>{j.title}</h3>
-                        {j.badge && (
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: '#ea580c',
-                            background: '#fff7ed',
-                            padding: '3px 10px',
-                            borderRadius: 100,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                          }}>
-                            {j.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: 14, color: '#6b6b78', marginTop: 4 }}>{j.summary}</p>
-                    </div>
+      <section className="sec sec-alt">
+        <div className="ey">End-to-End Journeys</div>
+        <h2 className="sh">One event. Many modules.<br /><span className="a">Zero manual steps.</span></h2>
+        <div style={{ display: 'grid', gap: 24, marginTop: 40, maxWidth: 900 }}>
+          {journeys.map((j, idx) => (
+            <div key={j.title} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 18, padding: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  background: '#fff7ed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, fontWeight: 700, color: '#ea580c', flexShrink: 0,
+                }}>{idx + 1}</div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--black)' }}>{j.title}</h3>
+                    {j.badge && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, color: '#ea580c',
+                        background: '#fff7ed', padding: '3px 10px',
+                        borderRadius: 100, textTransform: 'uppercase', letterSpacing: '0.05em',
+                      }}>{j.badge}</span>
+                    )}
                   </div>
-                  <svg
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: '#a0a0ad',
-                      transition: 'transform .2s',
-                      transform: expanded === idx ? 'rotate(180deg)' : 'rotate(0deg)',
-                      flexShrink: 0,
-                    }}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-
-                {expanded === idx && (
-                  <div style={{
-                    padding: '0 28px 28px',
-                    borderTop: '1px solid rgba(0,0,0,0.04)',
-                  }}>
-                    <div style={{ display: 'grid', gap: 0, paddingTop: 20 }}>
-                      {j.steps.map((step, si) => (
-                        <div key={si} style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                            <div style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 8,
-                              background: '#fff7ed',
-                              border: '1px solid rgba(234,88,12,0.15)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: '#ea580c',
-                            }}>
-                              {si + 1}
-                            </div>
-                            {si < j.steps.length - 1 && (
-                              <div style={{ width: 1, height: 24, background: 'rgba(234,88,12,0.12)' }} />
-                            )}
-                          </div>
-                          <div style={{ paddingTop: 4, paddingBottom: si < j.steps.length - 1 ? 12 : 0, fontSize: 14, color: '#6b6b78', lineHeight: 1.5 }}>
-                            {step}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  <p style={{ fontSize: 14, color: 'var(--ink2)', marginTop: 4 }}>{j.summary}</p>
+                </div>
               </div>
-            ))}
-          </div>
+              <div style={{ display: 'grid', gap: 0, paddingLeft: 56 }}>
+                {j.steps.map((step, si) => (
+                  <div key={si} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: 6,
+                        background: '#fff7ed', border: '1px solid rgba(234,88,12,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 600, color: '#ea580c',
+                      }}>{si + 1}</div>
+                      {si < j.steps.length - 1 && (
+                        <div style={{ width: 1, height: 16, background: 'rgba(234,88,12,0.12)' }} />
+                      )}
+                    </div>
+                    <div style={{ paddingTop: 2, paddingBottom: si < j.steps.length - 1 ? 4 : 0, fontSize: 14, color: 'var(--ink2)', lineHeight: 1.5 }}>
+                      {step}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="l-cta-section" id="demo">
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <div><span style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.4)' }}>tempo<span style={{ color: '#E8590C' }}>.</span></span></div>
-          <div style={{ marginTop: 20, fontSize: 'clamp(28px,4vw,48px)', fontWeight: 300, color: '#fff', letterSpacing: '-.025em', marginBottom: 12 }}>
-            Ready to see these journeys live?
-          </div>
-          <div style={{ fontSize: 16, color: 'rgba(255,255,255,.3)', fontWeight: 300, marginBottom: 32, maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
-            Book a demo and we&apos;ll walk you through any journey with your company&apos;s data.
-          </div>
-          <a href="mailto:hello@tempo.work" className="l-btn-primary" style={{ fontSize: 16, padding: '14px 36px' }}>Request a Demo</a>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.15)', marginTop: 14 }}>Or email hello@tempo.work</div>
+      <section className="cta-sec">
+        <div className="cta-ey">Get started</div>
+        <h2 className="cta-h">Ready to see these <span className="a">journeys live?</span></h2>
+        <p className="cta-p">Book a demo and we&apos;ll walk you through any journey with your company&apos;s data.</p>
+        <div className="cta-btns">
+          <a href="/demo-request" className="btn btn-orange">Request a Demo</a>
+          <a href="/contact" className="btn btn-ghost">Contact Sales</a>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="l-footer">
-        <div className="l-footer-inner">
+      <footer>
+        <div className="fg">
           <div>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-.02em', color: 'rgba(255,255,255,.3)' }}>tempo<span style={{ color: 'rgba(234,88,12,.5)' }}>.</span></span>
+            <div className="fb">tempo<span>.</span></div>
+            <p className="ft">The unified workforce platform. HR, payroll, finance, IT, and AI in one data layer.</p>
           </div>
-          <div className="l-footer-links">
-            <Link href="/products/hr">HR</Link>
-            <Link href="/products/payroll">Payroll</Link>
-            <Link href="/products/finance">Finance</Link>
-            <Link href="/why-tempo">Why Tempo</Link>
-            <Link href="/customer-journeys">Journeys</Link>
+          <div>
+            <div className="fch">Products</div>
+            <ul className="fl">
+              <li><a href="/products/hr">HR</a></li>
+              <li><a href="/products/payroll">Payroll</a></li>
+              <li><a href="/products/finance">Finance</a></li>
+              <li><a href="/products/it">IT</a></li>
+              <li><a href="/products/ai">Tempo AI</a></li>
+            </ul>
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.1)' }}>&copy; {new Date().getFullYear()} Tempo</div>
+          <div>
+            <div className="fch">Company</div>
+            <ul className="fl">
+              <li><a href="/about">About</a></li>
+              <li><a href="/careers">Careers</a></li>
+              <li><a href="/newsroom">Press</a></li>
+              <li><a href="/contact">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="fch">Legal</div>
+            <ul className="fl">
+              <li><a href="/privacy">Privacy</a></li>
+              <li><a href="/terms">Terms</a></li>
+              <li><a href="/security">Security</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="fbot">
+          <span className="fcopy">&copy; 2026 Tempo. All rights reserved.</span>
+          <div className="flegal">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/cookies">Cookie Settings</a>
+          </div>
         </div>
       </footer>
-    </div>
+    </>
   )
 }
