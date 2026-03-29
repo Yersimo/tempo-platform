@@ -803,9 +803,12 @@ footer { background: var(--bg); border-top: 1px solid var(--border); padding: 52
 
 .carousel-slide {
   display: none;
-  animation: slideIn 0.45s cubic-bezier(0.4,0,0.2,1);
+  opacity: 1;
 }
-.carousel-slide.active { display: block; }
+.carousel-slide.active {
+  display: block;
+  animation: slideIn 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+}
 
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(24px); }
