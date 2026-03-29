@@ -36,7 +36,7 @@ export default function PayrollProductPage() {
       <LandingNav />
 
       {/* HERO */}
-      <section className="hero" style={{ minHeight: 'auto', paddingTop: 140, paddingBottom: 80 }}>
+      <section className="hero-center" style={{ minHeight: 'auto', paddingTop: 140, paddingBottom: 80 }}>
         <div className="hero-content" style={{ maxWidth: 700 }}>
           <div className="eyebrow"><span className="eyebrow-line" />GLOBAL PAYROLL</div>
           <h1 className="hero-h1" style={{ fontSize: 'clamp(36px, 5vw, 64px)' }}>
