@@ -332,18 +332,26 @@ export function HeroCarousel() {
           </div>
         </div>
 
-        {/* SLIDE 2: AI Photo card */}
+        {/* SLIDE 2: Tempo AI */}
         <div className={`carousel-slide${current === 1 ? ' active' : ''}`}>
-          <div className="slide-photo-card">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=900&q=85&auto=format&fit=crop" alt="Tempo AI" className="slide-photo" />
-            <div className="slide-caption">
-              <div className="slide-caption-inner">
-                <h3 className="slide-caption-title">Better work days start here.</h3>
-                <p className="slide-caption-sub">Tempo AI is the intelligence layer that lets you harness the knowledge of your entire workforce &mdash; instantly.</p>
-                <a href="/products/ai" className="slide-arrow-btn">
-                  <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12M10.5 5L16 10l-5.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </a>
+          <div className="dash-card" style={{ background: '#0C0C0B' }}>
+            <div className="dash-bar" style={{ background: '#1a1a18' }}>
+              <div className="dots"><div className="dot r" /><div className="dot y" /><div className="dot g" /></div>
+              <div className="addr" style={{ color: '#888' }}>app.theworktempo.com/ai</div>
+            </div>
+            <div className="dash-body" style={{ color: '#fff' }}>
+              <div className="dash-hd"><span className="dash-ttl" style={{ color: '#fff' }}>Tempo AI</span><span className="dash-qt" style={{ color: '#FF5520' }}>Ask anything</span></div>
+              <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 12 }}>
+                <div style={{ color: '#aaa', fontSize: 13 }}>You asked:</div>
+                <div style={{ color: '#fff', fontSize: 15, fontWeight: 600, marginTop: 4 }}>{'"'}What{`'`}s our turnover rate in West Africa vs last quarter?{'"'}</div>
+              </div>
+              <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 10 }}>
+                <div style={{ color: '#FF5520', fontSize: 13, fontWeight: 600 }}>Tempo AI</div>
+                <div style={{ color: '#eee', fontSize: 14, marginTop: 6, lineHeight: 1.6 }}>Turnover in West Africa was <strong>8.3%</strong> this quarter vs <strong>11.2%</strong> last &mdash; driven by improved retention in Ghana and Senegal.</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <span style={{ background: '#FF5520', color: '#fff', padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>See full breakdown</span>
+                <span style={{ border: '1px solid #333', color: '#aaa', padding: '6px 14px', borderRadius: 100, fontSize: 12 }}>Ask follow-up</span>
               </div>
             </div>
           </div>
@@ -381,19 +389,29 @@ export function HeroCarousel() {
           </div>
         </div>
 
-        {/* SLIDE 4: Performance photo card */}
+        {/* SLIDE 4: Performance */}
         <div className={`carousel-slide${current === 3 ? ' active' : ''}`}>
-          <div className="slide-photo-card">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=900&q=85&auto=format&fit=crop" alt="Performance management" className="slide-photo" />
-            <div className="slide-caption">
-              <div className="slide-caption-inner">
-                <h3 className="slide-caption-title">Performance that moves the business forward.</h3>
-                <p className="slide-caption-sub">Continuous feedback, calibration, and goal-setting &mdash; connected across every team in every country.</p>
-                <a href="/products/ai" className="slide-arrow-btn">
-                  <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h12M10.5 5L16 10l-5.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </a>
+          <div className="dash-card">
+            <div className="dash-bar">
+              <div className="dots"><div className="dot r" /><div className="dot y" /><div className="dot g" /></div>
+              <div className="addr">app.theworktempo.com/performance</div>
+            </div>
+            <div className="dash-body">
+              <div className="dash-hd"><span className="dash-ttl">Performance Reviews</span><span className="dash-qt">Q1 2026 Cycle</span></div>
+              <div className="dash-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+                <div className="dg"><div className="dg-v">94%</div><div className="dg-l">Completion rate</div><div className="dg-d">{'\u2191'} +12% vs Q4</div></div>
+                <div className="dg"><div className="dg-v">4.2</div><div className="dg-l">Avg rating</div><div className="dg-d" style={{ color: 'var(--muted)' }}>Calibrated</div></div>
+                <div className="dg"><div className="dg-v">847</div><div className="dg-l">Reviews complete</div><div className="dg-d">{'\u2191'} 53 pending</div></div>
               </div>
+              <table className="dash-tbl" style={{ marginTop: 14 }}>
+                <thead><tr><th>Employee</th><th>Rating</th><th>Potential</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>Thabo Molefe</td><td>4.5</td><td>High</td><td><span className="pill p-g">Calibrated</span></td></tr>
+                  <tr><td>Priya Sharma</td><td>4.2</td><td>High</td><td><span className="pill p-g">Calibrated</span></td></tr>
+                  <tr><td>Jan van der Berg</td><td>3.8</td><td>Medium</td><td><span className="pill p-y">In Review</span></td></tr>
+                  <tr><td>Amara Okafor</td><td>4.7</td><td>High</td><td><span className="pill p-g">Calibrated</span></td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
