@@ -12,11 +12,11 @@ export default function LandingPage() {
         <div className="hero-content">
           <div className="eyebrow"><span className="eyebrow-line" />The unified workforce platform</div>
           <h1 className="hero-h1">
-            One record.<br />
-            <em>Every system.</em><br />
-            <span className="dim">Global scale.</span>
+            Workforce infrastructure<br />
+            <em>to run your entire</em><br />
+            <span className="dim">company.</span>
           </h1>
-          <p className="hero-p">HR, payroll, finance, IT, and AI in a single data layer. No integrations to stitch together. No spreadsheets. No manual sync.</p>
+          <p className="hero-p">Manage people, run payroll, close your books, and secure every system — from your first hire to your ten-thousandth.</p>
           <div className="hero-btns">
             <a href="/trial" className="btn btn-orange">
               Start Free Trial
