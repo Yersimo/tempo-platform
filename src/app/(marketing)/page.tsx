@@ -9,6 +9,7 @@ export default function LandingPage() {
 
       {/* HERO */}
       <section className="hero">
+        <div className="hero-inner">
         <div className="hero-content">
           <div className="eyebrow"><span className="eyebrow-line" />The unified workforce platform</div>
           <h1 className="hero-h1">
@@ -45,6 +46,7 @@ export default function LandingPage() {
 
         {/* Dashboard Carousel */}
         <HeroCarousel />
+        </div>{/* end hero-inner */}
       </section>
 
       {/* TRUST BADGES + LOGOS */}

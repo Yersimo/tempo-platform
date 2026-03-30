@@ -209,10 +209,6 @@ nav {
 .hero {
   min-height: 100vh;
   padding: 100px 52px 40px;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  align-items: center;
-  gap: 24px;
   position: relative;
   overflow: visible;
   background: var(--white);
@@ -221,12 +217,22 @@ nav {
   content: '';
   position: absolute;
   right: 0; top: 0;
-  width: 58%;
+  width: 50%;
   height: 100%;
   background: linear-gradient(145deg, #f0ede8 0%, #e8e3db 40%, #ddd7cc 100%);
-  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0% 100%);
   pointer-events: none;
   z-index: 0;
+}
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  align-items: center;
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-content { position: relative; z-index: 1; }
@@ -400,8 +406,10 @@ nav {
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 44px;
+  gap: 16px;
+  text-align: center;
 }
 .logos-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
 .logos-list { display: flex; gap: 36px; align-items: center; }
@@ -409,9 +417,11 @@ nav {
 .lname:hover { color: rgba(0,0,0,0.45); }
 
 /* -- SECTIONS -- */
-.sec { padding: 88px 52px; }
-.sec-alt { background: var(--bg); }
-.sec-dark { background: var(--black); color: #fff; }
+.sec { padding: 88px 52px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+.sec-alt { background: var(--bg); padding: 88px 52px; }
+.sec-alt > * { max-width: 1400px; margin-left: auto; margin-right: auto; }
+.sec-dark { background: var(--black); color: #fff; padding: 88px 52px; }
+.sec-dark > * { max-width: 1400px; margin-left: auto; margin-right: auto; }
 
 .ey {
   font-size: 11px;
