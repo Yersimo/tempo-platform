@@ -208,11 +208,11 @@ nav {
 /* -- HERO -- */
 .hero {
   min-height: 100vh;
-  padding: 100px 52px 60px;
+  padding: 100px 52px 40px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.1fr;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
   position: relative;
   overflow: visible;
   background: var(--white);
@@ -221,10 +221,10 @@ nav {
   content: '';
   position: absolute;
   right: 0; top: 0;
-  width: 55%;
+  width: 58%;
   height: 100%;
-  background: linear-gradient(135deg, var(--bg) 0%, #EDE8DF 100%);
-  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0% 100%);
+  background: linear-gradient(145deg, #f0ede8 0%, #e8e3db 40%, #ddd7cc 100%);
+  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -344,7 +344,7 @@ nav {
   border: 1px solid var(--border2);
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.04), 0 20px 48px rgba(0,0,0,0.10), 0 48px 80px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06), 0 24px 56px rgba(0,0,0,0.14), 0 56px 100px rgba(0,0,0,0.08);
 }
 .dash-bar {
   background: var(--bg);
@@ -815,8 +815,8 @@ footer { background: var(--bg); border-top: 1px solid var(--border); padding: 52
 /* -- CAROUSEL -- */
 .dash-float {
   position: relative;
-  width: 100%;
-  max-width: 640px;
+  width: 110%;
+  max-width: 720px;
   z-index: 2;
   justify-self: end;
   align-self: center;
