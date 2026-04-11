@@ -5,9 +5,9 @@ import { hashPassword } from '@/lib/auth'
 import { sendInvitationEmail } from '@/lib/email'
 import { SignJWT } from 'jose'
 
-const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
-if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
-  console.error('CRITICAL: JWT_SECRET must be set in production for invitation tokens!')
+const jwtSecretRaw = process.env.JWT_SECRET || 'tempo-dev-secret-change-in-production-2026'
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL SECURITY: JWT_SECRET is not set for invitation tokens. Using fallback secret. This is insecure in production!')
 }
 const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 

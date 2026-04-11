@@ -184,11 +184,11 @@ export interface BatchProcessResult {
 // ============================================================
 
 function generateId(): string {
-  return `rec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  return `rec-${crypto.randomUUID()}`
 }
 
 function generateToken(): string {
-  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
 }
 
 function clamp(value: number, min: number, max: number): number {

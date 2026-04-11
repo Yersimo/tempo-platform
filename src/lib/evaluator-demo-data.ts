@@ -2,6 +2,10 @@
 // Samuel Mireku and Meissa Fall — two evaluator accounts for the Ecobank Ghana payroll demo
 // This file provides all data needed for the 10-step walkthrough
 
+// SECURITY: Evaluator accounts only work when DEMO_MODE is enabled
+const DEMO_MODE = process.env.DEMO_MODE === 'true' || process.env.NODE_ENV !== 'production'
+const EVALUATOR_PASSWORD = DEMO_MODE ? (process.env.EVALUATOR_PASSWORD || '') : ''
+
 // ---------------------------------------------------------------------------
 // 1. EVALUATOR_ACCOUNTS
 // ---------------------------------------------------------------------------
@@ -10,7 +14,7 @@ export const EVALUATOR_ACCOUNTS = {
   samuel: {
     id: 'emp-eval-samuel',
     email: 's.mireku@ecobank-demo.com',
-    password: 'EcobankTempo2026!',
+    password: EVALUATOR_PASSWORD,
     fullName: 'Samuel Mireku',
     firstName: 'Samuel',
     jobTitle: 'Head of Compensation & Benefits',
@@ -30,7 +34,7 @@ export const EVALUATOR_ACCOUNTS = {
   meissa: {
     id: 'emp-eval-meissa',
     email: 'm.fall@ecobank-demo.com',
-    password: 'EcobankTempo2026!',
+    password: EVALUATOR_PASSWORD,
     fullName: 'Meissa Fall',
     firstName: 'Meissa',
     jobTitle: 'Head of Compensation & Benefits',

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('[Academy Billing] GET Error:', error)
+    console.error('[Academy Billing] GET Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
       { error: 'Billing query failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('[Academy Billing] POST Error:', error)
+    console.error('[Academy Billing] POST Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
       { error: 'Billing operation failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 },

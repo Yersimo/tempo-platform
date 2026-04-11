@@ -48,7 +48,7 @@ export async function GET(
 
     return response
   } catch (error: any) {
-    console.error('[SSO Callback] Error:', error)
+    console.error('[SSO Callback] Error:', error instanceof Error ? error.message : 'Unknown error')
 
     const errorCode = error?.code || 'sso_failed'
     const errorMessage = encodeURIComponent(error?.message || 'SSO authentication failed')

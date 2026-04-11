@@ -4,9 +4,11 @@ import { eq, and, gt } from 'drizzle-orm'
 import { verifyPassword, hashPassword } from '@/lib/auth'
 
 // ─── Config ───────────────────────────────────────────────────────────────
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
-)
+const jwtSecretRaw = process.env.JWT_SECRET || 'tempo-dev-secret-change-in-production-2026'
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL SECURITY: JWT_SECRET is not set in admin-auth. Using fallback secret. This is insecure in production!')
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000 // 24 hours (shorter than employee sessions)
 const COOKIE_NAME = 'tempo_admin_session'
 

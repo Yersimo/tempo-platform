@@ -16,6 +16,20 @@ import {
 } from 'lucide-react'
 import { useTempo } from '@/lib/store'
 
+// Sanitize HTML to prevent XSS via innerHTML
+function sanitizeHTML(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/on\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/<iframe\b[^>]*>/gi, '')
+    .replace(/<object\b[^>]*>/gi, '')
+    .replace(/<embed\b[^>]*>/gi, '')
+    .replace(/<form\b[^>]*>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/data:text\/html/gi, '')
+}
+
 // ============================================================
 // Types
 // ============================================================
@@ -138,7 +152,7 @@ export default function DocumentEditorPage() {
       setLocalContent(doc.content)
       setLocalVersion(doc.version)
       if (editorRef.current) {
-        editorRef.current.innerHTML = doc.content
+        editorRef.current.innerHTML = sanitizeHTML(doc.content)
       }
       setLoading(false)
     }).catch(() => {
@@ -162,7 +176,7 @@ export default function DocumentEditorPage() {
           setLocalContent(data.content)
           setLocalVersion(data.version)
           if (editorRef.current) {
-            editorRef.current.innerHTML = data.content
+            editorRef.current.innerHTML = sanitizeHTML(data.content)
           }
         } else if (data?.hasChanges && isDirty) {
           setSaveStatus('conflict')
@@ -246,7 +260,7 @@ export default function DocumentEditorPage() {
 
   function restoreVersion(version: DocVersion) {
     if (editorRef.current) {
-      editorRef.current.innerHTML = version.content
+      editorRef.current.innerHTML = sanitizeHTML(version.content)
     }
     setLocalContent(version.content)
     setIsDirty(true)

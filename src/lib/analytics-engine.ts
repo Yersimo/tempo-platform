@@ -546,11 +546,52 @@ function evalFormula(expression: string, variables: Record<string, number>): num
   // Only allow digits, operators, parentheses, decimals, whitespace
   if (!/^[\d\s+\-*/().]+$/.test(expr)) return 0
   try {
-    const result = Function(`"use strict"; return (${expr})`)()
+    const result = safeEvalArithmetic(expr)
     return typeof result === 'number' && isFinite(result) ? Math.round(result * 100) / 100 : 0
   } catch {
     return 0
   }
+}
+
+// Safe arithmetic evaluator — recursive descent parser (no Function()/eval)
+function safeEvalArithmetic(expr: string): number {
+  const sanitized = expr.replace(/[^0-9+\-*/().  ]/g, '')
+  if (sanitized !== expr) throw new Error('Invalid expression')
+
+  const tokens = sanitized.match(/(\d+\.?\d*|[+\-*/()])/g) || []
+  let pos = 0
+
+  function parseAdd(): number {
+    let left = parseMul()
+    while (pos < tokens.length && (tokens[pos] === '+' || tokens[pos] === '-')) {
+      const op = tokens[pos++]
+      const right = parseMul()
+      left = op === '+' ? left + right : left - right
+    }
+    return left
+  }
+
+  function parseMul(): number {
+    let left = parseAtom()
+    while (pos < tokens.length && (tokens[pos] === '*' || tokens[pos] === '/')) {
+      const op = tokens[pos++]
+      const right = parseAtom()
+      left = op === '*' ? left * right : (right !== 0 ? left / right : 0)
+    }
+    return left
+  }
+
+  function parseAtom(): number {
+    if (tokens[pos] === '(') {
+      pos++ // skip (
+      const val = parseAdd()
+      pos++ // skip )
+      return val
+    }
+    return parseFloat(tokens[pos++] || '0')
+  }
+
+  return parseAdd()
 }
 
 // ---------------------------------------------------------------------------

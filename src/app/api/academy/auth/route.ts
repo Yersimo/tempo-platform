@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
     }
   } catch (error: any) {
-    console.error('[Academy Auth POST]', error)
+    console.error('[Academy Auth POST]', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
   }
 }
@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('[Academy Auth GET]', error)
+    console.error('[Academy Auth GET]', error instanceof Error ? error.message : 'Unknown error')
     const response = NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     response.cookies.delete(COOKIE_NAME)
     return response

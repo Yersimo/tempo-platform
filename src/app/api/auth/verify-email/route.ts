@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(new URL('/login?verified=true', request.url))
   } catch (error) {
-    console.error('[GET /api/auth/verify-email] Error:', error)
+    console.error('[GET /api/auth/verify-email] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.redirect(new URL('/login?error=verification_failed', request.url))
   }
 }

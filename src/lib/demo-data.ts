@@ -902,6 +902,9 @@ export const demoMultiYearPlan = {
 }
 
 // Demo credentials for role-based login
+// SECURITY: Demo accounts only work when DEMO_MODE is enabled (defaults to true in development)
+export const DEMO_MODE = process.env.DEMO_MODE === 'true' || process.env.NODE_ENV !== 'production'
+
 export type DemoRole = 'owner' | 'admin' | 'hrbp' | 'manager' | 'employee'
 
 export interface DemoCredential {
@@ -915,16 +918,20 @@ export interface DemoCredential {
   description: string
 }
 
-export const demoCredentials: DemoCredential[] = [
-  { email: 'yersimo@theworktempo.com', password: 'W@kilisha2026', employeeId: 'emp-17', role: 'owner', label: 'Master Admin', title: 'Platform Owner', department: 'Executive', description: 'Master admin with full super access. Can switch to any user role.' },
-  { email: 'amara.kone@ecobank.com', password: 'demo1234', employeeId: 'emp-17', role: 'owner', label: 'CHRO (Owner)', title: 'CHRO', department: 'Human Resources', description: 'Full platform access. Sees all modules, AI insights, and executive dashboards.' },
-  { email: 'o.adeyemi@ecobank.com', password: 'demo1234', employeeId: 'emp-1', role: 'admin', label: 'Department Head', title: 'Head of Retail Banking', department: 'Retail Banking', description: 'Department admin. Manages team performance, approvals, and recruiting.' },
-  { email: 'a.darko@ecobank.com', password: 'demo1234', employeeId: 'emp-20', role: 'hrbp', label: 'HR Business Partner', title: 'HR Business Partner', department: 'Human Resources', description: 'HR operations. Manages people, performance reviews, compensation, and engagement.' },
-  { email: 'n.okafor@ecobank.com', password: 'demo1234', employeeId: 'emp-2', role: 'manager', label: 'Manager', title: 'Branch Manager', department: 'Retail Banking', description: 'Team manager. Reviews team goals, approves leave, manages direct reports.' },
-  { email: 'k.asante@ecobank.com', password: 'demo1234', employeeId: 'emp-3', role: 'employee', label: 'Employee', title: 'Relationship Manager', department: 'Retail Banking', description: 'Individual contributor. Views own profile, goals, learning, and submits requests.' },
-  { email: 'i.agu@ecobank.com', password: 'demo1234', employeeId: 'emp-24', role: 'admin', label: 'CFO', title: 'CFO', department: 'Finance', description: 'Finance executive. Full access to payroll, budgets, invoices, and expense reports.' },
-  { email: 'b.ogunleye@ecobank.com', password: 'demo1234', employeeId: 'emp-13', role: 'admin', label: 'CTO', title: 'CTO', department: 'Technology', description: 'Technology executive. Manages IT devices, apps, licenses, and tech team.' },
-]
+// Passwords come from environment variables; fall back to defaults only in demo mode
+const DEMO_PASSWORD = DEMO_MODE ? (process.env.DEMO_PASSWORD || 'demo1234') : ''
+const MASTER_ADMIN_PASSWORD = DEMO_MODE ? (process.env.MASTER_ADMIN_PASSWORD || '') : ''
+
+export const demoCredentials: DemoCredential[] = DEMO_MODE ? [
+  { email: 'yersimo@theworktempo.com', password: MASTER_ADMIN_PASSWORD, employeeId: 'emp-17', role: 'owner', label: 'Master Admin', title: 'Platform Owner', department: 'Executive', description: 'Master admin with full super access. Can switch to any user role.' },
+  { email: 'amara.kone@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-17', role: 'owner', label: 'CHRO (Owner)', title: 'CHRO', department: 'Human Resources', description: 'Full platform access. Sees all modules, AI insights, and executive dashboards.' },
+  { email: 'o.adeyemi@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-1', role: 'admin', label: 'Department Head', title: 'Head of Retail Banking', department: 'Retail Banking', description: 'Department admin. Manages team performance, approvals, and recruiting.' },
+  { email: 'a.darko@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-20', role: 'hrbp', label: 'HR Business Partner', title: 'HR Business Partner', department: 'Human Resources', description: 'HR operations. Manages people, performance reviews, compensation, and engagement.' },
+  { email: 'n.okafor@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-2', role: 'manager', label: 'Manager', title: 'Branch Manager', department: 'Retail Banking', description: 'Team manager. Reviews team goals, approves leave, manages direct reports.' },
+  { email: 'k.asante@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-3', role: 'employee', label: 'Employee', title: 'Relationship Manager', department: 'Retail Banking', description: 'Individual contributor. Views own profile, goals, learning, and submits requests.' },
+  { email: 'i.agu@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-24', role: 'admin', label: 'CFO', title: 'CFO', department: 'Finance', description: 'Finance executive. Full access to payroll, budgets, invoices, and expense reports.' },
+  { email: 'b.ogunleye@ecobank.com', password: DEMO_PASSWORD, employeeId: 'emp-13', role: 'admin', label: 'CTO', title: 'CTO', department: 'Technology', description: 'Technology executive. Manages IT devices, apps, licenses, and tech team.' },
+] : []
 
 // Dashboard metrics
 export const demoDashboardMetrics = {
@@ -1643,13 +1650,13 @@ export const kashVendors = [
   { id: 'kvnd-3', org_id: 'org-2', name: 'TravelPerk', contact_email: 'support@travelperk.com', category: 'Travel Management', status: 'active' as const, created_at: '2024-09-01T00:00:00Z' },
 ]
 
-export const kashCredentials: DemoCredential[] = [
-  { email: 's.ndlovu@kashco.com', password: 'demo1234', employeeId: 'kemp-1', role: 'owner', label: 'Managing Director (Owner)', title: 'Managing Director', department: 'Consulting', description: 'Full platform access. Sees all modules, firm-wide analytics, and executive dashboards.' },
-  { email: 'l.amari@kashco.com', password: 'demo1234', employeeId: 'kemp-6', role: 'admin', label: 'Head of Strategy', title: 'Head of Strategy', department: 'Strategy', description: 'Strategy practice lead. Manages team, client engagements, and practice P&L.' },
-  { email: 't.mugabo@kashco.com', password: 'demo1234', employeeId: 'kemp-3', role: 'manager', label: 'Engagement Manager', title: 'Engagement Manager', department: 'Consulting', description: 'Project lead. Manages team, reviews deliverables, approves time and expenses.' },
-  { email: 'n.joubert@kashco.com', password: 'demo1234', employeeId: 'kemp-4', role: 'employee', label: 'Senior Consultant', title: 'Senior Consultant', department: 'Consulting', description: 'Individual contributor. Views own goals, learning, and submits time/expenses.' },
-  { email: 'z.moyo@kashco.com', password: 'demo1234', employeeId: 'kemp-12', role: 'admin', label: 'CPO', title: 'Chief People Officer', department: 'People & Culture', description: 'People executive. Full access to HR, performance, engagement, and culture programs.' },
-]
+export const kashCredentials: DemoCredential[] = DEMO_MODE ? [
+  { email: 's.ndlovu@kashco.com', password: DEMO_PASSWORD, employeeId: 'kemp-1', role: 'owner', label: 'Managing Director (Owner)', title: 'Managing Director', department: 'Consulting', description: 'Full platform access. Sees all modules, firm-wide analytics, and executive dashboards.' },
+  { email: 'l.amari@kashco.com', password: DEMO_PASSWORD, employeeId: 'kemp-6', role: 'admin', label: 'Head of Strategy', title: 'Head of Strategy', department: 'Strategy', description: 'Strategy practice lead. Manages team, client engagements, and practice P&L.' },
+  { email: 't.mugabo@kashco.com', password: DEMO_PASSWORD, employeeId: 'kemp-3', role: 'manager', label: 'Engagement Manager', title: 'Engagement Manager', department: 'Consulting', description: 'Project lead. Manages team, reviews deliverables, approves time and expenses.' },
+  { email: 'n.joubert@kashco.com', password: DEMO_PASSWORD, employeeId: 'kemp-4', role: 'employee', label: 'Senior Consultant', title: 'Senior Consultant', department: 'Consulting', description: 'Individual contributor. Views own goals, learning, and submits time/expenses.' },
+  { email: 'z.moyo@kashco.com', password: DEMO_PASSWORD, employeeId: 'kemp-12', role: 'admin', label: 'CPO', title: 'Chief People Officer', department: 'People & Culture', description: 'People executive. Full access to HR, performance, engagement, and culture programs.' },
+] : []
 
 export const kashDashboardMetrics = {
   headcount: 156,
@@ -4874,62 +4881,65 @@ export interface DemoAdminCredential {
   description: string
 }
 
-export const demoAdminCredentials: DemoAdminCredential[] = [
+// Admin credentials sourced from environment variables; only available in DEMO_MODE
+const ADMIN_DEMO_PASSWORD = DEMO_MODE ? (process.env.ADMIN_DEMO_PASSWORD || '') : ''
+
+export const demoAdminCredentials: DemoAdminCredential[] = DEMO_MODE ? [
   {
     email: 'yersimo@theworktempo.com',
-    password: 'W@kilisha2026',
+    password: MASTER_ADMIN_PASSWORD,
     name: 'Simon Rey',
     role: 'super_admin',
     description: 'Master admin — full platform access, impersonation, org management',
   },
   {
     email: 'admin@tempo.dev',
-    password: 'admin1234',
+    password: ADMIN_DEMO_PASSWORD,
     name: 'Tempo Admin',
     role: 'super_admin',
     description: 'Full platform access — manage orgs, impersonate users',
   },
   {
     email: 'admin@theworktempo.com',
-    password: 'T3mp0$uper@Adm!n#2026',
+    password: process.env.PLATFORM_ADMIN_PASSWORD || '',
     name: 'Tempo Platform Admin',
     role: 'super_admin',
     description: 'Platform super admin — full access, billing, org management',
   },
   {
     email: 'security@theworktempo.com',
-    password: 'S3cur!ty#Temp0@2026$',
+    password: process.env.SECURITY_ADMIN_PASSWORD || '',
     name: 'Security Administrator',
     role: 'super_admin',
     description: 'Security admin — audit logs, compliance, SSO configuration',
   },
   {
     email: 'support@theworktempo.com',
-    password: 'Supp0rt#T3mp0!2026@',
+    password: process.env.SUPPORT_ADMIN_PASSWORD || '',
     name: 'Support Administrator',
     role: 'support',
     description: 'Support admin — user assistance, impersonation, ticket management',
   },
-]
+] : []
 
-// Platform Admin Credentials (exported separately for reference)
-export const PLATFORM_ADMIN_ACCOUNTS = [
+// Platform Admin Credentials (exported separately for reference) — only in DEMO_MODE
+export const PLATFORM_ADMIN_ACCOUNTS = DEMO_MODE ? [
   {
     email: 'admin@theworktempo.com',
-    password: 'T3mp0$uper@Adm!n#2026',
+    password: process.env.PLATFORM_ADMIN_PASSWORD || '',
     fullName: 'Tempo Platform Admin',
     role: 'super_admin' as const,
   },
   {
     email: 'security@theworktempo.com',
-    password: 'S3cur!ty#Temp0@2026$',
+    password: process.env.SECURITY_ADMIN_PASSWORD || '',
     fullName: 'Security Administrator',
     role: 'super_admin' as const,
   },
   {
     email: 'support@theworktempo.com',
-    password: 'Supp0rt#T3mp0!2026@',
+    password: process.env.SUPPORT_ADMIN_PASSWORD || '',
     fullName: 'Support Administrator',
     role: 'support' as const,
   },
-]
+] : []

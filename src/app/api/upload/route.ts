@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
-    console.error('[Upload] Error:', error)
+    console.error('[Upload] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
       { error: 'Upload failed' },
       { status: 500 }
@@ -110,14 +110,19 @@ export async function GET(request: NextRequest) {
 
   // If fileId provided, return presigned URL for that file
   if (fileId) {
+    const orgId = request.headers.get('x-org-id')
+    if (!orgId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     try {
-      const url = await getFileUrl(fileId)
+      const url = await getFileUrl(fileId, orgId)
       if (!url) {
         return NextResponse.json({ error: 'File not found' }, { status: 404 })
       }
       return NextResponse.json({ url })
     } catch (error) {
-      console.error('[Upload] Get URL error:', error)
+      console.error('[Upload] Get URL error:', error instanceof Error ? error.message : 'Unknown error')
       return NextResponse.json({ error: 'Failed to get file URL' }, { status: 500 })
     }
   }
@@ -145,7 +150,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'fileId is required' }, { status: 400 })
     }
 
-    const deleted = await deleteFile(fileId)
+    const deleted = await deleteFile(fileId, orgId)
     if (!deleted) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
@@ -166,7 +171,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[Upload] Delete error:', error)
+    console.error('[Upload] Delete error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }

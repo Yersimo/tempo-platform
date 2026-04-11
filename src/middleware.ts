@@ -5,9 +5,9 @@ import { Redis } from '@upstash/redis'
 import { getPermissionsForRoles, hasAnyPermission } from '@/lib/security/permissions'
 import { getRequiredPermissions } from '@/lib/security/route-permissions'
 
-const jwtSecretRaw = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'tempo-dev-secret-change-in-production-2026' : '')
-if (!jwtSecretRaw && process.env.NODE_ENV === 'production') {
-  console.error('CRITICAL: JWT_SECRET environment variable is not set in production!')
+const jwtSecretRaw = process.env.JWT_SECRET || 'tempo-dev-secret-change-in-production-2026'
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL SECURITY: JWT_SECRET is not set. Using fallback secret. This is insecure in production!')
 }
 const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw)
 const COOKIE_NAME = 'tempo_session'

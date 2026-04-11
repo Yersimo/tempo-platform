@@ -41,7 +41,7 @@ export async function GET(
     // Redirect to the provider's login page
     return NextResponse.redirect(authorizationUrl)
   } catch (error: any) {
-    console.error('[SSO Initiation] Error:', error)
+    console.error('[SSO Initiation] Error:', error instanceof Error ? error.message : 'Unknown error')
     
     if (error?.code === 'PROVIDER_NOT_FOUND') {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const providers = await getOrgSSOProviders(orgId)
     return NextResponse.json({ providers })
   } catch (error) {
-    console.error('[SSO Providers] Error:', error)
+    console.error('[SSO Providers] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed to fetch SSO providers' }, { status: 500 })
   }
 }

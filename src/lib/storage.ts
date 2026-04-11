@@ -196,11 +196,16 @@ export async function uploadFile(
   }
 }
 
-export async function getFileUrl(fileId: string): Promise<string | null> {
+export async function getFileUrl(fileId: string, orgId?: string): Promise<string | null> {
+  const conditions = [eq(schema.fileUploads.id, fileId)]
+  if (orgId) {
+    conditions.push(eq(schema.fileUploads.orgId, orgId))
+  }
+
   const [record] = await db
     .select()
     .from(schema.fileUploads)
-    .where(eq(schema.fileUploads.id, fileId))
+    .where(and(...conditions))
 
   if (!record || record.deletedAt) return null
 
@@ -208,11 +213,16 @@ export async function getFileUrl(fileId: string): Promise<string | null> {
   return provider.getUrl(record.storageKey)
 }
 
-export async function deleteFile(fileId: string): Promise<boolean> {
+export async function deleteFile(fileId: string, orgId?: string): Promise<boolean> {
+  const conditions = [eq(schema.fileUploads.id, fileId)]
+  if (orgId) {
+    conditions.push(eq(schema.fileUploads.orgId, orgId))
+  }
+
   const [record] = await db
     .select()
     .from(schema.fileUploads)
-    .where(eq(schema.fileUploads.id, fileId))
+    .where(and(...conditions))
 
   if (!record) return false
 

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action. Use "request" or "reset".' }, { status: 400 })
   } catch (error) {
-    console.error('[POST /api/auth/reset-password] Error:', error)
+    console.error('[POST /api/auth/reset-password] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Password reset failed' }, { status: 500 })
   }
 }

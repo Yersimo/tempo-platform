@@ -18,7 +18,7 @@ import {
 } from '@/lib/auth'
 import { checkPasswordBreach } from '@/lib/security/breach-detection'
 import { verifyTOTP } from '@/lib/totp'
-import { allDemoCredentials, getDemoDataForOrg } from '@/lib/demo-data'
+import { allDemoCredentials, getDemoDataForOrg, DEMO_MODE } from '@/lib/demo-data'
 import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-data'
 import { sendWelcomeEmail } from '@/lib/email'
 import { seedNewOrg } from '@/lib/org-seed'
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
         .where(eq(schema.employees.email, email))
 
       if (!employee) {
-        // Evaluator account check: special accounts with their own password
-        if (isEvaluatorAccount(email)) {
+        // Evaluator account check: special accounts with their own password (DEMO_MODE only)
+        if (DEMO_MODE && isEvaluatorAccount(email)) {
           const evalConfig = getEvaluatorConfig(email)
           if (evalConfig && password === evalConfig.password) {
             const evalToken = await createToken({
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
         }
 
-        // Demo fallback: check hardcoded demo credentials when DB has no match
-        const demoCred = allDemoCredentials.find(c => c.email === email && c.password === password)
+        // Demo fallback: check hardcoded demo credentials when DB has no match (DEMO_MODE only)
+        const demoCred = DEMO_MODE ? allDemoCredentials.find(c => c.email === email && c.password === password) : null
         if (!demoCred) {
           return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
         }
@@ -720,12 +720,12 @@ export async function POST(request: NextRequest) {
 
       // Send welcome email (non-blocking — don't await)
       sendWelcomeEmail(email, fullName, companyName).catch(err =>
-        console.error('[Signup] Welcome email failed:', err)
+        console.error('[Signup] Welcome email failed:', err instanceof Error ? err.message : 'Unknown error')
       )
 
       // Seed default data for the new org (non-blocking)
       seedNewOrg(org.id, industry).catch(err =>
-        console.error('[Signup] Org seed failed:', err)
+        console.error('[Signup] Org seed failed:', err instanceof Error ? err.message : 'Unknown error')
       )
 
       const user = {
@@ -753,7 +753,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
-    console.error('Auth error:', error)
+    console.error('Auth error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
-    console.error('[Billing] Error:', error)
+    console.error('[Billing] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Billing operation failed' }, { status: 500 })
   }
 }
