@@ -295,7 +295,7 @@ function buildGenericNotificationHtml(
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
+      <span style="color:#004D40;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
     </div>
     <div style="padding:32px">
       <div style="background:${v.bg};color:${v.text};display:inline-block;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:12px">${v.label}</div>
@@ -303,7 +303,7 @@ function buildGenericNotificationHtml(
       <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#555">
         Hi ${recipientName}, ${message}
       </p>
-      <a href="${APP_URL}${link}" style="display:inline-block;padding:12px 28px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">View Details</a>
+      <a href="${APP_URL}${link}" style="display:inline-block;padding:12px 28px;background:#004D40;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">View Details</a>
     </div>
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eee">
       <p style="margin:0;font-size:12px;color:#999">Tempo - Unified Workforce Platform</p>

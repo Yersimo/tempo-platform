@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils/cn'
 // ═══════════════════════════════════════════════════════════
 
 export const CHART_COLORS = {
-  primary: '#ea580c',
+  primary: '#004D40',
   blue: '#3b82f6',
   emerald: '#10b981',
   violet: '#8b5cf6',
@@ -27,7 +27,7 @@ export const CHART_COLORS = {
 } as const
 
 export const CHART_SERIES = [
-  '#ea580c', '#3b82f6', '#10b981', '#8b5cf6',
+  '#004D40', '#3b82f6', '#10b981', '#8b5cf6',
   '#f59e0b', '#64748b', '#ef4444', '#06b6d4',
   '#84cc16', '#ec4899', '#14b8a6', '#a855f7',
 ]

@@ -130,7 +130,7 @@ export function FileUpload({
         className={`
           relative flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all
           ${isDragging
-            ? 'border-orange-400 bg-orange-50'
+            ? 'border-teal-600 bg-teal-50'
             : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-zinc-100'
           }
           ${isUploading ? 'pointer-events-none opacity-70' : ''}
@@ -138,11 +138,11 @@ export function FileUpload({
       >
         {isUploading ? (
           <>
-            <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-teal-700 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-zinc-500">Uploading... {progress}%</p>
             <div className="w-full max-w-48 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-orange-500 rounded-full transition-all duration-300"
+                className="h-full bg-teal-700 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -161,7 +161,7 @@ export function FileUpload({
                 // Clear to allow re-upload
                 handleClick()
               }}
-              className="text-xs text-orange-600 hover:underline"
+              className="text-xs text-teal-800 hover:underline"
             >
               Replace file
             </button>
@@ -171,7 +171,7 @@ export function FileUpload({
             <Upload size={24} className="text-zinc-400" />
             <div className="text-center">
               <p className="text-sm text-zinc-600">
-                <span className="font-medium text-orange-600">Click to upload</span> or drag and drop
+                <span className="font-medium text-teal-800">Click to upload</span> or drag and drop
               </p>
               <p className="text-xs text-zinc-400 mt-1">
                 PDF, images, documents up to {maxSizeMB}MB

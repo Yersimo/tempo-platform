@@ -324,7 +324,7 @@ export default function MobileManagerPage() {
               </button>
             )}
             {pushPermission === 'granted' && (
-              <div className="relative p-2.5 rounded-xl bg-orange-600/10 text-orange-400 min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <div className="relative p-2.5 rounded-xl bg-teal-700/10 text-teal-400 min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <Bell size={18} />
                 {pendingApprovals.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
@@ -347,7 +347,7 @@ export default function MobileManagerPage() {
               <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Quick Actions</h2>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { icon: CheckSquare, label: 'Approvals', color: 'text-orange-400', bg: 'bg-orange-500/10', badge: pendingApprovals.length, tab: 'approvals' as TabId },
+                  { icon: CheckSquare, label: 'Approvals', color: 'text-teal-400', bg: 'bg-teal-700/10', badge: pendingApprovals.length, tab: 'approvals' as TabId },
                   { icon: Users, label: 'My Team', color: 'text-blue-400', bg: 'bg-blue-500/10', badge: directReports.length, tab: 'team' as TabId },
                   { icon: User, label: 'Profile', color: 'text-indigo-400', bg: 'bg-indigo-500/10', href: '/mobile/profile' },
                   { icon: Rocket, label: 'Gigs', color: 'text-red-400', bg: 'bg-red-500/10', href: '/people/talent-marketplace' },
@@ -402,7 +402,7 @@ export default function MobileManagerPage() {
                   </h2>
                   <button
                     onClick={() => setActiveTab('approvals')}
-                    className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]"
+                    className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]"
                   >
                     View all ({pendingApprovals.length})
                     <ChevronRight size={14} />
@@ -490,7 +490,7 @@ export default function MobileManagerPage() {
                   </h2>
                   <button
                     onClick={() => setActiveTab('team')}
-                    className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]"
+                    className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]"
                   >
                     View all
                     <ChevronRight size={14} />

@@ -173,7 +173,7 @@ const SCORE_BANDS: ScoreBand[] = [
     label: 'Full enterprise solution',
     description: 'Your organisation requires an enterprise-grade learning platform with custom domains, white-labelling, API access, and dedicated support.',
     plan: 'Enterprise',
-    color: '#ea580c',
+    color: '#004D40',
     templateId: 'leadership-development',
   },
 ]

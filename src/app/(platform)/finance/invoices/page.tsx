@@ -336,7 +336,7 @@ export default function InvoicesPage() {
           </Card>
           <Card className="text-center">
             <p className="text-xs text-t3 mb-1">61-90 Days</p>
-            <p className="text-lg font-bold text-orange-500">{formatCurrency(agingBuckets.days90, defaultCurrency)}</p>
+            <p className="text-lg font-bold text-teal-700">{formatCurrency(agingBuckets.days90, defaultCurrency)}</p>
           </Card>
           <Card className="text-center">
             <p className="text-xs text-t3 mb-1">90+ Days</p>
@@ -353,7 +353,7 @@ export default function InvoicesPage() {
               {agingBuckets.current > 0 && <div className="bg-success" style={{ width: `${(agingBuckets.current / totalAR) * 100}%` }} />}
               {agingBuckets.days30 > 0 && <div className="bg-accent" style={{ width: `${(agingBuckets.days30 / totalAR) * 100}%` }} />}
               {agingBuckets.days60 > 0 && <div className="bg-warning" style={{ width: `${(agingBuckets.days60 / totalAR) * 100}%` }} />}
-              {agingBuckets.days90 > 0 && <div className="bg-orange-500" style={{ width: `${(agingBuckets.days90 / totalAR) * 100}%` }} />}
+              {agingBuckets.days90 > 0 && <div className="bg-teal-700" style={{ width: `${(agingBuckets.days90 / totalAR) * 100}%` }} />}
               {agingBuckets.days120 > 0 && <div className="bg-error" style={{ width: `${(agingBuckets.days120 / totalAR) * 100}%` }} />}
             </div>
           </div>

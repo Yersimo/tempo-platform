@@ -1143,7 +1143,7 @@ export default function TravelManagementPage() {
                   'p-4 rounded-lg border',
                   info.level === 'low' ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20' :
                   info.level === 'medium' ? 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20' :
-                  info.level === 'high' ? 'border-orange-200 bg-orange-50/50 dark:bg-orange-950/20' :
+                  info.level === 'high' ? 'border-teal-200 bg-teal-50/50 dark:bg-teal-950/20' :
                   'border-red-200 bg-red-50/50 dark:bg-red-950/20'
                 )}>
                   <div className="flex items-center justify-between mb-2">

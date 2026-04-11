@@ -19,7 +19,7 @@ function wrapTemplate(content: string): string {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
+      <span style="color:#004D40;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
     </div>
     ${content}
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eee">
@@ -31,7 +31,7 @@ function wrapTemplate(content: string): string {
 </html>`
 }
 
-const btn = 'display:inline-block;padding:12px 28px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600'
+const btn = 'display:inline-block;padding:12px 28px;background:#004D40;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600'
 const btnSecondary = 'display:inline-block;padding:10px 24px;background:#f5f5f7;color:#333;text-decoration:none;border-radius:8px;font-size:13px;font-weight:500;border:1px solid #ddd'
 
 // ============================================================
@@ -152,7 +152,7 @@ export function feedbackReceivedEmail(data: {
         <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#555">
           Hi ${data.recipientName}, <strong>${data.senderName}</strong> sent you ${data.feedbackType === 'recognition' ? 'a kudos' : 'feedback'}:
         </p>
-        <div style="background:#fef7f0;border-left:4px solid #ea580c;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:20px">
+        <div style="background:#E0F2F1;border-left:4px solid #004D40;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:20px">
           <p style="margin:0;font-size:14px;color:#333;line-height:1.5;font-style:italic">"${data.preview}"</p>
         </div>
         <a href="${APP_URL}/performance" style="${btn}">View Full Feedback</a>

@@ -53,15 +53,15 @@ export default function ContactPage() {
       {/* Nav */}
       <nav style={{ padding: '16px 32px', borderBottom: '1px solid #e5e7eb' }}>
         <Link href="/" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#111', textDecoration: 'none' }}>
-          tempo<span style={{ color: '#E8590C' }}>.</span>
+          tempo<span style={{ color: '#00897B' }}>.</span>
         </Link>
       </nav>
 
       <div style={{ maxWidth: 640, margin: '60px auto', padding: '0 24px' }}>
         {/* Enterprise badge */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 20, background: 'rgba(234,88,12,.06)', border: '1px solid rgba(234,88,12,.15)', marginBottom: 20 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h18" /></svg>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#ea580c' }}>Enterprise</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#004D40" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M3 9h18" /></svg>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#004D40' }}>Enterprise</span>
         </div>
 
         <h1 style={{ fontSize: 36, fontWeight: 700, color: '#111', letterSpacing: '-.025em', marginBottom: 8 }}>
@@ -72,7 +72,7 @@ export default function ContactPage() {
         </p>
         <p style={{ fontSize: 14, color: '#999', marginBottom: 32 }}>
           Or email us directly at{' '}
-          <a href="mailto:enterprise@theworktempo.com" style={{ color: '#ea580c', textDecoration: 'none', fontWeight: 500 }}>
+          <a href="mailto:enterprise@theworktempo.com" style={{ color: '#004D40', textDecoration: 'none', fontWeight: 500 }}>
             enterprise@theworktempo.com
           </a>
         </p>
@@ -86,7 +86,7 @@ export default function ContactPage() {
             <p style={{ fontSize: 14, color: '#666', lineHeight: 1.7 }}>
               Our enterprise team will review your inquiry and respond within one business day.
             </p>
-            <Link href="/" style={{ display: 'inline-block', marginTop: 20, fontSize: 14, fontWeight: 600, color: '#ea580c', textDecoration: 'none' }}>
+            <Link href="/" style={{ display: 'inline-block', marginTop: 20, fontSize: 14, fontWeight: 600, color: '#004D40', textDecoration: 'none' }}>
               &larr; Back to homepage
             </Link>
           </div>
@@ -95,7 +95,7 @@ export default function ContactPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                  Name <span style={{ color: '#ea580c' }}>*</span>
+                  Name <span style={{ color: '#004D40' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -109,7 +109,7 @@ export default function ContactPage() {
 
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                  Email <span style={{ color: '#ea580c' }}>*</span>
+                  Email <span style={{ color: '#004D40' }}>*</span>
                 </label>
                 <input
                   type="email"
@@ -123,7 +123,7 @@ export default function ContactPage() {
 
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                  Company <span style={{ color: '#ea580c' }}>*</span>
+                  Company <span style={{ color: '#004D40' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -137,7 +137,7 @@ export default function ContactPage() {
 
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                  Message <span style={{ color: '#ea580c' }}>*</span>
+                  Message <span style={{ color: '#004D40' }}>*</span>
                 </label>
                 <textarea
                   required
@@ -165,7 +165,7 @@ export default function ContactPage() {
                 padding: '14px 28px',
                 borderRadius: 12,
                 border: 'none',
-                background: loading ? '#ccc' : '#ea580c',
+                background: loading ? '#ccc' : '#004D40',
                 color: '#fff',
                 fontSize: 15,
                 fontWeight: 600,
@@ -182,11 +182,11 @@ export default function ContactPage() {
         <div style={{ textAlign: 'center', marginTop: 32 }}>
           <p style={{ fontSize: 13, color: '#999' }}>
             Not an enterprise?{' '}
-            <Link href="/demo-request" style={{ color: '#ea580c', textDecoration: 'none', fontWeight: 500 }}>
+            <Link href="/demo-request" style={{ color: '#004D40', textDecoration: 'none', fontWeight: 500 }}>
               Request a demo
             </Link>{' '}
             or{' '}
-            <Link href="/signup" style={{ color: '#ea580c', textDecoration: 'none', fontWeight: 500 }}>
+            <Link href="/signup" style={{ color: '#004D40', textDecoration: 'none', fontWeight: 500 }}>
               start a free trial
             </Link>
           </p>

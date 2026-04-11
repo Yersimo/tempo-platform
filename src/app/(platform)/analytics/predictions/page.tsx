@@ -231,7 +231,7 @@ function AttritionTab({ data, getDeptName, departments }: { data: AttritionPredi
     }))
   }, [data])
 
-  const riskColors: Record<string, string> = { critical: 'text-red-600 bg-red-50', high: 'text-orange-600 bg-orange-50', medium: 'text-amber-600 bg-amber-50', low: 'text-green-600 bg-green-50' }
+  const riskColors: Record<string, string> = { critical: 'text-red-600 bg-red-50', high: 'text-teal-700 bg-teal-50', medium: 'text-amber-600 bg-amber-50', low: 'text-green-600 bg-green-50' }
 
   return (
     <div className="space-y-6">
@@ -398,7 +398,7 @@ function HeadcountTab({ data }: { data: HeadcountForecast }) {
           labels={allLabels}
           series={[
             { label: 'Actual', data: [...historicalValues, ...new Array(data.forecast.length).fill(NaN)], color: '#3b82f6' },
-            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), historicalValues[historicalValues.length - 1], ...data.forecast.map(f => f.headcount)], color: '#ea580c', dashed: true },
+            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), historicalValues[historicalValues.length - 1], ...data.forecast.map(f => f.headcount)], color: '#004D40', dashed: true },
           ]}
           confidence={confidenceBand}
           forecastStartIndex={data.historical.length}
@@ -482,7 +482,7 @@ function PayrollTab({ data, fmtC }: { data: CostProjection; fmtC: (v: number) =>
           labels={allLabels}
           series={[
             { label: 'Actual', data: [...historicalValues, ...new Array(data.forecast.length).fill(NaN)], color: '#10b981' },
-            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), historicalValues[historicalValues.length - 1], ...data.forecast.map(f => f.totalCost)], color: '#ea580c', dashed: true },
+            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), historicalValues[historicalValues.length - 1], ...data.forecast.map(f => f.totalCost)], color: '#004D40', dashed: true },
           ]}
           confidence={{
             upper: [...new Array(data.historical.length).fill(historicalValues[historicalValues.length - 1] || 0), ...data.forecast.map(f => f.upper)],
@@ -716,7 +716,7 @@ function EngagementTab({ data }: { data: EngagementForecast }) {
           labels={allLabels}
           series={[
             { label: 'Historical', data: [...data.historical.map(h => h.score), ...new Array(data.forecast.length).fill(NaN)], color: '#8b5cf6' },
-            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), data.historical[data.historical.length - 1]?.score ?? 70, ...data.forecast.map(f => f.score)], color: '#ea580c', dashed: true },
+            { label: 'Forecast', data: [...new Array(data.historical.length - 1).fill(NaN), data.historical[data.historical.length - 1]?.score ?? 70, ...data.forecast.map(f => f.score)], color: '#004D40', dashed: true },
           ]}
           confidence={{
             upper: [...new Array(data.historical.length).fill(data.historical[data.historical.length - 1]?.score ?? 70), ...data.forecast.map(f => f.upper)],

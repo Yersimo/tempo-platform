@@ -195,7 +195,7 @@ export default function MobileApprovalsPage() {
               onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()) }}
               className={cn(
                 'px-3 py-2 rounded-xl text-xs font-medium min-h-[44px] transition-colors',
-                batchMode ? 'bg-orange-500/15 text-orange-400' : 'bg-white/[0.04] text-white/40'
+                batchMode ? 'bg-teal-700/15 text-teal-400' : 'bg-white/[0.04] text-white/40'
               )}
             >
               {batchMode ? 'Cancel' : 'Batch'}
@@ -216,7 +216,7 @@ export default function MobileApprovalsPage() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap min-h-[36px] transition-colors',
                   filter === opt.value
-                    ? 'bg-orange-500/15 text-orange-400 border border-orange-500/20'
+                    ? 'bg-teal-700/15 text-teal-400 border border-teal-700/20'
                     : 'bg-white/[0.04] text-white/40 active:bg-white/[0.08]'
                 )}
               >
@@ -225,7 +225,7 @@ export default function MobileApprovalsPage() {
                 {count > 0 && (
                   <span className={cn(
                     'ml-1 text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1',
-                    filter === opt.value ? 'bg-orange-500/20 text-orange-400' : 'bg-white/[0.06] text-white/30'
+                    filter === opt.value ? 'bg-teal-700/20 text-teal-400' : 'bg-white/[0.06] text-white/30'
                   )}>
                     {count}
                   </span>
@@ -271,7 +271,7 @@ export default function MobileApprovalsPage() {
                 className={cn(
                   'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors',
                   selectedIds.has(item.id)
-                    ? 'bg-orange-500 border-orange-500 text-white'
+                    ? 'bg-teal-700 border-teal-700 text-white'
                     : 'border-white/20 bg-transparent'
                 )}
               >

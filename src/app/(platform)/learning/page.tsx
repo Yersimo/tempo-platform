@@ -649,7 +649,7 @@ export default function LearningPage() {
     addCertificateTemplate({
       name: `${course.title} — ${employeeName}`,
       layout: (template as any)?.layout || 'modern',
-      accentColor: (template as any)?.accentColor || '#f97316',
+      accentColor: (template as any)?.accentColor || '#004D40',
       borderStyle: (template as any)?.borderStyle || 'simple',
       showLogo: true,
       showSeal: true,
@@ -1159,17 +1159,17 @@ export default function LearningPage() {
         .replace(/\n/g, '<br>')
 
       switch (block.type) {
-        case 'heading': return `<h2 style="font-size:1.5rem;font-weight:700;border-bottom:2px solid #ea580c;padding-bottom:0.5rem;margin:2rem 0 1rem">${block.content || block.title}</h2>`
+        case 'heading': return `<h2 style="font-size:1.5rem;font-weight:700;border-bottom:2px solid #004D40;padding-bottom:0.5rem;margin:2rem 0 1rem">${block.content || block.title}</h2>`
         case 'text': return `<div style="margin:1.5rem 0"><h3 style="font-weight:600;margin-bottom:0.5rem">${block.title}</h3><div style="line-height:1.8">${mdToHtml(block.content || '')}</div></div>`
         case 'image': return parsed.url ? `<div style="margin:1.5rem 0;text-align:center"><img src="${parsed.url}" alt="${parsed.alt || ''}" style="max-width:100%;border-radius:8px">${parsed.caption ? `<p style="font-size:0.85rem;color:#888;margin-top:0.5rem"><em>${parsed.caption}</em></p>` : ''}</div>` : `<div style="margin:1.5rem 0;padding:2rem;background:#f0f4ff;border-radius:8px;text-align:center;color:#64748b">[Image: ${block.title}]</div>`
         case 'callout': return `<div style="margin:1.5rem 0;padding:1rem 1.5rem;border-left:4px solid ${parsed.style === 'warning' ? '#f59e0b' : parsed.style === 'important' ? '#ef4444' : parsed.style === 'tip' ? '#22c55e' : '#3b82f6'};background:${parsed.style === 'warning' ? '#fffbeb' : parsed.style === 'important' ? '#fef2f2' : parsed.style === 'tip' ? '#f0fdf4' : '#eff6ff'};border-radius:8px"><strong style="text-transform:uppercase;font-size:0.75rem;letter-spacing:0.05em">${parsed.style || 'info'}</strong><div style="margin-top:0.5rem">${mdToHtml(parsed.text || '')}</div></div>`
-        case 'quiz': return `<div style="margin:1.5rem 0;padding:1.5rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px"><h3 style="font-weight:600">Quiz: ${block.title}</h3><p style="margin:0.75rem 0">${parsed.question || ''}</p>${(parsed.options || []).map((o: string, i: number) => `<div style="padding:0.5rem;margin:0.25rem 0;background:${parsed.correct === i ? '#dcfce7' : '#f9fafb'};border-radius:4px">${String.fromCharCode(65 + i)}. ${o}</div>`).join('')}</div>`
+        case 'quiz': return `<div style="margin:1.5rem 0;padding:1.5rem;background:#E0F2F1;border:1px solid #80CBC4;border-radius:8px"><h3 style="font-weight:600">Quiz: ${block.title}</h3><p style="margin:0.75rem 0">${parsed.question || ''}</p>${(parsed.options || []).map((o: string, i: number) => `<div style="padding:0.5rem;margin:0.25rem 0;background:${parsed.correct === i ? '#dcfce7' : '#f9fafb'};border-radius:4px">${String.fromCharCode(65 + i)}. ${o}</div>`).join('')}</div>`
         case 'accordion': return `<div style="margin:1.5rem 0">${(parsed.sections || []).map((s: any) => `<details style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:0.5rem"><summary style="padding:0.75rem 1rem;font-weight:600;cursor:pointer">${s.heading}</summary><div style="padding:0.75rem 1rem;border-top:1px solid #e5e7eb">${mdToHtml(s.body || '')}</div></details>`).join('')}</div>`
         case 'columns': return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0"><div style="padding:1rem;background:#f9fafb;border-radius:8px">${mdToHtml(parsed.left || '')}</div><div style="padding:1rem;background:#f9fafb;border-radius:8px">${mdToHtml(parsed.right || '')}</div></div>`
         case 'code': return `<pre style="margin:1.5rem 0;background:#1e1e1e;color:#4ec9b0;padding:1.25rem;border-radius:8px;overflow-x:auto;font-family:monospace"><code>${(parsed.code || '').replace(/</g, '&lt;')}</code></pre>`
         case 'divider': return `<hr style="margin:2rem auto;border:none;border-top:2px solid #e5e7eb;max-width:200px">`
         case 'download': return `<div style="margin:1.5rem 0;padding:1rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;gap:1rem"><span style="font-size:1.5rem">📥</span><div><strong>${parsed.filename || 'resource.pdf'}</strong><br><small style="color:#888">${parsed.description || ''}</small></div></div>`
-        case 'button': return `<div style="text-align:center;margin:2rem 0"><a href="${parsed.url || '#'}" style="display:inline-block;padding:0.75rem 2rem;background:#ea580c;color:white;border-radius:8px;text-decoration:none;font-weight:600">${parsed.label || 'Continue'}</a></div>`
+        case 'button': return `<div style="text-align:center;margin:2rem 0"><a href="${parsed.url || '#'}" style="display:inline-block;padding:0.75rem 2rem;background:#004D40;color:white;border-radius:8px;text-decoration:none;font-weight:600">${parsed.label || 'Continue'}</a></div>`
         case 'embed': return parsed.url ? `<iframe src="${parsed.url}" style="width:100%;height:${parsed.height || 400}px;border:none;border-radius:8px;margin:1.5rem 0"></iframe>` : ''
         default: return `<div style="margin:1.5rem 0"><h3>${block.title}</h3><p>${block.content || ''}</p></div>`
       }
@@ -1203,16 +1203,16 @@ export default function LearningPage() {
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1a1a1a;background:#f9fafb}
 .container{max-width:800px;margin:0 auto;padding:2rem}
-.header{background:linear-gradient(135deg,#ea580c,#c2410c);color:white;padding:3rem 2rem;border-radius:16px;margin-bottom:2rem;text-align:center}
+.header{background:linear-gradient(135deg,#004D40,#00352C);color:white;padding:3rem 2rem;border-radius:16px;margin-bottom:2rem;text-align:center}
 .header h1{font-size:2rem;font-weight:800;margin-bottom:0.5rem}
 .header p{opacity:0.9;font-size:0.95rem}
 .content{background:white;border-radius:16px;padding:2.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .progress-bar{position:sticky;top:0;z-index:10;background:white;padding:1rem 0;border-bottom:1px solid #e5e7eb;margin-bottom:1.5rem}
 .progress-track{height:6px;background:#e5e7eb;border-radius:3px}
-.progress-fill{height:100%;background:#ea580c;border-radius:3px;transition:width 0.3s;width:0%}
+.progress-fill{height:100%;background:#004D40;border-radius:3px;transition:width 0.3s;width:0%}
 .nav{display:flex;justify-content:space-between;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #e5e7eb}
 .nav button{padding:0.5rem 1.5rem;border-radius:8px;border:1px solid #e5e7eb;background:white;cursor:pointer;font-size:0.9rem}
-.nav button.primary{background:#ea580c;color:white;border:none}
+.nav button.primary{background:#004D40;color:white;border:none}
 .nav button:disabled{opacity:0.4;cursor:not-allowed}
 li{list-style:none}
 </style></head>
@@ -2021,7 +2021,7 @@ window.onload=function(){
       case 'udemy_business': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
       case 'coursera': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
       case 'internal': return 'bg-tempo-500/10 text-tempo-400 border-tempo-500/20'
-      case 'opensesame': return 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+      case 'opensesame': return 'bg-teal-700/10 text-teal-400 border-teal-700/20'
       case 'skillsoft': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
     }
@@ -2131,7 +2131,7 @@ window.onload=function(){
   const allBadgeTypes = [
     { type: 'course_complete', name: 'Course Complete', icon: 'award', description: 'Complete any course', color: 'text-green-400' },
     { type: 'path_complete', name: 'Path Completer', icon: 'map', description: 'Complete a full learning path', color: 'text-blue-400' },
-    { type: 'streak_7', name: '7-Day Streak', icon: 'flame', description: 'Maintain a 7-day learning streak', color: 'text-orange-400' },
+    { type: 'streak_7', name: '7-Day Streak', icon: 'flame', description: 'Maintain a 7-day learning streak', color: 'text-teal-400' },
     { type: 'streak_30', name: '30-Day Streak', icon: 'flame', description: 'Maintain a 30-day learning streak', color: 'text-red-400' },
     { type: 'first_quiz_perfect', name: 'Perfect Score', icon: 'star', description: 'Get 100% on your first quiz attempt', color: 'text-yellow-400' },
     { type: 'top_learner', name: 'Top Learner', icon: 'crown', description: 'Rank in top 10% of learners', color: 'text-purple-400' },
@@ -2261,7 +2261,7 @@ window.onload=function(){
     const printWindow = window.open('', '_blank')
     if (printWindow) {
       const rows = transcriptData.map(t => `<tr><td style="padding:8px;border-bottom:1px solid #333">${t.courseTitle}</td><td style="padding:8px;border-bottom:1px solid #333">${t.category}</td><td style="padding:8px;border-bottom:1px solid #333">${t.completedAt ? new Date(t.completedAt).toLocaleDateString() : '-'}</td><td style="padding:8px;border-bottom:1px solid #333">${t.score ? t.score + '%' : '-'}</td><td style="padding:8px;border-bottom:1px solid #333">${t.durationHours}h</td></tr>`).join('')
-      printWindow.document.write(`<html><head><title>Learning Transcript - ${empName}</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#fff;background:#0a0a0a}h1{color:#ea580c;font-size:20px}h2{font-size:16px;color:#ccc}table{width:100%;border-collapse:collapse;margin-top:20px}th{text-align:left;padding:8px;border-bottom:2px solid #ea580c;color:#ea580c;font-size:13px}td{font-size:13px;color:#ccc}.summary{display:flex;gap:30px;margin:20px 0}.stat{text-align:center}.stat-val{font-size:24px;font-weight:bold;color:#ea580c}.stat-label{font-size:11px;color:#999}</style></head><body><h1>Learning Transcript</h1><h2>${empName}</h2><div class="summary"><div class="stat"><div class="stat-val">${transcriptSummary.totalCourses}</div><div class="stat-label">Courses</div></div><div class="stat"><div class="stat-val">${transcriptSummary.totalHours}h</div><div class="stat-label">Total Hours</div></div><div class="stat"><div class="stat-val">${transcriptSummary.certificates}</div><div class="stat-label">Certificates</div></div>${transcriptSummary.avgScore ? `<div class="stat"><div class="stat-val">${transcriptSummary.avgScore}%</div><div class="stat-label">Avg Score</div></div>` : ''}</div><table><thead><tr><th>Course</th><th>Category</th><th>Completed</th><th>Score</th><th>Hours</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:30px;font-size:11px;color:#666">Generated by Tempo Platform on ${new Date().toLocaleDateString()}</p></body></html>`)
+      printWindow.document.write(`<html><head><title>Learning Transcript - ${empName}</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#fff;background:#0a0a0a}h1{color:#004D40;font-size:20px}h2{font-size:16px;color:#ccc}table{width:100%;border-collapse:collapse;margin-top:20px}th{text-align:left;padding:8px;border-bottom:2px solid #004D40;color:#004D40;font-size:13px}td{font-size:13px;color:#ccc}.summary{display:flex;gap:30px;margin:20px 0}.stat{text-align:center}.stat-val{font-size:24px;font-weight:bold;color:#004D40}.stat-label{font-size:11px;color:#999}</style></head><body><h1>Learning Transcript</h1><h2>${empName}</h2><div class="summary"><div class="stat"><div class="stat-val">${transcriptSummary.totalCourses}</div><div class="stat-label">Courses</div></div><div class="stat"><div class="stat-val">${transcriptSummary.totalHours}h</div><div class="stat-label">Total Hours</div></div><div class="stat"><div class="stat-val">${transcriptSummary.certificates}</div><div class="stat-label">Certificates</div></div>${transcriptSummary.avgScore ? `<div class="stat"><div class="stat-val">${transcriptSummary.avgScore}%</div><div class="stat-label">Avg Score</div></div>` : ''}</div><table><thead><tr><th>Course</th><th>Category</th><th>Completed</th><th>Score</th><th>Hours</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:30px;font-size:11px;color:#666">Generated by Tempo Platform on ${new Date().toLocaleDateString()}</p></body></html>`)
       printWindow.document.close()
       printWindow.print()
     }
@@ -3959,7 +3959,7 @@ window.onload=function(){
                   {(() => {
                     const course = courses.find(c => c.id === selectedBuilderCourse)
                     if (!course) return null
-                    const coverColors: Record<string, string> = { tempo: 'from-tempo-600 to-orange-500', blue: 'from-blue-600 to-cyan-500', green: 'from-green-600 to-emerald-500', purple: 'from-purple-600 to-pink-500', red: 'from-red-600 to-rose-500' }
+                    const coverColors: Record<string, string> = { tempo: 'from-tempo-600 to-teal-700', blue: 'from-blue-600 to-cyan-500', green: 'from-green-600 to-emerald-500', purple: 'from-purple-600 to-pink-500', red: 'from-red-600 to-rose-500' }
                     return (
                       <div className={`rounded-xl bg-gradient-to-r ${coverColors[newCourseForm.cover_color] || coverColors.tempo} p-6 mb-4`}>
                         <input
@@ -4370,7 +4370,7 @@ window.onload=function(){
 
                             {/* INFOGRAPHIC block */}
                             {block.type === 'infographic' && (
-                              <div className="bg-gradient-to-br from-tempo-500/5 to-orange-500/5 rounded-lg p-4 border border-tempo-500/10">
+                              <div className="bg-gradient-to-br from-tempo-500/5 to-teal-700/5 rounded-lg p-4 border border-tempo-500/10">
                                 <div className="flex items-center gap-2 mb-3">
                                   <BarChart3 size={16} className="text-tempo-500" />
                                   <span className="text-xs font-semibold text-tempo-600">Infographic</span>
@@ -4564,7 +4564,7 @@ window.onload=function(){
         <div className="space-y-4">
           <div className="grid grid-cols-5 gap-3 mb-4">
             {[
-              { id: 'tempo', from: 'from-tempo-600', to: 'to-orange-500' },
+              { id: 'tempo', from: 'from-tempo-600', to: 'to-teal-700' },
               { id: 'blue', from: 'from-blue-600', to: 'to-cyan-500' },
               { id: 'green', from: 'from-green-600', to: 'to-emerald-500' },
               { id: 'purple', from: 'from-purple-600', to: 'to-pink-500' },
@@ -4969,7 +4969,7 @@ window.onload=function(){
                     {gamificationLeaderboard.map((entry, i) => (
                       <tr key={entry.id} className={cn('border-b border-white/5', entry.id === currentEmployeeId && 'bg-tempo-500/5')}>
                         <td className="py-2.5 px-3">
-                          {i === 0 ? <span className="text-yellow-500 font-bold text-sm">1</span> : i === 1 ? <span className="text-gray-400 font-bold text-sm">2</span> : i === 2 ? <span className="text-orange-600 font-bold text-sm">3</span> : <span className="text-t3">{i + 1}</span>}
+                          {i === 0 ? <span className="text-yellow-500 font-bold text-sm">1</span> : i === 1 ? <span className="text-gray-400 font-bold text-sm">2</span> : i === 2 ? <span className="text-teal-800 font-bold text-sm">3</span> : <span className="text-t3">{i + 1}</span>}
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
@@ -5055,7 +5055,7 @@ window.onload=function(){
                         <div className="w-8 h-8 rounded-lg bg-tempo-500/10 flex items-center justify-center">
                           {source === 'course_complete' ? <CheckCircle size={14} className="text-green-400" /> :
                            source === 'quiz_score' ? <Brain size={14} className="text-purple-400" /> :
-                           source === 'streak_bonus' ? <Activity size={14} className="text-orange-400" /> :
+                           source === 'streak_bonus' ? <Activity size={14} className="text-teal-400" /> :
                            source === 'discussion_post' ? <MessageSquare size={14} className="text-blue-400" /> :
                            <Heart size={14} className="text-pink-400" />}
                         </div>
@@ -6408,7 +6408,7 @@ window.onload=function(){
                               {block.type === 'video' ? <Video size={12} className="text-blue-500" /> :
                                block.type === 'quiz' ? <HelpCircle size={12} className="text-purple-500" /> :
                                block.type === 'interactive' ? <Zap size={12} className="text-green-500" /> :
-                               block.type === 'download' ? <Download size={12} className="text-orange-500" /> :
+                               block.type === 'download' ? <Download size={12} className="text-teal-700" /> :
                                <FileText size={12} className="text-t3" />}
                               <span className="text-t2 flex-1">{block.title}</span>
                               <span className="text-t3">{block.duration_minutes}m</span>

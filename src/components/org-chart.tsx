@@ -290,7 +290,7 @@ function PersonCard({
 
         {/* Hiring badge */}
         {hiring && (
-          <span className="absolute top-1 left-2 text-[11px] italic text-orange-500 font-medium">
+          <span className="absolute top-1 left-2 text-[11px] italic text-teal-700 font-medium">
             Hiring!
           </span>
         )}

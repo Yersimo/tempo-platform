@@ -37,7 +37,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
             {['SOC 2 Type II', 'GDPR', 'NDPR', 'ISO 27001', 'POPIA'].map(b => (
               <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--surface)', padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, color: 'var(--ink2)' }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6.5l1.5 1.5L9 5" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6.5l1.5 1.5L9 5" stroke="#7CB342" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 {b}
               </span>
             ))}
@@ -60,7 +60,7 @@ export default function LandingPage() {
             { label: 'POPIA', sub: 'Compliant' },
           ].map(b => (
             <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', padding: '8px 16px', borderRadius: 100, fontSize: 12 }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 2.5L10.5 2L11 4L13 4.5L12.5 6.5L14 8L12.5 9.5L13 11.5L11 12L10.5 14L8.5 13.5L7 15L5.5 13.5L3.5 14L3 12L1 11.5L1.5 9.5L0 8L1.5 6.5L1 4.5L3 4L3.5 2L5.5 2.5L7 1Z" fill="#16a34a" opacity="0.15"/><path d="M5 8l1.5 1.5L10 6" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 2.5L10.5 2L11 4L13 4.5L12.5 6.5L14 8L12.5 9.5L13 11.5L11 12L10.5 14L8.5 13.5L7 15L5.5 13.5L3.5 14L3 12L1 11.5L1.5 9.5L0 8L1.5 6.5L1 4.5L3 4L3.5 2L5.5 2.5L7 1Z" fill="#7CB342" opacity="0.15"/><path d="M5 8l1.5 1.5L10 6" stroke="#7CB342" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{b.label}</span>
               <span style={{ color: 'var(--muted)' }}>{b.sub}</span>
             </div>
@@ -112,7 +112,7 @@ export default function LandingPage() {
               <div className="bc-tag">Tempo AI</div>
               <div className="bc-title">AI that knows your workforce.</div>
               <div className="bc-desc">Ask anything. Get answers grounded in your actual data &mdash; not generic responses. Headcount forecasts, policy lookups, turnover analysis. All instant.</div>
-              <div className="ai-q" style={{ background: 'rgba(255,85,32,0.12)', borderColor: 'rgba(255,85,32,0.28)', color: 'rgba(255,130,90,1)' }}>
+              <div className="ai-q" style={{ background: 'rgba(0,137,123,0.12)', borderColor: 'rgba(0,137,123,0.28)', color: 'rgba(0,137,123,1)' }}>
                 &ldquo;What&apos;s our turnover rate in West Africa vs last quarter?&rdquo;
               </div>
               <div className="ai-a" style={{ color: 'rgba(255,255,255,0.58)' }}>
@@ -124,7 +124,7 @@ export default function LandingPage() {
                 <div className="bar" style={{ height: '44%', background: 'rgba(255,255,255,0.15)' }} />
                 <div className="bar" style={{ height: '70%', background: 'rgba(255,255,255,0.5)' }} />
                 <div className="bar" style={{ height: '58%', background: 'rgba(255,255,255,0.15)' }} />
-                <div className="bar" style={{ height: '82%', background: 'var(--orange)' }} />
+                <div className="bar" style={{ height: '82%', background: '#00897B' }} />
                 <div className="bar" style={{ height: '50%', background: 'rgba(255,255,255,0.15)' }} />
                 <div className="bar" style={{ height: '64%', background: 'rgba(255,255,255,0.15)' }} />
               </div>

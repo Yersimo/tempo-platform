@@ -717,7 +717,7 @@ export default function TimeAttendancePage() {
                   {clockInTime && (
                     <p className="text-sm text-t3 mt-2">
                       Started at {clockInTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      {onBreak && <span className="text-orange-500 ml-2">(On Break)</span>}
+                      {onBreak && <span className="text-teal-700 ml-2">(On Break)</span>}
                     </p>
                   )}
                 </div>
@@ -773,7 +773,7 @@ export default function TimeAttendancePage() {
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <p className="text-sm font-semibold text-t1">{formatHours(entry.total_hours || 0)}h</p>
-                            {(entry.overtime_hours || 0) > 0 && <p className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)}h OT</p>}
+                            {(entry.overtime_hours || 0) > 0 && <p className="text-xs text-teal-700">+{formatHours(entry.overtime_hours || 0)}h OT</p>}
                           </div>
                           <StatusBadge status={entry.status} />
                         </div>
@@ -808,7 +808,7 @@ export default function TimeAttendancePage() {
                     </table>
                   </div>
                   {weeklyOvertime > 0 && (
-                    <p className="text-xs text-orange-500 mt-2 flex items-center gap-1">
+                    <p className="text-xs text-teal-700 mt-2 flex items-center gap-1">
                       <AlertTriangle size={12} /> {formatHours(weeklyOvertime)}h overtime this week
                     </p>
                   )}
@@ -893,13 +893,13 @@ export default function TimeAttendancePage() {
                           </div>
                         </td>
                         {data.hours.map((h, i) => (
-                          <td key={i} className={`px-3 py-3 text-center text-xs ${h > 8 ? 'text-orange-500 font-semibold' : h > 0 ? 'text-t1' : 'text-t3'}`}>
+                          <td key={i} className={`px-3 py-3 text-center text-xs ${h > 8 ? 'text-teal-700 font-semibold' : h > 0 ? 'text-t1' : 'text-t3'}`}>
                             {h > 0 ? formatHours(h) : '-'}
                           </td>
                         ))}
                         <td className="px-3 py-3 text-center text-xs font-bold text-t1">{formatHours(data.total)}</td>
                         <td className="px-3 py-3 text-center text-xs">
-                          {data.overtime > 0 ? <span className="text-orange-500 font-semibold">{formatHours(data.overtime)}</span> : '-'}
+                          {data.overtime > 0 ? <span className="text-teal-700 font-semibold">{formatHours(data.overtime)}</span> : '-'}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <StatusBadge status={weekStatus} />
@@ -918,7 +918,7 @@ export default function TimeAttendancePage() {
                                     <span className="text-xs font-medium text-t1 w-16">{DAY_NAMES[i]}</span>
                                     <span className="text-xs text-t2">{entry.clock_in ? formatTime(entry.clock_in) : '\u2014'} \u2192 {entry.clock_out ? formatTime(entry.clock_out) : '\u2014'}</span>
                                     <span className="text-xs text-t1">{formatHours(entry.total_hours || 0)}h</span>
-                                    {(entry.overtime_hours || 0) > 0 && <span className="text-xs text-orange-500">+{formatHours(entry.overtime_hours || 0)} OT</span>}
+                                    {(entry.overtime_hours || 0) > 0 && <span className="text-xs text-teal-700">+{formatHours(entry.overtime_hours || 0)} OT</span>}
                                     <StatusBadge status={entry.status} />
                                     {canApproveLeave && entry.status === 'pending' && (
                                       <div className="flex gap-1 ml-auto">
@@ -966,12 +966,12 @@ export default function TimeAttendancePage() {
           {/* Coverage Gaps */}
           <div className="grid grid-cols-7 gap-2 mb-6">
             {coverageByDay.map((day, i) => (
-              <div key={day.date} className={`rounded-lg border p-3 text-center ${day.gap > 2 ? 'border-red-500/30 bg-red-500/5' : day.gap > 0 ? 'border-orange-500/30 bg-orange-500/5' : 'border-divider bg-canvas'}`}>
+              <div key={day.date} className={`rounded-lg border p-3 text-center ${day.gap > 2 ? 'border-red-500/30 bg-red-500/5' : day.gap > 0 ? 'border-teal-700/30 bg-teal-700/5' : 'border-divider bg-canvas'}`}>
                 <p className="text-xs font-medium text-t3">{DAY_NAMES[i]}</p>
                 <p className="text-lg font-bold text-t1">{day.scheduled}</p>
                 <p className="text-xs text-t3">scheduled</p>
                 {day.gap > 0 && (
-                  <p className="text-xs text-orange-500 mt-1 flex items-center justify-center gap-1">
+                  <p className="text-xs text-teal-700 mt-1 flex items-center justify-center gap-1">
                     <AlertTriangle size={10} /> {day.gap} gap{day.gap > 1 ? 's' : ''}
                   </p>
                 )}
@@ -1011,7 +1011,7 @@ export default function TimeAttendancePage() {
                           <div className="space-y-1.5 min-h-[100px]">
                             {dayShifts.map(shift => {
                               const isUnassigned = !shift.employee_id
-                              const colorClass = isUnassigned ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                              const colorClass = isUnassigned ? 'bg-teal-50 border-teal-200 text-teal-800' :
                                 shift.status === 'completed' ? 'bg-tempo-50 border-tempo-200 text-tempo-700' :
                                 shift.status === 'no_show' ? 'bg-red-50 border-red-200 text-red-700' :
                                 'bg-blue-50 border-blue-200 text-blue-700'
@@ -1024,7 +1024,7 @@ export default function TimeAttendancePage() {
                                       {shift.role && <p className="text-[10px] opacity-70 truncate">{shift.role}</p>}
                                       {role === 'employee' && (
                                         <button
-                                          className="mt-1 w-full text-[10px] font-medium bg-orange-500 text-white rounded px-1 py-0.5 hover:bg-orange-600 transition-colors"
+                                          className="mt-1 w-full text-[10px] font-medium bg-teal-700 text-white rounded px-1 py-0.5 hover:bg-teal-700 transition-colors"
                                           onClick={() => { updateShift(shift.id, { employee_id: currentEmployeeId }); addToast('Shift picked up successfully!', 'success') }}
                                         >
                                           Pick Up Shift
@@ -1137,7 +1137,7 @@ export default function TimeAttendancePage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold text-t1">{formatHours(totalHrs)}h</p>
-                      <p className={`text-xs ${remaining <= 2 ? 'text-red-500' : 'text-orange-500'}`}>
+                      <p className={`text-xs ${remaining <= 2 ? 'text-red-500' : 'text-teal-700'}`}>
                         {remaining > 0 ? `${formatHours(remaining)}h to OT` : `${formatHours(totalHrs - 40)}h OT`}
                       </p>
                     </div>
@@ -1172,7 +1172,7 @@ export default function TimeAttendancePage() {
                       <tr key={entry.id} className="hover:bg-canvas/50">
                         <td className="px-6 py-3 text-sm text-t1">{getEmployeeName(entry.employee_id)}</td>
                         <td className="px-4 py-3 text-sm text-center text-t2">{entry.date}</td>
-                        <td className="px-4 py-3 text-sm text-center font-medium text-orange-500">{formatHours(entry.overtime_hours || 0)}h</td>
+                        <td className="px-4 py-3 text-sm text-center font-medium text-teal-700">{formatHours(entry.overtime_hours || 0)}h</td>
                         <td className="px-4 py-3 text-sm text-center text-t2">{formatHours(entry.total_hours || 0)}h</td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex gap-2 justify-center">
@@ -1457,7 +1457,7 @@ export default function TimeAttendancePage() {
                                 <span className="text-t3">/{policy.max_balance}</span>
                               </div>
                               <Progress value={pct} size="sm" className="mt-1" />
-                              {bal.pending > 0 && <p className="text-[10px] text-orange-500 mt-0.5">{bal.pending}d pending</p>}
+                              {bal.pending > 0 && <p className="text-[10px] text-teal-700 mt-0.5">{bal.pending}d pending</p>}
                             </td>
                           )
                         })}

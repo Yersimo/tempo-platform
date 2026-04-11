@@ -36,8 +36,8 @@ const STATUS_MAP: Record<string, { bg: string; text: string; dot: string }> = {
   low: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
 
   // Orange family
-  high: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
-  no_show: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+  high: { bg: 'bg-teal-50', text: 'text-teal-800', dot: 'bg-teal-700' },
+  no_show: { bg: 'bg-teal-50', text: 'text-teal-800', dot: 'bg-teal-700' },
 
   // Red family
   failed: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },

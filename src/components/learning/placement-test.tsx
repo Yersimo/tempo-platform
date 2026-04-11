@@ -66,7 +66,7 @@ function ConfettiEffect({ active }: { active: boolean }) {
     canvas.width = canvas.offsetWidth
     canvas.height = canvas.offsetHeight
 
-    const colors = ['#f97316', '#fb923c', '#fdba74', '#22c55e', '#4ade80', '#fbbf24', '#a78bfa', '#60a5fa']
+    const colors = ['#004D40', '#26A69A', '#80CBC4', '#22c55e', '#4ade80', '#fbbf24', '#a78bfa', '#60a5fa']
 
     interface Particle {
       x: number; y: number; w: number; h: number

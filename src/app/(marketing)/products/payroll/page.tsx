@@ -101,7 +101,7 @@ export default function PayrollProductPage() {
                 borderRadius: 12,
                 padding: '14px 22px',
                 fontSize: 14,
-                color: '#fb923c',
+                color: '#00897B',
                 fontWeight: 500,
                 whiteSpace: 'nowrap',
               }}>
@@ -134,7 +134,7 @@ export default function PayrollProductPage() {
           <div style={{ color: 'rgba(255,255,255,0.35)', marginBottom: 12, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-sans)' }}>
             Journal Entry &mdash; March 2026 Payroll
           </div>
-          <div style={{ color: '#fb923c' }}>Dr Salary Expense <span style={{ float: 'right', color: 'rgba(255,255,255,0.6)' }}>GHS 23,556.89</span></div>
+          <div style={{ color: '#00897B' }}>Dr Salary Expense <span style={{ float: 'right', color: 'rgba(255,255,255,0.6)' }}>GHS 23,556.89</span></div>
           <div style={{ color: 'rgba(255,255,255,0.4)', paddingLeft: 24 }}>Cr PAYE Tax Payable <span style={{ float: 'right', color: 'rgba(255,255,255,0.6)' }}>GHS 3,420.15</span></div>
           <div style={{ color: 'rgba(255,255,255,0.4)', paddingLeft: 24 }}>Cr SSNIT Payable <span style={{ float: 'right', color: 'rgba(255,255,255,0.6)' }}>GHS 1,295.63</span></div>
           <div style={{ color: 'rgba(255,255,255,0.4)', paddingLeft: 24 }}>Cr Cash/Bank <span style={{ float: 'right', color: 'rgba(255,255,255,0.6)' }}>GHS 18,841.11</span></div>

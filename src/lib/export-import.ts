@@ -88,7 +88,7 @@ export function exportToPrint<T>(
     <h1 style="margin:0;font-size:18px;color:#111">${title}</h1>
     <p style="margin:4px 0 0;font-size:12px;color:#999">Exported ${new Date().toLocaleDateString()} | ${data.length} records | Tempo Platform</p>
   </div>
-  <button class="no-print" onclick="window.print()" style="padding:8px 16px;background:#ea580c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">Print / Save as PDF</button>
+  <button class="no-print" onclick="window.print()" style="padding:8px 16px;background:#004D40;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">Print / Save as PDF</button>
 </div>
 <table>
   <thead><tr>${headerRow}</tr></thead>

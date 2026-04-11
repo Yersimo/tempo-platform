@@ -1491,7 +1491,7 @@ export default function PerformancePage() {
           { perf: 'Low', pot: 'High', label: t('enigma'), color: 'bg-yellow-50 border-yellow-200' },
           { perf: 'Medium', pot: 'High', label: t('growthEmployee'), color: 'bg-blue-50 border-blue-200' },
           { perf: 'High', pot: 'High', label: t('star'), color: 'bg-green-50 border-green-200' },
-          { perf: 'Low', pot: 'Medium', label: t('underperformer') || 'Dilemma', color: 'bg-orange-50 border-orange-200' },
+          { perf: 'Low', pot: 'Medium', label: t('underperformer') || 'Dilemma', color: 'bg-teal-50 border-teal-200' },
           { perf: 'Medium', pot: 'Medium', label: t('corePlayer'), color: 'bg-gray-50 border-gray-200' },
           { perf: 'High', pot: 'Medium', label: t('highPerformer'), color: 'bg-green-50 border-green-200' },
           { perf: 'Low', pot: 'Low', label: t('risk') || 'Underperformer', color: 'bg-red-50 border-red-200' },

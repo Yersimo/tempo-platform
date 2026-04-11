@@ -102,9 +102,9 @@ export default function OfflinePage() {
     <div className="min-h-screen bg-[#0f1117] flex flex-col items-center justify-center p-6 text-center">
       {/* Brand mark */}
       <svg viewBox="0 0 80 100" fill="none" className="w-10 h-12 mb-8 opacity-40">
-        <line x1="2" y1="3" x2="78" y2="3" stroke="#ea580c" strokeWidth="4" strokeLinecap="round" opacity=".18"/>
-        <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" strokeWidth="12" strokeLinecap="round" opacity=".5"/>
-        <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" strokeWidth="12" strokeLinecap="round" opacity="1"/>
+        <line x1="2" y1="3" x2="78" y2="3" stroke="#004D40" strokeWidth="4" strokeLinecap="round" opacity=".18"/>
+        <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#26A69A" strokeWidth="12" strokeLinecap="round" opacity=".5"/>
+        <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#004D40" strokeWidth="12" strokeLinecap="round" opacity="1"/>
       </svg>
 
       {/* Status icon */}
@@ -116,7 +116,7 @@ export default function OfflinePage() {
         {isOnline ? (
           <CheckCircle size={36} className="text-green-400/60" />
         ) : (
-          <WifiOff size={36} className="text-orange-400/60" />
+          <WifiOff size={36} className="text-teal-600/60" />
         )}
       </div>
 
@@ -134,7 +134,7 @@ export default function OfflinePage() {
       <div className="flex gap-3 mb-8">
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors min-h-[44px]"
+          className="flex items-center gap-2 px-5 py-2.5 bg-teal-800 text-white text-sm font-medium rounded-lg hover:bg-teal-900 transition-colors min-h-[44px]"
         >
           <RefreshCw size={15} />
           Try Again
@@ -159,7 +159,7 @@ export default function OfflinePage() {
               <button
                 onClick={triggerSync}
                 disabled={isSyncing}
-                className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px] disabled:opacity-50"
+                className="text-xs text-teal-600 flex items-center gap-1 min-h-[44px] disabled:opacity-50"
               >
                 <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
                 {isSyncing ? 'Syncing...' : 'Sync now'}

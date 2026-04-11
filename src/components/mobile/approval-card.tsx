@@ -33,7 +33,7 @@ const TYPE_COLORS: Record<string, string> = {
   leave: 'bg-blue-500/15 text-blue-400',
   expense: 'bg-emerald-500/15 text-emerald-400',
   timesheet: 'bg-purple-500/15 text-purple-400',
-  payroll: 'bg-orange-500/15 text-orange-400',
+  payroll: 'bg-teal-700/15 text-teal-400',
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -239,7 +239,7 @@ export function ApprovalCard({ item, onApprove, onReject }: ApprovalCardProps) {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Add a comment (optional)..."
-                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-xs text-white/70 placeholder:text-white/20 resize-none focus:outline-none focus:border-orange-500/30 min-h-[44px]"
+                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-xs text-white/70 placeholder:text-white/20 resize-none focus:outline-none focus:border-teal-700/30 min-h-[44px]"
                 rows={2}
               />
             </div>

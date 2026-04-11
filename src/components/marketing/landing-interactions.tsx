@@ -340,17 +340,17 @@ export function HeroCarousel() {
               <div className="addr" style={{ color: '#888' }}>app.theworktempo.com/ai</div>
             </div>
             <div className="dash-body" style={{ color: '#fff' }}>
-              <div className="dash-hd"><span className="dash-ttl" style={{ color: '#fff' }}>Tempo AI</span><span className="dash-qt" style={{ color: '#FF5520' }}>Ask anything</span></div>
+              <div className="dash-hd"><span className="dash-ttl" style={{ color: '#fff' }}>Tempo AI</span><span className="dash-qt" style={{ color: '#00897B' }}>Ask anything</span></div>
               <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 12 }}>
                 <div style={{ color: '#aaa', fontSize: 13 }}>You asked:</div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 600, marginTop: 4 }}>{'"'}What{`'`}s our turnover rate in West Africa vs last quarter?{'"'}</div>
               </div>
               <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 10 }}>
-                <div style={{ color: '#FF5520', fontSize: 13, fontWeight: 600 }}>Tempo AI</div>
+                <div style={{ color: '#00897B', fontSize: 13, fontWeight: 600 }}>Tempo AI</div>
                 <div style={{ color: '#eee', fontSize: 14, marginTop: 6, lineHeight: 1.6 }}>Turnover in West Africa was <strong>8.3%</strong> this quarter vs <strong>11.2%</strong> last &mdash; driven by improved retention in Ghana and Senegal.</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <span style={{ background: '#FF5520', color: '#fff', padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>See full breakdown</span>
+                <span style={{ background: '#00897B', color: '#fff', padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>See full breakdown</span>
                 <span style={{ border: '1px solid #333', color: '#aaa', padding: '6px 14px', borderRadius: 100, fontSize: 12 }}>Ask follow-up</span>
               </div>
             </div>

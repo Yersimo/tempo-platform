@@ -737,7 +737,7 @@ export default function AnalyticsPage() {
               centerLabel={String(new Set(filteredEmployees.map(e => e.country)).size)}
               centerSub="Countries"
               height={220}
-              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']}
+              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, '#8b5cf6', '#ec4899', '#14b8a6', '#004D40']}
             />
           </Card>
           <Card>

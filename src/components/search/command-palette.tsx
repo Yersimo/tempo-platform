@@ -358,9 +358,9 @@ export function CommandPalette() {
           {/* Search input */}
           <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#f0f0f0]">
             {isSlashMode ? (
-              <Hash size={18} className="text-[#ea580c] shrink-0" />
+              <Hash size={18} className="text-[#004D40] shrink-0" />
             ) : isLoading ? (
-              <Loader2 size={18} className="text-[#ea580c] animate-spin shrink-0" />
+              <Loader2 size={18} className="text-[#004D40] animate-spin shrink-0" />
             ) : (
               <Search size={18} className="text-[#bbb] shrink-0" />
             )}
@@ -409,7 +409,7 @@ export function CommandPalette() {
                         onSelect={() => navigateTo(cmd.href)}
                         onHover={() => setSelectedIndex(idx)}
                         icon={cmd.icon}
-                        title={<span className="font-mono text-[#ea580c]">{cmd.command}</span>}
+                        title={<span className="font-mono text-[#004D40]">{cmd.command}</span>}
                         subtitle={t(cmd.labelKey)}
                       />
                     )
@@ -504,7 +504,7 @@ export function CommandPalette() {
                           clearRecentSearches()
                           setRecentSearches([])
                         }}
-                        className="text-[0.6rem] text-[#ccc] hover:text-[#ea580c] transition-colors"
+                        className="text-[0.6rem] text-[#ccc] hover:text-[#004D40] transition-colors"
                       >
                         {t('clearRecent')}
                       </button>
@@ -538,7 +538,7 @@ export function CommandPalette() {
                       <button
                         key={term}
                         onClick={() => setQuery(term)}
-                        className="px-2.5 py-1 rounded-full bg-[#f5f5f7] hover:bg-[#ea580c]/10 hover:text-[#ea580c] text-[0.7rem] text-[#888] transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-full bg-[#f5f5f7] hover:bg-[#004D40]/10 hover:text-[#004D40] text-[0.7rem] text-[#888] transition-colors cursor-pointer"
                       >
                         {term}
                       </button>
@@ -568,7 +568,7 @@ export function CommandPalette() {
                       >
                         <div className={cn(
                           'flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors',
-                          isSelected ? 'text-[#ea580c]' : 'text-[#999]'
+                          isSelected ? 'text-[#004D40]' : 'text-[#999]'
                         )}>
                           {action.icon}
                         </div>
@@ -671,7 +671,7 @@ function ResultRow({
       <div className={cn(
         'flex items-center justify-center shrink-0 rounded-lg transition-colors',
         compact ? 'w-6 h-6' : 'w-8 h-8',
-        isSelected ? 'bg-[#ea580c]/10 text-[#ea580c]' : 'bg-[#f5f5f7] text-[#999]'
+        isSelected ? 'bg-[#004D40]/10 text-[#004D40]' : 'bg-[#f5f5f7] text-[#999]'
       )}>
         {icon}
       </div>
@@ -714,7 +714,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <span className="text-[#ea580c] font-semibold">{text.slice(idx, idx + query.length)}</span>
+      <span className="text-[#004D40] font-semibold">{text.slice(idx, idx + query.length)}</span>
       {text.slice(idx + query.length)}
     </>
   )

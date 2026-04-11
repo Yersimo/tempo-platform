@@ -751,7 +751,7 @@ export default function DocumentsPage() {
                 <div className="text-xs text-t3 mt-1">Fully Signed</div>
               </div>
               <div className="bg-canvas rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-orange-500">{awaitingCount}</div>
+                <div className="text-2xl font-bold text-teal-700">{awaitingCount}</div>
                 <div className="text-xs text-t3 mt-1">Awaiting Signature</div>
               </div>
             </div>

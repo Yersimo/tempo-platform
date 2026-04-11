@@ -391,8 +391,8 @@ export default function JourneysPage() {
                   <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{completed.length}</p>
                   <p className="text-sm text-muted-foreground">Completed</p>
                 </div>
-                <div className="text-center p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20">
-                  <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{active.length}</p>
+                <div className="text-center p-4 rounded-lg bg-teal-50 dark:bg-teal-950/20">
+                  <p className="text-2xl font-bold text-teal-800 dark:text-teal-300">{active.length}</p>
                   <p className="text-sm text-muted-foreground">In Progress</p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-950/20">
@@ -475,7 +475,7 @@ export default function JourneysPage() {
                         }}>
                           <Send size={12} /> Send Reminder
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-orange-600 dark:text-orange-400" onClick={() => {
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-teal-700 dark:text-teal-400" onClick={() => {
                           addToast(`Task escalated to manager for ${getEmployeeName(item.employeeId)}`)
                           addPlatformEvent?.({
                             type: 'journey.escalation',

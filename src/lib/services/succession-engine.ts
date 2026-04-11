@@ -39,7 +39,7 @@ export const NINE_BOX_DISPLAY: Record<string, { label: string; color: string }> 
   high_potential: { label: 'High Potential', color: '#3b82f6' },
   solid_performer: { label: 'Solid Performer', color: '#a3e635' },
   core_player: { label: 'Core Player', color: '#facc15' },
-  inconsistent_player: { label: 'Inconsistent Player', color: '#fb923c' },
+  inconsistent_player: { label: 'Inconsistent Player', color: '#26A69A' },
   rough_diamond: { label: 'Rough Diamond', color: '#818cf8' },
   average_performer: { label: 'Average Performer', color: '#fbbf24' },
   risk: { label: 'At Risk', color: '#ef4444' },

@@ -540,7 +540,7 @@ export default function SkillsDevelopmentPage() {
                         const level = heatmapData.getLevel(empId, skill.id)
                         const bgColor = level === 0 ? 'bg-gray-50' :
                           level <= 1 ? 'bg-red-100' :
-                          level <= 2 ? 'bg-orange-100' :
+                          level <= 2 ? 'bg-teal-100' :
                           level <= 3 ? 'bg-yellow-100' :
                           level <= 4 ? 'bg-green-100' :
                           'bg-green-200'
@@ -568,7 +568,7 @@ export default function SkillsDevelopmentPage() {
                   <div key={pl.level} className="flex items-center gap-1">
                     <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[0.55rem] font-semibold ${
                       pl.level <= 1 ? 'bg-red-100 text-red-700' :
-                      pl.level <= 2 ? 'bg-orange-100 text-orange-700' :
+                      pl.level <= 2 ? 'bg-teal-100 text-teal-800' :
                       pl.level <= 3 ? 'bg-yellow-100 text-yellow-800' :
                       pl.level <= 4 ? 'bg-green-100 text-green-700' :
                       'bg-green-200 text-green-800'

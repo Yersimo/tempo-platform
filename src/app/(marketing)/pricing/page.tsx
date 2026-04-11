@@ -284,16 +284,16 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* ─── Hero ─── */}
       <section ref={heroRef} className="relative pt-32 pb-16 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-600/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-teal-800/5 via-transparent to-transparent" />
         <div className="relative max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-orange-600/10 border border-orange-600/20 rounded-full px-4 py-1.5 text-sm text-orange-400 mb-6">
+          <div className="inline-flex items-center gap-2 bg-teal-800/10 border border-teal-800/20 rounded-full px-4 py-1.5 text-sm text-teal-600 mb-6">
             <Sparkles size={14} />
             14-day free trial on all paid plans
           </div>
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6" style={{ letterSpacing: '-0.035em' }}>
             Simple, transparent
             <br />
-            <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">pricing for every team</span>
+            <span className="bg-gradient-to-r from-teal-600 to-teal-800 bg-clip-text text-transparent">pricing for every team</span>
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             From startups to enterprises, Tempo scales with you. Pay only for what you use, switch plans anytime, and never worry about hidden fees.
@@ -330,13 +330,13 @@ export default function PricingPage() {
                 key={plan.id}
                 className={`relative rounded-2xl border p-6 flex flex-col transition-all duration-200 hover:border-zinc-600 ${
                   plan.highlight
-                    ? 'bg-gradient-to-b from-orange-600/10 to-zinc-900/80 border-orange-600/40 ring-1 ring-orange-600/20'
+                    ? 'bg-gradient-to-b from-teal-800/10 to-zinc-900/80 border-teal-800/40 ring-1 ring-teal-800/20'
                     : 'bg-zinc-900/50 border-zinc-800'
                 }`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-orange-600 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
+                    <span className="bg-teal-800 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
                       Most Popular
                     </span>
                   </div>
@@ -376,7 +376,7 @@ export default function PricingPage() {
                   href={plan.ctaLink}
                   className={`block text-center py-3 px-6 rounded-xl font-semibold text-sm transition-all mb-6 ${
                     plan.highlight
-                      ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-600/25'
+                      ? 'bg-teal-800 hover:bg-teal-700 text-white shadow-lg shadow-teal-800/25'
                       : isEnterprise
                         ? 'bg-white hover:bg-zinc-100 text-black'
                         : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
@@ -392,7 +392,7 @@ export default function PricingPage() {
                   <ul className="space-y-2.5">
                     {plan.features.filter(f => !f.startsWith('Everything')).map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                        <Check size={15} className="text-orange-500 mt-0.5 shrink-0" />
+                        <Check size={15} className="text-teal-700 mt-0.5 shrink-0" />
                         {feature}
                       </li>
                     ))}
@@ -436,7 +436,7 @@ export default function PricingPage() {
                   <th className="text-left p-4 text-sm font-semibold text-zinc-400 w-[280px]">Feature</th>
                   <th className="text-center p-4 text-sm font-semibold text-zinc-400 w-[130px]">Free</th>
                   <th className="text-center p-4 text-sm font-semibold text-zinc-400 w-[130px]">Starter</th>
-                  <th className="text-center p-4 text-sm font-semibold text-orange-400 w-[130px]">Professional</th>
+                  <th className="text-center p-4 text-sm font-semibold text-teal-600 w-[130px]">Professional</th>
                   <th className="text-center p-4 text-sm font-semibold text-zinc-400 w-[130px]">Enterprise</th>
                 </tr>
               </thead>
@@ -453,7 +453,7 @@ export default function PricingPage() {
                         <td className="px-4 py-3 text-sm text-zinc-300">{feature.name}</td>
                         <td className="px-4 py-3 text-center"><FeatureCell value={feature.free} /></td>
                         <td className="px-4 py-3 text-center"><FeatureCell value={feature.starter} /></td>
-                        <td className="px-4 py-3 text-center bg-orange-600/5"><FeatureCell value={feature.pro} /></td>
+                        <td className="px-4 py-3 text-center bg-teal-800/5"><FeatureCell value={feature.pro} /></td>
                         <td className="px-4 py-3 text-center"><FeatureCell value={feature.enterprise} /></td>
                       </tr>
                     ))}
@@ -486,7 +486,7 @@ export default function PricingPage() {
             { icon: Zap, title: 'ISO 27001', desc: 'Security practices aligned to ISO 27001 — certification planned H2 2026' },
           ].map((item) => (
             <div key={item.title} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all">
-              <item.icon size={24} className="text-orange-500 mb-4" />
+              <item.icon size={24} className="text-teal-700 mb-4" />
               <h3 className="font-semibold mb-2">{item.title}</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">{item.desc}</p>
             </div>
@@ -530,8 +530,8 @@ export default function PricingPage() {
 
       {/* ─── Final CTA ─── */}
       <section ref={addRevealRef} className="max-w-4xl mx-auto px-6 pb-32 opacity-0 translate-y-6 transition-all duration-700">
-        <div className="relative bg-gradient-to-br from-orange-600/20 via-zinc-900 to-zinc-900 border border-orange-600/20 rounded-3xl p-12 md:p-16 text-center overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-600/5 to-transparent" />
+        <div className="relative bg-gradient-to-br from-teal-800/20 via-zinc-900 to-zinc-900 border border-teal-800/20 rounded-3xl p-12 md:p-16 text-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-800/5 to-transparent" />
           <div className="relative">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ letterSpacing: '-0.035em' }}>
               Ready to transform your
@@ -544,7 +544,7 @@ export default function PricingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold px-8 py-4 rounded-xl transition-all shadow-lg shadow-orange-600/25"
+                className="inline-flex items-center justify-center gap-2 bg-teal-800 hover:bg-teal-700 text-white font-semibold px-8 py-4 rounded-xl transition-all shadow-lg shadow-teal-800/25"
               >
                 Start Your 14-Day Free Trial
                 <ArrowRight size={16} />

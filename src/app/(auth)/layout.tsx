@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Top: Logo — text wordmark only, matching landing page */}
           <div className="relative z-10 px-10 pt-10">
             <span className="font-bold text-[22px] tracking-[-0.02em] text-white">
-              tempo<span className="text-[#E8590C]">.</span>
+              tempo<span className="text-[#00897B]">.</span>
             </span>
           </div>
 

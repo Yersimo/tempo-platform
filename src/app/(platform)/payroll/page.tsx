@@ -1614,7 +1614,7 @@ export default function PayrollPage() {
                               processing: { label: 'Processing', color: 'bg-indigo-100 text-indigo-700' },
                               paid: { label: 'Paid', color: 'bg-green-100 text-green-800' },
                               cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-700' },
-                              entry_modified: { label: 'Entry Modified', color: 'bg-orange-100 text-orange-700' },
+                              entry_modified: { label: 'Entry Modified', color: 'bg-teal-100 text-teal-800' },
                             }
                             const cfg = actionLabels[entry.action] || { label: entry.action, color: 'bg-gray-100 text-gray-600' }
                             const ts = new Date(entry.createdAt)

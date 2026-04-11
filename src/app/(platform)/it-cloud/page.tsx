@@ -41,7 +41,7 @@ function platformIcon(platform: string) {
     case 'macos': case 'ios': return <Laptop size={14} className="text-t2" />
     case 'windows': return <Monitor size={14} className="text-blue-400" />
     case 'android': return <Smartphone size={14} className="text-green-400" />
-    case 'linux': return <Server size={14} className="text-orange-400" />
+    case 'linux': return <Server size={14} className="text-teal-400" />
     default: return <HardDrive size={14} className="text-t2" />
   }
 }
@@ -1207,7 +1207,7 @@ export default function ITCloudPage() {
               {encryptionPolicies.map(policy => {
                 const compPct = policy.totalCount > 0 ? Math.round((policy.compliantCount / policy.totalCount) * 100) : 0
                 const platformLabel = { macos: 'macOS', windows: 'Windows', linux: 'Linux', all: 'All Platforms' }[policy.platform]
-                const platformBg = { macos: 'bg-gray-500/10', windows: 'bg-blue-500/10', linux: 'bg-orange-500/10', all: 'bg-purple-500/10' }[policy.platform]
+                const platformBg = { macos: 'bg-gray-500/10', windows: 'bg-blue-500/10', linux: 'bg-teal-700/10', all: 'bg-purple-500/10' }[policy.platform]
                 return (
                   <Card key={policy.id} className="bg-card border-border p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -1215,7 +1215,7 @@ export default function ITCloudPage() {
                         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', platformBg)}>
                           {policy.platform === 'macos' ? <Laptop size={20} className="text-t2" /> :
                            policy.platform === 'windows' ? <Monitor size={20} className="text-blue-400" /> :
-                           policy.platform === 'linux' ? <Server size={20} className="text-orange-400" /> :
+                           policy.platform === 'linux' ? <Server size={20} className="text-teal-400" /> :
                            <Globe size={20} className="text-purple-400" />}
                         </div>
                         <div>

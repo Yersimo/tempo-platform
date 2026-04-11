@@ -58,7 +58,7 @@ export default function GetStartedPage() {
         {/* Nav */}
         <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.04]">
           <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
-            <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></Link>
+            <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#00897B]">.</span></Link>
           </div>
         </nav>
 
@@ -88,7 +88,7 @@ export default function GetStartedPage() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.04]">
         <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
-          <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></Link>
+          <Link href="/academy" className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#00897B]">.</span></Link>
           <Link href="/academy/login" className="text-[14px] font-medium text-[#1a1a1a]/60 hover:text-[#1a1a1a] transition">Already have an account? Sign in</Link>
         </div>
       </nav>
@@ -107,11 +107,11 @@ export default function GetStartedPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Interest */}
               <div>
-                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">I&rsquo;m interested in... <span className="text-[#E8590C]">*</span></label>
+                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">I&rsquo;m interested in... <span className="text-[#00897B]">*</span></label>
                 <select
                   value={form.interest}
                   onChange={e => update('interest', e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl border border-black/10 bg-white text-[15px] text-[#1a1a1a] focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition appearance-none"
+                  className="w-full h-12 px-4 rounded-xl border border-black/10 bg-white text-[15px] text-[#1a1a1a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition appearance-none"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                 >
                   <option value="">Select an option</option>
@@ -122,31 +122,31 @@ export default function GetStartedPage() {
               {/* Name */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">First name <span className="text-[#E8590C]">*</span></label>
-                  <input type="text" value={form.firstName} onChange={e => update('firstName', e.target.value)} placeholder="First name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition" />
+                  <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">First name <span className="text-[#00897B]">*</span></label>
+                  <input type="text" value={form.firstName} onChange={e => update('firstName', e.target.value)} placeholder="First name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition" />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Last name <span className="text-[#E8590C]">*</span></label>
-                  <input type="text" value={form.lastName} onChange={e => update('lastName', e.target.value)} placeholder="Last name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition" />
+                  <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Last name <span className="text-[#00897B]">*</span></label>
+                  <input type="text" value={form.lastName} onChange={e => update('lastName', e.target.value)} placeholder="Last name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition" />
                 </div>
               </div>
 
               {/* Company */}
               <div>
-                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Company / Organisation <span className="text-[#E8590C]">*</span></label>
-                <input type="text" value={form.company} onChange={e => update('company', e.target.value)} placeholder="Your company or organisation name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition" />
+                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Company / Organisation <span className="text-[#00897B]">*</span></label>
+                <input type="text" value={form.company} onChange={e => update('company', e.target.value)} placeholder="Your company or organisation name" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition" />
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Work email <span className="text-[#E8590C]">*</span></label>
-                <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="you@company.com" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition" />
+                <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Work email <span className="text-[#00897B]">*</span></label>
+                <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="you@company.com" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition" />
               </div>
 
               {/* Phone */}
               <div>
                 <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Phone number</label>
-                <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+234 800 000 0000" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition" />
+                <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+234 800 000 0000" className="w-full h-12 px-4 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition" />
               </div>
 
               {/* Org size */}
@@ -155,7 +155,7 @@ export default function GetStartedPage() {
                 <select
                   value={form.orgSize}
                   onChange={e => update('orgSize', e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl border border-black/10 bg-white text-[15px] text-[#1a1a1a] focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition appearance-none"
+                  className="w-full h-12 px-4 rounded-xl border border-black/10 bg-white text-[15px] text-[#1a1a1a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition appearance-none"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                 >
                   <option value="">Select size</option>
@@ -166,14 +166,14 @@ export default function GetStartedPage() {
               {/* Message */}
               <div>
                 <label className="block text-[13px] font-medium text-[#1a1a1a]/70 mb-1.5">Anything else you&rsquo;d like us to know?</label>
-                <textarea value={form.message} onChange={e => update('message', e.target.value)} rows={3} placeholder="Tell us about your training goals, number of participants, timeline..." className="w-full px-4 py-3 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#E8590C] focus:ring-1 focus:ring-[#E8590C]/20 transition resize-none" />
+                <textarea value={form.message} onChange={e => update('message', e.target.value)} rows={3} placeholder="Tell us about your training goals, number of participants, timeline..." className="w-full px-4 py-3 rounded-xl border border-black/10 text-[15px] text-[#1a1a1a] placeholder:text-black/25 focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 transition resize-none" />
               </div>
 
               {/* Agreement */}
               <label className="flex items-start gap-3 cursor-pointer group">
-                <input type="checkbox" checked={form.agreed} onChange={e => update('agreed', e.target.checked)} className="mt-1 w-4 h-4 rounded border-black/20 text-[#E8590C] focus:ring-[#E8590C]/30" />
+                <input type="checkbox" checked={form.agreed} onChange={e => update('agreed', e.target.checked)} className="mt-1 w-4 h-4 rounded border-black/20 text-[#00897B] focus:ring-[#00897B]/30" />
                 <span className="text-[13px] text-[#1a1a1a]/50 leading-[1.5]">
-                  Yes, I agree to Tempo&rsquo;s <Link href="/privacy" className="underline hover:text-[#1a1a1a] transition">privacy policy</Link>. We&rsquo;ll use your information to respond to your enquiry and share relevant updates. <span className="text-[#E8590C]">*</span>
+                  Yes, I agree to Tempo&rsquo;s <Link href="/privacy" className="underline hover:text-[#1a1a1a] transition">privacy policy</Link>. We&rsquo;ll use your information to respond to your enquiry and share relevant updates. <span className="text-[#00897B]">*</span>
                 </span>
               </label>
 

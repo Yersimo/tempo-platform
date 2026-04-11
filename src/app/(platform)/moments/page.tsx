@@ -43,7 +43,7 @@ const MOMENT_COLORS: Record<string, string> = {
   new_hire: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   return_from_leave: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
   retirement: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
-  first_project: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  first_project: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   certification: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
   team_change: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
   milestone_achievement: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -191,15 +191,15 @@ export default function MomentsPage() {
       </div>
 
       {todayMoments.length > 0 && (
-        <Card className="border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+        <Card className="border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 to-amber-50 dark:from-teal-950/20 dark:to-amber-950/20">
           <div className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={20} className="text-orange-600" />
-              <h3 className="font-semibold text-orange-900 dark:text-orange-200">Today&apos;s Spotlight</h3>
+              <Sparkles size={20} className="text-teal-700" />
+              <h3 className="font-semibold text-teal-900 dark:text-teal-200">Today&apos;s Spotlight</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {todayMoments.map(m => (
-                <div key={m.id} className="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-orange-100 dark:border-orange-900/50">
+                <div key={m.id} className="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-teal-100 dark:border-teal-900/50">
                   <div className="flex items-start gap-3">
                     <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', MOMENT_COLORS[m.type])}>
                       {MOMENT_ICONS[m.type]}

@@ -3688,7 +3688,7 @@ export const demoContentLibrary = [
 ]
 
 export const demoCertificateTemplates = [
-  { id: 'cert-tpl-1', org_id: 'org-1', name: 'Ecobank Standard', layout: 'modern' as const, accentColor: '#f97316', borderStyle: 'simple' as const, showLogo: true, showSeal: true, signatory1: 'Adaeze Okonkwo', signatory1Title: 'Chief Learning Officer', signatory2: 'Emeka Nwosu', signatory2Title: 'HR Director', orgName: 'Ecobank Transnational', fontFamily: 'sans' as const },
+  { id: 'cert-tpl-1', org_id: 'org-1', name: 'Ecobank Standard', layout: 'modern' as const, accentColor: '#004D40', borderStyle: 'simple' as const, showLogo: true, showSeal: true, signatory1: 'Adaeze Okonkwo', signatory1Title: 'Chief Learning Officer', signatory2: 'Emeka Nwosu', signatory2Title: 'HR Director', orgName: 'Ecobank Transnational', fontFamily: 'sans' as const },
   { id: 'cert-tpl-2', org_id: 'org-1', name: 'Formal Academic', layout: 'classic' as const, accentColor: '#1e293b', borderStyle: 'ornate' as const, showLogo: true, showSeal: true, signatory1: 'Prof. Kwame Asante', signatory1Title: 'Director of Learning', signatory2: 'Dr. Fatima Diallo', signatory2Title: 'VP Human Capital', orgName: 'Ecobank Transnational', fontFamily: 'serif' as const },
 ]
 

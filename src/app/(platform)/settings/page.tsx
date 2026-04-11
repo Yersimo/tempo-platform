@@ -137,7 +137,7 @@ export default function SettingsPage() {
   const [branding, setBranding] = useState({
     logoUrl: '',
     faviconUrl: '',
-    primaryColor: '#ea580c',
+    primaryColor: '#004D40',
     secondaryColor: '#1a1a2e',
     sidebarTheme: 'dark' as 'dark' | 'light' | 'brand',
     loginWelcomeMessage: '',
@@ -145,7 +145,7 @@ export default function SettingsPage() {
     loginBackgroundUrl: '',
     showLoginLogo: true,
     showPoweredBy: true,
-    emailHeaderColor: '#ea580c',
+    emailHeaderColor: '#004D40',
     emailFooterText: '',
     includeLogoInEmails: true,
   })
@@ -214,7 +214,7 @@ export default function SettingsPage() {
     const defaults = {
       logoUrl: '',
       faviconUrl: '',
-      primaryColor: '#ea580c',
+      primaryColor: '#004D40',
       secondaryColor: '#1a1a2e',
       sidebarTheme: 'dark' as const,
       loginWelcomeMessage: '',
@@ -222,7 +222,7 @@ export default function SettingsPage() {
       loginBackgroundUrl: '',
       showLoginLogo: true,
       showPoweredBy: true,
-      emailHeaderColor: '#ea580c',
+      emailHeaderColor: '#004D40',
       emailFooterText: '',
       includeLogoInEmails: true,
     }
@@ -1492,7 +1492,7 @@ export default function SettingsPage() {
                     const tierColors: Record<string, string> = {
                       free: 'from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30',
                       starter: 'from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30',
-                      professional: 'from-tempo-50 to-orange-50 dark:from-tempo-950/30 dark:to-orange-950/30',
+                      professional: 'from-tempo-50 to-teal-50 dark:from-tempo-950/30 dark:to-teal-950/30',
                       enterprise: 'from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30',
                     }
 

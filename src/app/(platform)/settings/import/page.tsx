@@ -26,7 +26,7 @@ const MIGRATION_SOURCES = [
   { id: 'bamboohr', name: 'BambooHR', icon: <Users size={20} />, description: 'Import employees, org structure, and time-off data', color: 'bg-green-50 border-green-200' },
   { id: 'gusto', name: 'Gusto', icon: <DollarSign size={20} />, description: 'Import employees, payroll runs, and departments', color: 'bg-blue-50 border-blue-200' },
   { id: 'deel', name: 'Deel', icon: <Globe size={20} />, description: 'Import employees, contractors, contracts, and invoices', color: 'bg-purple-50 border-purple-200' },
-  { id: 'rippling', name: 'Rippling', icon: <Layers size={20} />, description: 'Import employees, departments, and payroll data', color: 'bg-orange-50 border-orange-200' },
+  { id: 'rippling', name: 'Rippling', icon: <Layers size={20} />, description: 'Import employees, departments, and payroll data', color: 'bg-teal-50 border-teal-200' },
   { id: 'workday', name: 'Workday', icon: <Building2 size={20} />, description: 'Import from Workday HCM suite', color: 'bg-indigo-50 border-indigo-200' },
   { id: 'sap', name: 'SAP SuccessFactors', icon: <Building2 size={20} />, description: 'Import from SAP SuccessFactors HR', color: 'bg-teal-50 border-teal-200' },
 ]

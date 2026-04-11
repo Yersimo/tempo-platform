@@ -118,7 +118,7 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
                 href={tabHref}
                 className={cn(
                   'flex flex-col items-center gap-0.5 px-4 py-2 min-w-[64px] min-h-[44px] relative transition-colors',
-                  isActive ? 'text-orange-400' : 'text-white/30'
+                  isActive ? 'text-teal-400' : 'text-white/30'
                 )}
               >
                 <div className="relative">
@@ -144,7 +144,7 @@ export function MobileManagerNav({ approvalCount = 0, activeTab, onTabChange }: 
                 }}
                 className={cn(
                   'flex flex-col items-center gap-0.5 px-4 py-2 min-w-[64px] min-h-[44px] relative transition-colors',
-                  isActive ? 'text-orange-400' : 'text-white/30'
+                  isActive ? 'text-teal-400' : 'text-white/30'
                 )}
               >
                 <div className="relative">

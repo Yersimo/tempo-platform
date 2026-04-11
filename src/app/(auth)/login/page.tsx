@@ -133,9 +133,9 @@ export default function LoginPage() {
   }
 
   // Shared input class
-  const inputClass = 'w-full h-11 px-4 text-[14px] bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#E8590C]/15 focus:border-[#E8590C]/40 transition-all duration-200'
+  const inputClass = 'w-full h-11 px-4 text-[14px] bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#004D40]/15 focus:border-[#004D40]/40 transition-all duration-200'
   const labelClass = 'block text-[13px] font-medium text-gray-700 mb-1.5'
-  const btnPrimary = 'w-full h-11 bg-[#E8590C] text-white text-[14px] font-medium rounded-xl hover:bg-[#d14e0a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#E8590C]/20 hover:shadow-md hover:shadow-[#E8590C]/25 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2'
+  const btnPrimary = 'w-full h-11 bg-[#004D40] text-white text-[14px] font-medium rounded-xl hover:bg-[#d14e0a] active:scale-[0.98] transition-all duration-200 shadow-sm shadow-[#004D40]/20 hover:shadow-md hover:shadow-[#004D40]/25 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2'
 
   // ─── MFA Verification Step ────────────────────────────────────────
   if (mfaRequired) {
@@ -144,7 +144,7 @@ export default function LoginPage() {
         {/* Mobile logo — text wordmark only, matching landing page */}
         <div className="lg:hidden mb-10">
           <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
-            tempo<span className="text-[#E8590C]">.</span>
+            tempo<span className="text-[#004D40]">.</span>
           </span>
         </div>
 
@@ -157,8 +157,8 @@ export default function LoginPage() {
         </button>
 
         <div className="flex justify-center mb-5">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
-            <KeyRound size={22} className="text-[#E8590C]" />
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <KeyRound size={22} className="text-[#004D40]" />
           </div>
         </div>
 
@@ -181,7 +181,7 @@ export default function LoginPage() {
                   onChange={(e) => handleMFAInput(index, e.target.value)}
                   onKeyDown={(e) => handleMFAKeyDown(index, e)}
                   disabled={loading}
-                  className="w-12 h-14 text-center text-[18px] font-semibold bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#E8590C]/15 focus:border-[#E8590C]/40 disabled:opacity-50 transition-all duration-200"
+                  className="w-12 h-14 text-center text-[18px] font-semibold bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#004D40]/15 focus:border-[#004D40]/40 disabled:opacity-50 transition-all duration-200"
                   autoComplete="one-time-code"
                 />
               ))}
@@ -200,7 +200,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => { setUseBackupCode(true); setError('') }}
-              className="block w-full text-center text-[13px] text-[#E8590C] hover:text-[#d14e0a] transition-colors mt-6 font-medium"
+              className="block w-full text-center text-[13px] text-[#004D40] hover:text-[#d14e0a] transition-colors mt-6 font-medium"
             >
               {t('mfaUseBackupCode')}
             </button>
@@ -232,7 +232,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setUseBackupCode(false); setError('') }}
-              className="block w-full text-center text-[13px] text-[#E8590C] hover:text-[#d14e0a] transition-colors font-medium"
+              className="block w-full text-center text-[13px] text-[#004D40] hover:text-[#d14e0a] transition-colors font-medium"
             >
               {t('mfaUseTOTPCode')}
             </button>
@@ -271,7 +271,7 @@ export default function LoginPage() {
         {/* Mobile logo — text wordmark only, matching landing page */}
         <div className="lg:hidden mb-10">
           <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
-            tempo<span className="text-[#E8590C]">.</span>
+            tempo<span className="text-[#004D40]">.</span>
           </span>
         </div>
 
@@ -284,8 +284,8 @@ export default function LoginPage() {
         </button>
 
         <div className="flex justify-center mb-5">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
-            <KeyRound size={22} className="text-[#E8590C]" />
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <KeyRound size={22} className="text-[#004D40]" />
           </div>
         </div>
 
@@ -343,7 +343,7 @@ export default function LoginPage() {
       {/* Mobile logo — text wordmark only, matching landing page */}
       <div className="lg:hidden mb-10">
         <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
-          tempo<span className="text-[#E8590C]">.</span>
+          tempo<span className="text-[#004D40]">.</span>
         </span>
       </div>
 
@@ -374,7 +374,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setForgotMode(true)}
-              className="text-[12px] text-[#E8590C] hover:text-[#d14e0a] font-medium transition-colors"
+              className="text-[12px] text-[#004D40] hover:text-[#d14e0a] font-medium transition-colors"
             >
               Forgot password?
             </button>
@@ -417,7 +417,7 @@ export default function LoginPage() {
       {/* Footer */}
       <p className="text-[12px] text-gray-400 text-center mt-8">
         Don&apos;t have an account?{' '}
-        <a href="/signup" className="text-[#E8590C] hover:text-[#d14e0a] font-medium transition-colors">
+        <a href="/signup" className="text-[#004D40] hover:text-[#d14e0a] font-medium transition-colors">
           Request access
         </a>
       </p>

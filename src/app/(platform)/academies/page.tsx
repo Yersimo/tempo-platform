@@ -106,7 +106,7 @@ const BRAND_COLORS = [
   { value: '#9333ea', label: 'Purple' },
   { value: '#059669', label: 'Green' },
   { value: '#dc2626', label: 'Red' },
-  { value: '#ea580c', label: 'Orange' },
+  { value: '#004D40', label: 'Orange' },
   { value: '#0891b2', label: 'Cyan' },
 ]
 

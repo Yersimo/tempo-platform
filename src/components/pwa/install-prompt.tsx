@@ -82,8 +82,8 @@ export function PWAInstallPrompt() {
         <div className="bg-[#161821] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/40 p-5">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-600/15 flex items-center justify-center">
-                <Smartphone size={20} className="text-orange-400" />
+              <div className="w-10 h-10 rounded-xl bg-teal-800/15 flex items-center justify-center">
+                <Smartphone size={20} className="text-teal-400" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">Install Tempo</p>
@@ -100,15 +100,15 @@ export function PWAInstallPrompt() {
 
           <div className="space-y-3 mb-4">
             <div className="flex items-center gap-3 text-xs text-white/50">
-              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-orange-400 shrink-0">1</div>
+              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-teal-400 shrink-0">1</div>
               <span>Tap the <Share size={13} className="inline text-blue-400 mx-0.5" /> Share button in Safari</span>
             </div>
             <div className="flex items-center gap-3 text-xs text-white/50">
-              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-orange-400 shrink-0">2</div>
+              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-teal-400 shrink-0">2</div>
               <span>Scroll down and tap <Plus size={13} className="inline text-white/60 mx-0.5" /> <strong className="text-white/70">Add to Home Screen</strong></span>
             </div>
             <div className="flex items-center gap-3 text-xs text-white/50">
-              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-orange-400 shrink-0">3</div>
+              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-semibold text-teal-400 shrink-0">3</div>
               <span>Tap <strong className="text-white/70">Add</strong> to install Tempo</span>
             </div>
           </div>
@@ -130,10 +130,10 @@ export function PWAInstallPrompt() {
       <div className="bg-[#161821] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/40 p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-600/15 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-teal-800/15 flex items-center justify-center">
               <svg viewBox="0 0 80 100" fill="none" className="w-5 h-6">
-                <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#fb923c" strokeWidth="12" strokeLinecap="round" opacity=".5"/>
-                <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#ea580c" strokeWidth="12" strokeLinecap="round" opacity="1"/>
+                <path d="M4,82 C14,78 28,68 42,50 C56,32 68,14 76,6" stroke="#26A69A" strokeWidth="12" strokeLinecap="round" opacity=".5"/>
+                <path d="M4,96 C14,90 28,76 44,56 C58,38 70,20 78,10" stroke="#004D40" strokeWidth="12" strokeLinecap="round" opacity="1"/>
               </svg>
             </div>
             <div>
@@ -159,7 +159,7 @@ export function PWAInstallPrompt() {
             Push notifications
           </span>
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04]">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-500/60" />
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-700/60" />
             Fast
           </span>
         </div>
@@ -167,7 +167,7 @@ export function PWAInstallPrompt() {
         <div className="flex gap-2">
           <button
             onClick={handleInstall}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-800 text-white text-sm font-medium rounded-lg hover:bg-teal-900 transition-colors"
           >
             <Download size={15} />
             Install App

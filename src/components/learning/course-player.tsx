@@ -373,7 +373,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
               left: `${Math.random() * 100}%`,
               animationDelay: `${Math.random() * 3}s`,
               animationDuration: `${2 + Math.random() * 3}s`,
-              backgroundColor: ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#ec4899'][i % 6],
+              backgroundColor: ['#004D40', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#ec4899'][i % 6],
             }} />
           ))}
         </div>
@@ -808,7 +808,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
   function renderHeadingBlock(block: typeof blocks[0], status: BlockStatus) {
     return (
       <div className="course-player-prose">
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', borderBottom: '3px solid var(--color-tempo-500, #ea580c)', paddingBottom: '0.75rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', borderBottom: '3px solid var(--color-tempo-500, #004D40)', paddingBottom: '0.75rem' }}>
           {block.content || block.title}
         </h1>
         {renderAutoComplete(status)}
@@ -970,7 +970,7 @@ export function CoursePlayer({ courseId, enrollmentId, onClose, onCourseComplete
           href={parsed.url || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ display: 'inline-block', padding: '0.75rem 2rem', borderRadius: '8px', background: '#ea580c', color: '#fff', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', transition: 'opacity 0.2s' }}
+          style={{ display: 'inline-block', padding: '0.75rem 2rem', borderRadius: '8px', background: '#004D40', color: '#fff', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', transition: 'opacity 0.2s' }}
           onClick={(e) => { if (!parsed.url || parsed.url === '#') { e.preventDefault(); markBlockComplete() } }}
         >
           {parsed.label || 'Continue'}

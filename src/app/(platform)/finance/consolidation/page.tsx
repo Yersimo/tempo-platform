@@ -853,9 +853,9 @@ export default function ConsolidationPage() {
                         <div className="text-xs text-t3 mb-1">Payroll</div>
                         <div className="text-sm font-semibold text-red-600">{formatCurrency(consolidatedData.totals.payrollCosts, consolidatedData.consolidationCurrency)}</div>
                       </div>
-                      <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
+                      <div className="text-center p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20">
                         <div className="text-xs text-t3 mb-1">OpEx</div>
-                        <div className="text-sm font-semibold text-orange-600">{formatCurrency(consolidatedData.totals.operatingExpenses, consolidatedData.consolidationCurrency)}</div>
+                        <div className="text-sm font-semibold text-teal-700">{formatCurrency(consolidatedData.totals.operatingExpenses, consolidatedData.consolidationCurrency)}</div>
                       </div>
                       <div className="text-center p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                         <div className="text-xs text-t3 mb-1">IC Eliminations</div>

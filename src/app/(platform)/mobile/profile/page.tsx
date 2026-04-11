@@ -188,7 +188,7 @@ export default function MobileProfilePage() {
               <h2 className="text-base font-bold text-white truncate">{profile?.name as string || 'User'}</h2>
               <p className="text-xs text-white/40 truncate">{profile?.jobTitle as string}</p>
               {profile?.level && (
-                <span className="inline-block text-[10px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full mt-1 font-medium">
+                <span className="inline-block text-[10px] bg-teal-700/10 text-teal-400 px-2 py-0.5 rounded-full mt-1 font-medium">
                   {profile?.level as string}
                 </span>
               )}
@@ -211,7 +211,7 @@ export default function MobileProfilePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Leave Balance</h2>
-            <a href="/time-attendance" className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]">
+            <a href="/time-attendance" className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]">
               Request Leave <ChevronRight size={14} />
             </a>
           </div>
@@ -233,7 +233,7 @@ export default function MobileProfilePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Recent Payslips</h2>
-            <a href="/payroll" className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]">
+            <a href="/payroll" className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]">
               View All <ChevronRight size={14} />
             </a>
           </div>
@@ -266,7 +266,7 @@ export default function MobileProfilePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">My Goals</h2>
-            <a href="/performance" className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]">
+            <a href="/performance" className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]">
               View All <ChevronRight size={14} />
             </a>
           </div>
@@ -283,7 +283,7 @@ export default function MobileProfilePage() {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-white/[0.04] rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="h-full bg-orange-500 rounded-full transition-all"
+                        className="h-full bg-teal-700 rounded-full transition-all"
                         style={{ width: `${goal.progress}%` }}
                       />
                     </div>
@@ -304,7 +304,7 @@ export default function MobileProfilePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Learning Progress</h2>
-            <a href="/learning" className="text-xs text-orange-400 flex items-center gap-1 min-h-[44px]">
+            <a href="/learning" className="text-xs text-teal-400 flex items-center gap-1 min-h-[44px]">
               Browse Courses <ChevronRight size={14} />
             </a>
           </div>

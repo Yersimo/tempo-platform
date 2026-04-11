@@ -139,7 +139,7 @@ export default function WhyTempoPage() {
                     fontSize: 13,
                     fontWeight: 600,
                     color: i === 1 ? 'var(--orange)' : 'var(--black)',
-                    background: i === 1 ? '#fff7ed' : 'transparent',
+                    background: i === 1 ? '#E0F2F1' : 'transparent',
                   }}>{h}</th>
                 ))}
               </tr>
@@ -156,7 +156,7 @@ export default function WhyTempoPage() {
                       borderBottom: '1px solid var(--border)',
                       color: getCellColor(val) || 'var(--ink2)',
                       fontWeight: i === 0 ? 600 : 400,
-                      background: i === 0 ? '#fff7ed' : 'transparent',
+                      background: i === 0 ? '#E0F2F1' : 'transparent',
                     }}>
                       {getCellText(val)}
                     </td>
@@ -184,7 +184,7 @@ export default function WhyTempoPage() {
                 width: 48, height: 48, borderRadius: 14,
                 background: 'rgba(234,88,12,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 700, color: '#fb923c', flexShrink: 0,
+                fontSize: 20, fontWeight: 700, color: '#00897B', flexShrink: 0,
               }}>{i + 1}</div>
               <div>
                 <h3 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 8 }}>

@@ -10,7 +10,7 @@ interface TempoMarkProps {
 export function TempoMark({ variant = 'color', size = 40, className = '' }: TempoMarkProps) {
   const bgColor = variant === 'white' ? '#ffffff' : '#1a1a1a'
   const textColor = variant === 'white' ? '#1a1a1a' : '#ffffff'
-  const dotColor = variant === 'mono' ? '#666666' : '#E8590C'
+  const dotColor = variant === 'mono' ? '#666666' : '#00897B'
   const rx = Math.round(size * 0.21)
 
   return (

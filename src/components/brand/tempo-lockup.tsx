@@ -15,7 +15,7 @@ const sizes = {
 
 export function TempoLockup({ variant = 'color', size = 'md', className = '' }: TempoLockupProps) {
   const textColor = variant === 'white' ? 'text-white' : 'text-[#1a1a1a]'
-  const dotColor = variant === 'mono' ? 'text-[#1a1a1a]/40' : 'text-[#E8590C]'
+  const dotColor = variant === 'mono' ? 'text-[#1a1a1a]/40' : 'text-[#00897B]'
 
   return (
     <span className={`font-bold tracking-[-0.02em] ${sizes[size]} ${textColor} ${className}`}>

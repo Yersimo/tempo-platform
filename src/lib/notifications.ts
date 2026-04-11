@@ -194,12 +194,12 @@ function buildEmailHTML(title: string, message: string, link?: string | null): s
 <body style="font-family:-apple-system,sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
+      <span style="color:#004D40;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
     </div>
     <div style="padding:32px">
       <h2 style="margin:0 0 12px;font-size:18px;font-weight:600;color:#111">${title}</h2>
       <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#555">${message}</p>
-      ${link ? `<a href="${link}" style="display:inline-block;padding:10px 24px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500">View in Tempo</a>` : ''}
+      ${link ? `<a href="${link}" style="display:inline-block;padding:10px 24px;background:#004D40;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500">View in Tempo</a>` : ''}
     </div>
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eee">
       <p style="margin:0;font-size:12px;color:#999">Sent by Tempo - Unified Workforce Platform</p>

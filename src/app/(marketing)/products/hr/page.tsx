@@ -85,7 +85,7 @@ export default function HRProductPage() {
                 borderRadius: 12,
                 padding: '12px 20px',
                 fontSize: 14,
-                color: '#fb923c',
+                color: '#00897B',
                 fontWeight: 500,
                 whiteSpace: 'nowrap',
               }}>

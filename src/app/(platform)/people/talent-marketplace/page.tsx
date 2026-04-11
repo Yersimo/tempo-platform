@@ -393,7 +393,7 @@ export default function TalentMarketplacePage() {
                 {recommended.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
-                      <Zap size={16} className="text-orange-500" />
+                      <Zap size={16} className="text-teal-700" />
                       Recommended for You
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -571,7 +571,7 @@ export default function TalentMarketplacePage() {
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <h3 className="text-sm font-semibold text-t1 flex items-center gap-2">
-                            <GitBranch size={16} className="text-orange-500" />
+                            <GitBranch size={16} className="text-teal-700" />
                             {path.name}
                           </h3>
                           {path.description && <p className="text-xs text-t3 mt-1">{path.description}</p>}
@@ -585,7 +585,7 @@ export default function TalentMarketplacePage() {
                         {steps.map((step, i) => (
                           <div key={i} className="flex items-start flex-shrink-0">
                             <div className="flex flex-col items-center">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-orange-500/15 text-orange-600 border-2 border-orange-500/30' : 'bg-canvas text-t2 border border-main'}`}>
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-teal-700/15 text-teal-700 border-2 border-teal-700/30' : 'bg-canvas text-t2 border border-main'}`}>
                                 {step.level}
                               </div>
                               <div className="mt-2 w-32 text-center">
@@ -624,7 +624,7 @@ export default function TalentMarketplacePage() {
                 <Card className="p-5">
                   <CardHeader className="px-0 pt-0">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Compass size={16} className="text-orange-500" />
+                      <Compass size={16} className="text-teal-700" />
                       Career Interests
                     </CardTitle>
                   </CardHeader>
@@ -694,14 +694,14 @@ export default function TalentMarketplacePage() {
                 <Card className="p-5">
                   <CardHeader className="px-0 pt-0">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Zap size={16} className="text-orange-500" />
+                      <Zap size={16} className="text-teal-700" />
                       Recommended Opportunities
                     </CardTitle>
                   </CardHeader>
                   <div className="space-y-3">
                     {recommended.slice(0, 5).map(({ gig, matchScore }) => (
                       <div key={gig.id} className="flex items-center gap-3 p-3 rounded-lg bg-canvas border border-main">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-700/10 flex items-center justify-center text-teal-700">
                           {GIG_TYPE_ICONS[gig.gig_type] || <Briefcase size={16} />}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -710,7 +710,7 @@ export default function TalentMarketplacePage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <p className="text-xs font-bold text-orange-500">{matchScore}%</p>
+                            <p className="text-xs font-bold text-teal-700">{matchScore}%</p>
                             <p className="text-[9px] text-t3">match</p>
                           </div>
                           <Button size="sm" variant="secondary" onClick={() => handleApply(gig)}>Apply</Button>
@@ -745,7 +745,7 @@ export default function TalentMarketplacePage() {
                         <div key={type.value} className="flex items-center gap-3">
                           <span className="text-xs text-t2 w-40">{type.label}</span>
                           <div className="flex-1 bg-canvas rounded-full h-2 border border-main overflow-hidden">
-                            <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            <div className="h-full bg-teal-700 rounded-full transition-all" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="text-xs text-t3 w-10 text-right">{count}</span>
                         </div>
@@ -887,7 +887,7 @@ export default function TalentMarketplacePage() {
                 return (
                   <div className="flex items-center gap-2">
                     <Progress value={match.score} max={100} className="flex-1 h-2" />
-                    <span className="text-sm font-bold text-orange-500">{match.score}%</span>
+                    <span className="text-sm font-bold text-teal-700">{match.score}%</span>
                   </div>
                 )
               })()}
@@ -922,21 +922,21 @@ function GigCard({
   try { requiredSkillIds = JSON.parse(gig.required_skills || '[]') } catch { /* empty */ }
 
   return (
-    <Card className="p-4 hover:border-orange-500/30 transition-colors group cursor-pointer" onClick={onView}>
+    <Card className="p-4 hover:border-teal-700/30 transition-colors group cursor-pointer" onClick={onView}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${gigType?.bg || 'bg-canvas'} ${gigType?.color || 'text-t2'}`}>
             {GIG_TYPE_ICONS[gig.gig_type] || <Briefcase size={16} />}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-t1 group-hover:text-orange-500 transition-colors">{gig.title}</h3>
+            <h3 className="text-sm font-semibold text-t1 group-hover:text-teal-700 transition-colors">{gig.title}</h3>
             <p className="text-[10px] text-t3">{gigType?.label}</p>
           </div>
         </div>
         {matchScore != null && matchScore > 0 && (
-          <div className="flex items-center gap-1 bg-orange-500/10 px-2 py-1 rounded-full">
-            <Star size={10} className="text-orange-500 fill-orange-500" />
-            <span className="text-[10px] font-bold text-orange-500">{matchScore}%</span>
+          <div className="flex items-center gap-1 bg-teal-700/10 px-2 py-1 rounded-full">
+            <Star size={10} className="text-teal-700 fill-teal-700" />
+            <span className="text-[10px] font-bold text-teal-700">{matchScore}%</span>
           </div>
         )}
       </div>
@@ -1029,7 +1029,7 @@ function PostGigForm({ departments, skills, skillName }: { departments: any[]; s
   return (
     <Card className="p-6 max-w-2xl">
       <h3 className="text-sm font-semibold text-t1 mb-4 flex items-center gap-2">
-        <Plus size={16} className="text-orange-500" />
+        <Plus size={16} className="text-teal-700" />
         Post a New Opportunity
       </h3>
       <div className="space-y-4">
@@ -1095,7 +1095,7 @@ function PostGigForm({ departments, skills, skillName }: { departments: any[]; s
                   key={sk.id}
                   onClick={() => setSelectedSkills(isSelected ? selectedSkills.filter((s) => s !== sk.id) : [...selectedSkills, sk.id])}
                   className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${
-                    isSelected ? 'bg-orange-500/15 border-orange-500/30 text-orange-600' : 'bg-canvas border-main text-t3 hover:border-orange-500/20'
+                    isSelected ? 'bg-teal-700/15 border-teal-700/30 text-teal-700' : 'bg-canvas border-main text-t3 hover:border-teal-700/20'
                   }`}
                 >
                   {sk.name}

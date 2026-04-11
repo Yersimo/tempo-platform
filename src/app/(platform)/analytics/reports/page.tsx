@@ -57,7 +57,7 @@ const OPERATORS = [
 function SimplePieChart({ data, height = 240 }: { data: { label: string; value: number }[]; height?: number }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (total === 0) return <div className="text-t3 text-sm text-center py-8">No data</div>
-  const colors = ['#ea580c', '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#64748b']
+  const colors = ['#004D40', '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#64748b']
   let cumulative = 0
   const slices = data.map((d, i) => {
     const startAngle = (cumulative / total) * 2 * Math.PI - Math.PI / 2
@@ -117,9 +117,9 @@ function SimpleLineChart({ data, height = 200 }: { data: { label: string; value:
           </g>
         )
       })}
-      <path d={pathD} fill="none" stroke="#ea580c" strokeWidth={2} />
+      <path d={pathD} fill="none" stroke="#004D40" strokeWidth={2} />
       {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={3} fill="#ea580c" />
+        <circle key={i} cx={p.x} cy={p.y} r={3} fill="#004D40" />
       ))}
       {data.map((d, i) => {
         const show = data.length <= 12 || i % Math.ceil(data.length / 12) === 0

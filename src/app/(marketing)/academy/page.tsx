@@ -21,7 +21,7 @@ function NavDropdown({ label, items }: { label: string; items: { href: string; t
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[300px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.1)] border border-black/[0.04] p-2 z-50">
           {items.map((item, i) => (
             <Link key={i} href={item.href} onClick={() => setOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-[#F5F5F5] transition group">
-              <p className="text-[14px] font-semibold text-[#1a1a1a] group-hover:text-[#E8590C] transition">{item.title}</p>
+              <p className="text-[14px] font-semibold text-[#1a1a1a] group-hover:text-[#004D40] transition">{item.title}</p>
               <p className="text-[12px] text-[#1a1a1a]/40 mt-0.5">{item.desc}</p>
             </Link>
           ))}
@@ -74,7 +74,7 @@ function AcademyNav() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-black/[0.03]">
         <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[64px]">
           <Link href="/academy" className="flex items-center gap-2">
-            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#E8590C]">.</span></span>
+            <span className="text-[22px] font-bold tracking-[-0.02em] text-[#1a1a1a]">tempo<span className="text-[#004D40]">.</span></span>
           </Link>
 
           {/* Desktop nav */}
@@ -189,7 +189,7 @@ export default function AcademyPage() {
                 <div className="text-[28px] font-bold text-[#1a1a1a] tracking-[-0.02em] mb-3">342 <span className="text-[14px] font-normal text-[#1a1a1a]/40">enrolled</span></div>
                 <div className="flex gap-2">
                   <div className="flex-1 bg-[#F5F5F5] rounded-lg p-2 text-center">
-                    <div className="text-[16px] font-bold text-[#E8590C]">91%</div>
+                    <div className="text-[16px] font-bold text-[#004D40]">91%</div>
                     <div className="text-[10px] text-[#1a1a1a]/40">completion</div>
                   </div>
                   <div className="flex-1 bg-[#F5F5F5] rounded-lg p-2 text-center">
@@ -204,7 +204,7 @@ export default function AcademyPage() {
               </div>
               {/* Floating certificate badge */}
               <div className="absolute -top-4 -right-4 sm:-right-8 bg-white rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] p-3 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#E8590C]/10 flex items-center justify-center"><Award size={16} className="text-[#E8590C]" /></div>
+                <div className="w-8 h-8 rounded-full bg-[#004D40]/10 flex items-center justify-center"><Award size={16} className="text-[#004D40]" /></div>
                 <div>
                   <p className="text-[11px] font-semibold text-[#1a1a1a]">Certificate Issued</p>
                   <p className="text-[10px] text-[#1a1a1a]/40">Amina K. — Financial Literacy</p>
@@ -253,7 +253,7 @@ export default function AcademyPage() {
             ].map((s, i) => (
               <R key={i} d={i * 80}>
                 <div>
-                  <div className="text-[56px] sm:text-[72px] font-bold tracking-[-0.04em] leading-none text-[#E8590C] mb-2">
+                  <div className="text-[56px] sm:text-[72px] font-bold tracking-[-0.04em] leading-none text-[#004D40] mb-2">
                     <Counter end={s.end} suffix={s.suffix} />
                   </div>
                   <p className="text-[16px] text-white/80 font-medium mb-1">{s.label}</p>
@@ -308,7 +308,7 @@ export default function AcademyPage() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <R>
               <div>
-                <div className="inline-flex items-center gap-2 bg-orange-50 text-[#E8590C] text-[12px] font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
+                <div className="inline-flex items-center gap-2 bg-teal-50 text-[#004D40] text-[12px] font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
                   For SME & Entrepreneurship Programmes
                 </div>
                 <h2 className="text-[32px] sm:text-[44px] font-bold text-[#1a1a1a] leading-[1.05] tracking-[-0.02em] mb-5">
@@ -320,7 +320,7 @@ export default function AcademyPage() {
                 <div className="space-y-3 mb-8">
                   {['Financial literacy & business growth', 'Verified certificates with QR codes', 'Peer learning communities', 'Offline-ready, mobile-first'].map((f, i) => (
                     <div key={i} className="flex items-center gap-3 text-[15px] text-[#1a1a1a]/70">
-                      <CheckCircle2 size={18} className="text-[#E8590C] shrink-0" /> {f}
+                      <CheckCircle2 size={18} className="text-[#004D40] shrink-0" /> {f}
                     </div>
                   ))}
                 </div>
@@ -370,7 +370,7 @@ export default function AcademyPage() {
             ].map((c, i) => (
               <R key={i} d={Math.min(i * 40, 280)}>
                 <div className="bg-white/[0.05] hover:bg-white/[0.08] rounded-2xl p-7 h-full transition-colors duration-300 border border-white/[0.06]">
-                  <c.icon size={22} className="text-[#E8590C] mb-4" />
+                  <c.icon size={22} className="text-[#004D40] mb-4" />
                   <h3 className="text-[16px] font-semibold text-white mb-2">{c.title}</h3>
                   <p className="text-[14px] text-white/35 leading-[1.6]">{c.text}</p>
                 </div>
@@ -390,9 +390,9 @@ export default function AcademyPage() {
           </R>
           <div className="grid md:grid-cols-3 gap-10">
             {[
-              { n: '01', title: 'Design', text: 'Pick a template or build from scratch. AI generates outlines and assessments in seconds.', color: 'text-[#E8590C]' },
-              { n: '02', title: 'Enrol', text: 'Send branded invitations. Participants join a clean, mobile-friendly portal. No app needed.', color: 'text-[#E8590C]' },
-              { n: '03', title: 'Measure', text: 'Track progress in real-time. Issue certificates. See the impact on real business outcomes.', color: 'text-[#E8590C]' },
+              { n: '01', title: 'Design', text: 'Pick a template or build from scratch. AI generates outlines and assessments in seconds.', color: 'text-[#004D40]' },
+              { n: '02', title: 'Enrol', text: 'Send branded invitations. Participants join a clean, mobile-friendly portal. No app needed.', color: 'text-[#004D40]' },
+              { n: '03', title: 'Measure', text: 'Track progress in real-time. Issue certificates. See the impact on real business outcomes.', color: 'text-[#004D40]' },
             ].map((s, i) => (
               <R key={i} d={i * 120}>
                 <div>
@@ -422,7 +422,7 @@ export default function AcademyPage() {
             ].map((t, i) => (
               <R key={i} d={i * 80}>
                 <div className="bg-white rounded-2xl p-8 h-full flex flex-col border border-black/[0.04]">
-                  <div className="flex gap-0.5 mb-5">{[1,2,3,4,5].map(j => <Star key={j} size={14} className="fill-[#E8590C] text-[#E8590C]" />)}</div>
+                  <div className="flex gap-0.5 mb-5">{[1,2,3,4,5].map(j => <Star key={j} size={14} className="fill-[#004D40] text-[#004D40]" />)}</div>
                   <p className="text-[17px] text-[#1a1a1a]/80 leading-[1.55] flex-1 mb-6">&ldquo;{t.q}&rdquo;</p>
                   <div className="border-t border-black/[0.04] pt-4">
                     <p className="text-[14px] font-semibold text-[#1a1a1a]">{t.a}</p>
@@ -457,8 +457,8 @@ export default function AcademyPage() {
                     ['From free to enterprise scale', 'Start with 25 participants free. Scale to thousands.'],
                   ].map(([title, text], i) => (
                     <div key={i} className="flex gap-4">
-                      <div className="w-8 h-8 rounded-full bg-[#E8590C]/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <CheckCircle2 size={16} className="text-[#E8590C]" />
+                      <div className="w-8 h-8 rounded-full bg-[#004D40]/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <CheckCircle2 size={16} className="text-[#004D40]" />
                       </div>
                       <div>
                         <h4 className="text-[15px] font-semibold text-[#1a1a1a] mb-0.5">{title}</h4>
@@ -503,7 +503,7 @@ export default function AcademyPage() {
       {/* ═══ Footer — minimal ═══ */}
       <footer className="bg-[#1a1a1a] py-8">
         <div className="max-w-[1200px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-white/20">
-          <span className="text-[16px] font-bold text-white/40">tempo<span className="text-[#E8590C]">.</span></span>
+          <span className="text-[16px] font-bold text-white/40">tempo<span className="text-[#004D40]">.</span></span>
           <p>&copy; {new Date().getFullYear()} Tempo. Building capable businesses across Africa and beyond.</p>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-white/50 transition">Privacy</Link>

@@ -35,7 +35,7 @@ const TRIGGER_TYPES = [
   { value: 'department_changed', label: 'Department Changed', icon: Building2, color: 'text-purple-400' },
   { value: 'review_completed', label: 'Review Completed', icon: Star, color: 'text-amber-400' },
   { value: 'leave_approved', label: 'Leave Approved', icon: Calendar, color: 'text-cyan-400' },
-  { value: 'expense_submitted', label: 'Expense Submitted', icon: FileText, color: 'text-orange-400' },
+  { value: 'expense_submitted', label: 'Expense Submitted', icon: FileText, color: 'text-teal-400' },
   { value: 'payroll_completed', label: 'Payroll Completed', icon: DollarSign, color: 'text-green-400' },
   { value: 'custom', label: 'Custom Trigger', icon: Settings, color: 'text-slate-400' },
   { value: 'scheduled', label: 'Scheduled (Cron/Date)', icon: Calendar, color: 'text-indigo-400' },
@@ -72,7 +72,7 @@ const NODE_PALETTE = [
   { type: 'action', label: 'Action', icon: Square, bgColor: 'bg-blue-500/20', borderColor: 'border-blue-500/40', textColor: 'text-blue-400', shape: 'rect' },
   { type: 'condition', label: 'Condition', icon: Diamond, bgColor: 'bg-amber-500/20', borderColor: 'border-amber-500/40', textColor: 'text-amber-400', shape: 'diamond' },
   { type: 'delay', label: 'Delay', icon: Timer, bgColor: 'bg-gray-500/20', borderColor: 'border-gray-500/40', textColor: 'text-gray-400', shape: 'rect' },
-  { type: 'approval', label: 'Approval', icon: Shield, bgColor: 'bg-orange-500/20', borderColor: 'border-orange-500/40', textColor: 'text-orange-400', shape: 'rect' },
+  { type: 'approval', label: 'Approval', icon: Shield, bgColor: 'bg-teal-700/20', borderColor: 'border-teal-700/40', textColor: 'text-teal-400', shape: 'rect' },
   { type: 'end', label: 'End', icon: Hexagon, bgColor: 'bg-red-500/20', borderColor: 'border-red-500/40', textColor: 'text-red-400', shape: 'circle' },
 ] as const
 

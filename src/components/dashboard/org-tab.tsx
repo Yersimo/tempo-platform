@@ -243,7 +243,7 @@ export function OrgTab() {
 
   // Department distribution for donut chart
   const deptDistribution = useMemo(() => {
-    const colors = ['#ea580c', '#94a3b8', '#64748b', '#a1a1aa', '#78716c', '#71717a', '#6b7280', '#9ca3af']
+    const colors = ['#004D40', '#94a3b8', '#64748b', '#a1a1aa', '#78716c', '#71717a', '#6b7280', '#9ca3af']
     const counts: Record<string, number> = {}
     employees.forEach(emp => {
       const deptId = emp.department_id

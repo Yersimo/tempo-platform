@@ -91,7 +91,7 @@ export interface MarketplaceStats {
 // ---- Constants ----
 
 export const GIG_TYPES = [
-  { value: 'stretch_assignment', label: 'Stretch Assignment', icon: 'target', color: 'text-orange-400', bg: 'bg-orange-500/10' },
+  { value: 'stretch_assignment', label: 'Stretch Assignment', icon: 'target', color: 'text-teal-600', bg: 'bg-teal-700/10' },
   { value: 'project', label: 'Cross-Functional Project', icon: 'layers', color: 'text-blue-400', bg: 'bg-blue-500/10' },
   { value: 'mentoring', label: 'Mentoring', icon: 'users', color: 'text-purple-400', bg: 'bg-purple-500/10' },
   { value: 'job_rotation', label: 'Job Rotation', icon: 'refresh', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },

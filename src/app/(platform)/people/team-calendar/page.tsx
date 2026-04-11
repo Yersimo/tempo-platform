@@ -54,7 +54,7 @@ type CalendarViewMode = 'month' | 'week'
 const LEAVE_COLORS: Record<string, { bg: string; border: string; text: string; label: string; icon: typeof Sun }> = {
   annual:        { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-700', label: 'Annual/Vacation', icon: Sun },
   sick:          { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-700', label: 'Sick', icon: Thermometer },
-  personal:      { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-700', label: 'Personal', icon: Coffee },
+  personal:      { bg: 'bg-teal-100', border: 'border-teal-300', text: 'text-teal-800', label: 'Personal', icon: Coffee },
   maternity:     { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-700', label: 'Maternity', icon: Baby },
   paternity:     { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-700', label: 'Paternity', icon: Baby },
   unpaid:        { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-700', label: 'Unpaid', icon: Clock },

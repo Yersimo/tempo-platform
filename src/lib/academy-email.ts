@@ -327,7 +327,7 @@ export async function sendAssignmentDueReminder(
     const body = `
       <p>Hi ${p.fullName},</p>
       <p>This is a reminder that the following assignment is due in <strong>48 hours</strong>.</p>
-      <div style="margin:16px 0;padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px">
+      <div style="margin:16px 0;padding:16px;background:#E0F2F1;border:1px solid #80CBC4;border-radius:8px">
         <p style="margin:0 0 8px;font-size:16px;font-weight:600;color:#111">${assignment.title}</p>
         ${assignment.description ? `<p style="margin:0 0 8px;font-size:13px;color:#666">${assignment.description}</p>` : ''}
         <p style="margin:0;font-size:13px;color:#555">

@@ -172,7 +172,7 @@ export async function sendDigestEmail(
             ${item.timestamp ? `<p style="margin:2px 0 0;font-size:11px;color:#bbb">${item.timestamp}</p>` : ''}
           </td>
           <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:right;vertical-align:middle">
-            ${item.link ? `<a href="${APP_URL}${item.link}" style="font-size:12px;color:#ea580c;text-decoration:none;font-weight:500">View</a>` : ''}
+            ${item.link ? `<a href="${APP_URL}${item.link}" style="font-size:12px;color:#004D40;text-decoration:none;font-weight:500">View</a>` : ''}
           </td>
         </tr>
       `).join('')
@@ -200,7 +200,7 @@ export async function sendDigestEmail(
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
+      <span style="color:#004D40;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
       <span style="color:#666;font-size:13px;float:right;line-height:24px">Daily Digest</span>
     </div>
     <div style="padding:32px">
@@ -208,7 +208,7 @@ export async function sendDigestEmail(
       <p style="margin:0 0 24px;font-size:13px;color:#888">${today} &middot; ${items.length} notification${items.length !== 1 ? 's' : ''}</p>
       ${sections}
       <div style="text-align:center;margin-top:24px">
-        <a href="${APP_URL}/notifications" style="display:inline-block;padding:12px 28px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">View All Notifications</a>
+        <a href="${APP_URL}/notifications" style="display:inline-block;padding:12px 28px;background:#004D40;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">View All Notifications</a>
       </div>
     </div>
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eee">
@@ -254,7 +254,7 @@ function wrapTemplate(content: string): string {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
+      <span style="color:#004D40;font-size:20px;font-weight:500;letter-spacing:-0.035em">tempo</span>
     </div>
     ${content}
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eee">
@@ -267,7 +267,7 @@ function wrapTemplate(content: string): string {
 }
 
 function buttonStyle(): string {
-  return 'display:inline-block;padding:12px 28px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600'
+  return 'display:inline-block;padding:12px 28px;background:#004D40;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600'
 }
 
 // ---------------------------------------------------------------------------

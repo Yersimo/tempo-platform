@@ -133,17 +133,17 @@ export default function JourneysPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 12,
-                  background: '#fff7ed',
+                  background: '#E0F2F1',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 700, color: '#ea580c', flexShrink: 0,
+                  fontSize: 16, fontWeight: 700, color: '#004D40', flexShrink: 0,
                 }}>{idx + 1}</div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--black)' }}>{j.title}</h3>
                     {j.badge && (
                       <span style={{
-                        fontSize: 11, fontWeight: 600, color: '#ea580c',
-                        background: '#fff7ed', padding: '3px 10px',
+                        fontSize: 11, fontWeight: 600, color: '#004D40',
+                        background: '#E0F2F1', padding: '3px 10px',
                         borderRadius: 100, textTransform: 'uppercase', letterSpacing: '0.05em',
                       }}>{j.badge}</span>
                     )}
@@ -157,9 +157,9 @@ export default function JourneysPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                       <div style={{
                         width: 24, height: 24, borderRadius: 6,
-                        background: '#fff7ed', border: '1px solid rgba(234,88,12,0.15)',
+                        background: '#E0F2F1', border: '1px solid rgba(0,77,64,0.15)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 600, color: '#ea580c',
+                        fontSize: 11, fontWeight: 600, color: '#004D40',
                       }}>{si + 1}</div>
                       {si < j.steps.length - 1 && (
                         <div style={{ width: 1, height: 16, background: 'rgba(234,88,12,0.12)' }} />

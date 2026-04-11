@@ -29,7 +29,7 @@ const COLOR_MAP: Record<string, { bg: string; border: string; text: string; acce
   red:    { bg: 'bg-white',   border: 'border-red-200',     text: 'text-red-700',     accent: 'text-red-500',     headerBg: 'bg-red-50' },
   blue:   { bg: 'bg-white',   border: 'border-blue-200',    text: 'text-blue-700',    accent: 'text-blue-500',    headerBg: 'bg-blue-50' },
   amber:  { bg: 'bg-white',   border: 'border-amber-200',   text: 'text-amber-700',   accent: 'text-amber-500',   headerBg: 'bg-amber-50' },
-  orange: { bg: 'bg-white',   border: 'border-orange-200',  text: 'text-orange-700',  accent: 'text-orange-500',  headerBg: 'bg-orange-50' },
+  orange: { bg: 'bg-white',   border: 'border-teal-200',  text: 'text-teal-800',  accent: 'text-teal-700',  headerBg: 'bg-teal-50' },
   purple: { bg: 'bg-white',   border: 'border-purple-200',  text: 'text-purple-700',  accent: 'text-purple-500',  headerBg: 'bg-purple-50' },
 }
 
@@ -171,7 +171,7 @@ function CascadePanel({ cascade, index }: { cascade: CascadeInstance; index: num
             cascade.color === 'red' ? 'bg-red-400' :
             cascade.color === 'blue' ? 'bg-blue-400' :
             cascade.color === 'amber' ? 'bg-amber-400' :
-            cascade.color === 'orange' ? 'bg-orange-400' :
+            cascade.color === 'orange' ? 'bg-teal-600' :
             cascade.color === 'purple' ? 'bg-purple-400' :
             'bg-emerald-400'
           }`}

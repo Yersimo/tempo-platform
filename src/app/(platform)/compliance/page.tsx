@@ -42,7 +42,7 @@ const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'error' | 'default
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-  high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  high: 'bg-teal-700/10 text-teal-400 border-teal-700/20',
   medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 }
@@ -778,10 +778,10 @@ export default function CompliancePage() {
         <div className="space-y-4">
           {/* Expiring documents alert */}
           {expiringDocs.length > 0 && (
-            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3">
+            <div className="rounded-xl border border-teal-700/20 bg-teal-700/5 p-3">
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-orange-400" />
-                <span className="text-xs font-medium text-orange-400">
+                <Clock size={16} className="text-teal-400" />
+                <span className="text-xs font-medium text-teal-400">
                   {expiringDocs.length} document{expiringDocs.length !== 1 ? 's' : ''} expiring within 30 days
                 </span>
               </div>
@@ -819,7 +819,7 @@ export default function CompliancePage() {
                         <td className="px-4 py-3 text-t2">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
                           {doc.expires_at ? (
-                            <span className={isExpiringSoon ? 'text-orange-400 font-medium' : 'text-t2'}>{doc.expires_at}</span>
+                            <span className={isExpiringSoon ? 'text-teal-400 font-medium' : 'text-t2'}>{doc.expires_at}</span>
                           ) : (
                             <span className="text-t3">No expiry</span>
                           )}
@@ -914,7 +914,7 @@ export default function CompliancePage() {
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                       {alert.severity === 'critical' ? <XCircle size={16} className="text-red-400" /> :
-                       alert.severity === 'high' ? <AlertTriangle size={16} className="text-orange-400" /> :
+                       alert.severity === 'high' ? <AlertTriangle size={16} className="text-teal-400" /> :
                        alert.severity === 'medium' ? <Clock size={16} className="text-yellow-400" /> :
                        <Bell size={16} className="text-blue-400" />}
                     </div>

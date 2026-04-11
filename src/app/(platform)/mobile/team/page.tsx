@@ -270,7 +270,7 @@ export default function MobileTeamPage() {
                   className={cn(
                     'text-center text-[11px] py-1.5 rounded-lg relative',
                     d.day === 0 && 'invisible',
-                    d.isToday && 'bg-orange-500/15 text-orange-400 font-bold',
+                    d.isToday && 'bg-teal-700/15 text-teal-400 font-bold',
                     !d.isToday && d.hasLeave && 'text-amber-400',
                     !d.isToday && !d.hasLeave && 'text-white/30',
                   )}
@@ -297,7 +297,7 @@ export default function MobileTeamPage() {
               >
                 <div className={cn(
                   'flex items-center gap-3 p-4 rounded-2xl bg-[#1a1d27] border transition-colors',
-                  selectedMember === member.id ? 'border-orange-500/20' : 'border-white/[0.04]'
+                  selectedMember === member.id ? 'border-teal-700/20' : 'border-white/[0.04]'
                 )}>
                   <Avatar name={member.name} src={member.avatarUrl} size="md" />
                   <div className="flex-1 min-w-0">

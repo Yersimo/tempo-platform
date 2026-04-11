@@ -1283,7 +1283,7 @@ function MyProgressTab({ data }: { data: AcademyData }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center !p-4">
-          <Flame size={20} className="mx-auto text-orange-500 mb-1" />
+          <Flame size={20} className="mx-auto text-teal-700 mb-1" />
           <div className="text-lg font-bold text-t1">{streakDays}</div>
           <div className="text-[0.6rem] text-t3 uppercase tracking-wide">Day Streak</div>
         </Card>
@@ -1351,8 +1351,8 @@ function MyProgressTab({ data }: { data: AcademyData }) {
       {/* Learning Streak */}
       <Card>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-            <Flame size={18} className="text-orange-500" />
+          <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+            <Flame size={18} className="text-teal-700" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-t1">Learning Streak</h3>
@@ -1365,7 +1365,7 @@ function MyProgressTab({ data }: { data: AcademyData }) {
               key={i}
               className={cn(
                 'flex-1 h-6 rounded-md',
-                i < streakDays ? 'bg-orange-400' : i < 10 ? 'bg-orange-200' : 'bg-gray-100',
+                i < streakDays ? 'bg-teal-400' : i < 10 ? 'bg-teal-200' : 'bg-gray-100',
               )}
               title={`Day ${i + 1}`}
             />

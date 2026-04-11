@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px">
-      <span style="color:#ea580c;font-size:20px;font-weight:700;letter-spacing:-0.02em">tempo<span style="color:#ea580c">.</span></span>
+      <span style="color:#004D40;font-size:20px;font-weight:700;letter-spacing:-0.02em">tempo<span style="color:#004D40">.</span></span>
     </div>
     <div style="padding:32px">
       <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#111">Thank you for your interest, ${name}!</h2>
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         <li>Custom ROI analysis for your organization</li>
       </ul>
       <p style="margin:0 0 20px;font-size:14px;color:#555">In the meantime, feel free to explore our platform:</p>
-      <a href="https://theworktempo.com" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">Visit Tempo</a>
+      <a href="https://theworktempo.com" style="display:inline-block;background:#004D40;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600">Visit Tempo</a>
       <hr style="margin:30px 0;border:none;border-top:1px solid #eee">
       <p style="color:#999;font-size:12px;margin:0">This email was sent by Tempo (theworktempo.com). If you didn't request a demo, please ignore this email.</p>
     </div>
@@ -84,14 +84,14 @@ export async function POST(req: NextRequest) {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;margin:0;padding:40px 20px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
     <div style="background:#0f1117;padding:24px 32px;display:flex;justify-content:space-between;align-items:center">
-      <span style="color:#ea580c;font-size:20px;font-weight:700;letter-spacing:-0.02em">tempo<span style="color:#ea580c">.</span></span>
+      <span style="color:#004D40;font-size:20px;font-weight:700;letter-spacing:-0.02em">tempo<span style="color:#004D40">.</span></span>
       <span style="color:rgba(255,255,255,.3);font-size:12px">New Demo Request</span>
     </div>
     <div style="padding:32px">
       <h2 style="margin:0 0 20px;font-size:18px;font-weight:600;color:#111">New Demo Request</h2>
       <table style="width:100%;border-collapse:collapse;font-size:14px">
         <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0;width:140px">Name</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0">${name}</td></tr>
-        <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Email</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0"><a href="mailto:${body.email}" style="color:#ea580c">${body.email}</a></td></tr>
+        <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Email</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0"><a href="mailto:${body.email}" style="color:#004D40">${body.email}</a></td></tr>
         <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Company</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0">${companyName}</td></tr>
         <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Job Title</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0">${body.jobTitle || 'Not specified'}</td></tr>
         <tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Company Size</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0">${body.companySize}</td></tr>
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
         ${body.message ? `<tr><td style="padding:8px 12px;color:#666;font-weight:500;border-bottom:1px solid #f0f0f0">Message</td><td style="padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0">${body.message}</td></tr>` : ''}
       </table>
       <div style="margin-top:24px">
-        <a href="mailto:${body.email}" style="display:inline-block;background:#ea580c;color:#fff;padding:10px 20px;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600">Reply to ${name}</a>
+        <a href="mailto:${body.email}" style="display:inline-block;background:#004D40;color:#fff;padding:10px 20px;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600">Reply to ${name}</a>
       </div>
     </div>
   </div>
