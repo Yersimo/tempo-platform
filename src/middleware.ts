@@ -77,7 +77,7 @@ async function checkRateLimit(
 }
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/demo-request', '/contact', '/trial', '/pricing', '/products/hr', '/products/payroll', '/products/finance', '/products/ai', '/products/operations', '/products/it', '/products/platform', '/why-tempo', '/customer-journeys', '/api/demo-request', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events', '/api/academy/auth', '/academy/login', '/verify', '/solutions', '/api/academy/certificate', '/about', '/careers', '/social-impact', '/newsroom']
+const PUBLIC_ROUTES = ['/login', '/signup', '/demo', '/demo-request', '/contact', '/trial', '/pricing', '/learn', '/products/hr', '/products/payroll', '/products/finance', '/products/ai', '/products/operations', '/products/it', '/products/platform', '/why-tempo', '/customer-journeys', '/api/demo-request', '/api/auth', '/api/health', '/api/docs', '/api/billing/webhook', '/privacy', '/terms', '/cookies', '/gdpr', '/security', '/reset-password', '/invite', '/api/employees/accept-invite', '/api/integrations/slack/events', '/api/academy/auth', '/academy/login', '/verify', '/solutions', '/api/academy/certificate', '/about', '/careers', '/social-impact', '/newsroom']
 
 // ─── Security Headers ────────────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
@@ -178,8 +178,8 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
     })
   }
 
-  // Allow marketing landing page
-  if (pathname === '/') {
+  // Allow marketing landing page and /learn
+  if (pathname === '/' || pathname === '/learn') {
     return NextResponse.next()
   }
 

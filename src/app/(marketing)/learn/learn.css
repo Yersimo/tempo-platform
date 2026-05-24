@@ -1,0 +1,257 @@
+/* ═══════════════════════════════════════════════════════════════════
+ * TEMPO · LEARN MORE — restrained, type-led, single column
+ * Designed in the LoveFrom dialect: massive type, generous space,
+ * one idea per moment. Warm-white canvas. Navy as the only voice.
+ * Brass appears once, as a quiet emphasis.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.learn {
+  --learn-canvas: #FCFBF7;
+  --learn-ink: #142C3D;
+  --learn-ink-soft: rgba(20, 44, 61, 0.62);
+  --learn-rule: rgba(20, 44, 61, 0.18);
+  --learn-accent: #A77A32;
+
+  min-height: 100vh;
+  background: var(--learn-canvas);
+  color: var(--learn-ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Fixed chrome — tempo wordmark + back ─────────────────────────── */
+.learn-logo {
+  position: fixed;
+  top: clamp(24px, 3vw, 40px);
+  left: clamp(24px, 4vw, 48px);
+  z-index: 30;
+  color: var(--learn-ink);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.learn-logo .tempo-beat {
+  color: #285B7A;
+  margin-left: 1px;
+}
+
+.learn-back {
+  position: fixed;
+  top: clamp(24px, 3vw, 40px);
+  right: clamp(24px, 4vw, 48px);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--learn-ink-soft);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: color 0.24s ease, gap 0.24s ease;
+}
+.learn-back:hover {
+  color: var(--learn-ink);
+  gap: 10px;
+}
+
+/* ── Section — full viewport, single-column, vertically centered ── */
+.learn-section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(80px, 12vh, 160px) clamp(28px, 8vw, 120px);
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.learn-section + .learn-section {
+  border-top: 1px solid var(--learn-rule);
+}
+
+/* ── Eyebrow — tiny, restrained, with thin rule ───────────────────── */
+.learn-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--learn-ink-soft);
+  margin: 0 0 clamp(40px, 6vh, 72px) 0;
+}
+
+.learn-eyebrow-rule {
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  background: var(--learn-ink-soft);
+}
+
+/* ── Display headline — the hero size ─────────────────────────────── */
+.learn-display {
+  font-size: clamp(56px, 9.5vw, 156px);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  font-weight: 300;
+  color: var(--learn-ink);
+  margin: 0;
+  max-width: 1100px;
+  text-wrap: balance;
+}
+
+.learn-display-quiet {
+  font-weight: 300;
+}
+
+.learn-display em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--learn-accent);
+}
+
+/* ── Standard headline — large but not display ────────────────────── */
+.learn-h {
+  font-size: clamp(40px, 5.6vw, 88px);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+  font-weight: 400;
+  color: var(--learn-ink);
+  margin: 0;
+  max-width: 960px;
+  text-wrap: balance;
+}
+
+.learn-h-accent {
+  color: var(--learn-accent);
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* ── Hero lede — sits beneath the display ─────────────────────────── */
+.learn-hero-lede {
+  margin: clamp(40px, 6vh, 72px) 0 0;
+  max-width: 560px;
+  font-size: clamp(17px, 1.35vw, 21px);
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--learn-ink-soft);
+}
+
+/* ── Single-line body — appears once per section, restrained ──────── */
+.learn-line {
+  margin: clamp(32px, 5vh, 56px) 0 0;
+  max-width: 620px;
+  font-size: clamp(17px, 1.3vw, 21px);
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--learn-ink-soft);
+}
+
+/* ── Flow — sequential lines on the premise section ───────────────── */
+.learn-flow {
+  margin: clamp(40px, 6vh, 72px) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.6vh, 22px);
+  max-width: 720px;
+}
+
+.learn-flow p {
+  margin: 0;
+  font-size: clamp(20px, 1.7vw, 28px);
+  line-height: 1.42;
+  font-weight: 400;
+  color: var(--learn-ink-soft);
+  letter-spacing: -0.005em;
+}
+
+/* ── Scroll cue — appears once, beneath the hero ──────────────────── */
+.learn-scroll-cue {
+  position: absolute;
+  bottom: clamp(40px, 6vh, 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 56px;
+  overflow: hidden;
+}
+
+.learn-scroll-cue-line {
+  display: block;
+  width: 1px;
+  height: 56px;
+  background: linear-gradient(to bottom, transparent, var(--learn-ink-soft), transparent);
+  animation: learn-scroll-cue-pulse 2.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes learn-scroll-cue-pulse {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  30%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+/* ── Close section — has the final CTA ────────────────────────────── */
+.learn-close {
+  align-items: flex-start;
+}
+
+.learn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: clamp(40px, 6vh, 72px) 0 0;
+  padding: 20px 36px 20px 42px;
+  border-radius: 999px;
+  background: var(--learn-ink);
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  box-shadow: 0 22px 60px rgba(20, 44, 61, 0.28);
+  transition:
+    transform 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+    gap 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.learn-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 32px 72px rgba(20, 44, 61, 0.36);
+  gap: 18px;
+}
+
+.learn-cta-arrow {
+  display: inline-block;
+  transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.learn-cta:hover .learn-cta-arrow {
+  transform: translateX(4px);
+}
+
+.learn-credit {
+  margin: clamp(120px, 18vh, 200px) 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--learn-ink-soft);
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .learn-scroll-cue-line { animation: none; opacity: 0.4; }
+  .learn-back,
+  .learn-cta,
+  .learn-cta-arrow {
+    transition: none;
+  }
+}

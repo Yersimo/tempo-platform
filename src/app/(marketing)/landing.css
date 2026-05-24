@@ -1654,36 +1654,103 @@ footer { background: var(--bg); border-top: 1px solid var(--border); padding: 52
   justify-content: center;
 }
 
-.splash-cta {
-  display: inline-flex;
+/* ── Splash CTA — morphing pill ─────────────────────────────────────
+ * Default: narrow pill, label "Start here".
+ * Hover: pill expands, label fades, two actions reveal with a thin
+ * divider. 600ms width expansion (calm easing), staggered opacity. */
+.splash-cta-group {
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 220px;
-  min-height: 64px;
-  padding: 18px 48px;
-  border-radius: 999px;
+  height: 64px;
+  width: 240px;
   background: white;
-  color: #142C3D;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  text-decoration: none;
+  border-radius: 999px;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 24px 60px rgba(0, 0, 0, 0.28);
-  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    width 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  cursor: pointer;
 }
 
-.splash-cta:hover {
-  transform: translateY(-2px);
+.splash-cta-group:hover {
+  width: 440px;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 32px 72px rgba(0, 0, 0, 0.36);
 }
 
-.splash-cta:active {
-  transform: translateY(0);
+.splash-cta-default {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #142C3D;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.splash-cta-group:hover .splash-cta-default {
+  opacity: 0;
+}
+
+.splash-cta-action {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #142C3D;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.18s,
+    background 0.18s ease;
+}
+
+.splash-cta-group:hover .splash-cta-action {
+  opacity: 1;
+}
+
+.splash-cta-action:hover {
+  background: rgba(20, 44, 61, 0.05);
+}
+
+.splash-cta-action-left  { border-radius: 999px 0 0 999px; }
+.splash-cta-action-right { border-radius: 0 999px 999px 0; }
+
+.splash-cta-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(20, 44, 61, 0.14);
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.22s;
+  flex-shrink: 0;
+}
+
+.splash-cta-group:hover .splash-cta-divider {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-cta-group,
+  .splash-cta-default,
+  .splash-cta-action,
+  .splash-cta-divider {
+    transition: none;
+  }
 }
 
 
