@@ -1165,8 +1165,49 @@ export default function ExpensePage() {
   return (
     <>
       <Header title={t('title')} subtitle={t('subtitle')}
-        actions={<div className="flex gap-2">{pendingExpenseReports.length > 0 && <Button size="sm" variant="secondary" onClick={() => setShowBulkExpenseModal(true)}><CheckCircle size={14} /> Bulk Approve</Button>}<Button size="sm" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button></div>}
+        actions={<div className="flex gap-2">
+          {pendingExpenseReports.length > 0 && <Button size="sm" variant="secondary" onClick={() => setShowBulkExpenseModal(true)}><CheckCircle size={14} /> Bulk Approve</Button>}
+          <Button size="sm" variant="secondary" onClick={openNewReport}><Plus size={14} /> {t('newReport')}</Button>
+          <a href="/expenses/snap" className="inline-flex items-center gap-1.5 px-3 h-8 rounded-[7px] bg-tempo-600 hover:bg-tempo-800 text-white text-sm font-medium transition-colors shadow-sm shadow-tempo-900/20">
+            <Camera size={14} /> Snap a receipt
+          </a>
+        </div>}
       />
+
+      {/* Snap hero — the 8-second flow */}
+      <a
+        href="/expenses/snap"
+        className="group block mb-6 mx-6 mt-4 rounded-2xl overflow-hidden relative"
+        style={{
+          background: 'linear-gradient(135deg, #142C3D 0%, #1B3D52 60%, #285B7A 100%)',
+        }}
+      >
+        <div className="absolute inset-0 opacity-20" style={{
+          background: 'radial-gradient(ellipse at 80% 20%, rgba(167, 122, 50, 0.4), transparent 50%)',
+        }} />
+        <div className="relative flex items-center justify-between gap-6 px-7 py-5">
+          <div className="flex items-center gap-5">
+            <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center shadow-lg flex-shrink-0">
+              <Camera size={20} className="text-tempo-900" />
+            </div>
+            <div className="text-white">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60 mb-1">
+                New · AI-native
+              </div>
+              <div className="text-lg font-semibold leading-tight">
+                Snap a receipt. File an expense in 8 seconds.
+              </div>
+              <div className="text-[13px] text-white/65 mt-0.5">
+                Tempo reads the receipt, checks your calendar, infers the cost center, routes to your approver.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-white text-sm font-medium whitespace-nowrap pr-2 transition-transform group-hover:translate-x-1">
+            Try it
+            <span aria-hidden="true">→</span>
+          </div>
+        </div>
+      </a>
 
       {/* Stats */}
       <ExpandableStats>
