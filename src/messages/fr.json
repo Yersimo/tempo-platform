@@ -342,7 +342,12 @@
     "categoryIT": "IT",
     "widgetsEnabled": "{count} widgets activés",
     "resetLayout": "Réinitialiser",
-    "saveLayout": "Enregistrer la Mise en Page"
+    "saveLayout": "Enregistrer la Mise en Page",
+    "leaveBalance": "Solde de conges",
+    "annualLeaveRemaining": "Conges annuels restants",
+    "activeGoalsLabel": "Objectifs actifs",
+    "needAttention": "{count} necessitent une attention",
+    "allOnTrack": "Tout est sur la bonne voie"
   },
   "people": {
     "title": "Personnel",
@@ -2868,7 +2873,11 @@
     "documents": "Documents",
     "paystubs": "Bulletins de paie",
     "leaveRequests": "Demandes de conge",
-    "expenses": "Depenses"
+    "expenses": "Depenses",
+    "goToSettings": "Parametres",
+    "goToFinance": "Finance",
+    "goToWorkflows": "Studio de workflows",
+    "goToStrategy": "Strategie"
   },
   "notifications": {
     "title": "Notifications",

@@ -72,7 +72,7 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
   return (
     <div className="mb-6">
       {!hideBreadcrumb && <Breadcrumb />}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-border bg-card/80 px-4 py-3 shadow-sm backdrop-blur">
         <div className="min-w-0 flex-shrink-0">
           <h1 className="tempo-page-title">{title}</h1>
           {subtitle && <p className="tempo-page-subtitle mt-0.5">{subtitle}</p>}
@@ -81,7 +81,8 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
           {actions}
           <button
             onClick={openCommandPalette}
-            className="hidden md:flex items-center gap-2 bg-white dark:bg-gray-800 border border-border rounded-lg px-3 py-1.5 text-xs text-t3 w-64 hover:border-tempo-300 hover:shadow-sm transition-all cursor-pointer"
+            aria-label="Open command palette"
+            className="hidden md:flex items-center gap-2 bg-snow border border-border rounded-[var(--radius-button)] px-3 py-1.5 text-xs text-t3 w-64 hover:border-tempo-300 hover:shadow-sm transition-all cursor-pointer"
           >
             <Search size={14} />
             <span>Search anything...</span>
@@ -93,13 +94,15 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
+              aria-label="Open user menu"
+              aria-expanded={showMenu}
               className={cn(
                 'flex items-center gap-2 rounded-full pl-1 pr-2 py-1 transition-all',
-                'hover:bg-gray-100 dark:hover:bg-gray-800',
-                showMenu && 'bg-gray-100 dark:bg-gray-800'
+                'hover:bg-fog',
+                showMenu && 'bg-fog'
               )}
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-tempo-500 to-tempo-700 flex items-center justify-center text-white text-xs font-semibold shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-tempo-600 flex items-center justify-center text-white text-xs font-semibold shadow-sm">
                 {initials}
               </div>
               <span className="hidden md:block text-sm font-medium text-t1 max-w-[120px] truncate">{displayName.split(' ')[0]}</span>
@@ -107,11 +110,11 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 border border-border rounded-xl shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-[var(--radius-card)] shadow-[var(--shadow-popover)] z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                 {/* User info header */}
-                <div className="px-4 py-3 border-b border-divider bg-gray-50/50 dark:bg-gray-800/50">
+                <div className="px-4 py-3 border-b border-divider bg-snow/70">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-tempo-500 to-tempo-700 flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-tempo-600 flex items-center justify-center text-white text-sm font-semibold">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -131,7 +134,7 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
                 <div className="py-1.5">
                   <button
                     onClick={() => { setShowMenu(false); router.push('/settings') }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-t2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-t2 hover:bg-fog transition-colors"
                   >
                     <Settings size={15} className="text-t3" />
                     Settings
@@ -139,8 +142,8 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
                   <button
                     onClick={() => setShowSwitcher(!showSwitcher)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-4 py-2 text-sm text-t2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors',
-                      showSwitcher && 'bg-gray-50 dark:bg-gray-800'
+                      'w-full flex items-center gap-3 px-4 py-2 text-sm text-t2 hover:bg-fog transition-colors',
+                      showSwitcher && 'bg-fog'
                     )}
                   >
                     <ArrowLeftRight size={15} className="text-t3" />
@@ -155,7 +158,7 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
                     {[{ label: 'Ecobank', users: ecobankUsers }, { label: 'Kash', users: kashUsers }].map(group => (
                       group.users.length > 0 && (
                         <div key={group.label}>
-                          <div className="px-4 py-1.5 text-[0.6rem] font-bold text-t3 uppercase tracking-widest bg-gray-50/80 dark:bg-gray-800/80">{group.label}</div>
+                          <div className="px-4 py-1.5 text-[0.6rem] font-bold text-t3 uppercase tracking-widest bg-fog">{group.label}</div>
                           {group.users.map(u => {
                             const isCurrentUser = currentUser?.employee_id === u.employeeId
                             return (
@@ -165,12 +168,12 @@ export function Header({ title, subtitle, actions, hideBreadcrumb }: HeaderProps
                                 disabled={isCurrentUser}
                                 className={cn(
                                   'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
-                                  isCurrentUser ? 'bg-tempo-50 dark:bg-tempo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                  isCurrentUser ? 'bg-tempo-50' : 'hover:bg-fog'
                                 )}
                               >
                                 <div className={cn(
                                   'w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-semibold',
-                                  isCurrentUser ? 'bg-tempo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-t2'
+                                  isCurrentUser ? 'bg-tempo-600 text-white' : 'bg-fog text-t2'
                                 )}>
                                   {u.label.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </div>

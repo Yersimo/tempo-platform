@@ -135,7 +135,7 @@ const MODULE_CONFIG: Record<string, {
   // Headcount Planning
   'headcount-plans':       { table: schema.headcountPlans, hasOrgId: true, defaultLimit: 20 },
   'headcount-positions':   { table: schema.headcountPositions, hasOrgId: true, defaultLimit: 50 },
-  'headcount-budget-items':{ table: schema.headcountBudgetItems, hasOrgId: true, defaultLimit: 100 },
+  'headcount-budget-items':{ table: schema.headcountBudgetItems, hasOrgId: false, defaultLimit: 100 },
   // Onboarding
   'buddy-assignments':     { table: schema.buddyAssignments, hasOrgId: true, defaultLimit: 50 },
   'preboarding-tasks':     { table: schema.preboardingTasks, hasOrgId: true, defaultLimit: 50 },
@@ -338,7 +338,7 @@ export async function GET(
     const search = url.searchParams.get('search') || ''
 
     // Build query with org scoping
-    const whereCondition = config.hasOrgId
+    const whereCondition = config.hasOrgId && config.table.orgId
       ? eq(config.table.orgId, orgId)
       : undefined
 
@@ -387,6 +387,29 @@ export async function GET(
       }
     )
   } catch (error) {
+    const errorText = [
+      error instanceof Error ? error.message : String(error),
+      error && typeof error === 'object' && 'cause' in error ? String((error as { cause?: unknown }).cause) : '',
+    ].join(' ')
+    if (
+      errorText.includes('does not exist') ||
+      errorText.includes('relation') ||
+      errorText.includes('42P01')
+    ) {
+      return NextResponse.json(
+        {
+          data: [],
+          pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        },
+        {
+          headers: {
+            'Cache-Control': 'private, no-cache',
+            'X-Total-Count': '0',
+          },
+        }
+      )
+    }
+
     console.error('[GET /api/data/[module]] Error:', error)
     return NextResponse.json({ error: 'Failed to fetch module data' }, { status: 500 })
   }

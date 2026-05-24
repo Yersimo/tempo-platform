@@ -51,162 +51,10 @@ const ArrowIcon = () => (
 )
 
 export function LandingNav() {
-  const { openMenu, toggleMenu } = MegaMenu()
-
-  const navItems = ['products', 'industries', 'customers', 'learn', 'resources', 'company']
-
   return (
-    <>
-      <nav>
-        <a href="/" className="logo">tempo<span>.</span></a>
-        <ul className="nav-links">
-          {navItems.map(id => (
-            <li key={id} id={`nav-${id}`} className={openMenu === id ? 'open' : ''}>
-              <button
-                onClick={() => toggleMenu(id)}
-                aria-expanded={openMenu === id}
-              >
-                {id.charAt(0).toUpperCase() + id.slice(1)}
-                <NavChevron />
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="nav-ctas">
-          <a href="/login" className="btn btn-ghost">Sign In</a>
-          <a href="/contact" className="btn btn-dark">
-            Contact Sales
-            <ArrowIcon />
-          </a>
-        </div>
-      </nav>
-
-      {/* PRODUCTS MEGA MENU */}
-      <div className={`mega-drop${openMenu === 'products' ? ' open' : ''}`} id="drop-products">
-        <div className="mega-inner">
-          <div className="mega-main">
-            <a href="/products/ai" className="mega-item"><span className="mega-item-name">AI</span><MegaChevron /></a>
-            <a href="/products/hr" className="mega-item"><span className="mega-item-name">HR</span><MegaChevron /></a>
-            <a href="/products/finance" className="mega-item"><span className="mega-item-name">Finance</span><MegaChevron /></a>
-            <a href="/products/operations" className="mega-item"><span className="mega-item-name">Operations</span><MegaChevron /></a>
-            <a href="/products/it" className="mega-item"><span className="mega-item-name">IT</span><MegaChevron /></a>
-            <a href="/products/platform" className="mega-item"><span className="mega-item-name">Platform</span><MegaChevron /></a>
-          </div>
-          <div className="mega-secondary">
-            <div className="mega-sec-title">More from Tempo</div>
-            <a href="/products/platform" className="mega-sec-link">Tempo Build</a>
-            <a href="/why-tempo" className="mega-sec-link">Why Tempo</a>
-            <a href="/solutions" className="mega-sec-link">Solutions for Mid-Size Business</a>
-            <a href="/products/finance" className="mega-sec-link">Tempo ERP</a>
-            <div className="mega-sec-title" style={{ marginTop: 20 }}>Ecosystem</div>
-            <a href="/contact" className="mega-sec-link">Partners</a>
-            <a href="/contact" className="mega-sec-link">Marketplace <span className="mega-ext">{'\u2197'}</span></a>
-          </div>
-        </div>
-      </div>
-
-      {/* INDUSTRIES MEGA MENU */}
-      <div className={`mega-drop mega-drop-single${openMenu === 'industries' ? ' open' : ''}`} id="drop-industries">
-        <div className="mega-inner-single">
-          {[
-            'Banking & Capital Markets', 'Financial Services', 'Hospitality',
-            'Insurance', 'Investment Management', 'Manufacturing',
-            'Professional & Business Services', 'Public Services',
-            'Retail', 'Technology', 'Small Businesses',
-          ].map(name => (
-            <a key={name} href="/solutions" className="mega-item mega-item-lg">{name}</a>
-          ))}
-          <a href="/solutions" className="mega-item mega-item-lg" style={{ color: 'var(--orange)' }}>All Industries</a>
-        </div>
-      </div>
-
-      {/* CUSTOMERS MEGA MENU */}
-      <div className={`mega-drop${openMenu === 'customers' ? ' open' : ''}`} id="drop-customers">
-        <div className="mega-inner mega-inner-customers">
-          <div className="mega-main mega-main-split">
-            <a href="/customer-journeys" className="mega-item"><span className="mega-item-name">Customer Stories</span></a>
-            <a href="/contact" className="mega-item"><span className="mega-item-name">Services</span><MegaChevron /></a>
-            <a href="/contact" className="mega-item mega-item-active"><span className="mega-item-name">Support</span><MegaChevron /></a>
-          </div>
-          <div className="mega-secondary mega-secondary-divider">
-            <a href="/contact" className="mega-sec-link">Overview</a>
-            <a href="/contact" className="mega-sec-link">Community</a>
-            <a href="/contact" className="mega-sec-link">Login Help</a>
-          </div>
-        </div>
-      </div>
-
-      {/* LEARN MEGA MENU */}
-      <div className={`mega-drop${openMenu === 'learn' ? ' open' : ''}`} id="drop-learn">
-        <div className="mega-inner">
-          <div className="mega-main">
-            {[
-              { name: 'Blog & Insights', href: '/newsroom' },
-              { name: 'Webinars & Events', href: '/newsroom' },
-              { name: 'Tempo Academy', href: '/academy' },
-              { name: 'Certifications', href: '/academy' },
-              { name: 'Documentation', href: '/api/docs' },
-            ].map(item => (
-              <a key={item.name} href={item.href} className="mega-item"><span className="mega-item-name">{item.name}</span><MegaChevron /></a>
-            ))}
-          </div>
-          <div className="mega-secondary">
-            <div className="mega-sec-title">Popular</div>
-            <a href="/academy" className="mega-sec-link">Getting Started Guide</a>
-            <a href="/api/docs" className="mega-sec-link">API Reference <span className="mega-ext">{'\u2197'}</span></a>
-            <a href="/newsroom" className="mega-sec-link">Release Notes</a>
-            <a href="/contact" className="mega-sec-link">Status Page <span className="mega-ext">{'\u2197'}</span></a>
-          </div>
-        </div>
-      </div>
-
-      {/* RESOURCES MEGA MENU */}
-      <div className={`mega-drop${openMenu === 'resources' ? ' open' : ''}`} id="drop-resources">
-        <div className="mega-inner">
-          <div className="mega-main">
-            {[
-              { name: 'Help Center', href: '/contact' },
-              { name: 'Reports & Research', href: '/newsroom' },
-              { name: 'Templates', href: '/contact' },
-              { name: 'HR Benchmarking Tool', href: '/contact' },
-            ].map(item => (
-              <a key={item.name} href={item.href} className="mega-item"><span className="mega-item-name">{item.name}</span><MegaChevron /></a>
-            ))}
-          </div>
-          <div className="mega-secondary">
-            <div className="mega-sec-title">Useful links</div>
-            <a href="/security" className="mega-sec-link">Security & Compliance</a>
-            <a href="/gdpr" className="mega-sec-link">GDPR Centre</a>
-            <a href="/privacy" className="mega-sec-link">Data Processing Agreement</a>
-            <a href="/security" className="mega-sec-link">Trust Portal <span className="mega-ext">{'\u2197'}</span></a>
-          </div>
-        </div>
-      </div>
-
-      {/* COMPANY MEGA MENU */}
-      <div className={`mega-drop${openMenu === 'company' ? ' open' : ''}`} id="drop-company">
-        <div className="mega-inner mega-inner-company">
-          <div className="mega-main">
-            <a href="/about" className="mega-item"><span className="mega-item-name">About Tempo</span><MegaChevron /></a>
-            <a href="/careers" className="mega-item"><span className="mega-item-name">Careers</span><MegaChevron /></a>
-            <a href="/social-impact" className="mega-item"><span className="mega-item-name">Social Impact</span><MegaChevron /></a>
-            <a href="/newsroom" className="mega-item"><span className="mega-item-name">Newsroom</span><span className="mega-ext" style={{ fontSize: 15, marginLeft: 6 }}>{'\u2197'}</span></a>
-          </div>
-          <div className="mega-company-panel">
-            <div className="mega-company-img">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&q=80&auto=format&fit=crop"
-                alt="Tempo team"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12, opacity: 0.85 }}
-              />
-            </div>
-            <div className="mega-company-tagline">&ldquo;Building the platform that makes work better for everyone.&rdquo;</div>
-            <a href="/about" className="mega-company-link">Meet the team &rarr;</a>
-          </div>
-        </div>
-      </div>
-    </>
+    <a href="/" className="minimal-logo" aria-label="Tempo home">
+      tempo<span>.</span>
+    </a>
   )
 }
 
@@ -340,17 +188,17 @@ export function HeroCarousel() {
               <div className="addr" style={{ color: '#888' }}>app.theworktempo.com/ai</div>
             </div>
             <div className="dash-body" style={{ color: '#fff' }}>
-              <div className="dash-hd"><span className="dash-ttl" style={{ color: '#fff' }}>Tempo AI</span><span className="dash-qt" style={{ color: '#00897B' }}>Ask anything</span></div>
+              <div className="dash-hd"><span className="dash-ttl" style={{ color: '#fff' }}>Tempo AI</span><span className="dash-qt" style={{ color: 'var(--color-tempo-500)' }}>Ask anything</span></div>
               <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 12 }}>
                 <div style={{ color: '#aaa', fontSize: 13 }}>You asked:</div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 600, marginTop: 4 }}>{'"'}What{`'`}s our turnover rate in West Africa vs last quarter?{'"'}</div>
               </div>
               <div style={{ background: '#1a1a18', borderRadius: 12, padding: 16, marginTop: 10 }}>
-                <div style={{ color: '#00897B', fontSize: 13, fontWeight: 600 }}>Tempo AI</div>
+                <div style={{ color: 'var(--color-tempo-500)', fontSize: 13, fontWeight: 600 }}>Tempo AI</div>
                 <div style={{ color: '#eee', fontSize: 14, marginTop: 6, lineHeight: 1.6 }}>Turnover in West Africa was <strong>8.3%</strong> this quarter vs <strong>11.2%</strong> last &mdash; driven by improved retention in Ghana and Senegal.</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <span style={{ background: '#00897B', color: '#fff', padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>See full breakdown</span>
+                <span style={{ background: 'var(--color-tempo-500)', color: '#fff', padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>See full breakdown</span>
                 <span style={{ border: '1px solid #333', color: '#aaa', padding: '6px 14px', borderRadius: 100, fontSize: 12 }}>Ask follow-up</span>
               </div>
             </div>

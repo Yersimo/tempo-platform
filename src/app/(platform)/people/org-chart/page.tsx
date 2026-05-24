@@ -67,7 +67,7 @@ const DEPT_COLORS: Record<string, string> = {
   'Product': '#0ea5e9',
   'Design': '#d946ef',
   'Customer Success': '#14b8a6',
-  'Data': '#004D40',
+  'Data': 'var(--color-tempo-600)',
 }
 
 const DEPT_BG: Record<string, string> = {
@@ -84,8 +84,8 @@ const DEPT_BG: Record<string, string> = {
   'Engineering': 'bg-violet-50 border-violet-200',
   'Product': 'bg-sky-50 border-sky-200',
   'Design': 'bg-fuchsia-50 border-fuchsia-200',
-  'Customer Success': 'bg-teal-50 border-teal-200',
-  'Data': 'bg-teal-50 border-teal-200',
+  'Customer Success': 'bg-tempo-50 border-tempo-200',
+  'Data': 'bg-tempo-50 border-tempo-200',
 }
 
 const DEFAULT_BG = 'bg-gray-50 border-gray-200'

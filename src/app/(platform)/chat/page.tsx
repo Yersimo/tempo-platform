@@ -1360,7 +1360,7 @@ export default function ChatPage() {
           <div className="flex items-end gap-2">
             <div className="flex-1 relative">
               <div className="flex items-center gap-1 border border-divider rounded-lg bg-surface focus-within:ring-2 focus-within:ring-tempo-600/20 focus-within:border-tempo-600 transition-all">
-                <button className="p-2.5 text-t3 hover:text-t1 transition-colors flex-shrink-0">
+                <button aria-label="Add message attachment" className="p-2.5 text-t3 hover:text-t1 transition-colors flex-shrink-0">
                   <Plus size={18} />
                 </button>
                 <input
@@ -1383,13 +1383,13 @@ export default function ChatPage() {
                   className="flex-1 py-2.5 text-sm bg-transparent text-t1 placeholder:text-t3 focus:outline-none"
                 />
                 <div className="flex items-center gap-0.5 pr-1.5 flex-shrink-0">
-                  <button className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
+                  <button aria-label="Mention someone" className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
                     <AtSign size={16} />
                   </button>
-                  <button className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
+                  <button aria-label="Attach file" className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
                     <Paperclip size={16} />
                   </button>
-                  <button className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
+                  <button aria-label="Insert emoji" className="p-1.5 text-t3 hover:text-t1 transition-colors rounded hover:bg-canvas">
                     <Smile size={16} />
                   </button>
                 </div>

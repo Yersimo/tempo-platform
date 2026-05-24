@@ -14,11 +14,11 @@ const sizes = {
 }
 
 export function TempoLockup({ variant = 'color', size = 'md', className = '' }: TempoLockupProps) {
-  const textColor = variant === 'white' ? 'text-white' : 'text-[#1a1a1a]'
-  const dotColor = variant === 'mono' ? 'text-[#1a1a1a]/40' : 'text-[#00897B]'
+  const textColor = variant === 'white' ? 'text-white' : 'text-[#121A20]'
+  const dotColor = variant === 'mono' ? 'text-[#121A20]/40' : 'text-tempo-600'
 
   return (
-    <span className={`font-bold tracking-[-0.02em] ${sizes[size]} ${textColor} ${className}`}>
+    <span className={`font-semibold tracking-[-0.01em] ${sizes[size]} ${textColor} ${className}`}>
       tempo<span className={dotColor}>.</span>
     </span>
   )

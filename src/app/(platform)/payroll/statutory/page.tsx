@@ -30,7 +30,8 @@ const BRAZIL_TERMINATION_REASONS = [
 function fmtAmount(amount: number, currency: string, isPaise?: boolean): string {
   const symbols: Record<string, string> = { INR: '\u20B9', BRL: 'R$', USD: '$' }
   const symbol = symbols[currency] || currency + ' '
-  const value = isPaise ? amount / 100 : amount
+  const numericAmount = Number.isFinite(Number(amount)) ? Number(amount) : 0
+  const value = isPaise ? numericAmount / 100 : numericAmount
   return symbol + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 

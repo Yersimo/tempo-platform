@@ -73,7 +73,7 @@ export default function SignupPage() {
       <div className="lg:hidden flex justify-center mb-8">
         <TempoLockup variant="color" size="md" />
       </div>
-      <div className="bg-card rounded-[14px] border border-border p-8">
+      <div className="bg-card rounded-[var(--radius-card)] border border-border p-8 shadow-[var(--shadow-card)]">
         <h2 className="text-xl font-semibold text-t1 mb-1">
           {step === 1 ? t('createAccount') : t('setupOrg')}
         </h2>
@@ -83,8 +83,8 @@ export default function SignupPage() {
 
         {/* Progress */}
         <div className="flex gap-2 mb-6">
-          <div className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-tempo-600' : 'bg-divider'}`} />
-          <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-tempo-600' : 'bg-divider'}`} />
+          <div className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-tempo-700' : 'bg-divider'}`} />
+          <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-tempo-700' : 'bg-divider'}`} />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +97,7 @@ export default function SignupPage() {
                   value={formData.fullName}
                   onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                   placeholder={t('fullNamePlaceholder')}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 />
               </div>
@@ -108,7 +108,7 @@ export default function SignupPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   placeholder={t('workEmailPlaceholder')}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 />
               </div>
@@ -119,7 +119,7 @@ export default function SignupPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder={t('passwordMinLength')}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                   minLength={8}
                 />
@@ -136,7 +136,7 @@ export default function SignupPage() {
                   value={formData.companyName}
                   onChange={(e) => setFormData({...formData, companyName: e.target.value})}
                   placeholder={t('companyNamePlaceholder')}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 />
               </div>
@@ -145,7 +145,7 @@ export default function SignupPage() {
                 <select
                   value={formData.industry}
                   onChange={(e) => setFormData({...formData, industry: e.target.value})}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 >
                   <option value="">{t('selectIndustry')}</option>
@@ -164,7 +164,7 @@ export default function SignupPage() {
                 <select
                   value={formData.size}
                   onChange={(e) => setFormData({...formData, size: e.target.value})}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 >
                   <option value="">{t('selectSize')}</option>
@@ -180,7 +180,7 @@ export default function SignupPage() {
                 <select
                   value={formData.country}
                   onChange={(e) => setFormData({...formData, country: e.target.value})}
-                  className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+                  className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
                   required
                 >
                   <option value="">{t('selectCountry')}</option>

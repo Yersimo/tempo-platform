@@ -91,7 +91,7 @@ export default function FinanceProductPage() {
                 width: 56, height: 56, borderRadius: 16,
                 background: 'rgba(234,88,12,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px', fontSize: 24, color: '#00897B', fontWeight: 700,
+                margin: '0 auto 16px', fontSize: 24, color: 'var(--color-tempo-500)', fontWeight: 700,
               }}>{s.symbol}</div>
               <h3 style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginBottom: 8 }}>{s.name}</h3>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>{s.desc}</p>
@@ -110,9 +110,9 @@ export default function FinanceProductPage() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 10,
-                  background: '#E0F2F1', border: '1px solid rgba(0,77,64,0.15)',
+                  background: 'var(--color-tempo-50)', border: '1px solid rgba(40,91,122,0.15)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 600, color: '#004D40',
+                  fontSize: 13, fontWeight: 600, color: 'var(--color-tempo-600)',
                 }}>{i + 1}</div>
                 {i < closeSteps.length - 1 && (
                   <div style={{ width: 1, height: 24, background: 'rgba(234,88,12,0.12)' }} />

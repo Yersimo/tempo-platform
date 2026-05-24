@@ -14,7 +14,7 @@ import { linearRegression as lr } from '@/lib/ml/statistics'
 // ────────────────────────────────────────────────────────────
 
 const COLORS = {
-  primary: '#004D40',
+  primary: '#285B7A',
   blue: '#3b82f6',
   emerald: '#10b981',
   violet: '#8b5cf6',

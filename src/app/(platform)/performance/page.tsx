@@ -509,8 +509,8 @@ export default function PerformancePage() {
     { id: 'goals', label: t('tabGoals'), count: goals.length },
     { id: 'my-reviews', label: 'My Reviews', count: myReviews.length },
     { id: 'reviews', label: t('tabReviews'), count: visibleReviews.length },
-    { id: 'calibration', label: t('tabCalibration') },
     { id: 'feedback', label: t('tabFeedback'), count: feedback.length },
+    { id: 'calibration', label: t('tabCalibration') },
     { id: 'one-on-ones', label: t('tabOneOnOnes'), count: oneOnOnes.length },
     { id: 'recognition', label: t('tabRecognition'), count: recognitions.length },
     { id: 'competencies', label: t('tabCompetencies') },
@@ -1139,8 +1139,8 @@ export default function PerformancePage() {
                         <Badge variant={goal.status === 'on_track' ? 'success' : goal.status === 'at_risk' ? 'warning' : 'error'}>
                           {goal.status.replace(/_/g, ' ')}
                         </Badge>
-                        <button onClick={() => openEditGoal(goal.id)} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors"><Pencil size={14} /></button>
-                        <button onClick={() => setDeleteConfirm(goal.id)} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                        <button onClick={() => openEditGoal(goal.id)} aria-label={`Edit goal ${goal.title}`} className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setDeleteConfirm(goal.id)} aria-label={`Delete goal ${goal.title}`} className="p-1.5 text-t3 hover:text-error hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
                   </div>
@@ -1491,7 +1491,7 @@ export default function PerformancePage() {
           { perf: 'Low', pot: 'High', label: t('enigma'), color: 'bg-yellow-50 border-yellow-200' },
           { perf: 'Medium', pot: 'High', label: t('growthEmployee'), color: 'bg-blue-50 border-blue-200' },
           { perf: 'High', pot: 'High', label: t('star'), color: 'bg-green-50 border-green-200' },
-          { perf: 'Low', pot: 'Medium', label: t('underperformer') || 'Dilemma', color: 'bg-teal-50 border-teal-200' },
+          { perf: 'Low', pot: 'Medium', label: t('underperformer') || 'Dilemma', color: 'bg-tempo-50 border-tempo-200' },
           { perf: 'Medium', pot: 'Medium', label: t('corePlayer'), color: 'bg-gray-50 border-gray-200' },
           { perf: 'High', pot: 'Medium', label: t('highPerformer'), color: 'bg-green-50 border-green-200' },
           { perf: 'Low', pot: 'Low', label: t('risk') || 'Underperformer', color: 'bg-red-50 border-red-200' },

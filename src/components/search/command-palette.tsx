@@ -13,7 +13,10 @@ import {
   Clock, ArrowRight, Receipt, CalendarCheck, Settings, Shield,
   FileText, Hash, Building2, ClipboardCheck, CheckSquare,
   UserPlus, MessageCircle, PieChart, Building, Monitor,
+  Sparkles, CheckCircle2,
 } from 'lucide-react'
+import { useTempo } from '@/lib/store'
+import { processAssistantQuery, type AssistantResponse } from '@/lib/ai/assistant-engine'
 
 const RECENT_SEARCHES_KEY = 'tempo_recent_searches'
 const MAX_RECENT = 5
@@ -128,15 +131,22 @@ const SUGGESTED_SEARCHES = [
   'Training',
 ]
 
-export function CommandPalette() {
+interface CommandPaletteProps {
+  showTrigger?: boolean
+}
+
+export function CommandPalette({ showTrigger = true }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const { query, setQuery, results, isLoading, total } = useSearch()
+  const store = useTempo()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const t = useTranslations('search')
+  const [assistantResponse, setAssistantResponse] = useState<AssistantResponse | null>(null)
+  const [executionResult, setExecutionResult] = useState<string | null>(null)
 
   // Navigation quick actions — organized by category
   const quickActions: QuickAction[] = [
@@ -198,7 +208,8 @@ export function CommandPalette() {
     { kind: 'result'; result: SearchResult } |
     { kind: 'quick'; action: QuickAction } |
     { kind: 'slash'; command: SlashCommand } |
-    { kind: 'suggested'; term: string }
+    { kind: 'suggested'; term: string } |
+    { kind: 'ai'; query: string }
   > = []
 
   if (isSlashMode) {
@@ -214,6 +225,9 @@ export function CommandPalette() {
         }
       }
     }
+    navigableItems.push({ kind: 'ai', query })
+  } else if (query.length >= 2 && !isLoading) {
+    navigableItems.push({ kind: 'ai', query })
   } else if (query.length < 2 && !isSlashMode) {
     // Recent searches first
     for (const term of recentSearches) {
@@ -228,6 +242,8 @@ export function CommandPalette() {
   const open = useCallback(() => {
     setIsOpen(true)
     setQuery('')
+    setAssistantResponse(null)
+    setExecutionResult(null)
     setSelectedIndex(0)
     setRecentSearches(getRecentSearches())
   }, [setQuery])
@@ -235,6 +251,8 @@ export function CommandPalette() {
   const close = useCallback(() => {
     setIsOpen(false)
     setQuery('')
+    setAssistantResponse(null)
+    setExecutionResult(null)
     setSelectedIndex(0)
   }, [setQuery])
 
@@ -243,6 +261,19 @@ export function CommandPalette() {
     close()
     router.push(href)
   }, [close, router])
+
+  const askTempo = useCallback((text: string) => {
+    const response = processAssistantQuery(text, store)
+    setAssistantResponse(response)
+    setExecutionResult(null)
+    saveRecentSearch(text)
+  }, [store])
+
+  const executeTempoAction = useCallback(() => {
+    if (!assistantResponse?.executeAction) return
+    const result = assistantResponse.executeAction(store)
+    setExecutionResult(result.message)
+  }, [assistantResponse, store])
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -289,9 +320,10 @@ export function CommandPalette() {
         else if (item.kind === 'quick') navigateTo(item.action.href)
         else if (item.kind === 'slash') navigateTo(item.command.href)
         else if (item.kind === 'suggested') setQuery(item.term)
+        else if (item.kind === 'ai') askTempo(item.query)
       }
     }
-  }, [navigableItems, selectedIndex, navigateTo, query, setQuery])
+  }, [navigableItems, selectedIndex, navigateTo, query, setQuery, askTempo])
 
   // Scroll selected item into view
   useEffect(() => {
@@ -301,6 +333,8 @@ export function CommandPalette() {
   }, [selectedIndex])
 
   if (!isOpen) {
+    if (!showTrigger) return null
+
     return (
       <button
         onClick={open}
@@ -324,17 +358,19 @@ export function CommandPalette() {
   return (
     <>
       {/* Placeholder to keep layout */}
-      <button
-        onClick={open}
-        className={cn(
-          'flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[0.8rem]',
-          'text-white/40 opacity-0 pointer-events-none'
-        )}
-        tabIndex={-1}
-      >
-        <Search size={14} />
-        <span>{t('placeholder')}</span>
-      </button>
+      {showTrigger && (
+        <button
+          onClick={open}
+          className={cn(
+            'flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[0.8rem]',
+            'text-white/40 opacity-0 pointer-events-none'
+          )}
+          tabIndex={-1}
+        >
+          <Search size={14} />
+          <span>{t('placeholder')}</span>
+        </button>
+      )}
 
       {/* Portal to escape sidebar stacking context */}
       {createPortal(
@@ -358,9 +394,9 @@ export function CommandPalette() {
           {/* Search input */}
           <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#f0f0f0]">
             {isSlashMode ? (
-              <Hash size={18} className="text-[#004D40] shrink-0" />
+              <Hash size={18} className="text-tempo-600 shrink-0" />
             ) : isLoading ? (
-              <Loader2 size={18} className="text-[#004D40] animate-spin shrink-0" />
+              <Loader2 size={18} className="text-tempo-600 animate-spin shrink-0" />
             ) : (
               <Search size={18} className="text-[#bbb] shrink-0" />
             )}
@@ -380,7 +416,11 @@ export function CommandPalette() {
             />
             {query && (
               <button
-                onClick={() => setQuery('')}
+                onClick={() => {
+                  setQuery('')
+                  setAssistantResponse(null)
+                  setExecutionResult(null)
+                }}
                 className="text-[#ccc] hover:text-[#999] transition-colors p-1 rounded-md hover:bg-[#f5f5f7]"
               >
                 <X size={15} />
@@ -393,6 +433,52 @@ export function CommandPalette() {
 
           {/* Results area */}
           <div ref={listRef} className="max-h-[56vh] overflow-y-auto overscroll-contain">
+            {assistantResponse && (
+              <div className="border-b border-[#f0f0f0] bg-[#f7faf9] px-5 py-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-tempo-600/10 text-tempo-600">
+                    <Sparkles size={15} />
+                  </div>
+                  <div>
+                    <div className="text-[0.78rem] font-semibold text-[#0f1117]">Ask Tempo</div>
+                    <div className="text-[0.65rem] text-[#78908a]">Action preview and response</div>
+                  </div>
+                </div>
+                <div className="whitespace-pre-line rounded-xl border border-[#dce8e4] bg-white px-3.5 py-3 text-[0.78rem] leading-5 text-[#263533] shadow-sm">
+                  {assistantResponse.text}
+                </div>
+                {assistantResponse.executeAction && !executionResult && (
+                  <button
+                    onClick={executeTempoAction}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-tempo-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#063f36]"
+                  >
+                    <CheckCircle2 size={14} />
+                    Execute in Tempo
+                  </button>
+                )}
+                {executionResult && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+                    <span>{executionResult}</span>
+                  </div>
+                )}
+                {assistantResponse.actions && assistantResponse.actions.length > 0 && !assistantResponse.executeAction && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {assistantResponse.actions.map((action, index) => (
+                      <button
+                        key={`${action.label}-${index}`}
+                        onClick={() => {
+                          if (action.type === 'navigate' && action.payload) navigateTo(action.payload)
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#dce8e4] bg-white px-3 py-2 text-xs font-medium text-[#24423d] transition-colors hover:bg-[#eef6f3]"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Slash command results ── */}
             {isSlashMode && (
@@ -409,7 +495,7 @@ export function CommandPalette() {
                         onSelect={() => navigateTo(cmd.href)}
                         onHover={() => setSelectedIndex(idx)}
                         icon={cmd.icon}
-                        title={<span className="font-mono text-[#004D40]">{cmd.command}</span>}
+                        title={<span className="font-mono text-tempo-600">{cmd.command}</span>}
                         subtitle={t(cmd.labelKey)}
                       />
                     )
@@ -463,17 +549,42 @@ export function CommandPalette() {
                     </Fragment>
                   )
                 })}
+                {(() => {
+                  flatIndex++
+                  const idx = flatIndex
+                  return (
+                    <ResultRow
+                      key="ask-tempo"
+                      isSelected={idx === selectedIndex}
+                      onSelect={() => askTempo(query)}
+                      onHover={() => setSelectedIndex(idx)}
+                      icon={<Sparkles size={15} />}
+                      title="Ask Tempo"
+                      subtitle={`Analyze or act on "${query}"`}
+                    />
+                  )
+                })()}
               </div>
             )}
 
             {/* ── No results ── */}
             {!isSlashMode && query.length >= 2 && !isLoading && results.length === 0 && (
-              <div className="py-10 text-center">
-                <div className="w-10 h-10 rounded-full bg-[#f5f5f7] flex items-center justify-center mx-auto mb-3">
-                  <Search size={18} className="text-[#ccc]" />
-                </div>
-                <div className="text-[0.85rem] font-medium text-[#666]">{t('noResults')}</div>
-                <div className="text-[0.75rem] text-[#bbb] mt-1">{t('tryDifferentQuery')}</div>
+              <div className="py-5">
+                {(() => {
+                  flatIndex++
+                  const idx = flatIndex
+                  return (
+                    <ResultRow
+                      key="ask-tempo-no-results"
+                      isSelected={idx === selectedIndex}
+                      onSelect={() => askTempo(query)}
+                      onHover={() => setSelectedIndex(idx)}
+                      icon={<Sparkles size={15} />}
+                      title="Ask Tempo"
+                      subtitle={`Analyze, create, automate, or navigate from "${query}"`}
+                    />
+                  )
+                })()}
                 {/* Suggested searches */}
                 <div className="flex flex-wrap gap-1.5 justify-center mt-4 px-8">
                   {SUGGESTED_SEARCHES.map((term) => (
@@ -504,7 +615,7 @@ export function CommandPalette() {
                           clearRecentSearches()
                           setRecentSearches([])
                         }}
-                        className="text-[0.6rem] text-[#ccc] hover:text-[#004D40] transition-colors"
+                        className="text-[0.6rem] text-[#ccc] hover:text-tempo-600 transition-colors"
                       >
                         {t('clearRecent')}
                       </button>
@@ -538,7 +649,7 @@ export function CommandPalette() {
                       <button
                         key={term}
                         onClick={() => setQuery(term)}
-                        className="px-2.5 py-1 rounded-full bg-[#f5f5f7] hover:bg-[#004D40]/10 hover:text-[#004D40] text-[0.7rem] text-[#888] transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-full bg-[#f5f5f7] hover:bg-tempo-600/10 hover:text-tempo-600 text-[0.7rem] text-[#888] transition-colors cursor-pointer"
                       >
                         {term}
                       </button>
@@ -568,7 +679,7 @@ export function CommandPalette() {
                       >
                         <div className={cn(
                           'flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors',
-                          isSelected ? 'text-[#004D40]' : 'text-[#999]'
+                          isSelected ? 'text-tempo-600' : 'text-[#999]'
                         )}>
                           {action.icon}
                         </div>
@@ -671,7 +782,7 @@ function ResultRow({
       <div className={cn(
         'flex items-center justify-center shrink-0 rounded-lg transition-colors',
         compact ? 'w-6 h-6' : 'w-8 h-8',
-        isSelected ? 'bg-[#004D40]/10 text-[#004D40]' : 'bg-[#f5f5f7] text-[#999]'
+        isSelected ? 'bg-tempo-600/10 text-tempo-600' : 'bg-[#f5f5f7] text-[#999]'
       )}>
         {icon}
       </div>
@@ -714,7 +825,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <span className="text-[#004D40] font-semibold">{text.slice(idx, idx + query.length)}</span>
+      <span className="text-tempo-600 font-semibold">{text.slice(idx, idx + query.length)}</span>
       {text.slice(idx + query.length)}
     </>
   )

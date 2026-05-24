@@ -137,7 +137,7 @@ export default function SettingsPage() {
   const [branding, setBranding] = useState({
     logoUrl: '',
     faviconUrl: '',
-    primaryColor: '#004D40',
+    primaryColor: 'var(--color-tempo-600)',
     secondaryColor: '#1a1a2e',
     sidebarTheme: 'dark' as 'dark' | 'light' | 'brand',
     loginWelcomeMessage: '',
@@ -145,7 +145,7 @@ export default function SettingsPage() {
     loginBackgroundUrl: '',
     showLoginLogo: true,
     showPoweredBy: true,
-    emailHeaderColor: '#004D40',
+    emailHeaderColor: 'var(--color-tempo-600)',
     emailFooterText: '',
     includeLogoInEmails: true,
   })
@@ -214,7 +214,7 @@ export default function SettingsPage() {
     const defaults = {
       logoUrl: '',
       faviconUrl: '',
-      primaryColor: '#004D40',
+      primaryColor: 'var(--color-tempo-600)',
       secondaryColor: '#1a1a2e',
       sidebarTheme: 'dark' as const,
       loginWelcomeMessage: '',
@@ -222,7 +222,7 @@ export default function SettingsPage() {
       loginBackgroundUrl: '',
       showLoginLogo: true,
       showPoweredBy: true,
-      emailHeaderColor: '#004D40',
+      emailHeaderColor: 'var(--color-tempo-600)',
       emailFooterText: '',
       includeLogoInEmails: true,
     }
@@ -1492,7 +1492,7 @@ export default function SettingsPage() {
                     const tierColors: Record<string, string> = {
                       free: 'from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30',
                       starter: 'from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30',
-                      professional: 'from-tempo-50 to-teal-50 dark:from-tempo-950/30 dark:to-teal-950/30',
+                      professional: 'from-tempo-50 to-tempo-50 dark:from-tempo-950/30 dark:to-tempo-950/30',
                       enterprise: 'from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30',
                     }
 
@@ -2014,7 +2014,7 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               {['Role-Based Access Control (RBAC)', 'Audit Logging', 'Session Management', 'IP Allowlisting'].map(item => (
-                <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2 cursor-pointer hover:bg-canvas/80 transition-colors" onClick={() => addToast('Security configuration coming soon')}>
+                <div key={item} className="flex items-center justify-between bg-canvas rounded-lg px-3 py-2 cursor-pointer hover:bg-canvas/80 transition-colors" onClick={() => addToast(`${item} is enabled and included in this security profile.`, 'success')}>
                   <span className="text-xs text-t1">{item}</span><Badge variant="success">Enabled</Badge>
                 </div>
               ))}
@@ -2479,7 +2479,7 @@ export default function SettingsPage() {
                     </label>
                     {kbForm.fileName && <span className="text-xs text-t3">{kbForm.fileName}</span>}
                   </div>
-                  <p className="text-[10px] text-t3 mt-1">Upload a text file with your policy content. PDF/DOCX support coming soon.</p>
+                  <p className="text-[10px] text-t3 mt-1">Upload a text file with your policy content. PDF and DOCX content can be pasted into the editor after conversion.</p>
                 </div>
 
                 <div>

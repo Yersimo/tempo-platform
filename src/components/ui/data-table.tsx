@@ -120,7 +120,7 @@ export function DataTable<T extends Record<string, any>>({
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full pl-9 pr-3 py-2 text-[13px] bg-canvas border border-divider rounded-[var(--radius-input)] text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600 transition-all"
+              className="w-full pl-9 pr-3 py-2 text-[13px] bg-card border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/10 hover:bg-snow hover:border-stone focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600 transition-all"
             />
           </div>
         </div>
@@ -134,7 +134,7 @@ export function DataTable<T extends Record<string, any>>({
         >
           <table className="w-full">
             <thead className="sticky top-0 z-[1]">
-              <tr className="bg-gray-50/50">
+              <tr className="bg-birch/60">
                 {columns.map(col => (
                   <th
                     key={col.key}
@@ -167,7 +167,7 @@ export function DataTable<T extends Record<string, any>>({
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cn(
                     'border-b border-divider last:border-b-0 transition-colors',
-                    'hover:bg-black/[0.015]',
+                    'hover:bg-tempo-50/45',
                     onRowClick && 'cursor-pointer',
                   )}
                 >
@@ -212,7 +212,7 @@ export function DataTable<T extends Record<string, any>>({
               key={rowKey ? rowKey(row, i) : i}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={cn(
-                'bg-card border border-border rounded-xl px-4 py-3.5 space-y-2 transition-all min-h-[44px]',
+                'bg-card border border-border rounded-[var(--radius-card)] px-4 py-3.5 space-y-2 transition-all min-h-[44px] shadow-sm shadow-stone/10',
                 onRowClick && 'cursor-pointer active:scale-[0.98] active:transition-transform active:duration-100',
               )}
             >

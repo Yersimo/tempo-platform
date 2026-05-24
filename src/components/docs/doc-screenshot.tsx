@@ -38,7 +38,7 @@ export function DocScreenshot({ screenshotKey, alt, className }: DocScreenshotPr
       )}
     >
       <Camera size={24} className="text-t3" />
-      <p className="text-xs text-t3">Screenshot coming soon</p>
+      <p className="text-xs text-t3">Product screenshot available in the live module</p>
     </div>
   )
 }

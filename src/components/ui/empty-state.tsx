@@ -20,10 +20,10 @@ function isActionObject(action: unknown): action is { label: string; onClick: ()
 
 export function EmptyState({ icon, title, description, action, secondaryAction, className, compact = false }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'py-8 px-4' : 'py-16 px-6', className)}>
+    <div className={cn('flex flex-col items-center justify-center text-center rounded-[var(--radius-card)] border border-dashed border-stone bg-birch/35', compact ? 'py-8 px-4' : 'py-16 px-6', className)}>
       {icon && (
-        <div className={cn('flex items-center justify-center rounded-2xl bg-gray-100', compact ? 'w-12 h-12 mb-3' : 'w-16 h-16 mb-4')}>
-          <div className="text-t3">{icon}</div>
+        <div className={cn('flex items-center justify-center rounded-[var(--radius-card)] bg-card border border-border shadow-sm shadow-stone/10', compact ? 'w-12 h-12 mb-3' : 'w-16 h-16 mb-4')}>
+          <div className="text-tempo-700">{icon}</div>
         </div>
       )}
       <h3 className={cn('font-semibold text-t1', compact ? 'text-xs' : 'text-sm')}>{title}</h3>
@@ -38,7 +38,7 @@ export function EmptyState({ icon, title, description, action, secondaryAction, 
               : action
           )}
           {secondaryAction && (
-            <button onClick={secondaryAction.onClick} className="text-xs text-tempo-600 font-medium hover:text-tempo-700">
+            <button onClick={secondaryAction.onClick} className="text-xs text-tempo-700 font-medium hover:text-tempo-900">
               {secondaryAction.label}
             </button>
           )}

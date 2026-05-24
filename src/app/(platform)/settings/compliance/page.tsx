@@ -91,7 +91,7 @@ const TRUST_CATEGORY_ICONS: Record<string, React.ReactNode> = {
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
-  high: 'bg-teal-100 text-teal-800',
+  high: 'bg-tempo-100 text-tempo-800',
   medium: 'bg-yellow-100 text-yellow-700',
   low: 'bg-green-100 text-green-700',
 }
@@ -493,7 +493,7 @@ export default function ComplianceDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
                 { label: 'Critical', count: d.findings.critical, color: 'text-red-700 bg-red-50 border-red-200' },
-                { label: 'High', count: d.findings.high, color: 'text-teal-800 bg-teal-50 border-teal-200' },
+                { label: 'High', count: d.findings.high, color: 'text-tempo-800 bg-tempo-50 border-tempo-200' },
                 { label: 'Open', count: d.findings.open, color: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
                 { label: 'In Progress', count: d.findings.inProgress, color: 'text-blue-700 bg-blue-50 border-blue-200' },
               ].map((item) => (

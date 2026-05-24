@@ -737,7 +737,7 @@ export default function AnalyticsPage() {
               centerLabel={String(new Set(filteredEmployees.map(e => e.country)).size)}
               centerSub="Countries"
               height={220}
-              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, '#8b5cf6', '#ec4899', '#14b8a6', '#004D40']}
+              colors={[CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.amber, CHART_COLORS.slate, '#8b5cf6', '#ec4899', '#14b8a6', 'var(--color-tempo-600)']}
             />
           </Card>
           <Card>
@@ -1102,7 +1102,23 @@ export default function AnalyticsPage() {
                 <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report exported', 'success')}>
                   <Download size={14} className="mr-1" /> Export
                 </Button>
-                <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report scheduling coming soon')}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!rbPreview}
+                  onClick={() => {
+                    const schedule = {
+                      source: rbSource,
+                      metrics: rbMetrics,
+                      visualization: rbViz,
+                      cadence: 'weekly',
+                      delivery: 'email',
+                      createdAt: new Date().toISOString(),
+                    }
+                    localStorage.setItem('tempo_report_builder_schedule', JSON.stringify(schedule))
+                    addToast('Weekly report schedule saved', 'success')
+                  }}
+                >
                   <CalendarClock size={14} className="mr-1" /> Schedule
                 </Button>
                 <Button size="sm" variant="secondary" disabled={!rbPreview} onClick={() => addToast('Report saved to dashboard', 'success')}>

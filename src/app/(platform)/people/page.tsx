@@ -1752,15 +1752,20 @@ export default function PeoplePage() {
       {/* Add Employee Modal */}
       <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setFormErrors({}) }} title={t('addEmployeeModal')} size="lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} error={formErrors.full_name} onChange={(e) => { setForm({ ...form, full_name: e.target.value }); setFormErrors(prev => ({ ...prev, full_name: undefined })) }} />
-            <Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} error={formErrors.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormErrors(prev => ({ ...prev, email: undefined })) }} />
+          {Object.keys(formErrors).length > 0 && (
+            <div role="alert" aria-live="polite" className="rounded-[var(--radius-card)] border border-red-100 bg-red-50 px-3.5 py-3 text-xs text-error">
+              Please complete the required employee details before saving.
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input id="add-employee-full-name" label={t('fullName')} placeholder={t('fullNamePlaceholder')} value={form.full_name} error={formErrors.full_name} required onChange={(e) => { setForm({ ...form, full_name: e.target.value }); setFormErrors(prev => ({ ...prev, full_name: undefined })) }} />
+            <Input id="add-employee-email" label={t('email')} type="email" placeholder={t('emailPlaceholder')} value={form.email} error={formErrors.email} required onChange={(e) => { setForm({ ...form, email: e.target.value }); setFormErrors(prev => ({ ...prev, email: undefined })) }} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t('jobTitle')} placeholder={t('jobTitlePlaceholder')} value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
             <Input label={t('phone')} placeholder={t('phonePlaceholder')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select label={tc('department')} value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} options={departments.map(d => ({ value: d.id, label: d.name }))} />
             <Select label={t('levelLabel')} value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} options={[
               { value: 'Junior', label: t('levelJunior') }, { value: 'Associate', label: t('levelAssociate') },

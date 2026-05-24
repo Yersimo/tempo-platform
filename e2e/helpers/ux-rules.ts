@@ -7,6 +7,53 @@
  * 3. Invisible HR — fast, guided, self-service
  */
 import { type Page, type Locator, expect } from '@playwright/test'
+import { loginByApi } from './auth'
+
+const publicRoutePrefixes = [
+  '/',
+  '/login',
+  '/signup',
+  '/reset-password',
+  '/pricing',
+  '/why-tempo',
+  '/solutions',
+  '/academy',
+  '/security',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/gdpr',
+  '/about',
+  '/careers',
+  '/contact',
+  '/customer-journeys',
+  '/newsroom',
+  '/social-impact',
+  '/trial',
+  '/demo-request',
+  '/products',
+]
+
+function isProtectedRoute(path: string) {
+  if (path === '/') return false
+  return !publicRoutePrefixes.some(prefix => path === prefix || (prefix !== '/' && path.startsWith(`${prefix}/`)))
+}
+
+async function ensureAuthenticatedForRoute(page: Page, path: string) {
+  if (!isProtectedRoute(path)) return
+
+  const hasCurrentUser = await page.evaluate(() => {
+    try {
+      return Boolean(window.localStorage.getItem('tempo_current_user'))
+    } catch {
+      return false
+    }
+  }).catch(() => false)
+
+  if (!hasCurrentUser) {
+    await loginByApi(page)
+  }
+}
 
 // ─── Click Tracker ───────────────────────────────────────────────────────────
 
@@ -39,6 +86,7 @@ export class ClickTracker {
 
 /** Assert a page loads within a time budget (ms) */
 export async function assertPageLoadTime(page: Page, url: string, maxMs = 3000) {
+  await ensureAuthenticatedForRoute(page, url)
   const start = Date.now()
   await page.goto(url)
   await page.waitForLoadState('domcontentloaded')
@@ -79,8 +127,9 @@ export async function assertNoHorizontalOverflow(page: Page) {
 
 /** Navigate to a module via sidebar or direct URL, wait for content */
 export async function navigateToModule(page: Page, path: string) {
-  await page.goto(path)
-  await page.waitForLoadState('networkidle')
+  await ensureAuthenticatedForRoute(page, path)
+  await page.goto(path, { waitUntil: 'domcontentloaded' })
+  await page.waitForLoadState('load', { timeout: 10_000 }).catch(() => undefined)
   // Wait for skeleton to disappear (pages use PageSkeleton)
   const skeleton = page.locator('[class*="skeleton"], [class*="Skeleton"], [data-testid="page-skeleton"]')
   if (await skeleton.count() > 0) {

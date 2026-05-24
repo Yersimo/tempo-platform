@@ -69,9 +69,9 @@ export default function ResetPasswordPage() {
         <div className="lg:hidden flex justify-center mb-8">
           <TempoLockup variant="color" size="md" />
         </div>
-        <div className="bg-card rounded-[14px] border border-border p-8 text-center">
-          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle size={24} className="text-red-500" />
+        <div className="bg-card rounded-[var(--radius-card)] border border-border p-8 text-center shadow-[var(--shadow-card)]">
+          <div className="w-12 h-12 rounded-[10px] bg-[#F9ECEE] border border-[#E9CDD1] flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={24} className="text-error" />
           </div>
           <h2 className="text-xl font-semibold text-t1 mb-2">Invalid Reset Link</h2>
           <p className="text-sm text-t3 mb-6">
@@ -91,9 +91,9 @@ export default function ResetPasswordPage() {
         <div className="lg:hidden flex justify-center mb-8">
           <TempoLockup variant="color" size="md" />
         </div>
-        <div className="bg-card rounded-[14px] border border-border p-8 text-center">
-          <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={24} className="text-green-600" />
+        <div className="bg-card rounded-[var(--radius-card)] border border-border p-8 text-center shadow-[var(--shadow-card)]">
+          <div className="w-12 h-12 rounded-[10px] bg-[#F0F4EA] border border-[#DCE8D1] flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={24} className="text-success" />
           </div>
           <h2 className="text-xl font-semibold text-t1 mb-2">Password Reset!</h2>
           <p className="text-sm text-t3 mb-6">
@@ -112,10 +112,10 @@ export default function ResetPasswordPage() {
       <div className="lg:hidden flex justify-center mb-8">
         <TempoLockup variant="color" size="md" />
       </div>
-      <div className="bg-card rounded-[14px] border border-border p-8">
+      <div className="bg-card rounded-[var(--radius-card)] border border-border p-8 shadow-[var(--shadow-card)]">
         <div className="flex justify-center mb-4">
-          <div className="w-12 h-12 rounded-xl bg-tempo-50 flex items-center justify-center">
-            <KeyRound size={24} className="text-tempo-600" />
+          <div className="w-12 h-12 rounded-[10px] bg-tempo-50 border border-tempo-100 flex items-center justify-center">
+            <KeyRound size={24} className="text-tempo-700" />
           </div>
         </div>
 
@@ -132,7 +132,7 @@ export default function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+              className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
               required
               minLength={8}
               autoFocus
@@ -145,7 +145,7 @@ export default function ResetPasswordPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              className="w-full px-3 py-2 text-sm bg-white border border-divider rounded-lg text-t1 placeholder:text-t3 focus:outline-none focus:ring-2 focus:ring-tempo-600/20 focus:border-tempo-600"
+              className="w-full px-3 py-2 text-sm bg-white border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 shadow-sm shadow-stone/15 focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600"
               required
               minLength={8}
             />

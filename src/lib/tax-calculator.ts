@@ -2182,16 +2182,14 @@ function calculateKETax(
   // PAYE progressive tax minus personal relief
   const federalTax = Math.max(0, applyBrackets(grossSalary, KE_PAYE_BRACKETS) - personalRelief)
 
-  // NSSF: Employee 6%, Employer 6% (capped at KES 2,160/month = KES 25,920/year)
-  const nssfCap = 25920 // KES 2,160/month * 12
+  // NSSF: Employee 6%, Employer 6% (capped on KES 216,000 annual pensionable pay)
+  const nssfCap = 216000
   const ssRate = options.socialSecurityRateOverride ?? 0.06
-  const socialSecurity = Math.round(Math.min(grossSalary * ssRate, nssfCap) * 100) / 100
-  const employerNssf = Math.round(Math.min(grossSalary * 0.06, nssfCap) * 100) / 100
+  const socialSecurity = Math.round(Math.min(grossSalary, nssfCap) * ssRate * 100) / 100
+  const employerNssf = Math.round(Math.min(grossSalary, nssfCap) * 0.06 * 100) / 100
 
-  // NHIF: graduated scale based on monthly gross
-  const monthlyGross = grossSalary / 12
-  const nhifMonthly = calculateKENHIF(monthlyGross)
-  const nhifAnnual = Math.round(nhifMonthly * 12 * 100) / 100
+  // NHIF: employee health contribution.
+  const nhifAnnual = Math.round(grossSalary * 0.025 * 100) / 100
 
   // Housing Levy: 1.5% employee, 1.5% employer
   const housingLevy = Math.round(grossSalary * 0.015 * 100) / 100
@@ -2258,6 +2256,7 @@ function calculateZATax(
   const sdl = Math.round(grossSalary * 0.01 * 100) / 100
 
   const additionalTaxes: Record<string, number> = {
+    uif: Math.round(grossSalary * 0.01 * 100) / 100,
     uifEmployee,
     uifEmployer,
     sdl,

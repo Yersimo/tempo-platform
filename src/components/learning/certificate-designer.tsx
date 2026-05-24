@@ -41,7 +41,7 @@ const LAYOUTS = [
 ]
 
 const COLORS = [
-  { value: '#004D40', label: 'Tempo Teal' },
+  { value: 'var(--color-tempo-600)', label: 'Tempo Teal' },
   { value: '#2563eb', label: 'Royal Blue' },
   { value: '#059669', label: 'Emerald' },
   { value: '#7c3aed', label: 'Purple' },
@@ -68,7 +68,7 @@ const defaultTemplate: CertificateTemplate = {
   id: '',
   name: 'Custom Certificate',
   layout: 'modern',
-  accentColor: '#004D40',
+  accentColor: 'var(--color-tempo-600)',
   borderStyle: 'simple',
   showLogo: true,
   showSeal: true,

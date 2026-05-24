@@ -30,7 +30,7 @@ export function StatCard({ label, value, change, changeType = 'neutral', icon, c
     <Card
       className={cn(
         'relative overflow-hidden',
-        isInteractive && 'group cursor-pointer hover:shadow-md hover:border-tempo-200 transition-all duration-200',
+        isInteractive && 'group cursor-pointer hover:border-tempo-200 hover:bg-snow transition-all duration-200',
         className
       )}
       onClick={handleClick}
@@ -53,7 +53,7 @@ export function StatCard({ label, value, change, changeType = 'neutral', icon, c
         </div>
         <div className="flex flex-col items-end gap-2">
           {icon && (
-            <div className="text-tempo-400 opacity-50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-card)] bg-tempo-50 text-tempo-700 border border-tempo-100">
               {icon}
             </div>
           )}

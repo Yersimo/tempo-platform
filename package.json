@@ -10,7 +10,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ai-command": "PLAYWRIGHT_WEB_SERVER_COMMAND=\"${PLAYWRIGHT_WEB_SERVER_COMMAND:-npm run start -- -p 3002 -H 127.0.0.1}\" playwright test e2e/ai-command-center.spec.ts --project=chromium --workers=1",
+    "test:journey-experience": "PLAYWRIGHT_WEB_SERVER_COMMAND=\"${PLAYWRIGHT_WEB_SERVER_COMMAND:-npm run start -- -p 3002 -H 127.0.0.1}\" playwright test e2e/journey-experience-assessment.spec.ts --project=chromium --workers=1",
+    "test:flagship-visual": "PLAYWRIGHT_WEB_SERVER_COMMAND=\"${PLAYWRIGHT_WEB_SERVER_COMMAND:-npm run start -- -p 3002 -H 127.0.0.1}\" playwright test e2e/flagship-visual.spec.ts --project=chromium --workers=1",
+    "test:route-sweep": "PLAYWRIGHT_WEB_SERVER_COMMAND=\"${PLAYWRIGHT_WEB_SERVER_COMMAND:-npm run start -- -p 3002 -H 127.0.0.1}\" playwright test e2e/route-sweep.spec.ts --project=chromium --workers=1",
+    "test:route-sweep:screenshots": "PLAYWRIGHT_WEB_SERVER_COMMAND=\"${PLAYWRIGHT_WEB_SERVER_COMMAND:-npm run start -- -p 3002 -H 127.0.0.1}\" ROUTE_SWEEP_SCREENSHOTS=1 playwright test e2e/route-sweep.spec.ts --project=chromium --workers=1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

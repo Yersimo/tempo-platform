@@ -392,7 +392,6 @@
     "teamSize": "Team Size",
     "teamPendingLeave": "Pending Leave",
     "needsApproval": "Needs approval",
-    "noPendingRequests": "No pending requests",
     "goalsAtRisk": "Goals at Risk",
     "totalTeamGoals": "{count} total team goals",
     "teamReviewCompletion": "Review Completion",
@@ -461,14 +460,12 @@
     "roleEmployee": "Employee",
     "roleManager": "Manager",
     "roleAdmin": "Admin",
-
     "directory": "Directory",
     "orgChart": "Org Chart",
     "analytics": "Analytics",
     "documents": "Documents",
     "timeline": "Timeline",
     "bulkActions": "Bulk Actions",
-
     "totalEmployees": "Total Employees",
     "departments": "Departments",
     "countriesPresent": "Countries",
@@ -477,18 +474,15 @@
     "expired": "Expired",
     "attritionAlerts": "Attrition Alerts",
     "highRiskEmployees": "High Risk Employees",
-
     "allCountries": "All Countries",
     "allLevels": "All Levels",
     "clearFilters": "Clear Filters",
-
     "orgChartDescription": "Interactive organizational chart showing reporting structure and team hierarchy",
     "members": "members",
     "people": "people",
     "leadership": "Leadership",
     "management": "Management",
     "individualContributors": "Individual Contributors",
-
     "headcountByDepartment": "Headcount by Department",
     "headcountByCountry": "Headcount by Country",
     "headcountByLevel": "Headcount by Level",
@@ -502,7 +496,6 @@
     "riskFactors": "Risk Factors",
     "orgBottlenecks": "Organizational Bottlenecks",
     "aiInsights": "AI Insights",
-
     "totalDocuments": "Total Documents",
     "allTypes": "All Types",
     "validDocuments": "Valid",
@@ -528,7 +521,6 @@
     "fileSize": "File Size",
     "noDocumentsFound": "No documents found",
     "dragDropFile": "Drag and drop a file here, or click to browse",
-
     "allEventTypes": "All Event Types",
     "eventHire": "Hire",
     "eventPromotion": "Promotion",
@@ -537,7 +529,6 @@
     "eventTraining": "Training",
     "allEmployees": "All Employees",
     "noTimelineEvents": "No timeline events found",
-
     "importEmployees": "Import Employees",
     "importDescription": "Upload a CSV file to bulk import employee records into the system.",
     "dragDropCsv": "Drag and drop your CSV file here",
@@ -1187,13 +1178,11 @@
     "printCertificate": "Print Certificate",
     "adaptiveLearning": "AI-Powered Adaptive Learning",
     "adaptiveLearningDesc": "This course uses AI to personalize content difficulty and pacing based on your performance.",
-
     "tabHome": "My Learning",
     "tabCompliance": "Compliance",
     "tabAssessments": "Assessments",
     "tabAnalytics": "Analytics",
     "tabAdmin": "Administration",
-
     "homeWelcome": "Welcome back, {name}",
     "homeSubtitle": "Here's your personalized learning dashboard",
     "resumeLearning": "Resume Learning",
@@ -1218,7 +1207,6 @@
     "hoursPerWeek": "{hours}h / {target}h this week",
     "skillsImproved": "Skills Improved",
     "performanceGaps": "Performance Gaps Identified",
-
     "docUploadTitle": "AI Course Generator",
     "docUploadDesc": "Upload a PDF document and AI will generate a full course with modules, quizzes, and assessments",
     "uploadDocument": "Upload Document",
@@ -1237,7 +1225,6 @@
     "applyGeneratedCourse": "Create Course from Document",
     "sourceDocument": "Source: Document",
     "aiGenerated": "AI Generated",
-
     "complianceOverview": "Compliance Overview",
     "complianceDesc": "Track mandatory training completion, deadlines, and regulatory requirements",
     "complianceRate": "Compliance Rate",
@@ -1260,7 +1247,6 @@
     "regulatoryRequirements": "Regulatory Requirements",
     "autoEnrolled": "Auto-Enrolled",
     "requirementSource": "Requirement Source",
-
     "takeAssessment": "Take Assessment",
     "assessmentCenter": "Assessment Center",
     "assessmentDesc": "Take quizzes, view scores, and track your assessment history",
@@ -1287,7 +1273,6 @@
     "bestScore": "Best Score",
     "attemptDate": "Attempt Date",
     "assessmentScore": "Score",
-
     "autoEnrollment": "Auto-Enrollment Rules",
     "autoEnrollmentDesc": "Automatically enroll employees based on role, department, or compliance requirements",
     "createRule": "Create Rule",
@@ -1310,7 +1295,6 @@
     "planProgress": "Plan Progress",
     "learningAssignments": "Learning Assignments",
     "noAssignments": "No learning assignments yet",
-
     "analyticsOverview": "Learning Analytics",
     "analyticsDesc": "AI-powered insights into learning effectiveness and ROI",
     "learningHeatmap": "Learning Activity Heatmap",
@@ -1332,7 +1316,6 @@
     "totalInvestment": "Total L&D Investment",
     "roiMultiplier": "ROI Multiplier",
     "monthlyTrend": "Monthly Trend",
-
     "adaptiveDifficulty": "Adaptive Difficulty",
     "easyMode": "Foundational",
     "normalMode": "Standard",
@@ -1340,20 +1323,17 @@
     "adaptiveNote": "AI adjusts difficulty based on your quiz performance",
     "performanceScore": "Performance Score",
     "adaptiveAdjusted": "Difficulty adjusted to {level}",
-
     "collaborativeAuthoring": "Collaborative Authoring",
     "currentEditors": "Currently editing",
     "liveEditing": "Live",
     "lastEditedBy": "Last edited by {name}",
     "editingNow": "Editing now",
-
     "careerPathIntegration": "Career Path",
     "linkedToCareer": "Linked to career progression",
     "promotionCriteria": "Promotion criteria",
     "requiredForPromotion": "Required for promotion to {role}",
     "careerProgress": "Career Progress",
     "skillsForPromotion": "Skills for Next Level",
-
     "performanceLinked": "Performance-Linked",
     "fromPerformanceReview": "From performance review",
     "identifiedGap": "Identified skill gap",
@@ -1824,14 +1804,12 @@
     "netPayNote": "Net pay will be automatically calculated as Gross minus Deductions. If deductions are left empty, they will default to 23% of gross.",
     "createPayRun": "Create Pay Run",
     "annualPayrollForecast": "Annual Payroll Forecast",
-
     "payRuns": "Pay Runs",
     "employeePayroll": "Employee Payroll",
     "analytics": "Analytics",
     "compliance": "Compliance",
     "contractors": "Contractors",
     "payrollSettings": "Settings",
-
     "employeeName": "Employee Name",
     "department": "Department",
     "grossPay": "Gross Pay",
@@ -1860,7 +1838,6 @@
     "adjustmentReason": "Reason",
     "saveAdjustment": "Save Adjustment",
     "taxBreakdown": "Tax Breakdown",
-
     "totalLaborCost": "Total Labor Cost",
     "avgSalary": "Avg Salary",
     "taxBurden": "Tax Burden",
@@ -1875,7 +1852,6 @@
     "totalTax": "Total Tax",
     "headcount": "Headcount",
     "avgMonthlySalary": "Avg Monthly Salary",
-
     "complianceScore": "Compliance Score",
     "complianceIssues": "Compliance Issues",
     "taxFilings": "Tax Filings",
@@ -1907,7 +1883,6 @@
     "noComplianceIssues": "No open compliance issues. Great job!",
     "urgentItems": "Urgent Items",
     "nextDeadline": "Next Deadline",
-
     "contractorPayments": "Contractor Payments",
     "addPayment": "Add Payment",
     "contractorName": "Contractor Name",
@@ -1928,7 +1903,6 @@
     "totalContractors": "Total Contractors",
     "contractorRiskScore": "Risk Score",
     "noContractorPayments": "No contractor payments yet.",
-
     "payrollSchedules": "Payroll Schedules",
     "createSchedule": "Create Schedule",
     "frequency": "Frequency",
@@ -1957,7 +1931,6 @@
     "currencyDefaults": "Currency & Defaults",
     "defaultCurrency": "Default Currency",
     "approvalWorkflow": "Approval Workflow",
-
     "generatePayStubs": "Generate Pay Stubs",
     "payStubPreview": "Pay Stub Preview",
     "earnings": "Earnings",
@@ -2071,24 +2044,20 @@
     "employerCostMo": "Employer Cost/mo",
     "descriptionPlaceholder": "Describe the benefit plan coverage and details...",
     "planIsActive": "Plan is active",
-
     "tabPlans": "Plans",
     "tabEnrollment": "Enrollment",
     "tabDependents": "Dependents",
     "tabAnalytics": "Analytics",
     "tabLifeEvents": "Life Events",
     "tabCostCalculator": "Cost Calculator",
-
     "aboveTarget": "Above target",
     "belowTarget": "Below target",
-
     "planComparison": "Plan Comparison",
     "compareFeature": "Feature",
     "comparePlan": "Compare Plan",
     "totalCost": "Total Cost",
     "annualTotal": "Annual Total",
     "enrolled": "Enrolled",
-
     "totalEnrollments": "Total Enrollments",
     "enrolledEmployees": "Enrolled Employees",
     "notEnrolled": "not enrolled",
@@ -2107,7 +2076,6 @@
     "enrollEmployee": "Enroll Employee",
     "selectEmployee": "Select Employee",
     "selectPlanOption": "Select a Plan",
-
     "totalDependents": "Total Dependents",
     "spouses": "Spouses",
     "children": "Children",
@@ -2130,7 +2098,6 @@
     "gender": "Gender",
     "genderMale": "Male",
     "genderFemale": "Female",
-
     "competitivenessScore": "Benefits Competitiveness Score",
     "year": "yr",
     "employeesLabel": "employees",
@@ -2140,7 +2107,6 @@
     "employerVsEmployeeCost": "Employer vs Employee Cost",
     "employerShare": "Employer Share",
     "employeeShare": "Employee Share",
-
     "totalLifeEvents": "Total Life Events",
     "pendingEvents": "Pending Events",
     "requiresAction": "Requires action",
@@ -2168,7 +2134,6 @@
     "lifeEventNotesPlaceholder": "Additional details about this life event...",
     "lifeEventDeadlineNote": "Employees have 30 days from the event date to make benefit changes.",
     "submitLifeEvent": "Submit Life Event",
-
     "benefitsCostCalculator": "Benefits Cost Calculator",
     "costCalculatorDescription": "Estimate the total cost of benefits for different coverage levels and plan options.",
     "selectPlan": "Select Plan",
@@ -2187,7 +2152,6 @@
     "withSpouse": "With Spouse",
     "familyCoverage": "Family",
     "employerContrib": "Employer/mo",
-
     "coverageEmployeeOnly": "Employee Only",
     "coverageEmployeeSpouse": "Employee + Spouse",
     "coverageEmployeeChild": "Employee + Child",
@@ -3047,8 +3011,8 @@
     "statusPaused": "Paused",
     "statusArchived": "Archived",
     "runRunning": "Running",
-    "runCompleted": "Completed",
-    "runFailed": "Failed",
+    "runCompleted": "Run completed",
+    "runFailed": "Run failed",
     "runCancelled": "Cancelled",
     "running": "Running...",
     "active": "active",
@@ -3081,8 +3045,6 @@
     "aiFailurePrediction": "Failure Prediction",
     "executeWorkflow": "Run Workflow",
     "runStarted": "Run started",
-    "runCompleted": "Run completed",
-    "runFailed": "Run failed",
     "stepCompleted": "Step completed",
     "stepFailed": "Step failed",
     "waitingApproval": "Waiting for approval",

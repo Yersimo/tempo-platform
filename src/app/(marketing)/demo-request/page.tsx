@@ -96,7 +96,7 @@ export default function DemoRequestPage() {
       <div className="min-h-screen bg-[#fafafa]">
         <nav style={{ padding: '16px 32px', borderBottom: '1px solid #e5e7eb' }}>
           <Link href="/" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#111', textDecoration: 'none' }}>
-            tempo<span style={{ color: '#00897B' }}>.</span>
+            tempo<span style={{ color: 'var(--color-tempo-500)' }}>.</span>
           </Link>
         </nav>
         <div style={{ maxWidth: 560, margin: '80px auto', padding: '0 24px', textAlign: 'center' }}>
@@ -110,24 +110,29 @@ export default function DemoRequestPage() {
             We&apos;ve received your demo request and our team will reach out within 24 hours to schedule your personalized walkthrough.
           </p>
 
-          {/* Calendar Placeholder */}
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb', padding: 32, marginBottom: 32 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111', marginBottom: 8 }}>Pick a time that works for you</h3>
-            <p style={{ fontSize: 13, color: '#999', marginBottom: 20 }}>Calendar booking coming soon</p>
-            <div style={{ background: '#f5f5f5', borderRadius: 12, padding: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                <p style={{ fontSize: 12, color: '#bbb', marginTop: 8 }}>Calendly integration coming soon</p>
-              </div>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>Choose a preferred window and our team will confirm the invite.</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {['Tomorrow, 10:00', 'Tomorrow, 14:00', 'Next business day, 09:30'].map(slot => (
+                <button
+                  key={slot}
+                  type="button"
+                  style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px', color: '#111', fontSize: 13, fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}
+                  onClick={() => window.localStorage.setItem('tempo_demo_preferred_slot', slot)}
+                >
+                  {slot}
+                </button>
+              ))}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>In the meantime, explore our platform:</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: '#004D40', textDecoration: 'none' }}>View Pricing &rarr;</Link>
-              <Link href="/security" style={{ fontSize: 13, fontWeight: 500, color: '#004D40', textDecoration: 'none' }}>Security &rarr;</Link>
-              <Link href="/academy" style={{ fontSize: 13, fontWeight: 500, color: '#004D40', textDecoration: 'none' }}>Academy &rarr;</Link>
+              <Link href="/pricing" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-tempo-600)', textDecoration: 'none' }}>View Pricing &rarr;</Link>
+              <Link href="/security" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-tempo-600)', textDecoration: 'none' }}>Security &rarr;</Link>
+              <Link href="/academy" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-tempo-600)', textDecoration: 'none' }}>Academy &rarr;</Link>
             </div>
           </div>
         </div>
@@ -141,7 +146,7 @@ export default function DemoRequestPage() {
       {/* Nav */}
       <nav style={{ padding: '16px 32px', borderBottom: '1px solid #e5e7eb' }}>
         <Link href="/" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#111', textDecoration: 'none' }}>
-          tempo<span style={{ color: '#00897B' }}>.</span>
+          tempo<span style={{ color: 'var(--color-tempo-500)' }}>.</span>
         </Link>
       </nav>
 
@@ -154,7 +159,7 @@ export default function DemoRequestPage() {
 
           <div style={{ position: 'relative', zIndex: 1 }}>
             <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }}>
-              tempo<span style={{ color: '#00897B' }}>.</span>
+              tempo<span style={{ color: 'var(--color-tempo-500)' }}>.</span>
             </span>
             <h1 style={{ fontSize: 34, fontWeight: 600, color: '#fff', lineHeight: 1.15, letterSpacing: '-.025em', marginTop: 32 }}>
               See Tempo<br />in action
@@ -172,7 +177,7 @@ export default function DemoRequestPage() {
               ].map((text) => (
                 <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(234,88,12,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#004D40" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-tempo-600)" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
                   </div>
                   <span style={{ fontSize: 14, color: 'rgba(255,255,255,.5)' }}>{text}</span>
                 </div>
@@ -186,7 +191,7 @@ export default function DemoRequestPage() {
 
             {/* Free trial link */}
             <div style={{ marginTop: 24 }}>
-              <Link href="/signup" style={{ fontSize: 13, color: '#004D40', textDecoration: 'none', fontWeight: 500 }}>
+              <Link href="/signup" style={{ fontSize: 13, color: 'var(--color-tempo-600)', textDecoration: 'none', fontWeight: 500 }}>
                 Prefer to explore on your own? Start a free trial &rarr;
               </Link>
             </div>
@@ -207,7 +212,7 @@ export default function DemoRequestPage() {
                 {/* Full Name */}
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                    Full Name <span style={{ color: '#004D40' }}>*</span>
+                    Full Name <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -222,7 +227,7 @@ export default function DemoRequestPage() {
                 {/* Work Email */}
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                    Work Email <span style={{ color: '#004D40' }}>*</span>
+                    Work Email <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                   </label>
                   <input
                     type="email"
@@ -237,7 +242,7 @@ export default function DemoRequestPage() {
                 {/* Company Name */}
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                    Company Name <span style={{ color: '#004D40' }}>*</span>
+                    Company Name <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -266,7 +271,7 @@ export default function DemoRequestPage() {
                 {/* Company Size */}
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                    Company Size <span style={{ color: '#004D40' }}>*</span>
+                    Company Size <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                   </label>
                   <select
                     required
@@ -282,7 +287,7 @@ export default function DemoRequestPage() {
                 {/* Country */}
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                    Country <span style={{ color: '#004D40' }}>*</span>
+                    Country <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                   </label>
                   <select
                     required
@@ -312,9 +317,9 @@ export default function DemoRequestPage() {
                         style={{
                           padding: '6px 14px',
                           borderRadius: 20,
-                          border: selected ? '1.5px solid #004D40' : '1px solid #d1d5db',
+                          border: selected ? '1.5px solid #285B7A' : '1px solid #d1d5db',
                           background: selected ? 'rgba(234,88,12,.06)' : '#fff',
-                          color: selected ? '#004D40' : '#555',
+                          color: selected ? 'var(--color-tempo-600)' : '#555',
                           fontSize: 12,
                           fontWeight: selected ? 600 : 400,
                           cursor: 'pointer',
@@ -332,7 +337,7 @@ export default function DemoRequestPage() {
               {/* Timeline */}
               <div style={{ marginTop: 20 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
-                  Timeline <span style={{ color: '#004D40' }}>*</span>
+                  Timeline <span style={{ color: 'var(--color-tempo-600)' }}>*</span>
                 </label>
                 <select
                   required
@@ -376,7 +381,7 @@ export default function DemoRequestPage() {
                   padding: '14px 28px',
                   borderRadius: 12,
                   border: 'none',
-                  background: loading ? '#ccc' : '#004D40',
+                  background: loading ? '#ccc' : 'var(--color-tempo-600)',
                   color: '#fff',
                   fontSize: 15,
                   fontWeight: 600,
@@ -388,7 +393,7 @@ export default function DemoRequestPage() {
               </button>
 
               <p style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 12 }}>
-                We&apos;ll never share your information. See our <Link href="/privacy" style={{ color: '#004D40', textDecoration: 'none' }}>privacy policy</Link>.
+                We&apos;ll never share your information. See our <Link href="/privacy" style={{ color: 'var(--color-tempo-600)', textDecoration: 'none' }}>privacy policy</Link>.
               </p>
             </form>
           </div>

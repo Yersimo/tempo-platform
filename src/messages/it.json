@@ -346,7 +346,12 @@
     "categoryIT": "IT",
     "widgetsEnabled": "{count} widgets enabled",
     "resetLayout": "Reset to Default",
-    "saveLayout": "Save Layout"
+    "saveLayout": "Save Layout",
+    "leaveBalance": "Leave Balance",
+    "annualLeaveRemaining": "Annual leave remaining",
+    "activeGoalsLabel": "Active Goals",
+    "needAttention": "{count} need attention",
+    "allOnTrack": "All on track"
   },
   "people": {
     "title": "People",

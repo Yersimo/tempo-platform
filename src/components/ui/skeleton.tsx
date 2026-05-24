@@ -14,7 +14,7 @@ export function Skeleton({ className, width = 'w-full', height = 'h-4' }: Skelet
   return (
     <div
       className={cn(
-        'skeleton-shimmer rounded-[var(--radius-button)] bg-gray-200/60',
+        'skeleton-shimmer rounded-[var(--radius-button)] bg-stone/55',
         width,
         height,
         className
@@ -58,7 +58,7 @@ export function SkeletonAvatar({ size = 'md', className }: SkeletonAvatarProps) 
   return (
     <div
       className={cn(
-        'skeleton-shimmer rounded-full bg-gray-200/60 shrink-0',
+        'skeleton-shimmer rounded-full bg-stone/55 shrink-0',
         sizeMap[size],
         className
       )}
@@ -77,7 +77,7 @@ export function SkeletonCard({ lines = 3, className }: SkeletonCardProps) {
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-[var(--radius-card)] p-6',
+        'bg-card border border-border rounded-[var(--radius-card)] p-6 shadow-[var(--shadow-card)]',
         className
       )}
     >
@@ -99,7 +99,7 @@ export function SkeletonStatCard({ showChange = true, showIcon = true, className
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-[var(--radius-card)] p-6',
+        'bg-card border border-border rounded-[var(--radius-card)] p-6 shadow-[var(--shadow-card)]',
         className
       )}
     >
@@ -135,7 +135,7 @@ export function SkeletonTable({ columns = 5, rows = 6, className }: SkeletonTabl
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-[var(--radius-card)] overflow-hidden',
+        'bg-card border border-border rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-card)]',
         className
       )}
     >

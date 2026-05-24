@@ -342,7 +342,12 @@
     "categoryIT": "TI",
     "widgetsEnabled": "{count} widgets ativos",
     "resetLayout": "Redefinir",
-    "saveLayout": "Salvar Layout"
+    "saveLayout": "Salvar Layout",
+    "leaveBalance": "Saldo de Licenca",
+    "annualLeaveRemaining": "Licenca anual restante",
+    "activeGoalsLabel": "Metas Ativas",
+    "needAttention": "{count} precisam de atencao",
+    "allOnTrack": "Tudo em dia"
   },
   "people": {
     "title": "Pessoas",
@@ -2868,7 +2873,11 @@
     "documents": "Documentos",
     "paystubs": "Contracheques",
     "leaveRequests": "Pedidos de licenca",
-    "expenses": "Despesas"
+    "expenses": "Despesas",
+    "goToSettings": "Configuracoes",
+    "goToFinance": "Financas",
+    "goToWorkflows": "Workflow Studio",
+    "goToStrategy": "Estrategia"
   },
   "notifications": {
     "title": "Notificacoes",

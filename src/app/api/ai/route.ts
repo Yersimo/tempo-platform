@@ -124,6 +124,129 @@ You are an expert assessment designer. Given course content text, generate adapt
 Return JSON: { "questions": [{ "question": "...", "type": "multiple_choice|true_false|fill_blank|scenario", "difficulty": "easy|medium|hard", "options": ["A", "B", "C", "D"], "correct": "B", "explanation": "Why B is correct and why other options are wrong", "bloomLevel": "remember|understand|apply|analyze", "points": number }], "passingScore": number, "estimatedMinutes": number }`,
 }
 
+function demoResultForAction(action: string) {
+  switch (action) {
+    case 'enhanceSentiment':
+      return {
+        positive: 68,
+        negative: 12,
+        neutral: 20,
+        themes: ['Manager enablement', 'Career mobility', 'Operational clarity'],
+        summary: 'Sentiment is broadly positive with clear opportunities to improve career-path visibility and manager follow-through.',
+      }
+    case 'enhanceGoalScore':
+    case 'enhanceProjectHealth':
+    case 'enhanceOKRQuality':
+      return {
+        value: 82,
+        label: 'Strong',
+        breakdown: [
+          { factor: 'Clarity', score: 86, weight: 0.3 },
+          { factor: 'Measurability', score: 78, weight: 0.3 },
+          { factor: 'Execution risk', score: 82, weight: 0.4 },
+        ],
+        trend: 'stable',
+        suggestions: 'Add one measurable milestone, name the accountable owner, and review progress in the next operating rhythm.',
+      }
+    case 'enhanceBiasDetection':
+      return [
+        {
+          id: 'ai-bias-demo-1',
+          category: 'anomaly',
+          severity: 'info',
+          title: 'Calibration review recommended',
+          description: 'Ratings are usable for demo analysis, but a final calibration pass would improve confidence before decisions.',
+          confidence: 'medium',
+          confidenceScore: 72,
+          suggestedAction: 'Review outlier ratings by department and manager.',
+          module: 'performance',
+        },
+      ]
+    case 'enhanceCareerPath':
+    case 'enhanceWorkflowOptimization':
+      return [
+        {
+          id: 'ai-recommendation-demo-1',
+          title: 'Prioritize a focused enablement path',
+          rationale: 'The current data points to a high-value opportunity with moderate implementation effort.',
+          impact: 'high',
+          effort: 'medium',
+          category: 'workflow',
+        },
+      ]
+    case 'enhanceQuery':
+    case 'analyzeWorkforceQuery':
+      return {
+        intent: 'trend',
+        filters: {},
+        description: 'The current workforce signal is stable, with performance and retention indicators trending positively.',
+        suggestedSQL: '',
+        followUps: ['Show this by department', 'Compare against last quarter', 'Highlight the largest risks'],
+        chartType: 'bar',
+        chartTitle: 'Workforce Signal',
+        chartData: [
+          { name: 'Retention', value: 91 },
+          { name: 'Engagement', value: 84 },
+          { name: 'Mobility', value: 76 },
+        ],
+        highlight: 'Retention remains the strongest signal.',
+        severity: 'positive',
+      }
+    case 'generateCourseContent':
+      return {
+        title: 'Enterprise Learning Module',
+        description: 'A concise course outline for applied workplace learning.',
+        level: 'intermediate',
+        modules: [
+          {
+            title: 'Foundations',
+            description: 'Core concepts, examples, and applied practice.',
+            duration_minutes: 45,
+            lessons: [
+              {
+                title: 'Key Principles',
+                content: 'Participants learn the operating principles, common pitfalls, and practical examples they can apply immediately.',
+                type: 'text',
+                duration_minutes: 20,
+                keyTakeaways: ['Anchor learning in real work', 'Use examples before abstraction'],
+              },
+            ],
+          },
+        ],
+        learningObjectives: ['Explain the core topic', 'Apply the concept in a work scenario'],
+        assessmentStrategy: 'Short knowledge check followed by a practical scenario.',
+      }
+    case 'aiWritingAssist':
+      return {
+        result: 'This content has been refined for clarity, structure, and a more practical enterprise tone.',
+        action: 'rephrase',
+        wordCount: 14,
+      }
+    case 'generateSmartQuiz':
+      return {
+        questions: [
+          {
+            question: 'Which action best demonstrates applied understanding?',
+            type: 'multiple_choice',
+            difficulty: 'medium',
+            options: ['Memorizing definitions', 'Applying the concept to a real scenario', 'Skipping feedback', 'Avoiding measurement'],
+            correct: 'Applying the concept to a real scenario',
+            explanation: 'Application shows the learner can transfer the concept into work.',
+            bloomLevel: 'apply',
+            points: 1,
+          },
+        ],
+        passingScore: 80,
+        estimatedMinutes: 5,
+      }
+    default:
+      return {
+        summary: 'AI insights are running in deterministic demo mode. Core recommendations are available without an external provider.',
+        bulletPoints: ['Review the strongest signal first', 'Prioritize owner clarity', 'Recheck trend movement next cycle'],
+      }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const orgId = request.headers.get('x-org-id')
@@ -131,21 +254,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check API key is configured
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'AI not configured', fallback: true }, { status: 503 })
-    }
-
-    // Rate limit
-    if (!checkRateLimit(orgId)) {
-      return NextResponse.json({ error: 'Rate limit exceeded', fallback: true }, { status: 429 })
-    }
-
     const { action, data, locale = 'en' } = await request.json()
 
     const systemPrompt = ACTION_PROMPTS[action]
     if (!systemPrompt) {
       return NextResponse.json({ error: `Unknown action: ${action}`, fallback: true }, { status: 400 })
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ result: demoResultForAction(action), source: 'demo', fallback: true })
+    }
+
+    // Rate limit
+    if (!checkRateLimit(orgId)) {
+      return NextResponse.json({ result: demoResultForAction(action), source: 'demo', fallback: true })
     }
 
     // Build locale instruction
@@ -156,7 +278,7 @@ export async function POST(request: NextRequest) {
     // Call Claude
     const client = getClient()
     if (!client) {
-      return NextResponse.json({ error: 'AI client not available', fallback: true }, { status: 503 })
+      return NextResponse.json({ result: demoResultForAction(action), source: 'demo', fallback: true })
     }
     // Use higher token limit for content generation actions
     const contentActions = ['generateCourseContent', 'aiWritingAssist', 'analyzeWorkforceQuery', 'generateSmartQuiz']

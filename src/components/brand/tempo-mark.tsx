@@ -8,10 +8,10 @@ interface TempoMarkProps {
 }
 
 export function TempoMark({ variant = 'color', size = 40, className = '' }: TempoMarkProps) {
-  const bgColor = variant === 'white' ? '#ffffff' : '#1a1a1a'
-  const textColor = variant === 'white' ? '#1a1a1a' : '#ffffff'
-  const dotColor = variant === 'mono' ? '#666666' : '#00897B'
-  const rx = Math.round(size * 0.21)
+  const bgColor = variant === 'white' ? '#ffffff' : '#111820'
+  const textColor = variant === 'white' ? '#111820' : '#ffffff'
+  const dotColor = variant === 'mono' ? '#839099' : '#8DB8D1'
+  const rx = Math.round(size * 0.18)
 
   return (
     <svg

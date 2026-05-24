@@ -36,6 +36,37 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
       }
 
+      // Demo credentials must remain deterministic even when a local/dev DB
+      // contains an employee row with the same email but a different hash.
+      const demoCred = DEMO_MODE ? allDemoCredentials.find(c => c.email === email && c.password === password) : null
+      if (demoCred) {
+        const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+        const orgData = getDemoDataForOrg(demoOrgId)
+        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
+        const demoToken = await createToken({
+          employeeId: demoCred.employeeId,
+          email: demoCred.email,
+          role: demoCred.role,
+          orgId: demoOrgId,
+          sessionId: `demo-${Date.now()}`,
+        })
+        const demoUser = {
+          id: `user-${demoCred.employeeId}`,
+          email: demoCred.email,
+          full_name: demoEmp?.profile?.full_name || demoCred.label,
+          avatar_url: demoEmp?.profile?.avatar_url || null,
+          role: demoCred.role,
+          department_id: demoEmp?.department_id || null,
+          employee_id: demoCred.employeeId,
+          job_title: demoEmp?.job_title || demoCred.title,
+          department_name: demoCred.department,
+        }
+        const demoCookie = setSessionCookie(demoToken)
+        const demoResponse = NextResponse.json({ user: demoUser })
+        demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
+        return demoResponse
+      }
+
       // Find employee by email
       const [employee] = await db.select().from(schema.employees)
         .where(eq(schema.employees.email, email))
@@ -73,36 +104,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Demo fallback: check hardcoded demo credentials when DB has no match (DEMO_MODE only)
-        const demoCred = DEMO_MODE ? allDemoCredentials.find(c => c.email === email && c.password === password) : null
-        if (!demoCred) {
-          return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-        }
-        // Build a JWT session for the demo user (no DB session needed — middleware only checks JWT)
-        const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
-        const orgData = getDemoDataForOrg(demoOrgId)
-        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
-        const demoToken = await createToken({
-          employeeId: demoCred.employeeId,
-          email: demoCred.email,
-          role: demoCred.role,
-          orgId: demoOrgId,
-          sessionId: `demo-${Date.now()}`,
-        })
-        const demoUser = {
-          id: `user-${demoCred.employeeId}`,
-          email: demoCred.email,
-          full_name: demoEmp?.profile?.full_name || demoCred.label,
-          avatar_url: demoEmp?.profile?.avatar_url || null,
-          role: demoCred.role,
-          department_id: demoEmp?.department_id || null,
-          employee_id: demoCred.employeeId,
-          job_title: demoEmp?.job_title || demoCred.title,
-          department_name: demoCred.department,
-        }
-        const demoCookie = setSessionCookie(demoToken)
-        const demoResponse = NextResponse.json({ user: demoUser })
-        demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
-        return demoResponse
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       }
 
       // Verify password (supports both legacy demo: and new pbkdf2: formats)
@@ -138,7 +140,10 @@ export async function POST(request: NextRequest) {
         mfaEnrollment = enrollment || null
       } catch (mfaErr: unknown) {
         // Only skip if MFA table doesn't exist yet — rethrow real errors
-        const errMsg = mfaErr instanceof Error ? mfaErr.message : String(mfaErr)
+        const errMsg = [
+          mfaErr instanceof Error ? mfaErr.message : String(mfaErr),
+          mfaErr && typeof mfaErr === 'object' && 'cause' in mfaErr ? String((mfaErr as { cause?: unknown }).cause) : '',
+        ].join(' ')
         if (!errMsg.includes('does not exist') && !errMsg.includes('relation') && !errMsg.includes('undefined')) {
           console.error('[Auth] MFA check failed with unexpected error:', errMsg)
         }

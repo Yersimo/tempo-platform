@@ -388,9 +388,9 @@ export default function WorkforcePlanningPage() {
                       {scenarioComparison.comparison.headcountDiff[11]} people
                     </div>
                   </div>
-                  <div className="bg-teal-50 dark:bg-teal-900/20 rounded-lg px-4 py-3">
-                    <div className="text-xs text-teal-700 dark:text-teal-400 font-medium">Total Cost Difference (12-Mo)</div>
-                    <div className="text-xl font-bold text-teal-800 dark:text-teal-300">
+                  <div className="bg-tempo-50 dark:bg-tempo-900/20 rounded-lg px-4 py-3">
+                    <div className="text-xs text-tempo-700 dark:text-tempo-400 font-medium">Total Cost Difference (12-Mo)</div>
+                    <div className="text-xl font-bold text-tempo-800 dark:text-tempo-300">
                       {scenarioComparison.comparison.totalDifference >= 0 ? '+' : ''}
                       {formatCents(scenarioComparison.comparison.totalDifference)}
                     </div>
@@ -511,7 +511,7 @@ export default function WorkforcePlanningPage() {
                 {Object.entries(ASSUMPTION_PRESETS).map(([key, preset]) => (
                   <div
                     key={key}
-                    className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 hover:border-teal-300 dark:hover:border-teal-800 transition cursor-pointer"
+                    className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 hover:border-tempo-300 dark:hover:border-tempo-800 transition cursor-pointer"
                     onClick={() => {
                       setAssumptions(preset.assumptions)
                       setActiveTab('forecast')
@@ -642,7 +642,7 @@ function SliderInput({
           step={step}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-teal-700"
+          className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-tempo-700"
         />
         <span className="text-sm font-mono font-medium w-16 text-right">
           {unit === '$' ? `$${value.toLocaleString()}` : `${value}${unit}`}

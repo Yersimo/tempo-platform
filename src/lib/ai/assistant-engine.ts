@@ -1423,7 +1423,7 @@ const QUERY_PATTERNS: QueryPattern[] = [
         text: `${expired.length} devices are out of warranty.`,
         data: { expired },
         confidence: 0.8,
-        actions: [{ label: 'View IT Assets', type: 'navigate', payload: '/it', icon: 'Laptop' }],
+        actions: [{ label: 'View IT Assets', type: 'navigate', payload: '/it-cloud', icon: 'Laptop' }],
       }
     },
   },
@@ -1439,7 +1439,7 @@ const QUERY_PATTERNS: QueryPattern[] = [
         text: `${open.length} open IT requests.`,
         data: { tickets: open },
         confidence: 0.85,
-        actions: [{ label: 'View IT Requests', type: 'navigate', payload: '/it', icon: 'Headphones' }],
+        actions: [{ label: 'View IT Requests', type: 'navigate', payload: '/it-cloud', icon: 'Headphones' }],
       }
     },
   },
@@ -1710,7 +1710,7 @@ const NAV_SHORTCUTS: Record<string, string> = {
   compensation: '/compensation',
   engagement: '/engagement',
   finance: '/finance',
-  it: '/it',
+  it: '/it-cloud',
   'time attendance': '/time-attendance',
   'time off': '/time-attendance',
   documents: '/documents',
@@ -2950,16 +2950,16 @@ export function processAssistantQuery(query: string, store: any): AssistantRespo
     if (match) return trackAndReturn(handler(store, match), 'self-service')
   }
 
-  // ---- 2. Action patterns ("create ...", "approve ...") ----
-  for (const { pattern, handler } of ACTION_PATTERNS) {
-    const match = trimmed.match(pattern)
-    if (match) return trackAndReturn(handler(store, match), 'action')
-  }
-
-  // ---- 2b. Direct execution patterns ("create leave request", "approve all", "update...") ----
+  // ---- 2. Direct execution patterns ("create leave request", "approve all", "update...") ----
   for (const { pattern, handler } of EXECUTION_PATTERNS) {
     const match = trimmed.match(pattern)
     if (match) return trackAndReturn(handler(store, match), 'execution')
+  }
+
+  // ---- 2b. Action patterns ("create ...", "approve ...") ----
+  for (const { pattern, handler } of ACTION_PATTERNS) {
+    const match = trimmed.match(pattern)
+    if (match) return trackAndReturn(handler(store, match), 'action')
   }
 
   // ---- 2c. Extended action patterns (multi-step, alerts, exports, summary) ----

@@ -757,6 +757,7 @@ export default function RecruitingPage() {
                   <Badge variant={job.status === 'open' ? 'success' : 'default'}>{job.status}</Badge>
                   <button
                     onClick={() => openEditJob(job.id)}
+                    aria-label={`Edit ${job.title}`}
                     className="p-1.5 text-t3 hover:text-t1 hover:bg-canvas rounded-lg transition-colors"
                   >
                     <Pencil size={14} />

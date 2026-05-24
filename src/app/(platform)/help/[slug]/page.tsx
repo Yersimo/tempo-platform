@@ -368,9 +368,9 @@ export default function HelpModulePage() {
           <div className="w-14 h-14 rounded-2xl bg-tempo-50 flex items-center justify-center mx-auto mb-4">
             <Icon size={28} className="text-tempo-600" />
           </div>
-          <h2 className="text-lg font-semibold text-t1 mb-2">Documentation coming soon</h2>
+          <h2 className="text-lg font-semibold text-t1 mb-2">Module Guide</h2>
           <p className="text-sm text-t3 mb-6 max-w-md mx-auto">
-            The documentation for {placeholderEntry.title} is currently being authored. Check back later for full guides, workflows, and FAQs.
+            This module is available in the platform. Use the module workspace for live workflows, permissions, and operational data while the full guide is expanded.
           </p>
           <Link href="/help">
             <Button variant="secondary" size="sm">

@@ -54,6 +54,7 @@ export function AIQueryBar({ onQuery, placeholder, suggestions, className }: AIQ
         />
         <button
           onClick={() => handleSubmit()}
+          aria-label={query.trim() ? 'Submit AI query' : 'Search with AI'}
           className={cn(
             'shrink-0 p-1.5 rounded-lg transition-colors',
             query.trim() ? 'bg-tempo-600 text-white hover:bg-tempo-700' : 'bg-canvas text-t3'

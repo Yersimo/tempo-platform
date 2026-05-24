@@ -14,30 +14,30 @@ import { cn } from '@/lib/utils/cn'
 // ═══════════════════════════════════════════════════════════
 
 export const CHART_COLORS = {
-  primary: '#004D40',
-  blue: '#3b82f6',
-  emerald: '#10b981',
-  violet: '#8b5cf6',
-  amber: '#f59e0b',
-  slate: '#64748b',
-  rose: '#ef4444',
-  cyan: '#06b6d4',
-  lime: '#84cc16',
-  pink: '#ec4899',
+  primary: '#285B7A',
+  blue: '#5F98B8',
+  emerald: '#6F8558',
+  violet: '#686F88',
+  amber: '#A77A32',
+  slate: '#52616A',
+  rose: '#B24B55',
+  cyan: '#8DB8D1',
+  lime: '#A4B58E',
+  pink: '#A66B7C',
 } as const
 
 export const CHART_SERIES = [
-  '#004D40', '#3b82f6', '#10b981', '#8b5cf6',
-  '#f59e0b', '#64748b', '#ef4444', '#06b6d4',
-  '#84cc16', '#ec4899', '#14b8a6', '#a855f7',
+  '#285B7A', '#6F8558', '#A77A32', '#686F88',
+  '#5F98B8', '#52616A', '#B24B55', '#8DB8D1',
+  '#A4B58E', '#A66B7C', '#3F789A', '#8A7C63',
 ]
 
 export const STATUS_COLORS = {
-  success: '#10b981',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
-  neutral: '#94a3b8',
+  success: '#6F8558',
+  warning: '#A77A32',
+  error: '#B24B55',
+  info: '#285B7A',
+  neutral: '#839099',
 } as const
 
 // ═══════════════════════════════════════════════════════════
@@ -46,13 +46,13 @@ export const STATUS_COLORS = {
 
 const AXIS_TICK = {
   fontSize: 11,
-  fill: '#94a3b8',
+  fill: '#839099',
   fontFamily: 'system-ui, -apple-system, sans-serif',
 }
 
 const GRID_PROPS = {
   strokeDasharray: '3 3',
-  stroke: '#e2e8f0',
+  stroke: '#D8E0DE',
   strokeOpacity: 0.5,
 }
 

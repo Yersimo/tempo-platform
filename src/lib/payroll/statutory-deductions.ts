@@ -105,7 +105,7 @@ const STATUTORY_REGISTRY: Record<string, StatutoryDeduction[]> = {
     {
       name: 'NHIS (Health)',
       type: 'health',
-      employeeRate: 0.025,
+      employeeRate: 0,
       employerRate: 0.025,
       currency: 'GHS',
       mandatory: true,

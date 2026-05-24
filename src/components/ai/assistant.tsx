@@ -338,9 +338,9 @@ function CommandBar({
                 'Show pending approvals',
                 "What's our payroll cost?",
                 'Headcount by department',
-                'Create a leave request for next Monday',
+                'Plan time off for next Monday',
                 'What is our leave policy?',
-                'Approve all pending leave requests',
+                'Review pending leave approvals',
               ].map((q) => (
                 <button
                   key={q}
@@ -494,6 +494,7 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           </div>
           <button
             onClick={onClose}
+            aria-label="Close Tempo AI"
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-hover text-t3 hover:text-t1 transition-colors"
           >
             <X className="w-4 h-4" />
@@ -608,8 +609,8 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                   'How many employees do we have?',
                   "What's our turnover rate?",
                   'Headcount by department',
-                  'Create a leave request for next Monday',
-                  'Approve all pending leave requests',
+                  'Plan time off for next Monday',
+                  'Review pending leave approvals',
                   'Update Kwame\'s title to Senior Engineer',
                   'Ask about our policies',
                   'Company snapshot',

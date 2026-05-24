@@ -21,16 +21,16 @@ export const CONTENT_WIDTH = PAGE_WIDTH - MARGIN.left - MARGIN.right // 512
 export const COLORS = {
   /** Primary text and headings — dark navy #212638 */
   PRIMARY: rgb(0.13, 0.15, 0.22),
-  /** Accent elements, rules, highlights — Tempo teal #004D40 */
-  ACCENT: rgb(0.0, 0.302, 0.251),
+  /** Accent elements, rules, highlights — Tempo navy #285B7A */
+  ACCENT: rgb(0.157, 0.357, 0.478),
   /** Secondary / muted text — grey #737580 */
   MUTED: rgb(0.451, 0.459, 0.502),
   /** Light background fills — #f5f5f5 */
   LIGHT_BG: rgb(0.961, 0.961, 0.961),
   /** Divider lines and borders — #d1d5db */
   DIVIDER: rgb(0.82, 0.835, 0.859),
-  /** Tip box background — teal-50 #E0F2F1 */
-  TIP_BG: rgb(0.878, 0.949, 0.945),
+  /** Tip box background — tempo-50 #EEF5FA */
+  TIP_BG: rgb(0.933, 0.961, 0.980),
   /** White */
   WHITE: rgb(1, 1, 1),
 } as const

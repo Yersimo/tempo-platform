@@ -41,7 +41,11 @@ export function AIAlertBanner({ insights, onDismiss, maxVisible = 3, className }
             <span className="font-semibold text-t1">{insight.title}:</span>{' '}
             <span className="text-t2">{insight.description}</span>
           </div>
-          <button onClick={() => handleDismiss(insight.id)} className="shrink-0 text-t3 hover:text-t1 transition-colors">
+          <button
+            onClick={() => handleDismiss(insight.id)}
+            aria-label={`Dismiss ${insight.title}`}
+            className="shrink-0 text-t3 hover:text-t1 transition-colors"
+          >
             <X size={12} />
           </button>
         </div>

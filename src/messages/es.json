@@ -342,7 +342,12 @@
     "categoryIT": "TI",
     "widgetsEnabled": "{count} widgets activos",
     "resetLayout": "Restablecer",
-    "saveLayout": "Guardar Diseno"
+    "saveLayout": "Guardar Diseno",
+    "leaveBalance": "Saldo de permisos",
+    "annualLeaveRemaining": "Permiso anual restante",
+    "activeGoalsLabel": "Metas activas",
+    "needAttention": "{count} requieren atencion",
+    "allOnTrack": "Todo en curso"
   },
   "people": {
     "title": "Personas",
@@ -2868,7 +2873,11 @@
     "documents": "Documentos",
     "paystubs": "Recibos de pago",
     "leaveRequests": "Solicitudes de ausencia",
-    "expenses": "Gastos"
+    "expenses": "Gastos",
+    "goToSettings": "Configuracion",
+    "goToFinance": "Finanzas",
+    "goToWorkflows": "Workflow Studio",
+    "goToStrategy": "Estrategia"
   },
   "notifications": {
     "title": "Notificaciones",

@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
-import { forwardRef } from 'react'
+import { Children, forwardRef } from 'react'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline'
@@ -11,27 +11,31 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
+    const hasTextChild = Children.toArray(children).some(child => typeof child === 'string' && child.trim().length > 0)
+    const accessibleLabel = props['aria-label'] || props.title || (!hasTextChild && Children.count(children) > 0 ? 'Icon action' : undefined)
+
     return (
       <button
         ref={ref}
         disabled={disabled || loading}
+        aria-label={accessibleLabel}
         className={cn(
-          'inline-flex items-center justify-center font-medium rounded-xl',
+          'inline-flex items-center justify-center font-medium rounded-[var(--radius-button)]',
           'transition-all duration-200 ease-out',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-tempo-500/25 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas',
           'disabled:opacity-50 disabled:pointer-events-none',
-          'active:scale-[0.97]',
+          'active:translate-y-px whitespace-nowrap',
           // Variants
           {
-            'bg-tempo-600 text-white hover:bg-tempo-700 shadow-sm shadow-tempo-600/25 hover:shadow-md hover:shadow-tempo-600/30 focus-visible:ring-tempo-500': variant === 'primary',
-            'bg-white text-t1 hover:bg-gray-50 border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 focus-visible:ring-gray-300': variant === 'secondary',
-            'bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-600/25 hover:shadow-md focus-visible:ring-red-500': variant === 'danger',
-            'text-t2 hover:text-t1 hover:bg-gray-100 focus-visible:ring-gray-300': variant === 'ghost',
-            'border border-gray-200 text-t2 hover:text-t1 hover:bg-gray-50 hover:border-gray-300 shadow-sm focus-visible:ring-gray-300': variant === 'outline',
+            'bg-tempo-700 text-white hover:bg-tempo-800 shadow-sm shadow-tempo-900/15 hover:shadow-md hover:shadow-tempo-900/20': variant === 'primary',
+            'bg-card text-t1 hover:bg-birch border border-border shadow-sm hover:border-stone': variant === 'secondary',
+            'bg-error text-white hover:bg-red-700 shadow-sm shadow-red-700/20 hover:shadow-md': variant === 'danger',
+            'text-t2 hover:text-t1 hover:bg-fog': variant === 'ghost',
+            'border border-border text-t2 hover:text-t1 hover:bg-birch hover:border-stone shadow-sm': variant === 'outline',
           },
           // Sizes
           {
-            'text-xs px-3 py-1.5 gap-1.5 rounded-lg': size === 'sm',
+            'text-xs px-3 py-1.5 gap-1.5': size === 'sm',
             'text-sm px-4 py-2.5 gap-2': size === 'md',
             'text-base px-6 py-3 gap-2.5': size === 'lg',
           },

@@ -70,14 +70,14 @@ test.describe('UX Audit: Accessible Buttons', () => {
 
 test.describe('UX Audit: Sidebar Navigation', () => {
   test('sidebar is visible on desktop', async ({ page }) => {
-    await page.goto('/dashboard')
+    await navigateToModule(page, '/dashboard')
     await page.waitForLoadState('networkidle')
     const sidebar = page.locator('nav').first()
     await expect(sidebar).toBeVisible()
   })
 
   test('all core modules are linked in sidebar', async ({ page }) => {
-    await page.goto('/dashboard')
+    await navigateToModule(page, '/dashboard')
     await page.waitForLoadState('networkidle')
 
     const sidebarLinks = page.locator('nav a[href]')

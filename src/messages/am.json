@@ -342,7 +342,12 @@
     "categoryIT": "IT",
     "widgetsEnabled": "{count} ዊጀቶች ነቅተዋል",
     "resetLayout": "ወደ ነባሪ መልስ",
-    "saveLayout": "አቀማመጥ አስቀምጥ"
+    "saveLayout": "አቀማመጥ አስቀምጥ",
+    "leaveBalance": "የፈቃድ ቀሪ ሂሳብ",
+    "annualLeaveRemaining": "የቀረ ዓመታዊ ፈቃድ",
+    "activeGoalsLabel": "ንቁ ግቦች",
+    "needAttention": "{count} ትኩረት ይፈልጋሉ",
+    "allOnTrack": "ሁሉም በመስመር ላይ ነው"
   },
   "people": {
     "title": "People",
@@ -2868,7 +2873,11 @@
     "documents": "ሰነዶች",
     "paystubs": "የደመወዝ ደረሰኞች",
     "leaveRequests": "የፈቃድ ጥያቄዎች",
-    "expenses": "ወጪዎች"
+    "expenses": "ወጪዎች",
+    "goToSettings": "ቅንብሮች",
+    "goToFinance": "ፋይናንስ",
+    "goToWorkflows": "Workflow Studio",
+    "goToStrategy": "ስትራቴጂ"
   },
   "notifications": {
     "title": "ማሳወቂያዎች",

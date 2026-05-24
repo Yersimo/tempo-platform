@@ -262,11 +262,11 @@ export function Sidebar() {
         title={isCollapsed ? item.label : undefined}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'relative flex items-center gap-2.5 rounded-lg text-[0.8rem] transition-colors',
+          'relative flex items-center gap-2.5 rounded-[var(--radius-button)] text-[0.8rem] transition-colors',
           isCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2',
           isActive
-            ? 'bg-white/10 text-white font-medium'
-            : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
+            ? 'bg-white/[0.12] text-white font-medium shadow-sm'
+            : 'text-white/55 hover:text-white/85 hover:bg-white/[0.07]'
         )}
       >
         <span className={cn(isActive && 'text-white')}>
@@ -291,7 +291,7 @@ export function Sidebar() {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col bg-chrome h-screen sticky top-0 transition-all duration-300 border-r border-dark-border',
+          'hidden lg:flex flex-col bg-chrome h-screen sticky top-0 transition-all duration-300 border-r border-dark-border shadow-[12px_0_32px_rgba(16,39,36,0.12)]',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -306,18 +306,16 @@ export function Sidebar() {
           <button
             onClick={toggleCollapsed}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="text-t3 hover:text-white p-1 rounded transition-colors"
+            className="text-white/45 hover:text-white p-1 rounded-[var(--radius-button)] hover:bg-white/[0.07] transition-colors"
           >
             {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
 
-        {/* Search (expanded only) */}
-        {!collapsed && (
-          <div className="px-3 pb-3">
-            <CommandPalette />
-          </div>
-        )}
+        {/* Search / global command center */}
+        <div className={cn('px-3 pb-3', collapsed && 'sr-only')}>
+          <CommandPalette showTrigger={!collapsed} />
+        </div>
 
         {/* Entity Switcher (multi-entity orgs) */}
         <EntitySwitcher collapsed={collapsed} />
@@ -336,8 +334,10 @@ export function Sidebar() {
                   <button
                     onClick={() => setShowMoreApps(!showMoreApps)}
                     title="More Apps"
+                    aria-label="More Apps"
+                    aria-expanded={showMoreApps}
                     className={cn(
-                      'relative flex items-center justify-center w-full px-2 py-2.5 rounded-lg text-[0.8rem] transition-colors',
+                      'relative flex items-center justify-center w-full px-2 py-2.5 rounded-[var(--radius-button)] text-[0.8rem] transition-colors',
                       showMoreApps
                         ? 'bg-white/10 text-white'
                         : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
@@ -350,11 +350,15 @@ export function Sidebar() {
 
               {/* More Apps flyout (collapsed mode) */}
               {showMoreApps && (
-                <div className="absolute left-16 top-0 bottom-0 w-56 bg-chrome border-r border-dark-border z-40 overflow-y-auto">
+                <div className="absolute left-16 top-0 bottom-0 w-56 bg-chrome border-r border-dark-border z-40 overflow-y-auto shadow-[var(--shadow-popover)]">
                   <div className="px-3 py-4">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">More Apps</span>
-                      <button onClick={() => setShowMoreApps(false)} className="text-white/40 hover:text-white transition-colors">
+                      <button
+                        onClick={() => setShowMoreApps(false)}
+                        aria-label="Close more apps"
+                        className="text-white/40 hover:text-white transition-colors"
+                      >
                         <X size={14} />
                       </button>
                     </div>
@@ -395,7 +399,7 @@ export function Sidebar() {
                   <button
                     onClick={() => setShowMoreApps(!showMoreApps)}
                     className={cn(
-                      'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[0.8rem] transition-colors',
+                      'flex items-center gap-2.5 w-full px-3 py-2 rounded-[var(--radius-button)] text-[0.8rem] transition-colors',
                       showMoreApps
                         ? 'bg-white/10 text-white font-medium'
                         : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
@@ -437,7 +441,7 @@ export function Sidebar() {
               href="/settings"
               title="Settings"
               className={cn(
-                'flex items-center justify-center p-2 rounded-lg transition-colors',
+                'flex items-center justify-center p-2 rounded-[var(--radius-button)] transition-colors',
                 pathname.startsWith('/settings')
                   ? 'bg-white/10 text-white'
                   : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
@@ -458,7 +462,7 @@ export function Sidebar() {
             <Link
               href="/help"
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors',
+                'flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-button)] text-[0.8rem] transition-colors',
                 pathname.startsWith('/help')
                   ? 'bg-white/10 text-white font-medium'
                   : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
@@ -470,7 +474,7 @@ export function Sidebar() {
             <Link
               href="/settings"
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8rem] transition-colors mb-1',
+                'flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-button)] text-[0.8rem] transition-colors mb-1',
                 pathname.startsWith('/settings')
                   ? 'bg-white/10 text-white font-medium'
                   : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
@@ -497,7 +501,7 @@ export function Sidebar() {
       )}
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-chrome/95 backdrop-blur-lg border-t border-dark-border z-50 pb-[env(safe-area-inset-bottom)]" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-chrome/95 backdrop-blur-lg border-t border-dark-border z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_32px_rgba(16,39,36,0.18)]" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
         <div className="flex justify-around items-end pt-1.5 pb-1">
           {[
             { label: 'Home', href: '/dashboard', icon: <LayoutDashboard size={22} /> },
@@ -526,6 +530,8 @@ export function Sidebar() {
           {/* More tab - opens full-screen menu */}
           <button
             onClick={() => setShowMobileMore(prev => !prev)}
+            aria-label={showMobileMore ? 'Close app menu' : 'Open app menu'}
+            aria-expanded={showMobileMore}
             className={cn(
               'flex flex-col items-center justify-center gap-0.5 min-w-[56px] min-h-[44px] relative',
               showMobileMore ? 'text-tempo-400' : 'text-white/45'
@@ -548,7 +554,7 @@ export function Sidebar() {
           />
           {/* Menu panel */}
           <div
-            className="mobile-menu-enter absolute bottom-0 left-0 right-0 bg-chrome rounded-t-2xl max-h-[85vh] flex flex-col"
+            className="mobile-menu-enter absolute bottom-0 left-0 right-0 bg-chrome rounded-t-[20px] max-h-[85vh] flex flex-col shadow-[var(--shadow-popover)]"
             style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Drag handle */}
@@ -561,6 +567,7 @@ export function Sidebar() {
               <span className="text-base font-semibold text-white">All Apps</span>
               <button
                 onClick={() => setShowMobileMore(false)}
+                aria-label="Close app menu"
                 className="text-white/40 hover:text-white p-1"
               >
                 <X size={20} />
@@ -598,7 +605,7 @@ export function Sidebar() {
                           href={item.href}
                           onClick={() => setShowMobileMore(false)}
                           className={cn(
-                            'flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl transition-colors min-h-[72px] justify-center',
+                            'flex flex-col items-center gap-1.5 py-3 px-1 rounded-[var(--radius-card)] transition-colors min-h-[72px] justify-center',
                             isActive
                               ? 'bg-tempo-600/15 text-tempo-400'
                               : 'text-white/50 active:bg-white/[0.06]'
@@ -627,7 +634,7 @@ export function Sidebar() {
                 <Link
                   href="/settings"
                   onClick={() => setShowMobileMore(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/60 active:bg-white/[0.06]"
+                  className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-button)] text-white/60 active:bg-white/[0.06]"
                 >
                   <Settings size={20} />
                   <span className="text-sm">Settings</span>
@@ -635,14 +642,14 @@ export function Sidebar() {
                 <Link
                   href="/help"
                   onClick={() => setShowMobileMore(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/60 active:bg-white/[0.06]"
+                  className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-button)] text-white/60 active:bg-white/[0.06]"
                 >
                   <BookOpen size={20} />
                   <span className="text-sm">Help Center</span>
                 </Link>
                 <button
                   onClick={() => { setShowMobileMore(false); handleLogout() }}
-                  className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400/80 active:bg-white/[0.06]"
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-[var(--radius-button)] text-red-400/80 active:bg-white/[0.06]"
                 >
                   <LogOut size={20} />
                   <span className="text-sm">Sign Out</span>

@@ -50,21 +50,21 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
       aria-describedby={description ? 'modal-description' : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-graphite/45 backdrop-blur-md"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       <div className={cn(
-        'w-full bg-card rounded-[var(--radius-card)] border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200',
+        'w-full bg-card rounded-[var(--radius-card)] border border-border overflow-hidden shadow-[var(--shadow-popover)] animate-in fade-in zoom-in-95 duration-200',
         sizeClasses[size],
         className
       )}>
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-divider">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-divider bg-birch/55">
             <div>
               <h2 id="modal-title" className="text-sm font-semibold text-t1">{title}</h2>
               {description && <p id="modal-description" className="text-xs text-t3 mt-0.5">{description}</p>}
             </div>
-            <button onClick={onClose} aria-label="Close dialog" className="text-t3 hover:text-t1 p-1 rounded-lg hover:bg-canvas transition-colors">
+            <button onClick={onClose} aria-label="Close dialog" className="text-t3 hover:text-t1 p-1 rounded-[var(--radius-button)] hover:bg-white/80 transition-colors">
               <X size={16} />
             </button>
           </div>

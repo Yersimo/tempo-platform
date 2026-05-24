@@ -87,16 +87,16 @@ export function FileUpload({
           type="button"
           onClick={handleClick}
           disabled={isUploading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 bg-zinc-100 rounded-md hover:bg-zinc-200 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-t2 bg-fog rounded-[var(--radius-button)] hover:bg-birch hover:text-t1 border border-border transition-colors disabled:opacity-50"
         >
           {isUploading ? (
             <>
-              <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-3 h-3 border-2 border-tempo-700 border-t-transparent rounded-full animate-spin" />
               {progress}%
             </>
           ) : lastResult ? (
             <>
-              <CheckCircle size={12} className="text-green-600" />
+              <CheckCircle size={12} className="text-success" />
               Uploaded
             </>
           ) : (
@@ -128,31 +128,31 @@ export function FileUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={`
-          relative flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all
+          relative flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-[var(--radius-card)] cursor-pointer transition-all
           ${isDragging
-            ? 'border-teal-600 bg-teal-50'
-            : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-zinc-100'
+            ? 'border-tempo-600 bg-tempo-50'
+            : 'border-border bg-birch/35 hover:border-stone hover:bg-birch/60'
           }
           ${isUploading ? 'pointer-events-none opacity-70' : ''}
         `}
       >
         {isUploading ? (
           <>
-            <div className="w-8 h-8 border-3 border-teal-700 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-zinc-500">Uploading... {progress}%</p>
-            <div className="w-full max-w-48 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+            <div className="w-8 h-8 border-3 border-tempo-700 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-t2">Uploading... {progress}%</p>
+            <div className="w-full max-w-48 h-1.5 bg-stone/60 rounded-full overflow-hidden">
               <div
-                className="h-full bg-teal-700 rounded-full transition-all duration-300"
+                className="h-full bg-tempo-700 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </>
         ) : lastResult ? (
           <>
-            <IconComponent size={24} className="text-green-600" />
+            <IconComponent size={24} className="text-success" />
             <div className="text-center">
-              <p className="text-sm font-medium text-zinc-700">{lastResult.name}</p>
-              <p className="text-xs text-zinc-400">{formatSize(lastResult.size)}</p>
+              <p className="text-sm font-medium text-t1">{lastResult.name}</p>
+              <p className="text-xs text-t3">{formatSize(lastResult.size)}</p>
             </div>
             <button
               type="button"
@@ -161,19 +161,19 @@ export function FileUpload({
                 // Clear to allow re-upload
                 handleClick()
               }}
-              className="text-xs text-teal-800 hover:underline"
+              className="text-xs text-tempo-700 hover:text-tempo-900 hover:underline"
             >
               Replace file
             </button>
           </>
         ) : (
           <>
-            <Upload size={24} className="text-zinc-400" />
+            <Upload size={24} className="text-t3" />
             <div className="text-center">
-              <p className="text-sm text-zinc-600">
-                <span className="font-medium text-teal-800">Click to upload</span> or drag and drop
+              <p className="text-sm text-t2">
+                <span className="font-medium text-tempo-700">Click to upload</span> or drag and drop
               </p>
-              <p className="text-xs text-zinc-400 mt-1">
+              <p className="text-xs text-t3 mt-1">
                 PDF, images, documents up to {maxSizeMB}MB
               </p>
             </div>

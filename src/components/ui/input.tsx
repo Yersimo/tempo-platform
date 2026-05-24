@@ -42,7 +42,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative group">
           {icon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-t3 group-focus-within:text-tempo-600 transition-colors">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-t3 group-focus-within:text-tempo-700 transition-colors">
               {icon}
             </div>
           )}
@@ -53,12 +53,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={error ? true : undefined}
             aria-describedby={errorId}
             className={cn(
-              'w-full h-10 px-3.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-t1 placeholder:text-gray-400',
-              'shadow-sm shadow-gray-100/50',
+              'w-full h-10 px-3.5 text-sm bg-card dark:bg-card border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3',
+              'shadow-sm shadow-stone/15',
               'transition-all duration-200 ease-out',
-              'hover:border-gray-300 dark:hover:border-gray-600',
-              'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-500 focus:shadow-md focus:shadow-tempo-500/5',
-              'disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed',
+              'hover:border-stone hover:bg-snow',
+              'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600 focus:bg-white focus:shadow-md focus:shadow-tempo-900/5',
+              'disabled:opacity-50 disabled:bg-fog disabled:cursor-not-allowed',
               error && 'border-error focus:ring-error/20 focus:border-error',
               icon && 'pl-10',
               isNumber && 'pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
@@ -72,7 +72,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 type="button"
                 tabIndex={-1}
                 onClick={stepUp}
-                className="flex items-center justify-center w-7 h-4 rounded-t-md text-gray-400 hover:text-tempo-600 hover:bg-tempo-50 transition-colors"
+                className="flex items-center justify-center w-7 h-4 rounded-t-md text-t3 hover:text-tempo-700 hover:bg-tempo-50 transition-colors"
               >
                 <ChevronUp size={12} strokeWidth={2.5} />
               </button>
@@ -80,7 +80,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 type="button"
                 tabIndex={-1}
                 onClick={stepDown}
-                className="flex items-center justify-center w-7 h-4 rounded-b-md text-gray-400 hover:text-tempo-600 hover:bg-tempo-50 transition-colors"
+                className="flex items-center justify-center w-7 h-4 rounded-b-md text-t3 hover:text-tempo-700 hover:bg-tempo-50 transition-colors"
               >
                 <ChevronDown size={12} strokeWidth={2.5} />
               </button>
@@ -190,14 +190,14 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             onClick={() => !disabled && setIsOpen(!isOpen)}
             onKeyDown={handleKeyDown}
             className={cn(
-              'w-full h-10 px-3.5 pr-10 text-sm text-left bg-white dark:bg-gray-900 border rounded-xl',
-              'shadow-sm shadow-gray-100/50',
+              'w-full h-10 px-3.5 pr-10 text-sm text-left bg-card dark:bg-card border rounded-[var(--radius-input)]',
+              'shadow-sm shadow-stone/15',
               'transition-all duration-200 ease-out',
-              'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-500 focus:shadow-md focus:shadow-tempo-500/5',
-              'disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed',
+              'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600 focus:bg-white focus:shadow-md focus:shadow-tempo-900/5',
+              'disabled:opacity-50 disabled:bg-fog disabled:cursor-not-allowed',
               isOpen
-                ? 'border-tempo-500 ring-2 ring-tempo-500/20 shadow-md shadow-tempo-500/5'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300',
+                ? 'border-tempo-600 ring-2 ring-tempo-500/20 shadow-md shadow-tempo-900/5'
+                : 'border-border hover:border-stone',
               error && 'border-error focus:ring-error/20 focus:border-error',
               className
             )}
@@ -212,7 +212,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
               'absolute right-3 top-1/2 -translate-y-1/2 transition-transform duration-200',
               isOpen && 'rotate-180'
             )}>
-              <ChevronDown size={16} className="text-gray-400" />
+              <ChevronDown size={16} className="text-t3" />
             </div>
           </button>
 
@@ -221,7 +221,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
               ref={listRef}
               role="listbox"
               className={cn(
-                'absolute z-50 w-full mt-1.5 py-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg shadow-gray-200/50 dark:shadow-gray-900/50',
+                'absolute z-50 w-full mt-1.5 py-1 bg-card border border-border rounded-[var(--radius-card)] shadow-[var(--shadow-popover)]',
                 'max-h-60 overflow-auto',
                 'animate-in fade-in slide-in-from-top-1 duration-150'
               )}
@@ -235,8 +235,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                   onMouseEnter={() => setHighlightedIndex(i)}
                   className={cn(
                     'flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer transition-colors duration-100',
-                    i === highlightedIndex && 'bg-gray-50 dark:bg-gray-800',
-                    opt.value === value && 'text-tempo-600 font-medium',
+                    i === highlightedIndex && 'bg-fog',
+                    opt.value === value && 'text-tempo-700 font-medium',
                     opt.value !== value && 'text-t1'
                   )}
                 >
@@ -248,7 +248,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                     )}
                   </div>
                   {opt.value === value && (
-                    <Check size={14} className="shrink-0 text-tempo-600" />
+                    <Check size={14} className="shrink-0 text-tempo-700" />
                   )}
                 </li>
               ))}
@@ -284,12 +284,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={id}
           className={cn(
-            'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-t1 placeholder:text-gray-400 resize-none',
-            'shadow-sm shadow-gray-100/50',
+            'w-full px-3.5 py-2.5 text-sm bg-card dark:bg-card border border-border rounded-[var(--radius-input)] text-t1 placeholder:text-t3 resize-none',
+            'shadow-sm shadow-stone/15',
             'transition-all duration-200 ease-out',
-            'hover:border-gray-300 dark:hover:border-gray-600',
-            'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-500 focus:shadow-md focus:shadow-tempo-500/5',
-            'disabled:opacity-50 disabled:bg-gray-50',
+            'hover:border-stone hover:bg-snow',
+            'focus:outline-none focus:ring-2 focus:ring-tempo-500/20 focus:border-tempo-600 focus:bg-white focus:shadow-md focus:shadow-tempo-900/5',
+            'disabled:opacity-50 disabled:bg-fog',
             error && 'border-error focus:ring-error/20 focus:border-error',
             className
           )}

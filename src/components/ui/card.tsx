@@ -12,9 +12,9 @@ export function Card({ className, padding = 'md', clickable, children, onClick, 
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-[var(--radius-card)]',
+        'bg-card/96 border border-border rounded-[var(--radius-card)] shadow-[var(--shadow-card)] backdrop-blur-sm',
         padding === 'none' ? 'p-0' : 'p-6 max-lg:p-4',
-        isClickable && 'cursor-pointer hover:shadow-md hover:border-tempo-200 transition-all duration-200 active:scale-[0.98] active:transition-transform active:duration-100',
+        isClickable && 'cursor-pointer hover:-translate-y-px hover:border-tempo-200 hover:bg-snow transition-all duration-200 active:translate-y-0 active:transition-transform active:duration-100',
         className
       )}
       onClick={onClick}
@@ -27,7 +27,7 @@ export function Card({ className, padding = 'md', clickable, children, onClick, 
 
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-6 py-4 border-b border-divider', className)} {...props}>
+    <div className={cn('px-6 py-4 border-b border-divider bg-birch/45', className)} {...props}>
       {children}
     </div>
   )

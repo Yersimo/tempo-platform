@@ -342,7 +342,12 @@
     "categoryIT": "IT",
     "widgetsEnabled": "{count} widgets an kunna",
     "resetLayout": "Maida Zuwa Asali",
-    "saveLayout": "Ajiye Tsari"
+    "saveLayout": "Ajiye Tsari",
+    "leaveBalance": "Ragowar Hutu",
+    "annualLeaveRemaining": "Hutun shekara da ya rage",
+    "activeGoalsLabel": "Manufofin da Ke Aiki",
+    "needAttention": "{count} na bukatar kulawa",
+    "allOnTrack": "Duka suna kan hanya"
   },
   "people": {
     "title": "People",
@@ -2868,7 +2873,11 @@
     "documents": "Takardu",
     "paystubs": "Takardun albashi",
     "leaveRequests": "Bukatun hutu",
-    "expenses": "Kashe kudi"
+    "expenses": "Kashe kudi",
+    "goToSettings": "Saituna",
+    "goToFinance": "Kudi",
+    "goToWorkflows": "Workflow Studio",
+    "goToStrategy": "Dabara"
   },
   "notifications": {
     "title": "Sanarwa",

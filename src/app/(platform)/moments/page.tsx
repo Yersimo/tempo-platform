@@ -43,9 +43,9 @@ const MOMENT_COLORS: Record<string, string> = {
   new_hire: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   return_from_leave: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
   retirement: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
-  first_project: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+  first_project: 'bg-tempo-100 text-tempo-800 dark:bg-tempo-900/30 dark:text-tempo-300',
   certification: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
-  team_change: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+  team_change: 'bg-tempo-100 text-tempo-700 dark:bg-tempo-900/30 dark:text-tempo-300',
   milestone_achievement: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
   baby_born: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
   wedding: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
@@ -191,15 +191,15 @@ export default function MomentsPage() {
       </div>
 
       {todayMoments.length > 0 && (
-        <Card className="border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 to-amber-50 dark:from-teal-950/20 dark:to-amber-950/20">
+        <Card className="border-tempo-200 dark:border-tempo-800 bg-gradient-to-r from-tempo-50 to-amber-50 dark:from-tempo-950/20 dark:to-amber-950/20">
           <div className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={20} className="text-teal-700" />
-              <h3 className="font-semibold text-teal-900 dark:text-teal-200">Today&apos;s Spotlight</h3>
+              <Sparkles size={20} className="text-tempo-700" />
+              <h3 className="font-semibold text-tempo-900 dark:text-tempo-200">Today&apos;s Spotlight</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {todayMoments.map(m => (
-                <div key={m.id} className="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-teal-100 dark:border-teal-900/50">
+                <div key={m.id} className="bg-white dark:bg-slate-900 rounded-lg p-4 shadow-sm border border-tempo-100 dark:border-tempo-900/50">
                   <div className="flex items-start gap-3">
                     <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', MOMENT_COLORS[m.type])}>
                       {MOMENT_ICONS[m.type]}

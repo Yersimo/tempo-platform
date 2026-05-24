@@ -342,7 +342,12 @@
     "categoryIT": "IT",
     "widgetsEnabled": "{count} Widgets aktiviert",
     "resetLayout": "Auf Standard zurücksetzen",
-    "saveLayout": "Layout speichern"
+    "saveLayout": "Layout speichern",
+    "leaveBalance": "Urlaubssaldo",
+    "annualLeaveRemaining": "Verbleibender Jahresurlaub",
+    "activeGoalsLabel": "Aktive Ziele",
+    "needAttention": "{count} brauchen Aufmerksamkeit",
+    "allOnTrack": "Alles im Plan"
   },
   "people": {
     "title": "Personal",
@@ -2868,7 +2873,11 @@
     "documents": "Dokumente",
     "paystubs": "Gehaltsabrechnungen",
     "leaveRequests": "Urlaubsantraege",
-    "expenses": "Ausgaben"
+    "expenses": "Ausgaben",
+    "goToSettings": "Einstellungen",
+    "goToFinance": "Finanzen",
+    "goToWorkflows": "Workflow Studio",
+    "goToStrategy": "Strategie"
   },
   "notifications": {
     "title": "Benachrichtigungen",

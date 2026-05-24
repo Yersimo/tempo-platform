@@ -57,6 +57,7 @@ export function ToastContainer() {
         <span className="text-sm font-medium text-t1">{latest.message}</span>
         <button
           onClick={() => dismiss(latest.id)}
+          aria-label="Dismiss notification"
           className="ml-1 text-t3 hover:text-t1 transition-colors p-0.5 rounded-md hover:bg-gray-100"
         >
           <X size={12} />

@@ -964,6 +964,23 @@ function prepareData(entity: string, data: Record<string, any>): Record<string, 
     return sanitizeUuids(coerceDates(keysToCamel(mapped)))
   }
 
+  if (entity === 'courseBlocks') {
+    const mapped: Record<string, any> = { ...data }
+    const typeMap: Record<string, string> = {
+      text: 'document',
+      download: 'document',
+      resource: 'document',
+      presentation: 'slides',
+      exercise: 'assignment',
+    }
+
+    if (typeof mapped.type === 'string') {
+      mapped.type = typeMap[mapped.type] || mapped.type
+    }
+
+    return sanitizeUuids(coerceDates(keysToCamel(mapped)))
+  }
+
   // For headcount plans, strip fields that don't exist in the DB table
   // and ensure a valid ID is generated (table uses text PK with no default)
   if (entity === 'headcountPlans') {
@@ -1016,7 +1033,12 @@ function sanitizeUuids(obj: Record<string, any>): Record<string, any> {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 })
+    }
     const parsed = genericMutation.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 })

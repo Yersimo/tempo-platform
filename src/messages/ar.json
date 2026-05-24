@@ -342,7 +342,12 @@
     "categoryIT": "تقنية المعلومات",
     "widgetsEnabled": "{count} أدوات مُفعَّلة",
     "resetLayout": "إعادة تعيين الافتراضي",
-    "saveLayout": "حفظ التخطيط"
+    "saveLayout": "حفظ التخطيط",
+    "leaveBalance": "رصيد الإجازات",
+    "annualLeaveRemaining": "الإجازة السنوية المتبقية",
+    "activeGoalsLabel": "الأهداف النشطة",
+    "needAttention": "{count} تحتاج إلى اهتمام",
+    "allOnTrack": "كل شيء على المسار"
   },
   "people": {
     "title": "الأفراد",
@@ -2868,7 +2873,11 @@
     "documents": "المستندات",
     "paystubs": "قسائم الرواتب",
     "leaveRequests": "طلبات الإجازة",
-    "expenses": "المصروفات"
+    "expenses": "المصروفات",
+    "goToSettings": "الإعدادات",
+    "goToFinance": "المالية",
+    "goToWorkflows": "استوديو سير العمل",
+    "goToStrategy": "الاستراتيجية"
   },
   "notifications": {
     "title": "الإشعارات",
