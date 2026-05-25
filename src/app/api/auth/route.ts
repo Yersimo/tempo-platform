@@ -43,21 +43,38 @@ export async function POST(request: NextRequest) {
         const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
         const orgData = getDemoDataForOrg(demoOrgId)
         const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
+
+        // ── Resolve to real DB UUIDs if the email exists in employees table ──
+        // Lets demo login work seamlessly with real DB writes (events, expense
+        // reports, etc.). If lookup fails, fall back to synthetic IDs.
+        let realEmployeeId: string = demoCred.employeeId
+        let realOrgId: string = demoOrgId
+        try {
+          const [dbEmployee] = await db.select().from(schema.employees)
+            .where(eq(schema.employees.email, email)).limit(1)
+          if (dbEmployee) {
+            realEmployeeId = dbEmployee.id
+            realOrgId = dbEmployee.orgId
+          }
+        } catch {
+          // DB unreachable — keep synthetic IDs
+        }
+
         const demoToken = await createToken({
-          employeeId: demoCred.employeeId,
+          employeeId: realEmployeeId,
           email: demoCred.email,
           role: demoCred.role,
-          orgId: demoOrgId,
+          orgId: realOrgId,
           sessionId: `demo-${Date.now()}`,
         })
         const demoUser = {
-          id: `user-${demoCred.employeeId}`,
+          id: `user-${realEmployeeId}`,
           email: demoCred.email,
           full_name: demoEmp?.profile?.full_name || demoCred.label,
           avatar_url: demoEmp?.profile?.avatar_url || null,
           role: demoCred.role,
           department_id: demoEmp?.department_id || null,
-          employee_id: demoCred.employeeId,
+          employee_id: realEmployeeId,
           job_title: demoEmp?.job_title || demoCred.title,
           department_name: demoCred.department,
         }

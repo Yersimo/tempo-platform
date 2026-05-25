@@ -97,15 +97,29 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
   }
 
-  // Pull employee + org from auth context (middleware sets these headers)
+  // Pull employee + org from auth context (middleware sets these headers
+  // from the JWT after auth verification). These must be real UUIDs for
+  // any DB writes downstream — events table, expense_reports, etc.
   const employeeId =
-    body.employeeId ??
-    request.headers.get('x-employee-id') ??
-    'emp-17' // demo fallback to Amara
+    body.employeeId ?? request.headers.get('x-employee-id') ?? ''
   const orgId =
-    body.orgId ??
-    request.headers.get('x-org-id') ??
-    'org-1' // demo fallback
+    body.orgId ?? request.headers.get('x-org-id') ?? ''
+
+  const UUID_RE = /^[0-9a-f-]{36}$/i
+  if (!UUID_RE.test(employeeId) || !UUID_RE.test(orgId)) {
+    // Loud failure — better than silent degradation. Catches the class of
+    // bug where demo logins put synthetic IDs ('emp-17', 'org-1') into the JWT.
+    return NextResponse.json<SubmitSnapResponse>({
+      ok: false,
+      reportId: null,
+      itemId: null,
+      status: 'auth_context_invalid',
+      persisted: false,
+      approvalSteps: [],
+      reasoning: 'Cannot persist — auth context did not resolve to real UUIDs.',
+      error: `Invalid UUIDs from auth middleware: employeeId="${employeeId}", orgId="${orgId}". Likely a demo login that did not resolve to a DB record. Re-login.`,
+    }, { status: 401 })
+  }
 
   // ── Degraded mode: DB unavailable ─────────────────────────────────
   if (!process.env.DATABASE_URL) {
