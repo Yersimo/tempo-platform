@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useTempo } from '@/lib/store'
 import { KeyRound, ArrowLeft, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Logo } from '@/components/brand/logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -143,9 +144,7 @@ export default function LoginPage() {
       <div className="animate-in fade-in duration-300">
         {/* Mobile logo — text wordmark only, matching landing page */}
         <div className="lg:hidden mb-10">
-          <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
-            tempo<span className="text-tempo-600">.</span>
-          </span>
+          <Logo variant="inverse" size={22} />
         </div>
 
         <button
@@ -270,9 +269,7 @@ export default function LoginPage() {
       <div className="animate-in fade-in duration-300">
         {/* Mobile logo — text wordmark only, matching landing page */}
         <div className="lg:hidden mb-10">
-          <span className="font-bold text-[22px] tracking-[-0.02em] text-gray-900">
-            tempo<span className="text-tempo-600">.</span>
-          </span>
+          <Logo variant="inverse" size={22} />
         </div>
 
         <button
@@ -342,9 +339,7 @@ export default function LoginPage() {
     <div className="animate-in fade-in duration-300">
       {/* Mobile logo — text wordmark only, matching landing page */}
       <div className="lg:hidden mb-10">
-          <span className="font-semibold text-[22px] tracking-[-0.01em] text-[#121A20]">
-          tempo<span className="text-tempo-600">.</span>
-        </span>
+        <Logo variant="inverse" size={22} />
       </div>
 
       {/* Header */}

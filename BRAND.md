@@ -93,14 +93,71 @@ When a competitor or investor pushes you to "launch US-first and localize later,
 
 ---
 
-## Part IV — Visual signature: the "Beat" system
+## Part IV — Visual signature: the lockup
 
-The brand is named *Tempo*. Rhythm is the proprietary visual language.
+The brand is named *Tempo*. The lockup encodes that visually: three vertical bars (the beat) forming a T silhouette, paired with the wordmark **TEMPO.** in all caps.
 
-### Wordmark
+### The mark — three-bar T
 
-- Custom-drawn (not Inter-bold). The "o" is slightly opened on the right edge — a metronome's swing arc
-- The dot is a beat marker, not a decorative full-stop
+Three solid vertical bars on a unit canvas of 80 × 86. Sharp corners. Equal bar widths. Center bar tall enough to extend above and below the outer two — the silhouette of a T.
+
+| Bar | x | y | w | h |
+|---|---|---|---|---|
+| Left | 0 | 13 | 20 | 60 |
+| Center | 30 | 0 | 20 | 86 |
+| Right | 60 | 13 | 20 | 60 |
+
+Key proportions to preserve:
+- Bar width uniform
+- Gap between bars equals half the bar width (10u gap, 20u bar)
+- Center bar ≈ 1.43× taller than outer bars
+- Center bar extends ~13u above and below the outer bars
+- **Corners sharp** — no border radius on the bars
+
+### The wordmark — TEMPO.
+
+| Property | Value |
+|---|---|
+| Case | **All uppercase** — non-negotiable |
+| Family | `--font-sans` (Inter) |
+| Weight | 700 |
+| Letter-spacing | +4% (slightly positive tracking) |
+| Period | Set in `--color-brand-accent` (cyan/teal) — the only colored element |
+
+**The all-caps treatment is a deliberate enterprise-positioning choice.** Tempo sells into enterprise (banking, conglomerates, large HR functions). The buyers — CHROs, CFOs, CEOs — read all-caps weighted wordmarks as platform infrastructure (SAP, Workday, ADP, Oracle, ServiceNow) and lowercase wordmarks as product tools (Notion, Linear, Vercel). **Do not soften to lowercase, ever.**
+
+### The lockup
+
+Icon + wordmark, vertically center-aligned, wordmark to the right of the icon. Gap between icon and wordmark ≈ half the icon width.
+
+### Color tokens (single source of truth — never hardcode hex)
+
+| Token | Value | Role |
+|---|---|---|
+| `--color-brand-bg` | `#0D2A35` | Deep teal tile bg for app icons & dark surfaces |
+| `--color-brand-bg-light` | `#245A6E` | Lighter end of brand gradient |
+| `--color-brand-mark` | `#FFFFFF` | The bars + wordmark text on dark surfaces |
+| `--color-brand-mark-inverse` | `#142C3D` | The bars + wordmark text on light surfaces |
+| `--color-brand-accent` | `#4FA5C5` | The period — only colored element |
+
+### Variants of the `<Logo />` component
+
+- `default` — white mark + accent period (for dark surfaces, e.g. splash)
+- `inverse` — dark mark + accent period (for light surfaces, e.g. login form)
+- `mono` — single color via `currentColor` (favicon-mono contexts, print)
+
+### What never to do with the lockup
+
+- Never soften to lowercase `tempo.`
+- Never hardcode the colors — use `--color-brand-*` tokens
+- Never add stroke / outline / gradient / shadow / glow to the bars or wordmark — the lockup is intentionally flat
+- Never omit the period — it carries the brand accent
+- Never use a font weight lighter than 700 for the wordmark
+- Never bake the dark background into the lockup SVG — only tile-format outputs (favicon, app icons, social) carry the dark fill
+
+### The mark (legacy "Beat" elements — still in the system)
+
+- Custom-drawn wordmark planned (Inter Bold for now as fallback)
 - Single weight, single size per surface. Never animated except in the loading state
 
 ### The beat divider

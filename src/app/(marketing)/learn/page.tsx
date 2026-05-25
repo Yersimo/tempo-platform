@@ -1,4 +1,5 @@
 import './learn.css'
+import { Logo } from '@/components/brand/logo'
 
 export const metadata = {
   title: 'Tempo — Work, integrated.',
@@ -9,8 +10,8 @@ export const metadata = {
 export default function LearnPage() {
   return (
     <main className="learn" aria-label="Tempo · Learn more">
-      <a href="/" className="learn-logo tempo-wordmark" aria-label="Tempo home">
-        tempo<span className="tempo-beat">.</span>
+      <a href="/" className="learn-logo" aria-label="Tempo home">
+        <Logo variant="inverse" size={24} />
       </a>
 
       <a href="/" className="learn-back" aria-label="Back to start">

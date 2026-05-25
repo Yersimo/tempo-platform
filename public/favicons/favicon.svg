@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tempo">
   <!--
-    Tempo favicon — aligned to the wordmark.
-    Navy primary background, white 't' letterform, brass dot.
-    Mirror of the tempo. wordmark scaled to the favicon canvas.
-    Locked 2026-05-25 per BRAND.md Part IV — Beat Wordmark Anchor.
+    Tempo favicon — three-bar T mark on deep teal tile.
+    Mark occupies ~60% of tile, centered on the 512×512 canvas.
+    The 80×86 geometry from the brief is scaled and centered:
+      scale = (512 × 0.60) / 80 = 3.84
+      mark width = 80 × 3.84 = 307.2px
+      mark height = 86 × 3.84 = 330.24px
+    Centering offset: x = (512 - 307.2) / 2 = 102.4
+                      y = (512 - 330.24) / 2 = 90.88
+    Tile corner radius: 21% of 512 = 108px
   -->
-  <rect width="512" height="512" rx="108" fill="#142C3D"/>
-
-  <!-- Lowercase 't' composed as geometric shapes for crisp rendering at every size.
-       Crossbar + stem + bottom curl. -->
-  <rect x="118" y="148" width="186" height="34" rx="14" fill="white"/>
-  <rect x="195" y="98" width="34" height="278" rx="14" fill="white"/>
-  <path d="M212 376 Q212 392 232 392 L268 392"
-        stroke="white" stroke-width="34" stroke-linecap="round" fill="none"/>
-
-  <!-- The Beat — brand-anchor dot in brass, sits to the right of the t baseline -->
-  <circle cx="350" cy="380" r="38" fill="#A77A32"/>
+  <rect width="512" height="512" rx="108" fill="#0D2A35"/>
+  <g transform="translate(102.4 90.88) scale(3.84)" fill="#FFFFFF">
+    <rect x="0" y="13" width="20" height="60"/>
+    <rect x="30" y="0" width="20" height="86"/>
+    <rect x="60" y="13" width="20" height="60"/>
+  </g>
 </svg>

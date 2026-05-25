@@ -13,25 +13,32 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#285B7A' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f1117' },
+    { media: '(prefers-color-scheme: light)', color: '#0D2A35' },
+    { media: '(prefers-color-scheme: dark)', color: '#0D2A35' },
   ],
 }
 
 export const metadata: Metadata = {
-  title: 'tempo - People & Performance Platform',
+  title: 'TEMPO. — People & Performance Platform',
   description: 'The unified workforce platform. Performance, compensation, learning, engagement, mentoring, analytics, payroll, and more. One platform, zero silos.',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '32x32' },
       { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-32.png', sizes: '32x32', type: 'image/png' },
       { url: '/icon-64.png', sizes: '64x64', type: 'image/png' },
       { url: '/icon-128.png', sizes: '128x128', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-256.png', sizes: '256x256', type: 'image/png' },
       { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     shortcut: [{ url: '/favicon.ico' }],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180' },
+    ],
+    other: [
+      { rel: 'mask-icon', url: '/safari-pinned-tab.svg', color: '#0D2A35' },
     ],
   },
   manifest: '/manifest.json',

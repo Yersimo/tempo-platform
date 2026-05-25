@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
+import { Logo } from '@/components/brand/logo'
 
 /* ========== MEGA MENU ========== */
 export function MegaMenu() {
@@ -52,8 +53,8 @@ const ArrowIcon = () => (
 
 export function LandingNav() {
   return (
-    <a href="/" className="minimal-logo" aria-label="Tempo home">
-      tempo<span>.</span>
+    <a href="/" className="minimal-logo" aria-label="Tempo home" style={{ display: 'inline-flex' }}>
+      <Logo variant="inverse" size={22} />
     </a>
   )
 }

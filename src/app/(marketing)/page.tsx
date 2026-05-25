@@ -1,10 +1,11 @@
 import './landing.css'
+import { Logo } from '@/components/brand/logo'
 
 export default function LandingPage() {
   return (
     <main className="splash" aria-label="Tempo">
-      <a href="/" className="splash-logo tempo-wordmark" aria-label="Tempo home">
-        tempo<span className="tempo-beat">.</span>
+      <a href="/" className="splash-logo" aria-label="Tempo home">
+        <Logo variant="default" size={28} />
       </a>
 
       <div className="splash-center">

@@ -22,6 +22,14 @@
   --color-tempo-800: #1B3D52;   /* primary hover */
   --color-tempo-900: #142C3D;   /* primary active / dark surface */
 
+  /* ── Brand lockup tokens ───────────────────────────────────────
+   * The three-bar T mark + TEMPO. wordmark. Tokens — never hardcode. */
+  --color-brand-bg: #0D2A35;              /* deep teal tile bg for icons */
+  --color-brand-bg-light: #245A6E;        /* lighter end of brand gradient */
+  --color-brand-mark: #FFFFFF;            /* the bars + wordmark on dark */
+  --color-brand-mark-inverse: #142C3D;    /* the bars + wordmark on light */
+  --color-brand-accent: #4FA5C5;          /* the period — only colored element */
+
   /* Accent — Brass (warm secondary)
    * Used for: emphasis CTAs, premium tier indicators, highlight badges,
    * chart accent series, "new" tags. Single warm voice in the system.
