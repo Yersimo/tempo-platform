@@ -1,7 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="108" fill="#1a1a1a"/>
-  <rect x="80" y="185" width="210" height="42" rx="21" fill="white"/>
-  <rect x="148" y="60" width="42" height="370" rx="21" fill="white"/>
-  <path d="M190,430 Q190,450 210,455 Q260,468 300,440" stroke="white" stroke-width="42" fill="none" stroke-linecap="round"/>
-  <circle cx="390" cy="385" r="44" fill="#E8590C"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tempo">
+  <!--
+    Tempo favicon — aligned to the wordmark.
+    Navy primary background, white 't' letterform, brass dot.
+    Mirror of the tempo. wordmark scaled to the favicon canvas.
+    Locked 2026-05-25 per BRAND.md Part IV — Beat Wordmark Anchor.
+  -->
+  <rect width="512" height="512" rx="108" fill="#142C3D"/>
+
+  <!-- Lowercase 't' composed as geometric shapes for crisp rendering at every size.
+       Crossbar + stem + bottom curl. -->
+  <rect x="118" y="148" width="186" height="34" rx="14" fill="white"/>
+  <rect x="195" y="98" width="34" height="278" rx="14" fill="white"/>
+  <path d="M212 376 Q212 392 232 392 L268 392"
+        stroke="white" stroke-width="34" stroke-linecap="round" fill="none"/>
+
+  <!-- The Beat — brand-anchor dot in brass, sits to the right of the t baseline -->
+  <circle cx="350" cy="380" r="38" fill="#A77A32"/>
 </svg>

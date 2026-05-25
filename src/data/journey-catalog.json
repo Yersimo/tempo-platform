@@ -3,8 +3,8 @@
     "version": "v2",
     "totalJourneys": 299,
     "tierDistribution": {
-      "T1": 114,
-      "T2": 146,
+      "T1": 115,
+      "T2": 145,
       "T3": 31,
       "T4": 8
     },
@@ -85,8 +85,8 @@
       "flow": "Laptop boots into personalized welcome flow. All accounts live (SSO already tested overnight). Buddy gets a nudge to message you. Three Day-1 tasks in priority order with deep links. Optional virtual coffee with 2 peers in same role.",
       "systems": "IT, HR",
       "ai": "Provisioning orchestration, nudge timing, peer matching",
-      "tier": "T2",
-      "tierReason": "Cross-domain orchestration needs explicit flow not yet built."
+      "tier": "T1",
+      "tierReason": "Atomic Day-1 orchestrator shipped Phase 2 \u2014 passes 4-check rubric at /onboarding/day-one."
     },
     {
       "id": "J003",

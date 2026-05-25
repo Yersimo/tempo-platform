@@ -1321,6 +1321,40 @@ export default function OnboardingPage() {
         }
       />
 
+      {/* Day-1 First Morning entry — for new joiners */}
+      <a
+        href="/onboarding/day-one"
+        className="group block mb-6 rounded-2xl overflow-hidden relative"
+        style={{
+          background: 'linear-gradient(135deg, #142C3D 0%, #1B3D52 60%, #285B7A 100%)',
+        }}
+      >
+        <div className="absolute inset-0 opacity-25" style={{
+          background: 'radial-gradient(ellipse at 80% 20%, rgba(167, 122, 50, 0.45), transparent 50%)',
+        }} />
+        <div className="relative flex items-center justify-between gap-6 px-7 py-5">
+          <div className="flex items-center gap-5">
+            <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center shadow-lg flex-shrink-0">
+              <Rocket size={20} className="text-tempo-900" />
+            </div>
+            <div className="text-white">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60 mb-1">
+                Day 1 · The First Morning
+              </div>
+              <div className="text-lg font-semibold leading-tight">
+                Atomic provisioning. Buddy nudged. Three things to do today.
+              </div>
+              <div className="text-[13px] text-white/65 mt-0.5">
+                What a new joiner sees the moment they log in. Closed-loop, no friction, 8am ready.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-white text-sm font-medium whitespace-nowrap pr-2 transition-transform group-hover:translate-x-1">
+            See it →
+          </div>
+        </div>
+      </a>
+
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} className="mb-6" />
 
       {/* Search & Status Filter */}
