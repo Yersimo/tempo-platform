@@ -104,7 +104,11 @@ export function Logo({
   // which we set to size px so the lockup reads as a single unit.
   // Letter spacing per brief: +4% (positive tracking, all caps).
   const wordSize = size === 'fit' ? 80 : size
-  const gap = wordSize * 0.5 // ~half mark width
+  // Mark physical width: viewBox 80×86 scaled to render at `size` px tall.
+  const markWidth = wordSize * (80 / 86)
+  // Gap per brief §The full lockup: ~50% of icon width. Rippling-style breathing
+  // room. Previously 18%, which read as cramped at every render size.
+  const gapPx = markWidth * 0.5
 
   return (
     <span
@@ -114,7 +118,7 @@ export function Logo({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: `${gap * 0.18}px`, // ~9px at size=80, scales down
+        gap: `${gapPx}px`,
         color,
         lineHeight: 1,
       }}
