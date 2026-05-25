@@ -29,6 +29,23 @@ type ScanResult = {
     reasoning: string
     confidence: number
   }
+  policy: {
+    id: string
+    version: string
+    requiredSignatures: number
+    appliedRuleId: string
+    appliedRuleReasoning: string
+    slots: Array<{
+      slotIndex: number
+      approverName: string | null
+      approverTitle: string | null
+      constraintDescription: string
+    }>
+    preApprovers: Array<{ name: string; title: string }>
+    violations: Array<{ section: string; severity: string; message: string }>
+    autoApprovalEligible: boolean
+    autoApprovalReason: string
+  }
   overallConfidence: number
   timings: { extractMs: number; calendarMs: number; inferenceMs: number; totalMs: number }
 }
@@ -252,23 +269,49 @@ function ReviewScreen({
             </Field>
           )}
 
-          <Field label={isAutoApprove ? 'Auto-approval' : 'Approver'} status={isAutoApprove ? 'ok' : undefined}>
-            {isAutoApprove ? (
-              <>
-                Approved by policy
-                <span className="snap-card-confidence">
-                  · {Math.round(result.approval.confidence * 100)}% confidence
+          {/* Policy resolution — multi-signature chain or auto-approval */}
+          {isAutoApprove ? (
+            <Field label="Approval" status="ok">
+              Auto-approved by policy
+              <span className="snap-card-confidence">
+                · {Math.round(result.approval.confidence * 100)}% confidence
+              </span>
+            </Field>
+          ) : (
+            <Field label={result.policy.requiredSignatures > 1 ? `${result.policy.requiredSignatures} signatures required` : 'Approver'}>
+              {result.policy.slots.map((slot, i) => (
+                <span key={i} className="snap-approver-slot">
+                  <span className="snap-approver-name">
+                    {slot.approverName ?? '⚠ unassigned'}
+                  </span>
+                  {slot.approverTitle && (
+                    <span className="snap-approver-title"> · {slot.approverTitle}</span>
+                  )}
+                  {result.policy.slots.length > 1 && (
+                    <span className="snap-approver-constraint"> ({slot.constraintDescription})</span>
+                  )}
                 </span>
-              </>
-            ) : (
-              result.approval.approverName ?? 'Routing…'
-            )}
+              ))}
+              {result.policy.preApprovers.length > 0 && (
+                <span className="snap-pre-approver">
+                  Pre-approval: {result.policy.preApprovers.map((p) => p.name).join(', ')}
+                </span>
+              )}
+            </Field>
+          )}
+
+          {/* Policy attribution — quietly cited */}
+          <Field label="Policy" status="info">
+            ETI Expense Policy {result.policy.version}
+            <span className="snap-card-confidence">
+              · {result.policy.appliedRuleReasoning.split('—')[0]?.trim()}
+            </span>
           </Field>
         </div>
 
         <div className="snap-card-footer">
           <p className="snap-card-timing">
-            {`Inferred in ${(result.timings.totalMs / 1000).toFixed(1)}s`}
+            {`Inferred in ${(result.timings.totalMs / 1000).toFixed(1)}s · ETI Policy ${result.policy.version}`}
           </p>
         </div>
       </div>

@@ -23,14 +23,12 @@ import {
   type CostCenter,
 } from '@/lib/services/cost-center-inference'
 import {
-  decideAutoApproval,
-  DEFAULT_ORG_POLICY,
-  defaultEmployeeProfile,
-} from '@/lib/services/auto-approval-engine'
-import {
   detectAnomaly,
   buildBaseline,
 } from '@/lib/services/expense-anomaly'
+import { resolvePolicy } from '@/lib/services/policy-engine'
+import { ETI_EXPENSE_POLICY_2023 } from '@/lib/policies/eti-expense-policy'
+import { ECOBANK_SIGNING_AUTHORITIES } from '@/lib/policies/ecobank-signing-authorities'
 
 // ─── Demo fixtures ───────────────────────────────────────────────────
 // In production these come from the DB. For the demo flow we use realistic
@@ -102,21 +100,63 @@ interface ScanRequest {
   /** Demo mode — skip Vision call, return fixture receipt. For sales demos
    *  and dev environments without ANTHROPIC_API_KEY set. */
   demoMode?: boolean
+  /** Optional demo override — picks a fixture matching the amount band */
+  demoScenario?: 'small_meal' | 'mid_event' | 'large_capex'
 }
 
-/** Realistic demo receipt — Roma Bistro, Lagos.
- *  Date is set to 19:45 today (UTC) so it falls inside the mock calendar
- *  dinner event window (19:30–21:00). This makes the demo deterministic:
- *  cost center, purpose, attendees, and approver always resolve correctly. */
-function buildDemoReceipt() {
+/** Realistic demo receipts at three policy bands.
+ *  Each demo aligns to a section of ETI Policy §3 so we can show
+ *  single-sig auto-approval, 2-sig routing, and 3-sig top-tier
+ *  routing in the same flow.
+ *  All dates set to 19:45 UTC to align with the mock calendar dinner. */
+function buildDemoReceipt(scenario: 'small_meal' | 'mid_event' | 'large_capex' = 'small_meal') {
   const today = new Date()
   today.setUTCHours(19, 45, 0, 0)
+  const baseDate = today.toISOString()
+
+  if (scenario === 'mid_event') {
+    // $12,500 — falls in §3.i.ii band ($500–$100K, 2 signatures, at least one A with full limit)
+    return {
+      vendor: 'Wheatbaker Hotels',
+      amount: 1875000000, // ₦18,750,000 (≈ $12,500)
+      currency: 'NGN',
+      date: baseDate,
+      taxAmount: 93750000,
+      taxType: 'VAT' as const,
+      paymentMethod: 'card_****4127',
+      lineItems: [],
+      receiptQuality: 'clear' as const,
+      confidence: 0.94,
+      flaggedFields: [],
+      location: { city: 'Lagos', country: 'Nigeria' },
+    }
+  }
+
+  if (scenario === 'large_capex') {
+    // $250,000 — falls in §3.i.iii band ($100K–$2M, BOTH signers must have full limit)
+    return {
+      vendor: 'Cisco Systems',
+      amount: 25000000, // $250,000 in cents
+      currency: 'USD',
+      date: baseDate,
+      taxAmount: 0,
+      taxType: null,
+      paymentMethod: 'ACH',
+      lineItems: [],
+      receiptQuality: 'clear' as const,
+      confidence: 0.91,
+      flaggedFields: [],
+      location: { city: 'Lagos', country: 'Nigeria' },
+    }
+  }
+
+  // Default: small meal at Roma Bistro — §3.i.i (single sig, auto-approve eligible)
   return {
     vendor: 'Roma Bistro',
-    amount: 1840000, // ₦18,400 in kobo
+    amount: 1840000, // ₦18,400
     currency: 'NGN',
-    date: today.toISOString(),
-    taxAmount: 92000, // ₦920 VAT
+    date: baseDate,
+    taxAmount: 92000,
     taxType: 'VAT' as const,
     paymentMethod: 'card_****4127',
     lineItems: [],
@@ -165,9 +205,25 @@ interface ScanResponse {
     reasoning: string
     confidence: number
   }
-  /** Total AI extraction confidence (drives auto-approval) */
+  /** Policy engine resolution — full audit trail */
+  policy: {
+    id: string
+    version: string
+    requiredSignatures: number
+    appliedRuleId: string
+    appliedRuleReasoning: string
+    slots: Array<{
+      slotIndex: number
+      approverName: string | null
+      approverTitle: string | null
+      constraintDescription: string
+    }>
+    preApprovers: Array<{ name: string; title: string }>
+    violations: Array<{ section: string; severity: string; message: string }>
+    autoApprovalEligible: boolean
+    autoApprovalReason: string
+  }
   overallConfidence: number
-  /** Timing breakdown for transparency */
   timings: {
     extractMs: number
     calendarMs: number
@@ -284,52 +340,49 @@ export async function POST(request: NextRequest) {
     baseline,
   })
 
-  // ── Step 6: Auto-approval decision ─────────────────────────────────
-  const employeeProfile = {
-    ...defaultEmployeeProfile(),
-    isEligible: true, // Amara has tenure
-    ceilingAmount: 50000, // $500 for CHRO
-    historicalApprovalRate: 1.0,
-  }
+  // ── Step 6: Resolve against ETI Expense Policy ──────────────────────
+  const amountUSDCents = convertToUsd(receipt.amount ?? 0, receipt.currency ?? 'USD')
 
-  const approvalDecision = decideAutoApproval({
-    ai: {
-      confidence: receipt.confidence,
-      flaggedFields: receipt.flaggedFields,
-    },
+  const policyResolution = resolvePolicy(ETI_EXPENSE_POLICY_2023, {
     expense: {
-      amount: receipt.amount ?? 0,
+      amountUSDCents,
       currency: receipt.currency ?? 'USD',
       category: expenseCategory,
       vendor: receipt.vendor,
+      date: receipt.date ?? timestamp,
+      daysAgoSubmitted: 0, // submitted right now
+      hasReceipt: receipt.confidence > 0,
+      isCashAdvance: false,
+      isCorporateCardCharge: receipt.paymentMethod?.startsWith('card_') ?? false,
     },
-    employee: employeeProfile,
-    org: DEFAULT_ORG_POLICY,
-    policyCheck: {
-      passed: policyCheck.passed,
-      violations: policyCheck.violationDetails,
+    employee: {
+      id: employeeId,
+      fullName: demoEmployee.fullName,
+      title: demoEmployee.title,
+      department: demoEmployee.department,
+      role: demoEmployee.title, // for travel role checks
+      homeCountry: demoEmployee.homeCountry,
     },
-    anomaly,
-    historicalPattern: {
+    receipt,
+    availableSigningAuthorities: ECOBANK_SIGNING_AUTHORITIES,
+    historical: {
       similarExpenseCount: DEMO_EMPLOYEE_HISTORY.length,
       approvalRate: 1.0,
-      avgAmount: baseline.employeeCategoryAvg,
     },
+    aiConfidence: receipt.confidence,
   })
 
-  // ── Compose response ────────────────────────────────────────────────
-  const approverCC = DEMO_COST_CENTERS.find(
-    (c) => c.id === costCenterResult.costCenterId,
-  )
-  const approverId =
-    approvalDecision.action === 'route_to_human'
-      ? approverCC?.ownerId ?? null
-      : null
-  const approverName =
-    approverId === 'emp-yemi' ? 'Yemi Okonkwo' :
-    approverId === 'emp-13' ? 'Babajide Ogunleye' :
-    approverId === 'emp-24' ? 'Ifeanyi Agu' :
-    approverId === 'emp-17' ? 'Amara Kone' : null
+  // ── Determine action from policy resolution ─────────────────────────
+  const action: 'auto_approve' | 'route_to_human' | 'block' = !policyResolution.passed
+    ? 'block'
+    : policyResolution.autoApprovalEligible
+      ? 'auto_approve'
+      : 'route_to_human'
+
+  // Primary approver = first slot in the chain
+  const firstSlot = policyResolution.approvalChain.slots[0]
+  const approverId = action === 'route_to_human' ? firstSlot?.approver?.employeeId ?? null : null
+  const approverName = action === 'route_to_human' ? firstSlot?.approver?.fullName ?? null : null
 
   const totalMs = Date.now() - t0
 
@@ -371,20 +424,57 @@ export async function POST(request: NextRequest) {
       summary: anomaly.summary,
     },
     approval: {
-      action: approvalDecision.action,
+      action,
       approverId,
       approverName,
-      reasoning: approvalDecision.reasoning,
-      confidence:
-        approvalDecision.action === 'auto_approve'
-          ? approvalDecision.confidence
-          : receipt.confidence,
+      reasoning: policyResolution.summary,
+      confidence: receipt.confidence,
+    },
+    policy: {
+      id: policyResolution.policyId,
+      version: policyResolution.policyVersion,
+      requiredSignatures: policyResolution.approvalChain.requiredSignatures,
+      appliedRuleId: policyResolution.approvalChain.appliedRule.id,
+      appliedRuleReasoning: policyResolution.approvalChain.appliedRule.reasoning,
+      slots: policyResolution.approvalChain.slots.map((s) => ({
+        slotIndex: s.slotIndex,
+        approverName: s.approver?.fullName ?? null,
+        approverTitle: s.approver?.title ?? null,
+        constraintDescription: describeConstraintForUI(s.constraint),
+      })),
+      preApprovers: policyResolution.approvalChain.preApprovers.map((p) => ({
+        name: p.fullName,
+        title: p.title,
+      })),
+      violations: policyResolution.violations.map((v) => ({
+        section: v.policySection,
+        severity: v.severity,
+        message: v.message,
+      })),
+      autoApprovalEligible: policyResolution.autoApprovalEligible,
+      autoApprovalReason: policyResolution.autoApprovalReason,
     },
     overallConfidence: receipt.confidence,
     timings: { extractMs, calendarMs, inferenceMs, totalMs },
   }
 
   return NextResponse.json(response)
+}
+
+function describeConstraintForUI(c: {
+  count: number
+  allowedCategories?: string[]
+  allowedRoles?: string[]
+  requireFullLimit?: boolean
+}): string {
+  const parts: string[] = []
+  if (c.allowedRoles && c.allowedRoles.length > 0) {
+    parts.push(c.allowedRoles.join(' or '))
+  } else if (c.allowedCategories && c.allowedCategories.length > 0) {
+    parts.push(`Category ${c.allowedCategories.join(' / ')}`)
+  }
+  if (c.requireFullLimit) parts.push('with full approval limit')
+  return parts.join(' · ')
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────

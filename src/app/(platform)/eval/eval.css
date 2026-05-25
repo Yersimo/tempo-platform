@@ -1,0 +1,472 @@
+/* ═════════════════════════════════════════════════════════════════
+ * /eval — Journey Test Harness
+ * ═════════════════════════════════════════════════════════════════ */
+
+.eval {
+  padding: 24px clamp(20px, 3vw, 40px);
+  background: var(--color-canvas);
+  min-height: 100vh;
+  font-feature-settings: 'tnum' on;
+}
+
+.eval-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.eval-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-t3);
+  margin: 0 0 6px;
+}
+
+.eval-title {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--color-t1);
+  margin: 0 0 6px;
+}
+
+.eval-sub {
+  font-size: 14px;
+  color: var(--color-t2);
+  margin: 0;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.eval-reports-link {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--color-tempo-600);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+.eval-reports-link:hover { background: var(--color-tempo-800); }
+
+/* ── Stats strip ─────────────────────────────────────────────────── */
+.eval-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.eval-stat {
+  padding: 14px 16px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eval-stat strong {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--color-t1);
+}
+
+.eval-stat span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-t2);
+}
+
+.eval-stat-tier {
+  border-left: 3px solid var(--tier-color, var(--color-tempo-600));
+}
+
+/* ── Filters ─────────────────────────────────────────────────────── */
+.eval-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.eval-search,
+.eval-select {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-card);
+  color: var(--color-t1);
+}
+
+.eval-search {
+  flex: 1;
+  min-width: 240px;
+}
+
+.eval-select {
+  min-width: 160px;
+}
+
+/* ── Two-pane layout ─────────────────────────────────────────────── */
+.eval-pane {
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 16px;
+  min-height: 70vh;
+}
+
+@media (max-width: 1100px) {
+  .eval-pane { grid-template-columns: 1fr; }
+}
+
+.eval-list {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  overflow-y: auto;
+  max-height: 78vh;
+}
+
+.eval-row {
+  display: grid;
+  grid-template-columns: 36px 52px 1fr;
+  grid-template-rows: auto auto;
+  gap: 4px 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  transition: background 0.18s ease;
+}
+
+.eval-row:hover { background: var(--color-tempo-50); }
+.eval-row.is-selected {
+  background: var(--color-tempo-50);
+  box-shadow: inset 3px 0 0 var(--color-tempo-600);
+}
+
+.eval-row-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-t3);
+  letter-spacing: 0.04em;
+  align-self: center;
+}
+
+.eval-row-trigger {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-t1);
+  line-height: 1.4;
+}
+
+.eval-row-meta {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: var(--color-t3);
+  letter-spacing: 0.01em;
+}
+
+.eval-verdict {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.eval-verdict-pass    { background: rgba(99, 125, 75, 0.14); color: #4F633A; }
+.eval-verdict-partial { background: rgba(167, 122, 50, 0.14); color: var(--color-warning); }
+.eval-verdict-fail    { background: rgba(178, 75, 85, 0.14); color: var(--color-error); }
+.eval-verdict-unscored{ background: var(--color-fog); color: var(--color-t3); }
+
+.eval-verdict-large {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.eval-pill {
+  align-self: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: white;
+  text-align: center;
+}
+
+.eval-pill-t1 { background: #637D4B; }
+.eval-pill-t2 { background: #3F789A; }
+.eval-pill-t3 { background: #A77A32; }
+.eval-pill-t4 { background: #B24B55; }
+
+.eval-list-note {
+  padding: 16px;
+  font-size: 12px;
+  color: var(--color-t3);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Detail pane ─────────────────────────────────────────────────── */
+.eval-detail {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  overflow-y: auto;
+  max-height: 78vh;
+}
+
+.eval-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--color-t2);
+  gap: 8px;
+}
+
+.eval-empty p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.eval-empty-sub {
+  font-size: 13px;
+  color: var(--color-t3);
+}
+
+.eval-card {
+  padding: 24px 28px;
+}
+
+.eval-card-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: 18px;
+}
+
+.eval-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.eval-card-id {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-t3);
+  letter-spacing: 0.04em;
+}
+
+.eval-card-persona {
+  font-size: 12px;
+  color: var(--color-t2);
+  font-weight: 500;
+}
+
+.eval-card-diff {
+  font-size: 11px;
+  color: var(--color-t2);
+  padding: 2px 8px;
+  background: var(--color-fog);
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.eval-card-wow {
+  font-size: 12px;
+  color: var(--color-brass-600);
+}
+
+.eval-card-trigger {
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--color-t1);
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.eval-card-section {
+  margin-bottom: 18px;
+}
+
+.eval-card-section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.eval-card-h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-t3);
+  margin: 0 0 8px;
+}
+
+.eval-card-h4 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-t3);
+  margin: 0 0 4px;
+}
+
+.eval-card-section p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-t1);
+  line-height: 1.55;
+}
+
+.eval-card-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--color-fog);
+  border-radius: 4px;
+  font-size: 12px !important;
+  color: var(--color-t2) !important;
+}
+
+.eval-tier-callout {
+  padding: 14px 16px;
+  background: var(--color-fog);
+  border-radius: 7px;
+}
+
+.eval-tier-callout p { font-size: 13px !important; }
+
+.eval-tier-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: white;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+
+.eval-tier-label-t1 { background: #637D4B; }
+.eval-tier-label-t2 { background: #3F789A; }
+.eval-tier-label-t3 { background: #A77A32; }
+.eval-tier-label-t4 { background: #B24B55; }
+
+.eval-card-runprompt {
+  font-size: 13px !important;
+  color: var(--color-t2) !important;
+  margin-bottom: 10px !important;
+}
+
+.eval-run-btn {
+  display: inline-block;
+  padding: 10px 18px;
+  background: var(--color-tempo-600);
+  color: white;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+.eval-run-btn:hover { background: var(--color-tempo-800); }
+
+/* ── Rubric scoring ──────────────────────────────────────────────── */
+.eval-rubric-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.eval-rubric {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eval-rubric-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--color-fog);
+  border-radius: 7px;
+}
+
+.eval-rubric-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--color-t1) !important;
+  margin: 0 0 4px !important;
+}
+
+.eval-rubric-q {
+  font-size: 12px !important;
+  color: var(--color-t2) !important;
+  margin: 0 0 4px !important;
+  line-height: 1.5;
+}
+
+.eval-rubric-fail {
+  font-size: 11px !important;
+  color: var(--color-t3) !important;
+  margin: 0 !important;
+  font-style: normal;
+  line-height: 1.5;
+}
+
+.eval-rubric-actions {
+  display: flex;
+  gap: 4px;
+  align-self: center;
+}
+
+.eval-score-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--color-t2);
+  transition: all 0.18s ease;
+}
+.eval-score-btn:hover { border-color: var(--color-tempo-400); }
+
+.eval-score-pass.is-active { background: #637D4B; color: white; border-color: #637D4B; }
+.eval-score-fail.is-active { background: var(--color-error); color: white; border-color: var(--color-error); }
+.eval-score-na.is-active   { background: var(--color-t2); color: white; border-color: var(--color-t2); }

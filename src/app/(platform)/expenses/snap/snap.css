@@ -468,3 +468,35 @@
     transition: none;
   }
 }
+
+/* ── Policy chain rendering ────────────────────────────────────────── */
+.snap-approver-slot {
+  display: block;
+  padding: 2px 0;
+}
+
+.snap-approver-name {
+  color: var(--snap-ink);
+  font-weight: 500;
+}
+
+.snap-approver-title {
+  color: var(--snap-ink-soft);
+  font-weight: 400;
+}
+
+.snap-approver-constraint {
+  color: var(--snap-ink-soft);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.snap-pre-approver {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--snap-rule-card);
+  color: var(--snap-ink-soft);
+  font-size: 12px;
+  font-style: italic;
+}

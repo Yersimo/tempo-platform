@@ -1,0 +1,1366 @@
+{
+  "tier1": {
+    "totalJourneys": 114,
+    "predictedPass": 114,
+    "predictedPartial": 0,
+    "predictedFail": 0,
+    "pass": [
+      {
+        "id": "J001",
+        "persona": "Staff",
+        "sub": "New joiner",
+        "cat": "Pre-boarding",
+        "trigger": "Candidate accepted offer 3 weeks before start date.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J003",
+        "persona": "Staff",
+        "sub": "New joiner",
+        "cat": "Onboarding",
+        "trigger": "Day 7 check-in.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J006",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "'Where is the Q1 brand guidelines deck?'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J007",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "'Who owns supplier onboarding for vendors over $50K?'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J008",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "Booking a room for a 7-person workshop next Tuesday.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J010",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "Updating profile photo company-wide.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J011",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "Translating an internal policy doc from English to French for a colleague.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J012",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "Pre-ordering lunch from office cafeteria.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J013",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "Booking the office gym at lunchtime.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J015",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Daily life",
+        "trigger": "'I need a 30-min slot with my manager this week.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J016",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Leave",
+        "trigger": "Take Aug 12-18 off.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J017",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Leave",
+        "trigger": "Sick today.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J020",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Leave",
+        "trigger": "Carry-over question: 'Can I roll 5 days into next year?'",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J026",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "'My payslip looks wrong this month.'",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J027",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "Bonus came in lower than expected.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J028",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "Updating bank account for direct deposit.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J030",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "Letter of employment for mortgage application.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J031",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "Tax certificate for filing.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J034",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Pay",
+        "trigger": "Pension contribution change.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J039",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Life event",
+        "trigger": "Adding a child to insurance after birth.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J042",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Life event",
+        "trigger": "Caring for elderly parent.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J043",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Career",
+        "trigger": "'What's my next move?'",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J045",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Career",
+        "trigger": "'I want a mentor in finance.'",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J048",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Career",
+        "trigger": "'I want to upskill in data analysis.'",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J051",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "IT support",
+        "trigger": "Need access to a new SaaS tool.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J052",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "IT support",
+        "trigger": "Phone lost; need MFA reset.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J053",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "IT support",
+        "trigger": "Standing desk and ergonomic mouse needed.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J054",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "IT support",
+        "trigger": "Phishing email received.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J055",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Expenses",
+        "trigger": "Expense a client dinner.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J056",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Expenses",
+        "trigger": "Mileage for a client visit.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J057",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Expenses",
+        "trigger": "Foreign currency expense.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J059",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Team admin",
+        "trigger": "5 leave requests in inbox.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J060",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Team admin",
+        "trigger": "Approving 18 expenses.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J065",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Hiring",
+        "trigger": "Open a requisition for a senior PM.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J073",
+        "persona": "HR",
+        "sub": "HR Ops",
+        "cat": "Mass comms",
+        "trigger": "Communicate new health insurance terms to 14,000 staff in 33 countries.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J076",
+        "persona": "HR",
+        "sub": "HR Ops",
+        "cat": "Data quality",
+        "trigger": "Quarterly data quality audit.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J077",
+        "persona": "HR",
+        "sub": "HR Ops",
+        "cat": "Org graph",
+        "trigger": "Update job architecture for 85 CCB roles.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J078",
+        "persona": "HR",
+        "sub": "HR Ops",
+        "cat": "Acknowledgement",
+        "trigger": "Code of Conduct annual acknowledgement.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J082",
+        "persona": "HR",
+        "sub": "TA",
+        "cat": "Funnel",
+        "trigger": "Recruiter wants funnel performance for past quarter.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J088",
+        "persona": "HR",
+        "sub": "L&D",
+        "cat": "Compliance training",
+        "trigger": "AML training due for 4,200 regulated staff.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J093",
+        "persona": "HR",
+        "sub": "Comp&Ben",
+        "cat": "Benchmark",
+        "trigger": "Refresh comp benchmarks for 30 critical roles.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J094",
+        "persona": "HR",
+        "sub": "Comp&Ben",
+        "cat": "Total reward",
+        "trigger": "Annual total reward statements for all staff.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J101",
+        "persona": "HR",
+        "sub": "DEI",
+        "cat": "Inclusion survey",
+        "trigger": "Annual inclusion survey.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J103",
+        "persona": "HR",
+        "sub": "DEI",
+        "cat": "ERG support",
+        "trigger": "Manage 7 employee resource groups.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J105",
+        "persona": "HR",
+        "sub": "HR Analytics",
+        "cat": "Engagement",
+        "trigger": "Engagement results by team, country, function.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J108",
+        "persona": "Finance",
+        "sub": "AP",
+        "cat": "Invoice approval",
+        "trigger": "23 invoices for approval today.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J109",
+        "persona": "Finance",
+        "sub": "AP",
+        "cat": "Vendor onboarding",
+        "trigger": "Onboard new SaaS vendor.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J110",
+        "persona": "Finance",
+        "sub": "AP",
+        "cat": "Duplicate detection",
+        "trigger": "Duplicate invoice prevention.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J111",
+        "persona": "Finance",
+        "sub": "AR",
+        "cat": "Customer payment delay",
+        "trigger": "Top 10 overdue customers this week.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J114",
+        "persona": "Finance",
+        "sub": "Payroll",
+        "cat": "Off-cycle",
+        "trigger": "Pay 3 contractors today (off-cycle).",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J117",
+        "persona": "Finance",
+        "sub": "FP&A",
+        "cat": "Monthly close",
+        "trigger": "Day 1 of close.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J120",
+        "persona": "Finance",
+        "sub": "FP&A",
+        "cat": "Capex",
+        "trigger": "Capex proposal review (new branch fit-out).",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J123",
+        "persona": "Finance",
+        "sub": "Treasury",
+        "cat": "Cash",
+        "trigger": "Group cash position across 33 countries.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J124",
+        "persona": "Finance",
+        "sub": "Tax",
+        "cat": "VAT",
+        "trigger": "Monthly VAT/GST filings.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J127",
+        "persona": "IT",
+        "sub": "Service desk",
+        "cat": "Common tickets",
+        "trigger": "200 password reset tickets per week.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J128",
+        "persona": "IT",
+        "sub": "Service desk",
+        "cat": "Access request",
+        "trigger": "Access to Salesforce for new sales hire.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J129",
+        "persona": "IT",
+        "sub": "Service desk",
+        "cat": "VPN",
+        "trigger": "VPN issue from home.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J133",
+        "persona": "IT",
+        "sub": "Provisioning",
+        "cat": "Contractor",
+        "trigger": "Contractor needs limited access for 60 days.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J135",
+        "persona": "IT",
+        "sub": "Security",
+        "cat": "Phishing simulation",
+        "trigger": "Quarterly phishing test.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J138",
+        "persona": "IT",
+        "sub": "Security",
+        "cat": "Audit",
+        "trigger": "SOC 2 access controls audit.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J139",
+        "persona": "IT",
+        "sub": "SaaS",
+        "cat": "Sprawl audit",
+        "trigger": "What SaaS are we paying for?",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J141",
+        "persona": "IT",
+        "sub": "SaaS",
+        "cat": "Access review",
+        "trigger": "Quarterly access review for sensitive apps.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J143",
+        "persona": "Ops",
+        "sub": "Facilities",
+        "cat": "Desk booking",
+        "trigger": "Book a desk at HQ tomorrow.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J146",
+        "persona": "Ops",
+        "sub": "Procurement",
+        "cat": "PR to PO",
+        "trigger": "Raise PR for new monitors.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J148",
+        "persona": "Ops",
+        "sub": "Procurement",
+        "cat": "Contract renewal",
+        "trigger": "Top 20 contracts up for renewal.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J149",
+        "persona": "Ops",
+        "sub": "Procurement",
+        "cat": "Vendor performance",
+        "trigger": "Quarterly vendor performance review.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J150",
+        "persona": "Ops",
+        "sub": "Procurement",
+        "cat": "Tail spend",
+        "trigger": "Cut tail spend.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J151",
+        "persona": "Ops",
+        "sub": "Travel",
+        "cat": "Booking",
+        "trigger": "Need to fly to Accra Tuesday for 2 days.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J154",
+        "persona": "Exec",
+        "sub": "CEO",
+        "cat": "Morning brief",
+        "trigger": "How healthy is the company today?",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J156",
+        "persona": "Exec",
+        "sub": "CEO",
+        "cat": "Town hall prep",
+        "trigger": "Town hall in 2 days.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J157",
+        "persona": "Exec",
+        "sub": "CEO",
+        "cat": "Investor question",
+        "trigger": "Payroll burn ratio in African vs US markets?",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J163",
+        "persona": "Exec",
+        "sub": "Board",
+        "cat": "Pack",
+        "trigger": "Quarterly board pack on people.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J168",
+        "persona": "Legal",
+        "sub": "Contracts",
+        "cat": "Employment contract",
+        "trigger": "Generate employment contracts for 18 hires in 6 countries.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J170",
+        "persona": "Legal",
+        "sub": "Disputes",
+        "cat": "Case file",
+        "trigger": "Live HR-related case files.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J172",
+        "persona": "Compliance",
+        "sub": "AML",
+        "cat": "Onboarding",
+        "trigger": "AML screening for new joiners in regulated roles.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J173",
+        "persona": "Compliance",
+        "sub": "Conflict",
+        "cat": "Disclosure",
+        "trigger": "Conflict of interest annual disclosure.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J174",
+        "persona": "External",
+        "sub": "Candidate",
+        "cat": "Application",
+        "trigger": "Candidate applies for a role.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J175",
+        "persona": "External",
+        "sub": "Candidate",
+        "cat": "Interview scheduling",
+        "trigger": "Scheduling 4-stage interview.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J176",
+        "persona": "External",
+        "sub": "Contractor",
+        "cat": "Onboarding",
+        "trigger": "Contractor starting in 5 days.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J178",
+        "persona": "External",
+        "sub": "Alumni",
+        "cat": "Verification",
+        "trigger": "Former employee needs employment verification for visa.",
+        "wow": 2,
+        "diff": "Routine"
+      },
+      {
+        "id": "J179",
+        "persona": "External",
+        "sub": "Alumni",
+        "cat": "Boomerang",
+        "trigger": "Alumni wants to return.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J181",
+        "persona": "External",
+        "sub": "Vendor",
+        "cat": "Self-serve",
+        "trigger": "Vendor wants payment status.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J198",
+        "persona": "Advanced",
+        "sub": "Document AI",
+        "cat": "Letter generation",
+        "trigger": "Custom recommendation letter for departing high-performer.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J202",
+        "persona": "Advanced",
+        "sub": "Self-reflection",
+        "cat": "Compass",
+        "trigger": "'Am I in the right job?'",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J204",
+        "persona": "Advanced",
+        "sub": "Recognition",
+        "cat": "Real-time",
+        "trigger": "Recognition culture.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J207",
+        "persona": "Advanced",
+        "sub": "Diversity",
+        "cat": "Reverse mentoring",
+        "trigger": "Reverse mentoring program.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J217",
+        "persona": "Advanced",
+        "sub": "AI assistant",
+        "cat": "Personal",
+        "trigger": "'Manage my career for me.'",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J219",
+        "persona": "Advanced",
+        "sub": "Culture",
+        "cat": "Pulse",
+        "trigger": "Culture pulse this month.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J220",
+        "persona": "Advanced",
+        "sub": "Compliance",
+        "cat": "Conduct",
+        "trigger": "Conduct rules attestation for regulated staff.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J227",
+        "persona": "Advanced",
+        "sub": "Performance",
+        "cat": "Continuous feedback",
+        "trigger": "Continuous feedback culture.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J232",
+        "persona": "Advanced",
+        "sub": "Innovation",
+        "cat": "Hackathon ops",
+        "trigger": "Hackathon for 200 staff.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J233",
+        "persona": "Advanced",
+        "sub": "Mental health",
+        "cat": "First aid network",
+        "trigger": "Mental health first-aiders network.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J235",
+        "persona": "Advanced",
+        "sub": "Knowledge",
+        "cat": "Documentation health",
+        "trigger": "Internal documentation rot.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J239",
+        "persona": "Advanced",
+        "sub": "Compensation",
+        "cat": "Spot recognition",
+        "trigger": "Spot recognition for a major customer save.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J251",
+        "persona": "Advanced",
+        "sub": "Edge",
+        "cat": "AI hallucination prevention",
+        "trigger": "Employee asks AI a question with confident wrong answer.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J256",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Add this person to our email list.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J257",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Cancel my expense report; entered wrong.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J258",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Forward this approval to my deputy while I'm out.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J259",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Add this skill to my profile.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J260",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Sign this document.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J261",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Find a meeting room with a window for 4.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J262",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Order lunch for tomorrow's team workshop.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J263",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Schedule a team offsite.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J264",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Switch my insurance plan during open enrollment.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J265",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Micro",
+        "trigger": "'Request a copy of my employment file.'",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J268",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Mobility prep",
+        "trigger": "Passport quietly expiring in 6 months while frequent traveller is unaware.",
+        "wow": 5,
+        "diff": "Routine"
+      },
+      {
+        "id": "J269",
+        "persona": "Staff",
+        "sub": "Remote",
+        "cat": "Expenses",
+        "trigger": "Upgraded home fiber to support video rendering; want allowance top-up.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J270",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Expenses",
+        "trigger": "Used personal Uber for 5 business trips by accident; bulk PDF export from Uber.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J272",
+        "persona": "Staff",
+        "sub": "Remote",
+        "cat": "Flexible work",
+        "trigger": "Working from a local coworking space for a week due to home renovations.",
+        "wow": 3,
+        "diff": "Routine"
+      },
+      {
+        "id": "J275",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Civic leave",
+        "trigger": "Jury summons scanned and uploaded.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J282",
+        "persona": "Finance",
+        "sub": "AP",
+        "cat": "Anomaly",
+        "trigger": "Vendor submits two near-identical invoices under different numbers.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J290",
+        "persona": "Ops",
+        "sub": "Procurement",
+        "cat": "SLA enforcement",
+        "trigger": "Logistics vendor misses contractual delivery window by 15% over a quarter.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J291",
+        "persona": "Ops",
+        "sub": "IT Ops",
+        "cat": "Lifecycle",
+        "trigger": "75 executive laptops crossing 36-month lease expiry.",
+        "wow": 4,
+        "diff": "Routine"
+      },
+      {
+        "id": "J292",
+        "persona": "Ops",
+        "sub": "Facilities",
+        "cat": "IoT optimisation",
+        "trigger": "Tuesday/Friday attendance swings cause massive food waste in office cafeteria.",
+        "wow": 4,
+        "diff": "Routine"
+      }
+    ],
+    "partial": []
+  },
+  "tier2plan": {
+    "topJourneys": [
+      {
+        "id": "J002",
+        "persona": "Staff",
+        "sub": "New joiner",
+        "cat": "Day 1",
+        "trigger": "First morning logging in for the first time.",
+        "wow": 5,
+        "diff": "Routine",
+        "flow": "Laptop boots into personalized welcome flow. All accounts live (SSO already tested overnight). Buddy gets a nudge to message you. Three Day-1 tasks in priority order with deep links. Optional virtual ",
+        "systems": "IT, HR",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 5.0
+      },
+      {
+        "id": "J049",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "IT support",
+        "trigger": "Broken laptop screen.",
+        "wow": 5,
+        "diff": "Routine",
+        "flow": "Photo in app. AI identifies device. Loaner reserved at reception in your current office. Calendar invite for 4pm swap. Replacement ordered. Three taps.",
+        "systems": "IT, Ops",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 5.0
+      },
+      {
+        "id": "J113",
+        "persona": "Finance",
+        "sub": "Payroll",
+        "cat": "Monthly run",
+        "trigger": "Monthly payroll across 33 countries.",
+        "wow": 5,
+        "diff": "Routine",
+        "flow": "Tempo orchestrates the run: gathers inputs (variable comp, attendance, statutory updates), runs validations, produces previews, flags anomalies, releases by country with audit trail.",
+        "systems": "Finance, HR",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 5.0
+      },
+      {
+        "id": "J130",
+        "persona": "IT",
+        "sub": "Provisioning",
+        "cat": "Joiner",
+        "trigger": "New joiner provisioning.",
+        "wow": 5,
+        "diff": "Routine",
+        "flow": "From offer-accept, Tempo derives required apps from role/department/country, orders laptop with correct image to address with tracking, generates accounts in advance, Day 1 readiness check at 7am.",
+        "systems": "IT, HR, Ops",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 5.0
+      },
+      {
+        "id": "J004",
+        "persona": "Staff",
+        "sub": "New joiner",
+        "cat": "Onboarding",
+        "trigger": "30, 60, 90-day milestones.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes a personalized progress view: tasks done, peers met, learning completed, feedback signals. At 90 days, Tempo drafts the confirmation note for your manager (pre-filled with evidence), ro",
+        "systems": "HR, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J022",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Leave",
+        "trigger": "Pregnancy: 'I'm having a baby in November.'",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "One conversation. Tempo composes statutory + top-up leave per country and tenure, pre-stages insurance dependent addition, models tax adjustment, checks childcare benefit eligibility, generates handov",
+        "systems": "HR, Finance, Insurance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Benefits provider connectors",
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J044",
+        "persona": "Staff",
+        "sub": "General",
+        "cat": "Career",
+        "trigger": "'I want to move from Lagos to Nairobi office in the same role.'",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo models cost-of-living adjusted offer, tax in both jurisdictions, immigration timeline, benefit equivalents, housing support, dependent visas. Generates internal transfer plan with realistic date",
+        "systems": "HR, Finance, Legal, Mobility",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2",
+          "Identity / Provisioning orchestrator",
+          "Legal evidence module"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J061",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Performance",
+        "trigger": "Quarterly performance review for 8 reports.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes draft summaries per report from evidence (deliverables completed, peer feedback, customer signals, learning). Flags any potential bias patterns vs cohort. You edit, calibrate, send.",
+        "systems": "HR, L&D",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Base Tempo modules"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J064",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Comp",
+        "trigger": "Annual comp review for my team with a $X budget.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo lays out team, performance, percentile, time in role, retention risk. Runs scenarios (uniform vs. differentiated), shows budget impact, equity gaps. You decide; Tempo generates personalised lett",
+        "systems": "HR, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J068",
+        "persona": "Manager",
+        "sub": "Line manager",
+        "cat": "Team intel",
+        "trigger": "Team health snapshot before quarterly review.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes one-page snapshot: engagement trend, key concerns from listening posts, attrition risks, productivity proxies, learning velocity, comp positioning. Suggests 3 actions.",
+        "systems": "HR, L&D, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J081",
+        "persona": "HR",
+        "sub": "TA",
+        "cat": "Diversity sourcing",
+        "trigger": "Build a diverse slate for VP Risk.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo expands the slate via specific diversity-aware channels, blinds first-round screening of identity-revealing fields, audits the funnel for drop-off bias, flags inflexible criteria.",
+        "systems": "TA, DEI",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Base Tempo modules"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J091",
+        "persona": "HR",
+        "sub": "Comp&Ben",
+        "cat": "Comp cycle",
+        "trigger": "Annual comp cycle across 33 countries.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo runs the cycle as a workflow: budgets cascade, manager proposals roll up, calibration sessions structured, exception requests routed, letters generated, payroll updated. Cycle compresses to 3 we",
+        "systems": "HR, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J092",
+        "persona": "HR",
+        "sub": "Comp&Ben",
+        "cat": "Pay equity",
+        "trigger": "Pay equity audit by gender, race, geography.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo runs continuous regression with role/level/experience controls, flags significant disparities, suggests remediation cost and approach, tracks remediation effectiveness.",
+        "systems": "HR, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J104",
+        "persona": "HR",
+        "sub": "HR Analytics",
+        "cat": "Attrition deep dive",
+        "trigger": "Why is Lagos retail attrition spiking?",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes a full diagnosis: by tenure, role, manager, comp percentile, engagement, peer departure, manager change, distance from home; surfaces top 3 drivers and suggests interventions.",
+        "systems": "HR, Finance",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J106",
+        "persona": "HR",
+        "sub": "HR Analytics",
+        "cat": "Bench strength",
+        "trigger": "Bench strength for top 50 roles.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo maintains real-time succession heatmap, with named successors, readiness, development plans, gaps. Updates as people move.",
+        "systems": "HR",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Base Tempo modules"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J116",
+        "persona": "Finance",
+        "sub": "Payroll",
+        "cat": "New country",
+        "trigger": "Set up payroll for new country (Rwanda).",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes the setup: provider selection, statutory configuration, GL mapping, parallel run, go-live. Compresses to 4 weeks.",
+        "systems": "Finance, HR, Legal",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2",
+          "Legal evidence module"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J119",
+        "persona": "Finance",
+        "sub": "FP&A",
+        "cat": "Scenario",
+        "trigger": "What if salary +10% across the board?",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo computes 3-year NPV impact, statutory burden, cashflow timing, attrition assumption variable. Compares 5/7/10/12% in one view.",
+        "systems": "Finance, HR",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J121",
+        "persona": "Finance",
+        "sub": "FP&A",
+        "cat": "Cost optimisation",
+        "trigger": "Find $10M in cost savings.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo composes a savings catalog: SaaS sprawl, vendor consolidation, real estate utilisation, statutory benefit optimisation, travel policy, span control inefficiency; tags realisation difficulty and ",
+        "systems": "Finance, IT, Ops, HR",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Finance Policy Engine v2",
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J132",
+        "persona": "IT",
+        "sub": "Provisioning",
+        "cat": "Leaver",
+        "trigger": "Termination deprovisioning.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Termination event in Tempo triggers automatic deprovisioning across every SSO app. All access gone in 4 minutes. Owned resources reassigned. Mail archived. Licenses reclaimed. Audit trail generated.",
+        "systems": "IT, HR, Security",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 4.5
+      },
+      {
+        "id": "J136",
+        "persona": "IT",
+        "sub": "Security",
+        "cat": "DLP",
+        "trigger": "DLP incident: confidential file shared externally.",
+        "wow": 5,
+        "diff": "Complex",
+        "flow": "Tempo classifies severity, captures full context (sender, recipient, content category), opens incident, notifies sender, blocks repeat if pattern, escalates if material.",
+        "systems": "Security",
+        "effortWeeks": 1.5,
+        "dependencies": [
+          "Identity / Provisioning orchestrator"
+        ],
+        "priority": 4.5
+      }
+    ]
+  }
+}

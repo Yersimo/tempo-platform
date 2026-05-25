@@ -1,0 +1,190 @@
+/* ── Reports page ──────────────────────────────────────────────── */
+
+.reports-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.reports-tab {
+  padding: 12px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-t2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.reports-tab:hover { color: var(--color-t1); }
+
+.reports-tab.is-active {
+  color: var(--color-tempo-600);
+  border-bottom-color: var(--color-tempo-600);
+  font-weight: 600;
+}
+
+.reports-section { padding-top: 8px; }
+
+.reports-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.reports-stat {
+  padding: 18px 20px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+}
+
+.reports-stat strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--color-t1);
+  margin-bottom: 4px;
+  font-feature-settings: 'tnum' on;
+}
+
+.reports-stat span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-t2);
+  letter-spacing: 0.01em;
+}
+
+.reports-stat-pass    { border-left: 3px solid #637D4B; }
+.reports-stat-partial { border-left: 3px solid var(--color-warning); }
+.reports-stat-fail    { border-left: 3px solid var(--color-error); }
+
+.reports-callout {
+  padding: 18px 22px;
+  background: var(--color-tempo-50);
+  border-left: 3px solid var(--color-tempo-600);
+  border-radius: 0 7px 7px 0;
+  margin-bottom: 24px;
+}
+
+.reports-callout h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-tempo-700);
+  margin: 0 0 8px;
+}
+
+.reports-callout p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-t1);
+}
+
+.reports-callout-sub {
+  font-size: 13px !important;
+  color: var(--color-t2) !important;
+}
+
+.reports-h3 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-t3);
+  margin: 24px 0 12px;
+}
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.reports-table {
+  width: 100%;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.reports-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--color-fog);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-t3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.reports-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-t1);
+  vertical-align: top;
+  line-height: 1.45;
+}
+
+.reports-table tr:last-child td { border-bottom: 0; }
+.reports-table tr:hover { background: var(--color-tempo-50); }
+
+.reports-id {
+  font-weight: 700;
+  color: var(--color-t3);
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.reports-wow {
+  color: var(--color-brass-600);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ── Phase blocks ────────────────────────────────────────────────── */
+.reports-phase {
+  margin-bottom: 32px;
+}
+
+.reports-phase-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.reports-phase-head h4 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-t1);
+  margin: 0;
+}
+
+.reports-phase-effort {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-tempo-600);
+  font-feature-settings: 'tnum' on;
+}
+
+.reports-phase-desc {
+  font-size: 13px;
+  color: var(--color-t2);
+  margin: 0 0 12px;
+  line-height: 1.55;
+  max-width: 720px;
+}
