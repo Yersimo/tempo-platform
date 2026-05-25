@@ -752,6 +752,44 @@ export const approvalSteps = pgTable('approval_steps', {
 })
 
 // ============================================================
+// EVENTS — Canonical change-data-capture log
+// Every meaningful state change emits an event. Foundation for:
+//   - Cross-module fan-out (Stays Current property)
+//   - Field-level audit + attribution (Travels Through Time)
+//   - Bi-temporal reconstruction (point-in-time queries)
+//   - Outbound webhooks + reverse-ETL
+// ============================================================
+
+export const events = pgTable('events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+  /** Dotted event type — e.g., 'expense.submitted', 'employee.role_changed' */
+  eventType: varchar('event_type', { length: 80 }).notNull(),
+  /** Schema version of the payload for evolution */
+  eventVersion: integer('event_version').default(1).notNull(),
+  /** What kind of entity was affected — 'expense_report', 'employee', etc. */
+  entityType: varchar('entity_type', { length: 50 }).notNull(),
+  /** UUID of the affected entity (use string if non-uuid entity) */
+  entityId: varchar('entity_id', { length: 64 }).notNull(),
+  /** Employee who triggered the event (null for system events) */
+  actorId: uuid('actor_id').references(() => employees.id),
+  /** Full event data — typed JSON varies per event_type */
+  payload: jsonb('payload').notNull(),
+  /** Optional before-state for field-level diff */
+  before: jsonb('before'),
+  /** Optional after-state */
+  after: jsonb('after'),
+  /** Groups related events from one logical action — e.g., one snap = one correlation */
+  correlationId: varchar('correlation_id', { length: 64 }),
+  /** Parent event that caused this one (for cascading) */
+  causedByEventId: uuid('caused_by_event_id'),
+  /** When the event actually happened in the user's world (may be retroactive) */
+  occurredAt: timestamp('occurred_at').notNull(),
+  /** When Tempo wrote it (always now) */
+  recordedAt: timestamp('recorded_at').defaultNow().notNull(),
+})
+
+// ============================================================
 // RECRUITING
 // ============================================================
 

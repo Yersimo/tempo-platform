@@ -19,6 +19,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db, withRetry } from '@/lib/db'
 import { expenseReports, expenseItems, approvalSteps, notifications } from '@/lib/db/schema'
+import { emitEvent, newCorrelationId } from '@/lib/events/emitter'
+import '@/lib/events/bootstrap' // ensures subscribers are registered
 
 interface SubmitSnapRequest {
   /** Output from /api/expenses/scan (the composed draft) */
@@ -215,6 +217,75 @@ export async function POST(request: NextRequest) {
 
       return { reportId: report.id, itemId: item.id, steps }
     })
+
+    // ── Emit canonical events (fire-and-forget — persisted to events table) ──
+    const correlationId = newCorrelationId('snap')
+
+    // 1. The expense was submitted
+    await emitEvent({
+      orgId,
+      actorId: employeeId,
+      eventType: 'expense.submitted',
+      entityType: 'expense_report',
+      entityId: result.reportId,
+      payload: {
+        expenseReportId: result.reportId,
+        amount: body.receipt.amount!,
+        currency: body.receipt.currency!,
+        vendor: body.receipt.vendor,
+        autoApprovalEligible: body.policy.autoApprovalEligible,
+        policyId: body.policy.appliedRuleId,
+      },
+      correlationId,
+    })
+
+    // 2. Policy was applied (citation tracking)
+    await emitEvent({
+      orgId,
+      actorId: employeeId,
+      eventType: 'policy.applied',
+      entityType: 'expense_report',
+      entityId: result.reportId,
+      payload: {
+        policyId: 'eti-expense-2023',
+        policyVersion: '2023-final',
+        appliedRuleId: body.policy.appliedRuleId,
+        entityType: 'expense_report',
+        entityId: result.reportId,
+      },
+      correlationId,
+    })
+
+    // 3. Either auto-approved or routed
+    if (body.approval.action === 'auto_approve') {
+      await emitEvent({
+        orgId,
+        actorId: employeeId,
+        eventType: 'expense.auto_approved',
+        entityType: 'expense_report',
+        entityId: result.reportId,
+        payload: {
+          expenseReportId: result.reportId,
+          appliedRuleId: body.policy.appliedRuleId,
+          confidence: body.policy.autoApprovalEligible ? 0.95 : 0,
+        },
+        correlationId,
+      })
+    } else if (body.approval.approverId) {
+      await emitEvent({
+        orgId,
+        actorId: employeeId,
+        eventType: 'expense.approval_routed',
+        entityType: 'expense_report',
+        entityId: result.reportId,
+        payload: {
+          expenseReportId: result.reportId,
+          approverId: body.approval.approverId,
+          requiredSignatures: body.policy.requiredSignatures,
+        },
+        correlationId,
+      })
+    }
 
     return NextResponse.json<SubmitSnapResponse>({
       ok: true,
