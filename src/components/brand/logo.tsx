@@ -106,9 +106,11 @@ export function Logo({
   const wordSize = size === 'fit' ? 80 : size
   // Mark physical width: viewBox 80×86 scaled to render at `size` px tall.
   const markWidth = wordSize * (80 / 86)
-  // Gap per brief §The full lockup: ~50% of icon width. Rippling-style breathing
-  // room. Previously 18%, which read as cramped at every render size.
-  const gapPx = markWidth * 0.5
+  // Gap calibrated against Rippling reference: ~28% of mark width.
+  // The spec suggests 50% but visual comparison shows that overshoots —
+  // Rippling's actual ratio is closer to 28–30%. We're calibrated to the
+  // reference, not the prose.
+  const gapPx = markWidth * 0.3
 
   return (
     <span
