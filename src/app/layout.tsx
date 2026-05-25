@@ -22,23 +22,25 @@ export const metadata: Metadata = {
   title: 'TEMPO. — People & Performance Platform',
   description: 'The unified workforce platform. Performance, compensation, learning, engagement, mentoring, analytics, payroll, and more. One platform, zero silos.',
   icons: {
+    // Cache-bust suffix forces browsers to re-fetch when the brand mark changes.
+    // Bump this version when you update favicon assets.
     icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icon-32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon-64.png', sizes: '64x64', type: 'image/png' },
-      { url: '/icon-128.png', sizes: '128x128', type: 'image/png' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-256.png', sizes: '256x256', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.ico?v=3', sizes: '32x32' },
+      { url: '/icon.svg?v=3', type: 'image/svg+xml' },
+      { url: '/icon-16.png?v=3', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-32.png?v=3', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-64.png?v=3', sizes: '64x64', type: 'image/png' },
+      { url: '/icon-128.png?v=3', sizes: '128x128', type: 'image/png' },
+      { url: '/icon-192.png?v=3', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-256.png?v=3', sizes: '256x256', type: 'image/png' },
+      { url: '/icon-512.png?v=3', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: [{ url: '/favicon.ico' }],
+    shortcut: [{ url: '/favicon.ico?v=3' }],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180' },
+      { url: '/apple-touch-icon.png?v=3', sizes: '180x180' },
     ],
     other: [
-      { rel: 'mask-icon', url: '/safari-pinned-tab.svg', color: '#0D2A35' },
+      { rel: 'mask-icon', url: '/safari-pinned-tab.svg?v=3', color: '#0D2A35' },
     ],
   },
   manifest: '/manifest.json',
