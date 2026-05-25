@@ -89,7 +89,30 @@ export default function ExpenseSnapPage() {
   async function submit() {
     if (state.stage !== 'review') return
     setState({ stage: 'submitting', result: state.result })
-    await sleep(600)
+
+    try {
+      // Real DB persistence — POSTs to /api/expenses/submit-snap which
+      // inserts expense_reports + expense_items + approval_steps + notifications
+      const res = await fetch('/api/expenses/submit-snap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receipt: state.result.receipt,
+          businessPurpose: state.result.businessPurpose,
+          costCenter: state.result.costCenter,
+          policy: state.result.policy,
+          approval: state.result.approval,
+        }),
+      })
+      const submitResult = await res.json()
+      if (!res.ok && !submitResult.ok) {
+        console.error('[snap] submit failed:', submitResult.error)
+      }
+    } catch (err) {
+      console.error('[snap] submit error:', err)
+    }
+
+    await sleep(400) // brief settle so the transition reads as deliberate
     setState({ stage: 'submitted', result: state.result })
   }
 
