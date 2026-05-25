@@ -22,13 +22,24 @@
   --color-tempo-800: #1B3D52;   /* primary hover */
   --color-tempo-900: #142C3D;   /* primary active / dark surface */
 
-  /* ── Brand lockup tokens ───────────────────────────────────────
+  /* ── Brand lockup + iconography tokens ─────────────────────────
    * The three-bar T mark + TEMPO. wordmark. Tokens — never hardcode. */
   --color-brand-bg: #0D2A35;              /* deep teal tile bg for icons */
   --color-brand-bg-light: #245A6E;        /* lighter end of brand gradient */
+  --color-brand-tile: #164257;            /* app grid tile background */
   --color-brand-mark: #FFFFFF;            /* the bars + wordmark on dark */
   --color-brand-mark-inverse: #142C3D;    /* the bars + wordmark on light */
-  --color-brand-accent: #4FA5C5;          /* the period — only colored element */
+  --color-brand-accent: #4FA5C5;          /* the period + icons in dark tiles */
+
+  /* ── Iconography text tokens ──────────────────────────────────
+   * Used by sidebar nav, app grid, empty states. */
+  --color-text-on-dark-primary: #FFFFFF;
+  --color-text-on-dark-muted: rgba(255, 255, 255, 0.62);
+  --color-text-on-dark-faint: rgba(255, 255, 255, 0.36);
+  --color-text-on-accent: #FFFFFF;
+  --color-text-secondary: var(--color-t2);
+  --color-text-tertiary: var(--color-t3);
+  --color-danger: var(--color-error);
 
   /* Accent — Brass (warm secondary)
    * Used for: emphasis CTAs, premium tier indicators, highlight badges,
@@ -1685,3 +1696,60 @@ button, a, input, select, textarea {
   padding: 64px 0 64px 0;  /* 4 × 16px baseline beats */
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TEMPO LOADING MARK — animated equalizer
+ * Three bars pulsing at staggered intervals. Replaces every generic
+ * spinner across the platform. Per iconography spec §3.
+ * ═══════════════════════════════════════════════════════════════════ */
+.tempo-loading-bar {
+  transform-origin: center;
+  animation: tempo-loading-pulse 1s ease-in-out infinite;
+}
+.tempo-loading-bar-2 { animation-delay: 0.15s; }
+.tempo-loading-bar-3 { animation-delay: 0.3s; }
+
+@keyframes tempo-loading-pulse {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(1.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tempo-loading-bar { animation: none; opacity: 0.6; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * APP-GRID TILE — module launcher recipe
+ * Deep teal tile, brand-accent icon inside, hover scale + lighten.
+ * ═══════════════════════════════════════════════════════════════════ */
+.tempo-app-tile {
+  background: var(--color-brand-tile);
+  color: var(--color-brand-accent);
+  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.18s ease;
+  border: none;
+}
+
+.tempo-app-tile:hover {
+  background: color-mix(in srgb, var(--color-brand-tile) 92%, white 8%);
+  transform: scale(1.02);
+}
+
+.tempo-app-tile:active { transform: scale(0.98); }
+.tempo-app-tile:focus-visible {
+  outline: 2px solid var(--color-brand-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tempo-app-tile { transition: background 0.18s ease; }
+  .tempo-app-tile:hover { transform: none; }
+}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useTempo } from '@/lib/store'
+import { AIMark } from '@/components/brand/icon'
 import {
   processAssistantQuery,
   getProactiveInsights,
@@ -239,7 +240,7 @@ function CommandBar({
       >
         {/* Search Input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-          <Sparkles className="w-5 h-5 text-purple-500 shrink-0" />
+          <AIMark size="md" className="shrink-0" />
           <input
             ref={inputRef}
             value={query}
@@ -484,8 +485,8 @@ function ChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-amber-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="tempo-app-tile" style={{ width: 32, height: 32, borderRadius: 8 }}>
+              <AIMark size="sm" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-t1">Tempo AI</h2>
@@ -685,11 +686,12 @@ function AIFloatingButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-amber-500 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center group"
+      className="tempo-app-tile fixed bottom-6 right-6 z-40 group"
+      style={{ width: 52, height: 52, borderRadius: 999 }}
       title="Ask Tempo AI (⌘J)"
       aria-label="Open Tempo AI Assistant"
     >
-      <Sparkles className="w-5 h-5" />
+      <AIMark size="lg" />
       <span className="absolute -top-10 right-0 bg-card text-t1 text-xs px-2.5 py-1.5 rounded-lg shadow-lg border border-border opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
         Ask Tempo AI
         <kbd className="ml-1.5 text-[10px] text-t3 bg-canvas px-1 rounded border border-border">

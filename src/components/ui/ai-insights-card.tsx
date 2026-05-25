@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils/cn'
 import { TrendingUp, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
+import { AIMark } from '@/components/brand/icon'
 import type { AIInsight, AIAnomaly, AIRecommendation, AIScore } from '@/lib/ai-engine'
 
 // ─── Jony Ive–inspired AI severity system ───────────────────────────
@@ -223,11 +224,8 @@ export function AIInsightsCard({
         )}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-[10px] bg-gradient-to-br from-tempo-500 to-tempo-600 flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
+          <div className="tempo-app-tile shrink-0" style={{ width: 28, height: 28, borderRadius: 8 }}>
+            <AIMark size="sm" />
           </div>
           <h3 className="text-[13px] font-semibold text-t1 tracking-[-0.01em]">{title}</h3>
           <span className="text-[9px] px-1.5 py-[2px] rounded-md bg-tempo-50 text-tempo-600 font-semibold tracking-widest uppercase">AI</span>
