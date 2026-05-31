@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoDonutChart, TempoBarChart, CHART_COLORS } from '@/components/ui/charts'
 import {
@@ -507,6 +508,30 @@ export default function ITCloudPage() {
   return (
     <>
       <Header title="IT Cloud" subtitle="Device management, application catalog, security policies and asset inventory" />
+
+      <ModuleCommandCenter
+        moduleName="IT Cloud"
+        benchmark="Rippling and Okta-grade access, device, app, and security operations in one lifecycle command surface."
+        score={Math.min(98, 46 + Math.round(securityScore * 0.28) + (activeDevices.length > 0 ? 8 : 0) + (provisioningRules.filter(r => r.isActive).length > 0 ? 8 : 0) + (alerts.length === 0 ? 8 : 3))}
+        scoreLabel="IT control readiness"
+        summary="Connects devices, applications, app access, security policies, inventory, provisioning rules, encryption, and identity context so joiner/mover/leaver work does not split across tools."
+        metrics={[
+          { label: 'Security score', value: `${securityScore}%`, tone: securityScore >= 80 ? 'success' : 'warning' },
+          { label: 'Active devices', value: activeDevices.length, tone: activeDevices.length > 0 ? 'success' : 'neutral' },
+          { label: 'Managed apps', value: totalApps, tone: totalApps > 0 ? 'ai' : 'neutral' },
+          { label: 'Alerts', value: alerts.length, tone: alerts.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Tie device, app, identity, and encryption tasks to employee lifecycle events.',
+          'Make non-compliance obvious and immediately actionable.',
+          'Keep provisioning rules explainable so IT can trust automation.',
+        ]}
+        actions={[
+          { label: 'Review device health', description: 'Inspect compliance, encryption, and stale devices.', onClick: () => setActiveTab('devices') },
+          { label: 'Tune provisioning', description: 'Manage role and department-based access rules.', onClick: () => setActiveTab('provisioning') },
+          { label: 'Harden security', description: 'Review policies, encryption, and identity posture.', onClick: () => setActiveTab('security') },
+        ]}
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setSearchQuery('') }} className="mb-6" />
 

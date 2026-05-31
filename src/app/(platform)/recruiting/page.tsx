@@ -19,6 +19,7 @@ import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCareerSiteEffectiveness, recommendJobBoards, generateInterviewQuestions, analyzeDiversityPipeline, scoreInterviewPanel, generateOfferPackage } from '@/lib/ai-engine'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { useEventCascade } from '@/lib/event-cascade-context'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
@@ -711,6 +712,30 @@ export default function RecruitingPage() {
             )}
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Recruiting"
+        benchmark="Greenhouse-grade pipeline discipline, connected directly to headcount, onboarding, documents, and hiring approvals."
+        score={Math.min(97, 48 + Math.min(14, openPositions * 3) + Math.min(14, applications.length) + (upcomingInterviews.length > 0 ? 8 : 3) + (careerSiteScore.value >= 70 ? 8 : 3))}
+        scoreLabel="Hiring flow readiness"
+        summary="Connects requisitions, pipeline, interviews, candidate experience, background checks, referrals, offers, and conversion into employee onboarding."
+        metrics={[
+          { label: 'Open roles', value: openPositions, tone: openPositions > 0 ? 'ai' : 'neutral' },
+          { label: 'Candidates', value: applications.length, tone: applications.length > 0 ? 'success' : 'warning' },
+          { label: 'Interviews', value: upcomingInterviews.length, tone: upcomingInterviews.length > 0 ? 'success' : 'neutral' },
+          { label: 'Offers', value: offersExtended, tone: offersExtended > 0 ? 'warning' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make every hiring stage clear enough for recruiters, managers, and candidates.',
+          'Connect approved headcount to job postings and hired candidates to onboarding.',
+          'Keep interview quality, DEI signals, and offer readiness visible before decisions.',
+        ]}
+        actions={[
+          { label: 'Work the pipeline', description: 'Move candidates through stages with context.', onClick: () => setActiveTab('pipeline') },
+          { label: 'Schedule interviews', description: 'Coordinate interview panels and candidate slots.', onClick: () => setActiveTab('interviews') },
+          { label: 'Prepare offers', description: 'Review offer packages and approvals.', onClick: () => setActiveTab('offers') },
+        ]}
       />
 
       {/* Stats */}

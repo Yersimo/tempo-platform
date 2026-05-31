@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard } from '@/components/ai'
 import { suggestOnboardingBuddy, generateOnboardingPlan } from '@/lib/ai-engine'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { useTempo } from '@/lib/store'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
@@ -1319,6 +1320,30 @@ export default function OnboardingPage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Onboarding"
+        benchmark="Rippling-grade first day orchestration, with Sana-style learning and IT provisioning ready before 8am."
+        score={Math.min(96, 48 + Math.round(taskCompletionPct * 0.2) + (activeBuddyCount > 0 ? 8 : 3) + (preboardingTasks.length > 0 ? 8 : 2) + Math.min(10, selectedModules.length))}
+        scoreLabel="Day-one readiness"
+        summary="Connects setup, preboarding tasks, buddies, welcome content, learning plans, employee import, and Day-1 experiences into one guided journey."
+        metrics={[
+          { label: 'Task completion', value: `${taskCompletionPct}%`, tone: taskCompletionPct >= 70 ? 'success' : 'warning' },
+          { label: 'Active buddies', value: activeBuddyCount, tone: activeBuddyCount > 0 ? 'success' : 'neutral' },
+          { label: 'Pending tasks', value: pendingTaskCount, tone: pendingTaskCount > 0 ? 'warning' : 'success' },
+          { label: 'Modules selected', value: selectedModules.length, tone: 'ai' },
+        ]}
+        focusAreas={[
+          'Make the first morning feel complete across HR, IT, Learning, Payroll, and manager tasks.',
+          'Keep buddy nudges, documents, equipment, and training visible in one journey.',
+          'Turn bulk onboarding setup into a guided, recoverable process.',
+        ]}
+        actions={[
+          { label: 'Open first morning', description: 'Preview the Day-1 employee experience.', href: '/onboarding/day-one' },
+          { label: 'Review preboarding', description: 'Track documents, equipment, and account tasks.', onClick: () => setActiveTab('preboarding') },
+          { label: 'Assign buddies', description: 'Match new hires with onboarding support.', onClick: () => setActiveTab('buddy-system') },
+        ]}
       />
 
       {/* Day-1 First Morning entry — for new joiners */}

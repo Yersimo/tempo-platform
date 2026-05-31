@@ -92,5 +92,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - People now has a Rippling/Workday-inspired command center with employee graph readiness, countries, documents, attrition alerts, and direct actions into org chart, documents, and positions.
 - Payroll now has a trust-centered payroll command center with health score, pending approvals, pay runs, compliance risks, and direct actions into approvals, reconciliation, and compliance.
 - Analytics now has a Visier/Workday-inspired decision command center with headcount, review completion, active learners, pending expenses, and direct actions into workforce, executive, and report-builder views.
+- IT Cloud now has a Rippling/Okta-inspired command center with security score, active devices, managed apps, alerts, and direct actions into device health, provisioning, and security.
+- Recruiting now has a Greenhouse-inspired command center with open roles, candidates, interviews, offers, and direct actions into pipeline, interviews, and offers.
+- Onboarding now has a Rippling/Sana-inspired command center with Day-1 readiness, buddy coverage, task completion, selected modules, and direct actions into first morning, preboarding, and buddy workflows.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
