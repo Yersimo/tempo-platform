@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -224,6 +225,30 @@ export default function GlobalWorkforcePage() {
             )}
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Global Workforce"
+        benchmark="Deel and Rippling-grade global employment operations with EOR, contractors, PEO, benefits, compliance deadlines, and worker counts connected."
+        score={Math.min(97, 48 + (eorEntityCount > 0 ? 8 : 2) + (contractorCount > 0 ? 7 : 2) + (peoCountryCount > 0 ? 7 : 2) + (complianceData.filter(c => c.status === 'attention').length === 0 ? 9 : 4))}
+        scoreLabel="Global operations readiness"
+        summary="Connects EOR entities, contractor records, PEO countries, global benefits, compliance filings, deadlines, and worker coverage into one international workforce surface."
+        metrics={[
+          { label: 'EOR entities', value: eorEntityCount, tone: eorEntityCount > 0 ? 'success' : 'neutral' },
+          { label: 'Contractors', value: contractorCount, tone: contractorCount > 0 ? 'ai' : 'neutral' },
+          { label: 'PEO countries', value: peoCountryCount, tone: peoCountryCount > 0 ? 'success' : 'neutral' },
+          { label: 'Countries at risk', value: complianceData.filter(c => c.status === 'attention').length, tone: complianceData.some(c => c.status === 'attention') ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make country expansion traceable to employment model, benefits, payroll, and compliance.',
+          'Keep contractors, EOR employees, and co-employment records visible together.',
+          'Surface filing deadlines and attention countries before global operations drift.',
+        ]}
+        actions={[
+          { label: 'Review EOR', description: 'Inspect entities, employees, and coverage.', onClick: () => setActiveTab('eor') },
+          { label: 'Manage contractors', description: 'Review contractor roster and contracts.', onClick: () => setActiveTab('contractors') },
+          { label: 'Check compliance', description: 'Inspect country filings and deadlines.', onClick: () => setActiveTab('compliance') },
+        ]}
       />
 
       {/* Stat Cards */}

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -327,6 +328,30 @@ export default function IdentityPage() {
         title="Identity & Access"
         subtitle="SSO, MFA & SCIM provisioning"
         actions={<Button size="sm" onClick={openAddApp}><Plus size={14} /> Add Application</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Identity & Access"
+        benchmark="Okta and Rippling-grade identity operations with SSO, MFA, SCIM provisioning, active users, and certificate health connected to the employee lifecycle."
+        score={Math.min(97, 48 + (ssoAppCount > 0 ? 9 : 3) + Math.round(enrollmentRate * 0.22) + (certExpiry === null || certExpiry >= 90 ? 8 : 2) + (scimProviders.length > 0 ? 7 : 2))}
+        scoreLabel="Identity control readiness"
+        summary="Connects SSO applications, identity providers, MFA policy, certificate health, SCIM provisioning, and user counts into one access-control surface."
+        metrics={[
+          { label: 'SSO apps', value: ssoAppCount, tone: ssoAppCount > 0 ? 'success' : 'neutral' },
+          { label: 'MFA enrollment', value: `${enrollmentRate}%`, tone: enrollmentRate >= 90 ? 'success' : 'warning' },
+          { label: 'Active users', value: activeUsers, tone: activeUsers > 0 ? 'ai' : 'neutral' },
+          { label: 'Cert expiry', value: certExpiry !== null ? `${certExpiry}d` : 'N/A', tone: certExpiry !== null && certExpiry < 90 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make access readiness visible before employees join, move roles, or leave.',
+          'Keep MFA, SSO certificates, and SCIM sync health easy to review.',
+          'Tie app access to IT Cloud, password management, onboarding, and offboarding.',
+        ]}
+        actions={[
+          { label: 'Review SSO apps', description: 'Inspect app status, users, and SSO URLs.', onClick: () => setActiveTab('sso') },
+          { label: 'Harden MFA', description: 'Review enrollment and active policies.', onClick: () => setActiveTab('mfa') },
+          { label: 'Check provisioning', description: 'Inspect SCIM sync and user provisioning.', onClick: () => setActiveTab('scim') },
+        ]}
       />
 
       {/* Stat Cards */}

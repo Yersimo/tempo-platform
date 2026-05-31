@@ -104,5 +104,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Documents now has a DocuSign/Rippling-inspired evidence command center with document count, pending signatures, templates, audit events, and direct actions into documents, templates, and audit trail.
 - Workflows now has a Zapier/Rippling-inspired automation command center with active workflows, run volume, success rate, templates, and direct actions into workflow list, builder, and run history.
 - Strategy now has a Workday/Betterworks-inspired execution command center with objectives, KR progress, initiatives, KPI tracking, and direct actions into strategy map, OKRs, and KPIs.
+- Identity & Access now has an Okta/Rippling-inspired access command center with SSO apps, MFA enrollment, active users, certificate expiry, and direct actions into SSO, MFA, and SCIM provisioning.
+- Password Manager now has a 1Password/Rippling-inspired credential command center with vaults, credentials, health score, expiring items, and direct actions into vaults, security review, and rotation.
+- Global Workforce now has a Deel/Rippling-inspired international operations command center with EOR entities, contractors, PEO countries, compliance risk, and direct actions into EOR, contractors, and country compliance.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

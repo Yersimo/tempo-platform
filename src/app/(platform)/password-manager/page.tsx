@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -413,6 +414,30 @@ export default function PasswordManagerPage() {
         title="Password Manager"
         subtitle="Secure credential sharing & audit"
         actions={<Button size="sm" onClick={() => setShowCreateVault(true)}><Plus size={14} /> Create Vault</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Password Manager"
+        benchmark="1Password and Rippling-grade credential governance with vaults, sharing, security health, breach scans, rotation, and audit history in one workflow."
+        score={Math.min(97, Math.max(45, vaultHealthScore) + (strongPct >= 80 ? 6 : 0) + (expiringItems.length === 0 ? 5 : 0))}
+        scoreLabel="Credential security readiness"
+        summary="Connects vaults, credentials, password strength, expiring secrets, sharing, breach scans, rotation policies, and audit activity into one security control surface."
+        metrics={[
+          { label: 'Vaults', value: totalVaults, tone: totalVaults > 0 ? 'success' : 'neutral' },
+          { label: 'Credentials', value: totalCredentials, tone: totalCredentials > 0 ? 'ai' : 'neutral' },
+          { label: 'Health score', value: vaultHealthScore, tone: vaultHealthScore >= 80 ? 'success' : 'warning' },
+          { label: 'Expiring soon', value: expiringItems.length, tone: expiringItems.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make weak, reused, breached, and old credentials obvious before they become incidents.',
+          'Keep sharing and rotation auditable for IT, security, and managers.',
+          'Connect password posture to identity, app provisioning, and offboarding.',
+        ]}
+        actions={[
+          { label: 'Review vaults', description: 'Inspect owned vaults and stored credentials.', onClick: () => setActiveTab('vaults') },
+          { label: 'Run security review', description: 'Check health, weak items, and breach scan.', onClick: () => setActiveTab('security') },
+          { label: 'Plan rotation', description: 'Review rotation policies and due items.', onClick: () => setActiveTab('rotation') },
+        ]}
       />
 
       {/* Stat Cards */}
