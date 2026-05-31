@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { useEventCascade } from '@/lib/event-cascade-context'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -954,6 +955,30 @@ export default function PerformancePage() {
             {activeTab === 'review-templates' && <Button size="sm" onClick={() => { setEditingTemplate(null); setTemplateForm({ name: '', type: 'annual', is_default: false, sections: [] }); setShowTemplateModal(true) }}><FileText size={14} /> Create Template</Button>}
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Performance"
+        benchmark="Oracle Fusion Redwood-grade performance, simplified into manager-ready decisions."
+        score={Math.min(96, 58 + Math.round((completedReviews / Math.max(reviews.length, 1)) * 24) + (goals.length > 0 ? 8 : 0) + (oneOnOnes.length > 0 ? 6 : 0))}
+        scoreLabel="Cycle readiness"
+        summary="Unifies goals, reviews, calibration, recognition, PIPs, competencies, merit, and learning signals so managers can move from review admin to useful coaching."
+        metrics={[
+          { label: 'Goals tracked', value: goals.length, tone: goals.length > 0 ? 'success' : 'warning' },
+          { label: 'Reviews complete', value: `${completedReviews}/${reviews.length}`, tone: completedReviews > 0 ? 'success' : 'neutral' },
+          { label: 'Open 1:1 actions', value: openActionItems.length, tone: openActionItems.length > 0 ? 'warning' : 'success' },
+          { label: 'Active PIPs', value: pips.filter(p => p.status === 'active').length, tone: 'neutral' },
+        ]}
+        focusAreas={[
+          'Make every review cycle explain what managers should do next.',
+          'Connect performance signals to learning, compensation, and career movement.',
+          'Keep calibration transparent without making the workflow feel heavy.',
+        ]}
+        actions={[
+          { label: 'Run calibration view', description: 'Spot rating drift and prepare a fair review committee.', onClick: () => setActiveTab('calibration') },
+          { label: 'Coach through 1:1s', description: 'Turn feedback into scheduled manager follow-up.', onClick: () => setActiveTab('one-on-ones') },
+          { label: 'Connect growth paths', description: 'Review role paths, skills, and learning-linked gaps.', onClick: () => setActiveTab('career-paths') },
+        ]}
       />
 
       {/* Stats */}

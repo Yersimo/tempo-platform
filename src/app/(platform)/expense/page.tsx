@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
@@ -1172,6 +1173,31 @@ export default function ExpensePage() {
             <Camera size={14} /> Snap a receipt
           </a>
         </div>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Expense"
+        benchmark="Ramp-level speed and clarity, with ETI policy intelligence and Africa-first controls."
+        score={Math.min(98, 54 + (pendingReports.length > 0 ? 12 : 8) + (demoReceipts.length > 0 ? 10 : 0) + (approvalRules.filter(r => r.enabled).length * 4) + (reimbursementBatches.length > 0 ? 8 : 4))}
+        scoreLabel="Expense flow readiness"
+        summary="Connects receipt capture, policy checks, approvals, reimbursements, budgets, mileage, per diem, and audit trails into a faster expense workflow."
+        metrics={[
+          { label: 'Pending reports', value: pendingReports.length, tone: pendingReports.length > 0 ? 'warning' : 'success' },
+          { label: 'Pending value', value: formatCurrency(totalPending, defaultCurrency), tone: totalPending > 0 ? 'warning' : 'success' },
+          { label: 'Active rules', value: approvalRules.filter(r => r.enabled).length, tone: 'ai' },
+          { label: 'Receipts staged', value: demoReceipts.length, tone: 'success' },
+        ]}
+        focusAreas={[
+          'Keep the 8-second receipt flow as the front door for employees.',
+          'Make policy outcomes explainable before approvers touch the report.',
+          'Connect reimbursements, budgets, cards, payroll, and finance without duplicate entry.',
+        ]}
+        actions={[
+          { label: 'Try Snap flow', description: 'Open the AI-native receipt capture experience.', href: '/expenses/snap' },
+          { label: 'Review approvals', description: 'Resolve pending reports with policy context.', onClick: () => setActiveTab('reports') },
+          { label: 'Tune policy rules', description: 'Inspect routing, thresholds, and auto-approval logic.', onClick: () => setActiveTab('policy-rules') },
+        ]}
+        className="mx-6 mt-4"
       />
 
       {/* Snap hero — the 8-second flow */}

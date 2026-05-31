@@ -22,6 +22,7 @@ import type { AIInsight } from '@/lib/ai-engine'
 import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { CoursePlayer } from '@/components/learning/course-player'
 import { CertificateDesigner, CertificatePreview } from '@/components/learning/certificate-designer'
 import { ContentProviders } from '@/components/learning/content-providers'
@@ -2298,6 +2299,31 @@ window.onload=function(){
           </div>
         }
       />
+
+      <ModuleCommandCenter
+        moduleName="Learning"
+        benchmark="Sana-level learning discovery, connected to skills, performance, compliance, and manager action."
+        score={Math.min(96, 48 + Math.round(completionRate * 0.22) + Math.min(12, learningPaths.length * 2) + (skillGaps.length > 0 ? 6 : 10) + (contentLibrary.length > 0 ? 8 : 0))}
+        scoreLabel="Learning system readiness"
+        summary="Brings courses, assignments, paths, compliance, skills, AI authoring, content library, assessments, and transcripts into one learning operating loop."
+        metrics={[
+          { label: 'Courses', value: courses.length, tone: courses.length > 0 ? 'success' : 'warning' },
+          { label: 'Completion rate', value: `${completionRate}%`, tone: completionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Learning paths', value: learningPaths.length, tone: learningPaths.length > 0 ? 'success' : 'neutral' },
+          { label: 'Skill gaps', value: skillGaps.length, tone: skillGaps.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make learning recommendations feel personal, role-aware, and manager-actionable.',
+          'Tie compliance, skills, performance, and career movement into one loop.',
+          'Keep authoring and content operations powerful without burying learners.',
+        ]}
+        actions={[
+          { label: 'Personalize learner home', description: 'Review the learner-first Sana-style home surface.', onClick: () => setActiveTab('home') },
+          { label: 'Close skill gaps', description: 'Inspect coverage gaps and recommended learning paths.', onClick: () => setActiveTab('skills') },
+          { label: 'Manage compliance', description: 'Prioritize overdue and mandatory learning workflows.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <StatCard label={t('totalCourses')} value={courses.length} icon={<BookOpen size={20} />} />
         <StatCard label={t('inProgress')} value={inProgressCount} change={t('completed', { count: completedCount })} changeType="positive" href="/people" />
