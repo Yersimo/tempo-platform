@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -676,6 +677,30 @@ export default function BenefitsPage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Benefits"
+        benchmark="Rippling and Nava-grade benefits administration with guided enrollment, life events, COBRA, ACA, and flex accounts in one place."
+        score={Math.min(97, Math.max(48, competitivenessScore.value) + (enrollmentRate >= 85 ? 6 : 0) + (pendingLifeEvents.length === 0 ? 5 : 0))}
+        scoreLabel="Benefits experience readiness"
+        summary="Connects plans, enrollment, open enrollment, dependents, life events, ACA, COBRA, and flex benefits so HR teams can keep coverage accurate without chasing separate tools."
+        metrics={[
+          { label: 'Active plans', value: activePlans.length, tone: activePlans.length > 0 ? 'success' : 'warning' },
+          { label: 'Enrollment rate', value: `${enrollmentRate}%`, tone: enrollmentRate >= 85 ? 'success' : 'warning' },
+          { label: 'Providers', value: uniqueProviders, tone: uniqueProviders > 1 ? 'ai' : 'neutral' },
+          { label: 'Life events', value: pendingLifeEvents.length, tone: pendingLifeEvents.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make plan selection, dependents, and coverage levels understandable before employees commit.',
+          'Keep life events, COBRA, ACA, and open enrollment deadlines visible before they become compliance risks.',
+          'Give HR a single workflow for bulk enrollment, carrier sync fallback, and employee support.',
+        ]}
+        actions={[
+          { label: 'Review plans', description: 'Inspect active plans, providers, and employee cost.', onClick: () => setActiveTab('plans') },
+          { label: 'Run enrollment', description: 'Guide employees and HR through coverage choices.', onClick: () => setActiveTab('enrollment') },
+          { label: 'Resolve events', description: 'Handle pending life events and compliance deadlines.', onClick: () => setActiveTab('life-events') },
+        ]}
       />
 
       {/* AI Insights */}

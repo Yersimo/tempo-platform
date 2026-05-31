@@ -95,5 +95,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - IT Cloud now has a Rippling/Okta-inspired command center with security score, active devices, managed apps, alerts, and direct actions into device health, provisioning, and security.
 - Recruiting now has a Greenhouse-inspired command center with open roles, candidates, interviews, offers, and direct actions into pipeline, interviews, and offers.
 - Onboarding now has a Rippling/Sana-inspired command center with Day-1 readiness, buddy coverage, task completion, selected modules, and direct actions into first morning, preboarding, and buddy workflows.
+- Benefits now has a Rippling/Nava-inspired command center with benefits readiness, active plans, enrollment rate, provider coverage, pending life events, and direct actions into plans, enrollment, and event resolution.
+- Time & Attendance now has a UKG/Rippling-inspired command center with workforce time readiness, active employees, pending approvals, weekly overtime, punctuality, and direct actions into timesheets, overtime, and PTO.
+- Compensation now has a Pave/Workday-inspired command center with rewards planning readiness, comp bands, below-market risk, pending reviews, equity value, and direct actions into benchmarking, reviews, and planning.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

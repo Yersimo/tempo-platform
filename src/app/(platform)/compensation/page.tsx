@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -304,6 +305,30 @@ export default function CompensationPage() {
             <Button size="sm" onClick={() => setShowReviewModal(true)}><Plus size={14} /> {t('proposeReview')}</Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Compensation"
+        benchmark="Pave and Workday-grade compensation planning with market bands, reviews, equity, total rewards, and budget modeling connected."
+        score={Math.min(97, 52 + (belowMarket === 0 ? 10 : 4) + (pendingReviews <= 5 ? 8 : 3) + (compBands.length > 0 ? 8 : 2) + (marketBenchmarks.length > 0 ? 8 : 2))}
+        scoreLabel="Rewards planning readiness"
+        summary="Connects market benchmarking, salary reviews, STIP modeling, compensation bands, total rewards, equity, planning cycles, and market data into one decision workflow."
+        metrics={[
+          { label: 'Comp bands', value: compBands.length, tone: compBands.length > 0 ? 'success' : 'warning' },
+          { label: 'Below market', value: belowMarket, tone: belowMarket > 0 ? 'warning' : 'success' },
+          { label: 'Pending reviews', value: pendingReviews, tone: pendingReviews > 5 ? 'warning' : 'neutral' },
+          { label: 'Equity value', value: formatCurrency(totalEquityValue, defaultCurrency, { compact: true }), tone: totalEquityValue > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make pay equity, market position, and budget impact visible before approvals.',
+          'Tie compensation planning to payroll, performance, headcount, and total rewards.',
+          'Give leaders an explainable path from benchmark data to employee-level decisions.',
+        ]}
+        actions={[
+          { label: 'Review bands', description: 'Inspect market position and compa-ratio.', onClick: () => setActiveTab('benchmarking') },
+          { label: 'Approve reviews', description: 'Work through pending salary changes.', onClick: () => setActiveTab('salary-reviews') },
+          { label: 'Model planning', description: 'Explore cycle budgets and scenarios.', onClick: () => setActiveTab('planning') },
+        ]}
       />
 
       {/* Stat Cards */}
