@@ -98,5 +98,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Benefits now has a Rippling/Nava-inspired command center with benefits readiness, active plans, enrollment rate, provider coverage, pending life events, and direct actions into plans, enrollment, and event resolution.
 - Time & Attendance now has a UKG/Rippling-inspired command center with workforce time readiness, active employees, pending approvals, weekly overtime, punctuality, and direct actions into timesheets, overtime, and PTO.
 - Compensation now has a Pave/Workday-inspired command center with rewards planning readiness, comp bands, below-market risk, pending reviews, equity value, and direct actions into benchmarking, reviews, and planning.
+- Offboarding now has a Rippling-inspired leaver command center with access/device/payroll/benefits/document closure, task completion, knowledge transfer, surveys, and direct actions into active exits, checklists, and knowledge capture.
+- Compliance now has a Workday/Drata-inspired control command center with requirement coverage, compliance score, critical alerts, pending scans, and direct actions into requirements, alerts, and auto-detection.
+- Headcount now has a Workday Adaptive/Rippling-inspired planning command center with planned roles, filled roles, pending approvals, budget usage, and direct actions into positions, approvals, and forecasting.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

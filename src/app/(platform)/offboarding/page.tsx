@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -686,6 +687,30 @@ export default function OffboardingPage() {
             <Plus size={14} className="mr-1" /> Initiate Offboarding
           </Button>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Offboarding"
+        benchmark="Rippling-grade leaver orchestration with HR, IT, payroll, benefits, documents, knowledge transfer, and alumni records closed without gaps."
+        score={Math.min(97, 48 + (activeProcessCount > 0 ? 8 : 3) + Math.round(overallCompletionRate * 0.22) + (ktItems.length > 0 ? 7 : 2) + (exitSurveys.length > 0 ? 7 : 2))}
+        scoreLabel="Leaver control readiness"
+        summary="Connects departure processes, checklists, access revocation, device return, final pay, benefits, exit surveys, knowledge transfer, and alumni archive into one controlled workflow."
+        metrics={[
+          { label: 'Active processes', value: activeProcessCount, tone: activeProcessCount > 0 ? 'warning' : 'success' },
+          { label: 'Task completion', value: `${overallCompletionRate}%`, tone: overallCompletionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Knowledge transfers', value: ktItems.length, tone: ktItems.length > 0 ? 'ai' : 'neutral' },
+          { label: 'Exit surveys', value: exitSurveys.length, tone: exitSurveys.length > 0 ? 'success' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make access, devices, payroll, benefits, and documents close before the last working day.',
+          'Prevent orphaned reports and missing knowledge transfer during manager changes.',
+          'Turn completed exits into clean alumni records and retention signals.',
+        ]}
+        actions={[
+          { label: 'Work active exits', description: 'Track open departures and required tasks.', onClick: () => setActiveTab('processes') },
+          { label: 'Review checklists', description: 'Tune required HR, IT, and payroll steps.', onClick: () => setActiveTab('checklists') },
+          { label: 'Capture knowledge', description: 'Assign transfer areas and recipients.', onClick: () => setActiveTab('knowledge-transfer') },
+        ]}
       />
 
       {/* Stat Cards */}

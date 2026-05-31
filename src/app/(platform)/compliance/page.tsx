@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
@@ -464,6 +465,30 @@ export default function CompliancePage() {
           </Button>
         </div>
       </div>
+
+      <ModuleCommandCenter
+        moduleName="Compliance"
+        benchmark="Workday and Drata-grade compliance command layer with requirements, evidence, alerts, country coverage, and auto-detected issues connected."
+        score={Math.min(97, 45 + Math.round(complianceScore * 0.28) + (criticalAlerts.length === 0 ? 10 : 2) + (adPendingReview === 0 ? 8 : 3))}
+        scoreLabel="Compliance control readiness"
+        summary="Connects regulatory requirements, documents, alerts, country posture, training, policy acknowledgments, payroll audit signals, and auto-detection into a single risk surface."
+        metrics={[
+          { label: 'Requirements', value: totalReqs, tone: totalReqs > 0 ? 'success' : 'warning' },
+          { label: 'Compliance score', value: `${complianceScore}%`, tone: complianceScore >= 80 ? 'success' : 'warning' },
+          { label: 'Critical alerts', value: criticalAlerts.length, tone: criticalAlerts.length > 0 ? 'warning' : 'success' },
+          { label: 'Pending scans', value: adPendingReview, tone: adPendingReview > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make each risk traceable to a requirement, country, owner, evidence item, and remediation path.',
+          'Keep compliance tied to payroll, learning, documents, data privacy, and safety workflows.',
+          'Use auto-detection as an actionable review queue, not a passive alert list.',
+        ]}
+        actions={[
+          { label: 'Review requirements', description: 'Inspect regulatory status and due dates.', onClick: () => setActiveTab('requirements') },
+          { label: 'Resolve alerts', description: 'Work unread critical and high-risk alerts.', onClick: () => setActiveTab('alerts') },
+          { label: 'Run detection', description: 'Review automated compliance scans.', onClick: () => setActiveTab('auto_detection') },
+        ]}
+      />
 
       {/* Critical Alerts Banner */}
       {criticalAlerts.length > 0 && (
