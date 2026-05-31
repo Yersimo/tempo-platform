@@ -101,5 +101,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Offboarding now has a Rippling-inspired leaver command center with access/device/payroll/benefits/document closure, task completion, knowledge transfer, surveys, and direct actions into active exits, checklists, and knowledge capture.
 - Compliance now has a Workday/Drata-inspired control command center with requirement coverage, compliance score, critical alerts, pending scans, and direct actions into requirements, alerts, and auto-detection.
 - Headcount now has a Workday Adaptive/Rippling-inspired planning command center with planned roles, filled roles, pending approvals, budget usage, and direct actions into positions, approvals, and forecasting.
+- Documents now has a DocuSign/Rippling-inspired evidence command center with document count, pending signatures, templates, audit events, and direct actions into documents, templates, and audit trail.
+- Workflows now has a Zapier/Rippling-inspired automation command center with active workflows, run volume, success rate, templates, and direct actions into workflow list, builder, and run history.
+- Strategy now has a Workday/Betterworks-inspired execution command center with objectives, KR progress, initiatives, KPI tracking, and direct actions into strategy map, OKRs, and KPIs.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
