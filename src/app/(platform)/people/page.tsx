@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, exportToExcel, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import { generateEmployeeImportTemplate, parseExcelFile } from '@/lib/excel-template'
@@ -685,6 +686,30 @@ export default function PeoplePage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="People"
+        benchmark="Rippling-grade employee graph, with Workday-level history and clean self-service operations."
+        score={Math.min(96, 52 + Math.min(18, departments.length * 2) + Math.min(12, countries.length * 2) + (employeeDocuments.length > 0 ? 8 : 0) + (highRiskCount === 0 ? 6 : 2))}
+        scoreLabel="People graph readiness"
+        summary="Connects directory, org design, employee documents, history, positions, and bulk operations so HR can manage the employee lifecycle from one place."
+        metrics={[
+          { label: 'Employees', value: employees.length, tone: employees.length > 0 ? 'success' : 'warning' },
+          { label: 'Countries', value: countries.length, tone: countries.length > 1 ? 'ai' : 'neutral' },
+          { label: 'Documents', value: employeeDocuments.length, tone: employeeDocuments.length > 0 ? 'success' : 'neutral' },
+          { label: 'Attrition alerts', value: highRiskCount, tone: highRiskCount > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make the employee record the shared source for HR, IT, Finance, Learning, and Performance.',
+          'Keep org changes auditable with history, documents, and position context.',
+          'Turn bulk import and restructure work into guided, reversible operations.',
+        ]}
+        actions={[
+          { label: 'Review org shape', description: 'Inspect org chart and reporting structure.', onClick: () => setActiveTab('org-chart') },
+          { label: 'Audit documents', description: 'Find expired and pending employee documents.', onClick: () => setActiveTab('documents') },
+          { label: 'Manage positions', description: 'Check fill rate, vacancies, and key positions.', onClick: () => setActiveTab('positions') },
+        ]}
       />
 
       {/* Stat Cards */}

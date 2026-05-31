@@ -89,6 +89,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Performance now has a Redwood-inspired command center with cycle readiness, review/goals/1:1/PIP metrics, and direct actions into calibration, 1:1s, and career paths.
 - Learning now has a Sana-inspired command center with learning system readiness, course/completion/path/skill-gap metrics, and direct actions into home, skills, and compliance.
 - Expense now has a Ramp-inspired command center with expense flow readiness, pending value, active rules, staged receipts, and direct actions into Snap, reports, and policy rules.
+- People now has a Rippling/Workday-inspired command center with employee graph readiness, countries, documents, attrition alerts, and direct actions into org chart, documents, and positions.
+- Payroll now has a trust-centered payroll command center with health score, pending approvals, pay runs, compliance risks, and direct actions into approvals, reconciliation, and compliance.
+- Analytics now has a Visier/Workday-inspired decision command center with headcount, review completion, active learners, pending expenses, and direct actions into workforce, executive, and report-builder views.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
-

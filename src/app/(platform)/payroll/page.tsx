@@ -24,6 +24,7 @@ import { generateRolloverPreview, getTaxYears, getTaxYearLabel, getExpectedRateC
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { ValidationChecklist } from '@/components/ui/validation-checklist'
@@ -1225,6 +1226,30 @@ export default function PayrollPage() {
           <Button size="sm" variant="secondary" onClick={() => setShowFinalPayModal(true)}><UserMinus size={14} /> Final Pay</Button>
           <Button size="sm" onClick={() => setShowPayRunModal(true)}><Plus size={14} /> {t('newPayRun')}</Button>
         </div> : undefined}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Payroll"
+        benchmark="Rippling and Deel-grade payroll trust, with Africa-first statutory depth and transparent approvals."
+        score={Math.min(98, 50 + Math.round(healthScore.value * 0.28) + (payrollRuns.length > 0 ? 8 : 0) + (pendingCount === 0 ? 8 : 3) + (complianceRisks.risks.length === 0 ? 4 : 0))}
+        scoreLabel="Payroll trust readiness"
+        summary="Connects pay runs, approvals, reconciliation, statutory compliance, employee entries, contractors, and year-end operations into one explainable payroll workflow."
+        metrics={[
+          { label: 'Payroll health', value: `${healthScore.value}%`, tone: healthScore.value >= 80 ? 'success' : 'warning' },
+          { label: 'Pending approvals', value: pendingCount, tone: pendingCount > 0 ? 'warning' : 'success' },
+          { label: 'Pay runs', value: payrollRuns.length, tone: payrollRuns.length > 0 ? 'success' : 'neutral' },
+          { label: 'Compliance risks', value: complianceRisks.risks.length, tone: complianceRisks.risks.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Explain every variance before payroll moves to approval.',
+          'Keep statutory deductions, leave impact, and country rules visible at the point of decision.',
+          'Connect approvals, bank files, payslips, and audit trails without duplicate work.',
+        ]}
+        actions={[
+          { label: 'Review approvals', description: 'Clear the HR, control, and finance approval queue.', onClick: () => setActiveTab('approvals') },
+          { label: 'Reconcile variance', description: 'Compare paid runs and verify changes.', onClick: () => setActiveTab('reconciliation') },
+          { label: 'Check compliance', description: 'Inspect tax filings and statutory risks.', onClick: () => setActiveTab('compliance') },
+        ]}
       />
 
       {/* Evaluator Walkthrough */}

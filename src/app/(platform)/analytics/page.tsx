@@ -15,6 +15,7 @@ import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Sear
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk, detectCrossModuleAnomalies } from '@/lib/ai-engine'
@@ -231,6 +232,30 @@ export default function AnalyticsPage() {
             } finally { setSaving(false) }
           }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>
         </div>} />
+
+      <ModuleCommandCenter
+        moduleName="Analytics"
+        benchmark="Visier and Workday-style people analytics, with board-ready narratives and operational drill-through."
+        score={Math.min(97, 50 + Math.round(reviewCompletion * 0.16) + Math.min(10, activeLearners) + (openPositions > 0 ? 6 : 3) + (aiAnalyticsInsights.length > 0 ? 10 : 0))}
+        scoreLabel="Decision readiness"
+        summary="Turns workforce, performance, engagement, recruiting, compensation, expense, payroll, and learning signals into decisions leaders can act on."
+        metrics={[
+          { label: 'Headcount', value: headcount, tone: headcount > 0 ? 'success' : 'warning' },
+          { label: 'Review completion', value: `${reviewCompletion}%`, tone: reviewCompletion >= 80 ? 'success' : 'warning' },
+          { label: 'Active learners', value: activeLearners, tone: activeLearners > 0 ? 'ai' : 'neutral' },
+          { label: 'Pending expenses', value: pendingExpenses, tone: pendingExpenses > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make every insight end in an operational next step.',
+          'Keep executive summaries board-ready while preserving drill-through to source modules.',
+          'Connect analytics to workforce, payroll, learning, performance, and expense actions.',
+        ]}
+        actions={[
+          { label: 'Ask a workforce question', description: 'Use natural language to explore the employee graph.', onClick: () => setActiveTab('workforce') },
+          { label: 'Review executive view', description: 'Open the board-style analytics narrative.', onClick: () => setActiveTab('executive') },
+          { label: 'Build a report', description: 'Configure a repeatable cross-module report.', onClick: () => setActiveTab('builder') },
+        ]}
+      />
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
