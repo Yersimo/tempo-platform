@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -119,6 +120,7 @@ export default function ProjectsPage() {
   const completedTasks = tasks.filter(t => t.status === 'done').length
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
   const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
+  const activeAutomationRules = automationRules.filter(r => r.is_active).length
 
   // AI insights
   const projectHealthScores = useMemo(() => {
@@ -148,6 +150,16 @@ export default function ProjectsPage() {
   const automationSuggestions = useMemo(() =>
     suggestAutomationRules(tasks, automationLog),
     [tasks, automationLog]
+  )
+  const projectReadinessScore = Math.min(98,
+    42 +
+    (projects.length > 0 ? 10 : 3) +
+    (tasks.length > 0 ? 10 : 3) +
+    (completionRate >= 70 ? 12 : completionRate >= 40 ? 8 : 3) +
+    (overdueTasks === 0 ? 10 : overdueTasks <= 3 ? 6 : 2) +
+    (milestones.length > 0 ? 6 : 2) +
+    (activeAutomationRules > 0 ? 6 : 2) +
+    (resourceBottlenecks.length === 0 ? 2 : 1)
   )
 
   // Filtered projects for search
@@ -437,6 +449,30 @@ export default function ProjectsPage() {
             <Button size="sm" onClick={openNewProject}><Plus size={14} /> {t('newProject')}</Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Projects"
+        benchmark="Asana and Linear-grade execution control with health scoring, task flow, capacity, milestones, and automation."
+        score={projectReadinessScore}
+        scoreLabel="Execution readiness"
+        summary="Tempo should make work execution legible across teams: leaders see health, owners see task flow, capacity risks surface early, and repeatable work becomes automated."
+        metrics={[
+          { label: 'Projects', value: projects.length, tone: projects.length > 0 ? 'success' : 'warning' },
+          { label: 'Active tasks', value: activeTasks, tone: activeTasks > 0 ? 'ai' : 'neutral' },
+          { label: 'Completion', value: `${completionRate}%`, tone: completionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Overdue', value: overdueTasks, tone: overdueTasks === 0 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Keep project health, timeline risk, and owner accountability in one view.',
+          'Use kanban, sprint, and capacity views to prevent hidden work buildup.',
+          'Turn repeated status and assignment patterns into automation rules.',
+        ]}
+        actions={[
+          { label: 'Review project portfolio', description: 'Inspect health, owners, milestones, and progress.', onClick: () => setActiveTab('list') },
+          { label: 'Balance capacity', description: 'Find overloaded people and unassigned work.', onClick: () => setActiveTab('capacity') },
+          { label: 'Improve automation', description: 'Review active rules and AI suggestions.', onClick: () => setActiveTab('automations') },
+        ]}
       />
 
       {/* Stats */}

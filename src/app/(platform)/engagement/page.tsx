@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -134,6 +135,8 @@ export default function EngagementPage() {
   const avgENPS = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.enps_score, 0) / engagementScores.length) : 0
   const avgResponse = engagementScores.length > 0 ? Math.round(engagementScores.reduce((a, s) => a + s.response_rate, 0) / engagementScores.length) : 0
   const activeSurveys = surveys.filter(s => s.status === 'active').length
+  const openActionPlans = actionPlans.filter((ap: any) => ap.status !== 'completed').length
+  const activeSchedules = surveySchedules.filter((s: any) => s.is_active).length
 
   // ---- Bulk Survey Distribution Memos ----
   const uniqueCountries = useMemo(() => [...new Set(employees.map((e: any) => e.country))].filter(Boolean).sort(), [employees])
@@ -177,6 +180,16 @@ export default function EngagementPage() {
 
   // ---- AI-Powered Insights ----
   const driverInsights = useMemo(() => identifyEngagementDrivers(engagementScores), [engagementScores])
+  const engagementReadinessScore = Math.min(98,
+    40 +
+    (activeSurveys > 0 ? 10 : 3) +
+    (avgScore >= 70 ? 12 : avgScore >= 50 ? 8 : 3) +
+    (avgResponse >= 75 ? 10 : avgResponse >= 50 ? 7 : 3) +
+    (openEndedResponses.length > 0 ? 8 : 2) +
+    (openActionPlans > 0 ? 8 : 3) +
+    (activeSchedules > 0 ? 6 : 2) +
+    (driverInsights.length > 0 ? 4 : 1)
+  )
 
   // analyzeSurveyResponses now takes (questions, responses, employees)
   // We pass surveyResponses as both questions & responses since they contain the category/score data
@@ -479,6 +492,30 @@ export default function EngagementPage() {
           <Button size="sm" variant="outline" onClick={() => setShowBulkSurveyModal(true)}><Send size={14} /> Distribute Survey</Button>
           <Button size="sm" onClick={() => setShowSurveyModal(true)}><Plus size={14} /> {t('newSurvey')}</Button>
         </div>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Engagement"
+        benchmark="Culture Amp and Qualtrics-grade listening system with surveys, text intelligence, action plans, and trend accountability."
+        score={engagementReadinessScore}
+        scoreLabel="Listening readiness"
+        summary="Tempo should turn listening into visible action: surveys collect signals, AI explains drivers, leaders see response confidence, and action plans close the loop with employees."
+        metrics={[
+          { label: 'Active surveys', value: activeSurveys, tone: activeSurveys > 0 ? 'success' : 'warning' },
+          { label: 'Engagement', value: avgScore, tone: avgScore >= 70 ? 'success' : avgScore >= 50 ? 'warning' : 'neutral' },
+          { label: 'Response rate', value: `${avgResponse}%`, tone: avgResponse >= 70 ? 'success' : 'warning' },
+          { label: 'Open plans', value: openActionPlans, tone: openActionPlans > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Keep survey response confidence visible before leaders act on insights.',
+          'Convert themes, sentiment, and drivers into owned action plans.',
+          'Make recurring schedules and lifecycle triggers part of the listening habit.',
+        ]}
+        actions={[
+          { label: 'Review survey health', description: 'Inspect active surveys, response rates, and audiences.', onClick: () => setActiveTab('surveys') },
+          { label: 'Analyze employee voice', description: 'Use text themes and AI drivers to find what matters.', onClick: () => setActiveTab('text-analysis') },
+          { label: 'Close the action loop', description: 'Prioritize owners, due dates, and follow-through.', onClick: () => setActiveTab('action-plans') },
+        ]}
       />
 
       {/* KPI Stats */}

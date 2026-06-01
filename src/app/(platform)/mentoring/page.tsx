@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -89,6 +90,7 @@ export default function MentoringPage() {
   const avgMatchScore = mentoringPairs.length > 0 ? Math.round(mentoringPairs.reduce((a, p) => a + p.match_score, 0) / mentoringPairs.length) : 0
   const completedSessionsList = mentoringSessions.filter(s => (s as any).status === 'completed')
   const avgRating = completedSessionsList.length > 0 ? Math.round((completedSessionsList.reduce((a, s) => a + ((s as any).rating || 0), 0) / completedSessionsList.length) * 10) / 10 : 0
+  const completedGoals = mentoringGoals.filter(g => (g as any).status === 'completed').length
 
   // ---- AI ----
   const suggestedMatches = useMemo(() => {
@@ -113,6 +115,16 @@ export default function MentoringPage() {
       prediction: predictPairSuccess(pair, mentoringSessions as any[], mentoringGoals as any[]),
     }))
   }, [mentoringPairs, mentoringSessions, mentoringGoals])
+  const mentoringReadinessScore = Math.min(98,
+    40 +
+    (activePrograms > 0 ? 10 : 3) +
+    (activePairs > 0 ? 10 : 3) +
+    (avgMatchScore >= 80 ? 12 : avgMatchScore >= 60 ? 8 : 3) +
+    (completedSessionsList.length > 0 ? 8 : 2) +
+    (completedGoals > 0 ? 8 : 3) +
+    (suggestedMatches.length > 0 ? 6 : 2) +
+    (pairPredictions.length > 0 ? 4 : 1)
+  )
 
   // ---- Filtered Data ----
   const filteredGoals = useMemo(() => {
@@ -320,6 +332,30 @@ export default function MentoringPage() {
             <Button size="sm" onClick={() => setShowProgramModal(true)}><Plus size={14} /> {t('newProgram')}</Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Mentoring"
+        benchmark="Together and MentorcliQ-grade growth matching with AI pair quality, session cadence, goals, and program outcomes."
+        score={mentoringReadinessScore}
+        scoreLabel="Mentoring readiness"
+        summary="Tempo should make mentoring feel operational, not informal: programs create quality matches, sessions keep momentum, goals prove growth, and analytics show which pairs need support."
+        metrics={[
+          { label: 'Active programs', value: activePrograms, tone: activePrograms > 0 ? 'success' : 'warning' },
+          { label: 'Active pairs', value: activePairs, tone: activePairs > 0 ? 'success' : 'warning' },
+          { label: 'Match quality', value: `${avgMatchScore}%`, tone: avgMatchScore >= 75 ? 'success' : 'warning' },
+          { label: 'Completed goals', value: completedGoals, tone: completedGoals > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make AI matching transparent enough for HR to trust and override.',
+          'Use sessions and goals to prove mentoring is producing growth.',
+          'Spot at-risk pairs early through cadence, ratings, and success predictions.',
+        ]}
+        actions={[
+          { label: 'Review programs', description: 'Check program coverage, pair count, and status.', onClick: () => setActiveTab('programs') },
+          { label: 'Run AI matching', description: 'Inspect suggested mentor and mentee pairings.', onClick: () => setActiveTab('matching') },
+          { label: 'Track goals', description: 'Review progress, completion, and pair outcomes.', onClick: () => setActiveTab('goals') },
+        ]}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

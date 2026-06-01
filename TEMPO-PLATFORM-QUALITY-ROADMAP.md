@@ -119,5 +119,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Revenue Recognition now has a NetSuite/Zuora-inspired revenue command center with active contracts, recognized revenue, deferred revenue, obligation satisfaction, and direct actions into contracts, schedules, and journal evidence.
 - Entity Consolidation now has an Oracle FCCS/Workday-inspired consolidation command center with entity groups, member entities, pending intercompany items, IC volume, and direct actions into entities, intercompany, and reporting.
 - Transfer Pricing now has a Big Four/OECD-inspired tax defense command center with active policies, intercompany entities, YTD volume, compliance rate, and direct actions into policies, transactions, and compliance review.
+- Engagement now has a Culture Amp/Qualtrics-inspired listening command center with survey health, engagement score, response rate, open action plans, and direct actions into surveys, text analysis, and action-plan follow-through.
+- Mentoring now has a Together/MentorcliQ-inspired growth command center with active programs, active pairs, match quality, completed goals, and direct actions into programs, AI matching, and goals.
+- Projects now has an Asana/Linear-inspired execution command center with project count, active tasks, completion rate, overdue work, and direct actions into portfolio, capacity, and automations.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
