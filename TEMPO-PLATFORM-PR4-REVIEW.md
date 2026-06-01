@@ -85,4 +85,11 @@ Dashboard adds selectable AI workday briefing review-mode options for:
 - Employee concierge
 - Executive board room
 
+IT Cloud adds selectable lifecycle access review-mode options for:
+
+- Joiner provisioning
+- Mover access change
+- Leaver lockdown
+- Endpoint trust
+
 These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, database schema, or production routing.

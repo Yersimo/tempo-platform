@@ -128,5 +128,6 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Onboarding now also includes a selectable Joiner/Mover/Leaver experiment bench for joiner launch, mover transition, leaver closure, and lifecycle control-room review concepts.
 - Payroll now also includes a selectable trust-layer experiment bench for variance explainer, approval chain, payout preflight, and statutory confidence review concepts.
 - Dashboard now also includes a selectable AI workday briefing experiment bench for operator priorities, manager mission control, employee concierge, and executive board-room review concepts.
+- IT Cloud now also includes a selectable lifecycle access experiment bench for joiner provisioning, mover access change, leaver lockdown, and endpoint trust review concepts.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
