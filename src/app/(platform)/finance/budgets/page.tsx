@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -195,6 +196,30 @@ export default function BudgetsPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={<Button size="sm" onClick={openNewBudget}><Plus size={14} /> {t('newBudget')}</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Budgets"
+        benchmark="Workday Adaptive and Ramp-grade budget controls with department budgets, spend utilization, variance, forecast accuracy, and AI burn-rate signals connected."
+        score={Math.min(97, 50 + (activeBudgets > 0 ? 8 : 2) + (utilization <= 90 ? 9 : 3) + (forecastAccuracy.value >= 70 ? 8 : 3) + (varianceInsights.length === 0 ? 8 : 4))}
+        scoreLabel="Budget control readiness"
+        summary="Connects budget ownership, department spend, remaining budget, utilization, forecast accuracy, variance insights, and rolling plans into one operating view."
+        metrics={[
+          { label: 'Active budgets', value: activeBudgets, tone: activeBudgets > 0 ? 'success' : 'neutral' },
+          { label: 'Utilization', value: `${utilization}%`, tone: utilization > 90 ? 'warning' : 'success' },
+          { label: 'Remaining', value: formatCurrency(totalBudget - totalSpent, defaultCurrency, { compact: true }), tone: totalBudget - totalSpent >= 0 ? 'success' : 'warning' },
+          { label: 'Forecast score', value: forecastAccuracy.value, tone: forecastAccuracy.value >= 70 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Make spend, remaining budget, and variance visible before finance close.',
+          'Connect budgets to expenses, cards, invoices, headcount, and department ownership.',
+          'Use forecast accuracy and AI burn-rate signals as an action queue, not decoration.',
+        ]}
+        actions={[
+          { label: 'Review budgets', description: 'Inspect department budgets and spend.', onClick: () => setSearchQuery('') },
+          { label: 'Create budget', description: 'Open the budget creation workflow.', onClick: openNewBudget },
+          { label: 'Check expenses', description: 'Review expense spend feeding budgets.', href: '/expense' },
+        ]}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

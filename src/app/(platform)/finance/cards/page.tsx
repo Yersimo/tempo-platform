@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -440,6 +441,30 @@ export default function CorporateCardsPage() {
             <Plus size={14} /> Issue Card
           </Button>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Corporate Cards"
+        benchmark="Ramp-grade card controls with active cards, spend limits, merchant policy, transaction review, reconciliation, and suspicious spend connected."
+        score={Math.min(97, 50 + (activeCards.length > 0 ? 8 : 2) + (avgUtilization <= 80 ? 8 : 3) + (pendingTransactions.length === 0 ? 8 : 3) + (policyViolationCount === 0 ? 8 : 3))}
+        scoreLabel="Card control readiness"
+        summary="Connects corporate cards, cardholder spend, limits, transaction review, reconciliation, suspicious spend, and policy violations into one finance control surface."
+        metrics={[
+          { label: 'Active cards', value: activeCards.length, tone: activeCards.length > 0 ? 'success' : 'neutral' },
+          { label: 'Monthly spend', value: formatAmount(totalMonthlySpend), tone: totalMonthlySpend > 0 ? 'ai' : 'neutral' },
+          { label: 'Utilization', value: `${avgUtilization}%`, tone: avgUtilization > 80 ? 'warning' : 'success' },
+          { label: 'Pending txns', value: pendingTransactions.length, tone: pendingTransactions.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make every card transaction explainable before it becomes a reimbursement or GL problem.',
+          'Keep spend limits, merchant policy, and suspicious transactions visible together.',
+          'Tie card reconciliation to expenses, budgets, vendors, and finance posting confidence.',
+        ]}
+        actions={[
+          { label: 'Review cards', description: 'Inspect cardholders, limits, and status.', onClick: () => setActiveTab('cards') },
+          { label: 'Check transactions', description: 'Review pending and suspicious spend.', onClick: () => setActiveTab('transactions') },
+          { label: 'Reconcile spend', description: 'Match card activity to expense reports.', onClick: () => setActiveTab('reconciliation') },
+        ]}
       />
 
       {/* Stat Cards */}

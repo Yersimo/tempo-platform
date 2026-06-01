@@ -107,5 +107,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Identity & Access now has an Okta/Rippling-inspired access command center with SSO apps, MFA enrollment, active users, certificate expiry, and direct actions into SSO, MFA, and SCIM provisioning.
 - Password Manager now has a 1Password/Rippling-inspired credential command center with vaults, credentials, health score, expiring items, and direct actions into vaults, security review, and rotation.
 - Global Workforce now has a Deel/Rippling-inspired international operations command center with EOR entities, contractors, PEO countries, compliance risk, and direct actions into EOR, contractors, and country compliance.
+- Corporate Cards now has a Ramp-inspired card control command center with active cards, monthly spend, utilization, pending transactions, and direct actions into cards, transactions, and reconciliation.
+- Invoices now has a NetSuite/Ramp-inspired invoice control command center with invoice volume, total amount, overdue exposure, pending approvals, and direct actions into approval and overdue review.
+- Budgets now has a Workday Adaptive/Ramp-inspired budget control command center with active budgets, utilization, remaining budget, forecast score, and direct actions into budget review, budget creation, and expense spend.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
