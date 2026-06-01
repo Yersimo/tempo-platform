@@ -12,6 +12,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoDonutChart, TempoBarChart, CHART_COLORS } from '@/components/ui/charts'
 import {
@@ -630,6 +631,28 @@ export default function ITCloudPage() {
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="IT lifecycle trust layer"
+        score={Math.min(98, 46 + Math.round(securityScore * 0.22) + (alerts.length === 0 ? 12 : 5) + (provisioningRules.filter(r => r.isActive).length > 0 ? 10 : 4) + (encryptedDevices.length === managedDevices.length && managedDevices.length > 0 ? 8 : 3))}
+        summary="Keeps access, device, app, encryption, and provisioning confidence visible before IT teams trust automation across joiners, movers, and leavers."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Device compliance', detail: `${compliantPct}% compliant across ${managedDevices.length} managed device${managedDevices.length === 1 ? '' : 's'}.`, tone: compliantPct >= 80 ? 'success' : 'warning' },
+          { label: 'Provisioning rules', detail: `${provisioningRules.filter(r => r.isActive).length} active lifecycle rule${provisioningRules.filter(r => r.isActive).length === 1 ? '' : 's'} ready for review.`, tone: provisioningRules.filter(r => r.isActive).length > 0 ? 'success' : 'warning' },
+          { label: 'Security alerts', detail: `${alerts.length} alert${alerts.length === 1 ? '' : 's'} currently need IT attention.`, tone: alerts.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Devices, apps, assignments, security policies, inventory, encryption, provisioning rules, and identity context are summarized together.',
+          'IT can route to devices, provisioning, and security without triggering remote lock, wipe, app assignment, or access changes from this panel.',
+          'This panel is additive review guidance only; it does not execute device actions, change access, install apps, or mutate identity state.',
+        ]}
+        actions={[
+          { label: 'Review devices', description: 'Inspect compliance, encryption, MDM, and stale devices.', onClick: () => setActiveTab('devices') },
+          { label: 'Check provisioning', description: 'Review department and role-based lifecycle rules.', onClick: () => setActiveTab('provisioning') },
+          { label: 'Open security', description: 'Resolve alerts and policy gaps before automation expands.', onClick: () => setActiveTab('security') },
+        ]}
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setSearchQuery('') }} className="mb-6" />
 

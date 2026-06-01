@@ -23,6 +23,7 @@ import { aiBuilderTemplates } from '@/lib/demo-data'
 import { cn } from '@/lib/utils/cn'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { CoursePlayer } from '@/components/learning/course-player'
 import { CertificateDesigner, CertificatePreview } from '@/components/learning/certificate-designer'
 import { ContentProviders } from '@/components/learning/content-providers'
@@ -2421,6 +2422,28 @@ window.onload=function(){
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="Learning trust layer"
+        score={Math.min(96, 48 + Math.round(completionRate * 0.18) + (courses.length > 0 ? 10 : 4) + (complianceTraining.length > 0 ? 10 : 4) + (skillGaps.length === 0 ? 10 : 5))}
+        summary="Keeps learner progress, compliance evidence, skills gaps, and authoring quality visible before training is assigned or treated as complete."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Completion evidence', detail: `${completionRate}% completion across visible enrollments.`, tone: completionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Compliance coverage', detail: `${complianceTraining.length} compliance training item${complianceTraining.length === 1 ? '' : 's'} available for evidence review.`, tone: complianceTraining.length > 0 ? 'success' : 'warning' },
+          { label: 'Skills signal', detail: `${skillGaps.length} skill gap${skillGaps.length === 1 ? '' : 's'} surfaced for learning-path routing.`, tone: skillGaps.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Courses, enrollments, learning paths, assignments, compliance training, certificates, assessments, and skills signals are summarized together.',
+          'Learning owners can route to learner home, skills, and compliance before assigning or certifying training.',
+          'This panel is additive review guidance only; it does not complete courses, change assignments, grant certificates, or alter compliance evidence.',
+        ]}
+        actions={[
+          { label: 'Open learner home', description: 'Review the employee-facing learning experience.', onClick: () => setActiveTab('home') },
+          { label: 'Inspect skills', description: 'Route skill gaps into paths and course recommendations.', onClick: () => setActiveTab('skills') },
+          { label: 'Review compliance', description: 'Check mandatory training and evidence readiness.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <StatCard label={t('totalCourses')} value={courses.length} icon={<BookOpen size={20} />} />

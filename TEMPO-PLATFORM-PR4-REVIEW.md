@@ -4,6 +4,8 @@
 
 Reviewed the benchmark-led command center layer in draft PR #4, including the shared `ModuleCommandCenter`, the roadmap, and command-center usage across the 36 covered modules.
 
+The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, and IT Cloud.
+
 ## Product Review
 
 | Area | Review result | Notes |
@@ -13,6 +15,7 @@ Reviewed the benchmark-led command center layer in draft PR #4, including the sh
 | Routing | Pass | Actions route to existing tabs or existing hrefs. No new critical workflow state is introduced by the command centers. |
 | Copy and positioning | Pass with editorial review | The benchmark language is clear enough for review. Simon should still approve tone and competitor references before merge. |
 | Risk profile | Low | The PR is additive and reviewable. The largest risk is broad surface area, not destructive behavior. |
+| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, or device actions. |
 
 ## Browser QA Status
 
@@ -98,5 +101,15 @@ Analytics adds selectable executive board-room review-mode options for:
 - Risk drill-down
 - KPI story builder
 - Operating review
+
+## Trust Layer Started
+
+Expense, Payroll, Performance, Learning, and IT Cloud now include reusable trust-layer review panels that make each dense workflow more confidence-building:
+
+- Expense: policy outcome, receipt evidence, approval load, reimbursement follow-through
+- Payroll: variance readiness, approval queue, statutory risk, reconciliation routing
+- Performance: review evidence, manager follow-up, PIP/talent risk, calibration routing
+- Learning: completion evidence, compliance coverage, skills signals, course routing
+- IT Cloud: device compliance, provisioning rules, security alerts, lifecycle routing
 
 These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, report exports, report schedules, database schema, or production routing.

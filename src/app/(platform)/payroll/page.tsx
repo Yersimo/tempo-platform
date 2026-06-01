@@ -25,6 +25,7 @@ import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { ValidationChecklist } from '@/components/ui/validation-checklist'
@@ -1350,6 +1351,28 @@ export default function PayrollPage() {
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="Payroll trust layer"
+        score={Math.min(98, 48 + Math.round(healthScore.value * 0.24) + (pendingCount === 0 ? 10 : 4) + (complianceRisks.risks.length === 0 ? 10 : 4) + (payrollRuns.length > 1 ? 8 : 3))}
+        summary="Makes variance, approval, statutory, and payout readiness visible before payroll moves toward employee-facing payslips or money movement."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Variance readiness', detail: `${payrollRuns.length} pay run${payrollRuns.length === 1 ? '' : 's'} available for comparison and reconciliation.`, tone: payrollRuns.length > 1 ? 'success' : 'warning' },
+          { label: 'Approval queue', detail: `${pendingCount} payroll approval${pendingCount === 1 ? '' : 's'} still need sign-off.`, tone: pendingCount > 0 ? 'warning' : 'success' },
+          { label: 'Compliance signal', detail: `${complianceRisks.risks.length} statutory risk signal${complianceRisks.risks.length === 1 ? '' : 's'} surfaced for review.`, tone: complianceRisks.risks.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Pay runs, employee entries, contractor payments, schedules, tax filings, and compliance issues are summarized before approval.',
+          'Finance can route directly to approvals, reconciliation, and compliance without changing bank files or posted payroll.',
+          'This panel is additive review guidance only; it does not approve payroll, create payouts, publish payslips, or change tax calculations.',
+        ]}
+        actions={[
+          { label: 'Open approvals', description: 'Review HR, control, and finance sign-off state.', onClick: () => setActiveTab('approvals') },
+          { label: 'Reconcile changes', description: 'Compare run deltas before payroll is trusted.', onClick: () => setActiveTab('reconciliation') },
+          { label: 'Review compliance', description: 'Inspect statutory risks and tax filings.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
 
       {/* Evaluator Walkthrough */}
       {isEvaluator && !walkthroughDismissed && (

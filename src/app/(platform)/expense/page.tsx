@@ -21,6 +21,7 @@ import { formatCurrency } from '@/lib/utils/format-currency'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
@@ -1279,6 +1280,29 @@ export default function ExpensePage() {
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="Expense trust layer"
+        score={Math.min(96, 46 + (pendingReports.length === 0 ? 12 : 6) + (approvalRules.filter(r => r.enabled).length * 6) + (demoReceipts.length > 0 ? 12 : 0) + (reimbursementBatches.length > 0 ? 10 : 4))}
+        summary="Keeps the employee, approver, finance, and reimbursement story visible before any expense is approved or paid."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Policy outcome', detail: `${approvalRules.filter(r => r.enabled).length} active routing rule${approvalRules.filter(r => r.enabled).length === 1 ? '' : 's'} available for review.`, tone: approvalRules.filter(r => r.enabled).length > 0 ? 'success' : 'warning' },
+          { label: 'Receipt evidence', detail: `${demoReceipts.length} staged receipt${demoReceipts.length === 1 ? '' : 's'} can support OCR, matching, and audit review.`, tone: demoReceipts.length > 0 ? 'success' : 'warning' },
+          { label: 'Approval load', detail: `${pendingReports.length} report${pendingReports.length === 1 ? '' : 's'} currently waiting for decision.`, tone: pendingReports.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Expense reports, receipt matches, policy rules, reimbursement batches, budgets, and payroll runs are visible in one review surface.',
+          'Approvers can route back to reports, policy rules, and the Snap receipt flow without changing payment state.',
+          'This panel is additive review guidance only; it does not auto-approve, reject, reimburse, or post expenses.',
+        ]}
+        actions={[
+          { label: 'Inspect pending reports', description: 'Review submitted reports with policy context.', onClick: () => setActiveTab('reports') },
+          { label: 'Check reimbursement queue', description: 'Confirm whether approved reports have payment follow-through.', onClick: () => setActiveTab('reimbursement') },
+          { label: 'Tune controls', description: 'Review thresholds, routing, and auto-approval rules.', onClick: () => setActiveTab('policy-rules') },
+        ]}
+        className="mx-6"
+      />
 
       {/* Snap hero — the 8-second flow */}
       <a

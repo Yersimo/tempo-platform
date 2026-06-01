@@ -18,6 +18,7 @@ import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useEventCascade } from '@/lib/event-cascade-context'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -1079,6 +1080,28 @@ export default function PerformancePage() {
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="Performance trust layer"
+        score={Math.min(96, 50 + Math.round((completedReviews / Math.max(reviews.length, 1)) * 18) + (goals.length > 0 ? 10 : 4) + (openActionItems.length === 0 ? 10 : 5) + (pips.filter(p => p.status === 'active').length === 0 ? 8 : 4))}
+        summary="Keeps review completion, manager follow-through, calibration fairness, and growth routing visible before leaders make talent or compensation decisions."
+        icon={<FileText size={18} />}
+        checks={[
+          { label: 'Review evidence', detail: `${completedReviews}/${reviews.length} review${reviews.length === 1 ? '' : 's'} completed in the visible cycle data.`, tone: completedReviews > 0 ? 'success' : 'warning' },
+          { label: 'Manager follow-up', detail: `${openActionItems.length} open 1:1 action item${openActionItems.length === 1 ? '' : 's'} need closure.`, tone: openActionItems.length > 0 ? 'warning' : 'success' },
+          { label: 'Talent risk', detail: `${pips.filter(p => p.status === 'active').length} active PIP${pips.filter(p => p.status === 'active').length === 1 ? '' : 's'} require transparent support.`, tone: pips.filter(p => p.status === 'active').length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Goals, reviews, feedback, calibration, 1:1s, PIPs, competencies, career paths, and merit context are visible together.',
+          'Managers can route to calibration, 1:1s, and career paths before making review or compensation recommendations.',
+          'This panel is additive review guidance only; it does not alter ratings, merit recommendations, PIP records, or employee profiles.',
+        ]}
+        actions={[
+          { label: 'Review calibration', description: 'Check fairness and rating drift before final decisions.', onClick: () => setActiveTab('calibration') },
+          { label: 'Close 1:1 actions', description: 'Move feedback into manager follow-through.', onClick: () => setActiveTab('one-on-ones') },
+          { label: 'Open growth paths', description: 'Connect outcomes to skills, role paths, and learning.', onClick: () => setActiveTab('career-paths') },
+        ]}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
