@@ -98,6 +98,7 @@ export default function ExpensePage() {
     { id: 'receipts', label: t('receipts'), icon: Receipt },
   ]
   const [activeTab, setActiveTab] = useState('reports')
+  const [activeExpenseExperiment, setActiveExpenseExperiment] = useState<'approval_cockpit' | 'policy_confidence' | 'reimbursement_timeline' | 'budget_guardrails'>('approval_cockpit')
 
   // ---- Modals ----
   const [showReportModal, setShowReportModal] = useState(false)
@@ -1153,6 +1154,41 @@ export default function ExpensePage() {
     confidenceScore: spendingForecast.confidence,
     suggestedAction: 'Review spending policies and approval thresholds', module: 'expense',
   }), [spendingForecast, t])
+  const expenseExperiments = [
+    {
+      id: 'approval_cockpit' as const,
+      name: 'Ramp approval cockpit',
+      benchmark: 'Approver sees policy confidence, receipt status, and risk before clicking approve.',
+      metric: `${pendingExpenseReports.length} reports`,
+      actionLabel: 'Review approvals',
+      onOpen: () => setActiveTab('reports'),
+    },
+    {
+      id: 'policy_confidence' as const,
+      name: 'ETI policy confidence',
+      benchmark: 'Every threshold and route cites the policy rule that drove the decision.',
+      metric: `${policyViolations.length} flags`,
+      actionLabel: 'Tune rules',
+      onOpen: () => setActiveTab('advanced-policies'),
+    },
+    {
+      id: 'reimbursement_timeline' as const,
+      name: 'Reimbursement timeline',
+      benchmark: 'Employees can see exactly when approved spend will hit payroll or bank payout.',
+      metric: `${reimbursementStats.pendingBatches} pending`,
+      actionLabel: 'Open payouts',
+      onOpen: () => setActiveTab('reimbursement'),
+    },
+    {
+      id: 'budget_guardrails' as const,
+      name: 'Budget guardrails',
+      benchmark: 'Finance sees budget impact before approval, not after month-end reporting.',
+      metric: `${expenseBudgets.filter(b => b.isOver || b.utilization > 85).length} watchlist`,
+      actionLabel: 'Review budgets',
+      onOpen: () => setActiveTab('budgets'),
+    },
+  ]
+  const selectedExpenseExperiment = expenseExperiments.find(experiment => experiment.id === activeExpenseExperiment) || expenseExperiments[0]
 
   if (pageLoading) {
     return (
@@ -1199,6 +1235,50 @@ export default function ExpensePage() {
         ]}
         className="mx-6 mt-4"
       />
+
+      <section className="mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-4 p-5 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-t3 font-semibold mb-1">Selectable experiment</div>
+              <h2 className="text-lg font-semibold text-t1">Expense experiment bench</h2>
+              <p className="text-sm text-t3 mt-1 max-w-2xl">
+                Pick one reversible Ramp-grade improvement to inspect before it becomes permanent product direction.
+              </p>
+            </div>
+            <Badge variant="ai">Feature-review mode</Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            {expenseExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveExpenseExperiment(experiment.id)}
+                className={cn(
+                  'rounded-[var(--radius-card)] border p-3 text-left transition-colors',
+                  activeExpenseExperiment === experiment.id
+                    ? 'border-tempo-300 bg-tempo-50 text-tempo-900'
+                    : 'border-border bg-birch/30 hover:border-tempo-200 hover:bg-snow'
+                )}
+              >
+                <div className="text-sm font-semibold">{experiment.name}</div>
+                <div className="text-[11px] text-t3 mt-1">{experiment.metric}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 rounded-[var(--radius-card)] border border-divider bg-birch/30 p-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <div className="text-sm font-semibold text-t1">{selectedExpenseExperiment.name}</div>
+              <p className="text-xs text-t3 mt-1">{selectedExpenseExperiment.benchmark}</p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={selectedExpenseExperiment.onOpen}>
+              {selectedExpenseExperiment.actionLabel}
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Snap hero — the 8-second flow */}
       <a
