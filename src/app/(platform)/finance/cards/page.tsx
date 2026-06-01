@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -464,6 +465,28 @@ export default function CorporateCardsPage() {
           { label: 'Review cards', description: 'Inspect cardholders, limits, and status.', onClick: () => setActiveTab('cards') },
           { label: 'Check transactions', description: 'Review pending and suspicious spend.', onClick: () => setActiveTab('transactions') },
           { label: 'Reconcile spend', description: 'Match card activity to expense reports.', onClick: () => setActiveTab('reconciliation') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Card spend trust layer"
+        score={Math.min(97, 48 + (activeCards.length > 0 ? 10 : 4) + (avgUtilization <= 80 ? 10 : 4) + (pendingTransactions.length === 0 ? 10 : 5) + (policyViolationCount === 0 ? 10 : 4))}
+        summary="Keeps cardholder limits, suspicious spend, pending transactions, and reconciliation confidence visible before card activity becomes an expense or ledger problem."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Limit health', detail: `${avgUtilization}% average utilization across cards with spend limits.`, tone: avgUtilization > 80 ? 'warning' : 'success' },
+          { label: 'Transaction review', detail: `${pendingTransactions.length} pending transaction${pendingTransactions.length === 1 ? '' : 's'} need finance attention.`, tone: pendingTransactions.length > 0 ? 'warning' : 'success' },
+          { label: 'Policy exceptions', detail: `${policyViolationCount} violation signal${policyViolationCount === 1 ? '' : 's'} visible in card activity.`, tone: policyViolationCount > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Cards, cardholders, transactions, spend limits, suspicious spend, and expense-report links are summarized together.',
+          'Finance can route to transaction review, reconciliation, and spend limits without freezing, issuing, or changing a card.',
+          'This panel is additive review guidance only; it does not approve spend, issue cards, freeze cards, or post card activity.',
+        ]}
+        actions={[
+          { label: 'Review transactions', description: 'Inspect pending and suspicious card spend.', onClick: () => setActiveTab('transactions') },
+          { label: 'Check limits', description: 'Review merchant and spend-limit controls.', onClick: () => setActiveTab('spend-limits') },
+          { label: 'Reconcile cards', description: 'Match card activity to expense evidence.', onClick: () => setActiveTab('reconciliation') },
         ]}
       />
 

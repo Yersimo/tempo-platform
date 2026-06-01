@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -330,6 +331,28 @@ export default function InvoicesPage() {
           { label: 'Review approvals', description: 'Filter invoices awaiting approval.', onClick: () => setStatusFilter('pending_approval') },
           { label: 'Check overdue', description: 'Focus the table on late invoices.', onClick: () => setStatusFilter('overdue') },
           { label: 'View all invoices', description: 'Return to the full invoice list.', onClick: () => setStatusFilter('all') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Invoice control trust layer"
+        score={Math.min(97, 48 + (invoices.length > 0 ? 10 : 4) + (pendingApprovalAmount === 0 ? 10 : 5) + (overdueAmount === 0 ? 10 : 4) + (agingBuckets.days90 + agingBuckets.days120 === 0 ? 8 : 3))}
+        summary="Keeps invoice approvals, overdue exposure, aging buckets, and cash timing visible before finance moves invoices into collection or payment follow-up."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Approval exposure', detail: `${formatCurrency(pendingApprovalAmount, defaultCurrency)} waiting for invoice approval.`, tone: pendingApprovalAmount > 0 ? 'warning' : 'success' },
+          { label: 'Overdue exposure', detail: `${formatCurrency(overdueAmount, defaultCurrency)} currently overdue.`, tone: overdueAmount > 0 ? 'warning' : 'success' },
+          { label: 'Aging risk', detail: `${formatCurrency(agingBuckets.days90 + agingBuckets.days120, defaultCurrency)} is older than 60 days.`, tone: agingBuckets.days90 + agingBuckets.days120 > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Invoices, approvals, AR aging, vendor insights, cash timing, and overdue filters are summarized together.',
+          'Finance can route to approval, overdue, and full-list review without changing invoice status or payment state.',
+          'This panel is additive review guidance only; it does not approve invoices, send reminders, collect cash, or post revenue.',
+        ]}
+        actions={[
+          { label: 'Review approvals', description: 'Focus the invoice list on items awaiting approval.', onClick: () => setStatusFilter('pending_approval') },
+          { label: 'Check overdue', description: 'Inspect late invoices before escalation.', onClick: () => setStatusFilter('overdue') },
+          { label: 'Reset view', description: 'Return to the full invoice control list.', onClick: () => setStatusFilter('all') },
         ]}
       />
 

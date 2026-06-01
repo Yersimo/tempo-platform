@@ -4,7 +4,7 @@
 
 Reviewed the benchmark-led command center layer in draft PR #4, including the shared `ModuleCommandCenter`, the roadmap, and command-center usage across the 36 covered modules.
 
-The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, and IT Cloud.
+The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, and General Ledger.
 
 ## Product Review
 
@@ -15,7 +15,7 @@ The review now also covers the shared `ModuleTrustPanel` and its first rollout a
 | Routing | Pass | Actions route to existing tabs or existing hrefs. No new critical workflow state is introduced by the command centers. |
 | Copy and positioning | Pass with editorial review | The benchmark language is clear enough for review. Simon should still approve tone and competitor references before merge. |
 | Risk profile | Low | The PR is additive and reviewable. The largest risk is broad surface area, not destructive behavior. |
-| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, or device actions. |
+| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, device actions, bank matching, ledger posting, exports, or period close. |
 
 ## Browser QA Status
 
@@ -112,4 +112,12 @@ Expense, Payroll, Performance, Learning, and IT Cloud now include reusable trust
 - Learning: completion evidence, compliance coverage, skills signals, course routing
 - IT Cloud: device compliance, provisioning rules, security alerts, lifecycle routing
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, report exports, report schedules, database schema, or production routing.
+Finance-control surfaces now include trust-layer review panels for:
+
+- Corporate Cards: limit health, pending transactions, policy exceptions, reconciliation routing
+- Invoices: approval exposure, overdue exposure, aging risk, invoice filters
+- Bill Pay: payment approval queue, scheduled cash, recurring controls
+- Bank Feeds: connection coverage, match confidence, unmatched exception queue
+- General Ledger: balance check, posting evidence, period-close readiness
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, report exports, report schedules, database schema, or production routing.
