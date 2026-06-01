@@ -14,7 +14,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
+import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock, ArrowLeft, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { calculateLeavePayrollImpact, getStatutoryPayRates, type LeaveRecord, type LeavePayrollImpact } from '@/lib/payroll/leave-integration'
 import { calculateFinalPay, getSeveranceRules, type FinalPayInput, type FinalPayResult } from '@/lib/payroll/final-pay'
@@ -211,6 +211,7 @@ export default function PayrollPage() {
   // Managers: hide Approval Queue and Settings tabs
   const tabs = isReadOnly ? allTabs.filter(t => t.id !== 'approvals' && t.id !== 'settings') : allTabs
   const [activeTab, setActiveTab] = useState('pay-runs')
+  const [activePayrollExperiment, setActivePayrollExperiment] = useState<'variance_explainer' | 'approval_chain' | 'payout_preflight' | 'statutory_confidence'>('variance_explainer')
 
   // ---- Modals ----
   const [showPayRunModal, setShowPayRunModal] = useState(false)
@@ -546,6 +547,45 @@ export default function PayrollPage() {
   const pendingICRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && !approvalLevels[r.id]?.ic), [payrollRuns, approvalLevels])
   const pendingFinanceRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && (approvalLevels[r.id]?.ic || false)), [payrollRuns, approvalLevels])
   const pendingCount = pendingHRRuns.length + pendingICRuns.length + pendingFinanceRuns.length
+  const payrollTrustExperiments = [
+    {
+      id: 'variance_explainer' as const,
+      title: 'Variance explainer',
+      benchmark: 'Workday-style pay-run diff before approval',
+      metric: payrollDiff ? `${payrollDiff.gross.pct > 0 ? '+' : ''}${payrollDiff.gross.pct}% gross variance` : 'Needs two runs',
+      description: 'Make every gross, net, deduction, and headcount change understandable before payroll moves into approval.',
+      actions: ['Compare prior run', 'Explain material changes', 'Flag unresolved variance'],
+      onOpen: () => setActiveTab('reconciliation'),
+    },
+    {
+      id: 'approval_chain' as const,
+      title: 'Approval chain',
+      benchmark: 'Deel/Rippling multi-control sign-off',
+      metric: `${pendingCount} pending approval${pendingCount === 1 ? '' : 's'}`,
+      description: 'Show HR, internal control, and finance sign-off as one chain with clear ownership and next safe action.',
+      actions: ['Review HR queue', 'Check control gate', 'Prepare finance sign-off'],
+      onOpen: () => setActiveTab('approvals'),
+    },
+    {
+      id: 'payout_preflight' as const,
+      title: 'Payout preflight',
+      benchmark: 'Bank-file confidence before money moves',
+      metric: `${missingBankEmployees.length} missing bank detail${missingBankEmployees.length === 1 ? '' : 's'}`,
+      description: 'Preview who will be included or excluded from payout files, then fix bank or mobile money details before export.',
+      actions: ['Check missing bank details', 'Preview excluded employees', 'Open bank detail fix'],
+      onOpen: () => setShowBankDetailWarning(true),
+    },
+    {
+      id: 'statutory_confidence' as const,
+      title: 'Statutory confidence',
+      benchmark: 'Africa-first compliance explainability',
+      metric: `${complianceRisks.risks.length} compliance risk${complianceRisks.risks.length === 1 ? '' : 's'}`,
+      description: 'Keep country rules, tax filings, leave impact, pension, and rollover readiness visible before payroll is locked.',
+      actions: ['Review country rules', 'Inspect urgent filings', 'Check rollover readiness'],
+      onOpen: () => setActiveTab('compliance'),
+    },
+  ]
+  const selectedPayrollExperiment = payrollTrustExperiments.find(experiment => experiment.id === activePayrollExperiment) || payrollTrustExperiments[0]
 
   // ---- Handlers ----
   async function submitPayRun() {
@@ -1251,6 +1291,65 @@ export default function PayrollPage() {
           { label: 'Check compliance', description: 'Inspect tax filings and statutory risks.', onClick: () => setActiveTab('compliance') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Payroll trust experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare payroll control directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo payroll explain variances, approvals, payouts, and statutory confidence before money moves.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {payrollTrustExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActivePayrollExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activePayrollExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activePayrollExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedPayrollExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedPayrollExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedPayrollExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedPayrollExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Evaluator Walkthrough */}
       {isEvaluator && !walkthroughDismissed && (

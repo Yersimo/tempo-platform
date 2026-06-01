@@ -126,5 +126,6 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Performance now also includes a selectable Redwood-grade experiment bench for manager copilot, calibration room, growth pathways, and merit readiness review concepts.
 - Learning now also includes a selectable Sana-grade experiment bench for learner home, skills navigator, compliance coach, and AI authoring review concepts.
 - Onboarding now also includes a selectable Joiner/Mover/Leaver experiment bench for joiner launch, mover transition, leaver closure, and lifecycle control-room review concepts.
+- Payroll now also includes a selectable trust-layer experiment bench for variance explainer, approval chain, payout preflight, and statutory confidence review concepts.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

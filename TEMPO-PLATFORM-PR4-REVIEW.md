@@ -71,4 +71,11 @@ Onboarding adds selectable Joiner/Mover/Leaver review-mode options for:
 - Leaver closure
 - Lifecycle control room
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, database schema, or production routing.
+Payroll adds selectable trust-layer review-mode options for:
+
+- Variance explainer
+- Approval chain
+- Payout preflight
+- Statutory confidence
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, database schema, or production routing.
