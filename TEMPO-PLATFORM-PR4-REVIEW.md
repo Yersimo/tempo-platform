@@ -39,13 +39,22 @@ Recommendation: merge PR #4 after Simon reviews the command center copy and afte
 
 Do not deploy to production from this PR until visual QA has passed in an environment with the required auth/database settings.
 
-## Next Experiment Started
+## Deeper Experiments Started
 
-The first deeper feature experiment is the Expense experiment bench. It adds selectable review-mode options for:
+The first deeper feature experiments are intentionally UI/state-only review benches. They let Simon compare directions before Tempo hardens the best versions into production workflows.
+
+Expense adds selectable Ramp-grade review-mode options for:
 
 - Ramp approval cockpit
 - ETI policy confidence
 - Reimbursement timeline
 - Budget guardrails
 
-This is intentionally UI/state-only for review. It does not alter payments, approvals, reimbursements, payroll posting, database schema, or production routing.
+Performance adds selectable Redwood-grade review-mode options for:
+
+- Manager copilot
+- Calibration room
+- Growth pathways
+- Merit readiness
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, database schema, or production routing.

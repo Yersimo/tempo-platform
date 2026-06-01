@@ -122,5 +122,7 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Engagement now has a Culture Amp/Qualtrics-inspired listening command center with survey health, engagement score, response rate, open action plans, and direct actions into surveys, text analysis, and action-plan follow-through.
 - Mentoring now has a Together/MentorcliQ-inspired growth command center with active programs, active pairs, match quality, completed goals, and direct actions into programs, AI matching, and goals.
 - Projects now has an Asana/Linear-inspired execution command center with project count, active tasks, completion rate, overdue work, and direct actions into portfolio, capacity, and automations.
+- Expense now also includes a selectable Ramp-grade experiment bench for approval cockpit, ETI policy confidence, reimbursement timeline, and budget guardrails review concepts.
+- Performance now also includes a selectable Redwood-grade experiment bench for manager copilot, calibration room, growth pathways, and merit readiness review concepts.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

@@ -264,6 +264,7 @@ export default function PerformancePage() {
   const myReviews = useMemo(() => reviews.filter(r => r.employee_id === currentEmployeeId), [reviews, currentEmployeeId])
 
   const [activeTab, setActiveTab] = useState('goals')
+  const [activePerformanceExperiment, setActivePerformanceExperiment] = useState<'manager_copilot' | 'calibration_room' | 'growth_pathways' | 'merit_readiness'>('manager_copilot')
 
   // Goal modal
   const [showGoalModal, setShowGoalModal] = useState(false)
@@ -558,6 +559,45 @@ export default function PerformancePage() {
   const upcomingMeetings = useMemo(() => oneOnOnes.filter(o => o.status === 'upcoming').sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()), [oneOnOnes])
   const pastMeetings = useMemo(() => oneOnOnes.filter(o => o.status === 'completed').sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()), [oneOnOnes])
   const openActionItems = useMemo(() => oneOnOnes.flatMap(o => (o.action_items || []).filter(ai => !ai.done)), [oneOnOnes])
+  const performanceExperiments = [
+    {
+      id: 'manager_copilot' as const,
+      title: 'Manager copilot',
+      benchmark: 'Redwood-style guided review workbench',
+      metric: `${openActionItems.length} open 1:1 action${openActionItems.length === 1 ? '' : 's'}`,
+      description: 'Bring the next review, goals, feedback, and coaching prompts into one manager-ready pane.',
+      actions: ['Prepare review narrative', 'Suggest 1:1 agenda', 'Carry action items forward'],
+      onOpen: () => setActiveTab('one-on-ones'),
+    },
+    {
+      id: 'calibration_room' as const,
+      title: 'Calibration room',
+      benchmark: 'Oracle Fusion calibration clarity with lighter controls',
+      metric: `${biasInsights.length} bias signal${biasInsights.length === 1 ? '' : 's'}`,
+      description: 'Compare rating spread, manager drift, and rationale quality before review outcomes are locked.',
+      actions: ['Surface rating drift', 'Check rationale quality', 'Lock committee decisions'],
+      onOpen: () => setActiveTab('calibration'),
+    },
+    {
+      id: 'growth_pathways' as const,
+      title: 'Growth pathways',
+      benchmark: 'Career mobility stitched into performance',
+      metric: `${careerTracks.length} career track${careerTracks.length === 1 ? '' : 's'}`,
+      description: 'Turn goals and competency gaps into visible role paths, learning moves, and promotion evidence.',
+      actions: ['Map next role', 'Attach skill gaps', 'Link learning plan'],
+      onOpen: () => setActiveTab('career-paths'),
+    },
+    {
+      id: 'merit_readiness' as const,
+      title: 'Merit readiness',
+      benchmark: 'Compensation planning without performance whiplash',
+      metric: `${meritCycles.length} merit cycle${meritCycles.length === 1 ? '' : 's'}`,
+      description: 'Stage rating, budget, eligibility, and recommendation signals before compensation review.',
+      actions: ['Validate eligibility', 'Check budget impact', 'Explain recommendation'],
+      onOpen: () => setActiveTab('merit-cycles'),
+    },
+  ]
+  const selectedPerformanceExperiment = performanceExperiments.find(experiment => experiment.id === activePerformanceExperiment) || performanceExperiments[0]
 
   // Recognition computed data
   const recognitionLeaderboard = useMemo(() => {
@@ -980,6 +1020,65 @@ export default function PerformancePage() {
           { label: 'Connect growth paths', description: 'Review role paths, skills, and learning-linked gaps.', onClick: () => setActiveTab('career-paths') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Performance experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare Redwood-grade performance directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo performance feel more guided, fair, and connected before choosing what to harden into production workflows.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {performanceExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActivePerformanceExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activePerformanceExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activePerformanceExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedPerformanceExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedPerformanceExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedPerformanceExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedPerformanceExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
