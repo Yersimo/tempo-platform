@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -282,6 +283,30 @@ export default function BillPayPage() {
         title="Bill Pay"
         subtitle="Accounts payable automation"
         actions={<Button size="sm" onClick={openNewPayment}><Plus size={14} /> New Payment</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Bill Pay"
+        benchmark="Bill.com and Ramp-grade AP operations with vendor payments, approval queue, scheduled payments, recurring schedules, and payment status connected."
+        score={Math.min(97, 50 + (billPayments.length > 0 ? 8 : 2) + (pendingCount === 0 ? 9 : 3) + (scheduledPayments.length > 0 ? 7 : 2) + (activeSchedules > 0 ? 7 : 2))}
+        scoreLabel="AP payment readiness"
+        summary="Connects payment creation, vendor context, approval queue, scheduled payments, recurring schedules, paid status, cancellation, and payment search into one AP workflow."
+        metrics={[
+          { label: 'Paid', value: formatAmount(totalPaid), tone: totalPaid > 0 ? 'success' : 'neutral' },
+          { label: 'Scheduled', value: formatAmount(totalScheduled), tone: totalScheduled > 0 ? 'ai' : 'neutral' },
+          { label: 'Pending approvals', value: pendingCount, tone: pendingCount > 0 ? 'warning' : 'success' },
+          { label: 'Recurring', value: activeSchedules, tone: activeSchedules > 0 ? 'success' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make payment approval and scheduling obvious before cash leaves the business.',
+          'Keep recurring vendor payments reviewable and easy to pause or resume.',
+          'Connect bill pay status to invoices, vendors, bank feeds, and cash visibility.',
+        ]}
+        actions={[
+          { label: 'Review payments', description: 'Inspect all bill payments and status.', onClick: () => setActiveTab('payments') },
+          { label: 'Approve queue', description: 'Work pending payment approvals.', onClick: () => setActiveTab('approval') },
+          { label: 'Review schedule', description: 'Inspect upcoming scheduled payments.', onClick: () => setActiveTab('scheduled') },
+        ]}
       />
 
       {/* ── Stat Cards ── */}

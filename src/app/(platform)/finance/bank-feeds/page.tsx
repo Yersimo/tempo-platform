@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -174,6 +175,30 @@ export default function BankFeedsPage() {
     <>
       <Header title="Bank Feeds" subtitle="Automated bank statement reconciliation with Plaid integration" />
       <div className="p-6 space-y-6">
+        <ModuleCommandCenter
+          moduleName="Bank Feeds"
+          benchmark="Plaid and NetSuite-grade bank reconciliation with connected accounts, transaction matching, rules, imports, and exception queues in one finance control surface."
+          score={Math.min(97, 50 + ((bankConnections || []).length > 0 ? 8 : 2) + ((stats.matchedPercent || 0) >= 80 ? 10 : 4) + ((stats.unmatched || 0) === 0 ? 8 : 3) + ((reconciliationRules || []).length > 0 ? 7 : 2))}
+          scoreLabel="Reconciliation readiness"
+          summary="Connects bank connections, accounts, Plaid sync, CSV import, auto-matching, manual matching, rules, inflow, outflow, and unmatched transaction review."
+          metrics={[
+            { label: 'Reconciliation', value: `${stats.matchedPercent || 0}%`, tone: (stats.matchedPercent || 0) >= 80 ? 'success' : 'warning' },
+            { label: 'Connections', value: (bankConnections || []).length, tone: (bankConnections || []).length > 0 ? 'success' : 'neutral' },
+            { label: 'Unmatched', value: stats.unmatched || 0, tone: (stats.unmatched || 0) > 0 ? 'warning' : 'success' },
+            { label: 'Rules', value: (reconciliationRules || []).length, tone: (reconciliationRules || []).length > 0 ? 'ai' : 'neutral' },
+          ]}
+          focusAreas={[
+            'Make unmatched transactions the visible exception queue for finance.',
+            'Keep bank sync, imports, matching rules, and manual matches in one workflow.',
+            'Connect bank activity back to invoices, expenses, payroll, and bill payments.',
+          ]}
+          actions={[
+            { label: 'Review overview', description: 'Inspect connection and reconciliation health.', onClick: () => setActiveTab('overview') },
+            { label: 'Work transactions', description: 'Review unmatched and matched bank lines.', onClick: () => setActiveTab('transactions') },
+            { label: 'Tune rules', description: 'Manage auto-match rules and priorities.', onClick: () => setActiveTab('rules') },
+          ]}
+        />
+
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             {(['overview', 'transactions', 'rules'] as TabKey[]).map(tab => (

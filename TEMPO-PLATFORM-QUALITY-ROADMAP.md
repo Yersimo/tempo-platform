@@ -110,5 +110,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Corporate Cards now has a Ramp-inspired card control command center with active cards, monthly spend, utilization, pending transactions, and direct actions into cards, transactions, and reconciliation.
 - Invoices now has a NetSuite/Ramp-inspired invoice control command center with invoice volume, total amount, overdue exposure, pending approvals, and direct actions into approval and overdue review.
 - Budgets now has a Workday Adaptive/Ramp-inspired budget control command center with active budgets, utilization, remaining budget, forecast score, and direct actions into budget review, budget creation, and expense spend.
+- Global Spend now has an Airwallex/Rippling-inspired treasury command center with USD balance, currencies, FX volume, entity coverage, and direct actions into accounts, FX transactions, and regional spend.
+- Bank Feeds now has a Plaid/NetSuite-inspired reconciliation command center with reconciliation rate, bank connections, unmatched transactions, matching rules, and direct actions into overview, transactions, and rules.
+- Bill Pay now has a Bill.com/Ramp-inspired AP command center with paid amount, scheduled amount, pending approvals, recurring payments, and direct actions into payments, approval queue, and schedule review.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
