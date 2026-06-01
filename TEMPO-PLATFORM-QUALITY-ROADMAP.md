@@ -127,5 +127,6 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Learning now also includes a selectable Sana-grade experiment bench for learner home, skills navigator, compliance coach, and AI authoring review concepts.
 - Onboarding now also includes a selectable Joiner/Mover/Leaver experiment bench for joiner launch, mover transition, leaver closure, and lifecycle control-room review concepts.
 - Payroll now also includes a selectable trust-layer experiment bench for variance explainer, approval chain, payout preflight, and statutory confidence review concepts.
+- Dashboard now also includes a selectable AI workday briefing experiment bench for operator priorities, manager mission control, employee concierge, and executive board-room review concepts.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

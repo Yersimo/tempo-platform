@@ -78,4 +78,11 @@ Payroll adds selectable trust-layer review-mode options for:
 - Payout preflight
 - Statutory confidence
 
+Dashboard adds selectable AI workday briefing review-mode options for:
+
+- Operator priorities
+- Manager mission control
+- Employee concierge
+- Executive board room
+
 These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, database schema, or production routing.
