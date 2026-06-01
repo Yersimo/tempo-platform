@@ -64,4 +64,11 @@ Learning adds selectable Sana-grade review-mode options for:
 - Compliance coach
 - AI authoring studio
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, database schema, or production routing.
+Onboarding adds selectable Joiner/Mover/Leaver review-mode options for:
+
+- Joiner launch
+- Mover transition
+- Leaver closure
+- Lifecycle control room
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, database schema, or production routing.

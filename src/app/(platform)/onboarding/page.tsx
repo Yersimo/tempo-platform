@@ -367,6 +367,7 @@ export default function OnboardingPage() {
 
   // ─── Module Tab State ──────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('my-onboarding')
+  const [activeLifecycleExperiment, setActiveLifecycleExperiment] = useState<'joiner_launch' | 'mover_transition' | 'leaver_closure' | 'control_room'>('joiner_launch')
   const tabs = [
     { id: 'my-onboarding', label: 'My Onboarding' },
     { id: 'welcome-portal', label: t('welcomePortal') },
@@ -495,6 +496,45 @@ export default function OnboardingPage() {
   const inProgressTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'in_progress').length, [preboardingTasks])
   const pendingTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'pending').length, [preboardingTasks])
   const taskCompletionPct = useMemo(() => preboardingTasks.length > 0 ? Math.round((completedTaskCount / preboardingTasks.length) * 100) : 0, [preboardingTasks, completedTaskCount])
+  const lifecycleExperiments = [
+    {
+      id: 'joiner_launch' as const,
+      title: 'Joiner launch',
+      benchmark: 'Rippling-style first-day orchestration',
+      metric: `${pendingTaskCount} pending task${pendingTaskCount === 1 ? '' : 's'}`,
+      description: 'Coordinate documents, equipment, payroll setup, learning, buddy support, and manager tasks before the new hire logs in.',
+      actions: ['Confirm Day-1 readiness', 'Assign buddy support', 'Stage payroll and learning tasks'],
+      onOpen: () => setActiveTab('preboarding'),
+    },
+    {
+      id: 'mover_transition' as const,
+      title: 'Mover transition',
+      benchmark: 'Role change without handoff drift',
+      metric: `${selectedModules.length} module${selectedModules.length === 1 ? '' : 's'} selected`,
+      description: 'Preview the workflow for department, manager, location, or role changes across HR, IT access, learning, payroll, and approvals.',
+      actions: ['Model role change tasks', 'Check access impact', 'Route approvals'],
+      onOpen: () => setActiveTab('onboarding-plan'),
+    },
+    {
+      id: 'leaver_closure' as const,
+      title: 'Leaver closure',
+      benchmark: 'Offboarding controls visible from onboarding',
+      metric: `${activeBuddyCount} active buddy link${activeBuddyCount === 1 ? '' : 's'}`,
+      description: 'Show the reverse lifecycle: access removal, device return, final payroll, knowledge transfer, and compliance evidence.',
+      actions: ['Prepare closure checklist', 'Capture knowledge transfer', 'Confirm final-pay dependencies'],
+      onOpen: () => setActiveTab('buddy-system'),
+    },
+    {
+      id: 'control_room' as const,
+      title: 'Lifecycle control room',
+      benchmark: 'One queue for HR, IT, Payroll, Learning, and Compliance',
+      metric: `${taskCompletionPct}% ready`,
+      description: 'Create a single review surface for lifecycle work that explains what is blocked, who owns it, and the next safest action.',
+      actions: ['Group blockers by owner', 'Explain risk by function', 'Create recoverable task waves'],
+      onOpen: () => setShowBulkTaskModal(true),
+    },
+  ]
+  const selectedLifecycleExperiment = lifecycleExperiments.find(experiment => experiment.id === activeLifecycleExperiment) || lifecycleExperiments[0]
 
   const filteredTasks = useMemo(() => {
     let tasks = preboardingTasks
@@ -1345,6 +1385,65 @@ export default function OnboardingPage() {
           { label: 'Assign buddies', description: 'Match new hires with onboarding support.', onClick: () => setActiveTab('buddy-system') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Joiner/Mover/Leaver experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare lifecycle orchestration directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo coordinate HR, IT, Payroll, Learning, Compliance, and manager work as one lifecycle system.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {lifecycleExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveLifecycleExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activeLifecycleExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeLifecycleExperiment === experiment.id && <CheckCircle size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedLifecycleExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedLifecycleExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedLifecycleExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedLifecycleExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Day-1 First Morning entry — for new joiners */}
       <a
