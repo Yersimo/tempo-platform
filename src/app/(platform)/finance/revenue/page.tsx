@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -274,6 +275,16 @@ export default function RevenuePage() {
       obligationId: e.obligation_id,
     }))
   }, [revenueScheduleEntries])
+  const satisfactionRate = totalObligations > 0 ? Math.round((satisfiedObligations / totalObligations) * 100) : 0
+  const revenueReadinessScore = Math.min(98,
+    42 +
+    (activeContracts > 0 ? 12 : 4) +
+    (totalObligations > 0 ? 10 : 3) +
+    (revenueScheduleEntries.length > 0 ? 12 : 4) +
+    (totalRecognized > 0 ? 10 : 3) +
+    (journalEntries.length > 0 ? 8 : 2) +
+    (satisfactionRate >= 75 ? 4 : 2)
+  )
 
   if (pageLoading) return <PageSkeleton />
 
@@ -291,6 +302,30 @@ export default function RevenuePage() {
       <Header title="Revenue Recognition" subtitle="ASC 606 five-step model for revenue recognition" />
 
       <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <ModuleCommandCenter
+          moduleName="Revenue Recognition"
+          benchmark="NetSuite and Zuora-grade revenue operations with ASC 606 obligations, schedules, deferrals, and GL-ready evidence."
+          score={revenueReadinessScore}
+          scoreLabel="Revenue readiness"
+          summary="Tempo should make revenue trust visible: contracts break into obligations, obligations generate schedules, recognized amounts reconcile to deferred balances, and journal evidence is ready for finance review."
+          metrics={[
+            { label: 'Active contracts', value: activeContracts, tone: activeContracts > 0 ? 'success' : 'warning' },
+            { label: 'Recognized', value: formatCurrency(totalRecognized, defaultCurrency), tone: totalRecognized > 0 ? 'ai' : 'neutral' },
+            { label: 'Deferred', value: formatCurrency(totalDeferred, defaultCurrency), tone: totalDeferred > 0 ? 'warning' : 'success' },
+            { label: 'Obligations met', value: `${satisfactionRate}%`, tone: satisfactionRate >= 75 ? 'success' : 'warning' },
+          ]}
+          focusAreas={[
+            'Make contract value allocation and performance obligations easy to inspect.',
+            'Show deferred revenue and recognition progress before month-end close.',
+            'Keep recognized schedule entries traceable to accounting journals.',
+          ]}
+          actions={[
+            { label: 'Review contracts', description: 'Inspect contract value, obligations, and schedule readiness.', onClick: () => setActiveTab('contracts') },
+            { label: 'Open recognition schedule', description: 'Check upcoming recognition periods and amounts.', onClick: () => setActiveTab('schedule') },
+            { label: 'Audit journal evidence', description: 'Trace recognized revenue into finance-ready entries.', onClick: () => setActiveTab('journal-entries') },
+          ]}
+        />
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Contract Value" value={formatCurrency(totalContractValue, defaultCurrency)} change={`${activeContracts} active`} icon={<DollarSign size={20} />} />

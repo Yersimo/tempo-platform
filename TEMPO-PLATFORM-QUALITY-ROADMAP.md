@@ -116,5 +116,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Vendors now has a Coupa/Ramp-inspired supplier command center with vendor count, active contracts, compliance rate, tracked spend, and direct actions into directory, contracts, and compliance.
 - Procurement now has a Coupa/NetSuite-inspired procure-to-pay command center with open POs, goods receipts, match rate, exceptions, and direct actions into PO review, three-way matching, and exception clearing.
 - General Ledger now has a NetSuite/Workday-inspired ledger command center with entry volume, balance delta, automated entries, open periods, and direct actions into journals, auto-JE audit, and period close.
+- Revenue Recognition now has a NetSuite/Zuora-inspired revenue command center with active contracts, recognized revenue, deferred revenue, obligation satisfaction, and direct actions into contracts, schedules, and journal evidence.
+- Entity Consolidation now has an Oracle FCCS/Workday-inspired consolidation command center with entity groups, member entities, pending intercompany items, IC volume, and direct actions into entities, intercompany, and reporting.
+- Transfer Pricing now has a Big Four/OECD-inspired tax defense command center with active policies, intercompany entities, YTD volume, compliance rate, and direct actions into policies, transactions, and compliance review.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

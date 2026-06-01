@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -414,6 +415,16 @@ export default function ConsolidationPage() {
   const pendingICCount = icTransactions.filter(t => t.status === 'pending').length
   const confirmedICCount = icTransactions.filter(t => t.status === 'confirmed').length
   const totalICAmount = icTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const consolidationReadinessScore = Math.min(98,
+    40 +
+    (groups.length > 0 ? 10 : 3) +
+    (members.length > 0 ? 12 : 4) +
+    (fxRates.length > 0 ? 10 : 3) +
+    (reports.length > 0 ? 10 : 3) +
+    (icTransactions.length > 0 ? 8 : 3) +
+    (pendingICCount === 0 ? 8 : pendingICCount <= 2 ? 5 : 2) +
+    (consolidatedData ? 6 : 2)
+  )
 
   const filteredICTransactions = useMemo(() => {
     if (!searchQuery) return icTransactions
@@ -474,6 +485,30 @@ export default function ConsolidationPage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Entity Consolidation"
+        benchmark="Oracle FCCS and Workday-grade multi-entity close with ownership, FX, intercompany, eliminations, and board-ready reports."
+        score={consolidationReadinessScore}
+        scoreLabel="Consolidation readiness"
+        summary="Tempo should help finance move from subsidiaries to a trusted group view: every entity has ownership context, every intercompany balance has confirmation, FX is controlled, and reports can be generated with audit evidence."
+        metrics={[
+          { label: 'Entity groups', value: groups.length, tone: groups.length > 0 ? 'success' : 'warning' },
+          { label: 'Entities', value: members.length, tone: members.length > 0 ? 'success' : 'warning' },
+          { label: 'Pending IC', value: pendingICCount, tone: pendingICCount === 0 ? 'success' : 'warning' },
+          { label: 'IC volume', value: formatCurrency(totalICAmount, selectedGroup?.consolidationCurrency || defaultCurrency), tone: totalICAmount > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Keep ownership, consolidation method, and local currency visible for every entity.',
+          'Drive intercompany confirmations and eliminations before report generation.',
+          'Make FX and consolidation report readiness clear for executives and auditors.',
+        ]}
+        actions={[
+          { label: 'Review entity structure', description: 'Check group membership, ownership, and consolidation methods.', onClick: () => setActiveTab('entities') },
+          { label: 'Clear intercompany items', description: 'Confirm transactions before eliminations and reporting.', onClick: () => setActiveTab('intercompany') },
+          { label: 'Prepare consolidated report', description: 'Move from FX rates and eliminations into report generation.', onClick: () => setActiveTab('reports') },
+        ]}
       />
 
       {/* Group selector */}
