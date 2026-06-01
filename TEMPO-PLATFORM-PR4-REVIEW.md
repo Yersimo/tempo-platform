@@ -92,4 +92,11 @@ IT Cloud adds selectable lifecycle access review-mode options for:
 - Leaver lockdown
 - Endpoint trust
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, database schema, or production routing.
+Analytics adds selectable executive board-room review-mode options for:
+
+- Board pack narrative
+- Risk drill-down
+- KPI story builder
+- Operating review
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, bank files, statutory calculations, report exports, report schedules, database schema, or production routing.

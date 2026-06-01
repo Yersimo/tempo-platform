@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
-import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock, CheckCircle2, ArrowRight } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -41,6 +41,7 @@ export default function AnalyticsPage() {
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('workforce')
+  const [activeBoardRoomExperiment, setActiveBoardRoomExperiment] = useState<'board_pack' | 'risk_drilldown' | 'kpi_story' | 'operating_review'>('board_pack')
   const [deptFilter, setDeptFilter] = useState('all')
   const [queryResults, setQueryResults] = useState<{ results: any[]; description: string } | null>(null)
   const [queryFollowUps, setQueryFollowUps] = useState<string[]>([])
@@ -174,6 +175,46 @@ export default function AnalyticsPage() {
   const openPositions = jobPostings.filter(j => j.status === 'open').length
   const pendingExpenses = expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').length
   const lastPayroll = payrollRuns[payrollRuns.length - 1]
+  const totalPayroll = payrollRuns.reduce((a, r) => a + r.total_gross, 0)
+  const boardRoomExperiments = [
+    {
+      id: 'board_pack' as const,
+      title: 'Board pack narrative',
+      benchmark: 'Workday-style executive summary',
+      metric: `${headcount} employee${headcount === 1 ? '' : 's'}`,
+      description: 'Package headcount, payroll, engagement, performance, hiring, and risk into a board-ready story with source-module drill-through.',
+      actions: ['Review executive narrative', 'Check source metrics', 'Prepare board pack'],
+      onOpen: () => setActiveTab('executive'),
+    },
+    {
+      id: 'risk_drilldown' as const,
+      title: 'Risk drill-down',
+      benchmark: 'Visier-style operational risk lens',
+      metric: `${aiAnalyticsInsights.length} AI signal${aiAnalyticsInsights.length === 1 ? '' : 's'}`,
+      description: 'Turn cross-module anomalies into explainable risk cards that route to performance, compensation, leave, and engagement fixes.',
+      actions: ['Rank risk signals', 'Open source module', 'Assign follow-up'],
+      onOpen: () => setActiveTab('flight_risk'),
+    },
+    {
+      id: 'kpi_story' as const,
+      title: 'KPI story builder',
+      benchmark: 'Repeatable leadership KPI reporting',
+      metric: `${reviewCompletion}% review completion`,
+      description: 'Let leaders turn selected workforce, payroll, learning, expense, and recruiting KPIs into a reusable leadership view.',
+      actions: ['Select metrics', 'Preview visualization', 'Schedule report'],
+      onOpen: () => setActiveTab('builder'),
+    },
+    {
+      id: 'operating_review' as const,
+      title: 'Operating review',
+      benchmark: 'Finance and people health in one meeting view',
+      metric: totalPayroll > 0 ? formatCurrency(totalPayroll, defaultCurrency, { compact: true }) : 'No payroll yet',
+      description: 'Combine staff cost, open roles, learning activity, pending expenses, and performance progress into a monthly operating review.',
+      actions: ['Compare cost and headcount', 'Review hiring needs', 'Route expense pressure'],
+      onOpen: () => setActiveTab('workforce'),
+    },
+  ]
+  const selectedBoardRoomExperiment = boardRoomExperiments.find(experiment => experiment.id === activeBoardRoomExperiment) || boardRoomExperiments[0]
 
   // Headcount by department
   const deptCounts = departments.map(d => ({
@@ -256,6 +297,65 @@ export default function AnalyticsPage() {
           { label: 'Build a report', description: 'Configure a repeatable cross-module report.', onClick: () => setActiveTab('builder') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Executive board room experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare leadership analytics directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo analytics board-ready while preserving drill-through to workforce, payroll, learning, performance, and expense actions.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {boardRoomExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveBoardRoomExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activeBoardRoomExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeBoardRoomExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedBoardRoomExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedBoardRoomExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedBoardRoomExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedBoardRoomExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />
