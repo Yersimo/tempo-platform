@@ -57,4 +57,11 @@ Performance adds selectable Redwood-grade review-mode options for:
 - Growth pathways
 - Merit readiness
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, database schema, or production routing.
+Learning adds selectable Sana-grade review-mode options for:
+
+- Learner home
+- Skills navigator
+- Compliance coach
+- AI authoring studio
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, database schema, or production routing.

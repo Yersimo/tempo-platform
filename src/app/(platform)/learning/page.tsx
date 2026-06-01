@@ -49,6 +49,7 @@ export default function LearningPage() {
   const t = useTranslations('learning')
   const tc = useTranslations('common')
   const [activeTab, setActiveTab] = useState('home')
+  const [activeLearningExperiment, setActiveLearningExperiment] = useState<'learner_home' | 'skills_navigator' | 'compliance_coach' | 'ai_authoring'>('learner_home')
 
   // Catalog search & filter state
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -1311,6 +1312,45 @@ window.onload=function(){
     }).length
     return { complianceRate, mandatoryCount: mandatoryCourses.length, overdueCount, upcomingCount, totalRequired: allEmployeeCount * mandatoryCourses.length, totalCompleted: completedMandatory.length }
   }, [courses, enrollments, employees, complianceTraining])
+  const learningExperiments = [
+    {
+      id: 'learner_home' as const,
+      title: 'Learner home',
+      benchmark: 'Sana-style personalized discovery',
+      metric: `${personalizedRecs.length} recommendation${personalizedRecs.length === 1 ? '' : 's'}`,
+      description: `Give ${currentEmployeeName} a focused home with next lessons, role-based courses, assignments, and progress cues instead of an admin-heavy catalog.`,
+      actions: ['Resume next lesson', 'Explain why recommended', 'Show manager-assigned work'],
+      onOpen: () => setActiveTab('home'),
+    },
+    {
+      id: 'skills_navigator' as const,
+      title: 'Skills navigator',
+      benchmark: 'Skills graph connected to performance',
+      metric: `${skillGaps.length} skill gap${skillGaps.length === 1 ? '' : 's'}`,
+      description: 'Turn skill coverage, goals, and review gaps into a clear path of courses, practice, and manager nudges.',
+      actions: ['Rank role gaps', 'Attach courses to gaps', 'Route to career path'],
+      onOpen: () => setActiveTab('skills'),
+    },
+    {
+      id: 'compliance_coach' as const,
+      title: 'Compliance coach',
+      benchmark: 'Mandatory learning without the chase',
+      metric: `${complianceStats.overdueCount} overdue item${complianceStats.overdueCount === 1 ? '' : 's'}`,
+      description: 'Make required training feel operationally trustworthy with due dates, exemptions, reminders, and evidence in one flow.',
+      actions: ['Prioritize overdue work', 'Explain exemption state', 'Send targeted reminders'],
+      onOpen: () => setActiveTab('compliance'),
+    },
+    {
+      id: 'ai_authoring' as const,
+      title: 'AI authoring studio',
+      benchmark: 'Fast course creation with governance',
+      metric: `${contentLibrary.length} library asset${contentLibrary.length === 1 ? '' : 's'}`,
+      description: 'Move from rough topic to course outline, quiz, scenario, and versioned content while keeping quality controls visible.',
+      actions: ['Generate course outline', 'Draft assessment', 'Review content versions'],
+      onOpen: () => setActiveTab('builder'),
+    },
+  ]
+  const selectedLearningExperiment = learningExperiments.find(experiment => experiment.id === activeLearningExperiment) || learningExperiments[0]
 
   // Department compliance breakdown
   const deptCompliance = useMemo(() => {
@@ -2323,6 +2363,64 @@ window.onload=function(){
           { label: 'Manage compliance', description: 'Prioritize overdue and mandatory learning workflows.', onClick: () => setActiveTab('compliance') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Learning experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare Sana-grade learning directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo learning feel more personal, skills-aware, compliant, and fast to author.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {learningExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveLearningExperiment(experiment.id)}
+                className={cn(
+                  'rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60',
+                  activeLearningExperiment === experiment.id ? 'border-tempo-400 bg-tempo-50 shadow-sm' : 'border-border bg-bg',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeLearningExperiment === experiment.id && <CheckCircle size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedLearningExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedLearningExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedLearningExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedLearningExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <StatCard label={t('totalCourses')} value={courses.length} icon={<BookOpen size={20} />} />
