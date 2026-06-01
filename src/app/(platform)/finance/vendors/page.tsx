@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -178,6 +179,14 @@ export default function VendorsPage() {
   const maxCategorySpend = spendByCategory.length > 0
     ? Math.max(...spendByCategory.map(c => c.amount))
     : 1
+  const vendorReadinessScore = Math.min(97,
+    44 +
+    (vendors.length > 0 ? 12 : 3) +
+    (activeContracts > 0 ? 12 : 4) +
+    (complianceRate >= 85 ? 14 : complianceRate >= 60 ? 9 : 4) +
+    (totalSpend > 0 ? 10 : 3) +
+    (spendByCategory.length > 0 ? 5 : 2)
+  )
 
   // Top vendors by spend
   const topVendors = useMemo(() => {
@@ -291,6 +300,30 @@ export default function VendorsPage() {
         title="Vendor Management"
         subtitle="Vendor directory, compliance & spend tracking"
         actions={<Button size="sm" onClick={openNewVendor}><Plus size={14} /> Add Vendor</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Vendor Management"
+        benchmark="Coupa and Ramp-grade vendor operations with live compliance, renewal, risk, and spend control."
+        score={vendorReadinessScore}
+        scoreLabel="Vendor readiness"
+        summary="Tempo should make vendor work feel like one operating loop: searchable supplier records, contract obligations, tax evidence, spend concentration, and the next action finance should take."
+        metrics={[
+          { label: 'Vendors', value: vendors.length, tone: vendors.length > 0 ? 'success' : 'warning' },
+          { label: 'Active contracts', value: activeContracts, tone: activeContracts > 0 ? 'success' : 'warning' },
+          { label: 'Compliance rate', value: `${complianceRate}%`, tone: complianceRate >= 80 ? 'success' : 'warning' },
+          { label: 'Tracked spend', value: formatCurrency(totalSpend, defaultCurrency), tone: totalSpend > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Surface renewal, tax, and risk gaps before approving more spend.',
+          'Keep supplier, contract, and invoice context in one reviewable path.',
+          'Make category concentration and top-vendor exposure obvious to finance leaders.',
+        ]}
+        actions={[
+          { label: 'Review supplier directory', description: 'Check ownership, contact, category, and status hygiene.', onClick: () => setActiveTab('directory') },
+          { label: 'Inspect contracts', description: 'Prioritize active agreements, renewals, and annual value.', onClick: () => setActiveTab('contracts') },
+          { label: 'Triage compliance gaps', description: 'Find missing tax IDs and high-risk supplier evidence.', onClick: () => setActiveTab('compliance') },
+        ]}
       />
 
       {/* Stat Cards */}

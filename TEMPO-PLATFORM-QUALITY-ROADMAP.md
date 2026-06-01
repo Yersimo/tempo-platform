@@ -113,5 +113,8 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Global Spend now has an Airwallex/Rippling-inspired treasury command center with USD balance, currencies, FX volume, entity coverage, and direct actions into accounts, FX transactions, and regional spend.
 - Bank Feeds now has a Plaid/NetSuite-inspired reconciliation command center with reconciliation rate, bank connections, unmatched transactions, matching rules, and direct actions into overview, transactions, and rules.
 - Bill Pay now has a Bill.com/Ramp-inspired AP command center with paid amount, scheduled amount, pending approvals, recurring payments, and direct actions into payments, approval queue, and schedule review.
+- Vendors now has a Coupa/Ramp-inspired supplier command center with vendor count, active contracts, compliance rate, tracked spend, and direct actions into directory, contracts, and compliance.
+- Procurement now has a Coupa/NetSuite-inspired procure-to-pay command center with open POs, goods receipts, match rate, exceptions, and direct actions into PO review, three-way matching, and exception clearing.
+- General Ledger now has a NetSuite/Workday-inspired ledger command center with entry volume, balance delta, automated entries, open periods, and direct actions into journals, auto-JE audit, and period close.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

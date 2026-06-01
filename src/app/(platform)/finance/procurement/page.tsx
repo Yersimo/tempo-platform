@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -71,6 +72,14 @@ export default function ProcurementPage() {
   const fullMatches = threeWayMatches.filter((m: any) => m.match_status === 'full_match').length
   const exceptions = threeWayMatches.filter((m: any) => m.match_status === 'exception').length
   const matchRate = totalMatches > 0 ? Math.round((fullMatches / totalMatches) * 100) : 0
+  const procurementReadinessScore = Math.min(98,
+    42 +
+    (totalPOs > 0 ? 10 : 3) +
+    (totalReceipts > 0 ? 10 : 3) +
+    (totalMatches > 0 ? 12 : 4) +
+    (matchRate >= 85 ? 14 : matchRate >= 60 ? 9 : 4) +
+    (exceptions === 0 ? 10 : exceptions <= 2 ? 6 : 2)
+  )
 
   // ---- Create PO Modal ----
   const [showPOModal, setShowPOModal] = useState(false)
@@ -218,6 +227,30 @@ export default function ProcurementPage() {
       <Header title="Procurement & PO Matching" subtitle="Three-way matching: PO, Goods Receipt, Invoice" />
 
       <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <ModuleCommandCenter
+          moduleName="Procurement"
+          benchmark="Coupa and NetSuite-style PO matching where approvals, receipts, invoices, and exceptions converge."
+          score={procurementReadinessScore}
+          scoreLabel="Procure-to-pay readiness"
+          summary="Tempo should let finance see whether buying is controlled before money moves: every PO has a receipt trail, every invoice has a match outcome, and every exception has an accountable next step."
+          metrics={[
+            { label: 'Open POs', value: openPOs, tone: openPOs > 0 ? 'ai' : 'neutral' },
+            { label: 'Goods receipts', value: totalReceipts, tone: totalReceipts > 0 ? 'success' : 'warning' },
+            { label: 'Match rate', value: `${matchRate}%`, tone: matchRate >= 80 ? 'success' : 'warning' },
+            { label: 'Exceptions', value: exceptions, tone: exceptions === 0 ? 'success' : 'warning' },
+          ]}
+          focusAreas={[
+            'Keep purchase order, receipt, and invoice evidence together.',
+            'Make tolerance and exception outcomes explainable before approval.',
+            'Give procurement and finance one shared queue for spend leakage.',
+          ]}
+          actions={[
+            { label: 'Review open POs', description: 'Find draft, approval, and receiving blockers.', onClick: () => setActiveTab('purchase-orders') },
+            { label: 'Run three-way match', description: 'Compare PO, receipt, and invoice evidence.', onClick: () => setActiveTab('three-way-match') },
+            { label: 'Clear exceptions', description: 'Prioritize mismatches and partial matches.', onClick: () => setActiveTab('exceptions') },
+          ]}
+        />
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Open POs" value={openPOs} change={`${totalPOs} total`} icon={<FileText size={20} />} />
