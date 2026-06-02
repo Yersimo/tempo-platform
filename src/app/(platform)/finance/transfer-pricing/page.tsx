@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -380,6 +381,28 @@ export default function TransferPricingPage() {
             { label: 'Review pricing policies', description: 'Check methods, benchmark ranges, and active status.', onClick: () => setActiveTab('policies') },
             { label: 'Inspect transactions', description: 'Find transaction volume and markup evidence by period.', onClick: () => setActiveTab('transactions') },
             { label: 'Open compliance dashboard', description: 'Prioritize deviations and documentation gaps.', onClick: () => setActiveTab('compliance') },
+          ]}
+        />
+
+        <ModuleTrustPanel
+          title="Tax defense trust layer"
+          score={transferPricingReadinessScore}
+          summary="Checks whether intercompany policies, transaction coverage, benchmark ranges, compliance results, and OECD documentation are defensible before tax reports are generated."
+          icon={<ShieldCheck size={18} />}
+          checks={[
+            { label: 'Policy coverage', detail: `${activePolicies} active polic${activePolicies === 1 ? 'y' : 'ies'} across ${policies.length} total.`, tone: activePolicies > 0 ? 'success' : 'warning' },
+            { label: 'Transaction evidence', detail: `${transactions.length} transaction${transactions.length === 1 ? '' : 's'} across ${entities.size} intercompany entit${entities.size === 1 ? 'y' : 'ies'}.`, tone: transactions.length > 0 && entities.size > 1 ? 'success' : 'warning' },
+            { label: 'Compliance posture', detail: `${displayCompliance.complianceRate}% compliance with ${displayCompliance.nonCompliant} deviation${displayCompliance.nonCompliant === 1 ? '' : 's'}.`, tone: displayCompliance.complianceRate >= 80 ? 'success' : 'warning' },
+          ]}
+          evidence={[
+            'Uses visible policies, transactions, compliance summary, benchmark ranges, and report records.',
+            'Routes reviewers to policies, transactions, compliance, and reports without recording transactions or generating reports.',
+            'Keeps tax-defense review separate from intercompany posting and statutory filing actions.',
+          ]}
+          actions={[
+            { label: 'Review policies', description: 'Inspect methods, entities, and benchmark ranges.', onClick: () => setActiveTab('policies') },
+            { label: 'Inspect transactions', description: 'Check markup and volume evidence.', onClick: () => setActiveTab('transactions') },
+            { label: 'Open compliance', description: 'Prioritize deviations and documentation gaps.', onClick: () => setActiveTab('compliance') },
           ]}
         />
 

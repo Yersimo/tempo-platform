@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -515,6 +516,28 @@ export default function EngagementPage() {
           { label: 'Review survey health', description: 'Inspect active surveys, response rates, and audiences.', onClick: () => setActiveTab('surveys') },
           { label: 'Analyze employee voice', description: 'Use text themes and AI drivers to find what matters.', onClick: () => setActiveTab('text-analysis') },
           { label: 'Close the action loop', description: 'Prioritize owners, due dates, and follow-through.', onClick: () => setActiveTab('action-plans') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Employee voice trust layer"
+        score={engagementReadinessScore}
+        summary="Checks whether survey coverage, response confidence, text analysis, schedules, triggers, and action plans are strong enough before leaders act on employee voice."
+        icon={<HeartPulse size={18} />}
+        checks={[
+          { label: 'Listening coverage', detail: `${activeSurveys} active survey${activeSurveys === 1 ? '' : 's'} with ${avgResponse}% average response rate.`, tone: activeSurveys > 0 && avgResponse >= 50 ? 'success' : 'warning' },
+          { label: 'Voice intelligence', detail: `${openEndedResponses.length} open response${openEndedResponses.length === 1 ? '' : 's'} and ${driverInsights.length} driver signal${driverInsights.length === 1 ? '' : 's'} visible.`, tone: openEndedResponses.length > 0 || driverInsights.length > 0 ? 'success' : 'neutral' },
+          { label: 'Action follow-through', detail: `${openActionPlans} open action plan${openActionPlans === 1 ? '' : 's'} with ${activeSchedules} active schedule${activeSchedules === 1 ? '' : 's'}.`, tone: openActionPlans > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible surveys, engagement scores, response rates, open-ended responses, schedules, triggers, and action plans.',
+          'Routes reviewers to surveys, text analysis, and action plans without sending surveys or creating plans.',
+          'Keeps employee voice review separate from bulk distribution, lifecycle triggers, and action-plan mutation.',
+        ]}
+        actions={[
+          { label: 'Review survey health', description: 'Inspect active surveys and response confidence.', onClick: () => setActiveTab('surveys') },
+          { label: 'Analyze text themes', description: 'Review employee voice and sentiment evidence.', onClick: () => setActiveTab('text-analysis') },
+          { label: 'Check action plans', description: 'Validate owner follow-through.', onClick: () => setActiveTab('action-plans') },
         ]}
       />
 

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -355,6 +356,28 @@ export default function MentoringPage() {
           { label: 'Review programs', description: 'Check program coverage, pair count, and status.', onClick: () => setActiveTab('programs') },
           { label: 'Run AI matching', description: 'Inspect suggested mentor and mentee pairings.', onClick: () => setActiveTab('matching') },
           { label: 'Track goals', description: 'Review progress, completion, and pair outcomes.', onClick: () => setActiveTab('goals') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Growth matching trust layer"
+        score={mentoringReadinessScore}
+        summary="Checks whether mentoring programs, pair quality, session cadence, goals, and AI match suggestions are reliable before HR creates or changes mentoring pairs."
+        icon={<UserCheck size={18} />}
+        checks={[
+          { label: 'Program coverage', detail: `${activePrograms} active program${activePrograms === 1 ? '' : 's'} and ${activePairs} active pair${activePairs === 1 ? '' : 's'}.`, tone: activePrograms > 0 && activePairs > 0 ? 'success' : 'warning' },
+          { label: 'Match quality', detail: `${avgMatchScore}% average match score with ${suggestedMatches.length} AI suggestion${suggestedMatches.length === 1 ? '' : 's'}.`, tone: avgMatchScore >= 75 ? 'success' : 'warning' },
+          { label: 'Outcome evidence', detail: `${completedSessionsList.length} completed session${completedSessionsList.length === 1 ? '' : 's'} and ${completedGoals} completed goal${completedGoals === 1 ? '' : 's'}.`, tone: completedSessionsList.length > 0 || completedGoals > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible programs, pairs, sessions, goals, AI match suggestions, and pair success predictions.',
+          'Routes reviewers to programs, matching, goals, and analytics without creating pairs or sessions.',
+          'Keeps mentoring review separate from bulk match generation and program mutation.',
+        ]}
+        actions={[
+          { label: 'Review programs', description: 'Inspect program status and coverage.', onClick: () => setActiveTab('programs') },
+          { label: 'Check AI matching', description: 'Validate suggested mentor and mentee pairings.', onClick: () => setActiveTab('matching') },
+          { label: 'Track goals', description: 'Review goal progress and pair outcomes.', onClick: () => setActiveTab('goals') },
         ]}
       />
 

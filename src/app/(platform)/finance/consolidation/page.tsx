@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -508,6 +509,28 @@ export default function ConsolidationPage() {
           { label: 'Review entity structure', description: 'Check group membership, ownership, and consolidation methods.', onClick: () => setActiveTab('entities') },
           { label: 'Clear intercompany items', description: 'Confirm transactions before eliminations and reporting.', onClick: () => setActiveTab('intercompany') },
           { label: 'Prepare consolidated report', description: 'Move from FX rates and eliminations into report generation.', onClick: () => setActiveTab('reports') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Consolidation close trust layer"
+        score={consolidationReadinessScore}
+        summary="Checks whether entity structure, ownership, intercompany confirmations, FX rates, eliminations, and reports are ready before finance generates consolidated reporting."
+        icon={<Building2 size={18} />}
+        checks={[
+          { label: 'Entity structure', detail: `${members.length} member entit${members.length === 1 ? 'y' : 'ies'} across ${groups.length} consolidation group${groups.length === 1 ? '' : 's'}.`, tone: members.length > 0 ? 'success' : 'warning' },
+          { label: 'Intercompany queue', detail: `${pendingICCount} pending confirmation${pendingICCount === 1 ? '' : 's'} with ${formatCurrency(totalICAmount, selectedGroup?.consolidationCurrency || defaultCurrency)} IC volume.`, tone: pendingICCount === 0 ? 'success' : 'warning' },
+          { label: 'Report evidence', detail: `${reports.length} report${reports.length === 1 ? '' : 's'} and ${fxRates.length} FX rate${fxRates.length === 1 ? '' : 's'} visible.`, tone: reports.length > 0 || fxRates.length > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible groups, members, intercompany transactions, FX rates, reports, and selected consolidation currency.',
+          'Routes reviewers to entities, intercompany, FX, and reports without creating reports or eliminations.',
+          'Keeps consolidation readiness separate from financial close, reporting publication, and ledger posting.',
+        ]}
+        actions={[
+          { label: 'Review entities', description: 'Check ownership, currency, and consolidation methods.', onClick: () => setActiveTab('entities') },
+          { label: 'Clear IC queue', description: 'Inspect pending intercompany confirmations.', onClick: () => setActiveTab('intercompany') },
+          { label: 'Check reports', description: 'Validate report and FX evidence.', onClick: () => setActiveTab('reports') },
         ]}
       />
 

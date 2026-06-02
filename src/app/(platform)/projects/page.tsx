@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -472,6 +473,28 @@ export default function ProjectsPage() {
           { label: 'Review project portfolio', description: 'Inspect health, owners, milestones, and progress.', onClick: () => setActiveTab('list') },
           { label: 'Balance capacity', description: 'Find overloaded people and unassigned work.', onClick: () => setActiveTab('capacity') },
           { label: 'Improve automation', description: 'Review active rules and AI suggestions.', onClick: () => setActiveTab('automations') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Execution control trust layer"
+        score={projectReadinessScore}
+        summary="Checks whether project health, tasks, milestones, timeline risks, capacity bottlenecks, and automation suggestions are visible before work is reassigned or automated."
+        icon={<FolderKanban size={18} />}
+        checks={[
+          { label: 'Portfolio coverage', detail: `${activeProjects} active project${activeProjects === 1 ? '' : 's'} across ${projects.length} total.`, tone: activeProjects > 0 ? 'success' : 'warning' },
+          { label: 'Task flow', detail: `${completionRate}% completion with ${overdueTasks} overdue item${overdueTasks === 1 ? '' : 's'}.`, tone: completionRate >= 70 && overdueTasks === 0 ? 'success' : 'warning' },
+          { label: 'Capacity evidence', detail: `${resourceBottlenecks.length} bottleneck signal${resourceBottlenecks.length === 1 ? '' : 's'} and ${activeAutomationRules} active automation rule${activeAutomationRules === 1 ? '' : 's'}.`, tone: resourceBottlenecks.length === 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Uses visible projects, tasks, milestones, health scores, timeline risks, bottlenecks, and automation suggestions.',
+          'Routes reviewers to portfolio, capacity, and automation views without reassigning tasks or toggling rules.',
+          'Keeps execution review separate from task mutation, project deletion, and automation activation.',
+        ]}
+        actions={[
+          { label: 'Review portfolio', description: 'Inspect health, owners, and milestones.', onClick: () => setActiveTab('list') },
+          { label: 'Balance capacity', description: 'Check overloaded people and hidden work.', onClick: () => setActiveTab('capacity') },
+          { label: 'Audit automations', description: 'Review rules and suggested improvements.', onClick: () => setActiveTab('automations') },
         ]}
       />
 

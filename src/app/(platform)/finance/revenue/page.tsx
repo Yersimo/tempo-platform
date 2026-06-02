@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -323,6 +324,28 @@ export default function RevenuePage() {
             { label: 'Review contracts', description: 'Inspect contract value, obligations, and schedule readiness.', onClick: () => setActiveTab('contracts') },
             { label: 'Open recognition schedule', description: 'Check upcoming recognition periods and amounts.', onClick: () => setActiveTab('schedule') },
             { label: 'Audit journal evidence', description: 'Trace recognized revenue into finance-ready entries.', onClick: () => setActiveTab('journal-entries') },
+          ]}
+        />
+
+        <ModuleTrustPanel
+          title="Revenue evidence trust layer"
+          score={revenueReadinessScore}
+          summary="Checks whether contracts, obligations, schedules, deferred balances, and journal evidence are coherent before finance recognizes revenue or prepares close entries."
+          icon={<BookOpen size={18} />}
+          checks={[
+            { label: 'Contract coverage', detail: `${activeContracts} active contract${activeContracts === 1 ? '' : 's'} across ${revenueContracts.length} total.`, tone: activeContracts > 0 ? 'success' : 'warning' },
+            { label: 'Obligation evidence', detail: `${satisfiedObligations}/${totalObligations} performance obligation${totalObligations === 1 ? '' : 's'} satisfied.`, tone: satisfactionRate >= 75 ? 'success' : 'warning' },
+            { label: 'Deferred balance', detail: `${formatCurrency(totalDeferred, defaultCurrency)} deferred against ${formatCurrency(totalRecognized, defaultCurrency)} recognized.`, tone: totalDeferred >= 0 ? 'success' : 'warning' },
+          ]}
+          evidence={[
+            'Uses visible contracts, performance obligations, recognition schedules, deferred revenue, and recognized entries.',
+            'Routes reviewers to contracts, schedules, and journal evidence without recognizing revenue or posting journals.',
+            'Keeps ASC 606 review separate from finance close and ledger mutations.',
+          ]}
+          actions={[
+            { label: 'Review contracts', description: 'Inspect value, customers, and obligations.', onClick: () => setActiveTab('contracts') },
+            { label: 'Check schedules', description: 'Validate periods and recognition amounts.', onClick: () => setActiveTab('schedule') },
+            { label: 'Audit journal evidence', description: 'Trace recognized revenue to finance-ready entries.', onClick: () => setActiveTab('journal-entries') },
           ]}
         />
 
