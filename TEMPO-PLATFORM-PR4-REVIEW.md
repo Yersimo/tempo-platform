@@ -4,7 +4,7 @@
 
 Reviewed the benchmark-led command center layer in draft PR #4, including the shared `ModuleCommandCenter`, the roadmap, and command-center usage across the 36 covered modules.
 
-The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, General Ledger, People, Onboarding, Offboarding, Documents, and Compliance.
+The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, General Ledger, People, Onboarding, Offboarding, Documents, Compliance, Identity & Access, Password Manager, Benefits, Time & Attendance, and Global Workforce.
 
 ## Product Review
 
@@ -15,7 +15,7 @@ The review now also covers the shared `ModuleTrustPanel` and its first rollout a
 | Routing | Pass | Actions route to existing tabs or existing hrefs. No new critical workflow state is introduced by the command centers. |
 | Copy and positioning | Pass with editorial review | The benchmark language is clear enough for review. Simon should still approve tone and competitor references before merge. |
 | Risk profile | Low | The PR is additive and reviewable. The largest risk is broad surface area, not destructive behavior. |
-| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, device actions, bank matching, ledger posting, exports, period close, employee changes, task completion, signatures, or compliance status changes. |
+| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, credential changes, device actions, bank matching, ledger posting, exports, period close, employee changes, task completion, signatures, benefits elections, timesheet approvals, worker changes, filings, or compliance status changes. |
 
 ## Browser QA Status
 
@@ -128,4 +128,12 @@ People-operations surfaces now include trust-layer review panels for:
 - Documents: signature queue, template coverage, audit trail
 - Compliance: requirement coverage, critical alerts, detection queue
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, employee records, onboarding tasks, offboarding tasks, signature state, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, report exports, report schedules, database schema, or production routing.
+Workforce/security surfaces now include trust-layer review panels for:
+
+- Identity & Access: SSO coverage, MFA posture, certificate health
+- Password Manager: vault coverage, password strength, rotation pressure
+- Benefits: plan coverage, enrollment progress, life-event queue
+- Time & Attendance: timesheet queue, overtime pressure, punctuality signal
+- Global Workforce: coverage model, compliance attention, worker footprint
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, credential state, benefits elections, time approvals, worker records, global filings, employee records, onboarding tasks, offboarding tasks, signature state, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, report exports, report schedules, database schema, or production routing.

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -700,6 +701,28 @@ export default function BenefitsPage() {
           { label: 'Review plans', description: 'Inspect active plans, providers, and employee cost.', onClick: () => setActiveTab('plans') },
           { label: 'Run enrollment', description: 'Guide employees and HR through coverage choices.', onClick: () => setActiveTab('enrollment') },
           { label: 'Resolve events', description: 'Handle pending life events and compliance deadlines.', onClick: () => setActiveTab('life-events') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Benefits coverage trust layer"
+        score={Math.min(97, Math.max(48, competitivenessScore.value) + (enrollmentRate >= 85 ? 8 : 3) + (pendingLifeEvents.length === 0 ? 8 : 3) + (activePlans.length > 0 ? 8 : 3))}
+        summary="Keeps plan coverage, enrollment progress, provider spread, life events, and employer cost visible before benefits decisions affect employees."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Plan coverage', detail: `${activePlans.length} active plan${activePlans.length === 1 ? '' : 's'} across ${uniqueProviders} provider${uniqueProviders === 1 ? '' : 's'}.`, tone: activePlans.length > 0 ? 'success' : 'warning' },
+          { label: 'Enrollment progress', detail: `${enrollmentRate}% enrollment rate against visible eligibility.`, tone: enrollmentRate >= 85 ? 'success' : 'warning' },
+          { label: 'Life-event queue', detail: `${pendingLifeEvents.length} pending life event${pendingLifeEvents.length === 1 ? '' : 's'} need review.`, tone: pendingLifeEvents.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Plans, providers, enrollments, dependents, life events, ACA, COBRA, flex benefits, and employer cost are summarized together.',
+          'HR can route to plans, enrollment, and life events without changing elections or carrier state from this panel.',
+          'This panel is additive review guidance only; it does not enroll employees, approve life events, change coverage, or sync carriers.',
+        ]}
+        actions={[
+          { label: 'Review plans', description: 'Inspect active plans, providers, and employee cost.', onClick: () => setActiveTab('plans') },
+          { label: 'Run enrollment', description: 'Check coverage choices and enrollment progress.', onClick: () => setActiveTab('enrollment') },
+          { label: 'Resolve events', description: 'Review pending life events and deadlines.', onClick: () => setActiveTab('life-events') },
         ]}
       />
 
