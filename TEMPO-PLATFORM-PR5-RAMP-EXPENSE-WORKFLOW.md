@@ -23,6 +23,16 @@ It summarizes:
 - Recent same-amount duplicate risk
 - Expected reimbursement path after approval
 
+The reimbursement tab now includes a timeline for approved and batched reimbursements.
+
+It shows:
+
+- Approved reports still awaiting a reimbursement batch
+- Queued reimbursement batch items
+- Processing batch items
+- Completed batch items
+- Method, amount, employee, step, and next-state explanation
+
 ## Safety Boundary
 
 This slice does not change:
@@ -38,7 +48,6 @@ It only adds a decision layer before existing actions.
 
 ## Next Expense Slices
 
-1. Reimbursement timeline: show employees and finance what happens after approval.
-2. Budget impact preview: expose cost-center impact before approvers approve.
-3. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
-4. Visual/browser QA once `DATABASE_URL` and auth/session env are available.
+1. Budget impact preview: expose cost-center impact before approvers approve.
+2. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
+3. Visual/browser QA once `DATABASE_URL` and auth/session env are available.

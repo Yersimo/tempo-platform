@@ -903,6 +903,42 @@ export default function ExpensePage() {
     return expenseReports.filter((r: any) => r.status === 'approved' && !reimbursedIds.has(r.id))
   }, [expenseReports, reimbursementBatches])
 
+  const reimbursementTimeline = useMemo(() => {
+    const awaitingBatch = approvedForReimbursement.map((report: any) => ({
+      id: `approved-${report.id}`,
+      title: report.title,
+      employee: getEmployeeName(report.employee_id),
+      amount: Number(report.total_amount || 0),
+      status: 'Awaiting batch',
+      method: 'Not selected',
+      date: report.approved_at || report.submitted_at || report.created_at,
+      step: 'Approved',
+      detail: 'Finance needs to add this report to a reimbursement batch.',
+      tone: 'warning' as const,
+    }))
+
+    const batched = reimbursementBatches.flatMap((batch: any) => (batch.items || []).map((item: any) => ({
+      id: `batch-${batch.id}-${item.id}`,
+      title: item.notes || 'Expense reimbursement',
+      employee: getEmployeeName(item.employee_id),
+      amount: Number(item.amount || 0),
+      status: batch.status === 'completed' ? 'Paid' : batch.status === 'processing' ? 'Processing' : 'Batched',
+      method: batch.method?.replace('_', ' ') || 'Manual',
+      date: batch.processed_at || batch.created_at || new Date().toISOString(),
+      step: batch.status === 'completed' ? 'Completed' : batch.status === 'processing' ? 'In progress' : 'Queued',
+      detail: batch.status === 'completed'
+        ? 'Reimbursement batch is marked complete.'
+        : batch.status === 'processing'
+          ? 'Finance has started processing this reimbursement.'
+          : 'Reimbursement is queued inside a batch.',
+      tone: batch.status === 'completed' ? 'success' as const : batch.status === 'processing' ? 'info' as const : 'warning' as const,
+    })))
+
+    return [...awaitingBatch, ...batched]
+      .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+      .slice(0, 8)
+  }, [approvedForReimbursement, getEmployeeName, reimbursementBatches])
+
   // ---- Mileage Entry CRUD ----
   function submitMileageEntry() {
     if (!mileageEntryForm.employee_id) { addToast('Employee is required', 'error'); return }
@@ -3274,6 +3310,52 @@ export default function ExpensePage() {
             <StatCard label="Pending" value={reimbursementStats.pendingBatches} change={formatCurrency(reimbursementStats.pendingAmount, defaultCurrency)} changeType={reimbursementStats.pendingBatches > 0 ? 'negative' : 'positive'} icon={<Clock size={20} />} />
             <StatCard label="Awaiting Batch" value={approvedForReimbursement.length} change="Approved expenses" changeType="neutral" icon={<Banknote size={20} />} />
           </div>
+
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Reimbursement Timeline</CardTitle>
+                <Badge variant="ai">{reimbursementTimeline.length} visible</Badge>
+              </div>
+            </CardHeader>
+            {reimbursementTimeline.length === 0 ? (
+              <div className="px-6 py-12 text-center text-sm text-t3">
+                No approved or batched reimbursements yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-divider">
+                {reimbursementTimeline.map(item => (
+                  <div key={item.id} className="px-6 py-4">
+                    <div className="flex items-start gap-4">
+                      <div className={cn(
+                        'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                        item.tone === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                          item.tone === 'info' ? 'border-blue-200 bg-blue-50 text-blue-700' :
+                            'border-amber-200 bg-amber-50 text-amber-700'
+                      )}>
+                        {item.tone === 'success' ? <CheckCircle2 size={15} /> : item.tone === 'info' ? <RotateCcw size={15} /> : <Clock size={15} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-t1">{item.title}</p>
+                          <Badge variant={item.tone === 'success' ? 'success' : item.tone === 'info' ? 'info' : 'warning'}>{item.status}</Badge>
+                          <Badge variant="default">{item.method}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-t3">
+                          {item.employee} - {item.date ? new Date(item.date).toLocaleDateString() : 'No date'} - {formatCurrency(item.amount, defaultCurrency)}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-t2">{item.detail}</p>
+                      </div>
+                      <div className="hidden text-right md:block">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Step</p>
+                        <p className="text-xs font-semibold text-t1">{item.step}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
 
           {/* Pending Reimbursements */}
           {approvedForReimbursement.length > 0 && (
