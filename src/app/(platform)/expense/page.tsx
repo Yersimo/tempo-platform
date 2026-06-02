@@ -694,6 +694,50 @@ export default function ExpensePage() {
     }
   }, [reportForm.items, expensePolicies, receiptUploads, submitPolicyWarnings])
 
+  const submitReadinessChecklist = useMemo(() => {
+    const validItems = reportForm.items.filter(item => item.description && Number(item.amount) > 0)
+    const totalAmount = validItems.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const receiptCount = receiptUploads.filter(r => r.status === 'done').length
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const possibleDuplicate = totalAmount > 0 && expenseReports.some((report: any) =>
+      report.employee_id === reportForm.employee_id &&
+      (report.totalAmount || report.total_amount) === totalAmount &&
+      (report.submittedAt || report.submitted_at) &&
+      (report.submittedAt || report.submitted_at) > sevenDaysAgo
+    )
+
+    return [
+      {
+        label: 'Required details',
+        status: reportForm.employee_id && reportForm.title && validItems.length > 0 ? 'Ready' : 'Missing',
+        detail: reportForm.employee_id && reportForm.title && validItems.length > 0
+          ? `${validItems.length} valid line item${validItems.length === 1 ? '' : 's'} ready for review.`
+          : 'Add employee, title, and at least one line item with amount.',
+      },
+      {
+        label: 'Receipt evidence',
+        status: submitPolicyOutcome.needsReceipt === 0 || receiptCount >= submitPolicyOutcome.needsReceipt ? 'Ready' : 'Needs receipt',
+        detail: submitPolicyOutcome.needsReceipt === 0
+          ? 'No visible receipt requirement for current line items.'
+          : `${receiptCount}/${submitPolicyOutcome.needsReceipt} required receipt${submitPolicyOutcome.needsReceipt === 1 ? '' : 's'} attached.`,
+      },
+      {
+        label: 'Duplicate check',
+        status: possibleDuplicate ? 'Review' : 'Clear',
+        detail: possibleDuplicate
+          ? 'A same-amount report from this employee was submitted in the last 7 days.'
+          : 'No same-amount recent duplicate found in current reports.',
+      },
+      {
+        label: 'Reimbursement path',
+        status: submitPolicyOutcome.tone === 'warning' ? 'Review' : 'Ready',
+        detail: submitPolicyOutcome.tone === 'warning'
+          ? 'Approval may require policy or finance review before reimbursement.'
+          : 'Expected path is normal approval before reimbursement batching.',
+      },
+    ]
+  }, [expenseReports, receiptUploads, reportForm.employee_id, reportForm.items, reportForm.title, submitPolicyOutcome.needsReceipt, submitPolicyOutcome.tone])
+
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -859,6 +903,42 @@ export default function ExpensePage() {
     return expenseReports.filter((r: any) => r.status === 'approved' && !reimbursedIds.has(r.id))
   }, [expenseReports, reimbursementBatches])
 
+  const reimbursementTimeline = useMemo(() => {
+    const awaitingBatch = approvedForReimbursement.map((report: any) => ({
+      id: `approved-${report.id}`,
+      title: report.title,
+      employee: getEmployeeName(report.employee_id),
+      amount: Number(report.total_amount || 0),
+      status: 'Awaiting batch',
+      method: 'Not selected',
+      date: report.approved_at || report.submitted_at || report.created_at,
+      step: 'Approved',
+      detail: 'Finance needs to add this report to a reimbursement batch.',
+      tone: 'warning' as const,
+    }))
+
+    const batched = reimbursementBatches.flatMap((batch: any) => (batch.items || []).map((item: any) => ({
+      id: `batch-${batch.id}-${item.id}`,
+      title: item.notes || 'Expense reimbursement',
+      employee: getEmployeeName(item.employee_id),
+      amount: Number(item.amount || 0),
+      status: batch.status === 'completed' ? 'Paid' : batch.status === 'processing' ? 'Processing' : 'Batched',
+      method: batch.method?.replace('_', ' ') || 'Manual',
+      date: batch.processed_at || batch.created_at || new Date().toISOString(),
+      step: batch.status === 'completed' ? 'Completed' : batch.status === 'processing' ? 'In progress' : 'Queued',
+      detail: batch.status === 'completed'
+        ? 'Reimbursement batch is marked complete.'
+        : batch.status === 'processing'
+          ? 'Finance has started processing this reimbursement.'
+          : 'Reimbursement is queued inside a batch.',
+      tone: batch.status === 'completed' ? 'success' as const : batch.status === 'processing' ? 'info' as const : 'warning' as const,
+    })))
+
+    return [...awaitingBatch, ...batched]
+      .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+      .slice(0, 8)
+  }, [approvedForReimbursement, getEmployeeName, reimbursementBatches])
+
   // ---- Mileage Entry CRUD ----
   function submitMileageEntry() {
     if (!mileageEntryForm.employee_id) { addToast('Employee is required', 'error'); return }
@@ -921,6 +1001,128 @@ export default function ExpensePage() {
   const pendingExpenseReports = useMemo(() => {
     return expenseReports.filter(r => r.status === 'pending' || r.status === 'submitted' || r.status === 'pending_approval')
   }, [expenseReports])
+
+  const approvalCockpitRows = useMemo(() => {
+    return pendingExpenseReports.map((report: any) => {
+      const policySignals = checkPolicyCompliance(report)
+      const fraudRisk = calculateFraudRiskScore(report, expenseReports)
+      const fraudScore = fraudRisk.value
+      const receiptCount = Number(report.receipt_count || 0)
+      const hasReceiptGap = receiptCount === 0
+      const isHighValue = Number(report.total_amount || 0) > 1000
+      const employee = employees.find(emp => emp.id === report.employee_id) as any
+      const matchingBudget = expenseBudgets.find(budget =>
+        budget.department_id === employee?.department_id ||
+        budget.owner_id === report.employee_id ||
+        String(budget.name || '').toLowerCase().includes(String(report.items?.[0]?.category || '').toLowerCase())
+      ) || expenseBudgets[0]
+      const projectedBudgetUtilization = matchingBudget?.total_amount
+        ? Math.round(((Number(matchingBudget.spent_amount || 0) + Number(report.total_amount || 0)) / Number(matchingBudget.total_amount)) * 100)
+        : null
+      const budgetImpact = matchingBudget
+        ? {
+            name: matchingBudget.name || 'Active budget',
+            current: Number(matchingBudget.utilization || 0),
+            projected: projectedBudgetUtilization,
+            remaining: Number(matchingBudget.total_amount || 0) - Number(matchingBudget.spent_amount || 0) - Number(report.total_amount || 0),
+          }
+        : null
+      const blockers = [
+        hasReceiptGap ? 'Missing receipt evidence' : null,
+        policySignals.length > 0 ? `${policySignals.length} policy signal${policySignals.length === 1 ? '' : 's'}` : null,
+        fraudScore >= 70 ? 'High anomaly score' : null,
+        isHighValue ? 'High-value approval' : null,
+        budgetImpact?.projected && budgetImpact.projected > 85 ? `${budgetImpact.name} would reach ${budgetImpact.projected}%` : null,
+      ].filter(Boolean) as string[]
+
+      let route = 'Manager approval'
+      if (fraudScore >= 70) route = 'Finance risk review'
+      else if (policySignals.length > 0) route = 'Policy review'
+      else if (isHighValue) route = 'Finance approval'
+      else if (hasReceiptGap) route = 'Receipt follow-up'
+
+      return {
+        id: report.id,
+        title: report.title,
+        employee: getEmployeeName(report.employee_id),
+        amount: Number(report.total_amount || 0),
+        submittedAt: report.submitted_at || report.created_at,
+        receiptCount,
+        fraudScore,
+        budgetImpact,
+        route,
+        blockers,
+        status: blockers.length === 0 ? 'Ready' : blockers.length > 2 ? 'High touch' : 'Review',
+      }
+    }).sort((a, b) => {
+      if (b.blockers.length !== a.blockers.length) return b.blockers.length - a.blockers.length
+      return b.amount - a.amount
+    })
+  }, [employees, expenseBudgets, expenseReports, getEmployeeName, pendingExpenseReports])
+
+  const expenseExceptionQueue = useMemo(() => {
+    const receiptExceptions = receiptMatches
+      .filter((match: any) => ['mismatch_amount', 'mismatch_vendor', 'mismatch_date', 'no_receipt'].includes(match.match_status))
+      .map((match: any) => ({
+        id: `receipt-${match.id}`,
+        type: 'Receipt evidence',
+        title: match.receipt_url?.split('/').pop() || 'Receipt needs review',
+        owner: 'Finance operations',
+        detail: `Receipt status: ${String(match.match_status || 'needs_review').replace(/_/g, ' ')}.`,
+        severity: match.match_status === 'no_receipt' ? 'High' : 'Medium',
+        action: 'Open receipts',
+        route: () => setActiveTab('receipt-management'),
+      }))
+
+    const duplicateExceptions = duplicateDetections
+      .filter((duplicate: any) => duplicate.status === 'flagged')
+      .map((duplicate: any) => ({
+        id: `duplicate-${duplicate.id}`,
+        type: 'Duplicate risk',
+        title: duplicate.expense_description || 'Possible duplicate expense',
+        owner: getEmployeeName(duplicate.employee_id),
+        detail: `${Math.round((duplicate.similarity || 0) * 100)}% similar to another ${formatCurrency(duplicate.duplicate_amount || duplicate.expense_amount || 0, defaultCurrency)} expense.`,
+        severity: 'High',
+        action: 'Review duplicate',
+        route: () => {
+          setShowDuplicateDetail(duplicate.id)
+          setActiveTab('reports')
+        },
+      }))
+
+    const policyExceptions = advancedPolicyViolationLog.slice(0, 6).map(violation => ({
+      id: `policy-${violation.id}`,
+      type: 'Policy exception',
+      title: violation.expense,
+      owner: violation.employee,
+      detail: `${violation.policy}: ${violation.rule} -> ${violation.action.replace(/_/g, ' ')}.`,
+      severity: violation.action === 'block' ? 'High' : 'Medium',
+      action: 'Open policies',
+      route: () => setActiveTab('advanced-policies'),
+    }))
+
+    const riskExceptions = approvalCockpitRows
+      .filter(row => row.fraudScore >= 70 || row.status === 'High touch')
+      .map(row => ({
+        id: `risk-${row.id}`,
+        type: 'Approval risk',
+        title: row.title,
+        owner: row.employee,
+        detail: `${row.fraudScore}% anomaly score; ${row.blockers.slice(0, 2).join(', ') || 'review before approval'}.`,
+        severity: row.fraudScore >= 70 ? 'High' : 'Medium',
+        action: 'Open report',
+        route: () => {
+          setFilterStatus('')
+          setSearchQuery('')
+          setExpandedReport(row.id)
+          setActiveTab('reports')
+        },
+      }))
+
+    return [...riskExceptions, ...receiptExceptions, ...duplicateExceptions, ...policyExceptions]
+      .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'High' ? -1 : 1))
+      .slice(0, 10)
+  }, [advancedPolicyViolationLog, approvalCockpitRows, defaultCurrency, duplicateDetections, getEmployeeName, receiptMatches])
 
   const bulkExpTargetReports = useMemo(() => {
     switch (bulkExpSelectMode) {
@@ -1518,6 +1720,148 @@ export default function ExpensePage() {
       {/* ============================================================ */}
       {activeTab === 'reports' && (
         <>
+          {approvalCockpitRows.length > 0 && (
+            <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="border-b border-border px-5 py-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Approver cockpit</p>
+                    <h2 className="text-lg font-semibold text-t1">Decide the next expense safely</h2>
+                    <p className="mt-1 max-w-3xl text-sm text-t2">
+                      Pending reports are sorted by evidence gaps, policy signals, anomaly score, value, and budget watchlist pressure before approval.
+                    </p>
+                  </div>
+                  <Badge variant="ai">{approvalCockpitRows.length} queued</Badge>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 xl:grid-cols-3">
+                {approvalCockpitRows.slice(0, 6).map(row => (
+                  <div key={row.id} className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-t1">{row.title}</h3>
+                        <p className="mt-1 text-xs text-t3">
+                          {row.employee} {row.submittedAt ? `- ${new Date(row.submittedAt).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+                      <Badge variant={row.status === 'Ready' ? 'success' : row.status === 'High touch' ? 'error' : 'warning'}>
+                        {row.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Amount</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{formatCurrency(row.amount, defaultCurrency)}</p>
+                      </div>
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Receipts</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{row.receiptCount}</p>
+                      </div>
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Risk</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{row.fraudScore}%</p>
+                      </div>
+                    </div>
+
+                    {row.budgetImpact && (
+                      <div className="mt-3 rounded-md border border-border bg-card px-3 py-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] uppercase tracking-wide text-t3">{row.budgetImpact.name}</p>
+                            <p className="mt-1 text-xs font-semibold text-t1">
+                              {row.budgetImpact.current}% now {'->'} {row.budgetImpact.projected ?? row.budgetImpact.current}% after approval
+                            </p>
+                          </div>
+                          <Badge variant={(row.budgetImpact.projected || 0) > 100 ? 'error' : (row.budgetImpact.projected || 0) > 85 ? 'warning' : 'success'}>
+                            {row.budgetImpact.remaining < 0 ? 'Over budget' : `${formatCurrency(row.budgetImpact.remaining, defaultCurrency, { compact: true })} left`}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 min-h-[72px] space-y-1">
+                      {row.blockers.length > 0 ? row.blockers.slice(0, 3).map(blocker => (
+                        <div key={blocker} className="flex items-center gap-2 text-xs text-t2">
+                          <AlertTriangle size={12} className="shrink-0 text-amber-500" />
+                          <span>{blocker}</span>
+                        </div>
+                      )) : (
+                        <div className="flex items-center gap-2 text-xs text-t2">
+                          <CheckCircle2 size={12} className="shrink-0 text-success" />
+                          <span>No visible blockers from current evidence.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Suggested route</p>
+                        <p className="text-xs font-semibold text-t1">{row.route}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setFilterStatus('')
+                          setSearchQuery('')
+                          setExpandedReport(row.id)
+                        }}
+                      >
+                        Open report <ArrowRight size={13} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {expenseExceptionQueue.length > 0 && (
+            <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="border-b border-border px-5 py-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Exception resolution</p>
+                    <h2 className="text-lg font-semibold text-t1">Finance queue for expense issues</h2>
+                    <p className="mt-1 max-w-3xl text-sm text-t2">
+                      Receipt gaps, duplicate warnings, policy exceptions, and high-risk approvals are grouped before finance changes report or payment state.
+                    </p>
+                  </div>
+                  <Badge variant="warning">{expenseExceptionQueue.length} open</Badge>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 lg:grid-cols-2">
+                {expenseExceptionQueue.map(exception => (
+                  <button
+                    key={exception.id}
+                    type="button"
+                    onClick={exception.route}
+                    className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={exception.severity === 'High' ? 'error' : 'warning'}>{exception.severity}</Badge>
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-t3">{exception.type}</span>
+                        </div>
+                        <h3 className="mt-2 truncate text-sm font-semibold text-t1">{exception.title}</h3>
+                        <p className="mt-1 text-xs text-t3">Owner: {exception.owner}</p>
+                      </div>
+                      <AlertTriangle size={16} className={exception.severity === 'High' ? 'shrink-0 text-error' : 'shrink-0 text-amber-500'} />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-t2">{exception.detail}</p>
+                    <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                      {exception.action} <ArrowRight size={13} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Search & Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
             <div className="relative flex-1 min-w-[200px]">
@@ -3108,6 +3452,52 @@ export default function ExpensePage() {
             <StatCard label="Awaiting Batch" value={approvedForReimbursement.length} change="Approved expenses" changeType="neutral" icon={<Banknote size={20} />} />
           </div>
 
+          <Card padding="none" className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Reimbursement Timeline</CardTitle>
+                <Badge variant="ai">{reimbursementTimeline.length} visible</Badge>
+              </div>
+            </CardHeader>
+            {reimbursementTimeline.length === 0 ? (
+              <div className="px-6 py-12 text-center text-sm text-t3">
+                No approved or batched reimbursements yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-divider">
+                {reimbursementTimeline.map(item => (
+                  <div key={item.id} className="px-6 py-4">
+                    <div className="flex items-start gap-4">
+                      <div className={cn(
+                        'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                        item.tone === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                          item.tone === 'info' ? 'border-blue-200 bg-blue-50 text-blue-700' :
+                            'border-amber-200 bg-amber-50 text-amber-700'
+                      )}>
+                        {item.tone === 'success' ? <CheckCircle2 size={15} /> : item.tone === 'info' ? <RotateCcw size={15} /> : <Clock size={15} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-t1">{item.title}</p>
+                          <Badge variant={item.tone === 'success' ? 'success' : item.tone === 'info' ? 'info' : 'warning'}>{item.status}</Badge>
+                          <Badge variant="default">{item.method}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-t3">
+                          {item.employee} - {item.date ? new Date(item.date).toLocaleDateString() : 'No date'} - {formatCurrency(item.amount, defaultCurrency)}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-t2">{item.detail}</p>
+                      </div>
+                      <div className="hidden text-right md:block">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Step</p>
+                        <p className="text-xs font-semibold text-t1">{item.step}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           {/* Pending Reimbursements */}
           {approvedForReimbursement.length > 0 && (
             <Card padding="none" className="mb-6">
@@ -3312,6 +3702,33 @@ export default function ExpensePage() {
               <p className="text-sm font-semibold text-t1">
                 {tc('total')}: {formatCurrency(reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0), defaultCurrency)}
               </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-canvas p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-t1">Submit readiness</p>
+                <p className="mt-1 text-xs text-t3">Confirm the report is ready before it enters approval and reimbursement routing.</p>
+              </div>
+              <Badge variant={submitReadinessChecklist.every(item => item.status === 'Ready' || item.status === 'Clear') ? 'success' : 'warning'}>
+                {submitReadinessChecklist.filter(item => item.status !== 'Ready' && item.status !== 'Clear').length} attention
+              </Badge>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {submitReadinessChecklist.map(item => (
+                <div key={item.label} className="rounded-lg border border-border bg-white px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-t1">{item.label}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-t3">{item.detail}</p>
+                    </div>
+                    <Badge variant={item.status === 'Ready' || item.status === 'Clear' ? 'success' : item.status === 'Review' ? 'warning' : 'error'}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
