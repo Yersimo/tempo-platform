@@ -922,6 +922,47 @@ export default function ExpensePage() {
     return expenseReports.filter(r => r.status === 'pending' || r.status === 'submitted' || r.status === 'pending_approval')
   }, [expenseReports])
 
+  const approvalCockpitRows = useMemo(() => {
+    return pendingExpenseReports.map((report: any) => {
+      const policySignals = checkPolicyCompliance(report)
+      const fraudRisk = calculateFraudRiskScore(report, expenseReports)
+      const fraudScore = fraudRisk.value
+      const receiptCount = Number(report.receipt_count || 0)
+      const hasReceiptGap = receiptCount === 0
+      const isHighValue = Number(report.total_amount || 0) > 1000
+      const budgetWatchlistCount = expenseBudgets.filter(budget => budget.isOver || budget.utilization > 85).length
+      const blockers = [
+        hasReceiptGap ? 'Missing receipt evidence' : null,
+        policySignals.length > 0 ? `${policySignals.length} policy signal${policySignals.length === 1 ? '' : 's'}` : null,
+        fraudScore >= 70 ? 'High anomaly score' : null,
+        isHighValue ? 'High-value approval' : null,
+        budgetWatchlistCount > 0 ? `${budgetWatchlistCount} budget watchlist${budgetWatchlistCount === 1 ? '' : 's'}` : null,
+      ].filter(Boolean) as string[]
+
+      let route = 'Manager approval'
+      if (fraudScore >= 70) route = 'Finance risk review'
+      else if (policySignals.length > 0) route = 'Policy review'
+      else if (isHighValue) route = 'Finance approval'
+      else if (hasReceiptGap) route = 'Receipt follow-up'
+
+      return {
+        id: report.id,
+        title: report.title,
+        employee: getEmployeeName(report.employee_id),
+        amount: Number(report.total_amount || 0),
+        submittedAt: report.submitted_at || report.created_at,
+        receiptCount,
+        fraudScore,
+        route,
+        blockers,
+        status: blockers.length === 0 ? 'Ready' : blockers.length > 2 ? 'High touch' : 'Review',
+      }
+    }).sort((a, b) => {
+      if (b.blockers.length !== a.blockers.length) return b.blockers.length - a.blockers.length
+      return b.amount - a.amount
+    })
+  }, [expenseBudgets, expenseReports, getEmployeeName, pendingExpenseReports])
+
   const bulkExpTargetReports = useMemo(() => {
     switch (bulkExpSelectMode) {
       case 'all_pending':
@@ -1518,6 +1559,88 @@ export default function ExpensePage() {
       {/* ============================================================ */}
       {activeTab === 'reports' && (
         <>
+          {approvalCockpitRows.length > 0 && (
+            <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="border-b border-border px-5 py-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Approver cockpit</p>
+                    <h2 className="text-lg font-semibold text-t1">Decide the next expense safely</h2>
+                    <p className="mt-1 max-w-3xl text-sm text-t2">
+                      Pending reports are sorted by evidence gaps, policy signals, anomaly score, value, and budget watchlist pressure before approval.
+                    </p>
+                  </div>
+                  <Badge variant="ai">{approvalCockpitRows.length} queued</Badge>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 xl:grid-cols-3">
+                {approvalCockpitRows.slice(0, 6).map(row => (
+                  <div key={row.id} className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-t1">{row.title}</h3>
+                        <p className="mt-1 text-xs text-t3">
+                          {row.employee} {row.submittedAt ? `- ${new Date(row.submittedAt).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+                      <Badge variant={row.status === 'Ready' ? 'success' : row.status === 'High touch' ? 'error' : 'warning'}>
+                        {row.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Amount</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{formatCurrency(row.amount, defaultCurrency)}</p>
+                      </div>
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Receipts</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{row.receiptCount}</p>
+                      </div>
+                      <div className="rounded-md border border-border bg-card px-2 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Risk</p>
+                        <p className="mt-1 text-xs font-semibold text-t1">{row.fraudScore}%</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 min-h-[72px] space-y-1">
+                      {row.blockers.length > 0 ? row.blockers.slice(0, 3).map(blocker => (
+                        <div key={blocker} className="flex items-center gap-2 text-xs text-t2">
+                          <AlertTriangle size={12} className="shrink-0 text-amber-500" />
+                          <span>{blocker}</span>
+                        </div>
+                      )) : (
+                        <div className="flex items-center gap-2 text-xs text-t2">
+                          <CheckCircle2 size={12} className="shrink-0 text-success" />
+                          <span>No visible blockers from current evidence.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-t3">Suggested route</p>
+                        <p className="text-xs font-semibold text-t1">{row.route}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setFilterStatus('')
+                          setSearchQuery('')
+                          setExpandedReport(row.id)
+                        }}
+                      >
+                        Open report <ArrowRight size={13} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Search & Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
             <div className="relative flex-1 min-w-[200px]">
