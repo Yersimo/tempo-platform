@@ -6362,19 +6362,50 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'demo_login', slug }),
       })
-      if (!res.ok) return false
-      const data = await res.json()
-      const empId = data.user?.employee_id || ''
-      if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
-        const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
-        await loadDemoData(demoOrgId)
+      if (res.ok) {
+        const data = await res.json()
+        const empId = data.user?.employee_id || ''
+        if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
+          const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
+          await loadDemoData(demoOrgId)
+        }
+        setCurrentUser(data.user)
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
+        return true
       }
-      setCurrentUser(data.user)
-      try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
-      return true
     } catch {
-      return false
+      // Fall through to the local demo credential path below.
     }
+
+    const demoEmailBySlug: Record<string, string> = {
+      admin: 'yersimo@theworktempo.com',
+      'ecobank-chro': 'amara.kone@ecobank.com',
+      'ecobank-cfo': 'i.agu@ecobank.com',
+      'ecobank-cto': 'b.ogunleye@ecobank.com',
+      'ecobank-dept-head': 'o.adeyemi@ecobank.com',
+      'ecobank-hrbp': 'a.darko@ecobank.com',
+      'ecobank-manager': 'n.okafor@ecobank.com',
+      'ecobank-employee': 'k.asante@ecobank.com',
+      'kashco-md': 's.ndlovu@kashco.com',
+      'kashco-strategy': 'l.amari@kashco.com',
+      'kashco-manager': 't.mugabo@kashco.com',
+      'kashco-consultant': 'n.joubert@kashco.com',
+      'kashco-cpo': 'z.moyo@kashco.com',
+    }
+    const demoModule = await loadDemoModule()
+    const email = demoEmailBySlug[slug]
+    const cred = email ? demoModule.allDemoCredentials.find(c => c.email === email && c.password) : null
+    if (!cred) return false
+
+    const orgId = cred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+    await loadDemoData(orgId)
+    const orgData = demoModule.getDemoDataForOrg(orgId)
+    const emp = orgData.employees.find((e: { id: string }) => e.id === cred.employeeId)
+    if (!emp) return false
+    const user = buildCurrentUser(emp)
+    setCurrentUser(user)
+    try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
+    return true
   }, [loadDemoData])
 
   const verifyMFA = useCallback(async (mfaToken: string, code: string): Promise<boolean> => {
