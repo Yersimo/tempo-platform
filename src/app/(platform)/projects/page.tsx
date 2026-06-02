@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -119,6 +121,7 @@ export default function ProjectsPage() {
   const completedTasks = tasks.filter(t => t.status === 'done').length
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
   const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
+  const activeAutomationRules = automationRules.filter(r => r.is_active).length
 
   // AI insights
   const projectHealthScores = useMemo(() => {
@@ -148,6 +151,16 @@ export default function ProjectsPage() {
   const automationSuggestions = useMemo(() =>
     suggestAutomationRules(tasks, automationLog),
     [tasks, automationLog]
+  )
+  const projectReadinessScore = Math.min(98,
+    42 +
+    (projects.length > 0 ? 10 : 3) +
+    (tasks.length > 0 ? 10 : 3) +
+    (completionRate >= 70 ? 12 : completionRate >= 40 ? 8 : 3) +
+    (overdueTasks === 0 ? 10 : overdueTasks <= 3 ? 6 : 2) +
+    (milestones.length > 0 ? 6 : 2) +
+    (activeAutomationRules > 0 ? 6 : 2) +
+    (resourceBottlenecks.length === 0 ? 2 : 1)
   )
 
   // Filtered projects for search
@@ -437,6 +450,52 @@ export default function ProjectsPage() {
             <Button size="sm" onClick={openNewProject}><Plus size={14} /> {t('newProject')}</Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Projects"
+        benchmark="Asana and Linear-grade execution control with health scoring, task flow, capacity, milestones, and automation."
+        score={projectReadinessScore}
+        scoreLabel="Execution readiness"
+        summary="Tempo should make work execution legible across teams: leaders see health, owners see task flow, capacity risks surface early, and repeatable work becomes automated."
+        metrics={[
+          { label: 'Projects', value: projects.length, tone: projects.length > 0 ? 'success' : 'warning' },
+          { label: 'Active tasks', value: activeTasks, tone: activeTasks > 0 ? 'ai' : 'neutral' },
+          { label: 'Completion', value: `${completionRate}%`, tone: completionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Overdue', value: overdueTasks, tone: overdueTasks === 0 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Keep project health, timeline risk, and owner accountability in one view.',
+          'Use kanban, sprint, and capacity views to prevent hidden work buildup.',
+          'Turn repeated status and assignment patterns into automation rules.',
+        ]}
+        actions={[
+          { label: 'Review project portfolio', description: 'Inspect health, owners, milestones, and progress.', onClick: () => setActiveTab('list') },
+          { label: 'Balance capacity', description: 'Find overloaded people and unassigned work.', onClick: () => setActiveTab('capacity') },
+          { label: 'Improve automation', description: 'Review active rules and AI suggestions.', onClick: () => setActiveTab('automations') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Execution control trust layer"
+        score={projectReadinessScore}
+        summary="Checks whether project health, tasks, milestones, timeline risks, capacity bottlenecks, and automation suggestions are visible before work is reassigned or automated."
+        icon={<FolderKanban size={18} />}
+        checks={[
+          { label: 'Portfolio coverage', detail: `${activeProjects} active project${activeProjects === 1 ? '' : 's'} across ${projects.length} total.`, tone: activeProjects > 0 ? 'success' : 'warning' },
+          { label: 'Task flow', detail: `${completionRate}% completion with ${overdueTasks} overdue item${overdueTasks === 1 ? '' : 's'}.`, tone: completionRate >= 70 && overdueTasks === 0 ? 'success' : 'warning' },
+          { label: 'Capacity evidence', detail: `${resourceBottlenecks.length} bottleneck signal${resourceBottlenecks.length === 1 ? '' : 's'} and ${activeAutomationRules} active automation rule${activeAutomationRules === 1 ? '' : 's'}.`, tone: resourceBottlenecks.length === 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Uses visible projects, tasks, milestones, health scores, timeline risks, bottlenecks, and automation suggestions.',
+          'Routes reviewers to portfolio, capacity, and automation views without reassigning tasks or toggling rules.',
+          'Keeps execution review separate from task mutation, project deletion, and automation activation.',
+        ]}
+        actions={[
+          { label: 'Review portfolio', description: 'Inspect health, owners, and milestones.', onClick: () => setActiveTab('list') },
+          { label: 'Balance capacity', description: 'Check overloaded people and hidden work.', onClick: () => setActiveTab('capacity') },
+          { label: 'Audit automations', description: 'Review rules and suggested improvements.', onClick: () => setActiveTab('automations') },
+        ]}
       />
 
       {/* Stats */}

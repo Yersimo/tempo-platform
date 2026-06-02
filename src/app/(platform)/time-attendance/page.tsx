@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -619,6 +621,52 @@ export default function TimeAttendancePage() {
             {activeTab === 'pto' && <Button size="sm" onClick={() => { setEditingPolicy(null); setShowPTOPolicyModal(true) }}><Plus size={14} /> Add Policy</Button>}
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Time & Attendance"
+        benchmark="UKG and Rippling-grade time operations with clocking, timesheets, overtime, scheduling, PTO, and labor insight in one flow."
+        score={Math.min(97, 50 + (activeEmployeesToday > 0 ? 10 : 2) + (pendingCount <= 5 ? 10 : 4) + (analyticsData.punctualityRate >= 90 ? 10 : 4) + (timeOffPolicies.filter(p => p.is_active).length > 0 ? 8 : 2))}
+        scoreLabel="Workforce time readiness"
+        summary="Connects daily clock-ins, weekly approvals, scheduling, overtime rules, PTO balances, leave requests, and attendance analytics so managers can act before payroll closes."
+        metrics={[
+          { label: 'Active today', value: activeEmployeesToday, tone: activeEmployeesToday > 0 ? 'success' : 'neutral' },
+          { label: 'Pending approvals', value: pendingCount, tone: pendingCount > 5 ? 'warning' : 'success' },
+          { label: 'Weekly OT', value: `${formatHours(totalOTWeek)}h`, tone: totalOTWeek > 20 ? 'warning' : 'neutral' },
+          { label: 'Punctuality', value: `${analyticsData.punctualityRate}%`, tone: analyticsData.punctualityRate >= 90 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Keep employee self-service simple while giving managers approval control.',
+          'Surface overtime, PTO, and scheduling risk before payroll is processed.',
+          'Make attendance patterns explainable across teams, locations, and shifts.',
+        ]}
+        actions={[
+          { label: 'Approve timesheets', description: 'Review weekly entries and exceptions.', onClick: () => setActiveTab('timesheets') },
+          { label: 'Control overtime', description: 'Inspect pending overtime and rules.', onClick: () => setActiveTab('overtime') },
+          { label: 'Plan PTO', description: 'Review policies, balances, and pending leave.', onClick: () => setActiveTab('pto') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Workforce time trust layer"
+        score={Math.min(97, 50 + (activeEmployeesToday > 0 ? 8 : 3) + (pendingCount <= 5 ? 10 : 4) + (totalOTWeek <= 20 ? 8 : 3) + (analyticsData.punctualityRate >= 90 ? 10 : 4))}
+        summary="Keeps clock-in coverage, timesheet approvals, overtime pressure, PTO controls, and payroll readiness visible before hours are trusted."
+        icon={<Clock size={18} />}
+        checks={[
+          { label: 'Timesheet queue', detail: `${pendingCount} pending approval${pendingCount === 1 ? '' : 's'} before payroll close.`, tone: pendingCount > 5 ? 'warning' : 'success' },
+          { label: 'Overtime pressure', detail: `${formatHours(totalOTWeek)}h overtime recorded this week.`, tone: totalOTWeek > 20 ? 'warning' : 'success' },
+          { label: 'Punctuality signal', detail: `${analyticsData.punctualityRate}% punctuality across visible attendance data.`, tone: analyticsData.punctualityRate >= 90 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Clock-ins, timesheets, scheduling, overtime, PTO balances, leave requests, policies, and attendance analytics are summarized together.',
+          'Managers can route to timesheets, overtime, and PTO without approving hours or changing leave from this panel.',
+          'This panel is additive review guidance only; it does not approve timesheets, create shifts, adjust PTO, or send payroll inputs.',
+        ]}
+        actions={[
+          { label: 'Approve timesheets', description: 'Review weekly entries and exceptions.', onClick: () => setActiveTab('timesheets') },
+          { label: 'Control overtime', description: 'Inspect overtime volume and rules.', onClick: () => setActiveTab('overtime') },
+          { label: 'Plan PTO', description: 'Review balances, policies, and pending leave.', onClick: () => setActiveTab('pto') },
+        ]}
       />
 
       {/* Tabs */}

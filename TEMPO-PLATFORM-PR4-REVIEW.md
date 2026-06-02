@@ -1,0 +1,195 @@
+# Tempo Platform PR #4 Review
+
+## Review Scope
+
+Reviewed the benchmark-led command center layer in draft PR #4, including the shared `ModuleCommandCenter`, the roadmap, and command-center usage across the 36 covered modules.
+
+The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, General Ledger, People, Onboarding, Offboarding, Documents, Compliance, Identity & Access, Password Manager, Benefits, Time & Attendance, Global Workforce, Recruiting, Headcount, Compensation, Vendors, Procurement, Analytics, Strategy, Workflows, Budgets, Global Spend, Revenue Recognition, Entity Consolidation, Transfer Pricing, Engagement, Mentoring, and Projects.
+
+## Product Review
+
+| Area | Review result | Notes |
+| --- | --- | --- |
+| Product direction | Pass | The PR creates a consistent benchmark-led operating layer without changing persistence, auth, billing, payroll, payments, migrations, or production integrations. |
+| UX consistency | Pass with follow-up | The command centers use a consistent structure: benchmark, readiness score, four metrics, three focus areas, and three next actions. Full visual QA is still blocked locally by missing DB/auth env. |
+| Routing | Pass | Actions route to existing tabs or existing hrefs. No new critical workflow state is introduced by the command centers. |
+| Copy and positioning | Pass with editorial review | The benchmark language is clear enough for review. Simon should still approve tone and competitor references before merge. |
+| Risk profile | Low | The PR is additive and reviewable. The largest risk is broad surface area, not destructive behavior. |
+| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, credential changes, device actions, bank matching, ledger posting, exports, period close, employee changes, task completion, signatures, benefits elections, timesheet approvals, worker changes, filings, candidate changes, position changes, compensation changes, supplier changes, purchase-order changes, goods-receipt changes, invoice matching, report saving, objective changes, automation execution, budget changes, FX transfers, balance movement, revenue recognition, consolidation report generation, tax report generation, survey distribution, mentoring pair creation, project updates, task reassignment, or compliance status changes. |
+
+## Browser QA Status
+
+Targeted Playwright route sweep was attempted for the affected authenticated route groups. It is blocked before route rendering because `/api/auth` imports the Neon database client and no `DATABASE_URL` is configured in this clone.
+
+Blocked error:
+
+```text
+No database connection string was provided to neon(). Perhaps an environment variable has not been set?
+```
+
+Required before full visual/browser QA:
+
+- Add a valid local `DATABASE_URL`.
+- Add the auth/session env needed by demo login.
+- Re-run authenticated route sweep and screenshots for the changed module groups.
+
+## Merge Recommendation
+
+Recommendation: merge PR #4 after Simon reviews the command center copy and after either:
+
+- the DB/auth-backed route sweep passes locally or in CI, or
+- Simon explicitly accepts merging this additive orientation layer with visual QA deferred.
+
+Do not deploy to production from this PR until visual QA has passed in an environment with the required auth/database settings.
+
+## Deeper Experiments Started
+
+The first deeper feature experiments are intentionally UI/state-only review benches. They let Simon compare directions before Tempo hardens the best versions into production workflows.
+
+Expense adds selectable Ramp-grade review-mode options for:
+
+- Ramp approval cockpit
+- ETI policy confidence
+- Reimbursement timeline
+- Budget guardrails
+
+Performance adds selectable Redwood-grade review-mode options for:
+
+- Manager copilot
+- Calibration room
+- Growth pathways
+- Merit readiness
+
+Learning adds selectable Sana-grade review-mode options for:
+
+- Learner home
+- Skills navigator
+- Compliance coach
+- AI authoring studio
+
+Onboarding adds selectable Joiner/Mover/Leaver review-mode options for:
+
+- Joiner launch
+- Mover transition
+- Leaver closure
+- Lifecycle control room
+
+Payroll adds selectable trust-layer review-mode options for:
+
+- Variance explainer
+- Approval chain
+- Payout preflight
+- Statutory confidence
+
+Dashboard adds selectable AI workday briefing review-mode options for:
+
+- Operator priorities
+- Manager mission control
+- Employee concierge
+- Executive board room
+
+IT Cloud adds selectable lifecycle access review-mode options for:
+
+- Joiner provisioning
+- Mover access change
+- Leaver lockdown
+- Endpoint trust
+
+Analytics adds selectable executive board-room review-mode options for:
+
+- Board pack narrative
+- Risk drill-down
+- KPI story builder
+- Operating review
+
+## Trust Layer Started
+
+Expense, Payroll, Performance, Learning, and IT Cloud now include reusable trust-layer review panels that make each dense workflow more confidence-building:
+
+- Expense: policy outcome, receipt evidence, approval load, reimbursement follow-through
+- Payroll: variance readiness, approval queue, statutory risk, reconciliation routing
+- Performance: review evidence, manager follow-up, PIP/talent risk, calibration routing
+- Learning: completion evidence, compliance coverage, skills signals, course routing
+- IT Cloud: device compliance, provisioning rules, security alerts, lifecycle routing
+
+Finance-control surfaces now include trust-layer review panels for:
+
+- Corporate Cards: limit health, pending transactions, policy exceptions, reconciliation routing
+- Invoices: approval exposure, overdue exposure, aging risk, invoice filters
+- Bill Pay: payment approval queue, scheduled cash, recurring controls
+- Bank Feeds: connection coverage, match confidence, unmatched exception queue
+- General Ledger: balance check, posting evidence, period-close readiness
+
+People-operations surfaces now include trust-layer review panels for:
+
+- People: employee graph confidence, document coverage, attrition alerts
+- Onboarding: task readiness, buddy coverage, module coverage
+- Offboarding: active exits, closure tasks, knowledge capture
+- Documents: signature queue, template coverage, audit trail
+- Compliance: requirement coverage, critical alerts, detection queue
+
+Workforce/security surfaces now include trust-layer review panels for:
+
+- Identity & Access: SSO coverage, MFA posture, certificate health
+- Password Manager: vault coverage, password strength, rotation pressure
+- Benefits: plan coverage, enrollment progress, life-event queue
+- Time & Attendance: timesheet queue, overtime pressure, punctuality signal
+- Global Workforce: coverage model, compliance attention, worker footprint
+
+Hiring/planning/supplier surfaces now include trust-layer review panels for:
+
+- Recruiting: pipeline coverage, interview readiness, offer exposure
+- Headcount: plan coverage, approval queue, budget pressure
+- Compensation: band coverage, market risk, review queue
+- Vendors: supplier coverage, compliance posture, spend exposure
+- Procurement: PO coverage, receipt evidence, exception queue
+
+Decision/automation/treasury surfaces now include trust-layer review panels for:
+
+- Analytics: source coverage, decision signals, report readiness
+- Strategy: OKR structure, execution coverage, KPI evidence
+- Workflows: active automation, run reliability, template coverage
+- Budgets: budget coverage, spend pressure, forecast evidence
+- Global Spend: entity coverage, FX visibility, regional evidence
+
+Revenue/tax/growth/execution surfaces now include trust-layer review panels for:
+
+- Revenue Recognition: contract coverage, obligation evidence, deferred balance
+- Entity Consolidation: entity structure, intercompany queue, report evidence
+- Transfer Pricing: policy coverage, transaction evidence, compliance posture
+- Engagement: listening coverage, voice intelligence, action follow-through
+- Mentoring: program coverage, match quality, outcome evidence
+- Projects: portfolio coverage, task flow, capacity evidence
+
+Expense submission now includes a policy outcome preview before submit:
+
+- Policy-ready vs needs-review status based on existing policy warning logic
+- Report total, matched policy count, receipt readiness, and high-value item count
+- Plain-language route explanation and top policy warning list
+
+Payroll approvals now include a preflight card before sign-off:
+
+- Variance diff availability
+- Missing bank-detail count
+- Statutory risk signal count
+- Internal-control gate status
+
+Performance now includes a growth bridge:
+
+- Aggregate competency gap count, matched learning count, course supply, and learner activity
+- Manager, learning, and decision action guidance
+- Per-employee course suggestions inside career-path detail when a course matches a visible competency gap
+
+Onboarding now includes a lifecycle control room:
+
+- HR document, IT account/equipment, payroll, learning, buddy, and blocker-owner readiness cards
+- Direct routing into preboarding, buddy support, and bulk task workspaces
+- Joiner/Mover/Leaver orchestration guidance without making lifecycle changes
+
+Expense now includes a Ramp-grade flow queue:
+
+- Receipt evidence, policy review, approval cockpit, reimbursement, and budget guardrail cards
+- Direct routing into receipt management, advanced policies, reports, reimbursement, and budgets
+- Human-decision guidance without changing approval or payment state
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, learning enrollments, career records, merit recommendations, PIP records, compliance evidence, device provisioning, access controls, credential state, benefits elections, time approvals, worker records, global filings, employee records, onboarding tasks, offboarding tasks, signature state, candidate records, position records, supplier records, purchase orders, goods receipts, invoice matches, report saves, report exports, report schedules, objectives, key results, initiatives, KPIs, workflow definitions, workflow runs, budgets, FX transfers, balances, revenue recognition entries, revenue schedules, consolidation reports, elimination entries, tax policies, tax transactions, tax reports, survey sends, survey schedules, survey triggers, action plans, mentoring programs, mentoring pairs, mentoring sessions, mentoring goals, project records, task records, milestone records, automation rules, expense approval state, reimbursement batches, payroll approval state, payout state, payslip state, payment state, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, database schema, production routing, hire creation, onboarding-task creation, buddy assignment, IT access grants, payroll setup, benefits enrollment, or learning enrollment.

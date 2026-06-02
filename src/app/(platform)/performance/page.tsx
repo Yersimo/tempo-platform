@@ -17,6 +17,8 @@ import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useEventCascade } from '@/lib/event-cascade-context'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
@@ -263,6 +265,7 @@ export default function PerformancePage() {
   const myReviews = useMemo(() => reviews.filter(r => r.employee_id === currentEmployeeId), [reviews, currentEmployeeId])
 
   const [activeTab, setActiveTab] = useState('goals')
+  const [activePerformanceExperiment, setActivePerformanceExperiment] = useState<'manager_copilot' | 'calibration_room' | 'growth_pathways' | 'merit_readiness'>('manager_copilot')
 
   // Goal modal
   const [showGoalModal, setShowGoalModal] = useState(false)
@@ -557,6 +560,45 @@ export default function PerformancePage() {
   const upcomingMeetings = useMemo(() => oneOnOnes.filter(o => o.status === 'upcoming').sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()), [oneOnOnes])
   const pastMeetings = useMemo(() => oneOnOnes.filter(o => o.status === 'completed').sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()), [oneOnOnes])
   const openActionItems = useMemo(() => oneOnOnes.flatMap(o => (o.action_items || []).filter(ai => !ai.done)), [oneOnOnes])
+  const performanceExperiments = [
+    {
+      id: 'manager_copilot' as const,
+      title: 'Manager copilot',
+      benchmark: 'Redwood-style guided review workbench',
+      metric: `${openActionItems.length} open 1:1 action${openActionItems.length === 1 ? '' : 's'}`,
+      description: 'Bring the next review, goals, feedback, and coaching prompts into one manager-ready pane.',
+      actions: ['Prepare review narrative', 'Suggest 1:1 agenda', 'Carry action items forward'],
+      onOpen: () => setActiveTab('one-on-ones'),
+    },
+    {
+      id: 'calibration_room' as const,
+      title: 'Calibration room',
+      benchmark: 'Oracle Fusion calibration clarity with lighter controls',
+      metric: `${biasInsights.length} bias signal${biasInsights.length === 1 ? '' : 's'}`,
+      description: 'Compare rating spread, manager drift, and rationale quality before review outcomes are locked.',
+      actions: ['Surface rating drift', 'Check rationale quality', 'Lock committee decisions'],
+      onOpen: () => setActiveTab('calibration'),
+    },
+    {
+      id: 'growth_pathways' as const,
+      title: 'Growth pathways',
+      benchmark: 'Career mobility stitched into performance',
+      metric: `${careerTracks.length} career track${careerTracks.length === 1 ? '' : 's'}`,
+      description: 'Turn goals and competency gaps into visible role paths, learning moves, and promotion evidence.',
+      actions: ['Map next role', 'Attach skill gaps', 'Link learning plan'],
+      onOpen: () => setActiveTab('career-paths'),
+    },
+    {
+      id: 'merit_readiness' as const,
+      title: 'Merit readiness',
+      benchmark: 'Compensation planning without performance whiplash',
+      metric: `${meritCycles.length} merit cycle${meritCycles.length === 1 ? '' : 's'}`,
+      description: 'Stage rating, budget, eligibility, and recommendation signals before compensation review.',
+      actions: ['Validate eligibility', 'Check budget impact', 'Explain recommendation'],
+      onOpen: () => setActiveTab('merit-cycles'),
+    },
+  ]
+  const selectedPerformanceExperiment = performanceExperiments.find(experiment => experiment.id === activePerformanceExperiment) || performanceExperiments[0]
 
   // Recognition computed data
   const recognitionLeaderboard = useMemo(() => {
@@ -584,6 +626,33 @@ export default function PerformancePage() {
     const avgRating = competencyRatings.length > 0 ? competencyRatings.reduce((a, r) => a + r.rating, 0) / competencyRatings.length : 0
     return { assessedEmployees, gaps, strengths, avgRating }
   }, [competencyRatings])
+
+  const growthBridge = useMemo(() => {
+    const activeEnrollments = enrollments.filter((e: any) => e.status === 'in_progress' || e.status === 'enrolled').length
+    const completedEnrollments = enrollments.filter((e: any) => e.status === 'completed').length
+    const courseCategories = new Set(courses.map((course: any) => (course.category || course.type || 'general').toLowerCase()))
+    const gapCompetencies = competencyRatings
+      .filter(r => r.rating < r.target)
+      .map(r => competencyFramework.find(c => c.id === r.competency_id)?.name || r.competency_id)
+      .filter(Boolean)
+    const matchedGaps = gapCompetencies.filter(gap => {
+      const q = gap.toLowerCase()
+      return courses.some((course: any) =>
+        (course.title || '').toLowerCase().includes(q) ||
+        (course.description || '').toLowerCase().includes(q) ||
+        (course.category || '').toLowerCase().includes(q)
+      )
+    }).length
+
+    return {
+      activeEnrollments,
+      completedEnrollments,
+      availableCourses: courses.length,
+      courseCategories: courseCategories.size,
+      gapCompetencies: gapCompetencies.length,
+      matchedGaps,
+    }
+  }, [courses, enrollments, competencyRatings, competencyFramework])
 
   // Bulk review computed data
   const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country).filter(Boolean))].sort(), [employees])
@@ -955,6 +1024,165 @@ export default function PerformancePage() {
           </div>
         }
       />
+
+      <ModuleCommandCenter
+        moduleName="Performance"
+        benchmark="Oracle Fusion Redwood-grade performance, simplified into manager-ready decisions."
+        score={Math.min(96, 58 + Math.round((completedReviews / Math.max(reviews.length, 1)) * 24) + (goals.length > 0 ? 8 : 0) + (oneOnOnes.length > 0 ? 6 : 0))}
+        scoreLabel="Cycle readiness"
+        summary="Unifies goals, reviews, calibration, recognition, PIPs, competencies, merit, and learning signals so managers can move from review admin to useful coaching."
+        metrics={[
+          { label: 'Goals tracked', value: goals.length, tone: goals.length > 0 ? 'success' : 'warning' },
+          { label: 'Reviews complete', value: `${completedReviews}/${reviews.length}`, tone: completedReviews > 0 ? 'success' : 'neutral' },
+          { label: 'Open 1:1 actions', value: openActionItems.length, tone: openActionItems.length > 0 ? 'warning' : 'success' },
+          { label: 'Active PIPs', value: pips.filter(p => p.status === 'active').length, tone: 'neutral' },
+        ]}
+        focusAreas={[
+          'Make every review cycle explain what managers should do next.',
+          'Connect performance signals to learning, compensation, and career movement.',
+          'Keep calibration transparent without making the workflow feel heavy.',
+        ]}
+        actions={[
+          { label: 'Run calibration view', description: 'Spot rating drift and prepare a fair review committee.', onClick: () => setActiveTab('calibration') },
+          { label: 'Coach through 1:1s', description: 'Turn feedback into scheduled manager follow-up.', onClick: () => setActiveTab('one-on-ones') },
+          { label: 'Connect growth paths', description: 'Review role paths, skills, and learning-linked gaps.', onClick: () => setActiveTab('career-paths') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Performance experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare Redwood-grade performance directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo performance feel more guided, fair, and connected before choosing what to harden into production workflows.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {performanceExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActivePerformanceExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activePerformanceExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activePerformanceExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedPerformanceExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedPerformanceExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedPerformanceExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedPerformanceExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <ModuleTrustPanel
+        title="Performance trust layer"
+        score={Math.min(96, 50 + Math.round((completedReviews / Math.max(reviews.length, 1)) * 18) + (goals.length > 0 ? 10 : 4) + (openActionItems.length === 0 ? 10 : 5) + (pips.filter(p => p.status === 'active').length === 0 ? 8 : 4))}
+        summary="Keeps review completion, manager follow-through, calibration fairness, and growth routing visible before leaders make talent or compensation decisions."
+        icon={<FileText size={18} />}
+        checks={[
+          { label: 'Review evidence', detail: `${completedReviews}/${reviews.length} review${reviews.length === 1 ? '' : 's'} completed in the visible cycle data.`, tone: completedReviews > 0 ? 'success' : 'warning' },
+          { label: 'Manager follow-up', detail: `${openActionItems.length} open 1:1 action item${openActionItems.length === 1 ? '' : 's'} need closure.`, tone: openActionItems.length > 0 ? 'warning' : 'success' },
+          { label: 'Talent risk', detail: `${pips.filter(p => p.status === 'active').length} active PIP${pips.filter(p => p.status === 'active').length === 1 ? '' : 's'} require transparent support.`, tone: pips.filter(p => p.status === 'active').length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Goals, reviews, feedback, calibration, 1:1s, PIPs, competencies, career paths, and merit context are visible together.',
+          'Managers can route to calibration, 1:1s, and career paths before making review or compensation recommendations.',
+          'This panel is additive review guidance only; it does not alter ratings, merit recommendations, PIP records, or employee profiles.',
+        ]}
+        actions={[
+          { label: 'Review calibration', description: 'Check fairness and rating drift before final decisions.', onClick: () => setActiveTab('calibration') },
+          { label: 'Close 1:1 actions', description: 'Move feedback into manager follow-through.', onClick: () => setActiveTab('one-on-ones') },
+          { label: 'Open growth paths', description: 'Connect outcomes to skills, role paths, and learning.', onClick: () => setActiveTab('career-paths') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge variant="ai"><BookOpen size={12} /> Growth bridge</Badge>
+              <Badge variant="info">Review mode</Badge>
+            </div>
+            <h2 className="text-lg font-semibold text-t1">Connect performance gaps to learning paths</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-t2">
+              Turns competency gaps and career-path readiness into a reviewable learning queue before managers make promotion, PIP, or merit recommendations.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setActiveTab('career-paths')}>
+            Open career paths <ArrowRight size={14} />
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Competency gaps</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.gapCompetencies}</p>
+            <p className="mt-1 text-xs text-t3">Visible from performance ratings.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Matched to learning</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.matchedGaps}</p>
+            <p className="mt-1 text-xs text-t3">Gaps with course/category evidence.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Learning supply</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.availableCourses}</p>
+            <p className="mt-1 text-xs text-t3">{growthBridge.courseCategories} categories available.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Learner activity</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.activeEnrollments}</p>
+            <p className="mt-1 text-xs text-t3">{growthBridge.completedEnrollments} completed enrollments.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Manager action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Use career paths to explain which competency gap needs coaching and which course should support it.</p>
+          </div>
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Learning action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Route matched gaps into `/learning` for path selection without auto-enrolling anyone.</p>
+          </div>
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Decision action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Keep merit, promotion, and PIP decisions tied to visible growth evidence.</p>
+          </div>
+        </div>
+      </section>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -2269,6 +2497,17 @@ export default function PerformancePage() {
               const emp = employees.find(e => e.id === careerEmployeeId)
               if (!emp) return null
               const analysis = analyzeCareerPathDetailed(emp, goals, competencyRatings, careerTracks, competencyFramework)
+              const suggestedCourses = analysis.gaps.flatMap((gap: any) => {
+                const q = String(gap.competency || '').toLowerCase()
+                return courses
+                  .filter((course: any) =>
+                    (course.title || '').toLowerCase().includes(q) ||
+                    (course.description || '').toLowerCase().includes(q) ||
+                    (course.category || '').toLowerCase().includes(q)
+                  )
+                  .slice(0, 2)
+                  .map((course: any) => ({ gap: gap.competency, course }))
+              }).slice(0, 4)
               return (
                 <div className="mt-4 space-y-4">
                   {/* Summary stats */}
@@ -2340,6 +2579,33 @@ export default function PerformancePage() {
                       <p className="text-sm text-green-700">{t('readiness')}: 100% — {emp.profile?.full_name} {tc('status')}</p>
                     </div>
                   )}
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                      <BookOpen size={16} /> Learning bridge
+                    </h4>
+                    {suggestedCourses.length > 0 ? (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {suggestedCourses.map(({ gap, course }: any) => (
+                          <div key={`${gap}-${course.id}`} className="rounded-lg border border-border bg-surface-secondary p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-t1">{course.title}</p>
+                                <p className="mt-1 text-xs text-t3">Supports gap: {gap}</p>
+                              </div>
+                              <Badge variant="ai">{course.category || 'Learning'}</Badge>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-t2">{course.description || 'Use this course as a manager-reviewed growth option.'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm font-semibold text-amber-900">No direct course match yet</p>
+                        <p className="mt-1 text-xs leading-5 text-amber-800">Use the gap list above to create or assign learning content from `/learning` before hardening promotion or PIP decisions.</p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Development Plan */}
                   {analysis.developmentPlan.length > 0 && (

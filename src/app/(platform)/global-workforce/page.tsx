@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -224,6 +226,52 @@ export default function GlobalWorkforcePage() {
             )}
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Global Workforce"
+        benchmark="Deel and Rippling-grade global employment operations with EOR, contractors, PEO, benefits, compliance deadlines, and worker counts connected."
+        score={Math.min(97, 48 + (eorEntityCount > 0 ? 8 : 2) + (contractorCount > 0 ? 7 : 2) + (peoCountryCount > 0 ? 7 : 2) + (complianceData.filter(c => c.status === 'attention').length === 0 ? 9 : 4))}
+        scoreLabel="Global operations readiness"
+        summary="Connects EOR entities, contractor records, PEO countries, global benefits, compliance filings, deadlines, and worker coverage into one international workforce surface."
+        metrics={[
+          { label: 'EOR entities', value: eorEntityCount, tone: eorEntityCount > 0 ? 'success' : 'neutral' },
+          { label: 'Contractors', value: contractorCount, tone: contractorCount > 0 ? 'ai' : 'neutral' },
+          { label: 'PEO countries', value: peoCountryCount, tone: peoCountryCount > 0 ? 'success' : 'neutral' },
+          { label: 'Countries at risk', value: complianceData.filter(c => c.status === 'attention').length, tone: complianceData.some(c => c.status === 'attention') ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make country expansion traceable to employment model, benefits, payroll, and compliance.',
+          'Keep contractors, EOR employees, and co-employment records visible together.',
+          'Surface filing deadlines and attention countries before global operations drift.',
+        ]}
+        actions={[
+          { label: 'Review EOR', description: 'Inspect entities, employees, and coverage.', onClick: () => setActiveTab('eor') },
+          { label: 'Manage contractors', description: 'Review contractor roster and contracts.', onClick: () => setActiveTab('contractors') },
+          { label: 'Check compliance', description: 'Inspect country filings and deadlines.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Global workforce trust layer"
+        score={Math.min(97, 48 + (eorEntityCount > 0 ? 8 : 3) + (contractorCount > 0 ? 8 : 3) + (peoCountryCount > 0 ? 8 : 3) + (complianceData.filter(c => c.status === 'attention').length === 0 ? 10 : 4))}
+        summary="Keeps employment model coverage, contractor state, PEO countries, compliance attention, and global worker counts visible before international operations scale."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Coverage model', detail: `${eorEntityCount} EOR entit${eorEntityCount === 1 ? 'y' : 'ies'}, ${contractorCount} contractor${contractorCount === 1 ? '' : 's'}, ${peoCountryCount} PEO countr${peoCountryCount === 1 ? 'y' : 'ies'}.`, tone: totalGlobalWorkers > 0 ? 'success' : 'warning' },
+          { label: 'Compliance attention', detail: `${complianceData.filter(c => c.status === 'attention').length} countr${complianceData.filter(c => c.status === 'attention').length === 1 ? 'y' : 'ies'} need review.`, tone: complianceData.some(c => c.status === 'attention') ? 'warning' : 'success' },
+          { label: 'Worker footprint', detail: `${totalGlobalWorkers} global worker${totalGlobalWorkers === 1 ? '' : 's'} visible across employment models.`, tone: totalGlobalWorkers > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'EOR entities, contractors, PEO countries, benefits, compliance filings, deadlines, and worker coverage are summarized together.',
+          'People and finance teams can route to EOR, contractors, and compliance without creating entities or changing worker records.',
+          'This panel is additive review guidance only; it does not create workers, change contracts, run payroll, or alter compliance filings.',
+        ]}
+        actions={[
+          { label: 'Review EOR', description: 'Inspect entities, employees, and coverage.', onClick: () => setActiveTab('eor') },
+          { label: 'Manage contractors', description: 'Review contractor roster and agreements.', onClick: () => setActiveTab('contractors') },
+          { label: 'Check compliance', description: 'Inspect country filings and deadlines.', onClick: () => setActiveTab('compliance') },
+        ]}
       />
 
       {/* Stat Cards */}

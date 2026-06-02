@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -195,6 +197,52 @@ export default function BudgetsPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={<Button size="sm" onClick={openNewBudget}><Plus size={14} /> {t('newBudget')}</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Budgets"
+        benchmark="Workday Adaptive and Ramp-grade budget controls with department budgets, spend utilization, variance, forecast accuracy, and AI burn-rate signals connected."
+        score={Math.min(97, 50 + (activeBudgets > 0 ? 8 : 2) + (utilization <= 90 ? 9 : 3) + (forecastAccuracy.value >= 70 ? 8 : 3) + (varianceInsights.length === 0 ? 8 : 4))}
+        scoreLabel="Budget control readiness"
+        summary="Connects budget ownership, department spend, remaining budget, utilization, forecast accuracy, variance insights, and rolling plans into one operating view."
+        metrics={[
+          { label: 'Active budgets', value: activeBudgets, tone: activeBudgets > 0 ? 'success' : 'neutral' },
+          { label: 'Utilization', value: `${utilization}%`, tone: utilization > 90 ? 'warning' : 'success' },
+          { label: 'Remaining', value: formatCurrency(totalBudget - totalSpent, defaultCurrency, { compact: true }), tone: totalBudget - totalSpent >= 0 ? 'success' : 'warning' },
+          { label: 'Forecast score', value: forecastAccuracy.value, tone: forecastAccuracy.value >= 70 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Make spend, remaining budget, and variance visible before finance close.',
+          'Connect budgets to expenses, cards, invoices, headcount, and department ownership.',
+          'Use forecast accuracy and AI burn-rate signals as an action queue, not decoration.',
+        ]}
+        actions={[
+          { label: 'Review budgets', description: 'Inspect department budgets and spend.', onClick: () => setSearchQuery('') },
+          { label: 'Create budget', description: 'Open the budget creation workflow.', onClick: openNewBudget },
+          { label: 'Check expenses', description: 'Review expense spend feeding budgets.', href: '/expense' },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Budget governance trust layer"
+        score={Math.min(96, 52 + (activeBudgets > 0 ? 9 : 2) + (utilization <= 90 ? 8 : 3) + (forecastAccuracy.value >= 70 ? 8 : 3) + (varianceInsights.length === 0 ? 7 : 4))}
+        summary="Checks whether budget ownership, utilization, variance, forecast accuracy, and AI burn-rate signals are visible before finance changes budget records."
+        icon={<Target size={18} />}
+        checks={[
+          { label: 'Budget coverage', detail: `${activeBudgets} active budget${activeBudgets === 1 ? '' : 's'} across ${departments.length} department${departments.length === 1 ? '' : 's'}.`, tone: activeBudgets > 0 ? 'success' : 'warning' },
+          { label: 'Spend pressure', detail: `${utilization}% utilization with ${formatCurrency(totalBudget - totalSpent, defaultCurrency, { compact: true })} remaining.`, tone: utilization <= 90 ? 'success' : 'warning' },
+          { label: 'Forecast evidence', detail: `${forecastAccuracy.value} forecast score and ${varianceInsights.length} variance insight${varianceInsights.length === 1 ? '' : 's'} visible.`, tone: forecastAccuracy.value >= 70 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Uses visible budgets, department ownership, forecast data, rolling plans, variance insights, and burn-rate signals.',
+          'Routes reviewers to budgets and expense context without creating, closing, deleting, or editing budgets.',
+          'Keeps forecast and variance review separate from finance close or ledger posting actions.',
+        ]}
+        actions={[
+          { label: 'Review budgets', description: 'Inspect current budget ownership and utilization.', onClick: () => setSearchQuery('') },
+          { label: 'Check expense pressure', description: 'Open expense spend feeding budget pressure.', href: '/expense' },
+          { label: 'Review forecast signals', description: 'Use forecast and variance sections below.', onClick: () => setSearchQuery('') },
+        ]}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

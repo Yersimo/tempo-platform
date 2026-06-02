@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -227,6 +229,52 @@ export default function GlobalSpendPage() {
         title="Global Spend"
         subtitle="Multi-entity spend overview across currencies"
         actions={<Button size="sm" onClick={openTransferModal}><Plus size={14} /> New FX Transfer</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Global Spend"
+        benchmark="Airwallex and Rippling-grade multi-currency treasury visibility with entity balances, FX movement, regional spend, and currency accounts connected."
+        score={Math.min(97, 50 + (entityCount > 0 ? 8 : 2) + (uniqueCurrencies.length > 1 ? 8 : 3) + (fxTransactions.length > 0 ? 7 : 2) + (regionData.length > 0 ? 7 : 2))}
+        scoreLabel="Treasury visibility readiness"
+        summary="Connects currency accounts, entity balances, FX transfers, regional headcount, invoice spend, bill payments, and multi-currency exposure into one global cash view."
+        metrics={[
+          { label: 'USD balance', value: `$${Math.round(totalBalanceUSD).toLocaleString()}`, tone: totalBalanceUSD > 0 ? 'success' : 'neutral' },
+          { label: 'Currencies', value: uniqueCurrencies.length, tone: uniqueCurrencies.length > 1 ? 'ai' : 'neutral' },
+          { label: 'FX volume', value: `$${Math.round(fxVolume).toLocaleString()}`, tone: fxVolume > 0 ? 'success' : 'neutral' },
+          { label: 'Entities', value: entityCount, tone: entityCount > 0 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Make global balances and FX movement understandable before finance takes action.',
+          'Tie regional spend to headcount, invoices, bill payments, and currency exposure.',
+          'Keep FX transfers auditable and visible across entities and currencies.',
+        ]}
+        actions={[
+          { label: 'Review accounts', description: 'Inspect currency account balances.', onClick: () => setActiveTab('accounts') },
+          { label: 'Check FX', description: 'Review transfer history and conversion flow.', onClick: () => setActiveTab('transactions') },
+          { label: 'View regions', description: 'See spend and headcount by country.', onClick: () => setActiveTab('region') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Global treasury trust layer"
+        score={Math.min(96, 52 + (entityCount > 0 ? 9 : 2) + (uniqueCurrencies.length > 1 ? 8 : 3) + (fxTransactions.length > 0 ? 7 : 3) + (regionData.length > 0 ? 7 : 2))}
+        summary="Checks that entity balances, currency exposure, FX movement, regional spend, and account evidence are visible before any treasury or FX action."
+        icon={<Landmark size={18} />}
+        checks={[
+          { label: 'Entity coverage', detail: `${entityCount} account${entityCount === 1 ? '' : 's'} across ${uniqueCurrencies.length} currenc${uniqueCurrencies.length === 1 ? 'y' : 'ies'}.`, tone: entityCount > 0 ? 'success' : 'warning' },
+          { label: 'FX visibility', detail: `${fxTransactions.length} FX transaction${fxTransactions.length === 1 ? '' : 's'} with ${formatCurrency(fxVolume, 'USD')} gross volume.`, tone: fxTransactions.length > 0 ? 'success' : 'neutral' },
+          { label: 'Regional evidence', detail: `${regionData.length} region${regionData.length === 1 ? '' : 's'} tied to headcount, invoices, and bill payments.`, tone: regionData.length > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible currency accounts, FX transactions, invoices, bill payments, employees, and region aggregation.',
+          'Routes reviewers to accounts, FX history, and regional spend without executing transfers.',
+          'Keeps balance review separate from multi-currency conversion and payment movement.',
+        ]}
+        actions={[
+          { label: 'Review accounts', description: 'Inspect balances and account coverage.', onClick: () => setActiveTab('accounts') },
+          { label: 'Check FX history', description: 'Review currency movement and exchange rates.', onClick: () => setActiveTab('transactions') },
+          { label: 'View regional exposure', description: 'Compare spend and headcount by country.', onClick: () => setActiveTab('region') },
+        ]}
       />
 
       {/* ─── Stat Cards ─── */}

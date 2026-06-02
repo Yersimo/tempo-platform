@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import { Tabs } from '@/components/ui/tabs'
 import {
-  Settings, LayoutGrid, RotateCcw, Eye, EyeOff, GripVertical
+  Settings, LayoutGrid, RotateCcw, Eye, EyeOff, GripVertical, CheckCircle2, ArrowRight
 } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -78,6 +78,7 @@ export default function DashboardPage() {
 
   const [showWidgetModal, setShowWidgetModal] = useState(false)
   const [dashboardTab, setDashboardTab] = useState('me')
+  const [activeBriefingExperiment, setActiveBriefingExperiment] = useState<'operator_priorities' | 'manager_mission' | 'employee_concierge' | 'executive_boardroom'>('operator_priorities')
 
   // Employee self-service: simplified dashboard for employee role
   const role = currentUser?.role || 'owner'
@@ -110,6 +111,50 @@ export default function DashboardPage() {
     { id: 'apps', label: 'My Apps' },
     { id: 'org', label: t('tabOrganization') },
   ]
+  const pendingLeaveCount = leaveRequests?.filter((l: { status: string }) => l.status === 'pending').length || 0
+  const pendingExpenseCount = expenseReports?.filter((e: { status: string }) => e.status === 'submitted' || e.status === 'pending_approval').length || 0
+  const incompleteReviewCount = reviews?.filter((r: { status: string }) => r.status === 'in_progress' || r.status === 'draft').length || 0
+  const atRiskGoalCount = goals?.filter((g: { status: string }) => g.status === 'at_risk' || g.status === 'behind').length || 0
+  const latestPayroll = payrollRuns?.[payrollRuns.length - 1]
+  const briefingExperiments = [
+    {
+      id: 'operator_priorities' as const,
+      title: 'Operator priorities',
+      benchmark: 'AI workday briefing across HR, Finance, and IT',
+      metric: `${pendingLeaveCount + pendingExpenseCount + incompleteReviewCount + atRiskGoalCount} item${pendingLeaveCount + pendingExpenseCount + incompleteReviewCount + atRiskGoalCount === 1 ? '' : 's'} needing attention`,
+      description: 'Summarize approvals, reviews, goals, expenses, and payroll signals into a single morning queue with clear routes to action.',
+      actions: ['Rank urgent work', 'Explain why it matters', 'Route to source module'],
+      onOpen: () => setDashboardTab('org'),
+    },
+    {
+      id: 'manager_mission' as const,
+      title: 'Manager mission control',
+      benchmark: 'Focused team leadership cockpit',
+      metric: `${incompleteReviewCount} review${incompleteReviewCount === 1 ? '' : 's'} in progress`,
+      description: 'Turn team reviews, goal risk, learning gaps, leave, and expense approvals into a manager-first daily plan.',
+      actions: ['Coach at-risk goals', 'Clear team approvals', 'Prepare review follow-up'],
+      onOpen: () => setDashboardTab('team'),
+    },
+    {
+      id: 'employee_concierge' as const,
+      title: 'Employee concierge',
+      benchmark: 'Self-service without hunting through apps',
+      metric: `${dashboardTabs.length} dashboard workspace${dashboardTabs.length === 1 ? '' : 's'}`,
+      description: 'Give employees one personal surface for payslips, learning, goals, expenses, leave, documents, and support tasks.',
+      actions: ['Resume personal tasks', 'Surface benefits and pay', 'Shortcut common requests'],
+      onOpen: () => setDashboardTab('me'),
+    },
+    {
+      id: 'executive_boardroom' as const,
+      title: 'Executive board room',
+      benchmark: 'Board-ready narrative with operational drill-through',
+      metric: latestPayroll ? formatCurrency(latestPayroll.total_net, defaultCurrency, { cents: true }) : 'No payroll yet',
+      description: 'Package headcount, payroll, engagement, reviews, recruiting, expenses, and risk into a leadership-ready daily narrative.',
+      actions: ['Summarize operating health', 'Drill into risk', 'Open executive modules'],
+      onOpen: () => setDashboardTab('org'),
+    },
+  ]
+  const selectedBriefingExperiment = briefingExperiments.find(experiment => experiment.id === activeBriefingExperiment) || briefingExperiments[0]
 
   return (
     <>
@@ -176,6 +221,65 @@ export default function DashboardPage() {
           </div>
         )
       })()}
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">AI workday briefing experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare daily operating-system directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo summarize what matters today and route users into the right module without becoming decorative.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {briefingExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveBriefingExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activeBriefingExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeBriefingExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedBriefingExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedBriefingExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedBriefingExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedBriefingExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Oracle Fusion-style Me / My Team / Organization tabs */}
       <Tabs

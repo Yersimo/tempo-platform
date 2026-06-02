@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
@@ -97,6 +99,7 @@ export default function ExpensePage() {
     { id: 'receipts', label: t('receipts'), icon: Receipt },
   ]
   const [activeTab, setActiveTab] = useState('reports')
+  const [activeExpenseExperiment, setActiveExpenseExperiment] = useState<'approval_cockpit' | 'policy_confidence' | 'reimbursement_timeline' | 'budget_guardrails'>('approval_cockpit')
 
   // ---- Modals ----
   const [showReportModal, setShowReportModal] = useState(false)
@@ -637,6 +640,60 @@ export default function ExpensePage() {
     return warnings
   }, [reportForm.items, expensePolicies, receiptUploads.length])
 
+  const submitPolicyOutcome = useMemo(() => {
+    const validItems = reportForm.items.filter(item => item.description && Number(item.amount) > 0)
+    const totalAmount = validItems.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const matchedPolicies = validItems.filter(item =>
+      expensePolicies.some((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active')
+    ).length
+    const receiptCount = receiptUploads.filter(r => r.status === 'done').length
+    const needsReceipt = validItems.filter(item => {
+      const policy = expensePolicies.find((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active') as any
+      return policy?.receipt_threshold && Number(item.amount) > policy.receipt_threshold
+    }).length
+    const highValueItems = validItems.filter(item => Number(item.amount) > 500).length
+
+    if (validItems.length === 0) {
+      return {
+        label: 'Waiting for line items',
+        tone: 'neutral' as const,
+        detail: 'Add at least one valid expense item to preview policy outcome.',
+        route: 'Draft stays local until submitted.',
+        totalAmount,
+        matchedPolicies,
+        receiptCount,
+        needsReceipt,
+        highValueItems,
+      }
+    }
+
+    if (submitPolicyWarnings.length > 0) {
+      return {
+        label: 'Needs finance review',
+        tone: 'warning' as const,
+        detail: `${submitPolicyWarnings.length} policy signal${submitPolicyWarnings.length === 1 ? '' : 's'} should be resolved or explained before approval.`,
+        route: highValueItems > 0 ? 'Likely manager or finance approval before reimbursement.' : 'Likely policy review before reimbursement.',
+        totalAmount,
+        matchedPolicies,
+        receiptCount,
+        needsReceipt,
+        highValueItems,
+      }
+    }
+
+    return {
+      label: 'Policy-ready',
+      tone: 'success' as const,
+      detail: 'No visible policy warnings for the current line items.',
+      route: totalAmount > 0 ? 'Ready for normal approval routing after submit.' : 'Draft stays local until submitted.',
+      totalAmount,
+      matchedPolicies,
+      receiptCount,
+      needsReceipt,
+      highValueItems,
+    }
+  }, [reportForm.items, expensePolicies, receiptUploads, submitPolicyWarnings])
+
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -1152,6 +1209,94 @@ export default function ExpensePage() {
     confidenceScore: spendingForecast.confidence,
     suggestedAction: 'Review spending policies and approval thresholds', module: 'expense',
   }), [spendingForecast, t])
+  const expenseExperiments = [
+    {
+      id: 'approval_cockpit' as const,
+      name: 'Ramp approval cockpit',
+      benchmark: 'Approver sees policy confidence, receipt status, and risk before clicking approve.',
+      metric: `${pendingExpenseReports.length} reports`,
+      actionLabel: 'Review approvals',
+      onOpen: () => setActiveTab('reports'),
+    },
+    {
+      id: 'policy_confidence' as const,
+      name: 'ETI policy confidence',
+      benchmark: 'Every threshold and route cites the policy rule that drove the decision.',
+      metric: `${policyViolations.length} flags`,
+      actionLabel: 'Tune rules',
+      onOpen: () => setActiveTab('advanced-policies'),
+    },
+    {
+      id: 'reimbursement_timeline' as const,
+      name: 'Reimbursement timeline',
+      benchmark: 'Employees can see exactly when approved spend will hit payroll or bank payout.',
+      metric: `${reimbursementStats.pendingBatches} pending`,
+      actionLabel: 'Open payouts',
+      onOpen: () => setActiveTab('reimbursement'),
+    },
+    {
+      id: 'budget_guardrails' as const,
+      name: 'Budget guardrails',
+      benchmark: 'Finance sees budget impact before approval, not after month-end reporting.',
+      metric: `${expenseBudgets.filter(b => b.isOver || b.utilization > 85).length} watchlist`,
+      actionLabel: 'Review budgets',
+      onOpen: () => setActiveTab('budgets'),
+    },
+  ]
+  const selectedExpenseExperiment = expenseExperiments.find(experiment => experiment.id === activeExpenseExperiment) || expenseExperiments[0]
+  const expenseFlowGuidance = useMemo(() => {
+    const highValuePending = pendingExpenseReports.filter((report: any) => Number(report.total_amount || 0) > 1000)
+    const reportsMissingReceipts = pendingExpenseReports.filter((report: any) => Number(report.receipt_count || 0) === 0)
+    const budgetWatchlist = expenseBudgets.filter(budget => budget.isOver || budget.utilization > 85)
+
+    return [
+      {
+        title: 'Employee capture',
+        icon: <Receipt size={16} />,
+        status: reportsMissingReceipts.length > 0 ? 'Needs evidence' : 'Ready',
+        metric: `${reportsMissingReceipts.length} missing receipt${reportsMissingReceipts.length === 1 ? '' : 's'}`,
+        detail: 'Use Snap and receipt matching to reduce finance rework before approval.',
+        action: 'Open receipts',
+        route: () => setActiveTab('receipt-management'),
+      },
+      {
+        title: 'Policy review',
+        icon: <Shield size={16} />,
+        status: policyViolations.length > 0 || highValuePending.length > 0 ? 'Review' : 'Ready',
+        metric: `${policyViolations.length + highValuePending.length} signal${policyViolations.length + highValuePending.length === 1 ? '' : 's'}`,
+        detail: 'Prioritize policy flags and high-value reports before approver sign-off.',
+        action: 'Open policies',
+        route: () => setActiveTab('advanced-policies'),
+      },
+      {
+        title: 'Approval cockpit',
+        icon: <CheckCircle size={16} />,
+        status: pendingExpenseReports.length > 0 ? 'Queued' : 'Clear',
+        metric: `${formatCurrency(totalPending, defaultCurrency)} pending`,
+        detail: 'Route pending reports with amount, receipt, policy, and team context visible.',
+        action: 'Review approvals',
+        route: () => setActiveTab('reports'),
+      },
+      {
+        title: 'Reimbursement',
+        icon: <Banknote size={16} />,
+        status: approvedForReimbursement.length > 0 ? 'Ready to batch' : 'Clear',
+        metric: `${approvedForReimbursement.length} approved`,
+        detail: 'Convert approved reports into payroll, direct-deposit, or manual reimbursement batches.',
+        action: 'Open payouts',
+        route: () => setActiveTab('reimbursement'),
+      },
+      {
+        title: 'Budget guardrails',
+        icon: <Wallet size={16} />,
+        status: budgetWatchlist.length > 0 ? 'Watchlist' : 'Ready',
+        metric: `${budgetWatchlist.length} budget${budgetWatchlist.length === 1 ? '' : 's'}`,
+        detail: 'Check over-budget or near-limit cost centers before finance closes the loop.',
+        action: 'Review budgets',
+        route: () => setActiveTab('budgets'),
+      },
+    ]
+  }, [approvedForReimbursement.length, defaultCurrency, expenseBudgets, pendingExpenseReports, policyViolations.length, totalPending])
 
   if (pageLoading) {
     return (
@@ -1173,6 +1318,142 @@ export default function ExpensePage() {
           </a>
         </div>}
       />
+
+      <ModuleCommandCenter
+        moduleName="Expense"
+        benchmark="Ramp-level speed and clarity, with ETI policy intelligence and Africa-first controls."
+        score={Math.min(98, 54 + (pendingReports.length > 0 ? 12 : 8) + (demoReceipts.length > 0 ? 10 : 0) + (approvalRules.filter(r => r.enabled).length * 4) + (reimbursementBatches.length > 0 ? 8 : 4))}
+        scoreLabel="Expense flow readiness"
+        summary="Connects receipt capture, policy checks, approvals, reimbursements, budgets, mileage, per diem, and audit trails into a faster expense workflow."
+        metrics={[
+          { label: 'Pending reports', value: pendingReports.length, tone: pendingReports.length > 0 ? 'warning' : 'success' },
+          { label: 'Pending value', value: formatCurrency(totalPending, defaultCurrency), tone: totalPending > 0 ? 'warning' : 'success' },
+          { label: 'Active rules', value: approvalRules.filter(r => r.enabled).length, tone: 'ai' },
+          { label: 'Receipts staged', value: demoReceipts.length, tone: 'success' },
+        ]}
+        focusAreas={[
+          'Keep the 8-second receipt flow as the front door for employees.',
+          'Make policy outcomes explainable before approvers touch the report.',
+          'Connect reimbursements, budgets, cards, payroll, and finance without duplicate entry.',
+        ]}
+        actions={[
+          { label: 'Try Snap flow', description: 'Open the AI-native receipt capture experience.', href: '/expenses/snap' },
+          { label: 'Review approvals', description: 'Resolve pending reports with policy context.', onClick: () => setActiveTab('reports') },
+          { label: 'Tune policy rules', description: 'Inspect routing, thresholds, and auto-approval logic.', onClick: () => setActiveTab('policy-rules') },
+        ]}
+        className="mx-6 mt-4"
+      />
+
+      <section className="mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-4 p-5 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-t3 font-semibold mb-1">Selectable experiment</div>
+              <h2 className="text-lg font-semibold text-t1">Expense experiment bench</h2>
+              <p className="text-sm text-t3 mt-1 max-w-2xl">
+                Pick one reversible Ramp-grade improvement to inspect before it becomes permanent product direction.
+              </p>
+            </div>
+            <Badge variant="ai">Feature-review mode</Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            {expenseExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveExpenseExperiment(experiment.id)}
+                className={cn(
+                  'rounded-[var(--radius-card)] border p-3 text-left transition-colors',
+                  activeExpenseExperiment === experiment.id
+                    ? 'border-tempo-300 bg-tempo-50 text-tempo-900'
+                    : 'border-border bg-birch/30 hover:border-tempo-200 hover:bg-snow'
+                )}
+              >
+                <div className="text-sm font-semibold">{experiment.name}</div>
+                <div className="text-[11px] text-t3 mt-1">{experiment.metric}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 rounded-[var(--radius-card)] border border-divider bg-birch/30 p-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <div className="text-sm font-semibold text-t1">{selectedExpenseExperiment.name}</div>
+              <p className="text-xs text-t3 mt-1">{selectedExpenseExperiment.benchmark}</p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={selectedExpenseExperiment.onOpen}>
+              {selectedExpenseExperiment.actionLabel}
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <ModuleTrustPanel
+        title="Expense trust layer"
+        score={Math.min(96, 46 + (pendingReports.length === 0 ? 12 : 6) + (approvalRules.filter(r => r.enabled).length * 6) + (demoReceipts.length > 0 ? 12 : 0) + (reimbursementBatches.length > 0 ? 10 : 4))}
+        summary="Keeps the employee, approver, finance, and reimbursement story visible before any expense is approved or paid."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Policy outcome', detail: `${approvalRules.filter(r => r.enabled).length} active routing rule${approvalRules.filter(r => r.enabled).length === 1 ? '' : 's'} available for review.`, tone: approvalRules.filter(r => r.enabled).length > 0 ? 'success' : 'warning' },
+          { label: 'Receipt evidence', detail: `${demoReceipts.length} staged receipt${demoReceipts.length === 1 ? '' : 's'} can support OCR, matching, and audit review.`, tone: demoReceipts.length > 0 ? 'success' : 'warning' },
+          { label: 'Approval load', detail: `${pendingReports.length} report${pendingReports.length === 1 ? '' : 's'} currently waiting for decision.`, tone: pendingReports.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Expense reports, receipt matches, policy rules, reimbursement batches, budgets, and payroll runs are visible in one review surface.',
+          'Approvers can route back to reports, policy rules, and the Snap receipt flow without changing payment state.',
+          'This panel is additive review guidance only; it does not auto-approve, reject, reimburse, or post expenses.',
+        ]}
+        actions={[
+          { label: 'Inspect pending reports', description: 'Review submitted reports with policy context.', onClick: () => setActiveTab('reports') },
+          { label: 'Check reimbursement queue', description: 'Confirm whether approved reports have payment follow-through.', onClick: () => setActiveTab('reimbursement') },
+          { label: 'Tune controls', description: 'Review thresholds, routing, and auto-approval rules.', onClick: () => setActiveTab('policy-rules') },
+        ]}
+        className="mx-6"
+      />
+
+      <section className="mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Ramp-grade flow queue</p>
+              <h2 className="text-lg font-semibold text-t1">Expense work that still needs a human decision</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                One review surface for receipts, policy evidence, approvals, reimbursements, and budget guardrails before Tempo changes approval or payment state.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={pendingExpenseReports.length > 0 ? 'warning' : 'success'}>{pendingExpenseReports.length} approvals</Badge>
+              <Badge variant={approvedForReimbursement.length > 0 ? 'info' : 'success'}>{approvedForReimbursement.length} payouts</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+          {expenseFlowGuidance.map(item => (
+            <button
+              key={item.title}
+              type="button"
+              onClick={item.route}
+              className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                  {item.icon}
+                </span>
+                <Badge variant={item.status === 'Ready' || item.status === 'Clear' ? 'success' : item.status === 'Queued' ? 'info' : 'warning'}>
+                  {item.status}
+                </Badge>
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-t1">{item.title}</h3>
+              <p className="mt-1 text-xs font-medium text-tempo-700">{item.metric}</p>
+              <p className="mt-3 min-h-[54px] text-xs leading-5 text-t2">{item.detail}</p>
+              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                {item.action} <ArrowRight size={13} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* Snap hero — the 8-second flow */}
       <a
@@ -3031,6 +3312,62 @@ export default function ExpensePage() {
               <p className="text-sm font-semibold text-t1">
                 {tc('total')}: {formatCurrency(reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0), defaultCurrency)}
               </p>
+            </div>
+          </div>
+
+          <div className={cn(
+            'rounded-lg border p-4',
+            submitPolicyOutcome.tone === 'success' ? 'border-emerald-200 bg-emerald-50' :
+              submitPolicyOutcome.tone === 'warning' ? 'border-amber-200 bg-amber-50' :
+                'border-border bg-canvas'
+          )}>
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                submitPolicyOutcome.tone === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                  submitPolicyOutcome.tone === 'warning' ? 'bg-amber-100 text-amber-700' :
+                    'bg-white text-t3'
+              )}>
+                {submitPolicyOutcome.tone === 'success' ? <CheckCircle2 size={16} /> : submitPolicyOutcome.tone === 'warning' ? <AlertTriangle size={16} /> : <Shield size={16} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-t1">Policy outcome preview</p>
+                  <Badge variant={submitPolicyOutcome.tone === 'success' ? 'success' : submitPolicyOutcome.tone === 'warning' ? 'warning' : 'default'}>
+                    {submitPolicyOutcome.label}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-t2">{submitPolicyOutcome.detail}</p>
+                <p className="mt-1 text-xs leading-5 text-t3">{submitPolicyOutcome.route}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Report total</p>
+                    <p className="text-xs font-semibold text-t1">{formatCurrency(submitPolicyOutcome.totalAmount, defaultCurrency)}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Policy matches</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.matchedPolicies}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Receipts ready</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.receiptCount}/{submitPolicyOutcome.needsReceipt}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">High value items</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.highValueItems}</p>
+                  </div>
+                </div>
+                {submitPolicyWarnings.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {submitPolicyWarnings.slice(0, 3).map(warning => (
+                      <li key={warning} className="flex items-start gap-2 text-xs leading-5 text-amber-800">
+                        <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
 

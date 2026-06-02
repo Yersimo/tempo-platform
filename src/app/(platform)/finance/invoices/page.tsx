@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -306,6 +308,52 @@ export default function InvoicesPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={<Button size="sm" onClick={openNewInvoice}><Plus size={14} /> {t('newInvoice')}</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Invoices"
+        benchmark="NetSuite and Ramp-grade invoice operations with vendor spend, approvals, aging, duplicate detection, savings insight, and cash timing connected."
+        score={Math.min(97, 50 + (invoices.length > 0 ? 8 : 2) + (overdueAmount === 0 ? 9 : 3) + (pendingApprovalAmount === 0 ? 8 : 3) + (totalAR === 0 || agingBuckets.days90 + agingBuckets.days120 === 0 ? 8 : 2))}
+        scoreLabel="Invoice control readiness"
+        summary="Connects invoice intake, approval thresholds, vendor context, AR aging, overdue exposure, cash-flow forecasting, duplicate subscriptions, and savings opportunities."
+        metrics={[
+          { label: 'Invoices', value: invoices.length, tone: invoices.length > 0 ? 'success' : 'neutral' },
+          { label: 'Total amount', value: formatCurrency(totalAmount, defaultCurrency), tone: totalAmount > 0 ? 'ai' : 'neutral' },
+          { label: 'Overdue', value: formatCurrency(overdueAmount, defaultCurrency), tone: overdueAmount > 0 ? 'warning' : 'success' },
+          { label: 'Pending approval', value: formatCurrency(pendingApprovalAmount, defaultCurrency), tone: pendingApprovalAmount > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make approval requirements obvious before invoices move into payment workflows.',
+          'Surface aging, overdue exposure, vendor concentration, and duplicate subscriptions together.',
+          'Connect invoice decisions to cash flow, budgets, vendors, and general ledger readiness.',
+        ]}
+        actions={[
+          { label: 'Review approvals', description: 'Filter invoices awaiting approval.', onClick: () => setStatusFilter('pending_approval') },
+          { label: 'Check overdue', description: 'Focus the table on late invoices.', onClick: () => setStatusFilter('overdue') },
+          { label: 'View all invoices', description: 'Return to the full invoice list.', onClick: () => setStatusFilter('all') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Invoice control trust layer"
+        score={Math.min(97, 48 + (invoices.length > 0 ? 10 : 4) + (pendingApprovalAmount === 0 ? 10 : 5) + (overdueAmount === 0 ? 10 : 4) + (agingBuckets.days90 + agingBuckets.days120 === 0 ? 8 : 3))}
+        summary="Keeps invoice approvals, overdue exposure, aging buckets, and cash timing visible before finance moves invoices into collection or payment follow-up."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Approval exposure', detail: `${formatCurrency(pendingApprovalAmount, defaultCurrency)} waiting for invoice approval.`, tone: pendingApprovalAmount > 0 ? 'warning' : 'success' },
+          { label: 'Overdue exposure', detail: `${formatCurrency(overdueAmount, defaultCurrency)} currently overdue.`, tone: overdueAmount > 0 ? 'warning' : 'success' },
+          { label: 'Aging risk', detail: `${formatCurrency(agingBuckets.days90 + agingBuckets.days120, defaultCurrency)} is older than 60 days.`, tone: agingBuckets.days90 + agingBuckets.days120 > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Invoices, approvals, AR aging, vendor insights, cash timing, and overdue filters are summarized together.',
+          'Finance can route to approval, overdue, and full-list review without changing invoice status or payment state.',
+          'This panel is additive review guidance only; it does not approve invoices, send reminders, collect cash, or post revenue.',
+        ]}
+        actions={[
+          { label: 'Review approvals', description: 'Focus the invoice list on items awaiting approval.', onClick: () => setStatusFilter('pending_approval') },
+          { label: 'Check overdue', description: 'Inspect late invoices before escalation.', onClick: () => setStatusFilter('overdue') },
+          { label: 'Reset view', description: 'Return to the full invoice control list.', onClick: () => setStatusFilter('all') },
+        ]}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

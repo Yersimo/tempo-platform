@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -324,6 +326,52 @@ export default function StrategyPage() {
             <Button size="sm" onClick={openNewObjective}><Plus size={14} /> {t('newObjective')}</Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Strategy"
+        benchmark="Workday and Betterworks-grade strategy execution with objectives, key results, initiatives, KPIs, owners, and AI alignment signals connected."
+        score={Math.min(97, 48 + (activeObjectives > 0 ? 8 : 2) + Math.round(avgKRProgress * 0.18) + (activeInitiatives > 0 ? 7 : 2) + (kpisOnTrack >= Math.max(1, Math.ceil(kpiDefinitions.length * 0.6)) ? 8 : 3))}
+        scoreLabel="Execution alignment readiness"
+        summary="Connects strategy map, OKRs, initiatives, KPIs, owners, progress, AI alignment alerts, and search into one executive operating surface."
+        metrics={[
+          { label: 'Objectives', value: strategicObjectives.length, tone: strategicObjectives.length > 0 ? 'success' : 'neutral' },
+          { label: 'KR progress', value: `${avgKRProgress}%`, tone: avgKRProgress >= 60 ? 'success' : 'warning' },
+          { label: 'Initiatives', value: activeInitiatives, tone: activeInitiatives > 0 ? 'ai' : 'neutral' },
+          { label: 'KPIs on track', value: `${kpisOnTrack}/${kpiDefinitions.length}`, tone: kpisOnTrack >= kpiDefinitions.length * 0.7 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Make objectives, key results, initiatives, and KPIs mutually explain each other.',
+          'Connect strategy execution to performance goals, headcount, learning, and analytics.',
+          'Turn AI alignment alerts into a focused queue for leaders rather than passive commentary.',
+        ]}
+        actions={[
+          { label: 'Open strategy map', description: 'Review objective and initiative alignment.', onClick: () => setActiveTab('map') },
+          { label: 'Review OKRs', description: 'Inspect key result quality and progress.', onClick: () => setActiveTab('okrs') },
+          { label: 'Track KPIs', description: 'Check measured KPI performance and trend.', onClick: () => setActiveTab('kpis') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Strategy execution trust layer"
+        score={Math.min(96, 52 + (activeObjectives > 0 ? 9 : 2) + (avgKRProgress >= 60 ? 8 : 3) + (activeInitiatives > 0 ? 7 : 3) + (kpisOnTrack > 0 ? 7 : 2))}
+        summary="Checks whether objectives, key results, initiatives, KPIs, owners, and AI alignment alerts are coherent enough for leadership review before any strategy record changes."
+        icon={<Compass size={18} />}
+        checks={[
+          { label: 'OKR structure', detail: `${strategicObjectives.length} objective${strategicObjectives.length === 1 ? '' : 's'} and ${keyResults.length} key result${keyResults.length === 1 ? '' : 's'} available.`, tone: strategicObjectives.length > 0 && keyResults.length > 0 ? 'success' : 'warning' },
+          { label: 'Execution coverage', detail: `${activeInitiatives} active initiative${activeInitiatives === 1 ? '' : 's'} connected to strategy execution.`, tone: activeInitiatives > 0 ? 'success' : 'neutral' },
+          { label: 'KPI evidence', detail: `${kpisOnTrack}/${kpiDefinitions.length} KPI${kpiDefinitions.length === 1 ? '' : 's'} currently on track.`, tone: kpisOnTrack > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Uses visible objectives, key results, initiatives, KPI definitions, KPI measurements, goals, and AI alignment signals.',
+          'Routes review into strategy map, OKRs, and KPI tabs without creating or updating objectives.',
+          'Keeps leadership action focused on evidence gaps before changes to strategy records.',
+        ]}
+        actions={[
+          { label: 'Open strategy map', description: 'Review objective and initiative alignment.', onClick: () => setActiveTab('map') },
+          { label: 'Review OKRs', description: 'Inspect key result quality and progress evidence.', onClick: () => setActiveTab('okrs') },
+          { label: 'Check KPIs', description: 'Validate measurements and trend context.', onClick: () => setActiveTab('kpis') },
+        ]}
       />
 
       {/* Stats */}

@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -979,6 +981,52 @@ export default function WorkflowsPage() {
         actions={
           <Button size="sm" onClick={openNewWorkflow}><Plus size={14} /> New Workflow</Button>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Workflows"
+        benchmark="Zapier and Rippling-grade automation with entity-aware triggers, visual steps, run history, templates, and operational success tracking."
+        score={Math.min(97, 50 + (activeWorkflowCount > 0 ? 9 : 3) + (successRate >= 80 ? 10 : 4) + (automationWorkflowTemplates.length > 0 ? 8 : 2) + (failedRuns === 0 ? 8 : 3))}
+        scoreLabel="Automation readiness"
+        summary="Connects workflow definitions, visual builder steps, templates, trigger coverage, run history, dry runs, and success analytics so automation stays understandable and reversible."
+        metrics={[
+          { label: 'Workflows', value: automationWorkflows.length, tone: automationWorkflows.length > 0 ? 'success' : 'neutral' },
+          { label: 'Active', value: activeWorkflowCount, tone: activeWorkflowCount > 0 ? 'ai' : 'neutral' },
+          { label: 'Runs', value: automationWorkflowRuns.length, tone: automationWorkflowRuns.length > 0 ? 'success' : 'neutral' },
+          { label: 'Success rate', value: `${successRate}%`, tone: successRate >= 80 ? 'success' : 'warning' },
+        ]}
+        focusAreas={[
+          'Keep every automation tied to a real Tempo trigger, owner, step, and run result.',
+          'Make templates useful for joiner, mover, leaver, finance, learning, and performance workflows.',
+          'Treat failures and dry runs as a visible review queue before automation becomes risky.',
+        ]}
+        actions={[
+          { label: 'Review workflows', description: 'Inspect active automations and owners.', onClick: () => setActiveTab('list') },
+          { label: 'Open builder', description: 'Edit steps, conditions, delays, and approvals.', onClick: () => setActiveTab('builder') },
+          { label: 'Check run history', description: 'Review failures, reruns, and completion rate.', onClick: () => setActiveTab('history') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Automation control trust layer"
+        score={Math.min(96, 52 + (activeWorkflowCount > 0 ? 9 : 2) + (successRate >= 80 ? 9 : 3) + (failedRuns === 0 ? 8 : 3) + (automationWorkflowTemplates.length > 0 ? 7 : 2))}
+        summary="Confirms that workflow definitions, triggers, templates, run history, dry-run paths, and failures are visible before any automation is changed or activated."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Active automation', detail: `${activeWorkflowCount} active workflow${activeWorkflowCount === 1 ? '' : 's'} across ${automationWorkflows.length} total.`, tone: activeWorkflowCount > 0 ? 'success' : 'neutral' },
+          { label: 'Run reliability', detail: `${successRate}% success rate with ${failedRuns} failed run${failedRuns === 1 ? '' : 's'} visible.`, tone: failedRuns === 0 && successRate >= 80 ? 'success' : 'warning' },
+          { label: 'Template coverage', detail: `${automationWorkflowTemplates.length} template${automationWorkflowTemplates.length === 1 ? '' : 's'} available for repeatable operations.`, tone: automationWorkflowTemplates.length > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses workflow definitions, steps, templates, trigger coverage, run history, and failure counts already loaded in the page.',
+          'Routes to workflow list, visual builder, and run history without enabling, disabling, executing, or deleting automations.',
+          'Surfaces failed and running runs as review context before operational changes.',
+        ]}
+        actions={[
+          { label: 'Review workflows', description: 'Inspect owners, triggers, and active status.', onClick: () => setActiveTab('list') },
+          { label: 'Open builder', description: 'Review steps and conditions before editing.', onClick: () => setActiveTab('builder') },
+          { label: 'Check history', description: 'Audit recent failures, reruns, and running jobs.', onClick: () => setActiveTab('history') },
+        ]}
       />
 
       {/* Stats */}

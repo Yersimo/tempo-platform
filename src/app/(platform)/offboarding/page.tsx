@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -686,6 +688,52 @@ export default function OffboardingPage() {
             <Plus size={14} className="mr-1" /> Initiate Offboarding
           </Button>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Offboarding"
+        benchmark="Rippling-grade leaver orchestration with HR, IT, payroll, benefits, documents, knowledge transfer, and alumni records closed without gaps."
+        score={Math.min(97, 48 + (activeProcessCount > 0 ? 8 : 3) + Math.round(overallCompletionRate * 0.22) + (ktItems.length > 0 ? 7 : 2) + (exitSurveys.length > 0 ? 7 : 2))}
+        scoreLabel="Leaver control readiness"
+        summary="Connects departure processes, checklists, access revocation, device return, final pay, benefits, exit surveys, knowledge transfer, and alumni archive into one controlled workflow."
+        metrics={[
+          { label: 'Active processes', value: activeProcessCount, tone: activeProcessCount > 0 ? 'warning' : 'success' },
+          { label: 'Task completion', value: `${overallCompletionRate}%`, tone: overallCompletionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Knowledge transfers', value: ktItems.length, tone: ktItems.length > 0 ? 'ai' : 'neutral' },
+          { label: 'Exit surveys', value: exitSurveys.length, tone: exitSurveys.length > 0 ? 'success' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make access, devices, payroll, benefits, and documents close before the last working day.',
+          'Prevent orphaned reports and missing knowledge transfer during manager changes.',
+          'Turn completed exits into clean alumni records and retention signals.',
+        ]}
+        actions={[
+          { label: 'Work active exits', description: 'Track open departures and required tasks.', onClick: () => setActiveTab('processes') },
+          { label: 'Review checklists', description: 'Tune required HR, IT, and payroll steps.', onClick: () => setActiveTab('checklists') },
+          { label: 'Capture knowledge', description: 'Assign transfer areas and recipients.', onClick: () => setActiveTab('knowledge-transfer') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Leaver closure trust layer"
+        score={Math.min(97, 48 + (activeProcessCount === 0 ? 10 : 5) + Math.round(overallCompletionRate * 0.2) + (ktItems.length > 0 ? 8 : 3) + (exitSurveys.length > 0 ? 8 : 3))}
+        summary="Keeps access, devices, final pay, benefits, documents, knowledge transfer, and exit feedback visible before a departure is treated as closed."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Active exits', detail: `${activeProcessCount} active process${activeProcessCount === 1 ? '' : 'es'} with ${completedProcessCount} completed.`, tone: activeProcessCount > 0 ? 'warning' : 'success' },
+          { label: 'Closure tasks', detail: `${completedTasks} of ${totalTasks} offboarding task${totalTasks === 1 ? '' : 's'} complete.`, tone: overallCompletionRate >= 70 ? 'success' : 'warning' },
+          { label: 'Knowledge capture', detail: `${ktItems.length} knowledge-transfer item${ktItems.length === 1 ? '' : 's'} tracked.`, tone: ktItems.length > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Departure processes, checklists, access revocation, device return, final pay, benefits, documents, surveys, and knowledge transfer are summarized together.',
+          'HR can route to active exits, checklists, and knowledge transfer without closing tasks from this panel.',
+          'This panel is additive review guidance only; it does not revoke access, mark tasks complete, process final pay, or change alumni records.',
+        ]}
+        actions={[
+          { label: 'Work active exits', description: 'Review departure processes and required tasks.', onClick: () => setActiveTab('processes') },
+          { label: 'Review checklists', description: 'Inspect HR, IT, payroll, and benefits closure steps.', onClick: () => setActiveTab('checklists') },
+          { label: 'Capture knowledge', description: 'Route transfer work to owners and recipients.', onClick: () => setActiveTab('knowledge-transfer') },
+        ]}
       />
 
       {/* Stat Cards */}

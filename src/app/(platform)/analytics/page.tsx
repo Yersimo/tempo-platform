@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { Input, Select } from '@/components/ui/input'
 import { TempoBarChart, TempoDonutChart, TempoGauge, ChartLegend, CHART_COLORS, STATUS_COLORS } from '@/components/ui/charts'
-import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, AlertTriangle, FileText, Search, Calendar, PieChart, Table2, Hash, LayoutGrid, Clock, Briefcase, CreditCard, Target, UserPlus, Download, Save, CalendarClock, CheckCircle2, ArrowRight } from 'lucide-react'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk, detectCrossModuleAnomalies } from '@/lib/ai-engine'
@@ -40,6 +42,7 @@ export default function AnalyticsPage() {
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('workforce')
+  const [activeBoardRoomExperiment, setActiveBoardRoomExperiment] = useState<'board_pack' | 'risk_drilldown' | 'kpi_story' | 'operating_review'>('board_pack')
   const [deptFilter, setDeptFilter] = useState('all')
   const [queryResults, setQueryResults] = useState<{ results: any[]; description: string } | null>(null)
   const [queryFollowUps, setQueryFollowUps] = useState<string[]>([])
@@ -173,6 +176,46 @@ export default function AnalyticsPage() {
   const openPositions = jobPostings.filter(j => j.status === 'open').length
   const pendingExpenses = expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').length
   const lastPayroll = payrollRuns[payrollRuns.length - 1]
+  const totalPayroll = payrollRuns.reduce((a, r) => a + r.total_gross, 0)
+  const boardRoomExperiments = [
+    {
+      id: 'board_pack' as const,
+      title: 'Board pack narrative',
+      benchmark: 'Workday-style executive summary',
+      metric: `${headcount} employee${headcount === 1 ? '' : 's'}`,
+      description: 'Package headcount, payroll, engagement, performance, hiring, and risk into a board-ready story with source-module drill-through.',
+      actions: ['Review executive narrative', 'Check source metrics', 'Prepare board pack'],
+      onOpen: () => setActiveTab('executive'),
+    },
+    {
+      id: 'risk_drilldown' as const,
+      title: 'Risk drill-down',
+      benchmark: 'Visier-style operational risk lens',
+      metric: `${aiAnalyticsInsights.length} AI signal${aiAnalyticsInsights.length === 1 ? '' : 's'}`,
+      description: 'Turn cross-module anomalies into explainable risk cards that route to performance, compensation, leave, and engagement fixes.',
+      actions: ['Rank risk signals', 'Open source module', 'Assign follow-up'],
+      onOpen: () => setActiveTab('flight_risk'),
+    },
+    {
+      id: 'kpi_story' as const,
+      title: 'KPI story builder',
+      benchmark: 'Repeatable leadership KPI reporting',
+      metric: `${reviewCompletion}% review completion`,
+      description: 'Let leaders turn selected workforce, payroll, learning, expense, and recruiting KPIs into a reusable leadership view.',
+      actions: ['Select metrics', 'Preview visualization', 'Schedule report'],
+      onOpen: () => setActiveTab('builder'),
+    },
+    {
+      id: 'operating_review' as const,
+      title: 'Operating review',
+      benchmark: 'Finance and people health in one meeting view',
+      metric: totalPayroll > 0 ? formatCurrency(totalPayroll, defaultCurrency, { compact: true }) : 'No payroll yet',
+      description: 'Combine staff cost, open roles, learning activity, pending expenses, and performance progress into a monthly operating review.',
+      actions: ['Compare cost and headcount', 'Review hiring needs', 'Route expense pressure'],
+      onOpen: () => setActiveTab('workforce'),
+    },
+  ]
+  const selectedBoardRoomExperiment = boardRoomExperiments.find(experiment => experiment.id === activeBoardRoomExperiment) || boardRoomExperiments[0]
 
   // Headcount by department
   const deptCounts = departments.map(d => ({
@@ -231,6 +274,111 @@ export default function AnalyticsPage() {
             } finally { setSaving(false) }
           }}><FileText size={14} /> {saving ? 'Generating...' : t('generateReport')}</Button>
         </div>} />
+
+      <ModuleCommandCenter
+        moduleName="Analytics"
+        benchmark="Visier and Workday-style people analytics, with board-ready narratives and operational drill-through."
+        score={Math.min(97, 50 + Math.round(reviewCompletion * 0.16) + Math.min(10, activeLearners) + (openPositions > 0 ? 6 : 3) + (aiAnalyticsInsights.length > 0 ? 10 : 0))}
+        scoreLabel="Decision readiness"
+        summary="Turns workforce, performance, engagement, recruiting, compensation, expense, payroll, and learning signals into decisions leaders can act on."
+        metrics={[
+          { label: 'Headcount', value: headcount, tone: headcount > 0 ? 'success' : 'warning' },
+          { label: 'Review completion', value: `${reviewCompletion}%`, tone: reviewCompletion >= 80 ? 'success' : 'warning' },
+          { label: 'Active learners', value: activeLearners, tone: activeLearners > 0 ? 'ai' : 'neutral' },
+          { label: 'Pending expenses', value: pendingExpenses, tone: pendingExpenses > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make every insight end in an operational next step.',
+          'Keep executive summaries board-ready while preserving drill-through to source modules.',
+          'Connect analytics to workforce, payroll, learning, performance, and expense actions.',
+        ]}
+        actions={[
+          { label: 'Ask a workforce question', description: 'Use natural language to explore the employee graph.', onClick: () => setActiveTab('workforce') },
+          { label: 'Review executive view', description: 'Open the board-style analytics narrative.', onClick: () => setActiveTab('executive') },
+          { label: 'Build a report', description: 'Configure a repeatable cross-module report.', onClick: () => setActiveTab('builder') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Decision intelligence trust layer"
+        score={Math.min(96, 54 + (headcount > 0 ? 10 : 2) + (reviewCompletion >= 70 ? 8 : 3) + (aiAnalyticsInsights.length > 0 ? 8 : 4) + (queryResults ? 6 : 3))}
+        summary="Confirms that leadership narratives, AI signals, report builder inputs, and workforce drill-throughs stay connected to visible source data before leaders act on analytics."
+        icon={<BarChart3 size={18} />}
+        checks={[
+          { label: 'Source coverage', detail: `${headcount} employees, ${reviews.length} reviews, ${goals.length} goals, and ${payrollRuns.length} payroll runs visible.`, tone: headcount > 0 ? 'success' : 'warning' },
+          { label: 'Decision signals', detail: `${aiAnalyticsInsights.length} cross-module AI signal${aiAnalyticsInsights.length === 1 ? '' : 's'} available for review.`, tone: aiAnalyticsInsights.length > 0 ? 'success' : 'neutral' },
+          { label: 'Report readiness', detail: queryResults ? 'A natural-language query has generated reviewable results.' : 'Report builder and executive tabs remain available for controlled review.', tone: queryResults ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible workforce, performance, engagement, recruiting, payroll, learning, compensation, and expense data already loaded in the page.',
+          'Routes leaders to executive, workforce, flight-risk, and report-builder views without exporting or scheduling reports.',
+          'Keeps AI narratives review-only until a user explicitly generates or exports a report.',
+        ]}
+        actions={[
+          { label: 'Review executive narrative', description: 'Inspect board-ready summary and source context.', onClick: () => setActiveTab('executive') },
+          { label: 'Check risk drill-down', description: 'Review retention and cross-module risk signals.', onClick: () => setActiveTab('flight_risk') },
+          { label: 'Open report builder', description: 'Validate metrics before saving or exporting.', onClick: () => setActiveTab('builder') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Executive board room experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare leadership analytics directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo analytics board-ready while preserving drill-through to workforce, payroll, learning, performance, and expense actions.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {boardRoomExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveBoardRoomExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activeBoardRoomExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeBoardRoomExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedBoardRoomExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedBoardRoomExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedBoardRoomExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedBoardRoomExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* AI Natural Language Query Bar (Sana-inspired) */}
       <AIQueryBar onQuery={handleAIQuery} placeholder={t('queryPlaceholder')} className="mb-6" />

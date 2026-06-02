@@ -14,7 +14,7 @@ import { Input, Select, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoBarChart, TempoDonutChart, TempoAreaChart, CHART_COLORS, CHART_SERIES } from '@/components/ui/charts'
-import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
+import { Wallet, DollarSign, Users, Plus, FileText, BarChart3, Shield, Briefcase, Settings, Search, Calculator, Calendar, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronUp, Eye, Zap, Globe, Download, XCircle, Send, UserCheck, Building2, Smartphone, Ban, Upload, RotateCcw, UserMinus, HeartPulse, CalendarClock, ArrowLeft, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { calculateLeavePayrollImpact, getStatutoryPayRates, type LeaveRecord, type LeavePayrollImpact } from '@/lib/payroll/leave-integration'
 import { calculateFinalPay, getSeveranceRules, type FinalPayInput, type FinalPayResult } from '@/lib/payroll/final-pay'
@@ -24,6 +24,8 @@ import { generateRolloverPreview, getTaxYears, getTaxYearLabel, getExpectedRateC
 import { useTempo } from '@/lib/store'
 import { exportToCSV, PAYROLL_EXPORT_COLUMNS } from '@/lib/export-import'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { ValidationChecklist } from '@/components/ui/validation-checklist'
@@ -210,6 +212,7 @@ export default function PayrollPage() {
   // Managers: hide Approval Queue and Settings tabs
   const tabs = isReadOnly ? allTabs.filter(t => t.id !== 'approvals' && t.id !== 'settings') : allTabs
   const [activeTab, setActiveTab] = useState('pay-runs')
+  const [activePayrollExperiment, setActivePayrollExperiment] = useState<'variance_explainer' | 'approval_chain' | 'payout_preflight' | 'statutory_confidence'>('variance_explainer')
 
   // ---- Modals ----
   const [showPayRunModal, setShowPayRunModal] = useState(false)
@@ -545,6 +548,67 @@ export default function PayrollPage() {
   const pendingICRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && !approvalLevels[r.id]?.ic), [payrollRuns, approvalLevels])
   const pendingFinanceRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && (approvalLevels[r.id]?.ic || false)), [payrollRuns, approvalLevels])
   const pendingCount = pendingHRRuns.length + pendingICRuns.length + pendingFinanceRuns.length
+  const approvalPreflight = useMemo(() => {
+    const diffReady = !!payrollDiff
+    const bankReady = missingBankEmployees.length === 0
+    const statutoryReady = complianceRisks.risks.length === 0
+    const controlReady = pendingICRuns.length === 0 || pendingFinanceRuns.length > 0
+    const blockers = [
+      !diffReady ? 'Needs at least two payroll runs for variance comparison.' : null,
+      !bankReady ? `${missingBankEmployees.length} employee${missingBankEmployees.length === 1 ? '' : 's'} missing bank details.` : null,
+      !statutoryReady ? `${complianceRisks.risks.length} statutory risk signal${complianceRisks.risks.length === 1 ? '' : 's'} should be reviewed.` : null,
+      !controlReady ? `${pendingICRuns.length} run${pendingICRuns.length === 1 ? '' : 's'} still waiting for internal control.` : null,
+    ].filter(Boolean) as string[]
+
+    return {
+      label: blockers.length === 0 ? 'Ready for controlled approval' : 'Review before approval',
+      tone: blockers.length === 0 ? 'success' as const : 'warning' as const,
+      blockers,
+      diffReady,
+      bankReady,
+      statutoryReady,
+      controlReady,
+    }
+  }, [payrollDiff, missingBankEmployees.length, complianceRisks.risks.length, pendingICRuns.length, pendingFinanceRuns.length])
+  const payrollTrustExperiments = [
+    {
+      id: 'variance_explainer' as const,
+      title: 'Variance explainer',
+      benchmark: 'Workday-style pay-run diff before approval',
+      metric: payrollDiff ? `${payrollDiff.gross.pct > 0 ? '+' : ''}${payrollDiff.gross.pct}% gross variance` : 'Needs two runs',
+      description: 'Make every gross, net, deduction, and headcount change understandable before payroll moves into approval.',
+      actions: ['Compare prior run', 'Explain material changes', 'Flag unresolved variance'],
+      onOpen: () => setActiveTab('reconciliation'),
+    },
+    {
+      id: 'approval_chain' as const,
+      title: 'Approval chain',
+      benchmark: 'Deel/Rippling multi-control sign-off',
+      metric: `${pendingCount} pending approval${pendingCount === 1 ? '' : 's'}`,
+      description: 'Show HR, internal control, and finance sign-off as one chain with clear ownership and next safe action.',
+      actions: ['Review HR queue', 'Check control gate', 'Prepare finance sign-off'],
+      onOpen: () => setActiveTab('approvals'),
+    },
+    {
+      id: 'payout_preflight' as const,
+      title: 'Payout preflight',
+      benchmark: 'Bank-file confidence before money moves',
+      metric: `${missingBankEmployees.length} missing bank detail${missingBankEmployees.length === 1 ? '' : 's'}`,
+      description: 'Preview who will be included or excluded from payout files, then fix bank or mobile money details before export.',
+      actions: ['Check missing bank details', 'Preview excluded employees', 'Open bank detail fix'],
+      onOpen: () => setShowBankDetailWarning(true),
+    },
+    {
+      id: 'statutory_confidence' as const,
+      title: 'Statutory confidence',
+      benchmark: 'Africa-first compliance explainability',
+      metric: `${complianceRisks.risks.length} compliance risk${complianceRisks.risks.length === 1 ? '' : 's'}`,
+      description: 'Keep country rules, tax filings, leave impact, pension, and rollover readiness visible before payroll is locked.',
+      actions: ['Review country rules', 'Inspect urgent filings', 'Check rollover readiness'],
+      onOpen: () => setActiveTab('compliance'),
+    },
+  ]
+  const selectedPayrollExperiment = payrollTrustExperiments.find(experiment => experiment.id === activePayrollExperiment) || payrollTrustExperiments[0]
 
   // ---- Handlers ----
   async function submitPayRun() {
@@ -1227,6 +1291,111 @@ export default function PayrollPage() {
         </div> : undefined}
       />
 
+      <ModuleCommandCenter
+        moduleName="Payroll"
+        benchmark="Rippling and Deel-grade payroll trust, with Africa-first statutory depth and transparent approvals."
+        score={Math.min(98, 50 + Math.round(healthScore.value * 0.28) + (payrollRuns.length > 0 ? 8 : 0) + (pendingCount === 0 ? 8 : 3) + (complianceRisks.risks.length === 0 ? 4 : 0))}
+        scoreLabel="Payroll trust readiness"
+        summary="Connects pay runs, approvals, reconciliation, statutory compliance, employee entries, contractors, and year-end operations into one explainable payroll workflow."
+        metrics={[
+          { label: 'Payroll health', value: `${healthScore.value}%`, tone: healthScore.value >= 80 ? 'success' : 'warning' },
+          { label: 'Pending approvals', value: pendingCount, tone: pendingCount > 0 ? 'warning' : 'success' },
+          { label: 'Pay runs', value: payrollRuns.length, tone: payrollRuns.length > 0 ? 'success' : 'neutral' },
+          { label: 'Compliance risks', value: complianceRisks.risks.length, tone: complianceRisks.risks.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Explain every variance before payroll moves to approval.',
+          'Keep statutory deductions, leave impact, and country rules visible at the point of decision.',
+          'Connect approvals, bank files, payslips, and audit trails without duplicate work.',
+        ]}
+        actions={[
+          { label: 'Review approvals', description: 'Clear the HR, control, and finance approval queue.', onClick: () => setActiveTab('approvals') },
+          { label: 'Reconcile variance', description: 'Compare paid runs and verify changes.', onClick: () => setActiveTab('reconciliation') },
+          { label: 'Check compliance', description: 'Inspect tax filings and statutory risks.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Payroll trust experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare payroll control directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo payroll explain variances, approvals, payouts, and statutory confidence before money moves.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {payrollTrustExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActivePayrollExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activePayrollExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activePayrollExperiment === experiment.id && <CheckCircle2 size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedPayrollExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedPayrollExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedPayrollExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle2 size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedPayrollExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <ModuleTrustPanel
+        title="Payroll trust layer"
+        score={Math.min(98, 48 + Math.round(healthScore.value * 0.24) + (pendingCount === 0 ? 10 : 4) + (complianceRisks.risks.length === 0 ? 10 : 4) + (payrollRuns.length > 1 ? 8 : 3))}
+        summary="Makes variance, approval, statutory, and payout readiness visible before payroll moves toward employee-facing payslips or money movement."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Variance readiness', detail: `${payrollRuns.length} pay run${payrollRuns.length === 1 ? '' : 's'} available for comparison and reconciliation.`, tone: payrollRuns.length > 1 ? 'success' : 'warning' },
+          { label: 'Approval queue', detail: `${pendingCount} payroll approval${pendingCount === 1 ? '' : 's'} still need sign-off.`, tone: pendingCount > 0 ? 'warning' : 'success' },
+          { label: 'Compliance signal', detail: `${complianceRisks.risks.length} statutory risk signal${complianceRisks.risks.length === 1 ? '' : 's'} surfaced for review.`, tone: complianceRisks.risks.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Pay runs, employee entries, contractor payments, schedules, tax filings, and compliance issues are summarized before approval.',
+          'Finance can route directly to approvals, reconciliation, and compliance without changing bank files or posted payroll.',
+          'This panel is additive review guidance only; it does not approve payroll, create payouts, publish payslips, or change tax calculations.',
+        ]}
+        actions={[
+          { label: 'Open approvals', description: 'Review HR, control, and finance sign-off state.', onClick: () => setActiveTab('approvals') },
+          { label: 'Reconcile changes', description: 'Compare run deltas before payroll is trusted.', onClick: () => setActiveTab('reconciliation') },
+          { label: 'Review compliance', description: 'Inspect statutory risks and tax filings.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
+
       {/* Evaluator Walkthrough */}
       {isEvaluator && !walkthroughDismissed && (
         <EvaluatorWalkthrough
@@ -1759,6 +1928,49 @@ export default function PayrollPage() {
               <span className={`px-2 py-1 rounded font-medium ${pendingFinanceRuns.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>Level 3: Finance</span>
               <span className="text-t3">&rarr;</span>
               <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-medium">Approved</span>
+            </div>
+          </Card>
+
+          <Card className={`mb-4 p-4 ${approvalPreflight.tone === 'success' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  {approvalPreflight.tone === 'success' ? <CheckCircle2 size={16} className="text-emerald-700" /> : <AlertTriangle size={16} className="text-amber-700" />}
+                  <p className="text-sm font-semibold text-t1">Payroll approval preflight</p>
+                  <Badge variant={approvalPreflight.tone === 'success' ? 'success' : 'warning'}>{approvalPreflight.label}</Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-t2">
+                  Review variance, bank-file readiness, statutory risk, and control-gate status before approving payroll.
+                </p>
+                {approvalPreflight.blockers.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {approvalPreflight.blockers.map(blocker => (
+                      <li key={blocker} className="flex items-start gap-2 text-xs leading-5 text-amber-800">
+                        <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                        <span>{blocker}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="grid min-w-[280px] grid-cols-2 gap-2">
+                <button type="button" onClick={() => setActiveTab('reconciliation')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Variance diff</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.diffReady ? 'Available' : 'Needs two runs'}</span>
+                </button>
+                <button type="button" onClick={() => setShowBankDetailWarning(true)} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Bank details</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.bankReady ? 'No gaps' : `${missingBankEmployees.length} gaps`}</span>
+                </button>
+                <button type="button" onClick={() => setActiveTab('compliance')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Statutory risk</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.statutoryReady ? 'Clear' : `${complianceRisks.risks.length} signals`}</span>
+                </button>
+                <button type="button" onClick={() => setActiveTab('approvals')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Control gate</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.controlReady ? 'Aligned' : `${pendingICRuns.length} IC pending`}</span>
+                </button>
+              </div>
             </div>
           </Card>
 

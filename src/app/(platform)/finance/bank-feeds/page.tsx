@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -174,6 +176,52 @@ export default function BankFeedsPage() {
     <>
       <Header title="Bank Feeds" subtitle="Automated bank statement reconciliation with Plaid integration" />
       <div className="p-6 space-y-6">
+        <ModuleCommandCenter
+          moduleName="Bank Feeds"
+          benchmark="Plaid and NetSuite-grade bank reconciliation with connected accounts, transaction matching, rules, imports, and exception queues in one finance control surface."
+          score={Math.min(97, 50 + ((bankConnections || []).length > 0 ? 8 : 2) + ((stats.matchedPercent || 0) >= 80 ? 10 : 4) + ((stats.unmatched || 0) === 0 ? 8 : 3) + ((reconciliationRules || []).length > 0 ? 7 : 2))}
+          scoreLabel="Reconciliation readiness"
+          summary="Connects bank connections, accounts, Plaid sync, CSV import, auto-matching, manual matching, rules, inflow, outflow, and unmatched transaction review."
+          metrics={[
+            { label: 'Reconciliation', value: `${stats.matchedPercent || 0}%`, tone: (stats.matchedPercent || 0) >= 80 ? 'success' : 'warning' },
+            { label: 'Connections', value: (bankConnections || []).length, tone: (bankConnections || []).length > 0 ? 'success' : 'neutral' },
+            { label: 'Unmatched', value: stats.unmatched || 0, tone: (stats.unmatched || 0) > 0 ? 'warning' : 'success' },
+            { label: 'Rules', value: (reconciliationRules || []).length, tone: (reconciliationRules || []).length > 0 ? 'ai' : 'neutral' },
+          ]}
+          focusAreas={[
+            'Make unmatched transactions the visible exception queue for finance.',
+            'Keep bank sync, imports, matching rules, and manual matches in one workflow.',
+            'Connect bank activity back to invoices, expenses, payroll, and bill payments.',
+          ]}
+          actions={[
+            { label: 'Review overview', description: 'Inspect connection and reconciliation health.', onClick: () => setActiveTab('overview') },
+            { label: 'Work transactions', description: 'Review unmatched and matched bank lines.', onClick: () => setActiveTab('transactions') },
+            { label: 'Tune rules', description: 'Manage auto-match rules and priorities.', onClick: () => setActiveTab('rules') },
+          ]}
+        />
+
+        <ModuleTrustPanel
+          title="Bank reconciliation trust layer"
+          score={Math.min(97, 48 + ((bankConnections || []).length > 0 ? 10 : 4) + ((stats.matchedPercent || 0) >= 80 ? 10 : 4) + ((stats.unmatched || 0) === 0 ? 10 : 5) + ((reconciliationRules || []).length > 0 ? 8 : 3))}
+          summary="Keeps bank connectivity, match quality, unmatched exceptions, and matching rules visible before finance treats cash activity as reconciled."
+          icon={<Landmark className="h-5 w-5" />}
+          checks={[
+            { label: 'Connection coverage', detail: `${(bankConnections || []).length} bank connection${(bankConnections || []).length === 1 ? '' : 's'} available for sync.`, tone: (bankConnections || []).length > 0 ? 'success' : 'warning' },
+            { label: 'Match confidence', detail: `${stats.matchedPercent || 0}% of active transactions are matched or confirmed.`, tone: (stats.matchedPercent || 0) >= 80 ? 'success' : 'warning' },
+            { label: 'Exception queue', detail: `${stats.unmatched || 0} unmatched transaction${(stats.unmatched || 0) === 1 ? '' : 's'} need review.`, tone: (stats.unmatched || 0) > 0 ? 'warning' : 'success' },
+          ]}
+          evidence={[
+            'Bank connections, accounts, transactions, match status, invoices, expenses, and matching rules are summarized together.',
+            'Finance can route to transactions and rules without confirming a match, excluding a line, or disconnecting a bank.',
+            'This panel is additive review guidance only; it does not sync banks, create rules, confirm matches, or mutate bank-feed records.',
+          ]}
+          actions={[
+            { label: 'Review transactions', description: 'Work unmatched and matched bank activity.', onClick: () => setActiveTab('transactions') },
+            { label: 'Tune rules', description: 'Inspect matching rules and priorities.', onClick: () => setActiveTab('rules') },
+            { label: 'Open overview', description: 'Return to connection and reconciliation health.', onClick: () => setActiveTab('overview') },
+          ]}
+        />
+
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             {(['overview', 'transactions', 'rules'] as TabKey[]).map(tab => (

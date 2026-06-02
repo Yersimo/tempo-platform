@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +17,7 @@ import {
   UserPlus, Users, DollarSign, TrendingUp, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, AlertTriangle, Search, Filter,
   BarChart3, Target, Calendar, Briefcase, ArrowRight, MessageSquare,
-  ChevronDown, ChevronUp, Globe,
+  ChevronDown, ChevronUp, Globe, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo, useOrgCurrency } from '@/lib/store'
@@ -566,6 +568,52 @@ export default function HeadcountPage() {
           <span className="text-xs text-t3 ml-auto">Total Budget: <span className="font-semibold text-t1">{fmt(activePlan.total_budget)}</span></span>
         </div>
       )}
+
+      <ModuleCommandCenter
+        moduleName="Headcount"
+        benchmark="Workday Adaptive and Rippling-grade workforce planning with approved positions, budget, hiring, forecasting, and country expansion connected."
+        score={Math.min(97, 50 + (totalPlanned > 0 ? 8 : 2) + (pendingApprovals.length <= 3 ? 8 : 3) + (budgetUtilPct <= 90 ? 8 : 3) + (deptBreakdown.length > 0 ? 8 : 2))}
+        scoreLabel="Workforce plan readiness"
+        summary="Connects headcount plans, positions, approvals, budget allocation, forecasting, country expansion, and recruiting handoff into one planning workflow."
+        metrics={[
+          { label: 'Planned roles', value: totalPlanned, tone: totalPlanned > 0 ? 'ai' : 'neutral' },
+          { label: 'Filled roles', value: filledCount, tone: filledCount > 0 ? 'success' : 'neutral' },
+          { label: 'Pending approvals', value: pendingApprovals.length, tone: pendingApprovals.length > 3 ? 'warning' : 'success' },
+          { label: 'Budget used', value: `${budgetUtilPct}%`, tone: budgetUtilPct > 90 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Make every planned role traceable to budget, department need, approval, and recruiting status.',
+          'Show leaders where workforce plans are blocked before hiring timelines slip.',
+          'Connect country expansion to benefits, onboarding, compliance, and payroll readiness.',
+        ]}
+        actions={[
+          { label: 'Review positions', description: 'Inspect planned, approved, open, and filled roles.', onClick: () => setActiveTab('positions') },
+          { label: 'Approve headcount', description: 'Work pending role approvals.', onClick: () => setActiveTab('approvals') },
+          { label: 'Model forecast', description: 'Review hiring runway and plan scenarios.', onClick: () => setActiveTab('forecasting') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Workforce plan trust layer"
+        score={Math.min(97, 48 + (totalPlanned > 0 ? 10 : 4) + (pendingApprovals.length <= 3 ? 10 : 4) + (budgetUtilPct <= 90 ? 8 : 3) + (deptBreakdown.length > 0 ? 8 : 3))}
+        summary="Keeps planned roles, approvals, budget usage, department demand, and recruiting handoff visible before headcount commitments are trusted."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Plan coverage', detail: `${totalPlanned} planned role${totalPlanned === 1 ? '' : 's'} with ${filledCount} filled.`, tone: totalPlanned > 0 ? 'success' : 'warning' },
+          { label: 'Approval queue', detail: `${pendingApprovals.length} headcount approval${pendingApprovals.length === 1 ? '' : 's'} pending.`, tone: pendingApprovals.length > 3 ? 'warning' : 'success' },
+          { label: 'Budget pressure', detail: `${budgetUtilPct}% of active plan budget used.`, tone: budgetUtilPct > 90 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Headcount plans, positions, approvals, budget allocation, forecasts, country expansion, and recruiting handoff are summarized together.',
+          'Leaders can route to positions, approvals, and forecasting without approving roles or changing budgets from this panel.',
+          'This panel is additive review guidance only; it does not create positions, approve headcount, change budgets, or open requisitions.',
+        ]}
+        actions={[
+          { label: 'Review positions', description: 'Inspect planned, approved, open, and filled roles.', onClick: () => setActiveTab('positions') },
+          { label: 'Work approvals', description: 'Review pending role approvals.', onClick: () => setActiveTab('approvals') },
+          { label: 'Model forecast', description: 'Check hiring runway and plan scenarios.', onClick: () => setActiveTab('forecasting') },
+        ]}
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 

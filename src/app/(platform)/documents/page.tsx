@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -494,6 +496,52 @@ export default function DocumentsPage() {
         title="Documents & E-Signatures"
         subtitle="Create, send & track document signatures"
         actions={<Button size="sm" onClick={openNewDocument}><Plus size={14} /> New Document</Button>}
+      />
+
+      <ModuleCommandCenter
+        moduleName="Documents"
+        benchmark="DocuSign and Rippling-grade document operations with templates, bulk policy sends, signature routing, and audit evidence connected to employee records."
+        score={Math.min(97, 48 + (signatureTemplates.length > 0 ? 10 : 3) + (awaitingCount <= 5 ? 9 : 4) + (auditEvents.length > 0 ? 8 : 2) + (completedCount > 0 ? 8 : 2))}
+        scoreLabel="Document control readiness"
+        summary="Connects e-signature documents, templates, bulk policy distribution, reminders, signer status, downloads, and audit trail into one controlled evidence workflow."
+        metrics={[
+          { label: 'Documents', value: signatureDocuments.length, tone: signatureDocuments.length > 0 ? 'success' : 'neutral' },
+          { label: 'Awaiting signature', value: awaitingCount, tone: awaitingCount > 0 ? 'warning' : 'success' },
+          { label: 'Templates', value: signatureTemplates.length, tone: signatureTemplates.length > 0 ? 'ai' : 'warning' },
+          { label: 'Audit events', value: auditEvents.length, tone: auditEvents.length > 0 ? 'success' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Make every document traceable to a signer, template, status, reminder, and audit event.',
+          'Keep policy acknowledgments easy to send in bulk and easy to prove later.',
+          'Connect signed documents back to onboarding, compliance, compensation, and employee records.',
+        ]}
+        actions={[
+          { label: 'Track documents', description: 'Review signature status and pending signers.', onClick: () => setActiveTab('documents') },
+          { label: 'Manage templates', description: 'Tune reusable signing flows and roles.', onClick: () => setActiveTab('templates') },
+          { label: 'Review audit trail', description: 'Inspect signature and evidence history.', onClick: () => setActiveTab('audit') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Document evidence trust layer"
+        score={Math.min(97, 48 + (signatureDocuments.length > 0 ? 10 : 4) + (awaitingCount === 0 ? 10 : 5) + (signatureTemplates.length > 0 ? 8 : 3) + (auditEvents.length > 0 ? 8 : 3))}
+        summary="Keeps signature status, templates, signer routing, and audit evidence visible before documents are treated as complete or compliant."
+        icon={<FileSignature size={18} />}
+        checks={[
+          { label: 'Signature queue', detail: `${awaitingCount} document${awaitingCount === 1 ? '' : 's'} awaiting signature.`, tone: awaitingCount > 0 ? 'warning' : 'success' },
+          { label: 'Template coverage', detail: `${signatureTemplates.length} reusable template${signatureTemplates.length === 1 ? '' : 's'} available.`, tone: signatureTemplates.length > 0 ? 'success' : 'warning' },
+          { label: 'Audit trail', detail: `${auditEvents.length} audit event${auditEvents.length === 1 ? '' : 's'} available for evidence review.`, tone: auditEvents.length > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Documents, signers, templates, reminders, downloads, employee links, and audit events are summarized together.',
+          'HR can route to documents, templates, and audit history without sending, reminding, deleting, or changing signature state.',
+          'This panel is additive review guidance only; it does not send documents, complete signatures, delete files, or alter audit evidence.',
+        ]}
+        actions={[
+          { label: 'Track documents', description: 'Review signature status and pending signers.', onClick: () => setActiveTab('documents') },
+          { label: 'Manage templates', description: 'Inspect reusable signing flows and roles.', onClick: () => setActiveTab('templates') },
+          { label: 'Review audit trail', description: 'Open signature and evidence history.', onClick: () => setActiveTab('audit') },
+        ]}
       />
 
       {/* Stat Cards */}

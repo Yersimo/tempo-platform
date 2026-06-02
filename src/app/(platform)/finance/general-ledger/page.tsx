@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -388,6 +390,17 @@ export default function GeneralLedgerPage() {
   const autoJEEntries = useMemo(() => {
     return allJournalEntries.filter(je => je.sourceModule !== 'manual')
   }, [allJournalEntries])
+  const openPeriods = periods.filter(p => p.status === 'open').length
+  const lockedPeriods = periods.filter(p => p.status === 'locked').length
+  const ledgerReadinessScore = Math.min(98,
+    46 +
+    (Math.abs(balanceCheck) === 0 ? 14 : 3) +
+    (totalEntries > 0 ? 10 : 3) +
+    (autoJEEntries.length > 0 ? 10 : 4) +
+    (chartOfAccounts.length > 0 ? 8 : 2) +
+    (openPeriods > 0 ? 6 : 3) +
+    (lockedPeriods > 0 ? 4 : 1)
+  )
 
   // ---- P&L Period computation ----
   const plPeriod = useMemo(() => {
@@ -719,6 +732,52 @@ export default function GeneralLedgerPage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="General Ledger"
+        benchmark="NetSuite and Workday-grade ledger control with balanced journals, automated postings, and close visibility."
+        score={ledgerReadinessScore}
+        scoreLabel="Ledger readiness"
+        summary="Tempo's GL should prove every finance workflow lands cleanly: payroll, invoices, expenses, and manual entries reconcile into statements with clear period-close controls."
+        metrics={[
+          { label: 'Entries', value: totalEntries, tone: totalEntries > 0 ? 'success' : 'warning' },
+          { label: 'Balance delta', value: formatCurrency(balanceCheck, defaultCurrency, { cents: true }), tone: Math.abs(balanceCheck) === 0 ? 'success' : 'warning' },
+          { label: 'Auto entries', value: autoJEEntries.length, tone: autoJEEntries.length > 0 ? 'ai' : 'neutral' },
+          { label: 'Open periods', value: openPeriods, tone: openPeriods > 0 ? 'ai' : 'neutral' },
+        ]}
+        focusAreas={[
+          'Keep every operational module tied to auditable accounting entries.',
+          'Make unbalanced, unposted, and reversed entries impossible to miss.',
+          'Guide close work from trial balance confidence to period lock.',
+        ]}
+        actions={[
+          { label: 'Review journal entries', description: 'Inspect posting state, source module, and balance health.', onClick: () => setActiveTab('entries') },
+          { label: 'Audit automated entries', description: 'Trace payroll, invoice, and expense postings into the GL.', onClick: () => setActiveTab('auto-je-log') },
+          { label: 'Manage period close', description: 'Check close checklist, locks, and reopen controls.', onClick: () => setActiveTab('period-close') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Ledger close trust layer"
+        score={ledgerReadinessScore}
+        summary="Keeps journal balance, posting coverage, automated-entry evidence, and period-close readiness visible before finance trusts the books."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Balance check', detail: `${formatCurrency(balanceCheck, defaultCurrency, { cents: true })} debit-credit delta in the current view.`, tone: Math.abs(balanceCheck) === 0 ? 'success' : 'warning' },
+          { label: 'Posting evidence', detail: `${totalEntries} journal entr${totalEntries === 1 ? 'y' : 'ies'} available for source and status review.`, tone: totalEntries > 0 ? 'success' : 'warning' },
+          { label: 'Close readiness', detail: `${openPeriods} open period${openPeriods === 1 ? '' : 's'} need close-control attention.`, tone: openPeriods > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Journal entries, chart of accounts, automated postings, trial balance, financial statements, and period-close controls are summarized together.',
+          'Finance can route to journal entries, automated-entry audit, and period close without posting, reversing, exporting, or locking a period.',
+          'This panel is additive review guidance only; it does not post journals, change ledgers, export reports, close periods, or alter accounting records.',
+        ]}
+        actions={[
+          { label: 'Review entries', description: 'Inspect source, posting status, and balance health.', onClick: () => setActiveTab('entries') },
+          { label: 'Audit auto entries', description: 'Trace payroll, invoice, and expense postings.', onClick: () => setActiveTab('auto-je-log') },
+          { label: 'Check period close', description: 'Review close checklist and lock readiness.', onClick: () => setActiveTab('period-close') },
+        ]}
       />
 
       {/* Stat Cards */}

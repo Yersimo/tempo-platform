@@ -16,6 +16,8 @@ import { Avatar } from '@/components/ui/avatar'
 import { AIInsightCard } from '@/components/ai'
 import { suggestOnboardingBuddy, generateOnboardingPlan } from '@/lib/ai-engine'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useTempo } from '@/lib/store'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
@@ -366,6 +368,7 @@ export default function OnboardingPage() {
 
   // ─── Module Tab State ──────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('my-onboarding')
+  const [activeLifecycleExperiment, setActiveLifecycleExperiment] = useState<'joiner_launch' | 'mover_transition' | 'leaver_closure' | 'control_room'>('joiner_launch')
   const tabs = [
     { id: 'my-onboarding', label: 'My Onboarding' },
     { id: 'welcome-portal', label: t('welcomePortal') },
@@ -494,6 +497,98 @@ export default function OnboardingPage() {
   const inProgressTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'in_progress').length, [preboardingTasks])
   const pendingTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'pending').length, [preboardingTasks])
   const taskCompletionPct = useMemo(() => preboardingTasks.length > 0 ? Math.round((completedTaskCount / preboardingTasks.length) * 100) : 0, [preboardingTasks, completedTaskCount])
+  const lifecycleControlRoom = useMemo(() => {
+    const countByCategory = (category: string) => preboardingTasks.filter(task => task.category === category)
+    const pendingByCategory = (category: string) => countByCategory(category).filter(task => task.status !== 'completed').length
+    const missingSetupModules = ['payroll', 'learning'].filter(moduleId => !selectedModules.includes(moduleId))
+    const openCriticalTasks = ['documents', 'payroll', 'equipment', 'accounts', 'training']
+      .reduce((sum, category) => sum + pendingByCategory(category), 0)
+
+    return [
+      {
+        owner: 'HR operations',
+        icon: <FileText size={16} />,
+        status: pendingByCategory('documents') === 0 && preboardingTasks.length > 0 ? 'Ready' : 'Review',
+        detail: `${countByCategory('documents').length} document task${countByCategory('documents').length === 1 ? '' : 's'}, ${pendingByCategory('documents')} still open.`,
+        route: () => { setPreboardCategoryFilter('documents'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'IT provisioning',
+        icon: <Laptop size={16} />,
+        status: pendingByCategory('accounts') + pendingByCategory('equipment') === 0 && preboardingTasks.length > 0 ? 'Ready' : 'Review',
+        detail: `${pendingByCategory('accounts')} account and ${pendingByCategory('equipment')} equipment task${pendingByCategory('equipment') === 1 ? '' : 's'} still open.`,
+        route: () => { setPreboardCategoryFilter('accounts'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Payroll and benefits',
+        icon: <DollarSign size={16} />,
+        status: missingSetupModules.includes('payroll') || pendingByCategory('payroll') > 0 ? 'Review' : 'Ready',
+        detail: `${pendingByCategory('payroll')} payroll task${pendingByCategory('payroll') === 1 ? '' : 's'} open; payroll module ${selectedModules.includes('payroll') ? 'selected' : 'not selected'}.`,
+        route: () => { setPreboardCategoryFilter('payroll'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Learning and compliance',
+        icon: <GraduationCap size={16} />,
+        status: missingSetupModules.includes('learning') || pendingByCategory('training') > 0 ? 'Review' : 'Ready',
+        detail: `${pendingByCategory('training')} training task${pendingByCategory('training') === 1 ? '' : 's'} open; learning module ${selectedModules.includes('learning') ? 'selected' : 'not selected'}.`,
+        route: () => { setPreboardCategoryFilter('training'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Manager and buddy',
+        icon: <Users size={16} />,
+        status: activeBuddyCount > 0 ? 'Ready' : 'Review',
+        detail: `${activeBuddyCount} active, ${pendingBuddyCount} pending, and ${completedBuddyCount} completed buddy assignment${buddyAssignments.length === 1 ? '' : 's'}.`,
+        route: () => setActiveTab('buddy-system'),
+      },
+      {
+        owner: 'Control queue',
+        icon: <AlertCircle size={16} />,
+        status: openCriticalTasks === 0 && missingSetupModules.length === 0 ? 'Ready' : 'Review',
+        detail: `${openCriticalTasks} critical open task${openCriticalTasks === 1 ? '' : 's'} and ${missingSetupModules.length} missing setup module${missingSetupModules.length === 1 ? '' : 's'}.`,
+        route: () => setShowBulkTaskModal(true),
+      },
+    ]
+  }, [activeBuddyCount, buddyAssignments.length, completedBuddyCount, pendingBuddyCount, preboardingTasks, selectedModules])
+
+  const lifecycleExperiments = [
+    {
+      id: 'joiner_launch' as const,
+      title: 'Joiner launch',
+      benchmark: 'Rippling-style first-day orchestration',
+      metric: `${pendingTaskCount} pending task${pendingTaskCount === 1 ? '' : 's'}`,
+      description: 'Coordinate documents, equipment, payroll setup, learning, buddy support, and manager tasks before the new hire logs in.',
+      actions: ['Confirm Day-1 readiness', 'Assign buddy support', 'Stage payroll and learning tasks'],
+      onOpen: () => setActiveTab('preboarding'),
+    },
+    {
+      id: 'mover_transition' as const,
+      title: 'Mover transition',
+      benchmark: 'Role change without handoff drift',
+      metric: `${selectedModules.length} module${selectedModules.length === 1 ? '' : 's'} selected`,
+      description: 'Preview the workflow for department, manager, location, or role changes across HR, IT access, learning, payroll, and approvals.',
+      actions: ['Model role change tasks', 'Check access impact', 'Route approvals'],
+      onOpen: () => setActiveTab('onboarding-plan'),
+    },
+    {
+      id: 'leaver_closure' as const,
+      title: 'Leaver closure',
+      benchmark: 'Offboarding controls visible from onboarding',
+      metric: `${activeBuddyCount} active buddy link${activeBuddyCount === 1 ? '' : 's'}`,
+      description: 'Show the reverse lifecycle: access removal, device return, final payroll, knowledge transfer, and compliance evidence.',
+      actions: ['Prepare closure checklist', 'Capture knowledge transfer', 'Confirm final-pay dependencies'],
+      onOpen: () => setActiveTab('buddy-system'),
+    },
+    {
+      id: 'control_room' as const,
+      title: 'Lifecycle control room',
+      benchmark: 'One queue for HR, IT, Payroll, Learning, and Compliance',
+      metric: `${taskCompletionPct}% ready`,
+      description: 'Create a single review surface for lifecycle work that explains what is blocked, who owns it, and the next safest action.',
+      actions: ['Group blockers by owner', 'Explain risk by function', 'Create recoverable task waves'],
+      onOpen: () => setShowBulkTaskModal(true),
+    },
+  ]
+  const selectedLifecycleExperiment = lifecycleExperiments.find(experiment => experiment.id === activeLifecycleExperiment) || lifecycleExperiments[0]
 
   const filteredTasks = useMemo(() => {
     let tasks = preboardingTasks
@@ -1319,6 +1414,157 @@ export default function OnboardingPage() {
             </Button>
           </div>
         }
+      />
+
+      <ModuleCommandCenter
+        moduleName="Onboarding"
+        benchmark="Rippling-grade first day orchestration, with Sana-style learning and IT provisioning ready before 8am."
+        score={Math.min(96, 48 + Math.round(taskCompletionPct * 0.2) + (activeBuddyCount > 0 ? 8 : 3) + (preboardingTasks.length > 0 ? 8 : 2) + Math.min(10, selectedModules.length))}
+        scoreLabel="Day-one readiness"
+        summary="Connects setup, preboarding tasks, buddies, welcome content, learning plans, employee import, and Day-1 experiences into one guided journey."
+        metrics={[
+          { label: 'Task completion', value: `${taskCompletionPct}%`, tone: taskCompletionPct >= 70 ? 'success' : 'warning' },
+          { label: 'Active buddies', value: activeBuddyCount, tone: activeBuddyCount > 0 ? 'success' : 'neutral' },
+          { label: 'Pending tasks', value: pendingTaskCount, tone: pendingTaskCount > 0 ? 'warning' : 'success' },
+          { label: 'Modules selected', value: selectedModules.length, tone: 'ai' },
+        ]}
+        focusAreas={[
+          'Make the first morning feel complete across HR, IT, Learning, Payroll, and manager tasks.',
+          'Keep buddy nudges, documents, equipment, and training visible in one journey.',
+          'Turn bulk onboarding setup into a guided, recoverable process.',
+        ]}
+        actions={[
+          { label: 'Open first morning', description: 'Preview the Day-1 employee experience.', href: '/onboarding/day-one' },
+          { label: 'Review preboarding', description: 'Track documents, equipment, and account tasks.', onClick: () => setActiveTab('preboarding') },
+          { label: 'Assign buddies', description: 'Match new hires with onboarding support.', onClick: () => setActiveTab('buddy-system') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Joiner/Mover/Leaver experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare lifecycle orchestration directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo coordinate HR, IT, Payroll, Learning, Compliance, and manager work as one lifecycle system.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {lifecycleExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveLifecycleExperiment(experiment.id)}
+                className={`rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60 ${
+                  activeLifecycleExperiment === experiment.id
+                    ? 'border-tempo-400 bg-tempo-50 shadow-sm'
+                    : 'border-border bg-bg'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeLifecycleExperiment === experiment.id && <CheckCircle size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedLifecycleExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedLifecycleExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedLifecycleExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedLifecycleExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Lifecycle control room</p>
+              <h2 className="text-lg font-semibold text-t1">One readiness queue across HR, IT, Payroll, Learning, and managers</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Read-only orchestration that explains who owns each joiner, mover, or leaver dependency before Tempo creates or changes operational records.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={pendingTaskCount > 0 ? 'warning' : 'success'}>{pendingTaskCount} pending</Badge>
+              <Badge variant={activeBuddyCount > 0 ? 'success' : 'info'}>{activeBuddyCount} buddies</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {lifecycleControlRoom.map(item => (
+            <button
+              key={item.owner}
+              type="button"
+              onClick={item.route}
+              className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                    {item.icon}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{item.owner}</h3>
+                    <p className="text-xs text-t3">Owner review</p>
+                  </div>
+                </div>
+                <Badge variant={item.status === 'Ready' ? 'success' : 'warning'}>{item.status}</Badge>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-t2">{item.detail}</p>
+              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                Open workspace <ArrowRight size={13} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <ModuleTrustPanel
+        title="Joiner readiness trust layer"
+        score={Math.min(96, 48 + Math.round(taskCompletionPct * 0.2) + (pendingTaskCount === 0 ? 10 : 5) + (activeBuddyCount > 0 ? 8 : 3) + (selectedModules.length > 0 ? 8 : 3))}
+        summary="Keeps preboarding, buddy coverage, selected modules, and Day-1 readiness visible before a new hire starts."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Task readiness', detail: `${taskCompletionPct}% complete with ${pendingTaskCount} pending task${pendingTaskCount === 1 ? '' : 's'}.`, tone: pendingTaskCount > 0 ? 'warning' : 'success' },
+          { label: 'Buddy coverage', detail: `${activeBuddyCount} active buddy assignment${activeBuddyCount === 1 ? '' : 's'} supporting joiners.`, tone: activeBuddyCount > 0 ? 'success' : 'warning' },
+          { label: 'Module coverage', detail: `${selectedModules.length} onboarding module${selectedModules.length === 1 ? '' : 's'} selected for setup.`, tone: selectedModules.length > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Preboarding tasks, selected setup modules, buddy assignments, welcome content, learning plans, and Day-1 entry are summarized together.',
+          'HR can route to preboarding, buddy setup, and the first-morning preview without assigning tasks from this panel.',
+          'This panel is additive review guidance only; it does not create hires, complete tasks, assign buddies, or change setup modules.',
+        ]}
+        actions={[
+          { label: 'Review preboarding', description: 'Inspect documents, equipment, and account tasks.', onClick: () => setActiveTab('preboarding') },
+          { label: 'Assign buddies', description: 'Check support coverage for new hires.', onClick: () => setActiveTab('buddy-system') },
+          { label: 'Preview first morning', description: 'Open the Day-1 employee experience.', href: '/onboarding/day-one' },
+        ]}
       />
 
       {/* Day-1 First Morning entry — for new joiners */}

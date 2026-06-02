@@ -11,6 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Tabs } from '@/components/ui/tabs'
 import { TempoDonutChart, TempoBarChart, CHART_COLORS } from '@/components/ui/charts'
 import {
@@ -18,7 +20,7 @@ import {
   Lock, Trash2, RotateCcw, Download, Plus, Search, Settings,
   CheckCircle, XCircle, Clock, AlertTriangle, Package, Warehouse, Truck,
   KeyRound, Users, Globe, ToggleLeft, ToggleRight,
-  HardDrive, Server, Cpu, Box, Zap, Pencil,
+  HardDrive, Server, Cpu, Box, Zap, Pencil, ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useTempo, useOrgCurrency } from '@/lib/store'
@@ -142,6 +144,7 @@ export default function ITCloudPage() {
     { id: 'identity', label: 'Identity & Access', icon: KeyRound },
   ]
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeITLifecycleExperiment, setActiveITLifecycleExperiment] = useState<'joiner_provisioning' | 'mover_access' | 'leaver_lockdown' | 'endpoint_trust'>('joiner_provisioning')
 
   // ---- Search/Filter ----
   const [searchQuery, setSearchQuery] = useState('')
@@ -224,6 +227,45 @@ export default function ITCloudPage() {
     if (pendingSetup.length > 0) list.push({ type: 'setup', message: `${pendingSetup.length} device(s) pending setup`, severity: 'info' })
     return list
   }, [managedDevices])
+  const itLifecycleExperiments = [
+    {
+      id: 'joiner_provisioning' as const,
+      title: 'Joiner provisioning',
+      benchmark: 'Rippling-grade day-one IT setup',
+      metric: `${provisioningRules.filter(r => r.trigger === 'on_hire' && r.isActive).length} on-hire rule${provisioningRules.filter(r => r.trigger === 'on_hire' && r.isActive).length === 1 ? '' : 's'}`,
+      description: 'Stage apps, devices, encryption, SSO, and first-login readiness before the employee starts.',
+      actions: ['Review on-hire rules', 'Confirm device readiness', 'Check core app access'],
+      onOpen: () => setActiveTab('provisioning'),
+    },
+    {
+      id: 'mover_access' as const,
+      title: 'Mover access change',
+      benchmark: 'Role change without access drift',
+      metric: `${provisioningRules.filter(r => (r.trigger === 'department_change' || r.trigger === 'role_change') && r.isActive).length} mover rule${provisioningRules.filter(r => (r.trigger === 'department_change' || r.trigger === 'role_change') && r.isActive).length === 1 ? '' : 's'}`,
+      description: 'Compare department and role-change rules so app access follows the new job without stale permissions.',
+      actions: ['Review role rules', 'Inspect app assignments', 'Check identity posture'],
+      onOpen: () => setActiveTab('identity'),
+    },
+    {
+      id: 'leaver_lockdown' as const,
+      title: 'Leaver lockdown',
+      benchmark: 'Okta-style deprovisioning confidence',
+      metric: `${provisioningRules.filter(r => r.trigger === 'on_offboard' && r.isActive).length} offboard rule${provisioningRules.filter(r => r.trigger === 'on_offboard' && r.isActive).length === 1 ? '' : 's'}`,
+      description: 'Review app revocation, device lock/wipe readiness, inventory return, and access closure before final offboarding.',
+      actions: ['Check offboard rules', 'Review device actions', 'Confirm inventory return'],
+      onOpen: () => setActiveTab('identity'),
+    },
+    {
+      id: 'endpoint_trust' as const,
+      title: 'Endpoint trust',
+      benchmark: 'Device compliance before access is trusted',
+      metric: `${alerts.length} active alert${alerts.length === 1 ? '' : 's'}`,
+      description: 'Treat encryption, stale check-ins, MDM, and device compliance as prerequisites for sensitive app access.',
+      actions: ['Review active alerts', 'Harden security policy', 'Open encryption controls'],
+      onOpen: () => setActiveTab('security'),
+    },
+  ]
+  const selectedITLifecycleExperiment = itLifecycleExperiments.find(experiment => experiment.id === activeITLifecycleExperiment) || itLifecycleExperiments[0]
 
   // Filtered devices
   const filteredDevices = useMemo(() => {
@@ -507,6 +549,110 @@ export default function ITCloudPage() {
   return (
     <>
       <Header title="IT Cloud" subtitle="Device management, application catalog, security policies and asset inventory" />
+
+      <ModuleCommandCenter
+        moduleName="IT Cloud"
+        benchmark="Rippling and Okta-grade access, device, app, and security operations in one lifecycle command surface."
+        score={Math.min(98, 46 + Math.round(securityScore * 0.28) + (activeDevices.length > 0 ? 8 : 0) + (provisioningRules.filter(r => r.isActive).length > 0 ? 8 : 0) + (alerts.length === 0 ? 8 : 3))}
+        scoreLabel="IT control readiness"
+        summary="Connects devices, applications, app access, security policies, inventory, provisioning rules, encryption, and identity context so joiner/mover/leaver work does not split across tools."
+        metrics={[
+          { label: 'Security score', value: `${securityScore}%`, tone: securityScore >= 80 ? 'success' : 'warning' },
+          { label: 'Active devices', value: activeDevices.length, tone: activeDevices.length > 0 ? 'success' : 'neutral' },
+          { label: 'Managed apps', value: totalApps, tone: totalApps > 0 ? 'ai' : 'neutral' },
+          { label: 'Alerts', value: alerts.length, tone: alerts.length > 0 ? 'warning' : 'success' },
+        ]}
+        focusAreas={[
+          'Tie device, app, identity, and encryption tasks to employee lifecycle events.',
+          'Make non-compliance obvious and immediately actionable.',
+          'Keep provisioning rules explainable so IT can trust automation.',
+        ]}
+        actions={[
+          { label: 'Review device health', description: 'Inspect compliance, encryption, and stale devices.', onClick: () => setActiveTab('devices') },
+          { label: 'Tune provisioning', description: 'Manage role and department-based access rules.', onClick: () => setActiveTab('provisioning') },
+          { label: 'Harden security', description: 'Review policies, encryption, and identity posture.', onClick: () => setActiveTab('security') },
+        ]}
+      />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">IT lifecycle experiment bench</p>
+              <h2 className="text-lg font-semibold text-t1">Compare access and device control directions</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Four selectable review-mode concepts for making Tempo coordinate apps, identity, devices, encryption, and inventory across joiners, movers, and leavers.
+              </p>
+            </div>
+            <Badge variant="info">Review mode</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {itLifecycleExperiments.map((experiment) => (
+              <button
+                key={experiment.id}
+                type="button"
+                onClick={() => setActiveITLifecycleExperiment(experiment.id)}
+                className={cn(
+                  'rounded-[var(--radius-card)] border p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60',
+                  activeITLifecycleExperiment === experiment.id ? 'border-tempo-400 bg-tempo-50 shadow-sm' : 'border-border bg-bg',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{experiment.title}</h3>
+                    <p className="mt-1 text-xs text-t3">{experiment.benchmark}</p>
+                  </div>
+                  {activeITLifecycleExperiment === experiment.id && <CheckCircle size={16} className="shrink-0 text-tempo-600" />}
+                </div>
+                <p className="mt-4 text-sm font-medium text-t1">{experiment.metric}</p>
+                <p className="mt-1 text-xs leading-5 text-t2">{experiment.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Selected direction</p>
+            <h3 className="mt-2 text-lg font-semibold text-t1">{selectedITLifecycleExperiment.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-t2">{selectedITLifecycleExperiment.description}</p>
+            <div className="mt-5 space-y-3">
+              {selectedITLifecycleExperiment.actions.map((action) => (
+                <div key={action} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm text-t1">
+                  <CheckCircle size={15} className="shrink-0 text-success" />
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+            <Button size="sm" className="mt-5" onClick={selectedITLifecycleExperiment.onOpen}>
+              Open related workspace <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <ModuleTrustPanel
+        title="IT lifecycle trust layer"
+        score={Math.min(98, 46 + Math.round(securityScore * 0.22) + (alerts.length === 0 ? 12 : 5) + (provisioningRules.filter(r => r.isActive).length > 0 ? 10 : 4) + (encryptedDevices.length === managedDevices.length && managedDevices.length > 0 ? 8 : 3))}
+        summary="Keeps access, device, app, encryption, and provisioning confidence visible before IT teams trust automation across joiners, movers, and leavers."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Device compliance', detail: `${compliantPct}% compliant across ${managedDevices.length} managed device${managedDevices.length === 1 ? '' : 's'}.`, tone: compliantPct >= 80 ? 'success' : 'warning' },
+          { label: 'Provisioning rules', detail: `${provisioningRules.filter(r => r.isActive).length} active lifecycle rule${provisioningRules.filter(r => r.isActive).length === 1 ? '' : 's'} ready for review.`, tone: provisioningRules.filter(r => r.isActive).length > 0 ? 'success' : 'warning' },
+          { label: 'Security alerts', detail: `${alerts.length} alert${alerts.length === 1 ? '' : 's'} currently need IT attention.`, tone: alerts.length > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Devices, apps, assignments, security policies, inventory, encryption, provisioning rules, and identity context are summarized together.',
+          'IT can route to devices, provisioning, and security without triggering remote lock, wipe, app assignment, or access changes from this panel.',
+          'This panel is additive review guidance only; it does not execute device actions, change access, install apps, or mutate identity state.',
+        ]}
+        actions={[
+          { label: 'Review devices', description: 'Inspect compliance, encryption, MDM, and stale devices.', onClick: () => setActiveTab('devices') },
+          { label: 'Check provisioning', description: 'Review department and role-based lifecycle rules.', onClick: () => setActiveTab('provisioning') },
+          { label: 'Open security', description: 'Resolve alerts and policy gaps before automation expands.', onClick: () => setActiveTab('security') },
+        ]}
+      />
 
       <Tabs tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setSearchQuery('') }} className="mb-6" />
 

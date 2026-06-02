@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
+import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -317,6 +319,16 @@ export default function TransferPricingPage() {
 
   const totalVolume = (displayTransactions).reduce((s, t) => s + t.amount, 0)
   const entities = new Set([...displayPolicies.flatMap(p => [p.entityFrom, p.entityTo])])
+  const activePolicies = displayPolicies.filter(p => p.status === 'active').length
+  const transferPricingReadinessScore = Math.min(98,
+    42 +
+    (activePolicies > 0 ? 12 : 4) +
+    (displayTransactions.length > 0 ? 10 : 3) +
+    (entities.size > 1 ? 10 : 3) +
+    (displayReports.length > 0 ? 8 : 2) +
+    (displayCompliance.complianceRate >= 80 ? 14 : displayCompliance.complianceRate >= 60 ? 9 : 4) +
+    (displayCompliance.nonCompliant === 0 ? 4 : 2)
+  )
 
   if (pageLoading) return <PageSkeleton />
 
@@ -348,9 +360,55 @@ export default function TransferPricingPage() {
       } />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
+        <ModuleCommandCenter
+          moduleName="Transfer Pricing"
+          benchmark="Big Four and OECD-grade transfer pricing with policies, benchmarks, intercompany transactions, and defensible documentation."
+          score={transferPricingReadinessScore}
+          scoreLabel="Tax defense readiness"
+          summary="Tempo should make intercompany pricing defensible before audit season: active policies map to transactions, benchmark ranges explain arm's-length outcomes, and OECD reports are ready to generate."
+          metrics={[
+            { label: 'Active policies', value: activePolicies, tone: activePolicies > 0 ? 'success' : 'warning' },
+            { label: 'Entities', value: entities.size, tone: entities.size > 1 ? 'success' : 'warning' },
+            { label: 'YTD volume', value: formatCurrency(totalVolume, defaultCurrency), tone: totalVolume > 0 ? 'ai' : 'neutral' },
+            { label: 'Compliance rate', value: `${displayCompliance.complianceRate}%`, tone: displayCompliance.complianceRate >= 80 ? 'success' : 'warning' },
+          ]}
+          focusAreas={[
+            'Connect every intercompany transaction to a clear pricing policy.',
+            'Show benchmark ranges and deviations in plain finance language.',
+            'Prepare master file, local file, and CbCR evidence from the same workflow.',
+          ]}
+          actions={[
+            { label: 'Review pricing policies', description: 'Check methods, benchmark ranges, and active status.', onClick: () => setActiveTab('policies') },
+            { label: 'Inspect transactions', description: 'Find transaction volume and markup evidence by period.', onClick: () => setActiveTab('transactions') },
+            { label: 'Open compliance dashboard', description: 'Prioritize deviations and documentation gaps.', onClick: () => setActiveTab('compliance') },
+          ]}
+        />
+
+        <ModuleTrustPanel
+          title="Tax defense trust layer"
+          score={transferPricingReadinessScore}
+          summary="Checks whether intercompany policies, transaction coverage, benchmark ranges, compliance results, and OECD documentation are defensible before tax reports are generated."
+          icon={<ShieldCheck size={18} />}
+          checks={[
+            { label: 'Policy coverage', detail: `${activePolicies} active polic${activePolicies === 1 ? 'y' : 'ies'} across ${policies.length} total.`, tone: activePolicies > 0 ? 'success' : 'warning' },
+            { label: 'Transaction evidence', detail: `${transactions.length} transaction${transactions.length === 1 ? '' : 's'} across ${entities.size} intercompany entit${entities.size === 1 ? 'y' : 'ies'}.`, tone: transactions.length > 0 && entities.size > 1 ? 'success' : 'warning' },
+            { label: 'Compliance posture', detail: `${displayCompliance.complianceRate}% compliance with ${displayCompliance.nonCompliant} deviation${displayCompliance.nonCompliant === 1 ? '' : 's'}.`, tone: displayCompliance.complianceRate >= 80 ? 'success' : 'warning' },
+          ]}
+          evidence={[
+            'Uses visible policies, transactions, compliance summary, benchmark ranges, and report records.',
+            'Routes reviewers to policies, transactions, compliance, and reports without recording transactions or generating reports.',
+            'Keeps tax-defense review separate from intercompany posting and statutory filing actions.',
+          ]}
+          actions={[
+            { label: 'Review policies', description: 'Inspect methods, entities, and benchmark ranges.', onClick: () => setActiveTab('policies') },
+            { label: 'Inspect transactions', description: 'Check markup and volume evidence.', onClick: () => setActiveTab('transactions') },
+            { label: 'Open compliance', description: 'Prioritize deviations and documentation gaps.', onClick: () => setActiveTab('compliance') },
+          ]}
+        />
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard label="Active Policies" value={displayPolicies.filter(p => p.status === 'active').length} icon={<Scale size={20} />} />
+          <StatCard label="Active Policies" value={activePolicies} icon={<Scale size={20} />} />
           <StatCard label="Intercompany Entities" value={entities.size} icon={<Building2 size={20} />} />
           <StatCard label="Total Volume (YTD)" value={formatCurrency(totalVolume, defaultCurrency)} icon={<DollarSign size={20} />} />
           <StatCard label="Compliance Rate" value={`${displayCompliance.complianceRate}%`} icon={<ShieldCheck size={20} />} />
