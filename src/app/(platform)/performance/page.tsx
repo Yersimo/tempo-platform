@@ -627,6 +627,33 @@ export default function PerformancePage() {
     return { assessedEmployees, gaps, strengths, avgRating }
   }, [competencyRatings])
 
+  const growthBridge = useMemo(() => {
+    const activeEnrollments = enrollments.filter((e: any) => e.status === 'in_progress' || e.status === 'enrolled').length
+    const completedEnrollments = enrollments.filter((e: any) => e.status === 'completed').length
+    const courseCategories = new Set(courses.map((course: any) => (course.category || course.type || 'general').toLowerCase()))
+    const gapCompetencies = competencyRatings
+      .filter(r => r.rating < r.target)
+      .map(r => competencyFramework.find(c => c.id === r.competency_id)?.name || r.competency_id)
+      .filter(Boolean)
+    const matchedGaps = gapCompetencies.filter(gap => {
+      const q = gap.toLowerCase()
+      return courses.some((course: any) =>
+        (course.title || '').toLowerCase().includes(q) ||
+        (course.description || '').toLowerCase().includes(q) ||
+        (course.category || '').toLowerCase().includes(q)
+      )
+    }).length
+
+    return {
+      activeEnrollments,
+      completedEnrollments,
+      availableCourses: courses.length,
+      courseCategories: courseCategories.size,
+      gapCompetencies: gapCompetencies.length,
+      matchedGaps,
+    }
+  }, [courses, enrollments, competencyRatings, competencyFramework])
+
   // Bulk review computed data
   const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country).filter(Boolean))].sort(), [employees])
   const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level).filter(Boolean))].sort(), [employees])
@@ -1102,6 +1129,60 @@ export default function PerformancePage() {
           { label: 'Open growth paths', description: 'Connect outcomes to skills, role paths, and learning.', onClick: () => setActiveTab('career-paths') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge variant="ai"><BookOpen size={12} /> Growth bridge</Badge>
+              <Badge variant="info">Review mode</Badge>
+            </div>
+            <h2 className="text-lg font-semibold text-t1">Connect performance gaps to learning paths</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-t2">
+              Turns competency gaps and career-path readiness into a reviewable learning queue before managers make promotion, PIP, or merit recommendations.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setActiveTab('career-paths')}>
+            Open career paths <ArrowRight size={14} />
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Competency gaps</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.gapCompetencies}</p>
+            <p className="mt-1 text-xs text-t3">Visible from performance ratings.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Matched to learning</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.matchedGaps}</p>
+            <p className="mt-1 text-xs text-t3">Gaps with course/category evidence.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Learning supply</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.availableCourses}</p>
+            <p className="mt-1 text-xs text-t3">{growthBridge.courseCategories} categories available.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-birch/35 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-t3">Learner activity</p>
+            <p className="mt-1 text-lg font-semibold text-t1">{growthBridge.activeEnrollments}</p>
+            <p className="mt-1 text-xs text-t3">{growthBridge.completedEnrollments} completed enrollments.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Manager action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Use career paths to explain which competency gap needs coaching and which course should support it.</p>
+          </div>
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Learning action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Route matched gaps into `/learning` for path selection without auto-enrolling anyone.</p>
+          </div>
+          <div className="rounded-lg border border-tempo-100 bg-tempo-50 p-3">
+            <p className="text-sm font-semibold text-t1">Decision action</p>
+            <p className="mt-1 text-xs leading-5 text-t2">Keep merit, promotion, and PIP decisions tied to visible growth evidence.</p>
+          </div>
+        </div>
+      </section>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -2416,6 +2497,17 @@ export default function PerformancePage() {
               const emp = employees.find(e => e.id === careerEmployeeId)
               if (!emp) return null
               const analysis = analyzeCareerPathDetailed(emp, goals, competencyRatings, careerTracks, competencyFramework)
+              const suggestedCourses = analysis.gaps.flatMap((gap: any) => {
+                const q = String(gap.competency || '').toLowerCase()
+                return courses
+                  .filter((course: any) =>
+                    (course.title || '').toLowerCase().includes(q) ||
+                    (course.description || '').toLowerCase().includes(q) ||
+                    (course.category || '').toLowerCase().includes(q)
+                  )
+                  .slice(0, 2)
+                  .map((course: any) => ({ gap: gap.competency, course }))
+              }).slice(0, 4)
               return (
                 <div className="mt-4 space-y-4">
                   {/* Summary stats */}
@@ -2487,6 +2579,33 @@ export default function PerformancePage() {
                       <p className="text-sm text-green-700">{t('readiness')}: 100% — {emp.profile?.full_name} {tc('status')}</p>
                     </div>
                   )}
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-t1 mb-3 flex items-center gap-2">
+                      <BookOpen size={16} /> Learning bridge
+                    </h4>
+                    {suggestedCourses.length > 0 ? (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {suggestedCourses.map(({ gap, course }: any) => (
+                          <div key={`${gap}-${course.id}`} className="rounded-lg border border-border bg-surface-secondary p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-t1">{course.title}</p>
+                                <p className="mt-1 text-xs text-t3">Supports gap: {gap}</p>
+                              </div>
+                              <Badge variant="ai">{course.category || 'Learning'}</Badge>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-t2">{course.description || 'Use this course as a manager-reviewed growth option.'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm font-semibold text-amber-900">No direct course match yet</p>
+                        <p className="mt-1 text-xs leading-5 text-amber-800">Use the gap list above to create or assign learning content from `/learning` before hardening promotion or PIP decisions.</p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Development Plan */}
                   {analysis.developmentPlan.length > 0 && (
