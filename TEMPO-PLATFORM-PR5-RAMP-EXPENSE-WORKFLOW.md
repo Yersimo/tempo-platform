@@ -14,6 +14,15 @@ It sorts and summarizes reports by:
 
 Each cockpit card shows amount, receipt count, risk score, blockers, suggested route, and an action that opens the report detail.
 
+The new expense report modal now includes a submit readiness checklist for employees.
+
+It summarizes:
+
+- Required employee/title/line-item completeness
+- Receipt evidence readiness
+- Recent same-amount duplicate risk
+- Expected reimbursement path after approval
+
 ## Safety Boundary
 
 This slice does not change:
@@ -29,8 +38,7 @@ It only adds a decision layer before existing actions.
 
 ## Next Expense Slices
 
-1. Employee submit flow: make receipt, policy, duplicate, and reimbursement expectations clearer before submit.
-2. Reimbursement timeline: show employees and finance what happens after approval.
-3. Budget impact preview: expose cost-center impact before approvers approve.
-4. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
-5. Visual/browser QA once `DATABASE_URL` and auth/session env are available.
+1. Reimbursement timeline: show employees and finance what happens after approval.
+2. Budget impact preview: expose cost-center impact before approvers approve.
+3. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
+4. Visual/browser QA once `DATABASE_URL` and auth/session env are available.

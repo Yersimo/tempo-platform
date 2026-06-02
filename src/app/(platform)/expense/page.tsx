@@ -694,6 +694,50 @@ export default function ExpensePage() {
     }
   }, [reportForm.items, expensePolicies, receiptUploads, submitPolicyWarnings])
 
+  const submitReadinessChecklist = useMemo(() => {
+    const validItems = reportForm.items.filter(item => item.description && Number(item.amount) > 0)
+    const totalAmount = validItems.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const receiptCount = receiptUploads.filter(r => r.status === 'done').length
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const possibleDuplicate = totalAmount > 0 && expenseReports.some((report: any) =>
+      report.employee_id === reportForm.employee_id &&
+      (report.totalAmount || report.total_amount) === totalAmount &&
+      (report.submittedAt || report.submitted_at) &&
+      (report.submittedAt || report.submitted_at) > sevenDaysAgo
+    )
+
+    return [
+      {
+        label: 'Required details',
+        status: reportForm.employee_id && reportForm.title && validItems.length > 0 ? 'Ready' : 'Missing',
+        detail: reportForm.employee_id && reportForm.title && validItems.length > 0
+          ? `${validItems.length} valid line item${validItems.length === 1 ? '' : 's'} ready for review.`
+          : 'Add employee, title, and at least one line item with amount.',
+      },
+      {
+        label: 'Receipt evidence',
+        status: submitPolicyOutcome.needsReceipt === 0 || receiptCount >= submitPolicyOutcome.needsReceipt ? 'Ready' : 'Needs receipt',
+        detail: submitPolicyOutcome.needsReceipt === 0
+          ? 'No visible receipt requirement for current line items.'
+          : `${receiptCount}/${submitPolicyOutcome.needsReceipt} required receipt${submitPolicyOutcome.needsReceipt === 1 ? '' : 's'} attached.`,
+      },
+      {
+        label: 'Duplicate check',
+        status: possibleDuplicate ? 'Review' : 'Clear',
+        detail: possibleDuplicate
+          ? 'A same-amount report from this employee was submitted in the last 7 days.'
+          : 'No same-amount recent duplicate found in current reports.',
+      },
+      {
+        label: 'Reimbursement path',
+        status: submitPolicyOutcome.tone === 'warning' ? 'Review' : 'Ready',
+        detail: submitPolicyOutcome.tone === 'warning'
+          ? 'Approval may require policy or finance review before reimbursement.'
+          : 'Expected path is normal approval before reimbursement batching.',
+      },
+    ]
+  }, [expenseReports, receiptUploads, reportForm.employee_id, reportForm.items, reportForm.title, submitPolicyOutcome.needsReceipt, submitPolicyOutcome.tone])
+
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -3435,6 +3479,33 @@ export default function ExpensePage() {
               <p className="text-sm font-semibold text-t1">
                 {tc('total')}: {formatCurrency(reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0), defaultCurrency)}
               </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-canvas p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-t1">Submit readiness</p>
+                <p className="mt-1 text-xs text-t3">Confirm the report is ready before it enters approval and reimbursement routing.</p>
+              </div>
+              <Badge variant={submitReadinessChecklist.every(item => item.status === 'Ready' || item.status === 'Clear') ? 'success' : 'warning'}>
+                {submitReadinessChecklist.filter(item => item.status !== 'Ready' && item.status !== 'Clear').length} attention
+              </Badge>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {submitReadinessChecklist.map(item => (
+                <div key={item.label} className="rounded-lg border border-border bg-white px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-t1">{item.label}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-t3">{item.detail}</p>
+                    </div>
+                    <Badge variant={item.status === 'Ready' || item.status === 'Clear' ? 'success' : item.status === 'Review' ? 'warning' : 'error'}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
