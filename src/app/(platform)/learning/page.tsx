@@ -1313,6 +1313,84 @@ window.onload=function(){
     }).length
     return { complianceRate, mandatoryCount: mandatoryCourses.length, overdueCount, upcomingCount, totalRequired: allEmployeeCount * mandatoryCourses.length, totalCompleted: completedMandatory.length }
   }, [courses, enrollments, employees, complianceTraining])
+  const learnerMissionControl = useMemo(() => {
+    const nextEnrollment = myInProgress
+      .slice()
+      .sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))[0]
+    const nextCourse = nextEnrollment ? courses.find(c => c.id === nextEnrollment.course_id) : null
+    const nextAssignment = myAssignments
+      .slice()
+      .sort((a: any, b: any) => new Date(a.due_date || '2999-12-31').getTime() - new Date(b.due_date || '2999-12-31').getTime())[0]
+    const assignedCourse = nextAssignment ? courses.find(c => c.id === nextAssignment.course_id) : null
+    const topRecommendation = personalizedRecs[0]
+    const activeSkillGap = skillGaps
+      .slice()
+      .sort((a, b) => a.coverage - b.coverage)[0]
+    const overdueCompliance = complianceTraining.filter(ct => new Date(ct.deadline) < new Date())
+    const score = Math.min(98,
+      52 +
+      (myInProgress.length > 0 ? 10 : 4) +
+      (myCompleted.length > 0 ? 8 : 3) +
+      (myAssignments.length === 0 ? 8 : 5) +
+      (overdueCompliance.length === 0 ? 12 : 4) +
+      (skillGaps.length === 0 ? 10 : 5)
+    )
+    const nextAction = nextEnrollment && nextCourse
+      ? {
+          label: 'Resume next lesson',
+          title: nextCourse.title,
+          detail: `${nextEnrollment.progress || 0}% complete · ${nextCourse.duration_hours || 0}h course`,
+          action: () => openPlayer(nextEnrollment.id, nextEnrollment.course_id),
+        }
+      : nextAssignment && assignedCourse
+        ? {
+            label: 'Start manager assignment',
+            title: assignedCourse.title,
+            detail: nextAssignment.due_date ? `Due in ${Math.max(0, Math.ceil((new Date(nextAssignment.due_date).getTime() - Date.now()) / 86400000))} days` : 'Assigned learning priority',
+            action: () => handleEnroll(assignedCourse.id),
+          }
+        : topRecommendation
+          ? {
+              label: 'Start recommended course',
+              title: topRecommendation.title,
+              detail: `${topRecommendation.category || 'Recommended'} · ${topRecommendation.duration_hours || 0}h`,
+              action: () => handleEnroll(topRecommendation.id),
+            }
+          : {
+              label: 'Explore catalog',
+              title: 'Find your next learning move',
+              detail: `${courses.length} course${courses.length === 1 ? '' : 's'} available`,
+              action: () => setActiveTab('catalog'),
+            }
+
+    return {
+      score,
+      nextAction,
+      lanes: [
+        {
+          label: 'For your role',
+          value: topRecommendation?.title || 'No recommendation yet',
+          detail: topRecommendation ? 'Personalized from role, peers, and available catalog.' : 'Add courses to unlock recommendations.',
+          icon: Briefcase,
+          action: () => topRecommendation ? handleEnroll(topRecommendation.id) : setActiveTab('catalog'),
+        },
+        {
+          label: 'Skill to close',
+          value: activeSkillGap?.category || 'Skills covered',
+          detail: activeSkillGap ? `${Math.round(activeSkillGap.coverage)}% coverage across available learning.` : 'No active skill gaps surfaced.',
+          icon: Brain,
+          action: () => setActiveTab('skills'),
+        },
+        {
+          label: 'Required learning',
+          value: overdueCompliance.length > 0 ? `${overdueCompliance.length} overdue` : `${complianceStats.upcomingCount} upcoming`,
+          detail: overdueCompliance.length > 0 ? 'Compliance needs immediate attention.' : 'Mandatory learning is under control.',
+          icon: ShieldCheck,
+          action: () => setActiveTab('compliance'),
+        },
+      ],
+    }
+  }, [myInProgress, myCompleted.length, myAssignments, personalizedRecs, skillGaps, complianceTraining, complianceStats.upcomingCount, courses])
   const learningExperiments = [
     {
       id: 'learner_home' as const,
@@ -2484,6 +2562,51 @@ window.onload=function(){
               <div className="flex items-center gap-2">
                 <Sparkles size={20} className="text-tempo-600" />
                 <Badge variant="ai">{tc('aiPowered')}</Badge>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 lg:max-w-xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-tempo-50">
+                    <Route size={18} className="text-tempo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-t1">Learning mission control</p>
+                    <p className="text-xs text-t3">Sana-style next action, role fit, skill gaps, and required learning in one place.</p>
+                  </div>
+                  <Badge variant={learnerMissionControl.score >= 80 ? 'success' : 'warning'}>{learnerMissionControl.score}% ready</Badge>
+                </div>
+                <div className="mt-4 rounded-lg border border-tempo-200 bg-tempo-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-tempo-700">{learnerMissionControl.nextAction.label}</p>
+                  <p className="mt-1 text-sm font-semibold text-t1">{learnerMissionControl.nextAction.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-t2">{learnerMissionControl.nextAction.detail}</p>
+                  <Button size="sm" variant="primary" className="mt-3" onClick={learnerMissionControl.nextAction.action}>
+                    Continue <ArrowRight size={12} />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid min-w-[300px] gap-2 sm:grid-cols-3 lg:w-[620px]">
+                {learnerMissionControl.lanes.map(lane => {
+                  const LaneIcon = lane.icon
+                  return (
+                    <button
+                      key={lane.label}
+                      type="button"
+                      onClick={lane.action}
+                      className="rounded-lg border border-border bg-white px-3 py-3 text-left transition hover:border-tempo-300 hover:bg-canvas/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        <LaneIcon size={14} className="text-tempo-600" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-t3">{lane.label}</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-xs font-semibold text-t1">{lane.value}</p>
+                      <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-t2">{lane.detail}</p>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </Card>
