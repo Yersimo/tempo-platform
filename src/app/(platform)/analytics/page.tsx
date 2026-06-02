@@ -16,6 +16,7 @@ import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk, detectCrossModuleAnomalies } from '@/lib/ai-engine'
@@ -295,6 +296,28 @@ export default function AnalyticsPage() {
           { label: 'Ask a workforce question', description: 'Use natural language to explore the employee graph.', onClick: () => setActiveTab('workforce') },
           { label: 'Review executive view', description: 'Open the board-style analytics narrative.', onClick: () => setActiveTab('executive') },
           { label: 'Build a report', description: 'Configure a repeatable cross-module report.', onClick: () => setActiveTab('builder') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Decision intelligence trust layer"
+        score={Math.min(96, 54 + (headcount > 0 ? 10 : 2) + (reviewCompletion >= 70 ? 8 : 3) + (aiAnalyticsInsights.length > 0 ? 8 : 4) + (queryResults ? 6 : 3))}
+        summary="Confirms that leadership narratives, AI signals, report builder inputs, and workforce drill-throughs stay connected to visible source data before leaders act on analytics."
+        icon={<BarChart3 size={18} />}
+        checks={[
+          { label: 'Source coverage', detail: `${headcount} employees, ${reviews.length} reviews, ${goals.length} goals, and ${payrollRuns.length} payroll runs visible.`, tone: headcount > 0 ? 'success' : 'warning' },
+          { label: 'Decision signals', detail: `${aiAnalyticsInsights.length} cross-module AI signal${aiAnalyticsInsights.length === 1 ? '' : 's'} available for review.`, tone: aiAnalyticsInsights.length > 0 ? 'success' : 'neutral' },
+          { label: 'Report readiness', detail: queryResults ? 'A natural-language query has generated reviewable results.' : 'Report builder and executive tabs remain available for controlled review.', tone: queryResults ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses visible workforce, performance, engagement, recruiting, payroll, learning, compensation, and expense data already loaded in the page.',
+          'Routes leaders to executive, workforce, flight-risk, and report-builder views without exporting or scheduling reports.',
+          'Keeps AI narratives review-only until a user explicitly generates or exports a report.',
+        ]}
+        actions={[
+          { label: 'Review executive narrative', description: 'Inspect board-ready summary and source context.', onClick: () => setActiveTab('executive') },
+          { label: 'Check risk drill-down', description: 'Review retention and cross-module risk signals.', onClick: () => setActiveTab('flight_risk') },
+          { label: 'Open report builder', description: 'Validate metrics before saving or exporting.', onClick: () => setActiveTab('builder') },
         ]}
       />
 

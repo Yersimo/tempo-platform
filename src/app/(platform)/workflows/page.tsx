@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1003,6 +1004,28 @@ export default function WorkflowsPage() {
           { label: 'Review workflows', description: 'Inspect active automations and owners.', onClick: () => setActiveTab('list') },
           { label: 'Open builder', description: 'Edit steps, conditions, delays, and approvals.', onClick: () => setActiveTab('builder') },
           { label: 'Check run history', description: 'Review failures, reruns, and completion rate.', onClick: () => setActiveTab('history') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Automation control trust layer"
+        score={Math.min(96, 52 + (activeWorkflowCount > 0 ? 9 : 2) + (successRate >= 80 ? 9 : 3) + (failedRuns === 0 ? 8 : 3) + (automationWorkflowTemplates.length > 0 ? 7 : 2))}
+        summary="Confirms that workflow definitions, triggers, templates, run history, dry-run paths, and failures are visible before any automation is changed or activated."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Active automation', detail: `${activeWorkflowCount} active workflow${activeWorkflowCount === 1 ? '' : 's'} across ${automationWorkflows.length} total.`, tone: activeWorkflowCount > 0 ? 'success' : 'neutral' },
+          { label: 'Run reliability', detail: `${successRate}% success rate with ${failedRuns} failed run${failedRuns === 1 ? '' : 's'} visible.`, tone: failedRuns === 0 && successRate >= 80 ? 'success' : 'warning' },
+          { label: 'Template coverage', detail: `${automationWorkflowTemplates.length} template${automationWorkflowTemplates.length === 1 ? '' : 's'} available for repeatable operations.`, tone: automationWorkflowTemplates.length > 0 ? 'success' : 'neutral' },
+        ]}
+        evidence={[
+          'Uses workflow definitions, steps, templates, trigger coverage, run history, and failure counts already loaded in the page.',
+          'Routes to workflow list, visual builder, and run history without enabling, disabling, executing, or deleting automations.',
+          'Surfaces failed and running runs as review context before operational changes.',
+        ]}
+        actions={[
+          { label: 'Review workflows', description: 'Inspect owners, triggers, and active status.', onClick: () => setActiveTab('list') },
+          { label: 'Open builder', description: 'Review steps and conditions before editing.', onClick: () => setActiveTab('builder') },
+          { label: 'Check history', description: 'Audit recent failures, reruns, and running jobs.', onClick: () => setActiveTab('history') },
         ]}
       />
 

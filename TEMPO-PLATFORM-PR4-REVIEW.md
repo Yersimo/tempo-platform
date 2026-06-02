@@ -4,7 +4,7 @@
 
 Reviewed the benchmark-led command center layer in draft PR #4, including the shared `ModuleCommandCenter`, the roadmap, and command-center usage across the 36 covered modules.
 
-The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, General Ledger, People, Onboarding, Offboarding, Documents, Compliance, Identity & Access, Password Manager, Benefits, Time & Attendance, Global Workforce, Recruiting, Headcount, Compensation, Vendors, and Procurement.
+The review now also covers the shared `ModuleTrustPanel` and its first rollout across Expense, Payroll, Performance, Learning, IT Cloud, Corporate Cards, Invoices, Bill Pay, Bank Feeds, General Ledger, People, Onboarding, Offboarding, Documents, Compliance, Identity & Access, Password Manager, Benefits, Time & Attendance, Global Workforce, Recruiting, Headcount, Compensation, Vendors, Procurement, Analytics, Strategy, Workflows, Budgets, and Global Spend.
 
 ## Product Review
 
@@ -15,7 +15,7 @@ The review now also covers the shared `ModuleTrustPanel` and its first rollout a
 | Routing | Pass | Actions route to existing tabs or existing hrefs. No new critical workflow state is introduced by the command centers. |
 | Copy and positioning | Pass with editorial review | The benchmark language is clear enough for review. Simon should still approve tone and competitor references before merge. |
 | Risk profile | Low | The PR is additive and reviewable. The largest risk is broad surface area, not destructive behavior. |
-| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, credential changes, device actions, bank matching, ledger posting, exports, period close, employee changes, task completion, signatures, benefits elections, timesheet approvals, worker changes, filings, candidate changes, position changes, compensation changes, supplier changes, purchase-order changes, goods-receipt changes, invoice matching, or compliance status changes. |
+| Trust layer | Pass | The new trust panels surface confidence checks, evidence coverage, and safe next actions without executing approvals, payments, payroll posting, learning completion, rating changes, access changes, credential changes, device actions, bank matching, ledger posting, exports, period close, employee changes, task completion, signatures, benefits elections, timesheet approvals, worker changes, filings, candidate changes, position changes, compensation changes, supplier changes, purchase-order changes, goods-receipt changes, invoice matching, report saving, objective changes, automation execution, budget changes, FX transfers, balance movement, or compliance status changes. |
 
 ## Browser QA Status
 
@@ -144,4 +144,12 @@ Hiring/planning/supplier surfaces now include trust-layer review panels for:
 - Vendors: supplier coverage, compliance posture, spend exposure
 - Procurement: PO coverage, receipt evidence, exception queue
 
-These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, credential state, benefits elections, time approvals, worker records, global filings, employee records, onboarding tasks, offboarding tasks, signature state, candidate records, position records, supplier records, purchase orders, goods receipts, invoice matches, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, report exports, report schedules, database schema, or production routing.
+Decision/automation/treasury surfaces now include trust-layer review panels for:
+
+- Analytics: source coverage, decision signals, report readiness
+- Strategy: OKR structure, execution coverage, KPI evidence
+- Workflows: active automation, run reliability, template coverage
+- Budgets: budget coverage, spend pressure, forecast evidence
+- Global Spend: entity coverage, FX visibility, regional evidence
+
+These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, compliance evidence, device provisioning, access controls, credential state, benefits elections, time approvals, worker records, global filings, employee records, onboarding tasks, offboarding tasks, signature state, candidate records, position records, supplier records, purchase orders, goods receipts, invoice matches, report saves, report exports, report schedules, objectives, key results, initiatives, KPIs, workflow definitions, workflow runs, budgets, FX transfers, balances, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, database schema, or production routing.

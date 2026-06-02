@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -348,6 +349,28 @@ export default function StrategyPage() {
           { label: 'Open strategy map', description: 'Review objective and initiative alignment.', onClick: () => setActiveTab('map') },
           { label: 'Review OKRs', description: 'Inspect key result quality and progress.', onClick: () => setActiveTab('okrs') },
           { label: 'Track KPIs', description: 'Check measured KPI performance and trend.', onClick: () => setActiveTab('kpis') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Strategy execution trust layer"
+        score={Math.min(96, 52 + (activeObjectives > 0 ? 9 : 2) + (avgKRProgress >= 60 ? 8 : 3) + (activeInitiatives > 0 ? 7 : 3) + (kpisOnTrack > 0 ? 7 : 2))}
+        summary="Checks whether objectives, key results, initiatives, KPIs, owners, and AI alignment alerts are coherent enough for leadership review before any strategy record changes."
+        icon={<Compass size={18} />}
+        checks={[
+          { label: 'OKR structure', detail: `${strategicObjectives.length} objective${strategicObjectives.length === 1 ? '' : 's'} and ${keyResults.length} key result${keyResults.length === 1 ? '' : 's'} available.`, tone: strategicObjectives.length > 0 && keyResults.length > 0 ? 'success' : 'warning' },
+          { label: 'Execution coverage', detail: `${activeInitiatives} active initiative${activeInitiatives === 1 ? '' : 's'} connected to strategy execution.`, tone: activeInitiatives > 0 ? 'success' : 'neutral' },
+          { label: 'KPI evidence', detail: `${kpisOnTrack}/${kpiDefinitions.length} KPI${kpiDefinitions.length === 1 ? '' : 's'} currently on track.`, tone: kpisOnTrack > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Uses visible objectives, key results, initiatives, KPI definitions, KPI measurements, goals, and AI alignment signals.',
+          'Routes review into strategy map, OKRs, and KPI tabs without creating or updating objectives.',
+          'Keeps leadership action focused on evidence gaps before changes to strategy records.',
+        ]}
+        actions={[
+          { label: 'Open strategy map', description: 'Review objective and initiative alignment.', onClick: () => setActiveTab('map') },
+          { label: 'Review OKRs', description: 'Inspect key result quality and progress evidence.', onClick: () => setActiveTab('okrs') },
+          { label: 'Check KPIs', description: 'Validate measurements and trend context.', onClick: () => setActiveTab('kpis') },
         ]}
       />
 
