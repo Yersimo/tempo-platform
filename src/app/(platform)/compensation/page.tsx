@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
@@ -13,7 +14,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input, Select } from '@/components/ui/input'
 import { TempoDonutChart, CHART_SERIES } from '@/components/ui/charts'
 import { Progress } from '@/components/ui/progress'
-import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown, Building2, Search, Users } from 'lucide-react'
+import { Banknote, TrendingUp, AlertTriangle, Plus, Printer, Award, PieChart, Target, Layers, BarChart3, CalendarRange, Globe, MapPin, ArrowUpDown, Building2, Search, Users, ShieldCheck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -328,6 +329,28 @@ export default function CompensationPage() {
           { label: 'Review bands', description: 'Inspect market position and compa-ratio.', onClick: () => setActiveTab('benchmarking') },
           { label: 'Approve reviews', description: 'Work through pending salary changes.', onClick: () => setActiveTab('salary-reviews') },
           { label: 'Model planning', description: 'Explore cycle budgets and scenarios.', onClick: () => setActiveTab('planning') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Rewards decision trust layer"
+        score={Math.min(97, 48 + (compBands.length > 0 ? 10 : 4) + (belowMarket === 0 ? 10 : 4) + (pendingReviews <= 5 ? 8 : 3) + (marketBenchmarks.length > 0 ? 8 : 3))}
+        summary="Keeps market bands, pay-equity signals, pending reviews, equity exposure, and budget impact visible before compensation decisions are approved."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Band coverage', detail: `${compBands.length} compensation band${compBands.length === 1 ? '' : 's'} available for benchmarking.`, tone: compBands.length > 0 ? 'success' : 'warning' },
+          { label: 'Market risk', detail: `${belowMarket} role${belowMarket === 1 ? '' : 's'} below market signal.`, tone: belowMarket > 0 ? 'warning' : 'success' },
+          { label: 'Review queue', detail: `${pendingReviews} salary review${pendingReviews === 1 ? '' : 's'} pending.`, tone: pendingReviews > 5 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Compensation bands, benchmarks, salary reviews, total rewards, equity, planning cycles, and budget impact are summarized together.',
+          'HR and finance can route to bands, salary reviews, and planning without approving pay changes from this panel.',
+          'This panel is additive review guidance only; it does not change salary, approve compensation, grant equity, or update payroll.',
+        ]}
+        actions={[
+          { label: 'Review bands', description: 'Inspect market position and compa-ratio.', onClick: () => setActiveTab('benchmarking') },
+          { label: 'Work reviews', description: 'Review pending salary changes and rationale.', onClick: () => setActiveTab('salary-reviews') },
+          { label: 'Model planning', description: 'Check cycle budgets and scenarios.', onClick: () => setActiveTab('planning') },
         ]}
       />
 

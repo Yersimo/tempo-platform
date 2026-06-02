@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -323,6 +324,28 @@ export default function VendorsPage() {
           { label: 'Review supplier directory', description: 'Check ownership, contact, category, and status hygiene.', onClick: () => setActiveTab('directory') },
           { label: 'Inspect contracts', description: 'Prioritize active agreements, renewals, and annual value.', onClick: () => setActiveTab('contracts') },
           { label: 'Triage compliance gaps', description: 'Find missing tax IDs and high-risk supplier evidence.', onClick: () => setActiveTab('compliance') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Supplier control trust layer"
+        score={vendorReadinessScore}
+        summary="Keeps vendor identity, contract coverage, tax evidence, compliance rate, and spend concentration visible before supplier spend expands."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Supplier coverage', detail: `${vendors.length} vendor${vendors.length === 1 ? '' : 's'} with ${activeContracts} active contract${activeContracts === 1 ? '' : 's'}.`, tone: vendors.length > 0 && activeContracts > 0 ? 'success' : 'warning' },
+          { label: 'Compliance posture', detail: `${complianceRate}% compliance rate across visible vendor evidence.`, tone: complianceRate >= 80 ? 'success' : 'warning' },
+          { label: 'Spend exposure', detail: `${formatCurrency(totalSpend, defaultCurrency)} tracked supplier spend.`, tone: totalSpend > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Vendor directory, contracts, tax evidence, compliance status, annual value, category, and spend are summarized together.',
+          'Finance can route to directory, contracts, and compliance without creating vendors or changing contracts from this panel.',
+          'This panel is additive review guidance only; it does not approve suppliers, alter contracts, change tax evidence, or commit spend.',
+        ]}
+        actions={[
+          { label: 'Review directory', description: 'Inspect vendor ownership, status, and contact hygiene.', onClick: () => setActiveTab('directory') },
+          { label: 'Inspect contracts', description: 'Review active agreements and renewal exposure.', onClick: () => setActiveTab('contracts') },
+          { label: 'Triage compliance', description: 'Check missing tax IDs and supplier evidence gaps.', onClick: () => setActiveTab('compliance') },
         ]}
       />
 

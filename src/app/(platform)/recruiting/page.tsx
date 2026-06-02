@@ -20,6 +20,7 @@ import { scoreCandidateFit, analyzePipelineHealth, predictTimeToHire, scoreCaree
 import { Progress } from '@/components/ui/progress'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useEventCascade } from '@/lib/event-cascade-context'
 
 const STAGES = ['applied', 'screening', 'interview', 'assessment', 'offer', 'hired', 'rejected'] as const
@@ -735,6 +736,28 @@ export default function RecruitingPage() {
           { label: 'Work the pipeline', description: 'Move candidates through stages with context.', onClick: () => setActiveTab('pipeline') },
           { label: 'Schedule interviews', description: 'Coordinate interview panels and candidate slots.', onClick: () => setActiveTab('interviews') },
           { label: 'Prepare offers', description: 'Review offer packages and approvals.', onClick: () => setActiveTab('offers') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Hiring decision trust layer"
+        score={Math.min(97, 48 + Math.min(10, openPositions * 2) + (applications.length > 0 ? 10 : 4) + (upcomingInterviews.length > 0 ? 8 : 3) + (offersExtended <= openPositions ? 8 : 4))}
+        summary="Keeps requisition demand, candidate flow, interview readiness, and offer exposure visible before hiring decisions move into onboarding."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Pipeline coverage', detail: `${applications.length} candidate${applications.length === 1 ? '' : 's'} across ${openPositions} open role${openPositions === 1 ? '' : 's'}.`, tone: applications.length > 0 ? 'success' : 'warning' },
+          { label: 'Interview readiness', detail: `${upcomingInterviews.length} upcoming interview${upcomingInterviews.length === 1 ? '' : 's'} scheduled.`, tone: upcomingInterviews.length > 0 ? 'success' : 'warning' },
+          { label: 'Offer exposure', detail: `${offersExtended} offer${offersExtended === 1 ? '' : 's'} extended and awaiting outcome.`, tone: offersExtended > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Job postings, applications, interviews, candidate experience, background checks, referrals, and offers are summarized together.',
+          'Recruiting can route to pipeline, interviews, and offers without moving candidates or changing offer state from this panel.',
+          'This panel is additive review guidance only; it does not post jobs, move candidates, schedule interviews, or create offers.',
+        ]}
+        actions={[
+          { label: 'Work pipeline', description: 'Review candidate stage health and blockers.', onClick: () => setActiveTab('pipeline') },
+          { label: 'Review interviews', description: 'Inspect upcoming panels and scheduling gaps.', onClick: () => setActiveTab('interviews') },
+          { label: 'Check offers', description: 'Review offer readiness and outstanding outcomes.', onClick: () => setActiveTab('offers') },
         ]}
       />
 

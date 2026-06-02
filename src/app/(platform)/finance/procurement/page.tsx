@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -247,6 +248,28 @@ export default function ProcurementPage() {
           actions={[
             { label: 'Review open POs', description: 'Find draft, approval, and receiving blockers.', onClick: () => setActiveTab('purchase-orders') },
             { label: 'Run three-way match', description: 'Compare PO, receipt, and invoice evidence.', onClick: () => setActiveTab('three-way-match') },
+            { label: 'Clear exceptions', description: 'Prioritize mismatches and partial matches.', onClick: () => setActiveTab('exceptions') },
+          ]}
+        />
+
+        <ModuleTrustPanel
+          title="Procure-to-pay trust layer"
+          score={procurementReadinessScore}
+          summary="Keeps purchase orders, receipts, invoice evidence, match quality, and exceptions visible before procurement moves into payment."
+          icon={<ShieldCheck size={18} />}
+          checks={[
+            { label: 'PO coverage', detail: `${openPOs} open PO${openPOs === 1 ? '' : 's'} across ${totalPOs} total.`, tone: totalPOs > 0 ? 'success' : 'warning' },
+            { label: 'Receipt evidence', detail: `${totalReceipts} goods receipt${totalReceipts === 1 ? '' : 's'} available for matching.`, tone: totalReceipts > 0 ? 'success' : 'warning' },
+            { label: 'Exception queue', detail: `${exceptions} procurement exception${exceptions === 1 ? '' : 's'} pending review.`, tone: exceptions > 0 ? 'warning' : 'success' },
+          ]}
+          evidence={[
+            'Purchase orders, goods receipts, invoice matches, match outcomes, tolerances, and exception queues are summarized together.',
+            'Procurement and finance can route to POs, matching, and exceptions without approving payments from this panel.',
+            'This panel is additive review guidance only; it does not create POs, record receipts, match invoices, clear exceptions, or move money.',
+          ]}
+          actions={[
+            { label: 'Review open POs', description: 'Inspect approval and receiving blockers.', onClick: () => setActiveTab('purchase-orders') },
+            { label: 'Run match review', description: 'Compare PO, receipt, and invoice evidence.', onClick: () => setActiveTab('three-way-match') },
             { label: 'Clear exceptions', description: 'Prioritize mismatches and partial matches.', onClick: () => setActiveTab('exceptions') },
           ]}
         />
