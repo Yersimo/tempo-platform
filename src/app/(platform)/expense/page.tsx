@@ -640,6 +640,60 @@ export default function ExpensePage() {
     return warnings
   }, [reportForm.items, expensePolicies, receiptUploads.length])
 
+  const submitPolicyOutcome = useMemo(() => {
+    const validItems = reportForm.items.filter(item => item.description && Number(item.amount) > 0)
+    const totalAmount = validItems.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const matchedPolicies = validItems.filter(item =>
+      expensePolicies.some((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active')
+    ).length
+    const receiptCount = receiptUploads.filter(r => r.status === 'done').length
+    const needsReceipt = validItems.filter(item => {
+      const policy = expensePolicies.find((p: any) => p.category?.toLowerCase() === item.category?.toLowerCase() && p.status === 'active') as any
+      return policy?.receipt_threshold && Number(item.amount) > policy.receipt_threshold
+    }).length
+    const highValueItems = validItems.filter(item => Number(item.amount) > 500).length
+
+    if (validItems.length === 0) {
+      return {
+        label: 'Waiting for line items',
+        tone: 'neutral' as const,
+        detail: 'Add at least one valid expense item to preview policy outcome.',
+        route: 'Draft stays local until submitted.',
+        totalAmount,
+        matchedPolicies,
+        receiptCount,
+        needsReceipt,
+        highValueItems,
+      }
+    }
+
+    if (submitPolicyWarnings.length > 0) {
+      return {
+        label: 'Needs finance review',
+        tone: 'warning' as const,
+        detail: `${submitPolicyWarnings.length} policy signal${submitPolicyWarnings.length === 1 ? '' : 's'} should be resolved or explained before approval.`,
+        route: highValueItems > 0 ? 'Likely manager or finance approval before reimbursement.' : 'Likely policy review before reimbursement.',
+        totalAmount,
+        matchedPolicies,
+        receiptCount,
+        needsReceipt,
+        highValueItems,
+      }
+    }
+
+    return {
+      label: 'Policy-ready',
+      tone: 'success' as const,
+      detail: 'No visible policy warnings for the current line items.',
+      route: totalAmount > 0 ? 'Ready for normal approval routing after submit.' : 'Draft stays local until submitted.',
+      totalAmount,
+      matchedPolicies,
+      receiptCount,
+      needsReceipt,
+      highValueItems,
+    }
+  }, [reportForm.items, expensePolicies, receiptUploads, submitPolicyWarnings])
+
   // ---- Receipt Upload ----
   const [receiptFile, setReceiptFile] = useState<string | null>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -3161,6 +3215,62 @@ export default function ExpensePage() {
               <p className="text-sm font-semibold text-t1">
                 {tc('total')}: {formatCurrency(reportForm.items.reduce((a, item) => a + (Number(item.amount) || 0), 0), defaultCurrency)}
               </p>
+            </div>
+          </div>
+
+          <div className={cn(
+            'rounded-lg border p-4',
+            submitPolicyOutcome.tone === 'success' ? 'border-emerald-200 bg-emerald-50' :
+              submitPolicyOutcome.tone === 'warning' ? 'border-amber-200 bg-amber-50' :
+                'border-border bg-canvas'
+          )}>
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                submitPolicyOutcome.tone === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                  submitPolicyOutcome.tone === 'warning' ? 'bg-amber-100 text-amber-700' :
+                    'bg-white text-t3'
+              )}>
+                {submitPolicyOutcome.tone === 'success' ? <CheckCircle2 size={16} /> : submitPolicyOutcome.tone === 'warning' ? <AlertTriangle size={16} /> : <Shield size={16} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-t1">Policy outcome preview</p>
+                  <Badge variant={submitPolicyOutcome.tone === 'success' ? 'success' : submitPolicyOutcome.tone === 'warning' ? 'warning' : 'default'}>
+                    {submitPolicyOutcome.label}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-t2">{submitPolicyOutcome.detail}</p>
+                <p className="mt-1 text-xs leading-5 text-t3">{submitPolicyOutcome.route}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Report total</p>
+                    <p className="text-xs font-semibold text-t1">{formatCurrency(submitPolicyOutcome.totalAmount, defaultCurrency)}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Policy matches</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.matchedPolicies}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">Receipts ready</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.receiptCount}/{submitPolicyOutcome.needsReceipt}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-t3">High value items</p>
+                    <p className="text-xs font-semibold text-t1">{submitPolicyOutcome.highValueItems}</p>
+                  </div>
+                </div>
+                {submitPolicyWarnings.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {submitPolicyWarnings.slice(0, 3).map(warning => (
+                      <li key={warning} className="flex items-start gap-2 text-xs leading-5 text-amber-800">
+                        <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
 
