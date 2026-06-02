@@ -548,6 +548,28 @@ export default function PayrollPage() {
   const pendingICRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && !approvalLevels[r.id]?.ic), [payrollRuns, approvalLevels])
   const pendingFinanceRuns = useMemo(() => payrollRuns.filter(r => r.status === 'pending_finance' && (approvalLevels[r.id]?.ic || false)), [payrollRuns, approvalLevels])
   const pendingCount = pendingHRRuns.length + pendingICRuns.length + pendingFinanceRuns.length
+  const approvalPreflight = useMemo(() => {
+    const diffReady = !!payrollDiff
+    const bankReady = missingBankEmployees.length === 0
+    const statutoryReady = complianceRisks.risks.length === 0
+    const controlReady = pendingICRuns.length === 0 || pendingFinanceRuns.length > 0
+    const blockers = [
+      !diffReady ? 'Needs at least two payroll runs for variance comparison.' : null,
+      !bankReady ? `${missingBankEmployees.length} employee${missingBankEmployees.length === 1 ? '' : 's'} missing bank details.` : null,
+      !statutoryReady ? `${complianceRisks.risks.length} statutory risk signal${complianceRisks.risks.length === 1 ? '' : 's'} should be reviewed.` : null,
+      !controlReady ? `${pendingICRuns.length} run${pendingICRuns.length === 1 ? '' : 's'} still waiting for internal control.` : null,
+    ].filter(Boolean) as string[]
+
+    return {
+      label: blockers.length === 0 ? 'Ready for controlled approval' : 'Review before approval',
+      tone: blockers.length === 0 ? 'success' as const : 'warning' as const,
+      blockers,
+      diffReady,
+      bankReady,
+      statutoryReady,
+      controlReady,
+    }
+  }, [payrollDiff, missingBankEmployees.length, complianceRisks.risks.length, pendingICRuns.length, pendingFinanceRuns.length])
   const payrollTrustExperiments = [
     {
       id: 'variance_explainer' as const,
@@ -1906,6 +1928,49 @@ export default function PayrollPage() {
               <span className={`px-2 py-1 rounded font-medium ${pendingFinanceRuns.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>Level 3: Finance</span>
               <span className="text-t3">&rarr;</span>
               <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-medium">Approved</span>
+            </div>
+          </Card>
+
+          <Card className={`mb-4 p-4 ${approvalPreflight.tone === 'success' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  {approvalPreflight.tone === 'success' ? <CheckCircle2 size={16} className="text-emerald-700" /> : <AlertTriangle size={16} className="text-amber-700" />}
+                  <p className="text-sm font-semibold text-t1">Payroll approval preflight</p>
+                  <Badge variant={approvalPreflight.tone === 'success' ? 'success' : 'warning'}>{approvalPreflight.label}</Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-t2">
+                  Review variance, bank-file readiness, statutory risk, and control-gate status before approving payroll.
+                </p>
+                {approvalPreflight.blockers.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {approvalPreflight.blockers.map(blocker => (
+                      <li key={blocker} className="flex items-start gap-2 text-xs leading-5 text-amber-800">
+                        <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                        <span>{blocker}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="grid min-w-[280px] grid-cols-2 gap-2">
+                <button type="button" onClick={() => setActiveTab('reconciliation')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Variance diff</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.diffReady ? 'Available' : 'Needs two runs'}</span>
+                </button>
+                <button type="button" onClick={() => setShowBankDetailWarning(true)} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Bank details</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.bankReady ? 'No gaps' : `${missingBankEmployees.length} gaps`}</span>
+                </button>
+                <button type="button" onClick={() => setActiveTab('compliance')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Statutory risk</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.statutoryReady ? 'Clear' : `${complianceRisks.risks.length} signals`}</span>
+                </button>
+                <button type="button" onClick={() => setActiveTab('approvals')} className="rounded-lg border border-border bg-white px-3 py-2 text-left text-xs transition hover:border-tempo-300">
+                  <span className="block text-[10px] uppercase tracking-wide text-t3">Control gate</span>
+                  <span className="font-semibold text-t1">{approvalPreflight.controlReady ? 'Aligned' : `${pendingICRuns.length} IC pending`}</span>
+                </button>
+              </div>
             </div>
           </Card>
 
