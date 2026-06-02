@@ -186,4 +186,10 @@ Onboarding now includes a lifecycle control room:
 - Direct routing into preboarding, buddy support, and bulk task workspaces
 - Joiner/Mover/Leaver orchestration guidance without making lifecycle changes
 
+Expense now includes a Ramp-grade flow queue:
+
+- Receipt evidence, policy review, approval cockpit, reimbursement, and budget guardrail cards
+- Direct routing into receipt management, advanced policies, reports, reimbursement, and budgets
+- Human-decision guidance without changing approval or payment state
+
 These do not alter payments, approvals, reimbursements, payroll posting, compensation outcomes, performance records, learning records, learning enrollments, career records, merit recommendations, PIP records, compliance evidence, device provisioning, access controls, credential state, benefits elections, time approvals, worker records, global filings, employee records, onboarding tasks, offboarding tasks, signature state, candidate records, position records, supplier records, purchase orders, goods receipts, invoice matches, report saves, report exports, report schedules, objectives, key results, initiatives, KPIs, workflow definitions, workflow runs, budgets, FX transfers, balances, revenue recognition entries, revenue schedules, consolidation reports, elimination entries, tax policies, tax transactions, tax reports, survey sends, survey schedules, survey triggers, action plans, mentoring programs, mentoring pairs, mentoring sessions, mentoring goals, project records, task records, milestone records, automation rules, expense approval state, reimbursement batches, payroll approval state, payout state, payslip state, payment state, bank files, bank-feed matches, invoice status, card state, ledger records, period close, statutory calculations, database schema, production routing, hire creation, onboarding-task creation, buddy assignment, IT access grants, payroll setup, benefits enrollment, or learning enrollment.

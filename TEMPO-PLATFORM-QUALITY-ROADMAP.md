@@ -141,5 +141,6 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Payroll approvals now include a preflight card before sign-off, showing variance diff availability, missing bank-detail gaps, statutory risk signals, and internal-control gate status without changing approval, payout, payslip, bank-file, or tax calculation behavior.
 - Performance now includes a growth bridge that connects competency gaps, career-path readiness, course availability, learning activity, and per-employee course suggestions without changing reviews, ratings, enrollments, career records, merit, PIP, or learning data.
 - Onboarding now includes a lifecycle control room that connects HR document readiness, IT account/equipment tasks, payroll and benefits setup, learning and compliance tasks, buddy coverage, and blocker queues without creating hires, assigning tasks, changing access, touching payroll, or enrolling learners.
+- Expense now includes a Ramp-grade flow queue that routes reviewers to receipt evidence, policy flags, approval queues, reimbursement batches, and budget watchlists without approving, rejecting, reimbursing, posting, or changing payment state.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.

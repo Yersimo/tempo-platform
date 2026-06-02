@@ -1244,6 +1244,59 @@ export default function ExpensePage() {
     },
   ]
   const selectedExpenseExperiment = expenseExperiments.find(experiment => experiment.id === activeExpenseExperiment) || expenseExperiments[0]
+  const expenseFlowGuidance = useMemo(() => {
+    const highValuePending = pendingExpenseReports.filter((report: any) => Number(report.total_amount || 0) > 1000)
+    const reportsMissingReceipts = pendingExpenseReports.filter((report: any) => Number(report.receipt_count || 0) === 0)
+    const budgetWatchlist = expenseBudgets.filter(budget => budget.isOver || budget.utilization > 85)
+
+    return [
+      {
+        title: 'Employee capture',
+        icon: <Receipt size={16} />,
+        status: reportsMissingReceipts.length > 0 ? 'Needs evidence' : 'Ready',
+        metric: `${reportsMissingReceipts.length} missing receipt${reportsMissingReceipts.length === 1 ? '' : 's'}`,
+        detail: 'Use Snap and receipt matching to reduce finance rework before approval.',
+        action: 'Open receipts',
+        route: () => setActiveTab('receipt-management'),
+      },
+      {
+        title: 'Policy review',
+        icon: <Shield size={16} />,
+        status: policyViolations.length > 0 || highValuePending.length > 0 ? 'Review' : 'Ready',
+        metric: `${policyViolations.length + highValuePending.length} signal${policyViolations.length + highValuePending.length === 1 ? '' : 's'}`,
+        detail: 'Prioritize policy flags and high-value reports before approver sign-off.',
+        action: 'Open policies',
+        route: () => setActiveTab('advanced-policies'),
+      },
+      {
+        title: 'Approval cockpit',
+        icon: <CheckCircle size={16} />,
+        status: pendingExpenseReports.length > 0 ? 'Queued' : 'Clear',
+        metric: `${formatCurrency(totalPending, defaultCurrency)} pending`,
+        detail: 'Route pending reports with amount, receipt, policy, and team context visible.',
+        action: 'Review approvals',
+        route: () => setActiveTab('reports'),
+      },
+      {
+        title: 'Reimbursement',
+        icon: <Banknote size={16} />,
+        status: approvedForReimbursement.length > 0 ? 'Ready to batch' : 'Clear',
+        metric: `${approvedForReimbursement.length} approved`,
+        detail: 'Convert approved reports into payroll, direct-deposit, or manual reimbursement batches.',
+        action: 'Open payouts',
+        route: () => setActiveTab('reimbursement'),
+      },
+      {
+        title: 'Budget guardrails',
+        icon: <Wallet size={16} />,
+        status: budgetWatchlist.length > 0 ? 'Watchlist' : 'Ready',
+        metric: `${budgetWatchlist.length} budget${budgetWatchlist.length === 1 ? '' : 's'}`,
+        detail: 'Check over-budget or near-limit cost centers before finance closes the loop.',
+        action: 'Review budgets',
+        route: () => setActiveTab('budgets'),
+      },
+    ]
+  }, [approvedForReimbursement.length, defaultCurrency, expenseBudgets, pendingExpenseReports, policyViolations.length, totalPending])
 
   if (pageLoading) {
     return (
@@ -1357,6 +1410,50 @@ export default function ExpensePage() {
         ]}
         className="mx-6"
       />
+
+      <section className="mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Ramp-grade flow queue</p>
+              <h2 className="text-lg font-semibold text-t1">Expense work that still needs a human decision</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                One review surface for receipts, policy evidence, approvals, reimbursements, and budget guardrails before Tempo changes approval or payment state.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={pendingExpenseReports.length > 0 ? 'warning' : 'success'}>{pendingExpenseReports.length} approvals</Badge>
+              <Badge variant={approvedForReimbursement.length > 0 ? 'info' : 'success'}>{approvedForReimbursement.length} payouts</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+          {expenseFlowGuidance.map(item => (
+            <button
+              key={item.title}
+              type="button"
+              onClick={item.route}
+              className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                  {item.icon}
+                </span>
+                <Badge variant={item.status === 'Ready' || item.status === 'Clear' ? 'success' : item.status === 'Queued' ? 'info' : 'warning'}>
+                  {item.status}
+                </Badge>
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-t1">{item.title}</h3>
+              <p className="mt-1 text-xs font-medium text-tempo-700">{item.metric}</p>
+              <p className="mt-3 min-h-[54px] text-xs leading-5 text-t2">{item.detail}</p>
+              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                {item.action} <ArrowRight size={13} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* Snap hero — the 8-second flow */}
       <a
