@@ -1060,6 +1060,70 @@ export default function ExpensePage() {
     })
   }, [employees, expenseBudgets, expenseReports, getEmployeeName, pendingExpenseReports])
 
+  const expenseExceptionQueue = useMemo(() => {
+    const receiptExceptions = receiptMatches
+      .filter((match: any) => ['mismatch_amount', 'mismatch_vendor', 'mismatch_date', 'no_receipt'].includes(match.match_status))
+      .map((match: any) => ({
+        id: `receipt-${match.id}`,
+        type: 'Receipt evidence',
+        title: match.receipt_url?.split('/').pop() || 'Receipt needs review',
+        owner: 'Finance operations',
+        detail: `Receipt status: ${String(match.match_status || 'needs_review').replace(/_/g, ' ')}.`,
+        severity: match.match_status === 'no_receipt' ? 'High' : 'Medium',
+        action: 'Open receipts',
+        route: () => setActiveTab('receipt-management'),
+      }))
+
+    const duplicateExceptions = duplicateDetections
+      .filter((duplicate: any) => duplicate.status === 'flagged')
+      .map((duplicate: any) => ({
+        id: `duplicate-${duplicate.id}`,
+        type: 'Duplicate risk',
+        title: duplicate.expense_description || 'Possible duplicate expense',
+        owner: getEmployeeName(duplicate.employee_id),
+        detail: `${Math.round((duplicate.similarity || 0) * 100)}% similar to another ${formatCurrency(duplicate.duplicate_amount || duplicate.expense_amount || 0, defaultCurrency)} expense.`,
+        severity: 'High',
+        action: 'Review duplicate',
+        route: () => {
+          setShowDuplicateDetail(duplicate.id)
+          setActiveTab('reports')
+        },
+      }))
+
+    const policyExceptions = advancedPolicyViolationLog.slice(0, 6).map(violation => ({
+      id: `policy-${violation.id}`,
+      type: 'Policy exception',
+      title: violation.expense,
+      owner: violation.employee,
+      detail: `${violation.policy}: ${violation.rule} -> ${violation.action.replace(/_/g, ' ')}.`,
+      severity: violation.action === 'block' ? 'High' : 'Medium',
+      action: 'Open policies',
+      route: () => setActiveTab('advanced-policies'),
+    }))
+
+    const riskExceptions = approvalCockpitRows
+      .filter(row => row.fraudScore >= 70 || row.status === 'High touch')
+      .map(row => ({
+        id: `risk-${row.id}`,
+        type: 'Approval risk',
+        title: row.title,
+        owner: row.employee,
+        detail: `${row.fraudScore}% anomaly score; ${row.blockers.slice(0, 2).join(', ') || 'review before approval'}.`,
+        severity: row.fraudScore >= 70 ? 'High' : 'Medium',
+        action: 'Open report',
+        route: () => {
+          setFilterStatus('')
+          setSearchQuery('')
+          setExpandedReport(row.id)
+          setActiveTab('reports')
+        },
+      }))
+
+    return [...riskExceptions, ...receiptExceptions, ...duplicateExceptions, ...policyExceptions]
+      .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'High' ? -1 : 1))
+      .slice(0, 10)
+  }, [advancedPolicyViolationLog, approvalCockpitRows, defaultCurrency, duplicateDetections, getEmployeeName, receiptMatches])
+
   const bulkExpTargetReports = useMemo(() => {
     switch (bulkExpSelectMode) {
       case 'all_pending':
@@ -1749,6 +1813,50 @@ export default function ExpensePage() {
                       </Button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {expenseExceptionQueue.length > 0 && (
+            <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="border-b border-border px-5 py-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Exception resolution</p>
+                    <h2 className="text-lg font-semibold text-t1">Finance queue for expense issues</h2>
+                    <p className="mt-1 max-w-3xl text-sm text-t2">
+                      Receipt gaps, duplicate warnings, policy exceptions, and high-risk approvals are grouped before finance changes report or payment state.
+                    </p>
+                  </div>
+                  <Badge variant="warning">{expenseExceptionQueue.length} open</Badge>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 lg:grid-cols-2">
+                {expenseExceptionQueue.map(exception => (
+                  <button
+                    key={exception.id}
+                    type="button"
+                    onClick={exception.route}
+                    className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={exception.severity === 'High' ? 'error' : 'warning'}>{exception.severity}</Badge>
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-t3">{exception.type}</span>
+                        </div>
+                        <h3 className="mt-2 truncate text-sm font-semibold text-t1">{exception.title}</h3>
+                        <p className="mt-1 text-xs text-t3">Owner: {exception.owner}</p>
+                      </div>
+                      <AlertTriangle size={16} className={exception.severity === 'High' ? 'shrink-0 text-error' : 'shrink-0 text-amber-500'} />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-t2">{exception.detail}</p>
+                    <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                      {exception.action} <ArrowRight size={13} />
+                    </div>
+                  </button>
                 ))}
               </div>
             </section>

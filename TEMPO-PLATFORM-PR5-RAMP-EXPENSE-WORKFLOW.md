@@ -42,6 +42,17 @@ It shows:
 - Completed batch items
 - Method, amount, employee, step, and next-state explanation
 
+The reports tab now includes an exception resolution queue.
+
+It groups:
+
+- Receipt evidence gaps and mismatches
+- Duplicate warnings
+- Policy exceptions
+- High-risk or high-touch approvals
+
+Each exception routes back into the relevant existing workspace without changing report, approval, reimbursement, or payment state.
+
 ## Safety Boundary
 
 This slice does not change:
@@ -57,5 +68,5 @@ It only adds a decision layer before existing actions.
 
 ## Next Expense Slices
 
-1. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
-2. Visual/browser QA once `DATABASE_URL` and auth/session env are available.
+1. Visual/browser QA once `DATABASE_URL` and auth/session env are available.
+2. Final product review for PR #5 copy, routing, and whether this is ready to merge.
