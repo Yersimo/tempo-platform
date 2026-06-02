@@ -17,6 +17,7 @@ import { AIInsightCard } from '@/components/ai'
 import { suggestOnboardingBuddy, generateOnboardingPlan } from '@/lib/ai-engine'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useTempo } from '@/lib/store'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
@@ -1444,6 +1445,28 @@ export default function OnboardingPage() {
           </div>
         </div>
       </section>
+
+      <ModuleTrustPanel
+        title="Joiner readiness trust layer"
+        score={Math.min(96, 48 + Math.round(taskCompletionPct * 0.2) + (pendingTaskCount === 0 ? 10 : 5) + (activeBuddyCount > 0 ? 8 : 3) + (selectedModules.length > 0 ? 8 : 3))}
+        summary="Keeps preboarding, buddy coverage, selected modules, and Day-1 readiness visible before a new hire starts."
+        icon={<Shield size={18} />}
+        checks={[
+          { label: 'Task readiness', detail: `${taskCompletionPct}% complete with ${pendingTaskCount} pending task${pendingTaskCount === 1 ? '' : 's'}.`, tone: pendingTaskCount > 0 ? 'warning' : 'success' },
+          { label: 'Buddy coverage', detail: `${activeBuddyCount} active buddy assignment${activeBuddyCount === 1 ? '' : 's'} supporting joiners.`, tone: activeBuddyCount > 0 ? 'success' : 'warning' },
+          { label: 'Module coverage', detail: `${selectedModules.length} onboarding module${selectedModules.length === 1 ? '' : 's'} selected for setup.`, tone: selectedModules.length > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Preboarding tasks, selected setup modules, buddy assignments, welcome content, learning plans, and Day-1 entry are summarized together.',
+          'HR can route to preboarding, buddy setup, and the first-morning preview without assigning tasks from this panel.',
+          'This panel is additive review guidance only; it does not create hires, complete tasks, assign buddies, or change setup modules.',
+        ]}
+        actions={[
+          { label: 'Review preboarding', description: 'Inspect documents, equipment, and account tasks.', onClick: () => setActiveTab('preboarding') },
+          { label: 'Assign buddies', description: 'Check support coverage for new hires.', onClick: () => setActiveTab('buddy-system') },
+          { label: 'Preview first morning', description: 'Open the Day-1 employee experience.', href: '/onboarding/day-one' },
+        ]}
+      />
 
       {/* Day-1 First Morning entry — for new joiners */}
       <a

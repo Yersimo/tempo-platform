@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -518,6 +519,28 @@ export default function DocumentsPage() {
           { label: 'Track documents', description: 'Review signature status and pending signers.', onClick: () => setActiveTab('documents') },
           { label: 'Manage templates', description: 'Tune reusable signing flows and roles.', onClick: () => setActiveTab('templates') },
           { label: 'Review audit trail', description: 'Inspect signature and evidence history.', onClick: () => setActiveTab('audit') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Document evidence trust layer"
+        score={Math.min(97, 48 + (signatureDocuments.length > 0 ? 10 : 4) + (awaitingCount === 0 ? 10 : 5) + (signatureTemplates.length > 0 ? 8 : 3) + (auditEvents.length > 0 ? 8 : 3))}
+        summary="Keeps signature status, templates, signer routing, and audit evidence visible before documents are treated as complete or compliant."
+        icon={<FileSignature size={18} />}
+        checks={[
+          { label: 'Signature queue', detail: `${awaitingCount} document${awaitingCount === 1 ? '' : 's'} awaiting signature.`, tone: awaitingCount > 0 ? 'warning' : 'success' },
+          { label: 'Template coverage', detail: `${signatureTemplates.length} reusable template${signatureTemplates.length === 1 ? '' : 's'} available.`, tone: signatureTemplates.length > 0 ? 'success' : 'warning' },
+          { label: 'Audit trail', detail: `${auditEvents.length} audit event${auditEvents.length === 1 ? '' : 's'} available for evidence review.`, tone: auditEvents.length > 0 ? 'success' : 'warning' },
+        ]}
+        evidence={[
+          'Documents, signers, templates, reminders, downloads, employee links, and audit events are summarized together.',
+          'HR can route to documents, templates, and audit history without sending, reminding, deleting, or changing signature state.',
+          'This panel is additive review guidance only; it does not send documents, complete signatures, delete files, or alter audit evidence.',
+        ]}
+        actions={[
+          { label: 'Track documents', description: 'Review signature status and pending signers.', onClick: () => setActiveTab('documents') },
+          { label: 'Manage templates', description: 'Inspect reusable signing flows and roles.', onClick: () => setActiveTab('templates') },
+          { label: 'Review audit trail', description: 'Open signature and evidence history.', onClick: () => setActiveTab('audit') },
         ]}
       />
 

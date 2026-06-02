@@ -26,6 +26,7 @@ import {
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
+import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useTempo } from '@/lib/store'
 import { readFileAsCSV, mapCSVToEmployeeFields, validateEmployeeImport, generateBulkCredentials, exportCredentialsToCSV, exportToCSV, exportToPrint, exportToExcel, downloadImportTemplate, EMPLOYEE_EXPORT_COLUMNS, type EmployeeCredential } from '@/lib/export-import'
 import { generateEmployeeImportTemplate, parseExcelFile } from '@/lib/excel-template'
@@ -709,6 +710,28 @@ export default function PeoplePage() {
           { label: 'Review org shape', description: 'Inspect org chart and reporting structure.', onClick: () => setActiveTab('org-chart') },
           { label: 'Audit documents', description: 'Find expired and pending employee documents.', onClick: () => setActiveTab('documents') },
           { label: 'Manage positions', description: 'Check fill rate, vacancies, and key positions.', onClick: () => setActiveTab('positions') },
+        ]}
+      />
+
+      <ModuleTrustPanel
+        title="Employee graph trust layer"
+        score={Math.min(96, 48 + (employees.length > 0 ? 10 : 4) + (departments.length > 0 ? 10 : 4) + (employeeDocuments.length > 0 ? 8 : 3) + (highRiskCount === 0 ? 10 : 4))}
+        summary="Keeps employee identity, reporting structure, documents, history, and position context visible before HR changes ripple into IT, payroll, learning, or performance."
+        icon={<ShieldCheck size={18} />}
+        checks={[
+          { label: 'Employee source', detail: `${employees.length} employee record${employees.length === 1 ? '' : 's'} across ${departments.length} department${departments.length === 1 ? '' : 's'}.`, tone: employees.length > 0 && departments.length > 0 ? 'success' : 'warning' },
+          { label: 'Document coverage', detail: `${employeeDocuments.length} employee document${employeeDocuments.length === 1 ? '' : 's'} attached to the graph.`, tone: employeeDocuments.length > 0 ? 'success' : 'warning' },
+          { label: 'People risk', detail: `${highRiskCount} attrition alert${highRiskCount === 1 ? '' : 's'} surfaced for follow-up.`, tone: highRiskCount > 0 ? 'warning' : 'success' },
+        ]}
+        evidence={[
+          'Directory, departments, employee documents, timeline history, custom fields, positions, and org chart context are summarized together.',
+          'HR can route to org shape, documents, and positions without changing employee records from this panel.',
+          'This panel is additive review guidance only; it does not create employees, import records, restructure teams, or delete data.',
+        ]}
+        actions={[
+          { label: 'Review org shape', description: 'Inspect reporting lines and department structure.', onClick: () => setActiveTab('org-chart') },
+          { label: 'Audit documents', description: 'Check expired and missing employee evidence.', onClick: () => setActiveTab('documents') },
+          { label: 'Manage positions', description: 'Review open, key, and budgeted roles.', onClick: () => setActiveTab('positions') },
         ]}
       />
 

@@ -132,5 +132,6 @@ Implemented Concept 1 for the three benchmark-critical modules:
 - Analytics now also includes a selectable executive board-room experiment bench for board pack narrative, risk drill-down, KPI story builder, and operating review concepts.
 - Expense, Payroll, Performance, Learning, and IT Cloud now include a reusable trust-layer review panel that surfaces confidence checks, evidence coverage, and safe next actions without changing approval, payment, learning, performance, access, or device-control behavior.
 - Corporate Cards, Invoices, Bill Pay, Bank Feeds, and General Ledger now also include finance trust-layer review panels for spend limits, approvals, scheduled payments, reconciliation matching, journal balance, and close readiness without changing payment, bank-feed, invoice, or ledger records.
+- People, Onboarding, Offboarding, Documents, and Compliance now also include people-operations trust panels for employee graph confidence, joiner readiness, leaver closure, document evidence, and compliance evidence without changing employee, task, signature, access, final-pay, or compliance records.
 
 This is intentionally a low-risk first PR: it improves orientation, consistency, and cross-module quality language without changing data persistence, auth, billing, migrations, or production integrations.
