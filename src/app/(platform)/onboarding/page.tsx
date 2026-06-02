@@ -497,6 +497,59 @@ export default function OnboardingPage() {
   const inProgressTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'in_progress').length, [preboardingTasks])
   const pendingTaskCount = useMemo(() => preboardingTasks.filter(t => t.status === 'pending').length, [preboardingTasks])
   const taskCompletionPct = useMemo(() => preboardingTasks.length > 0 ? Math.round((completedTaskCount / preboardingTasks.length) * 100) : 0, [preboardingTasks, completedTaskCount])
+  const lifecycleControlRoom = useMemo(() => {
+    const countByCategory = (category: string) => preboardingTasks.filter(task => task.category === category)
+    const pendingByCategory = (category: string) => countByCategory(category).filter(task => task.status !== 'completed').length
+    const missingSetupModules = ['payroll', 'learning'].filter(moduleId => !selectedModules.includes(moduleId))
+    const openCriticalTasks = ['documents', 'payroll', 'equipment', 'accounts', 'training']
+      .reduce((sum, category) => sum + pendingByCategory(category), 0)
+
+    return [
+      {
+        owner: 'HR operations',
+        icon: <FileText size={16} />,
+        status: pendingByCategory('documents') === 0 && preboardingTasks.length > 0 ? 'Ready' : 'Review',
+        detail: `${countByCategory('documents').length} document task${countByCategory('documents').length === 1 ? '' : 's'}, ${pendingByCategory('documents')} still open.`,
+        route: () => { setPreboardCategoryFilter('documents'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'IT provisioning',
+        icon: <Laptop size={16} />,
+        status: pendingByCategory('accounts') + pendingByCategory('equipment') === 0 && preboardingTasks.length > 0 ? 'Ready' : 'Review',
+        detail: `${pendingByCategory('accounts')} account and ${pendingByCategory('equipment')} equipment task${pendingByCategory('equipment') === 1 ? '' : 's'} still open.`,
+        route: () => { setPreboardCategoryFilter('accounts'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Payroll and benefits',
+        icon: <DollarSign size={16} />,
+        status: missingSetupModules.includes('payroll') || pendingByCategory('payroll') > 0 ? 'Review' : 'Ready',
+        detail: `${pendingByCategory('payroll')} payroll task${pendingByCategory('payroll') === 1 ? '' : 's'} open; payroll module ${selectedModules.includes('payroll') ? 'selected' : 'not selected'}.`,
+        route: () => { setPreboardCategoryFilter('payroll'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Learning and compliance',
+        icon: <GraduationCap size={16} />,
+        status: missingSetupModules.includes('learning') || pendingByCategory('training') > 0 ? 'Review' : 'Ready',
+        detail: `${pendingByCategory('training')} training task${pendingByCategory('training') === 1 ? '' : 's'} open; learning module ${selectedModules.includes('learning') ? 'selected' : 'not selected'}.`,
+        route: () => { setPreboardCategoryFilter('training'); setActiveTab('preboarding') },
+      },
+      {
+        owner: 'Manager and buddy',
+        icon: <Users size={16} />,
+        status: activeBuddyCount > 0 ? 'Ready' : 'Review',
+        detail: `${activeBuddyCount} active, ${pendingBuddyCount} pending, and ${completedBuddyCount} completed buddy assignment${buddyAssignments.length === 1 ? '' : 's'}.`,
+        route: () => setActiveTab('buddy-system'),
+      },
+      {
+        owner: 'Control queue',
+        icon: <AlertCircle size={16} />,
+        status: openCriticalTasks === 0 && missingSetupModules.length === 0 ? 'Ready' : 'Review',
+        detail: `${openCriticalTasks} critical open task${openCriticalTasks === 1 ? '' : 's'} and ${missingSetupModules.length} missing setup module${missingSetupModules.length === 1 ? '' : 's'}.`,
+        route: () => setShowBulkTaskModal(true),
+      },
+    ]
+  }, [activeBuddyCount, buddyAssignments.length, completedBuddyCount, pendingBuddyCount, preboardingTasks, selectedModules])
+
   const lifecycleExperiments = [
     {
       id: 'joiner_launch' as const,
@@ -1443,6 +1496,52 @@ export default function OnboardingPage() {
               Open related workspace <ArrowRight size={14} />
             </Button>
           </div>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Lifecycle control room</p>
+              <h2 className="text-lg font-semibold text-t1">One readiness queue across HR, IT, Payroll, Learning, and managers</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Read-only orchestration that explains who owns each joiner, mover, or leaver dependency before Tempo creates or changes operational records.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={pendingTaskCount > 0 ? 'warning' : 'success'}>{pendingTaskCount} pending</Badge>
+              <Badge variant={activeBuddyCount > 0 ? 'success' : 'info'}>{activeBuddyCount} buddies</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {lifecycleControlRoom.map(item => (
+            <button
+              key={item.owner}
+              type="button"
+              onClick={item.route}
+              className="rounded-[var(--radius-card)] border border-border bg-bg p-4 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                    {item.icon}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{item.owner}</h3>
+                    <p className="text-xs text-t3">Owner review</p>
+                  </div>
+                </div>
+                <Badge variant={item.status === 'Ready' ? 'success' : 'warning'}>{item.status}</Badge>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-t2">{item.detail}</p>
+              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-tempo-700">
+                Open workspace <ArrowRight size={13} />
+              </div>
+            </button>
+          ))}
         </div>
       </section>
 
