@@ -8,35 +8,33 @@ import type { DemoCredential } from '@/lib/demo-data'
 import { useTempo } from '@/lib/store'
 import {
   Shield, Users, UserCheck, Briefcase, User, Lock, Copy, Check,
-  Building2, Globe2, ArrowRight, Sparkles, ExternalLink
+  Building2, Globe2, ArrowRight, Sparkles, ExternalLink, AlertCircle
 } from 'lucide-react'
 
 // ─── Demo Access PIN ──────────────────────────────────────────
 const DEMO_PIN = 'tempo2026'
 
-// ─── Magic link slugs → credential mapping ────────────────────
-const MAGIC_LINK_MAP: Record<string, { email: string; password: string }> = {
-  // Master Admin
-  'admin': { email: 'yersimo@theworktempo.com', password: 'W@kilisha2026' },
-  // Ecobank
-  'ecobank-chro': { email: 'amara.kone@ecobank.com', password: 'demo1234' },
-  'ecobank-cfo': { email: 'i.agu@ecobank.com', password: 'demo1234' },
-  'ecobank-cto': { email: 'b.ogunleye@ecobank.com', password: 'demo1234' },
-  'ecobank-dept-head': { email: 'o.adeyemi@ecobank.com', password: 'demo1234' },
-  'ecobank-hrbp': { email: 'a.darko@ecobank.com', password: 'demo1234' },
-  'ecobank-manager': { email: 'n.okafor@ecobank.com', password: 'demo1234' },
-  'ecobank-employee': { email: 'k.asante@ecobank.com', password: 'demo1234' },
-  // Kash & Co
-  'kashco-md': { email: 's.ndlovu@kashco.com', password: 'demo1234' },
-  'kashco-strategy': { email: 'l.amari@kashco.com', password: 'demo1234' },
-  'kashco-manager': { email: 't.mugabo@kashco.com', password: 'demo1234' },
-  'kashco-consultant': { email: 'n.joubert@kashco.com', password: 'demo1234' },
-  'kashco-cpo': { email: 'z.moyo@kashco.com', password: 'demo1234' },
+// ─── Magic link slugs → demo email mapping ────────────────────
+// The server resolves the password from environment-backed demo credentials.
+const MAGIC_LINK_EMAILS: Record<string, string> = {
+  admin: 'yersimo@theworktempo.com',
+  'ecobank-chro': 'amara.kone@ecobank.com',
+  'ecobank-cfo': 'i.agu@ecobank.com',
+  'ecobank-cto': 'b.ogunleye@ecobank.com',
+  'ecobank-dept-head': 'o.adeyemi@ecobank.com',
+  'ecobank-hrbp': 'a.darko@ecobank.com',
+  'ecobank-manager': 'n.okafor@ecobank.com',
+  'ecobank-employee': 'k.asante@ecobank.com',
+  'kashco-md': 's.ndlovu@kashco.com',
+  'kashco-strategy': 'l.amari@kashco.com',
+  'kashco-manager': 't.mugabo@kashco.com',
+  'kashco-consultant': 'n.joubert@kashco.com',
+  'kashco-cpo': 'z.moyo@kashco.com',
 }
 
 // ─── Reverse map: email → slug ────────────────────────────────
 const EMAIL_TO_SLUG: Record<string, string> = Object.fromEntries(
-  Object.entries(MAGIC_LINK_MAP).map(([slug, { email }]) => [email, slug])
+  Object.entries(MAGIC_LINK_EMAILS).map(([slug, email]) => [email, slug])
 )
 
 // ─── Styling ──────────────────────────────────────────────────
@@ -95,17 +93,18 @@ const orgGroups: OrgGroup[] = [
 export default function DemoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login } = useTempo()
+  const { loginDemo } = useTempo()
   const [unlocked, setUnlocked] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+  const [launchError, setLaunchError] = useState('')
 
   // Check for magic link auto-login via ?as=slug
   useEffect(() => {
     const autoLogin = searchParams.get('as')
-    if (autoLogin && MAGIC_LINK_MAP[autoLogin]) {
+    if (autoLogin && MAGIC_LINK_EMAILS[autoLogin]) {
       setUnlocked(true)
       handleAutoLogin(autoLogin)
     }
@@ -122,14 +121,15 @@ export default function DemoPage() {
   }, [])
 
   const handleAutoLogin = async (slug: string) => {
-    const cred = MAGIC_LINK_MAP[slug]
-    if (!cred) return
+    if (!MAGIC_LINK_EMAILS[slug]) return
     setLoading(slug)
-    const result = await login(cred.email, cred.password)
+    setLaunchError('')
+    const result = await loginDemo(slug)
     if (result === true) {
       router.push('/dashboard')
     } else {
       setLoading(null)
+      setLaunchError('This demo role is not configured in this deployment. Check the Vercel demo environment variables.')
     }
   }
 
@@ -149,12 +149,18 @@ export default function DemoPage() {
 
   const handleDemoLogin = async (cred: DemoCredential) => {
     const slug = EMAIL_TO_SLUG[cred.email] || cred.employeeId
+    if (!EMAIL_TO_SLUG[cred.email]) {
+      setLaunchError('This demo role does not have a magic-link slug configured yet.')
+      return
+    }
     setLoading(slug)
-    const result = await login(cred.email, cred.password)
+    setLaunchError('')
+    const result = await loginDemo(slug)
     if (result === true) {
       router.push('/dashboard')
     } else {
       setLoading(null)
+      setLaunchError('This demo role is not configured in this deployment. Check the Vercel demo environment variables.')
     }
   }
 
@@ -252,6 +258,15 @@ export default function DemoPage() {
 
       {/* Org Cards */}
       <div className="space-y-4">
+        {launchError && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-left">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-amber-700" />
+              <p className="text-[0.65rem] leading-relaxed text-amber-800">{launchError}</p>
+            </div>
+          </div>
+        )}
+
         {orgGroups.map((group) => {
           const meta = orgMeta[group.name]
           return (
