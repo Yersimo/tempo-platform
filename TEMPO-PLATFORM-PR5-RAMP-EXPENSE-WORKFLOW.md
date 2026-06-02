@@ -14,6 +14,15 @@ It sorts and summarizes reports by:
 
 Each cockpit card shows amount, receipt count, risk score, blockers, suggested route, and an action that opens the report detail.
 
+The approver cockpit now also includes budget impact preview.
+
+It estimates:
+
+- The best matching active budget for the report
+- Current budget utilization
+- Projected utilization after approval
+- Remaining budget after the report is approved
+
 The new expense report modal now includes a submit readiness checklist for employees.
 
 It summarizes:
@@ -48,6 +57,5 @@ It only adds a decision layer before existing actions.
 
 ## Next Expense Slices
 
-1. Budget impact preview: expose cost-center impact before approvers approve.
-2. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
-3. Visual/browser QA once `DATABASE_URL` and auth/session env are available.
+1. Exception resolution: give finance a queue for receipt gaps, duplicate warnings, policy exceptions, and high-risk reports.
+2. Visual/browser QA once `DATABASE_URL` and auth/session env are available.

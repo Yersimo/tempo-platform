@@ -1010,13 +1010,29 @@ export default function ExpensePage() {
       const receiptCount = Number(report.receipt_count || 0)
       const hasReceiptGap = receiptCount === 0
       const isHighValue = Number(report.total_amount || 0) > 1000
-      const budgetWatchlistCount = expenseBudgets.filter(budget => budget.isOver || budget.utilization > 85).length
+      const employee = employees.find(emp => emp.id === report.employee_id) as any
+      const matchingBudget = expenseBudgets.find(budget =>
+        budget.department_id === employee?.department_id ||
+        budget.owner_id === report.employee_id ||
+        String(budget.name || '').toLowerCase().includes(String(report.items?.[0]?.category || '').toLowerCase())
+      ) || expenseBudgets[0]
+      const projectedBudgetUtilization = matchingBudget?.total_amount
+        ? Math.round(((Number(matchingBudget.spent_amount || 0) + Number(report.total_amount || 0)) / Number(matchingBudget.total_amount)) * 100)
+        : null
+      const budgetImpact = matchingBudget
+        ? {
+            name: matchingBudget.name || 'Active budget',
+            current: Number(matchingBudget.utilization || 0),
+            projected: projectedBudgetUtilization,
+            remaining: Number(matchingBudget.total_amount || 0) - Number(matchingBudget.spent_amount || 0) - Number(report.total_amount || 0),
+          }
+        : null
       const blockers = [
         hasReceiptGap ? 'Missing receipt evidence' : null,
         policySignals.length > 0 ? `${policySignals.length} policy signal${policySignals.length === 1 ? '' : 's'}` : null,
         fraudScore >= 70 ? 'High anomaly score' : null,
         isHighValue ? 'High-value approval' : null,
-        budgetWatchlistCount > 0 ? `${budgetWatchlistCount} budget watchlist${budgetWatchlistCount === 1 ? '' : 's'}` : null,
+        budgetImpact?.projected && budgetImpact.projected > 85 ? `${budgetImpact.name} would reach ${budgetImpact.projected}%` : null,
       ].filter(Boolean) as string[]
 
       let route = 'Manager approval'
@@ -1033,6 +1049,7 @@ export default function ExpensePage() {
         submittedAt: report.submitted_at || report.created_at,
         receiptCount,
         fraudScore,
+        budgetImpact,
         route,
         blockers,
         status: blockers.length === 0 ? 'Ready' : blockers.length > 2 ? 'High touch' : 'Review',
@@ -1041,7 +1058,7 @@ export default function ExpensePage() {
       if (b.blockers.length !== a.blockers.length) return b.blockers.length - a.blockers.length
       return b.amount - a.amount
     })
-  }, [expenseBudgets, expenseReports, getEmployeeName, pendingExpenseReports])
+  }, [employees, expenseBudgets, expenseReports, getEmployeeName, pendingExpenseReports])
 
   const bulkExpTargetReports = useMemo(() => {
     switch (bulkExpSelectMode) {
@@ -1683,6 +1700,22 @@ export default function ExpensePage() {
                         <p className="mt-1 text-xs font-semibold text-t1">{row.fraudScore}%</p>
                       </div>
                     </div>
+
+                    {row.budgetImpact && (
+                      <div className="mt-3 rounded-md border border-border bg-card px-3 py-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] uppercase tracking-wide text-t3">{row.budgetImpact.name}</p>
+                            <p className="mt-1 text-xs font-semibold text-t1">
+                              {row.budgetImpact.current}% now {'->'} {row.budgetImpact.projected ?? row.budgetImpact.current}% after approval
+                            </p>
+                          </div>
+                          <Badge variant={(row.budgetImpact.projected || 0) > 100 ? 'error' : (row.budgetImpact.projected || 0) > 85 ? 'warning' : 'success'}>
+                            {row.budgetImpact.remaining < 0 ? 'Over budget' : `${formatCurrency(row.budgetImpact.remaining, defaultCurrency, { compact: true })} left`}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-4 min-h-[72px] space-y-1">
                       {row.blockers.length > 0 ? row.blockers.slice(0, 3).map(blocker => (
