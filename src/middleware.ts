@@ -185,7 +185,7 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
 
   // ─── Hidden marketing pages ──────────────────────────────────────────
   // Splash is the only public surface. Everything below redirects to /.
-  // Auth (/login, /signup, /reset-password, /verify, /invite), /api/*,
+  // Auth (/login, /signup, /reset-password, /verify, /invite), /demo, /api/*,
   // /academy/login, and /admin/* remain accessible.
   if (
     pathname === '/pricing' ||
@@ -195,7 +195,6 @@ async function _middlewareInner(request: NextRequest): Promise<NextResponse> {
     pathname === '/about' ||
     pathname === '/careers' ||
     pathname === '/contact' ||
-    pathname === '/demo' ||
     pathname === '/demo-request' ||
     pathname === '/social-impact' ||
     pathname === '/newsroom' ||
