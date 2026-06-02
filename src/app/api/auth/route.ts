@@ -23,6 +23,73 @@ import { isEvaluatorAccount, getEvaluatorConfig } from '@/lib/evaluator-demo-dat
 import { sendWelcomeEmail } from '@/lib/email'
 import { seedNewOrg } from '@/lib/org-seed'
 
+const DEMO_LOGIN_EMAIL_BY_SLUG: Record<string, string> = {
+  admin: 'yersimo@theworktempo.com',
+  'ecobank-chro': 'amara.kone@ecobank.com',
+  'ecobank-cfo': 'i.agu@ecobank.com',
+  'ecobank-cto': 'b.ogunleye@ecobank.com',
+  'ecobank-dept-head': 'o.adeyemi@ecobank.com',
+  'ecobank-hrbp': 'a.darko@ecobank.com',
+  'ecobank-manager': 'n.okafor@ecobank.com',
+  'ecobank-employee': 'k.asante@ecobank.com',
+  'kashco-md': 's.ndlovu@kashco.com',
+  'kashco-strategy': 'l.amari@kashco.com',
+  'kashco-manager': 't.mugabo@kashco.com',
+  'kashco-consultant': 'n.joubert@kashco.com',
+  'kashco-cpo': 'z.moyo@kashco.com',
+}
+
+function resolveDemoCredential(slug: unknown) {
+  if (!DEMO_MODE || typeof slug !== 'string') return null
+  const email = DEMO_LOGIN_EMAIL_BY_SLUG[slug]
+  if (!email) return null
+  return allDemoCredentials.find(c => c.email === email && c.password) || null
+}
+
+async function createDemoLoginResponse(demoCred: (typeof allDemoCredentials)[number]) {
+  const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+  const orgData = getDemoDataForOrg(demoOrgId)
+  const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
+
+  // Resolve to real DB UUIDs if the email exists in employees table. This lets
+  // demo sessions work with real DB-backed writes while falling back safely.
+  let realEmployeeId: string = demoCred.employeeId
+  let realOrgId: string = demoOrgId
+  try {
+    const [dbEmployee] = await db.select().from(schema.employees)
+      .where(eq(schema.employees.email, demoCred.email)).limit(1)
+    if (dbEmployee) {
+      realEmployeeId = dbEmployee.id
+      realOrgId = dbEmployee.orgId
+    }
+  } catch {
+    // DB unreachable -- keep synthetic IDs
+  }
+
+  const demoToken = await createToken({
+    employeeId: realEmployeeId,
+    email: demoCred.email,
+    role: demoCred.role,
+    orgId: realOrgId,
+    sessionId: `demo-${Date.now()}`,
+  })
+  const demoUser = {
+    id: `user-${realEmployeeId}`,
+    email: demoCred.email,
+    full_name: demoEmp?.profile?.full_name || demoCred.label,
+    avatar_url: demoEmp?.profile?.avatar_url || null,
+    role: demoCred.role,
+    department_id: demoEmp?.department_id || null,
+    employee_id: realEmployeeId,
+    job_title: demoEmp?.job_title || demoCred.title,
+    department_name: demoCred.department,
+  }
+  const demoCookie = setSessionCookie(demoToken)
+  const demoResponse = NextResponse.json({ user: demoUser })
+  demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
+  return demoResponse
+}
+
 // POST /api/auth - Authentication endpoints
 export async function POST(request: NextRequest) {
   try {
@@ -40,48 +107,7 @@ export async function POST(request: NextRequest) {
       // contains an employee row with the same email but a different hash.
       const demoCred = DEMO_MODE ? allDemoCredentials.find(c => c.email === email && c.password === password) : null
       if (demoCred) {
-        const demoOrgId = demoCred.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
-        const orgData = getDemoDataForOrg(demoOrgId)
-        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoCred.employeeId)
-
-        // ── Resolve to real DB UUIDs if the email exists in employees table ──
-        // Lets demo login work seamlessly with real DB writes (events, expense
-        // reports, etc.). If lookup fails, fall back to synthetic IDs.
-        let realEmployeeId: string = demoCred.employeeId
-        let realOrgId: string = demoOrgId
-        try {
-          const [dbEmployee] = await db.select().from(schema.employees)
-            .where(eq(schema.employees.email, email)).limit(1)
-          if (dbEmployee) {
-            realEmployeeId = dbEmployee.id
-            realOrgId = dbEmployee.orgId
-          }
-        } catch {
-          // DB unreachable — keep synthetic IDs
-        }
-
-        const demoToken = await createToken({
-          employeeId: realEmployeeId,
-          email: demoCred.email,
-          role: demoCred.role,
-          orgId: realOrgId,
-          sessionId: `demo-${Date.now()}`,
-        })
-        const demoUser = {
-          id: `user-${realEmployeeId}`,
-          email: demoCred.email,
-          full_name: demoEmp?.profile?.full_name || demoCred.label,
-          avatar_url: demoEmp?.profile?.avatar_url || null,
-          role: demoCred.role,
-          department_id: demoEmp?.department_id || null,
-          employee_id: realEmployeeId,
-          job_title: demoEmp?.job_title || demoCred.title,
-          department_name: demoCred.department,
-        }
-        const demoCookie = setSessionCookie(demoToken)
-        const demoResponse = NextResponse.json({ user: demoUser })
-        demoResponse.cookies.set(demoCookie.name, demoCookie.value, demoCookie.options as Parameters<typeof demoResponse.cookies.set>[2])
-        return demoResponse
+        return createDemoLoginResponse(demoCred)
       }
 
       // Find employee by email
@@ -232,6 +258,19 @@ export async function POST(request: NextRequest) {
       response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2])
 
       return response
+    }
+
+    // ─── Demo Login By Slug ──────────────────────────────────────
+    if (action === 'demo_login') {
+      const demoCred = resolveDemoCredential(body.slug)
+      if (!demoCred) {
+        return NextResponse.json(
+          { error: 'Demo account is not configured. Check DEMO_MODE and demo password environment variables.' },
+          { status: 503 }
+        )
+      }
+
+      return createDemoLoginResponse(demoCred)
     }
 
     // ─── Verify MFA ─────────────────────────────────────────────────

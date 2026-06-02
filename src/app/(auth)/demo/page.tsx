@@ -3,41 +3,66 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TempoLockup } from '@/components/brand/tempo-lockup'
-import { allDemoCredentials } from '@/lib/demo-data'
-import type { DemoCredential } from '@/lib/demo-data'
 import { useTempo } from '@/lib/store'
 import {
   Shield, Users, UserCheck, Briefcase, User, Lock, Copy, Check,
-  Building2, Globe2, ArrowRight, Sparkles, ExternalLink
+  Building2, Globe2, ArrowRight, Sparkles, ExternalLink, AlertCircle
 } from 'lucide-react'
 
 // ─── Demo Access PIN ──────────────────────────────────────────
 const DEMO_PIN = 'tempo2026'
 
-// ─── Magic link slugs → credential mapping ────────────────────
-const MAGIC_LINK_MAP: Record<string, { email: string; password: string }> = {
-  // Master Admin
-  'admin': { email: 'yersimo@theworktempo.com', password: 'W@kilisha2026' },
-  // Ecobank
-  'ecobank-chro': { email: 'amara.kone@ecobank.com', password: 'demo1234' },
-  'ecobank-cfo': { email: 'i.agu@ecobank.com', password: 'demo1234' },
-  'ecobank-cto': { email: 'b.ogunleye@ecobank.com', password: 'demo1234' },
-  'ecobank-dept-head': { email: 'o.adeyemi@ecobank.com', password: 'demo1234' },
-  'ecobank-hrbp': { email: 'a.darko@ecobank.com', password: 'demo1234' },
-  'ecobank-manager': { email: 'n.okafor@ecobank.com', password: 'demo1234' },
-  'ecobank-employee': { email: 'k.asante@ecobank.com', password: 'demo1234' },
-  // Kash & Co
-  'kashco-md': { email: 's.ndlovu@kashco.com', password: 'demo1234' },
-  'kashco-strategy': { email: 'l.amari@kashco.com', password: 'demo1234' },
-  'kashco-manager': { email: 't.mugabo@kashco.com', password: 'demo1234' },
-  'kashco-consultant': { email: 'n.joubert@kashco.com', password: 'demo1234' },
-  'kashco-cpo': { email: 'z.moyo@kashco.com', password: 'demo1234' },
+// ─── Magic link slugs → demo email mapping ────────────────────
+// The server resolves the password from environment-backed demo credentials.
+const MAGIC_LINK_EMAILS: Record<string, string> = {
+  admin: 'yersimo@theworktempo.com',
+  'ecobank-chro': 'amara.kone@ecobank.com',
+  'ecobank-cfo': 'i.agu@ecobank.com',
+  'ecobank-cto': 'b.ogunleye@ecobank.com',
+  'ecobank-dept-head': 'o.adeyemi@ecobank.com',
+  'ecobank-hrbp': 'a.darko@ecobank.com',
+  'ecobank-manager': 'n.okafor@ecobank.com',
+  'ecobank-employee': 'k.asante@ecobank.com',
+  'kashco-md': 's.ndlovu@kashco.com',
+  'kashco-strategy': 'l.amari@kashco.com',
+  'kashco-manager': 't.mugabo@kashco.com',
+  'kashco-consultant': 'n.joubert@kashco.com',
+  'kashco-cpo': 'z.moyo@kashco.com',
 }
 
 // ─── Reverse map: email → slug ────────────────────────────────
 const EMAIL_TO_SLUG: Record<string, string> = Object.fromEntries(
-  Object.entries(MAGIC_LINK_MAP).map(([slug, { email }]) => [email, slug])
+  Object.entries(MAGIC_LINK_EMAILS).map(([slug, email]) => [email, slug])
 )
+
+type DemoLauncherRole = {
+  email: string
+  employeeId: string
+  role: 'owner' | 'admin' | 'hrbp' | 'manager' | 'employee'
+  label: string
+  title: string
+  department: string
+  description: string
+}
+
+const ecobankRoles: DemoLauncherRole[] = [
+  { email: 'yersimo@theworktempo.com', employeeId: 'emp-17', role: 'owner', label: 'Master Admin', title: 'Platform Owner', department: 'Executive', description: 'Master admin with full super access. Can switch to any user role.' },
+  { email: 'amara.kone@ecobank.com', employeeId: 'emp-17', role: 'owner', label: 'CHRO (Owner)', title: 'CHRO', department: 'Human Resources', description: 'Full platform access. Sees all modules, AI insights, and executive dashboards.' },
+  { email: 'i.agu@ecobank.com', employeeId: 'emp-24', role: 'admin', label: 'CFO', title: 'CFO', department: 'Finance', description: 'Finance executive. Full access to payroll, budgets, invoices, and expense reports.' },
+  { email: 'b.ogunleye@ecobank.com', employeeId: 'emp-13', role: 'admin', label: 'CTO', title: 'CTO', department: 'Technology', description: 'Technology executive. Manages IT devices, apps, licenses, and tech team.' },
+  { email: 'o.adeyemi@ecobank.com', employeeId: 'emp-1', role: 'admin', label: 'Department Head', title: 'Head of Retail Banking', department: 'Retail Banking', description: 'Department admin. Manages team performance, approvals, and recruiting.' },
+  { email: 'a.darko@ecobank.com', employeeId: 'emp-20', role: 'hrbp', label: 'HR Business Partner', title: 'HR Business Partner', department: 'Human Resources', description: 'HR operations. Manages people, performance reviews, compensation, and engagement.' },
+  { email: 'n.okafor@ecobank.com', employeeId: 'emp-2', role: 'manager', label: 'Manager', title: 'Branch Manager', department: 'Retail Banking', description: 'Team manager. Reviews team goals, approves leave, manages direct reports.' },
+  { email: 'k.asante@ecobank.com', employeeId: 'emp-3', role: 'employee', label: 'Employee', title: 'Relationship Manager', department: 'Retail Banking', description: 'Individual contributor. Views own profile, goals, learning, and submits requests.' },
+]
+
+const kashRoles: DemoLauncherRole[] = [
+  { email: 's.ndlovu@kashco.com', employeeId: 'kemp-1', role: 'owner', label: 'Managing Director (Owner)', title: 'Managing Director', department: 'Consulting', description: 'Full platform access. Sees all modules, firm-wide analytics, and executive dashboards.' },
+  { email: 'l.amari@kashco.com', employeeId: 'kemp-6', role: 'admin', label: 'Head of Strategy', title: 'Head of Strategy', department: 'Strategy', description: 'Strategy practice lead. Manages team, client engagements, and practice P&L.' },
+  { email: 't.mugabo@kashco.com', employeeId: 'kemp-3', role: 'manager', label: 'Engagement Manager', title: 'Engagement Manager', department: 'Consulting', description: 'Project lead. Manages team, reviews deliverables, approves time and expenses.' },
+  { email: 'n.joubert@kashco.com', employeeId: 'kemp-4', role: 'employee', label: 'Senior Consultant', title: 'Senior Consultant', department: 'Consulting', description: 'Individual contributor. Views own goals, learning, and submits time/expenses.' },
+  { email: 'z.moyo@kashco.com', employeeId: 'kemp-12', role: 'admin', label: 'CPO', title: 'Chief People Officer', department: 'People & Culture', description: 'People executive. Full access to HR, performance, engagement, and culture programs.' },
+]
 
 // ─── Styling ──────────────────────────────────────────────────
 const roleIcons: Record<string, React.ReactNode> = {
@@ -72,7 +97,7 @@ interface OrgGroup {
   industry: string
   country: string
   employeeCount: number
-  credentials: DemoCredential[]
+  credentials: DemoLauncherRole[]
 }
 
 const orgGroups: OrgGroup[] = [
@@ -81,31 +106,32 @@ const orgGroups: OrgGroup[] = [
     industry: 'Banking & Financial Services',
     country: 'Nigeria',
     employeeCount: 14247,
-    credentials: allDemoCredentials.filter(c => !c.employeeId.startsWith('kemp-')),
+    credentials: ecobankRoles,
   },
   {
     name: 'Kash & Co',
     industry: 'Consulting & Professional Services',
     country: 'South Africa',
     employeeCount: 342,
-    credentials: allDemoCredentials.filter(c => c.employeeId.startsWith('kemp-')),
+    credentials: kashRoles,
   },
 ]
 
 export default function DemoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login } = useTempo()
+  const { loginDemo } = useTempo()
   const [unlocked, setUnlocked] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+  const [launchError, setLaunchError] = useState('')
 
   // Check for magic link auto-login via ?as=slug
   useEffect(() => {
     const autoLogin = searchParams.get('as')
-    if (autoLogin && MAGIC_LINK_MAP[autoLogin]) {
+    if (autoLogin && MAGIC_LINK_EMAILS[autoLogin]) {
       setUnlocked(true)
       handleAutoLogin(autoLogin)
     }
@@ -122,14 +148,15 @@ export default function DemoPage() {
   }, [])
 
   const handleAutoLogin = async (slug: string) => {
-    const cred = MAGIC_LINK_MAP[slug]
-    if (!cred) return
+    if (!MAGIC_LINK_EMAILS[slug]) return
     setLoading(slug)
-    const result = await login(cred.email, cred.password)
+    setLaunchError('')
+    const result = await loginDemo(slug)
     if (result === true) {
       router.push('/dashboard')
     } else {
       setLoading(null)
+      setLaunchError('This demo role is not configured in this deployment. Check the Vercel demo environment variables.')
     }
   }
 
@@ -147,18 +174,24 @@ export default function DemoPage() {
     }
   }
 
-  const handleDemoLogin = async (cred: DemoCredential) => {
+  const handleDemoLogin = async (cred: DemoLauncherRole) => {
     const slug = EMAIL_TO_SLUG[cred.email] || cred.employeeId
+    if (!EMAIL_TO_SLUG[cred.email]) {
+      setLaunchError('This demo role does not have a magic-link slug configured yet.')
+      return
+    }
     setLoading(slug)
-    const result = await login(cred.email, cred.password)
+    setLaunchError('')
+    const result = await loginDemo(slug)
     if (result === true) {
       router.push('/dashboard')
     } else {
       setLoading(null)
+      setLaunchError('This demo role is not configured in this deployment. Check the Vercel demo environment variables.')
     }
   }
 
-  const copyMagicLink = (cred: DemoCredential) => {
+  const copyMagicLink = (cred: DemoLauncherRole) => {
     const slug = EMAIL_TO_SLUG[cred.email]
     if (!slug) return
     const url = `${window.location.origin}/demo?as=${slug}`
@@ -252,6 +285,15 @@ export default function DemoPage() {
 
       {/* Org Cards */}
       <div className="space-y-4">
+        {launchError && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-left">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-amber-700" />
+              <p className="text-[0.65rem] leading-relaxed text-amber-800">{launchError}</p>
+            </div>
+          </div>
+        )}
+
         {orgGroups.map((group) => {
           const meta = orgMeta[group.name]
           return (

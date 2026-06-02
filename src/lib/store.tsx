@@ -940,6 +940,7 @@ interface TempoState {
 
   // Auth
   login: (email: string, password: string) => Promise<boolean | { requiresMFA: true; mfaToken: string }>
+  loginDemo: (slug: string) => Promise<boolean>
   verifyMFA: (mfaToken: string, code: string) => Promise<boolean>
   logout: () => Promise<void> | void
   switchUser: (employeeId: string) => Promise<void> | void
@@ -6354,6 +6355,28 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     return true
   }, [loadDemoData])
 
+  const loginDemo = useCallback(async (slug: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'demo_login', slug }),
+      })
+      if (!res.ok) return false
+      const data = await res.json()
+      const empId = data.user?.employee_id || ''
+      if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
+        const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
+        await loadDemoData(demoOrgId)
+      }
+      setCurrentUser(data.user)
+      try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
+      return true
+    } catch {
+      return false
+    }
+  }, [loadDemoData])
+
   const verifyMFA = useCallback(async (mfaToken: string, code: string): Promise<boolean> => {
     try {
       const res = await fetch('/api/auth', {
@@ -6672,7 +6695,7 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
     knowledgeBaseArticles, addKnowledgeBaseArticle, updateKnowledgeBaseArticle, deleteKnowledgeBaseArticle,
     analyticsSnapshots, planningScenarios, forecastEntries,
     savedReports, addSavedReport, updateSavedReport, deleteSavedReport,
-    login, verifyMFA, logout, switchUser, isLoggedIn,
+    login, loginDemo, verifyMFA, logout, switchUser, isLoggedIn,
     getEmployeeName, getDepartmentName,
   }
 
