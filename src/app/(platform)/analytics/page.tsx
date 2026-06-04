@@ -21,6 +21,7 @@ import { AIQueryBar, AIInsightPanel, AIEnhancingIndicator } from '@/components/a
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { parseNaturalLanguageQuery, generateBoardNarrative, calculateFlightRisk, detectCrossModuleAnomalies } from '@/lib/ai-engine'
 import { exportToPrint } from '@/lib/export-import'
+import { showExperimentBenches } from '@/lib/experience-flags'
 
 export default function AnalyticsPage() {
   const t = useTranslations('analytics')
@@ -321,7 +322,7 @@ export default function AnalyticsPage() {
         ]}
       />
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={`${showExperimentBenches ? '' : 'hidden '}mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]`}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>

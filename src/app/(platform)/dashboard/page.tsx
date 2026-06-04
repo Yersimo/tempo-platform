@@ -28,6 +28,7 @@ import { buildWorkdayBriefing } from '@/lib/workday-briefing-engine'
 import { buildManagerMissionControl } from '@/lib/manager-mission-control-engine'
 import { buildEmployeeConciergeBrief } from '@/lib/employee-concierge-engine'
 import { buildExecutiveBoardroomPack } from '@/lib/executive-boardroom-engine'
+import { showExperimentBenches } from '@/lib/experience-flags'
 
 export default function DashboardPage() {
   const {
@@ -296,7 +297,7 @@ export default function DashboardPage() {
         )
       })()}
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={`${showExperimentBenches ? '' : 'hidden '}mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]`}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>

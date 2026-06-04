@@ -34,6 +34,7 @@ import { EvaluatorWalkthrough, ResumeWalkthroughButton } from '@/components/payr
 import { PayrollCompletionSummary } from '@/components/payroll/evaluator-completion'
 import { detectPayrollAnomalies, forecastAnnualPayroll, scorePayrollHealth, recommendTaxOptimizations, analyzePayrollTrends, predictComplianceRisks, scoreContractorRisk } from '@/lib/ai-engine'
 import { calculateTax } from '@/lib/tax-calculator'
+import { showExperimentBenches } from '@/lib/experience-flags'
 import type { SupportedCountry } from '@/lib/tax-calculator'
 
 /** Currency symbol map for African + global currencies */
@@ -1352,7 +1353,7 @@ export default function PayrollPage() {
         ]}
       />
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={`${showExperimentBenches ? '' : 'hidden '}mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]`}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>

@@ -24,6 +24,7 @@ import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
 import { buildManagerMissionControl } from '@/lib/manager-mission-control-engine'
+import { showExperimentBenches } from '@/lib/experience-flags'
 
 function getRecommendedRaise(rating: number): number {
   if (rating >= 4.5) return 9
@@ -1134,7 +1135,7 @@ export default function PerformancePage() {
         ]}
       />
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={`${showExperimentBenches ? '' : 'hidden '}mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]`}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
@@ -1300,11 +1301,11 @@ export default function PerformancePage() {
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="ai"><BookOpen size={12} /> Growth bridge</Badge>
-              <Badge variant="info">Review mode</Badge>
+              {showExperimentBenches && <Badge variant="info">Review mode</Badge>}
             </div>
             <h2 className="text-lg font-semibold text-t1">Connect performance gaps to learning paths</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-t2">
-              Turns competency gaps and career-path readiness into a reviewable learning queue before managers make promotion, PIP, or merit recommendations.
+              Turns competency gaps and career-path readiness into a learning queue before managers make promotion, PIP, or merit recommendations.
             </p>
           </div>
           <Button size="sm" onClick={() => setActiveTab('career-paths')}>

@@ -35,6 +35,7 @@ import InPersonEvents from '@/components/learning/in-person-events'
 import VersionHistory from '@/components/learning/version-history'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
 import { buildLearningSkillsGraph, recommendLearningForEmployee } from '@/lib/learning-skills-graph-engine'
+import { showExperimentBenches } from '@/lib/experience-flags'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
@@ -2476,7 +2477,7 @@ window.onload=function(){
         ]}
       />
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={cn('mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]', !showExperimentBenches && 'hidden')}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>

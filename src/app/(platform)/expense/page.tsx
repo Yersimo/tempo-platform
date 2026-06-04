@@ -26,6 +26,7 @@ import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPul
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
 import { buildExpenseApprovalQueue } from '@/lib/expense-approval-route-engine'
+import { showExperimentBenches } from '@/lib/experience-flags'
 
 // Per diem rates (static reference data)
 const perDiemRates = [
@@ -1558,7 +1559,7 @@ export default function ExpensePage() {
         className="mx-6 mt-4"
       />
 
-      <section className="mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={cn('mx-6 mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]', !showExperimentBenches && 'hidden')}>
         <div className="flex flex-col gap-4 p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
