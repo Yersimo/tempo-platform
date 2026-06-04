@@ -589,6 +589,78 @@ export default function OnboardingPage() {
     },
   ]
   const selectedLifecycleExperiment = lifecycleExperiments.find(experiment => experiment.id === activeLifecycleExperiment) || lifecycleExperiments[0]
+  const lifecycleOrchestrationBrief = useMemo(() => {
+    const pendingByCategory = (category: string) => preboardingTasks.filter(task => task.category === category && task.status !== 'completed').length
+    const readyByCategory = (category: string) => preboardingTasks.filter(task => task.category === category && task.status === 'completed').length
+    const missingModules = ['payroll', 'learning', 'benefits'].filter(moduleId => !selectedModules.includes(moduleId))
+    const accessOpen = pendingByCategory('accounts') + pendingByCategory('equipment')
+    const peopleOpen = pendingByCategory('documents') + pendingByCategory('benefits')
+    const managerOpen = Math.max(0, pendingBuddyCount + pendingByCategory('training'))
+    const totalOpen = accessOpen + peopleOpen + managerOpen + pendingByCategory('payroll')
+
+    return [
+      {
+        stage: 'Joiner',
+        icon: <UserPlus size={16} />,
+        status: pendingTaskCount === 0 && activeBuddyCount > 0 ? 'Ready' : 'Needs review',
+        metric: `${taskCompletionPct}% Day-1 ready`,
+        summary: 'Confirms documents, payroll setup, learning assignments, equipment, accounts, buddy support, and manager actions before the employee arrives.',
+        benchmark: 'Rippling-style launch, adapted for Tempo',
+        checks: [
+          `${readyByCategory('documents')} document task${readyByCategory('documents') === 1 ? '' : 's'} complete`,
+          `${accessOpen} IT access or equipment item${accessOpen === 1 ? '' : 's'} open`,
+          `${activeBuddyCount} active buddy assignment${activeBuddyCount === 1 ? '' : 's'}`,
+        ],
+        nextAction: 'Review preboarding queue',
+        onOpen: () => setActiveTab('preboarding'),
+      },
+      {
+        stage: 'Mover',
+        icon: <Briefcase size={16} />,
+        status: selectedModules.length >= 6 && missingModules.length === 0 ? 'Ready' : 'Needs design',
+        metric: `${selectedModules.length} modules in scope`,
+        summary: 'Previews department, manager, location, policy, access, learning, payroll, and approval impacts before a role change is executed.',
+        benchmark: 'Oracle-grade change control with clearer next steps',
+        checks: [
+          `${selectedModules.length} lifecycle module${selectedModules.length === 1 ? '' : 's'} selected`,
+          `${missingModules.length} missing payroll, learning, or benefits module${missingModules.length === 1 ? '' : 's'}`,
+          'Approval path remains review-only until a mover flow is committed',
+        ],
+        nextAction: 'Open setup plan',
+        onOpen: () => setActiveTab('onboarding-plan'),
+      },
+      {
+        stage: 'Leaver',
+        icon: <Shield size={16} />,
+        status: accessOpen === 0 && pendingByCategory('payroll') === 0 ? 'Ready' : 'Needs review',
+        metric: `${accessOpen + pendingByCategory('payroll')} closure blocker${accessOpen + pendingByCategory('payroll') === 1 ? '' : 's'}`,
+        summary: 'Turns offboarding into the reverse lifecycle: access removal, device return, final pay, compliance evidence, knowledge transfer, and manager signoff.',
+        benchmark: 'IT and payroll closure without handoff drift',
+        checks: [
+          `${pendingByCategory('accounts')} account access item${pendingByCategory('accounts') === 1 ? '' : 's'} still visible`,
+          `${pendingByCategory('equipment')} asset return dependency${pendingByCategory('equipment') === 1 ? '' : 'dependencies'} tracked`,
+          `${pendingByCategory('payroll')} payroll closure item${pendingByCategory('payroll') === 1 ? '' : 's'} open`,
+        ],
+        nextAction: 'Inspect buddy handoff',
+        onOpen: () => setActiveTab('buddy-system'),
+      },
+      {
+        stage: 'Control tower',
+        icon: <Table size={16} />,
+        status: totalOpen === 0 && missingModules.length === 0 ? 'Ready' : 'Needs review',
+        metric: `${totalOpen + missingModules.length} combined gap${totalOpen + missingModules.length === 1 ? '' : 's'}`,
+        summary: 'Creates one executive queue for HR, IT, Payroll, Learning, Compliance, and managers, so lifecycle work can be delegated without losing context.',
+        benchmark: 'Cross-suite command center',
+        checks: [
+          `${peopleOpen} HR or benefits item${peopleOpen === 1 ? '' : 's'} open`,
+          `${managerOpen} manager, buddy, or learning item${managerOpen === 1 ? '' : 's'} open`,
+          `${missingModules.length} critical setup module${missingModules.length === 1 ? '' : 's'} missing`,
+        ],
+        nextAction: 'Create task wave',
+        onOpen: () => setShowBulkTaskModal(true),
+      },
+    ]
+  }, [activeBuddyCount, pendingBuddyCount, pendingTaskCount, preboardingTasks, selectedModules, taskCompletionPct])
 
   const filteredTasks = useMemo(() => {
     let tasks = preboardingTasks
@@ -1541,6 +1613,57 @@ export default function OnboardingPage() {
                 Open workspace <ArrowRight size={13} />
               </div>
             </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Lifecycle orchestration command view</p>
+              <h2 className="text-lg font-semibold text-t1">Joiner, mover, and leaver work in one operating layer</h2>
+              <p className="mt-1 max-w-3xl text-sm text-t2">
+                Tempo now explains the safest next action for each lifecycle stage before HR changes roles, IT access, payroll setup, learning plans, or manager handoffs.
+              </p>
+            </div>
+            <Badge variant={taskCompletionPct >= 80 ? 'success' : 'warning'}>{taskCompletionPct}% lifecycle ready</Badge>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 xl:grid-cols-4">
+          {lifecycleOrchestrationBrief.map((stage) => (
+            <article key={stage.stage} className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                    {stage.icon}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-t1">{stage.stage}</h3>
+                    <p className="text-xs text-t3">{stage.benchmark}</p>
+                  </div>
+                </div>
+                <Badge variant={stage.status === 'Ready' ? 'success' : 'warning'}>{stage.status}</Badge>
+              </div>
+
+              <p className="mt-4 text-sm font-semibold text-t1">{stage.metric}</p>
+              <p className="mt-2 min-h-[72px] text-sm leading-6 text-t2">{stage.summary}</p>
+
+              <div className="mt-4 space-y-2">
+                {stage.checks.map(check => (
+                  <div key={check} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs leading-5 text-t2">
+                    <CheckCircle size={13} className="mt-0.5 shrink-0 text-success" />
+                    <span>{check}</span>
+                  </div>
+                ))}
+              </div>
+
+              <Button size="sm" variant="secondary" className="mt-4 w-full justify-between" onClick={stage.onOpen}>
+                {stage.nextAction}
+                <ArrowRight size={14} />
+              </Button>
+            </article>
           ))}
         </div>
       </section>
