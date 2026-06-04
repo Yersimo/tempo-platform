@@ -34,6 +34,7 @@ import SmartReviews from '@/components/learning/smart-reviews'
 import InPersonEvents from '@/components/learning/in-person-events'
 import VersionHistory from '@/components/learning/version-history'
 import { ExpandableStats } from '@/components/ui/expandable-stats'
+import { buildLearningSkillsGraph, recommendLearningForEmployee } from '@/lib/learning-skills-graph-engine'
 
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
@@ -485,8 +486,41 @@ export default function LearningPage() {
   const inProgressCount = enrollments.filter(e => e.status === 'in_progress').length
   const totalHours = courses.reduce((a, c) => a + c.duration_hours, 0)
   const completionRate = enrollments.length > 0 ? Math.round(completedCount / enrollments.length * 100) : 0
+  const currentEmployee = employees.find(e => e.id === currentEmployeeId)
 
   const skillGaps = useMemo(() => analyzeSkillGaps(courses, enrollments), [courses, enrollments])
+  const learningSkillInputs = useMemo(() => skillGaps.map((gap: any, index: number) => ({
+    id: `skill-${index}-${String(gap.category || 'general').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    name: gap.category || 'General capability',
+    category: gap.category || 'General',
+  })), [skillGaps])
+  const learningRoleRequirements = useMemo(() => learningSkillInputs.map((skill: any) => ({
+    id: `req-${skill.id}`,
+    skillId: skill.id,
+    skillName: skill.name,
+    requiredLevel: 3,
+    importance: 'required',
+    role: currentEmployee?.job_title || currentEmployee?.role || 'Current role',
+    level: currentEmployee?.level || 'current',
+  })), [currentEmployee, learningSkillInputs])
+  const learningSkillsGraph = useMemo(() => buildLearningSkillsGraph({
+    skills: learningSkillInputs,
+    courses,
+    learningPaths,
+  }), [courses, learningPaths, learningSkillInputs])
+  const employeeLearningPlan = useMemo(() => recommendLearningForEmployee({
+    skills: learningSkillInputs,
+    roleRequirements: learningRoleRequirements,
+    courses,
+    learningPaths,
+    enrollments,
+    employee: currentEmployee,
+    employeeId: currentEmployeeId,
+    targetRole: {
+      jobTitle: currentEmployee?.job_title || currentEmployee?.role || 'Current role',
+      level: currentEmployee?.level || 'current',
+    },
+  }), [courses, currentEmployee, currentEmployeeId, enrollments, learningPaths, learningRoleRequirements, learningSkillInputs])
 
   const skillCoverageInsight = useMemo(() => ({
     id: 'ai-skill-coverage',
@@ -1279,7 +1313,6 @@ window.onload=function(){
   }
 
   // Current employee info for personalized homepage
-  const currentEmployee = employees.find(e => e.id === currentEmployeeId)
   const currentEmployeeName = currentEmployee?.profile.full_name.split(' ')[0] || 'Learner'
   const myEnrollments = useMemo(() => enrollments.filter(e => e.employee_id === currentEmployeeId), [enrollments, currentEmployeeId])
   const myInProgress = myEnrollments.filter(e => e.status === 'in_progress')
@@ -2586,6 +2619,31 @@ window.onload=function(){
                   <Button size="sm" variant="primary" className="mt-3" onClick={learnerMissionControl.nextAction.action}>
                     Continue <ArrowRight size={12} />
                   </Button>
+                </div>
+                <div className="mt-3 rounded-lg border border-border bg-bg p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-t3">Live skills graph engine</p>
+                    <Badge variant={employeeLearningPlan.readinessScore >= 80 ? 'success' : employeeLearningPlan.gaps.length > 0 ? 'warning' : 'info'}>
+                      {employeeLearningPlan.readinessScore}% role ready
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-t2">
+                    {learningSkillsGraph.evidence[0]} {employeeLearningPlan.gaps.length > 0
+                      ? `${employeeLearningPlan.gaps.length} role gap${employeeLearningPlan.gaps.length === 1 ? '' : 's'} need mapped learning.`
+                      : 'No role gap is blocking this learner.'}
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {employeeLearningPlan.safeNextActions.slice(0, 2).map(action => (
+                      <button
+                        key={action}
+                        type="button"
+                        onClick={() => setActiveTab(employeeLearningPlan.gaps.length > 0 ? 'skills' : 'catalog')}
+                        className="rounded-md border border-divider bg-card px-3 py-2 text-left text-xs font-medium text-t1 transition hover:border-tempo-300 hover:bg-tempo-50/60"
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="grid min-w-[300px] gap-2 sm:grid-cols-3 lg:w-[620px]">
