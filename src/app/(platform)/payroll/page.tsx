@@ -570,6 +570,43 @@ export default function PayrollPage() {
       controlReady,
     }
   }, [payrollDiff, missingBankEmployees.length, complianceRisks.risks.length, pendingICRuns.length, pendingFinanceRuns.length])
+  const payrollDiffTrustBrief = useMemo(() => {
+    if (!payrollDiff) return null
+    const materialityThreshold = 10
+    const buildLine = (
+      id: string,
+      label: string,
+      diff: { delta: number; pct: number; direction: 'up' | 'down' | 'flat' },
+      evidence: string
+    ) => {
+      const absPct = Math.abs(diff.pct)
+      const material = absPct >= materialityThreshold || Math.abs(diff.delta) > 0 && id === 'headcount'
+      const directionLabel = diff.direction === 'up' ? 'Increase' : diff.direction === 'down' ? 'Decrease' : 'No change'
+      const explanation = id === 'headcount'
+        ? diff.delta > 0 ? 'Likely new hires or restored active employees.' : diff.delta < 0 ? 'Likely exits or excluded employees.' : 'Employee population matches the prior run.'
+        : diff.direction === 'up' ? 'Check additions, allowances, salary changes, or included employees.'
+          : diff.direction === 'down' ? 'Check exits, unpaid leave, deductions, or excluded employees.'
+          : 'No material movement versus the prior run.'
+      return { id, label, ...diff, absPct, material, directionLabel, explanation, evidence }
+    }
+
+    const lines = [
+      buildLine('gross', 'Gross pay', payrollDiff.gross, 'Salary changes, allowances, new starters, exits, and pro-rata inputs.'),
+      buildLine('net', 'Net pay', payrollDiff.net, 'Deduction changes, tax outcomes, benefit deductions, and bank-file inclusion.'),
+      buildLine('deductions', 'Deductions', payrollDiff.deductions, 'PAYE, pension, statutory deductions, benefit deductions, and arrears.'),
+      buildLine('headcount', 'Headcount', payrollDiff.headcount, 'Joiners, leavers, inactive workers, contractors, and country filters.'),
+    ]
+    const materialLines = lines.filter(line => line.material)
+    return {
+      lines,
+      materialLines,
+      label: materialLines.length === 0 ? 'No material movement' : `${materialLines.length} material movement${materialLines.length === 1 ? '' : 's'}`,
+      tone: materialLines.length === 0 ? 'success' as const : 'warning' as const,
+      summary: materialLines.length === 0
+        ? 'The latest payroll run is broadly aligned with the previous run. Approval can focus on statutory, bank, and control-gate checks.'
+        : 'Material payroll movement exists. Review evidence before approval so finance can explain what changed and why.',
+    }
+  }, [payrollDiff])
   const payrollTrustExperiments = [
     {
       id: 'variance_explainer' as const,
@@ -1973,6 +2010,49 @@ export default function PayrollPage() {
               </div>
             </div>
           </Card>
+
+          {payrollDiffTrustBrief && (
+            <Card className={`mb-4 p-4 ${payrollDiffTrustBrief.tone === 'success' ? 'border-emerald-200 bg-white' : 'border-amber-200 bg-white'}`}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {payrollDiffTrustBrief.tone === 'success' ? <CheckCircle2 size={16} className="text-emerald-700" /> : <AlertTriangle size={16} className="text-amber-700" />}
+                    <p className="text-sm font-semibold text-t1">What changed since last run</p>
+                    <Badge variant={payrollDiffTrustBrief.tone === 'success' ? 'success' : 'warning'}>{payrollDiffTrustBrief.label}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-t2">{payrollDiffTrustBrief.summary}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setActiveTab('reconciliation')} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-t1 transition hover:border-tempo-300">
+                      Open reconciliation
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('compliance')} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-t1 transition hover:border-tempo-300">
+                      Check statutory evidence
+                    </button>
+                    <button type="button" onClick={() => setShowBankDetailWarning(true)} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-t1 transition hover:border-tempo-300">
+                      Check payout inclusion
+                    </button>
+                  </div>
+                </div>
+                <div className="grid min-w-[320px] gap-2 sm:grid-cols-2 xl:w-[560px]">
+                  {payrollDiffTrustBrief.lines.map(line => (
+                    <div key={line.id} className={`rounded-lg border px-3 py-2 ${line.material ? 'border-amber-200 bg-amber-50' : 'border-border bg-canvas/40'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-t3">{line.label}</span>
+                        <span className={`text-xs font-semibold ${line.direction === 'up' ? 'text-error' : line.direction === 'down' ? 'text-success' : 'text-t2'}`}>
+                          {line.direction === 'up' ? '+' : ''}{line.id === 'headcount' ? line.delta : fmtCents(line.delta)} · {line.pct > 0 ? '+' : ''}{line.pct}%
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-medium text-t1">{line.directionLabel}</p>
+                      <p className="mt-1 text-[11px] leading-4 text-t2">{line.explanation}</p>
+                      {line.material && (
+                        <p className="mt-1 text-[11px] leading-4 text-amber-800">Evidence: {line.evidence}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
 
           {pendingCount === 0 ? (
             <Card className="text-center py-12">
