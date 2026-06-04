@@ -19,6 +19,7 @@ import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useTempo } from '@/lib/store'
+import { buildLifecyclePlan } from '@/lib/lifecycle-workflow-engine'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
   CheckCircle, Building, Briefcase, Globe, Zap, Check, Mail, Loader2,
@@ -661,6 +662,67 @@ export default function OnboardingPage() {
       },
     ]
   }, [activeBuddyCount, pendingBuddyCount, pendingTaskCount, preboardingTasks, selectedModules, taskCompletionPct])
+  const lifecycleEnginePlans = useMemo(() => {
+    const worker: any = employees.find((employee: any) => employee.id === currentEmployeeId) || employees[0] || {
+      id: currentEmployeeId || 'demo-worker',
+      name: currentUser?.full_name || 'New hire',
+    }
+    return [
+      buildLifecyclePlan({
+        eventType: 'joiner',
+        eventId: 'visible-joiner',
+        worker: {
+          id: worker.id,
+          name: worker.profile?.full_name || worker.full_name || worker.name || currentUser?.full_name || 'New hire',
+          managerId: worker.manager_id,
+          department: getDepartmentName(worker.department_id),
+          role: worker.job_title || worker.role,
+          costCenter: worker.cost_center,
+          location: worker.country || worker.location,
+        },
+        startDate: new Date().toISOString(),
+        payrollProfile: selectedModules.includes('payroll') ? { ready: true } : null,
+        learningAssignments: selectedModules.includes('learning') ? preboardingTasks.filter((task: any) => task.category === 'training') : [],
+        managerId: worker.manager_id || currentEmployeeId,
+        accessTemplateId: selectedModules.includes('identity') || selectedModules.includes('it') ? 'starter-access' : null,
+        equipmentRequestId: preboardingTasks.some((task: any) => task.category === 'equipment') ? 'equipment-request' : null,
+      }),
+      buildLifecyclePlan({
+        eventType: 'mover',
+        eventId: 'visible-mover',
+        worker: {
+          id: worker.id,
+          name: worker.profile?.full_name || worker.full_name || worker.name || 'Employee',
+        },
+        fromManagerId: worker.manager_id || null,
+        toManagerId: currentEmployeeId || worker.manager_id || null,
+        fromAccessGroups: selectedModules,
+        toAccessGroups: [...new Set([...selectedModules, 'learning', 'payroll'])],
+        fromCostCenter: worker.cost_center || null,
+        toCostCenter: worker.cost_center || null,
+        learningAssignments: preboardingTasks.filter((task: any) => task.category === 'training'),
+      }),
+      buildLifecyclePlan({
+        eventType: 'leaver',
+        eventId: 'visible-leaver',
+        worker: {
+          id: worker.id,
+          name: worker.profile?.full_name || worker.full_name || worker.name || 'Employee',
+        },
+        terminationDate: new Date(Date.now() + 14 * 86400000).toISOString(),
+        managerAcknowledged: pendingBuddyCount === 0,
+        accessRevocationScheduled: selectedModules.includes('identity') || selectedModules.includes('it'),
+        finalPayrollReady: selectedModules.includes('payroll'),
+        deviceReturnScheduled: preboardingTasks.some((task: any) => task.category === 'equipment'),
+        openCriticalTasks: pendingTaskCount,
+      }),
+    ]
+  }, [currentEmployeeId, currentUser?.full_name, employees, getDepartmentName, pendingBuddyCount, pendingTaskCount, preboardingTasks, selectedModules])
+  const selectedLifecyclePlan = lifecycleEnginePlans.find(plan =>
+    (activeLifecycleExperiment === 'joiner_launch' && plan.eventType === 'joiner') ||
+    (activeLifecycleExperiment === 'mover_transition' && plan.eventType === 'mover') ||
+    (activeLifecycleExperiment === 'leaver_closure' && plan.eventType === 'leaver')
+  ) || lifecycleEnginePlans[0]
 
   const filteredTasks = useMemo(() => {
     let tasks = preboardingTasks
@@ -1563,6 +1625,24 @@ export default function OnboardingPage() {
                   <span>{action}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 rounded-md border border-border bg-card p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-t3">Live lifecycle planner</p>
+                <Badge variant={selectedLifecyclePlan.blockers.length > 0 ? 'warning' : 'success'}>
+                  {selectedLifecyclePlan.readinessScore}% ready
+                </Badge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-t2">
+                {selectedLifecyclePlan.blockers.length} blocker{selectedLifecyclePlan.blockers.length === 1 ? '' : 's'} across {selectedLifecyclePlan.owners.length} owner group{selectedLifecyclePlan.owners.length === 1 ? '' : 's'}.
+              </p>
+              <div className="mt-3 space-y-2">
+                {selectedLifecyclePlan.safeNextActions.slice(0, 2).map(action => (
+                  <div key={action.id} className="rounded-md border border-divider bg-bg px-3 py-2 text-xs text-t1">
+                    <span className="font-semibold capitalize">{action.owner}</span>: {action.label}
+                  </div>
+                ))}
+              </div>
             </div>
             <Button size="sm" className="mt-5" onClick={selectedLifecycleExperiment.onOpen}>
               Open related workspace <ArrowRight size={14} />

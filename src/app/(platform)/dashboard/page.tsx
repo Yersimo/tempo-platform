@@ -24,6 +24,10 @@ import { MyTeamTab } from '@/components/dashboard/my-team-tab'
 import { useSortable } from '@/lib/use-drag-drop'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { generateExecutiveSummary, identifyNextBestActions } from '@/lib/ai-engine'
+import { buildWorkdayBriefing } from '@/lib/workday-briefing-engine'
+import { buildManagerMissionControl } from '@/lib/manager-mission-control-engine'
+import { buildEmployeeConciergeBrief } from '@/lib/employee-concierge-engine'
+import { buildExecutiveBoardroomPack } from '@/lib/executive-boardroom-engine'
 
 export default function DashboardPage() {
   const {
@@ -32,6 +36,8 @@ export default function DashboardPage() {
     employees, departments, goals, leaveRequests,
     reviews, salaryReviews, surveys, engagementScores,
     expenseReports, jobPostings, applications, payrollRuns, mentoringPairs,
+    currentEmployeeId, courses, enrollments, oneOnOnes, timeEntries,
+    benefitEnrollments, invoices, budgets, workflows, complianceRequirements,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
 
@@ -60,6 +66,67 @@ export default function DashboardPage() {
     jobPostings: jobPostings || [],
     applications: applications || [],
   }), [reviews, leaveRequests, expenseReports, salaryReviews, goals, jobPostings, applications])
+
+  const currentEmployee = useMemo(
+    () => employees?.find((employee: any) => employee.id === currentEmployeeId) || employees?.[0],
+    [employees, currentEmployeeId]
+  )
+
+  const workdayBriefing = useMemo(() => buildWorkdayBriefing({
+    persona: currentUser?.role || 'operator',
+    employees: employees || [],
+    expenseReports: expenseReports || [],
+    payrollRuns: payrollRuns || [],
+    learningEnrollments: enrollments || [],
+    courses: courses || [],
+    goals: goals || [],
+    performanceReviews: reviews || [],
+    oneOnOnes: oneOnOnes || [],
+    complianceRequirements: complianceRequirements || [],
+    invoices: invoices || [],
+    workflows: workflows || [],
+    maxItems: 4,
+  }), [currentUser?.role, employees, expenseReports, payrollRuns, enrollments, courses, goals, reviews, oneOnOnes, complianceRequirements, invoices, workflows])
+
+  const managerMission = useMemo(() => buildManagerMissionControl({
+    managerId: currentEmployeeId || currentEmployee?.id || '',
+    employees: employees || [],
+    expenseReports: expenseReports || [],
+    timeEntries: timeEntries || [],
+    timeOffRequests: leaveRequests || [],
+    performanceReviews: reviews || [],
+    goals: goals || [],
+    learningEnrollments: enrollments || [],
+    courses: courses || [],
+    oneOnOnes: oneOnOnes || [],
+    maxItems: 3,
+  }), [currentEmployeeId, currentEmployee?.id, employees, expenseReports, timeEntries, leaveRequests, reviews, goals, enrollments, courses, oneOnOnes])
+
+  const employeeConcierge = useMemo(() => buildEmployeeConciergeBrief({
+    employeeId: currentEmployeeId || currentEmployee?.id || '',
+    employees: employees || [],
+    payrollRuns: payrollRuns || [],
+    expenseReports: expenseReports || [],
+    learningEnrollments: enrollments || [],
+    courses: courses || [],
+    benefitEnrollments: benefitEnrollments || [],
+    timeOffRequests: leaveRequests || [],
+    maxItems: 3,
+  }), [currentEmployeeId, currentEmployee?.id, employees, payrollRuns, expenseReports, enrollments, courses, benefitEnrollments, leaveRequests])
+
+  const executiveBoardroom = useMemo(() => buildExecutiveBoardroomPack({
+    employees: employees || [],
+    budgets: budgets || [],
+    invoices: invoices || [],
+    expenseReports: expenseReports || [],
+    payrollRuns: payrollRuns || [],
+    performanceReviews: reviews || [],
+    goals: goals || [],
+    learningEnrollments: enrollments || [],
+    courses: courses || [],
+    complianceRequirements: complianceRequirements || [],
+    maxSignalsPerSection: 1,
+  }), [employees, budgets, invoices, expenseReports, payrollRuns, reviews, goals, enrollments, courses, complianceRequirements])
 
   const summaryInsights = useMemo(() => [{
     id: 'exec-summary',
@@ -155,6 +222,13 @@ export default function DashboardPage() {
     },
   ]
   const selectedBriefingExperiment = briefingExperiments.find(experiment => experiment.id === activeBriefingExperiment) || briefingExperiments[0]
+  const selectedEngineSignals = activeBriefingExperiment === 'manager_mission'
+    ? managerMission.items.slice(0, 3).map(item => ({ title: item.title, detail: item.safeNextAction, route: item.route, tone: item.severity }))
+    : activeBriefingExperiment === 'employee_concierge'
+      ? employeeConcierge.items.slice(0, 3).map(item => ({ title: item.title, detail: item.safeNextAction, route: item.route, tone: item.severity }))
+      : activeBriefingExperiment === 'executive_boardroom'
+        ? executiveBoardroom.topRisks.slice(0, 3).map(item => ({ title: item.title, detail: item.decisionAsk, route: item.drillThroughRoute, tone: item.severity }))
+        : workdayBriefing.items.slice(0, 3).map(item => ({ title: item.title, detail: item.safeNextAction, route: item.route, tone: item.severity }))
 
   return (
     <>
@@ -273,6 +347,27 @@ export default function DashboardPage() {
                   <span>{action}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 rounded-md border border-border bg-card p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-t3">Live engine signals</p>
+              <div className="mt-3 space-y-2">
+                {selectedEngineSignals.length > 0 ? selectedEngineSignals.map(signal => (
+                  <button
+                    key={`${signal.route}-${signal.title}`}
+                    type="button"
+                    onClick={() => router.push(signal.route)}
+                    className="w-full rounded-md border border-divider bg-bg px-3 py-2 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-t1">{signal.title}</span>
+                      <Badge variant={signal.tone === 'critical' || signal.tone === 'urgent' ? 'error' : signal.tone === 'high' ? 'warning' : 'info'}>{signal.tone}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-t2">{signal.detail}</p>
+                  </button>
+                )) : (
+                  <p className="text-sm text-t2">No routed signals need attention right now.</p>
+                )}
+              </div>
             </div>
             <Button size="sm" className="mt-5" onClick={selectedBriefingExperiment.onOpen}>
               Open related workspace <ArrowRight size={14} />

@@ -23,6 +23,7 @@ import { useEventCascade } from '@/lib/event-cascade-context'
 import { AIScoreBadge, AIAlertBanner, AIInsightCard, AIEnhancingIndicator } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { scoreGoalQuality, detectRatingBias, analyzeFeedbackSentiment, suggestOneOnOneTopics, analyzeRecognitionPatterns, identifyCompetencyGaps, analyzeCareerPathDetailed } from '@/lib/ai-engine'
+import { buildManagerMissionControl } from '@/lib/manager-mission-control-engine'
 
 function getRecommendedRaise(rating: number): number {
   if (rating >= 4.5) return 9
@@ -211,6 +212,7 @@ export default function PerformancePage() {
   const {
     goals, employees, departments, reviewCycles, reviews, feedback,
     oneOnOnes, recognitions, competencyFramework, competencyRatings,
+    expenseReports, courses, enrollments, timeEntries, leaveRequests,
     addGoal, updateGoal, deleteGoal,
     addReviewCycle, addReview, updateReview,
     addFeedback, getEmployeeName, currentEmployeeId,
@@ -223,7 +225,6 @@ export default function PerformancePage() {
     addReviewTemplate, updateReviewTemplate, deleteReviewTemplate,
     strategicObjectives,
     ensureModulesLoaded,
-    enrollments, courses,
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
   const { triggerCascade } = useEventCascade()
@@ -599,6 +600,19 @@ export default function PerformancePage() {
     },
   ]
   const selectedPerformanceExperiment = performanceExperiments.find(experiment => experiment.id === activePerformanceExperiment) || performanceExperiments[0]
+  const managerMissionControl = useMemo(() => buildManagerMissionControl({
+    managerId: currentEmployeeId,
+    employees,
+    expenseReports,
+    timeEntries,
+    timeOffRequests: leaveRequests,
+    performanceReviews: reviews,
+    goals,
+    learningEnrollments: enrollments,
+    courses,
+    oneOnOnes,
+    maxItems: 4,
+  }), [courses, currentEmployeeId, employees, enrollments, expenseReports, goals, leaveRequests, oneOnOnes, reviews, timeEntries])
 
   // Recognition computed data
   const recognitionLeaderboard = useMemo(() => {
@@ -1171,6 +1185,26 @@ export default function PerformancePage() {
                   <span>{action}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 rounded-md border border-border bg-card p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-t3">Live manager mission engine</p>
+                <Badge variant={managerMissionControl.criticalCount > 0 ? 'error' : managerMissionControl.highCount > 0 ? 'warning' : 'success'}>
+                  {managerMissionControl.totalItems} routed
+                </Badge>
+              </div>
+              {managerMissionControl.topFocus ? (
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(managerMissionControl.topFocus!.route)}
+                  className="mt-3 w-full rounded-md border border-divider bg-bg px-3 py-2 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
+                >
+                  <p className="text-sm font-semibold text-t1">{managerMissionControl.topFocus.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-t2">{managerMissionControl.topFocus.safeNextAction}</p>
+                </button>
+              ) : (
+                <p className="mt-3 text-sm text-t2">No manager-owned performance, learning, time, or expense item needs attention.</p>
+              )}
             </div>
             <Button size="sm" className="mt-5" onClick={selectedPerformanceExperiment.onOpen}>
               Open related workspace <ArrowRight size={14} />

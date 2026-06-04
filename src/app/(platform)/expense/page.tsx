@@ -25,6 +25,7 @@ import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { AIInsightCard, AIAlertBanner, AIScoreBadge, AIRecommendationList, AIPulse } from '@/components/ai'
 import { AIInsightsCard } from '@/components/ui/ai-insights-card'
 import { checkPolicyCompliance, calculateFraudRiskScore, analyzeSpendingTrends, analyzeExpenseByCategory, detectPolicyViolations, forecastMonthlySpending } from '@/lib/ai-engine'
+import { buildExpenseApprovalQueue } from '@/lib/expense-approval-route-engine'
 
 // Per diem rates (static reference data)
 const perDiemRates = [
@@ -1499,6 +1500,17 @@ export default function ExpensePage() {
       },
     ]
   }, [approvedForReimbursement.length, defaultCurrency, expenseBudgets, pendingExpenseReports, policyViolations.length, totalPending])
+  const expenseApprovalQueue = useMemo(() => buildExpenseApprovalQueue({
+    reports: pendingExpenseReports.length > 0 ? pendingExpenseReports : expenseReports,
+    allReports: expenseReports,
+    employees,
+    expensePolicies,
+    budgets: expenseBudgets,
+    receiptMatches,
+    reimbursementBatches,
+    duplicateDetections,
+  }), [duplicateDetections, employees, expenseBudgets, expensePolicies, expenseReports, pendingExpenseReports, receiptMatches, reimbursementBatches])
+  const topExpenseRoutePlan = expenseApprovalQueue.plans[0]
 
   if (pageLoading) {
     return (
@@ -1631,6 +1643,24 @@ export default function ExpensePage() {
         </div>
 
         <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-[var(--radius-card)] border border-tempo-200 bg-tempo-50/50 p-4 text-left md:col-span-2 xl:col-span-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-tempo-700">Live approval-route engine</p>
+                <h3 className="mt-1 text-sm font-semibold text-t1">
+                  {topExpenseRoutePlan ? `${topExpenseRoutePlan.title} → ${topExpenseRoutePlan.routeLabel}` : 'No expense route plan needed'}
+                </h3>
+                <p className="mt-1 max-w-3xl text-xs leading-5 text-t2">
+                  {topExpenseRoutePlan ? topExpenseRoutePlan.safeNextActions[0] : 'The queue is clear; no pending report needs policy, evidence, reimbursement, posting, or budget review.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant={expenseApprovalQueue.blockedCount > 0 ? 'error' : 'success'}>{expenseApprovalQueue.blockedCount} blocked</Badge>
+                <Badge variant={expenseApprovalQueue.reviewCount > 0 ? 'warning' : 'success'}>{expenseApprovalQueue.reviewCount} review</Badge>
+                <Badge variant="info">{expenseApprovalQueue.readyCount} ready</Badge>
+              </div>
+            </div>
+          </div>
           {expenseFlowGuidance.map(item => (
             <button
               key={item.title}
