@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs } from '@/components/ui/tabs'
 import { Modal } from '@/components/ui/modal'
 import { Input, Textarea, Select } from '@/components/ui/input'
-import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, EyeOff, Download, ChevronDown, ChevronRight, X, GripVertical, Zap, Lock, Layers, UserCheck, Network, BookOpen } from 'lucide-react'
+import { Plus, Target, Star, MessageSquare, Pencil, Trash2, Calendar, Heart, Award, BarChart3, CheckCircle2, Clock, MapPin, Users, TrendingUp, ArrowRight, Code, Lightbulb, Settings, Globe, Building2, Search, AlertTriangle, DollarSign, FileText, Copy, Eye, EyeOff, Download, ChevronDown, ChevronRight, X, GripVertical, Zap, Lock, Layers, UserCheck, Network, BookOpen, Scale } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTempo, useOrgCurrency } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/format-currency'
@@ -654,6 +654,77 @@ export default function PerformancePage() {
     }
   }, [courses, enrollments, competencyRatings, competencyFramework])
 
+  const managerDecisionCockpit = useMemo(() => {
+    const reviewCompletionRate = reviews.length > 0 ? Math.round((completedReviews / reviews.length) * 100) : 0
+    const pendingReviews = reviews.filter(r => r.status !== 'submitted' && r.status !== 'completed').length
+    const riskyGoals = goals.filter(g => g.status === 'at_risk' || g.status === 'behind' || g.progress < 40)
+    const activePips = pips.filter(p => p.status === 'active')
+    const unresolvedTalentRisks = activePips.length + biasInsights.length + riskyGoals.length
+    const meritReady = meritCycles.length > 0 && reviewCompletionRate >= 70 && biasInsights.length === 0
+    const readinessScore = Math.min(
+      96,
+      42 +
+        (reviewCompletionRate >= 80 ? 18 : Math.round(reviewCompletionRate * 0.18)) +
+        (openActionItems.length === 0 ? 12 : 6) +
+        (biasInsights.length === 0 ? 12 : 4) +
+        (growthBridge.matchedGaps >= Math.min(growthBridge.gapCompetencies, 3) ? 8 : 3) +
+        (meritReady ? 6 : 2)
+    )
+
+    const decisions = [
+      {
+        title: 'Finish review evidence',
+        owner: 'Managers',
+        priority: pendingReviews > 0 ? 'High' : 'Ready',
+        icon: <FileText size={16} />,
+        metric: `${reviewCompletionRate}% complete`,
+        detail: `${pendingReviews} review${pendingReviews === 1 ? '' : 's'} still need manager, self, peer, or upward evidence before the cycle is decision-ready.`,
+        nextAction: 'Open reviews',
+        onOpen: () => setActiveTab('reviews'),
+      },
+      {
+        title: 'Coach goal risk',
+        owner: 'Managers and employees',
+        priority: riskyGoals.length > 0 || openActionItems.length > 0 ? 'High' : 'Ready',
+        icon: <Target size={16} />,
+        metric: `${riskyGoals.length} risky goal${riskyGoals.length === 1 ? '' : 's'}`,
+        detail: `${openActionItems.length} open 1:1 action item${openActionItems.length === 1 ? '' : 's'} should be closed or carried forward before rating and merit conversations.`,
+        nextAction: 'Open 1:1s',
+        onOpen: () => setActiveTab('one-on-ones'),
+      },
+      {
+        title: 'Calibrate fairness',
+        owner: 'HRBP and review committee',
+        priority: biasInsights.length > 0 ? 'High' : 'Ready',
+        icon: <Scale size={16} />,
+        metric: `${biasInsights.length} fairness signal${biasInsights.length === 1 ? '' : 's'}`,
+        detail: biasInsights.length > 0
+          ? 'Review rating drift and rationale quality before outcomes are communicated.'
+          : 'No active fairness signals are blocking this review cycle in the current data.',
+        nextAction: 'Open calibration',
+        onOpen: () => setActiveTab('calibration'),
+      },
+      {
+        title: 'Tie decisions to growth',
+        owner: 'HR and leaders',
+        priority: growthBridge.gapCompetencies > growthBridge.matchedGaps || !meritReady ? 'Medium' : 'Ready',
+        icon: <TrendingUp size={16} />,
+        metric: `${growthBridge.matchedGaps}/${growthBridge.gapCompetencies} gaps matched`,
+        detail: `${meritCycles.length} merit cycle${meritCycles.length === 1 ? '' : 's'} available; connect gaps to learning and career paths before promotion, PIP, or compensation decisions.`,
+        nextAction: 'Open growth paths',
+        onOpen: () => setActiveTab('career-paths'),
+      },
+    ]
+
+    return {
+      readinessScore,
+      reviewCompletionRate,
+      unresolvedTalentRisks,
+      pendingReviews,
+      decisions,
+    }
+  }, [biasInsights.length, completedReviews, goals, growthBridge, meritCycles.length, openActionItems.length, pips, reviews])
+
   // Bulk review computed data
   const uniqueCountries = useMemo(() => [...new Set(employees.map(e => e.country).filter(Boolean))].sort(), [employees])
   const uniqueLevels = useMemo(() => [...new Set(employees.map(e => e.level).filter(Boolean))].sort(), [employees])
@@ -1129,6 +1200,66 @@ export default function PerformancePage() {
           { label: 'Open growth paths', description: 'Connect outcomes to skills, role paths, and learning.', onClick: () => setActiveTab('career-paths') },
         ]}
       />
+
+      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-tempo-600">Redwood manager decision cockpit</p>
+              <h2 className="text-lg font-semibold text-t1">Turn performance signals into manager-ready next actions</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-t2">
+                A guided review layer for managers and HRBPs: finish evidence, coach risk, calibrate fairness, and connect outcomes to growth before promotion, PIP, or merit decisions.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={managerDecisionCockpit.readinessScore >= 80 ? 'success' : 'warning'}>{managerDecisionCockpit.readinessScore}% ready</Badge>
+              <Badge variant={managerDecisionCockpit.unresolvedTalentRisks > 0 ? 'warning' : 'success'}>{managerDecisionCockpit.unresolvedTalentRisks} talent risk{managerDecisionCockpit.unresolvedTalentRisks === 1 ? '' : 's'}</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-t3">Cycle health</p>
+            <p className="mt-3 text-3xl font-semibold text-t1">{managerDecisionCockpit.readinessScore}%</p>
+            <p className="mt-1 text-sm text-t2">Decision readiness</p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-t3">
+                  <span>Review evidence</span>
+                  <span>{managerDecisionCockpit.reviewCompletionRate}%</span>
+                </div>
+                <Progress value={managerDecisionCockpit.reviewCompletionRate} />
+              </div>
+              <div className="rounded-md border border-border bg-card px-3 py-2">
+                <p className="text-xs font-medium text-t1">{managerDecisionCockpit.pendingReviews} pending review{managerDecisionCockpit.pendingReviews === 1 ? '' : 's'}</p>
+                <p className="mt-1 text-xs leading-5 text-t3">Keep evidence visible before ratings become compensation or mobility decisions.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {managerDecisionCockpit.decisions.map(decision => (
+              <article key={decision.title} className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-tempo-50 text-tempo-700">
+                    {decision.icon}
+                  </span>
+                  <Badge variant={decision.priority === 'Ready' ? 'success' : decision.priority === 'High' ? 'warning' : 'info'}>{decision.priority}</Badge>
+                </div>
+                <h3 className="mt-4 text-sm font-semibold text-t1">{decision.title}</h3>
+                <p className="mt-1 text-xs text-t3">{decision.owner}</p>
+                <p className="mt-4 text-sm font-semibold text-t1">{decision.metric}</p>
+                <p className="mt-2 min-h-[88px] text-xs leading-5 text-t2">{decision.detail}</p>
+                <Button size="sm" variant="secondary" className="mt-4 w-full justify-between" onClick={decision.onOpen}>
+                  {decision.nextAction}
+                  <ArrowRight size={14} />
+                </Button>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card p-5 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
