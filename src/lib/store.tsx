@@ -1302,6 +1302,39 @@ function buildCurrentUser(emp: DemoData['demoEmployees'][number]): CurrentUser {
   }
 }
 
+const DEMO_SESSION_USERS: Record<string, { orgId: string; employeeId: string }> = {
+  'yersimo@theworktempo.com': { orgId: 'org-1', employeeId: 'emp-17' },
+  'amara.kone@ecobank.com': { orgId: 'org-1', employeeId: 'emp-17' },
+  'i.agu@ecobank.com': { orgId: 'org-1', employeeId: 'emp-24' },
+  'b.ogunleye@ecobank.com': { orgId: 'org-1', employeeId: 'emp-13' },
+  'o.adeyemi@ecobank.com': { orgId: 'org-1', employeeId: 'emp-1' },
+  'a.darko@ecobank.com': { orgId: 'org-1', employeeId: 'emp-20' },
+  'n.okafor@ecobank.com': { orgId: 'org-1', employeeId: 'emp-2' },
+  'k.asante@ecobank.com': { orgId: 'org-1', employeeId: 'emp-3' },
+  's.ndlovu@kashco.com': { orgId: 'org-2', employeeId: 'kemp-1' },
+  'l.amari@kashco.com': { orgId: 'org-2', employeeId: 'kemp-6' },
+  't.mugabo@kashco.com': { orgId: 'org-2', employeeId: 'kemp-3' },
+  'n.joubert@kashco.com': { orgId: 'org-2', employeeId: 'kemp-4' },
+  'z.moyo@kashco.com': { orgId: 'org-2', employeeId: 'kemp-12' },
+}
+
+function getDemoSessionUser(user: CurrentUser | null): { orgId: string; employeeId: string } | null {
+  if (!user) return null
+  const employeeId = user.employee_id || ''
+  if (employeeId.startsWith('emp-')) return { orgId: 'org-1', employeeId }
+  if (employeeId.startsWith('kemp-')) return { orgId: 'org-2', employeeId }
+  return DEMO_SESSION_USERS[user.email?.toLowerCase()] || null
+}
+
+function normalizeDemoSessionUser(user: CurrentUser): CurrentUser {
+  const demoSession = getDemoSessionUser(user)
+  if (!demoSession) return user
+  return {
+    ...user,
+    employee_id: demoSession.employeeId,
+  }
+}
+
 const SESSION_RESTORE_TIMEOUT_MS = 8000
 
 // Try to restore session from cookie via API.
@@ -2278,27 +2311,27 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
         if (sessionUser) {
           // Load correct org's demo data if this is a demo user
           // Detect demo users by employee ID prefix (emp- for Ecobank, kemp- for Kash & Co)
-          const sessEmpId = sessionUser.employee_id || ''
-          isDemoUser = sessEmpId.startsWith('emp-') || sessEmpId.startsWith('kemp-')
-          if (isDemoUser) {
-            const sessOrgId = sessEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
-            await loadDemoData(sessOrgId)
+          const demoSession = getDemoSessionUser(sessionUser)
+          isDemoUser = Boolean(demoSession)
+          const normalizedUser = demoSession ? normalizeDemoSessionUser(sessionUser) : sessionUser
+          if (demoSession) {
+            await loadDemoData(demoSession.orgId)
           }
-          setCurrentUser(sessionUser)
-          try { localStorage.setItem('tempo_current_user', JSON.stringify(sessionUser)) } catch { /* ignore */ }
+          setCurrentUser(normalizedUser)
+          try { localStorage.setItem('tempo_current_user', JSON.stringify(normalizedUser)) } catch { /* ignore */ }
         } else if (apiDown) {
           // API is down (503/network error) — use localStorage cache as fallback
           // This prevents redirect loops when Vercel functions are temporarily unavailable
           const cachedUser = getStoredUser()
           if (cachedUser) {
             console.warn('API unavailable, using cached session')
-            setCurrentUser(cachedUser)
+            const demoSession = getDemoSessionUser(cachedUser)
+            const normalizedUser = demoSession ? normalizeDemoSessionUser(cachedUser) : cachedUser
+            setCurrentUser(normalizedUser)
             // Load correct org's demo data based on cached user's employee ID
-            const cachedEmpId = cachedUser.employee_id || ''
-            isDemoUser = cachedEmpId.startsWith('emp-') || cachedEmpId.startsWith('kemp-')
-            if (isDemoUser) {
-              const cachedOrgId = cachedEmpId.startsWith('kemp-') ? 'org-2' : 'org-1'
-              await loadDemoData(cachedOrgId)
+            isDemoUser = Boolean(demoSession)
+            if (demoSession) {
+              await loadDemoData(demoSession.orgId)
             }
           } else {
             // No cached user and API is down — can't authenticate
@@ -6336,14 +6369,14 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
           return { requiresMFA: true, mfaToken: data.mfaToken }
         }
         // For demo users, load the correct org's demo data (module data)
-        const empId = data.user?.employee_id || ''
-        if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
-          const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
-          await loadDemoData(demoOrgId)
+        const demoSession = getDemoSessionUser(data.user)
+        if (demoSession) {
+          await loadDemoData(demoSession.orgId)
         }
-        setCurrentUser(data.user)
+        const user = demoSession ? normalizeDemoSessionUser(data.user) : data.user
+        setCurrentUser(user)
         // Keep localStorage as client-side cache for instant hydration
-        try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
         return true
       }
     } catch {
@@ -6376,13 +6409,13 @@ export function TempoProvider({ children }: { children: React.ReactNode }) {
       })
       if (res.ok) {
         const data = await res.json()
-        const empId = data.user?.employee_id || ''
-        if (empId.startsWith('emp-') || empId.startsWith('kemp-')) {
-          const demoOrgId = empId.startsWith('kemp-') ? 'org-2' : 'org-1'
-          await loadDemoData(demoOrgId)
+        const demoSession = getDemoSessionUser(data.user)
+        if (demoSession) {
+          await loadDemoData(demoSession.orgId)
         }
-        setCurrentUser(data.user)
-        try { localStorage.setItem('tempo_current_user', JSON.stringify(data.user)) } catch { /* ignore */ }
+        const user = demoSession ? normalizeDemoSessionUser(data.user) : data.user
+        setCurrentUser(user)
+        try { localStorage.setItem('tempo_current_user', JSON.stringify(user)) } catch { /* ignore */ }
         return true
       }
     } catch {
