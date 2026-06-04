@@ -36,7 +36,7 @@ const flagshipWorkflows: FlagshipWorkflow[] = [
   },
 ]
 
-const hiddenExperimentCopy = /experiment bench|review mode|feature-review mode|selected direction|compare .* directions/i
+const hiddenExperimentCopy = /benchmark-led|target experience|next best moves|quality focus|trust layer|evidence to trust|experiment bench|review mode|feature-review mode|selected direction|compare .* directions/i
 
 test.describe('flagship workflow smoke', () => {
   test('keeps flagship live engines and safe actions usable across modules', async ({ page }) => {
