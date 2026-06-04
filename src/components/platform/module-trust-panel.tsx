@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Database, FileSearch, ShieldCh
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { showExperimentBenches } from '@/lib/experience-flags'
 import { cn } from '@/lib/utils/cn'
 
 type TrustTone = 'success' | 'warning' | 'neutral'
@@ -58,7 +59,7 @@ export function ModuleTrustPanel({
         <div className="p-5 md:p-6">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge variant="default"><ShieldCheck size={12} /> Trust layer</Badge>
-            <Badge variant="info">Review mode</Badge>
+            {showExperimentBenches && <Badge variant="info">Review mode</Badge>}
           </div>
           <div className="grid gap-5 md:grid-cols-[1fr_220px] md:items-start">
             <div className="min-w-0">

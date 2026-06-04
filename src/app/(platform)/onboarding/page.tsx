@@ -20,6 +20,7 @@ import { ModuleCommandCenter } from '@/components/platform/module-command-center
 import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
 import { useTempo } from '@/lib/store'
 import { buildLifecyclePlan } from '@/lib/lifecycle-workflow-engine'
+import { showExperimentBenches } from '@/lib/experience-flags'
 import {
   Rocket, Users, Target, Shield, BarChart3, ArrowRight, ArrowLeft,
   CheckCircle, Building, Briefcase, Globe, Zap, Check, Mail, Loader2,
@@ -1574,7 +1575,7 @@ export default function OnboardingPage() {
         ]}
       />
 
-      <section className="mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]">
+      <section className={`${showExperimentBenches ? '' : 'hidden '}mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]`}>
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
