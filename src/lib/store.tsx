@@ -1302,15 +1302,27 @@ function buildCurrentUser(emp: DemoData['demoEmployees'][number]): CurrentUser {
   }
 }
 
-// Try to restore session from cookie via API
-// Returns { user, apiDown } so the caller can decide whether to fall back to localStorage
+const SESSION_RESTORE_TIMEOUT_MS = 8000
+
+// Try to restore session from cookie via API.
+// Returns { user, apiDown } so the caller can decide whether to fall back to localStorage.
+// A timed-out API is treated as unavailable, not as an invalid session, so production
+// demo users cannot get trapped behind the platform loading skeleton.
 async function fetchSessionUser(): Promise<{ user: CurrentUser | null; apiDown: boolean }> {
   try {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'me' }),
-    })
+    const res = await Promise.race<Response | 'timeout'>([
+      fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'me' }),
+      }),
+      new Promise<'timeout'>(resolve => {
+        setTimeout(() => resolve('timeout'), SESSION_RESTORE_TIMEOUT_MS)
+      }),
+    ])
+    if (res === 'timeout') {
+      return { user: null, apiDown: true }
+    }
     if (res.ok) {
       const { user } = await res.json()
       return { user: user || null, apiDown: false }
