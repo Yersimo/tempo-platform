@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Sparkles, Target, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { showExperienceReviewSurfaces } from '@/lib/experience-flags'
 import { cn } from '@/lib/utils/cn'
 
 type Tone = 'neutral' | 'success' | 'warning' | 'ai'
@@ -55,7 +56,7 @@ export function ModuleCommandCenter({
   const progressColor = normalizedScore >= 80 ? 'success' : normalizedScore >= 60 ? 'warning' : 'orange'
 
   return (
-    <section className={cn('mb-6 rounded-[var(--radius-card)] border border-border bg-card/96 shadow-[var(--shadow-card)]', className)}>
+    <section className={cn('mb-6 rounded-[var(--radius-card)] border border-border bg-card/96 shadow-[var(--shadow-card)]', !showExperienceReviewSurfaces && 'hidden', className)}>
       <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="p-5 md:p-6">
           <div className="flex flex-wrap items-center gap-2 mb-3">

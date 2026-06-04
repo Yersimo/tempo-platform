@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Database, FileSearch, ShieldCh
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { showExperimentBenches } from '@/lib/experience-flags'
+import { showExperienceReviewSurfaces } from '@/lib/experience-flags'
 import { cn } from '@/lib/utils/cn'
 
 type TrustTone = 'success' | 'warning' | 'neutral'
@@ -54,12 +54,12 @@ export function ModuleTrustPanel({
   const progressColor = normalizedScore >= 80 ? 'success' : normalizedScore >= 60 ? 'warning' : 'orange'
 
   return (
-    <section className={cn('mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]', className)}>
+    <section className={cn('mb-6 rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--shadow-card)]', !showExperienceReviewSurfaces && 'hidden', className)}>
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="p-5 md:p-6">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge variant="default"><ShieldCheck size={12} /> Trust layer</Badge>
-            {showExperimentBenches && <Badge variant="info">Review mode</Badge>}
+            {showExperienceReviewSurfaces && <Badge variant="info">Review mode</Badge>}
           </div>
           <div className="grid gap-5 md:grid-cols-[1fr_220px] md:items-start">
             <div className="min-w-0">
