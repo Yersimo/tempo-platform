@@ -464,20 +464,23 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const demoOrgId = session.employeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
+        const demoCred =
+          allDemoCredentials.find(c => c.employeeId === session.employeeId) ||
+          allDemoCredentials.find(c => c.email === session.email)
+        const demoEmployeeId = demoCred?.employeeId || session.employeeId
+        const demoOrgId = demoEmployeeId.startsWith('kemp-') ? 'org-2' : 'org-1'
         const orgData = getDemoDataForOrg(demoOrgId)
-        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === session.employeeId)
+        const demoEmp = orgData.employees.find((e: { id: string }) => e.id === demoEmployeeId)
         if (!demoEmp) {
           return NextResponse.json({ user: null }, { status: 401 })
         }
-        const demoCred = allDemoCredentials.find(c => c.employeeId === session.employeeId)
         return NextResponse.json({
           user: {
             id: `user-${demoEmp.id}`,
             email: demoEmp.profile?.email || session.email,
             full_name: demoEmp.profile?.full_name || demoCred?.label || '',
             avatar_url: demoEmp.profile?.avatar_url || null,
-            role: demoEmp.role,
+            role: demoCred?.role || demoEmp.role,
             department_id: demoEmp.department_id,
             employee_id: demoEmp.id,
             job_title: demoEmp.job_title,
