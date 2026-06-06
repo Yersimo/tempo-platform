@@ -352,9 +352,9 @@ export default function DashboardPage() {
             <div className="mt-5 rounded-md border border-border bg-card p-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-t3">Live engine signals</p>
               <div className="mt-3 space-y-2">
-                {selectedEngineSignals.length > 0 ? selectedEngineSignals.map(signal => (
+                {selectedEngineSignals.length > 0 ? selectedEngineSignals.map((signal, index) => (
                   <button
-                    key={`${signal.route}-${signal.title}`}
+                    key={`${signal.route}-${signal.title}-${index}`}
                     type="button"
                     onClick={() => router.push(signal.route)}
                     className="w-full rounded-md border border-divider bg-bg px-3 py-2 text-left transition hover:border-tempo-300 hover:bg-tempo-50/60"
