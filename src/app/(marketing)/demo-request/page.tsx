@@ -167,6 +167,13 @@ export default function DemoRequestPage() {
             <p style={{ fontSize: 15, color: 'rgba(255,255,255,.35)', lineHeight: 1.7, marginTop: 16, maxWidth: 340 }}>
               Book a personalized demo and discover how Tempo can transform your workforce operations.
             </p>
+            <div style={{ marginTop: 24, padding: 16, borderRadius: 16, border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)' }}>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.22)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>What we tailor for your team</p>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,.58)', lineHeight: 1.7 }}>
+                Share your company, work email, team size, and priority modules so the demo shows the HR,
+                payroll, finance, IT, and compliance workflows that matter most.
+              </p>
+            </div>
 
             {/* Bullet points */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 36 }}>

@@ -299,6 +299,20 @@ export default function PricingPage() {
             From your first hire in Lagos to your ten-thousandth across 41 countries.
             The price you see is the price you pay — including statutory filings in every market you operate.
           </p>
+          <div className="mx-auto mb-10 grid max-w-3xl gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-left sm:grid-cols-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Pricing clarity</p>
+              <p className="mt-1 text-sm text-zinc-300">Compare every plan by employee count, module value, and enterprise controls.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Buyer path</p>
+              <p className="mt-1 text-sm text-zinc-300">Start free, request a demo, or talk to sales when your team needs custom packaging.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Enterprise fit</p>
+              <p className="mt-1 text-sm text-zinc-300">Plans scale from HR basics to payroll, finance, IT, analytics, and compliance.</p>
+            </div>
+          </div>
 
           {/* ─── Billing Toggle ─── */}
           <div className="inline-flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-full p-1">

@@ -75,6 +75,20 @@ export default function SecurityPage() {
           <p className="text-white/40 text-lg max-w-xl mx-auto">
             Security is foundational at Tempo. We protect your workforce data with enterprise-grade controls.
           </p>
+          <div className="mt-8 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left sm:grid-cols-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/35">Control model</p>
+              <p className="mt-1 text-sm leading-6 text-white/65">Role-based access, MFA, audit logs, and tenant isolation protect every HR, payroll, and finance workflow.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/35">Compliance posture</p>
+              <p className="mt-1 text-sm leading-6 text-white/65">GDPR is active, SOC 2 Type II is in progress, and privacy reviews are part of the enterprise package.</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/35">Buyer next step</p>
+              <p className="mt-1 text-sm leading-6 text-white/65">Request the security package, contact the team, or book a demo for control and risk review.</p>
+            </div>
+          </div>
         </div>
       </section>
 
