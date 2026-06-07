@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContextOptions } from '@playwright/test'
+import { expect, test, type BrowserContextOptions, type Page } from '@playwright/test'
 import { loginByApi } from './helpers/auth'
 import {
   assertUsableRoute,
@@ -89,6 +89,9 @@ const appRoutes = [
   '/mobile',
 ]
 
+const hiddenProductionReviewCopy =
+  /benchmark-led|target experience|next best moves|quality focus|trust layer|evidence to trust|experiment bench|review mode|feature-review mode|selected direction|compare .* directions/i
+
 function chunks<T>(items: T[], size: number) {
   const result: T[][] = []
   for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size))
@@ -147,6 +150,7 @@ test.describe('Nordic overhaul route sweep', () => {
           await test.step(`${viewport.name} app ${route}`, async () => {
             await gotoRoute(page, route)
             await assertUsableRoute(page, route, { authenticated: true })
+            await expectNoVisibleText(page, hiddenProductionReviewCopy)
             await screenshotRoute(page, testInfo, 'app', viewport.name, route)
           })
         }
@@ -157,3 +161,12 @@ test.describe('Nordic overhaul route sweep', () => {
     })
   }
 })
+
+async function expectNoVisibleText(page: Page, text: RegExp) {
+  const matches = page.getByText(text)
+  const count = await matches.count()
+
+  for (let index = 0; index < count; index += 1) {
+    await expect(matches.nth(index), `Expected ${text} match #${index + 1} to stay hidden`).not.toBeVisible()
+  }
+}
