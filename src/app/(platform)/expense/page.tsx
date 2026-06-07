@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -55,6 +56,7 @@ const demoReceipts = [
 export default function ExpensePage() {
   const t = useTranslations('expense')
   const tc = useTranslations('common')
+  const searchParams = useSearchParams()
   const defaultCurrency = useOrgCurrency()
   const {
     expenseReports, employees, departments, budgets,
@@ -123,6 +125,7 @@ export default function ExpensePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterTeamOnly, setFilterTeamOnly] = useState(false)
+  const handledDeepLinkRef = useRef<string | null>(null)
 
   // Compute direct reports for team-only filter
   const directReportIds = useMemo(() => {
@@ -1157,6 +1160,25 @@ export default function ExpensePage() {
     setReceiptUploads([])
     setShowReportModal(true)
   }
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+    handledDeepLinkRef.current = action
+
+    if (action === 'submit-expense') {
+      setActiveTab('reports')
+      openNewReport()
+      return
+    }
+
+    if (action === 'review-expenses') {
+      setActiveTab('reports')
+      setFilterStatus('submitted')
+      const nextReport = pendingExpenseReports[0]
+      if (nextReport) setExpandedReport(nextReport.id)
+    }
+  }, [searchParams, pendingExpenseReports])
 
   function addLineItem() {
     setReportForm({ ...reportForm, items: [...reportForm.items, { description: '', category: 'travel', amount: 0, date: new Date().toISOString().split('T')[0] }] })

@@ -129,12 +129,12 @@ export function MyOverviewTab() {
   // ---- Quick actions ----
 
   const quickActions = [
-    { label: t('requestLeave'), icon: <Calendar size={20} />, href: '/time-attendance' },
-    { label: t('submitExpense'), icon: <FileText size={20} />, href: '/expense' },
-    { label: t('clockInOut'), icon: <Clock size={20} />, href: '/time-attendance' },
+    { label: t('requestLeave'), icon: <Calendar size={20} />, href: '/time-attendance?action=request-leave' },
+    { label: t('submitExpense'), icon: <FileText size={20} />, href: '/expense?action=submit-expense' },
+    { label: t('clockInOut'), icon: <Clock size={20} />, href: '/time-attendance?action=clock-in' },
     { label: t('viewPayStubs'), icon: <DollarSign size={20} />, href: '/payroll' },
     { label: t('myGoals'), icon: <Target size={20} />, href: '/performance' },
-    { label: t('myLearning'), icon: <BookOpen size={20} />, href: '/learning' },
+    { label: t('myLearning'), icon: <BookOpen size={20} />, href: '/learning?action=continue' },
   ]
 
   // ---- Pending approvals for managers ----
@@ -155,7 +155,7 @@ export function MyOverviewTab() {
         label: `Approve ${pendingLeaveCount} pending leave request${pendingLeaveCount !== 1 ? 's' : ''}`,
         badge: 'Action needed',
         badgeVariant: 'warning',
-        href: '/time-attendance',
+        href: '/time-attendance?action=review-leave',
         icon: <Calendar size={16} />,
       })
     }
@@ -166,7 +166,7 @@ export function MyOverviewTab() {
         label: `Review ${pendingExpenseCount} expense report${pendingExpenseCount !== 1 ? 's' : ''}`,
         badge: pendingExpenseCount >= 5 ? 'Overdue' : 'Pending',
         badgeVariant: pendingExpenseCount >= 5 ? 'error' : 'warning',
-        href: '/expense',
+        href: '/expense?action=review-expenses',
         icon: <FileText size={16} />,
       })
     }
@@ -177,7 +177,7 @@ export function MyOverviewTab() {
         label: `Complete ${pendingReviewCount} performance review${pendingReviewCount !== 1 ? 's' : ''}`,
         badge: 'Due soon',
         badgeVariant: 'info',
-        href: '/performance',
+        href: '/performance?action=reviews',
         icon: <Star size={16} />,
       })
     }
@@ -199,7 +199,7 @@ export function MyOverviewTab() {
         label: `Review ${pendingTimesheetCount} timesheet submission${pendingTimesheetCount !== 1 ? 's' : ''}`,
         badge: 'Pending',
         badgeVariant: 'default',
-        href: '/time-attendance',
+        href: '/time-attendance?action=review-timesheets',
         icon: <Clock size={16} />,
       })
     }
