@@ -20,6 +20,16 @@ test.describe('action deep links', () => {
     await expect(page).toHaveURL(/\/learning\?action=continue/)
 
     await page.goto('/dashboard')
+    await page.getByRole('tab', { name: /organization/i }).click()
+    await page.getByRole('button', { name: /submit pto/i }).click()
+    await expect(page).toHaveURL(/\/time-attendance\?action=request-leave/)
+
+    await page.goto('/dashboard')
+    await page.getByRole('tab', { name: /organization/i }).click()
+    await page.getByRole('button', { name: /file expense/i }).click()
+    await expect(page).toHaveURL(/\/expense\?action=submit-expense/)
+
+    await page.goto('/dashboard')
     const requestLeave = page.getByRole('button', { name: /request leave/i }).first()
     await expect(requestLeave).toBeVisible()
     await requestLeave.click()

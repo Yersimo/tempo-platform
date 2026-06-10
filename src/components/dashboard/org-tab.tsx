@@ -194,7 +194,7 @@ export function OrgTab() {
         type: 'Leave',
         title: `${pendingLeave.length} leave request${pendingLeave.length > 1 ? 's' : ''} pending approval`,
         subtitle: pendingLeave.map(l => getEmployeeName(l.employee_id)).slice(0, 2).join(', ') + (pendingLeave.length > 2 ? ` +${pendingLeave.length - 2} more` : ''),
-        href: '/time-attendance',
+        href: '/time-attendance?action=review-leave',
         icon: <CalendarCheck size={16} />,
         urgency: 'warning',
       })
@@ -206,7 +206,7 @@ export function OrgTab() {
         type: 'Expense',
         title: `${pendingExpenses} expense report${pendingExpenses > 1 ? 's' : ''} awaiting review`,
         subtitle: `${formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} total`,
-        href: '/expense',
+        href: '/expense?action=review-expenses',
         icon: <Receipt size={16} />,
         urgency: 'warning',
       })
@@ -219,7 +219,7 @@ export function OrgTab() {
         type: 'Performance',
         title: `${incompleteReviews.length} performance review${incompleteReviews.length > 1 ? 's' : ''} in progress`,
         subtitle: 'Ensure timely completion of the review cycle',
-        href: '/performance',
+        href: '/performance?action=reviews',
         icon: <FileText size={16} />,
         urgency: 'info',
       })
@@ -232,7 +232,7 @@ export function OrgTab() {
         type: 'Goals',
         title: `${atRiskGoals.length} goal${atRiskGoals.length > 1 ? 's' : ''} at risk or behind`,
         subtitle: 'Review progress and provide support',
-        href: '/performance',
+        href: '/performance?action=goals',
         icon: <AlertTriangle size={16} />,
         urgency: atRiskGoals.some(g => g.status === 'behind') ? 'critical' : 'warning',
       })
@@ -283,11 +283,11 @@ export function OrgTab() {
       <div className="mb-6">
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {[
-            { label: 'Submit PTO', icon: <Clock size={14} />, href: '/time-attendance', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Submit PTO', icon: <Clock size={14} />, href: '/time-attendance?action=request-leave', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'Run Payroll', icon: <Banknote size={14} />, href: '/payroll', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'Post a Job', icon: <Briefcase size={14} />, href: '/recruiting', color: 'bg-gray-50 text-gray-600 border-gray-200' },
-            { label: 'Give Kudos', icon: <Heart size={14} />, href: '/performance', color: 'bg-gray-50 text-gray-600 border-gray-200' },
-            { label: 'File Expense', icon: <Receipt size={14} />, href: '/expense', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Give Kudos', icon: <Heart size={14} />, href: '/performance?action=feedback', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'File Expense', icon: <Receipt size={14} />, href: '/expense?action=submit-expense', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'View Reports', icon: <BarChart3 size={14} />, href: '/analytics', color: 'bg-gray-50 text-gray-600 border-gray-200' },
           ].map(action => (
             <button
@@ -536,12 +536,12 @@ export function OrgTab() {
               <div className="text-tempo-400 opacity-50"><Users size={24} /></div>
             </div>
           </Card>
-        <StatCard href="/performance" label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
-        <StatCard href="/learning" label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
+        <StatCard href="/performance?action=reviews" label={t('reviewCompletion')} value={`${reviewCompletion}%`} change={`${ratedReviews.length} ${t('rated')}`} changeType="positive" icon={<TrendingUp size={24} />} />
+        <StatCard href="/learning?action=continue" label={t('activeLearners')} value={activeLearners} change={`${enrollments.length} ${t('enrollments')}`} changeType="neutral" icon={<GraduationCap size={24} />} />
         <StatCard href="/recruiting" label={t('openPositions')} value={openPositions} change={`${jobPostings.filter(j => j.status === 'open').reduce((a, j) => a + (j.application_count || 0), 0)} ${t('totalApplicants')}`} changeType="neutral" icon={<Briefcase size={24} />} />
-        <StatCard href="/expense" label={t('pendingExpenses')} value={pendingExpenses} change={formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} changeType="neutral" icon={<Receipt size={24} />} />
+        <StatCard href="/expense?action=review-expenses" label={t('pendingExpenses')} value={pendingExpenses} change={formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} changeType="neutral" icon={<Receipt size={24} />} />
         <StatCard href="/mentoring" label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
-        <StatCard href="/time-attendance" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
+        <StatCard href="/time-attendance?action=review-leave" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
         <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? formatCurrency(lastPayroll.total_net / 100, defaultCurrency, { compact: true }) : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
       </div>
 
@@ -596,7 +596,7 @@ export function OrgTab() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Performance Overview</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance?action=goals')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="px-6 py-4">
@@ -622,7 +622,7 @@ export function OrgTab() {
           <div className="divide-y divide-divider">
             {[
               { label: 'Active Employees', value: employees.length, total: employees.length, color: 'bg-gray-400', href: '/people' },
-              { label: 'Enrolled in Learning', value: activeLearners, total: employees.length, color: 'bg-gray-500', href: '/learning' },
+              { label: 'Enrolled in Learning', value: activeLearners, total: employees.length, color: 'bg-gray-500', href: '/learning?action=continue' },
               { label: 'In Mentoring', value: activeMentoringPairs * 2, total: employees.length, color: 'bg-gray-300', href: '/mentoring' },
               { label: 'Open Applications', value: applications.filter(a => a.status === 'applied' || a.status === 'screening' || a.status === 'interview').length, total: applications.length, color: 'bg-tempo-500', href: '/recruiting' },
             ].map((stat) => (
@@ -650,12 +650,12 @@ export function OrgTab() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('goalsTitle')}</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => router.push('/performance')}>{tc('viewAll')}</Button>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/performance?action=goals')}>{tc('viewAll')}</Button>
             </div>
           </CardHeader>
           <div className="divide-y divide-divider">
             {goals.slice(0, 5).map((goal) => (
-              <div key={goal.id} onClick={() => router.push('/performance')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
+              <div key={goal.id} onClick={() => router.push('/performance?action=goals')} role="link" className="px-6 py-3 flex items-center gap-4 hover:bg-canvas/50 transition-colors cursor-pointer">
                   <Avatar name={getEmployeeName(goal.employee_id)} size="sm" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-t1 truncate">{goal.title}</p>
@@ -730,7 +730,7 @@ export function OrgTab() {
               )
               return entryHref ? <div key={entry.id} onClick={() => router.push(entryHref)} role="link">{Inner}</div> : <div key={entry.id}>{Inner}</div>
             }) : feedback.slice(0, 5).map((fb) => (
-              <div key={fb.id} onClick={() => router.push('/performance')} role="link" className="cursor-pointer">
+              <div key={fb.id} onClick={() => router.push('/performance?action=feedback')} role="link" className="cursor-pointer">
                 <div className="px-6 py-3 hover:bg-canvas/50 transition-colors cursor-pointer">
                   <div className="flex items-center gap-2 mb-1">
                     <Avatar name={getEmployeeName(fb.from_id)} size="xs" />
