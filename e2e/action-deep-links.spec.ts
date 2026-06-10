@@ -23,6 +23,14 @@ test.describe('action deep links', () => {
     await expect(page).toHaveURL(/\/performance\?action=reviews/)
     await expect(page.getByText(/Review cycle command center|Performance Reviews|Launch Review Cycle/i).first()).toBeVisible()
 
+    await page.goto('/onboarding?action=preboarding')
+    await expect(page).toHaveURL(/\/onboarding\?action=preboarding/)
+    await expect(page.getByText(/Task Progress|No preboarding tasks|Create Template/i).first()).toBeVisible()
+
+    await page.goto('/onboarding?action=buddy')
+    await expect(page).toHaveURL(/\/onboarding\?action=buddy/)
+    await expect(page.getByRole('button', { name: /assign buddy/i })).toBeVisible()
+
     await page.goto('/learning')
     await expect(page.getByText(/learning mission control/i)).toBeVisible()
     await page.getByRole('button', { name: /^continue$/i }).first().click()
