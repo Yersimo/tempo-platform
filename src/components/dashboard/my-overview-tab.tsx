@@ -132,7 +132,7 @@ export function MyOverviewTab() {
     { label: t('requestLeave'), icon: <Calendar size={20} />, href: '/time-attendance?action=request-leave' },
     { label: t('submitExpense'), icon: <FileText size={20} />, href: '/expense?action=submit-expense' },
     { label: t('clockInOut'), icon: <Clock size={20} />, href: '/time-attendance?action=clock-in' },
-    { label: t('viewPayStubs'), icon: <DollarSign size={20} />, href: '/payroll' },
+    { label: t('viewPayStubs'), icon: <DollarSign size={20} />, href: '/payroll?action=payslips' },
     { label: t('myGoals'), icon: <Target size={20} />, href: '/performance?action=goals' },
     { label: t('myLearning'), icon: <BookOpen size={20} />, href: '/learning?action=continue' },
   ]
@@ -575,7 +575,7 @@ export function MyOverviewTab() {
               <div className="flex items-center justify-between">
                 <CardTitle>{t('recentPayStubs')}</CardTitle>
                 <button
-                  onClick={() => router.push('/payroll')}
+                  onClick={() => router.push('/payroll?action=payslips')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
                   View all <ChevronRight size={14} />

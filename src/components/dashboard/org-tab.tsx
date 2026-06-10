@@ -284,7 +284,7 @@ export function OrgTab() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {[
             { label: 'Submit PTO', icon: <Clock size={14} />, href: '/time-attendance?action=request-leave', color: 'bg-gray-50 text-gray-600 border-gray-200' },
-            { label: 'Run Payroll', icon: <Banknote size={14} />, href: '/payroll', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+            { label: 'Run Payroll', icon: <Banknote size={14} />, href: '/payroll?action=run-payroll', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'Post a Job', icon: <Briefcase size={14} />, href: '/recruiting', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'Give Kudos', icon: <Heart size={14} />, href: '/performance?action=feedback', color: 'bg-gray-50 text-gray-600 border-gray-200' },
             { label: 'File Expense', icon: <Receipt size={14} />, href: '/expense?action=submit-expense', color: 'bg-gray-50 text-gray-600 border-gray-200' },
@@ -542,7 +542,7 @@ export function OrgTab() {
         <StatCard href="/expense?action=review-expenses" label={t('pendingExpenses')} value={pendingExpenses} change={formatCurrency(expenseReports.filter(e => e.status === 'submitted' || e.status === 'pending_approval').reduce((a, e) => a + e.total_amount, 0), defaultCurrency)} changeType="neutral" icon={<Receipt size={24} />} />
         <StatCard href="/mentoring" label={t('mentoringPairs')} value={activeMentoringPairs} change={`${mentoringPairs.length} ${t('total')}`} changeType="positive" icon={<UserCheck size={24} />} />
         <StatCard href="/time-attendance?action=review-leave" label={t('pendingLeave')} value={pendingLeave.length} change={t('awaitingApproval')} changeType={pendingLeave.length > 0 ? 'negative' : 'neutral'} icon={<Clock size={24} />} />
-        <StatCard href="/payroll" label={t('lastPayroll')} value={lastPayroll ? formatCurrency(lastPayroll.total_net / 100, defaultCurrency, { compact: true }) : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
+        <StatCard href="/payroll?action=pay-runs" label={t('lastPayroll')} value={lastPayroll ? formatCurrency(lastPayroll.total_net / 100, defaultCurrency, { compact: true }) : '-'} change={lastPayroll?.period || t('noRuns')} changeType="neutral" icon={<Banknote size={24} />} />
       </div>
 
       {/* AI Insights Section */}

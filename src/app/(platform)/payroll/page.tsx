@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -117,6 +117,7 @@ const STATUS_CONFIG: Record<string, { variant: 'success' | 'info' | 'warning' | 
 
 export default function PayrollPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('payroll')
   const tc = useTranslations('common')
   const {
@@ -214,6 +215,7 @@ export default function PayrollPage() {
   const tabs = isReadOnly ? allTabs.filter(t => t.id !== 'approvals' && t.id !== 'settings') : allTabs
   const [activeTab, setActiveTab] = useState('pay-runs')
   const [activePayrollExperiment, setActivePayrollExperiment] = useState<'variance_explainer' | 'approval_chain' | 'payout_preflight' | 'statutory_confidence'>('variance_explainer')
+  const handledDeepLinkRef = useRef<string | null>(null)
 
   // ---- Modals ----
   const [showPayRunModal, setShowPayRunModal] = useState(false)
@@ -277,6 +279,36 @@ export default function PayrollPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{show:boolean, type:string, id:string, label:string}|null>(null)
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+
+    handledDeepLinkRef.current = action
+
+    const tabByAction: Record<string, string> = {
+      'run-payroll': 'pay-runs',
+      'pay-runs': 'pay-runs',
+      payslips: 'employee-payroll',
+      'employee-payroll': 'employee-payroll',
+      approvals: 'approvals',
+      reconciliation: 'reconciliation',
+      compliance: 'compliance',
+      contractors: 'contractors',
+      analytics: 'analytics',
+      'year-end': 'year-end',
+      'tax-config': 'tax-config',
+      settings: 'settings',
+    }
+
+    const nextTab = tabByAction[action]
+    if (!nextTab || !tabs.some(tab => tab.id === nextTab)) return
+
+    setActiveTab(nextTab)
+    if (action === 'run-payroll') {
+      setShowPayRunModal(true)
+    }
+  }, [searchParams, tabs])
 
   // ---- Gap Features State ----
   // Gap 2: Leave integration

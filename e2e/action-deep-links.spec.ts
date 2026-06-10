@@ -16,8 +16,8 @@ test.describe('action deep links', () => {
     await expect(page).toHaveURL(/\/performance\?action=reviews/)
 
     await page.goto('/dashboard')
-    await page.getByRole('link', { name: /learning progress/i }).click()
-    await expect(page).toHaveURL(/\/learning\?action=continue/)
+    await page.getByRole('button', { name: /view pay stubs/i }).click()
+    await expect(page).toHaveURL(/\/payroll\?action=payslips/)
   })
 
   test('organization quick actions route to promised work surfaces', async ({ page }) => {
@@ -30,6 +30,12 @@ test.describe('action deep links', () => {
     await page.getByRole('tab', { name: /organization/i }).click()
     await page.getByRole('button', { name: /file expense/i }).click()
     await expect(page).toHaveURL(/\/expense\?action=submit-expense/)
+
+    await page.goto('/dashboard')
+    await page.getByRole('tab', { name: /organization/i }).click()
+    await page.getByRole('button', { name: /run payroll/i }).click()
+    await expect(page).toHaveURL(/\/payroll\?action=run-payroll/)
+    await expect(page.getByText(/create pay run|new pay run/i).first()).toBeVisible()
   })
 
   test('dashboard task actions open exact workflow surfaces', async ({ page }) => {
@@ -62,6 +68,10 @@ test.describe('action deep links', () => {
     await page.goto('/compensation?action=salary-reviews')
     await expect(page).toHaveURL(/\/compensation\?action=salary-reviews/)
     await expect(page.getByText(/salary review proposals|no salary reviews/i).first()).toBeVisible()
+
+    await page.goto('/payroll?action=payslips')
+    await expect(page).toHaveURL(/\/payroll\?action=payslips/)
+    await expect(page.getByText(/employee payroll|pay stub|total labor cost/i).first()).toBeVisible()
   })
 
   test('learning continue opens the course player', async ({ page }) => {
