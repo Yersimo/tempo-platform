@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback, useRef as useRefReact } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -151,6 +151,7 @@ function Confetti() {
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('onboarding')
   const tc = useTranslations('common')
   const {
@@ -389,6 +390,51 @@ export default function OnboardingPage() {
   const [preboardCategoryFilter, setPreboardCategoryFilter] = useState('all')
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
   const [taskForm, setTaskForm] = useState({ employee_id: '', title: '', category: 'documents', priority: 'medium', due_date: '' })
+  const handledDeepLinkRef = useRefReact<string | null>(null)
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+
+    handledDeepLinkRef.current = action
+
+    if (action === 'preboarding' || action === 'review-preboarding') {
+      setPreboardCategoryFilter('all')
+      setActiveTab('preboarding')
+      return
+    }
+
+    if (['documents', 'equipment', 'accounts', 'payroll', 'training', 'benefits'].includes(action)) {
+      setPreboardCategoryFilter(action)
+      setActiveTab('preboarding')
+      return
+    }
+
+    if (action === 'learning') {
+      setPreboardCategoryFilter('training')
+      setActiveTab('preboarding')
+      return
+    }
+
+    if (action === 'buddy' || action === 'buddies' || action === 'assign-buddy') {
+      setActiveTab('buddy-system')
+      return
+    }
+
+    if (action === 'plan' || action === 'onboarding-plan') {
+      setActiveTab('onboarding-plan')
+      return
+    }
+
+    if (action === 'welcome' || action === 'portal') {
+      setActiveTab('welcome-portal')
+      return
+    }
+
+    if (action === 'my-onboarding') {
+      setActiveTab('my-onboarding')
+    }
+  }, [searchParams])
 
   // ─── Template Builder State ─────────────────────────────────────────
   const [showTemplateModal, setShowTemplateModal] = useState(false)

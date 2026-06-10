@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAI } from '@/lib/use-ai'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
@@ -229,6 +230,7 @@ export default function PerformancePage() {
   } = useTempo()
   const defaultCurrency = useOrgCurrency()
   const { triggerCascade } = useEventCascade()
+  const searchParams = useSearchParams()
 
   const [pageLoading, setPageLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -267,7 +269,28 @@ export default function PerformancePage() {
   const myReviews = useMemo(() => reviews.filter(r => r.employee_id === currentEmployeeId), [reviews, currentEmployeeId])
 
   const [activeTab, setActiveTab] = useState('goals')
+  const handledDeepLinkRef = useRef<string | null>(null)
   const [activePerformanceExperiment, setActivePerformanceExperiment] = useState<'manager_copilot' | 'calibration_room' | 'growth_pathways' | 'merit_readiness'>('manager_copilot')
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+    handledDeepLinkRef.current = action
+
+    const actionTabs: Record<string, string> = {
+      reviews: isHRBPOrAbove || isManager ? 'reviews' : 'my-reviews',
+      'my-reviews': 'my-reviews',
+      calibration: 'calibration',
+      'one-on-ones': 'one-on-ones',
+      'career-paths': 'career-paths',
+      'merit-cycles': 'merit-cycles',
+      feedback: 'feedback',
+      goals: 'goals',
+    }
+
+    const nextTab = actionTabs[action]
+    if (nextTab) setActiveTab(nextTab)
+  }, [searchParams, isHRBPOrAbove, isManager])
 
   // Goal modal
   const [showGoalModal, setShowGoalModal] = useState(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +41,7 @@ import { showExperimentBenches } from '@/lib/experience-flags'
 export default function LearningPage() {
   const { courses, enrollments, learningPaths, liveSessions, courseBlocks, quizQuestions, discussions, studyGroups, complianceTraining, autoEnrollRules, assessmentAttempts, learningAssignments, coursePrerequisites, scormPackages, scormTracking, contentLibrary, learnerBadges, learnerPoints, certificateTemplates, employees, departments, reviews, goals, addCourse, updateCourse, addEnrollment, updateEnrollment, addLearningPath, addLiveSession, addCourseBlock, updateCourseBlock, deleteCourseBlock, addQuizQuestion, updateQuizQuestion, deleteQuizQuestion, addDiscussion, updateDiscussion, addStudyGroup, updateStudyGroup, addComplianceTraining, updateComplianceTraining, addAutoEnrollRule, updateAutoEnrollRule, deleteAutoEnrollRule, addAssessmentAttempt, updateAssessmentAttempt, addLearningAssignment, updateLearningAssignment, addCoursePrerequisite, deleteCoursePrerequisite, addScormPackage, updateScormPackage, addContentLibraryItem, addLearnerBadge, addLearnerPoints, addCertificateTemplate, updateCertificateTemplate, getEmployeeName, getDepartmentName, currentEmployeeId, currentUser, addToast, ensureModulesLoaded, complianceRequirements, addComplianceRequirement, deleteComplianceRequirement } = useTempo()
   const defaultCurrency = useOrgCurrency()
+  const searchParams = useSearchParams()
 
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -226,12 +228,32 @@ export default function LearningPage() {
   // Course Player state
   const [playerEnrollmentId, setPlayerEnrollmentId] = useState<string | null>(null)
   const [playerCourseId, setPlayerCourseId] = useState<string | null>(null)
+  const handledDeepLinkRef = useRef<string | null>(null)
 
   function openPlayer(enrollmentId: string, courseId: string) {
     const enr = enrollments.find(e => e.id === enrollmentId)
     if (enr?.status === 'enrolled') {
       updateEnrollment(enrollmentId, { status: 'in_progress', progress: 5 })
     }
+    setPlayerEnrollmentId(enrollmentId)
+    setPlayerCourseId(courseId)
+  }
+
+  function enrollAndOpen(courseId: string) {
+    const existingEnrollment = enrollments.find(e => e.employee_id === currentEmployeeId && e.course_id === courseId)
+    if (existingEnrollment) {
+      openPlayer(existingEnrollment.id, courseId)
+      return
+    }
+
+    const enrollmentId = `enr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    addEnrollment({
+      id: enrollmentId,
+      employee_id: currentEmployeeId,
+      course_id: courseId,
+      status: 'in_progress',
+      progress: 5,
+    })
     setPlayerEnrollmentId(enrollmentId)
     setPlayerCourseId(courseId)
   }
@@ -632,6 +654,11 @@ export default function LearningPage() {
   }
 
   function handleEnroll(courseId: string) {
+    const existingEnrollment = enrollments.find(e => e.employee_id === currentEmployeeId && e.course_id === courseId)
+    if (existingEnrollment) {
+      openPlayer(existingEnrollment.id, courseId)
+      return
+    }
     addEnrollment({ employee_id: currentEmployeeId, course_id: courseId, status: 'enrolled', progress: 0 })
   }
 
@@ -1381,14 +1408,14 @@ window.onload=function(){
             label: 'Start manager assignment',
             title: assignedCourse.title,
             detail: nextAssignment.due_date ? `Due in ${Math.max(0, Math.ceil((new Date(nextAssignment.due_date).getTime() - Date.now()) / 86400000))} days` : 'Assigned learning priority',
-            action: () => handleEnroll(assignedCourse.id),
+            action: () => enrollAndOpen(assignedCourse.id),
           }
         : topRecommendation
           ? {
               label: 'Start recommended course',
               title: topRecommendation.title,
               detail: `${topRecommendation.category || 'Recommended'} · ${topRecommendation.duration_hours || 0}h`,
-              action: () => handleEnroll(topRecommendation.id),
+              action: () => enrollAndOpen(topRecommendation.id),
             }
           : {
               label: 'Explore catalog',
@@ -1406,7 +1433,7 @@ window.onload=function(){
           value: topRecommendation?.title || 'No recommendation yet',
           detail: topRecommendation ? 'Personalized from role, peers, and available catalog.' : 'Add courses to unlock recommendations.',
           icon: Briefcase,
-          action: () => topRecommendation ? handleEnroll(topRecommendation.id) : setActiveTab('catalog'),
+          action: () => topRecommendation ? enrollAndOpen(topRecommendation.id) : setActiveTab('catalog'),
         },
         {
           label: 'Skill to close',
@@ -1425,6 +1452,13 @@ window.onload=function(){
       ],
     }
   }, [myInProgress, myCompleted.length, myAssignments, personalizedRecs, skillGaps, complianceTraining, complianceStats.upcomingCount, courses])
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (action !== 'continue' || handledDeepLinkRef.current === action || pageLoading || courses.length === 0) return
+    handledDeepLinkRef.current = action
+    learnerMissionControl.nextAction.action()
+  }, [searchParams, pageLoading, courses.length, learnerMissionControl])
   const learningExperiments = [
     {
       id: 'learner_home' as const,

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
@@ -25,6 +26,7 @@ import { detectPayEquityGaps, detectCompAnomalies, modelBudgetImpact, generateTo
 
 export default function CompensationPage() {
   const defaultCurrency = useOrgCurrency()
+  const searchParams = useSearchParams()
   const {
     compBands, salaryReviews, employees, benefitPlans, departments,
     addCompBand, deleteCompBand, addSalaryReview, updateSalaryReview, currentEmployeeId,
@@ -46,6 +48,7 @@ export default function CompensationPage() {
 
   // ---- Tab State ----
   const [activeTab, setActiveTab] = useState('benchmarking')
+  const handledDeepLinkRef = useRef<string | null>(null)
   const tabs = [
     { id: 'benchmarking', label: t('tabBenchmarking'), count: compBands.length },
     { id: 'salary-reviews', label: t('tabSalaryReviews'), count: salaryReviews.length },
@@ -56,6 +59,29 @@ export default function CompensationPage() {
     { id: 'planning', label: t('tabPlanning') },
     { id: 'market-data', label: t('tabMarketData'), count: marketBenchmarks.length },
   ]
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+
+    handledDeepLinkRef.current = action
+
+    const tabByAction: Record<string, string> = {
+      'salary-reviews': 'salary-reviews',
+      reviews: 'salary-reviews',
+      approvals: 'salary-reviews',
+      bands: 'bands',
+      benchmarking: 'benchmarking',
+      planning: 'planning',
+      'total-rewards': 'total-rewards',
+      equity: 'equity',
+      stip: 'stip',
+      'market-data': 'market-data',
+    }
+
+    const nextTab = tabByAction[action]
+    if (nextTab) setActiveTab(nextTab)
+  }, [searchParams])
 
   // ---- Modals ----
   const [showBandModal, setShowBandModal] = useState(false)

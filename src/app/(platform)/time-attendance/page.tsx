@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { ModuleCommandCenter } from '@/components/platform/module-command-center'
 import { ModuleTrustPanel } from '@/components/platform/module-trust-panel'
@@ -56,6 +57,7 @@ const STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'default' 
 export default function TimeAttendancePage() {
   const t = useTranslations('timeAttendance')
   const tc = useTranslations('common')
+  const searchParams = useSearchParams()
   const {
     timeEntries, timeOffPolicies, timeOffBalances, overtimeRules, shifts: _shifts,
     leaveRequests, employees, departments,
@@ -474,6 +476,33 @@ export default function TimeAttendancePage() {
   const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
   const [leaveForm, setLeaveForm] = useState({ type: 'annual', start_date: '', end_date: '', reason: '', location: '' })
   const leaveSubmittingRef = useRef(false)
+  const handledDeepLinkRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (!action || handledDeepLinkRef.current === action) return
+    handledDeepLinkRef.current = action
+
+    if (action === 'request-leave') {
+      setActiveTab('pto')
+      setShowLeaveRequestModal(true)
+      return
+    }
+
+    if (action === 'review-leave') {
+      setActiveTab('pto')
+      return
+    }
+
+    if (action === 'review-timesheets') {
+      setActiveTab('timesheets')
+      return
+    }
+
+    if (action === 'clock-in') {
+      setActiveTab('time-clock')
+    }
+  }, [searchParams])
   const [showAdjustBalanceModal, setShowAdjustBalanceModal] = useState(false)
   const [adjustBalanceForm, setAdjustBalanceForm] = useState({ employee_id: '', policy_id: '', adjustment: 0, reason: '' })
   const [showBulkBalanceModal, setShowBulkBalanceModal] = useState(false)
