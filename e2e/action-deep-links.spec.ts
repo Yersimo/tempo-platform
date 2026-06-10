@@ -19,6 +19,10 @@ test.describe('action deep links', () => {
     await expect(page).toHaveURL(/\/expense\?action=review-expenses/)
     await expect(page.getByText(/pending reports are sorted|live approval-route engine/i).first()).toBeVisible()
 
+    await page.goto('/performance?action=reviews')
+    await expect(page).toHaveURL(/\/performance\?action=reviews/)
+    await expect(page.getByText(/Review cycle command center|Performance Reviews|Launch Review Cycle/i).first()).toBeVisible()
+
     await page.goto('/learning')
     await expect(page.getByText(/learning mission control/i)).toBeVisible()
     await page.getByRole('button', { name: /^continue$/i }).first().click()
