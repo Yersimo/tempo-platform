@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test'
 import { loginByApi } from './helpers/auth'
 
 test.describe('action deep links', () => {
-  test('dashboard and learning actions open the promised work surface', async ({ page }) => {
-    test.setTimeout(60_000)
-
+  test.beforeEach(async ({ page }) => {
     await loginByApi(page)
+  })
 
+  test('dashboard stat cards route to promised work surfaces', async ({ page }) => {
     await page.goto('/dashboard')
     await page.getByRole('link', { name: /active goals/i }).click()
     await expect(page).toHaveURL(/\/performance\?action=goals/)
@@ -18,7 +18,9 @@ test.describe('action deep links', () => {
     await page.goto('/dashboard')
     await page.getByRole('link', { name: /learning progress/i }).click()
     await expect(page).toHaveURL(/\/learning\?action=continue/)
+  })
 
+  test('organization quick actions route to promised work surfaces', async ({ page }) => {
     await page.goto('/dashboard')
     await page.getByRole('tab', { name: /organization/i }).click()
     await page.getByRole('button', { name: /submit pto/i }).click()
@@ -28,7 +30,9 @@ test.describe('action deep links', () => {
     await page.getByRole('tab', { name: /organization/i }).click()
     await page.getByRole('button', { name: /file expense/i }).click()
     await expect(page).toHaveURL(/\/expense\?action=submit-expense/)
+  })
 
+  test('dashboard task actions open exact workflow surfaces', async ({ page }) => {
     await page.goto('/dashboard')
     const requestLeave = page.getByRole('button', { name: /request leave/i }).first()
     await expect(requestLeave).toBeVisible()
@@ -40,7 +44,9 @@ test.describe('action deep links', () => {
     await page.getByRole('button', { name: /review \d+ expense report/i }).first().click()
     await expect(page).toHaveURL(/\/expense\?action=review-expenses/)
     await expect(page.getByText(/pending reports are sorted|live approval-route engine/i).first()).toBeVisible()
+  })
 
+  test('module action urls select the requested surfaces', async ({ page }) => {
     await page.goto('/performance?action=reviews')
     await expect(page).toHaveURL(/\/performance\?action=reviews/)
     await expect(page.getByText(/Review cycle command center|Performance Reviews|Launch Review Cycle/i).first()).toBeVisible()
@@ -53,6 +59,12 @@ test.describe('action deep links', () => {
     await expect(page).toHaveURL(/\/onboarding\?action=buddy/)
     await expect(page.getByRole('button', { name: /assign buddy/i })).toBeVisible()
 
+    await page.goto('/compensation?action=salary-reviews')
+    await expect(page).toHaveURL(/\/compensation\?action=salary-reviews/)
+    await expect(page.getByText(/salary review proposals|no salary reviews/i).first()).toBeVisible()
+  })
+
+  test('learning continue opens the course player', async ({ page }) => {
     await page.goto('/learning')
     await expect(page.getByText(/learning mission control/i)).toBeVisible()
     await page.getByRole('button', { name: /^continue$/i }).first().click()

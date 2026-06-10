@@ -188,7 +188,7 @@ export function MyOverviewTab() {
         label: `Approve ${pendingSalaryCount} salary proposal${pendingSalaryCount !== 1 ? 's' : ''}`,
         badge: 'Pending',
         badgeVariant: 'warning',
-        href: '/compensation',
+        href: '/compensation?action=salary-reviews',
         icon: <DollarSign size={16} />,
       })
     }
