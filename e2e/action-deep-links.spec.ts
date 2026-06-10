@@ -8,6 +8,18 @@ test.describe('action deep links', () => {
     await loginByApi(page)
 
     await page.goto('/dashboard')
+    await page.getByRole('link', { name: /active goals/i }).click()
+    await expect(page).toHaveURL(/\/performance\?action=goals/)
+
+    await page.goto('/dashboard')
+    await page.getByRole('link', { name: /pending reviews/i }).click()
+    await expect(page).toHaveURL(/\/performance\?action=reviews/)
+
+    await page.goto('/dashboard')
+    await page.getByRole('link', { name: /learning progress/i }).click()
+    await expect(page).toHaveURL(/\/learning\?action=continue/)
+
+    await page.goto('/dashboard')
     const requestLeave = page.getByRole('button', { name: /request leave/i }).first()
     await expect(requestLeave).toBeVisible()
     await requestLeave.click()

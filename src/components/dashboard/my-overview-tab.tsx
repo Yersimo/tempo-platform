@@ -133,7 +133,7 @@ export function MyOverviewTab() {
     { label: t('submitExpense'), icon: <FileText size={20} />, href: '/expense?action=submit-expense' },
     { label: t('clockInOut'), icon: <Clock size={20} />, href: '/time-attendance?action=clock-in' },
     { label: t('viewPayStubs'), icon: <DollarSign size={20} />, href: '/payroll' },
-    { label: t('myGoals'), icon: <Target size={20} />, href: '/performance' },
+    { label: t('myGoals'), icon: <Target size={20} />, href: '/performance?action=goals' },
     { label: t('myLearning'), icon: <BookOpen size={20} />, href: '/learning?action=continue' },
   ]
 
@@ -342,15 +342,15 @@ export function MyOverviewTab() {
             <Clock size={16} className="text-amber-600" /> {t('pendingApprovals')}
           </h4>
           <div className="grid grid-cols-3 gap-3">
-            <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+            <a href="/time-attendance?action=review-leave" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingLeaveCount}</p>
               <p className="text-[11px] text-t3">{t('leaveRequestsLabel')}</p>
             </a>
-            <a href="/expense" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+            <a href="/expense?action=review-expenses" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingExpenseCount}</p>
               <p className="text-[11px] text-t3">{t('expenseReportsLabel')}</p>
             </a>
-            <a href="/time-attendance" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
+            <a href="/time-attendance?action=review-timesheets" className="text-center p-2 rounded-lg hover:bg-amber-100/50 transition-colors">
               <p className="text-lg font-bold text-amber-700">{pendingTimesheetCount}</p>
               <p className="text-[11px] text-t3">{t('timesheetsLabel')}</p>
             </a>
@@ -366,7 +366,7 @@ export function MyOverviewTab() {
           change={t('annualLeaveRemaining')}
           changeType="neutral"
           icon={<Calendar size={20} />}
-          href="/time-attendance"
+          href="/time-attendance?action=review-leave"
         />
         <StatCard
           label={t('activeGoalsLabel')}
@@ -376,7 +376,7 @@ export function MyOverviewTab() {
             : t('allOnTrack')}
           changeType={myGoals.some(g => g.status === 'at_risk' || g.status === 'behind') ? 'negative' : 'positive'}
           icon={<Target size={20} />}
-          href="/performance"
+          href="/performance?action=goals"
         />
         <StatCard
           label={t('pendingReviews')}
@@ -384,7 +384,7 @@ export function MyOverviewTab() {
           change={pendingReviewCount > 0 ? t('actionRequired') : t('allComplete')}
           changeType={pendingReviewCount > 0 ? 'negative' : 'positive'}
           icon={<Star size={20} />}
-          href="/performance"
+          href="/performance?action=reviews"
         />
         <StatCard
           label={t('learningProgress')}
@@ -392,7 +392,7 @@ export function MyOverviewTab() {
           change={t('activeCourses', { count: myEnrollments.filter(e => e.status === 'in_progress' || e.status === 'enrolled').length })}
           changeType="neutral"
           icon={<BookOpen size={20} />}
-          href="/learning"
+          href="/learning?action=continue"
         />
       </div>
 
@@ -428,7 +428,7 @@ export function MyOverviewTab() {
               <div className="flex items-center justify-between">
                 <CardTitle>{t('myGoals')}</CardTitle>
                 <button
-                  onClick={() => router.push('/performance')}
+                  onClick={() => router.push('/performance?action=goals')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
                   {t('viewAllGoals')} <ChevronRight size={14} />
@@ -444,7 +444,7 @@ export function MyOverviewTab() {
                     variant="ghost"
                     size="sm"
                     className="mt-2"
-                    onClick={() => router.push('/performance')}
+                    onClick={() => router.push('/performance?action=goals')}
                   >
                     {t('setGoal')}
                   </Button>
@@ -476,7 +476,7 @@ export function MyOverviewTab() {
               <div className="flex items-center justify-between">
                 <CardTitle>{t('myUpcomingReviews')}</CardTitle>
                 <button
-                  onClick={() => router.push('/performance')}
+                  onClick={() => router.push('/performance?action=reviews')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
                   {t('viewAllReviews')} <ChevronRight size={14} />
@@ -562,7 +562,7 @@ export function MyOverviewTab() {
               variant="secondary"
               size="sm"
               className="w-full mt-4"
-              onClick={() => router.push('/time-attendance')}
+              onClick={() => router.push('/time-attendance?action=request-leave')}
             >
               <Calendar size={14} />
               {t('requestLeave')}
@@ -662,7 +662,7 @@ export function MyOverviewTab() {
               <div className="flex items-center justify-between">
                 <CardTitle>{t('myLearning')}</CardTitle>
                 <button
-                  onClick={() => router.push('/learning')}
+                  onClick={() => router.push('/learning?action=continue')}
                   className="text-xs text-tempo-600 hover:text-tempo-700 font-medium flex items-center gap-1 transition-colors"
                 >
                   {t('browseCourses')} <ChevronRight size={14} />
@@ -678,7 +678,7 @@ export function MyOverviewTab() {
                     variant="ghost"
                     size="sm"
                     className="mt-2"
-                    onClick={() => router.push('/learning')}
+                    onClick={() => router.push('/learning?action=continue')}
                   >
                     {t('exploreCourses')}
                   </Button>
